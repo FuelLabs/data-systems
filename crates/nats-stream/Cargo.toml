@@ -1,0 +1,22 @@
+[package]
+name = "fuel-nats-stream"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Fuel library to handle data streams using Nats"
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = "0.34.0"
+async-stream = "0.3.5"
+clap = { workspace = true }
+fuel-core-client = "0.22.3"
+fuel-core-client-ext = "0.1"
+fuel-core-types = "0.22.3"
+fuels = "0.54.0"
+futures = { workspace = true }
+tokio = { workspace = true }

@@ -1,0 +1,28 @@
+[package]
+name = "fuel-data-systems"
+edition = "2021"
+version = "0.0.1"
+publish = false
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+
+[workspace.package]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+keywords = ["data-stream", "blockchain", "cryptocurrencies"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "BUSL-1.1"
+repository = "https://github.com/FuelLabs/data-systems"
+version = "0.0.1"
+
+[workspace]
+members = ["crates/nats-stream"]
+
+[workspace.dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.4", features = ["derive"] }
+futures = "0.3.30"
+tokio = { version = "1.38.0", features = ["full"] }
