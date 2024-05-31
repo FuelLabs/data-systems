@@ -65,7 +65,7 @@ jobs:
     - run: cargo check --all-targets
 
   committed:
-    name: commited
+    name: committed
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
