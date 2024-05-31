@@ -11,17 +11,21 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  NIGHTLY_RUST_VERSION: nightly-2023-10-29
-  REGISTRY: ghcr.io
-  RUSTFLAGS: -D warnings
-  RUST_BACKTRACE: 1
-  RUST_VERSION: 1.75.0
+  RUST_VERSION: 1.78.0
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
+  validate-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   rustfmt:
     name: rustfmt
     runs-on: ubuntu-latest
