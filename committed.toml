@@ -1,6 +1,0 @@
-style = "conventional"
-ignore_author_re = "(dependabot|renovate)"
-merge_commit = false
-subject_length = 100
-subject_capitalized = false
-imperative_subject = false

@@ -27,6 +27,11 @@ repos:
       - id: detect-private-key
         stages: [commit]
 
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.27.0
+    hooks:
+      - id: commitizen
+
   - repo: https://github.com/lyz-code/yamlfix/
     rev: 1.16.0
     hooks:
