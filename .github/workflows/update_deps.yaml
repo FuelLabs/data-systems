@@ -1,18 +1,19 @@
-# Automatically run `cargo update` periodically
-
----
 name: Bump dependencies in Cargo.lock
+
 on:
   schedule:
     # Run weekly
-    - cron: '0 0 * * Sun'
+    - cron: 0 0 * * Sun
   workflow_dispatch:
     # Needed so we can run it manually
+
 permissions:
   contents: read
+
 defaults:
   run:
     shell: bash
+
 env:
   # So cargo doesn't complain about unstable features
   RUSTC_BOOTSTRAP: 1
@@ -20,7 +21,6 @@ env:
   PR_TITLE: Weekly `cargo update`
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.
-
     The following is the output from `cargo update`:
   COMMIT_MESSAGE: "cargo update \n\n"
 
@@ -33,7 +33,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
@@ -49,7 +48,6 @@ jobs:
           name: cargo-updates
           path: cargo_update.log
           retention-days: 1
-
   pr:
     name: amend PR
     needs: update
@@ -67,17 +65,14 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: cargo-updates
-
       - name: craft PR body and commit message
         run: |
           echo "${COMMIT_MESSAGE}" > commit.txt
           cat cargo_update.log >> commit.txt
-
           echo "${PR_MESSAGE}" > body.md
           echo '```txt' >> body.md
           cat cargo_update.log >> body.md
           echo '```' >> body.md
-
       - name: commit
         run: |
           git config user.name github-actions
@@ -85,10 +80,8 @@ jobs:
           git switch --force-create cargo_update
           git add ./Cargo.lock
           git commit --no-verify --file=commit.txt
-
       - name: push
         run: git push --no-verify --force --set-upstream origin cargo_update
-
       - name: edit existing open pull request
         id: edit
         # Don't fail job if we need to open new PR
@@ -101,13 +94,10 @@ jobs:
           if [[ "$STATE" != "OPEN" ]]; then
             exit 1
           fi
-
           gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
-
       - name: open new pull request
         # Only run if there wasn't an existing PR
         if: steps.edit.outcome != 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo $GITHUB_REPOSITORY
-

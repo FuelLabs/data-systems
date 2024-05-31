@@ -14,7 +14,7 @@ env:
   RUST_VERSION: 1.78.0
 
 concurrency:
-  group: "${{ github.workflow }}-${{ github.ref }}"
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,73 +26,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  rustfmt:
-    name: rustfmt
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: "1.78"  # STABLE
-        components: rustfmt
-    - uses: Swatinem/rust-cache@v2
-    - name: Check formatting
-      run: cargo fmt --all -- --check
-
   lockfile:
     name: lockfile
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-    - uses: Swatinem/rust-cache@v2
-    - name: "Is lockfile updated?"
-      run: cargo update --workspace --locked
-
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: ${{ env.RUST_VERSION }}
-        components: clippy
-    - uses: Swatinem/rust-cache@v2
-    - run: cargo clippy --all-targets --all-features
-    - run: cargo check --all-targets
-
-  committed:
-    name: committed
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Lint Commits
-      uses: crate-ci/committed@master
-
-  spellcheck:
-    name: spellcheck
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v4
-      - uses: crate-ci/typos@master
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          config: .typos.toml
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Is lockfile updated?
+        run: cargo update --workspace --locked
 
-  pre_commit:
-    name: pre_commit
+  precommit:
+    name: precommit
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-    - uses: pre-commit/action@v3.0.1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - uses: pre-commit/action@v3.0.1

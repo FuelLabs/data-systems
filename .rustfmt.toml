@@ -1,6 +1,6 @@
-max_width = 100                 # changed
-edition = "2021"                # changed
-use_try_shorthand = true        # changed
-use_field_init_shorthand = true # changed
-hard_tabs = true                # changed
-tab_spaces = 4                  # changed
+max_width = 100
+edition = "2021"
+use_try_shorthand = true
+use_field_init_shorthand = true
+hard_tabs = true
+tab_spaces = 4

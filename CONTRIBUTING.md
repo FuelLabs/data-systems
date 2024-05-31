@@ -80,6 +80,8 @@ common tasks on this project.
 | `make check`     | Run cargo check                                        |
 | `make dev-watch` | Run the project in a development mode with auto-reload |
 | `make dev`       | Run the project in a development mode                  |
+| `make fmt`       | Format the code                                        |
+| `make install`   | Install the project                                    |
 | `make lint`      | Format and lint the code                               |
 | `make run`       | Run the project in a release mode                      |
 | `make setup`     | Install all the tools needed                           |
@@ -87,7 +89,9 @@ common tasks on this project.
 ## 📬 Open a Pull Request
 
 1. Fork this repository and clone your fork
-2. Create a new branch out of the `master` branch with the naming convention `<username>/<fix|feat|chore|build|docs>/<branch-name>`.
+2. Create a new branch out of the `master` branch with the naming convention
+`<username>/<fix|feat|chore|build|docs>/<branch-name>`.
 3. Make and commit your changes following the conventions described above.
-4. Ensure the title of your PR is clear, concise, and follows the pattern `<category(scope): message>`.
+4. Ensure the title of your PR is clear, concise, and follows the pattern
+`<category(scope): message>`.
 5. Ensure pre-commit checks pass by running `make lint`.

@@ -3,34 +3,45 @@ exclude: |
     tests/.*|
     CHANGELOG.md
   )$
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-    - id: check-yaml
-      stages: [commit]
-    - id: check-json
-      stages: [commit]
-    - id: check-toml
-      stages: [commit]
-    - id: check-merge-conflict
-      stages: [commit]
-    - id: check-case-conflict
-      stages: [commit]
-    - id: detect-private-key
-      stages: [commit]
+      - id: trailing-whitespace
+        stages: [commit]
+      - id: end-of-file-fixer
+        stages: [commit]
+      - id: check-yaml
+        stages: [commit]
+      - id: check-json
+        stages: [commit]
+      - id: check-toml
+        stages: [commit]
+      - id: check-added-large-files
+        stages: [commit]
+      - id: check-merge-conflict
+        stages: [commit]
+      - id: check-case-conflict
+        stages: [commit]
+      - id: detect-private-key
+        stages: [commit]
+
+  - repo: https://github.com/lyz-code/yamlfix/
+    rev: 1.16.0
+    hooks:
+      - id: yamlfix
+        args: [-c, .yamlfix.toml]
+
   - repo: https://github.com/crate-ci/typos
     rev: v1.16.20
     hooks:
-    - id: typos
-      stages: [commit]
-  - repo: https://github.com/crate-ci/committed
-    rev: v1.0.20
-    hooks:
-    - id: committed
-      stages: [commit-msg]
+      - id: typos
+
   - repo: https://github.com/doublify/pre-commit-rust
-    rev: master
+    rev: v1.0
     hooks:
-    -   id: fmt
-    -   id: cargo-check
+      - id: fmt
+        args: [--, --check, --color, always]
+      - id: clippy
+        args: [--all-targets, --all-features, --, -D, warnings]

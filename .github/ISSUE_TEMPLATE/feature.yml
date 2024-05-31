@@ -1,6 +1,7 @@
 name: 🚀 Feature request
 description: Suggest an idea for this project.
-labels: ['feat', 'triage']
+labels: [feat, triage]
+
 body:
   - type: textarea
     attributes:
@@ -11,7 +12,8 @@ body:
   - type: textarea
     attributes:
       label: Usage example
-      description: Provide documentation and code examples for how this feature would be used.
+      description: Provide documentation and code examples for how this feature would
+        be used.
   - type: textarea
     attributes:
       label: Possible implementations
