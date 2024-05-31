@@ -6,8 +6,7 @@ permissions:
 on:
   pull_request:
   push:
-    branches:
-      - "*master"
+    branches: [main, staging, release]
 
 env:
   CARGO_TERM_COLOR: always

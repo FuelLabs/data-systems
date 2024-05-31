@@ -9,7 +9,7 @@ on:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
   push:
-    branches: [master, main, staging, release]
+    branches: [main, staging, release]
 
 env:
   RUST_BACKTRACE: 1
