@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+   "fuel-core-nats",
+]
+
+[workspace.package]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/data-systems"
+version = "0.26.0"
+
+[workspace.dependencies]
+fuel-core-bin = { version = "0.26.0", features = ["env", "p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.26.0", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-types = { version = "0.26.0" }
+fuel-core-services = "0.26.0"
