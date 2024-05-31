@@ -1201,10 +1201,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-data-systems"
-version = "0.0.1"
-
-[[package]]
 name = "fuel-derive"
 version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
