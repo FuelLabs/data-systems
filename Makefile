@@ -1,8 +1,11 @@
 setup:
 	./scripts/install.sh
 
-run:
-	cargo run --release
+check:
+	cargo check --all-targets --all-features
+
+build:
+	cargo build --release
 
 dev:
 	cargo run
@@ -18,8 +21,5 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	pre-commit run --all-files
 
-check:
-	cargo check --all-targets --all-features
-
-build:
-	cargo build --release
+run:
+	cargo run --release
