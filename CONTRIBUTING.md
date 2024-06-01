@@ -1,14 +1,13 @@
 # Contributing
 
-This guide will show you how to run this project locally if you want to test or
-contribute to this project.
+This guide will show you how to run this project locally if you want to test
+or contribute to it.
 
 ## 🛠 Prerequisites
 
-Most projects here under the umbrella of data systems are written in Rust, so
-we have preference for using Rust tooling and standards from the community as
-much as possible. So, this are the base tooling you need to ensure have
-installed on to run this project.
+Most projects under the umbrella of data systems are written in Rust, so we
+prefer using Rust tooling and community standards. Ensure you have the
+following tools installed:
 
 - [Rust](https://www.rust-lang.org/tools/install)
 - [Make](https://www.gnu.org/software/make/)
@@ -16,16 +15,15 @@ installed on to run this project.
 
 ## 📟 Setting up
 
-First, you need to clone this repository:
+First, clone this repository:
 
 ```sh
-git clone git@github.com:FuelLabs/data-systems.git
+git clone git@github.com:fuellabs/data-systems.git
 cd data-systems
 ```
 
-Now you need to install few tools to ensure the code quality and standards are
-met. We simplify this process for you using Make, so since you have it
-installed in your machine, you can simply run:
+Now, install the necessary tools to ensure code quality and standards. Use
+Make to simplify this process:
 
 ```sh
 make setup
@@ -36,62 +34,76 @@ being installed on your machine.
 
 ## 📝 Code conventions
 
-Some conventions are enforced here not to just ensure code quality, but also
-helps the project to be more sustainable and maintainable. So, we have some
-tools to help us with that.
+We enforce some conventions to ensure code quality, sustainability, and
+maintainability. The following tools help us with that:
 
-- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) - We
-  use this standard to ensure that the commit messages are clear and
-  understandable.
-- [Pre-commit](https://pre-commit.com/) - We use this tool to ensure that the
-  code is formatted and linted before being committed.
+- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) -
+  Ensures that commit messages are clear and understandable.
+- [Pre-commit](https://pre-commit.com/) - Ensures that the code is formatted
+  and linted before being committed.
+- [Commitizen](https://commitizen-tools.github.io/commitizen/) - Standardizes
+  commit messages using the Conventional Commits specification.
 
 ### Writing your commits
 
-When you create a commit we kindly ask you to follow the [Conventional
-Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
-Use `category(scope or module): message` in your commit message while using one of
-the following categories:
+When creating a commit, please follow the [Conventional
+Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Use
+`category(scope or module): message` in your commit message with one of the
+following categories:
 
-- `feat / feature`: all changes that introduce completely new code or new
-  features
-- `fix`: changes that fix a bug (ideally you will additionally reference an
-  issue if present)
-- `refactor`: any code related change that is not a fix nor a feature
-- `docs`: changing existing or creating new documentation (i.e. README, docs for
-  usage of a lib or cli usage)
-- `build`: all changes regarding the build of the software, changes to
-  dependencies or the addition of new dependencies
-- `test`: all changes regarding tests (adding new tests or changing existing
-  ones)
-- `ci`: all changes regarding the configuration of continuous integration (i.e.
-  github actions, ci system)
-- `chore`: all changes to the repository that do not fit into any of the above
-  categories
+- `feat / feature`: All changes that introduce completely new code or new
+  features.
+- `fix`: Changes that fix a bug (ideally referencing an issue if present).
+- `refactor`: Any code-related change that is not a fix or a feature.
+- `docs`: Changes to existing documentation or creation of new documentation
+  (e.g., README, usage docs).
+- `build`: Changes regarding the build of the software, dependencies, or the
+  addition of new dependencies.
+- `test`: Changes regarding tests (adding new tests or changing existing
+  ones).
+- `ci`: Changes regarding the configuration of continuous integration (e.g.,
+  GitHub Actions, CI systems).
+- `chore`: Changes to the repository that do not fit into any of the above
+  categories.
+
+### Using Commitizen
+
+Commitizen helps you create commit messages that follow the Conventional
+Commits specification. To use Commitizen, refer to the [Commitizen installation
+guide](https://commitizen-tools.github.io/commitizen/).
+
+Once installed, create your commit using the following command:
+
+```sh
+cz commit
+```
+
+Commitizen will guide you through the process of creating a standardized
+commit message.
 
 ## 📜 Useful Commands
 
-To make your life easier, we have some commands that you can use to run the most
-common tasks on this project.
+To make your life easier, here are some commands to run common tasks in this
+project:
 
 | Command          | Description                                            |
 | ---------------- | ------------------------------------------------------ |
 | `make build`     | Build the project                                      |
 | `make check`     | Run cargo check                                        |
-| `make dev-watch` | Run the project in a development mode with auto-reload |
-| `make dev`       | Run the project in a development mode                  |
+| `make dev-watch` | Run the project in development mode with auto-reload   |
+| `make dev`       | Run the project in development mode                    |
 | `make fmt`       | Format the code                                        |
 | `make install`   | Install the project                                    |
 | `make lint`      | Format and lint the code                               |
-| `make run`       | Run the project in a release mode                      |
+| `make run`       | Run the project in release mode                        |
 | `make setup`     | Install all the tools needed                           |
 
 ## 📬 Open a Pull Request
 
-1. Fork this repository and clone your fork
+1. Fork this repository and clone your fork.
 2. Create a new branch out of the `master` branch with the naming convention
-`<username>/<fix|feat|chore|build|docs>/<branch-name>`.
+   `<username>/<fix|feat|chore|build|docs>/<branch-name>`.
 3. Make and commit your changes following the conventions described above.
 4. Ensure the title of your PR is clear, concise, and follows the pattern
-`<category(scope): message>`.
+   `<category(scope): message>`.
 5. Ensure pre-commit checks pass by running `make lint`.
