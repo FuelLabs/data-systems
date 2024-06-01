@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  pull_request:
+  push:
     branches: [main, staging, release]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
