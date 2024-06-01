@@ -5,6 +5,7 @@ permissions:
 
 on:
   pull_request:
+    types: [opened, synchronize, edited, closed, reopened]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,11 +13,11 @@ env:
   RUST_VERSION: 1.78.0
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-title:
+  validate-itle:
     name: Validate PR Title
     runs-on: ubuntu-latest
     steps:
@@ -25,7 +26,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lockfile:
-    name: lockfile
+    name: Validate Lockfile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +38,8 @@ jobs:
       - name: Is lockfile updated?
         run: cargo update --workspace --locked
 
-  precommit:
-    name: precommit
+  pre-commit:
+    name: Linting & Formatting
     permissions:
       contents: read
     runs-on: ubuntu-latest

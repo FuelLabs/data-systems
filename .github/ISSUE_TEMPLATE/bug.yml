@@ -43,9 +43,4 @@ body:
     attributes:
       label: What os are you seeing the problem on?
       description: Android, iOS, Windows, Mac
-      options:
-        - Android Mobile
-        - iOS Mobile
-        - Windows Desktop
-        - Mac/Apple Desktop
-        - Linux
+      options: [Android Mobile, iOS Mobile, Windows Desktop, Mac/Apple Desktop, Linux]
