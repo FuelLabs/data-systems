@@ -18,6 +18,7 @@ install:
 
 lint:
 	pre-commit run --all-files
+	pre-commit run --hook-stage manual clippy --all-files
 
 run:
 	cargo run --release

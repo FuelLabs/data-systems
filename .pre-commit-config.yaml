@@ -52,3 +52,4 @@ repos:
         args: [--, --check, --color, always]
       - id: clippy
         args: [--all-targets, --all-features, --, -D, warnings]
+        stages: [manual]
