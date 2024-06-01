@@ -32,7 +32,7 @@ env:
 jobs:
   update:
     name: Update Dependencies
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
   pr:
     name: Create or Update Pull Request
     needs: update
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
