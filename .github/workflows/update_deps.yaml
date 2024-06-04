@@ -1,0 +1,110 @@
+name: Bump dependencies in Cargo.lock
+
+on:
+  schedule:
+    # Run weekly
+    - cron: 0 0 * * Sun
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Prevents cargo from complaining about unstable features
+  RUSTC_BOOTSTRAP: 1
+  RUST_VERSION: 1.78.0
+  PR_TITLE: 'chore(deps): weekly `cargo update`'
+  PR_MESSAGE: |
+    Automation to keep dependencies in `Cargo.lock` current.
+    The following is the output from `cargo update`:
+  COMMIT_MESSAGE: "chore(deps): update dependencies\n\n"
+
+jobs:
+  update:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Update Cargo Dependencies
+        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+
+      - name: Upload Cargo.lock Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Cargo-lock
+          path: Cargo.lock
+          retention-days: 1
+
+      - name: Upload Cargo Update Log Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: cargo-updates
+          path: cargo_update.log
+          retention-days: 1
+
+  pr:
+    name: Create or Update Pull Request
+    needs: update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Cargo.lock from Update Job
+        uses: actions/download-artifact@v3
+        with:
+          name: Cargo-lock
+
+      - name: Download Cargo Update Log from Update Job
+        uses: actions/download-artifact@v3
+        with:
+          name: cargo-updates
+
+      - name: Craft PR Body and Commit Message
+        run: |
+          echo "${{ env.COMMIT_MESSAGE }}" > commit.txt
+          cat cargo_update.log >> commit.txt
+          echo "${{ env.PR_MESSAGE }}" > body.md
+          echo '```txt' >> body.md
+          cat cargo_update.log >> body.md
+          echo '```' >> body.md
+
+      - name: Commit Changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --force-create cargo_update
+          git add ./Cargo.lock
+          git commit --no-verify --file=commit.txt
+
+      - name: Create or Update Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          commit-message: ${{ env.COMMIT_MESSAGE }}
+          title: ${{ env.PR_TITLE }}
+          body: |
+            ${{ env.PR_MESSAGE }}
+            '```txt'
+            $(cat cargo_update.log)
+            '```'
+          branch: cargo_update
+          labels: dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
