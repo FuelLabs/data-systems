@@ -1,3 +1,4 @@
+use anyhow::Context;
 use tracing::info;
 
 use fuel_core_types::fuel_tx::field::Inputs;
@@ -20,9 +21,12 @@ pub async fn nats_publisher(
     mut subscription: tokio::sync::broadcast::Receiver<
         std::sync::Arc<dyn std::ops::Deref<Target = ImportResult> + Send + Sync>,
     >,
+    nats_url: String,
 ) -> anyhow::Result<()> {
     // Connect to the NATS server
-    let client = async_nats::connect("localhost:4222").await?;
+    let client = async_nats::connect(&nats_url)
+        .await
+        .context(format!("Connecting to {nats_url}"))?;
     // Create a JetStream context
     let jetstream = async_nats::jetstream::new(client);
     // Create a JetStream stream (if it doesn't exist)
