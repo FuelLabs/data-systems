@@ -1,0 +1,15 @@
+.DS_Store
+**/target
+/script/out
+**/*.swp
+.terraform
+*.tfstate*
+*.terraform.lock.hcl*
+.envrc
+.direnv
+.cov
+lcov.info
+.env
+node_modules/
+pnpm-lock.yaml
+./package.json
