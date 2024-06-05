@@ -1,5 +1,5 @@
 [workspace]
-members = ["fuel-core-nats"]
+members = ["crates/fuel-core-nats"]
 resolver = "2"
 
 [workspace.package]
