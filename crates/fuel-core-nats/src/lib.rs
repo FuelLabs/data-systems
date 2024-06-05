@@ -48,7 +48,7 @@ pub async fn nats_publisher(
 				"transactions.*.*.*".to_string(),
 				// owners.{height}.{owner_id}
 				"owners.*.*".to_string(),
-				// assets.{height}.{assset_id}
+				// assets.{height}.{asset_id}
 				"assets.*.*.".to_string(),
 			],
 			storage: async_nats::jetstream::stream::StorageType::File,
