@@ -23,10 +23,10 @@ P2P_SECRET="{GENERATED_P2P_SECRET}"
 cargo run --all-features --bin fuel-core-nats -- \
 	--service-name "NATS Publisher Node" \
 	--ip 0.0.0.0 \
-    --port 4000 \
+	--port 4000 \
 	--db-path fuel-devnet-db \
 	--peering-port 30333 \
-    --reserved-nodes /dns4/p2p-devnet.fuel.network/tcp/30333/p2p/16Uiu2HAm6pmJUedRFjennk4A8yWL6zCApHCuykzRRroqMjjxZ8o6,/dns4/p2p-devnet.fuel.network/tcp/30334/p2p/16Uiu2HAm8dBwTRzqazCMqQDdR8thMa7BKiW4ep2B4DoQQp6Qhyfd \
+	--reserved-nodes /dns4/p2p-devnet.fuel.network/tcp/30333/p2p 16Uiu2HAm6pmJUedRFjennk4A8yWL6zCApHCuykzRRroqMjjxZ8o6,/dns4/p2p-devnet.fuel.network/tcp/30334/p2p 16Uiu2HAm8dBwTRzqazCMqQDdR8thMa7BKiW4ep2B4DoQQp6Qhyfd \
 	--utxo-validation \
 	--poa-instant false \
 	--enable-p2p \
@@ -118,38 +118,38 @@ Nats-Msg-Size: 8
 ### 3. `blocks.{height}`
 
 ```
-[#1113445] Received on "blocks.1249127" with reply "_INBOX.JjqJ6javNRGlFoaCeQeGBa.JjqJ6javNRGlFoaCeQfRCj"
+[#1005] Received JetStream message: stream: fuel seq 3458215 / subject: blocks.424405 / time: 2024-06-05T16:17:16+02:00
 {
   "V1": {
     "header": {
       "V1": {
         "application": {
-          "da_height": 5927820,
-          "consensus_parameters_version": 1,
+          "da_height": 5863309,
+          "consensus_parameters_version": 0,
           "state_transition_bytecode_version": 0,
           "generated": {
             "transactions_count": 1,
             "message_receipt_count": 0,
-            "transactions_root": "d201d5b2ace9dd0c319411f49f0447a38fca0991250c5e0657b53c6831a9faa5",
+            "transactions_root": "2afe56527d946e05af116f042e058aaffb77daca6440a96813167d15c2111b35",
             "message_outbox_root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             "event_inbox_root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
           }
         },
         "consensus": {
-          "prev_root": "62678e891bb5181f33cf62f81feb147dec407e87d5e9b3c826ea9dd3c722d3a7",
-          "height": 1249127,
+          "prev_root": "77e19c68cd1dc9f1b97833b778059edc68b885463598e94d5cc9fd6acba8cf31",
+          "height": 424405,
           "time": [
             64,
             0,
             0,
             0,
             102,
-            72,
-            158,
-            33
+            59,
+            238,
+            168
           ],
           "generated": {
-            "application_hash": "122bcbc1a4a28586722e9b48db213c2d208b22f1a06f3ecd38eb0e2d8e8cf0da"
+            "application_hash": "2996cde96e1dc9fd59227b59a3d9276a32ff68f293a131b5201b50312cfc5396"
           }
         }
       }
@@ -158,25 +158,25 @@ Nats-Msg-Size: 8
       {
         "Mint": {
           "tx_pointer": {
-            "block_height": 1249127,
+            "block_height": 424405,
             "tx_index": 0
           },
           "input_contract": {
             "utxo_id": {
-              "tx_id": "5206082b3d7f71595c5c02b830469cad0145d1149ba5a764343eaf000251a80e",
+              "tx_id": "7e2abf5739892dc9869df06135b62fce83e19d7fd3775b6c42feeb471c2d5dd9",
               "output_index": 0
             },
-            "balance_root": "8b8d7c5dfa3e7caf6efd8e697616f78e04a5ccdfc7607bf017e7a3cff2be1bae",
+            "balance_root": "80a40a209c900889ddf5833b3ce3776c156a19e879bcdf9a52be817d1f1ab6c9",
             "state_root": "0000000000000000000000000000000000000000000000000000000000000000",
             "tx_pointer": {
-              "block_height": 1249126,
+              "block_height": 424404,
               "tx_index": 0
             },
             "contract_id": "7777777777777777777777777777777777777777777777777777777777777777"
           },
           "output_contract": {
             "input_index": 0,
-            "balance_root": "8b8d7c5dfa3e7caf6efd8e697616f78e04a5ccdfc7607bf017e7a3cff2be1bae",
+            "balance_root": "80a40a209c900889ddf5833b3ce3776c156a19e879bcdf9a52be817d1f1ab6c9",
             "state_root": "0000000000000000000000000000000000000000000000000000000000000000"
           },
           "mint_amount": 0,
