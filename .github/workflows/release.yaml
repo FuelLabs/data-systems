@@ -1,121 +1,72 @@
 name: Release
 
 on:
-  push:
-    branches: [main, staging, release]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      prerelease: ${{ steps.set-prerelease.outputs.prerelease }}
+  build-artifacts:
+    env:
+      archive_name: artifact
+
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: [fuel-nats-stream]
+        os: [ubuntu-latest]
+        target: [x86_64-unknown-linux-gnu]
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.pkg }} ${{ matrix.target }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Setup git user (for changelog step)
+      - name: Install host target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: make build TARGET=${{ matrix.target }} PACKAGE=${{ matrix.pkg }}
+
+      - name: Set Archive Name
+        id: archive
+        run: echo "archive_name=${{ matrix.pkg }}-${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Create Tar Archive
         run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          mkdir ${{ env.archive_name }}
+          cp target/${{ matrix.target }}/release/${{ matrix.pkg }} ${{ env.archive_name }}
+          tar -czf ${{ env.archive_name }}.tgz ${{ env.archive_name }}
 
-      - name: Check for pre-release configuration
-        id: set-prerelease
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            echo "prerelease=nightly" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
-            echo "prerelease=rc" >> $GITHUB_OUTPUT
-          else
-            echo "prerelease=false" >> $GITHUB_OUTPUT
-
-  changelog:
-    runs-on: ubuntu-latest
-    needs: setup
-    outputs:
-      version: ${{ steps.save-outputs.outputs.version }}
-      changelog: ${{ steps.save-outputs.outputs.changelog }}
-      commit_message: ${{ steps.save-outputs.outputs.commit_message }}
-      branch: ${{ steps.save-outputs.outputs.branch }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - id: cz
-        name: Create bump and changelog
-        uses: commitizen-tools/commitizen-action@master
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.3.3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          changelog_increment_filename: body.md
-          prerelease: ${{ needs.setup.outputs.prerelease }}
-
-      - name: Save outputs
-        id: save-outputs
-        run: |
-          version=${{ steps.cz.outputs.version }}
-          changelog=$(cat body.md)
-          commit_message="ci(bump): release ${version}"
-          branch="release-${{ steps.cz.outputs.version }}"
-
-          echo "version=${version}" >> $GITHUB_OUTPUT
-          echo "changelog=${changelog}" >> $GITHUB_OUTPUT
-          echo "commit_message=${commit_message}" >> $GITHUB_OUTPUT
-          echo "branch=${branch}" >> $GITHUB_OUTPUT
-
-  create_pr:
-    runs-on: ubuntu-latest
-    needs: changelog
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create Pull Request
-        id: cpr
-        uses: peter-evans/create-pull-request@v3
-        with:
-          commit-message: ${{ needs.changelog.outputs.commit_message }}
-          title: Release ${{ needs.changelog.outputs.version }}
-          body: |
-            ${{ needs.changelog.outputs.changelog }}
-          branch: ${{ needs.changelog.outputs.branch }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check outputs
-        if: ${{ steps.cpr.outputs.pull-request-number }}
-        run: |
-          echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
-          echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"
+          name: ${{ matrix.pkg }}-${{ matrix.target }}
+          path: ${{ env.archive_name }}.tgz
+          if-no-files-found: error
 
   release:
+    needs: [build-artifacts]
     runs-on: ubuntu-latest
-    needs: changelog
-    if: github.ref == 'refs/heads/release'
-
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - uses: actions/checkout@v4.1.6
+      - uses: actions/download-artifact@v4.1.7
         with:
-          body_path: body.md
-          tag_name: ${{ needs.changelog.outputs.version }}
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -R artifacts
+
+      - uses: knope-dev/action@v2.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: knope release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  notify:
-    runs-on: ubuntu-latest
-    if: failure()
-
-    steps:
-      - name: Error Notification
-        run: |-
-          echo "An error occurred during the release process"
-          # Optionally, send a notification to Slack or email
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}

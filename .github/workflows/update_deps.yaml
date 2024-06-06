@@ -95,7 +95,7 @@ jobs:
           git commit --no-verify --file=commit.txt
 
       - name: Create or Update Pull Request
-        uses: peter-evans/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v6
         with:
           commit-message: ${{ env.COMMIT_MESSAGE }}
           title: ${{ env.PR_TITLE }}

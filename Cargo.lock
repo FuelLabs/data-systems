@@ -1228,6 +1228,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-nats"
+version = "0.0.1"
+
+[[package]]
 name = "fuel-nats-stream"
 version = "0.0.1"
 dependencies = [
