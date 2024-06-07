@@ -15,7 +15,7 @@ env:
 
 jobs:
   setup:
-    if: "!startsWith(github.event.head_commit.message, 'ci(bump)')"
+    if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
     runs-on: ubuntu-latest
     outputs:
       branch: ${{ steps.set-vars.outputs.branch }}
@@ -29,7 +29,7 @@ jobs:
           echo "branch=changeset/release-main" >> $GITHUB_OUTPUT
 
   prepare-release:
-    if: "!startsWith(github.event.head_commit.message, 'ci(bump)')"
+    if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
     needs: setup
     runs-on: ubuntu-latest
     steps:

@@ -21,6 +21,24 @@ jobs:
       - uses: amannn/action-semantic-pull-request@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          requireScope: true
+          types: |
+            arch
+            build
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            test
+          scopes: |
+            repo
+            release
+            data-stream
+            sdk-rust
+            sdk-ts
 
   lockfile:
     name: Validate Lockfile
@@ -33,6 +51,30 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo update --workspace --locked
+
+  commitlint:
+    name: Validating commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
+      - name: Install commitlint
+        run: |
+          npm install @commitlint/config-conventional
+
+      - name: Validate current commit (last commit) with commitlint
+        if: github.event_name == 'push'
+        run: npx commitlint --last --verbose
+
+      - name: Validate PR commits with commitlint
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits
+          }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
   lint:
     name: Linting

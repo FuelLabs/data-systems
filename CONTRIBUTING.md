@@ -33,7 +33,7 @@ make setup
 You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is
 being installed on your machine.
 
-## 📝 Code conventions
+## 📇 Code conventions
 
 We enforce some conventions to ensure code quality, sustainability, and
 maintainability. The following tools help us with that:
@@ -42,28 +42,40 @@ maintainability. The following tools help us with that:
     Ensures that commit messages are clear and understandable.
 -   [Pre-commit](https://pre-commit.com/) - Ensures that the code is formatted
     and linted before being committed.
+-   [Commitlint](https://commitlint.js.org/) - Lints commit messages to ensure
+    they follow the Conventional Commits specification.
 
-### Writing your commits
+### 📝 Writing your Commits & Pull Requests
 
 When creating a commit, please follow the [Conventional
 Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Use
 `category(scope or module): message` in your commit message with one of the
 following categories:
 
+-   `arch`: Changes that affect the architecture of the software.
+-   `build`: Changes regarding the build of the software, dependencies, or the
+    addition of new dependencies.
+-   `ci`: Changes regarding the configuration of continuous integration (e.g.,
+    GitHub Actions, CI systems).
+-   `docs`: Changes to existing documentation or creation of new documentation
+    (e.g., README, usage docs).
 -   `feat`: All changes that introduce completely new code or new
     features.
 -   `fix`: Changes that fix a bug (ideally referencing an issue if present).
+-   `perf`: Changes that improve the performance of the software.
 -   `refactor`: Any code-related change that is not a fix or a feature.
--   `docs`: Changes to existing documentation or creation of new documentation
-    (e.g., README, usage docs).
--   `build`: Changes regarding the build of the software, dependencies, or the
-    addition of new dependencies.
 -   `test`: Changes regarding tests (adding new tests or changing existing
     ones).
--   `ci`: Changes regarding the configuration of continuous integration (e.g.,
-    GitHub Actions, CI systems).
--   `chore`: Changes to the repository that do not fit into any of the above
-    categories.
+
+This is a general rule used for commits. When you are creating a PR, ensure
+that the title follows the same pattern, but in terms of PR, the scope is a
+mandatory field. That's the scopes allowed at the moment:
+
+-   `repo`: Changes that affect a global scope of the repository.
+-   `release`: Scoped used for automatic release pull requests.
+-   `data-streams`: Changes that affect the data-streams package.
+-   `sdk-rust`: Changes that affect the Rust SDK package.
+-   `sdk-js`: Changes that affect the Typescript SDK package.
 
 ## 📜 Useful Commands
 
