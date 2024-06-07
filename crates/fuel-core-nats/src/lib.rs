@@ -1,4 +1,5 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
+use futures_util::stream::TryStreamExt;
 use tracing::info;
 
 use fuel_core_types::fuel_tx::field::Inputs;
@@ -56,11 +57,32 @@ pub async fn nats_publisher(
 		})
 		.await?;
 
+	// Check the last block height in the stream
+	let last_block_height = {
+		let config = async_nats::jetstream::consumer::pull::Config {
+			deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::Last,
+			filter_subject: "blocks.*".to_string(),
+			..Default::default()
+		};
+		let consumer = jetstream.create_consumer_on_stream(config, "fuel").await?;
+		let mut batch = consumer.fetch().max_messages(1).messages().await?;
+
+		if let Ok(Some(message)) = batch.try_next().await {
+			let block_height: u32 = message.subject.strip_prefix("blocks.").unwrap().parse()?;
+			block_height
+		} else {
+			0
+		}
+	};
+
 	info!("NATS Publisher started");
 
 	while let Ok(result) = subscription.recv().await {
 		let result = &**result;
 		let height = u32::from(result.sealed_block.entity.header().consensus().height);
+		if !(height == last_block_height + 1) {
+			bail!("NATS Publisher: missing blocks: stream block height={last_block_height}, chain block height={height}");
+		}
 		let block = &result.sealed_block.entity;
 
 		// Publish the block.

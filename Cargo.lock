@@ -2188,6 +2188,7 @@ dependencies = [
  "fuel-core-bin",
  "fuel-core-services",
  "fuel-core-types",
+ "futures-util",
  "serde_json",
  "tokio",
  "tracing",
