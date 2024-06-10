@@ -22,18 +22,22 @@ runs:
         components: clippy, rustfmt
 
     - name: Cache Rust toolchain
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.rustup
           ~/.cargo/bin
-        key: ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}
+        key: ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-
 
     - name: Cache Cargo dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-rust-target-${{ inputs.toolchain }}-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |-
+          ${{ runner.os }}-rust-target-${{ inputs.toolchain }}-${{ inputs.target }}-

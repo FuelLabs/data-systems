@@ -41,7 +41,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-          targets: wasm32-unknown-unknown
 
       - name: Update Cargo Dependencies
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log

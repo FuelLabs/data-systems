@@ -49,7 +49,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-          targets: wasm32-unknown-unknown
+          target: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
       - run: cargo update --workspace --locked
@@ -75,8 +75,11 @@ jobs:
 
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
-        run: npx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits
-          }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        run: |
+          npx commitlint \
+            --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
 
   lint:
     name: Linting
@@ -88,10 +91,10 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: nightly
-          targets: wasm32-unknown-unknown
+          target: wasm32-unknown-unknown
 
       - name: Install dependencies
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/cache-cargo-install-action@v2
         with:
           tool: cargo-sort@1.0.9
 

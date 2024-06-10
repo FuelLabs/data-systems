@@ -1,7 +1,13 @@
 [package]
 name = "fuel-core-nats"
-version = "0.26.0"
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Fuel library to handle data streams using Nats"
 
 [dependencies]
 anyhow = "1.0.86"
