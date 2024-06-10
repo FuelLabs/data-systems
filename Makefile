@@ -3,7 +3,7 @@
 # ------------------------------------------------------------
 
 TARGET ?= aarch64-apple-darwin
-PACKAGE ?= fuel-nats-stream
+PACKAGE ?= fuel-core-nats
 
 .PHONY: all build run clean lint fmt help test doc
 
