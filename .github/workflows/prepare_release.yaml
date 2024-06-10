@@ -44,18 +44,12 @@ jobs:
           git config --global user.name GitHub Actions
           git config user.email github-actions@github.com
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          toolchain: nightly
+          targets: wasm32-unknown-unknown
 
-      - run: rustup toolchain install nightly -c rustfmt
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-sort@1.0.9, cargo-edit@0.12.3

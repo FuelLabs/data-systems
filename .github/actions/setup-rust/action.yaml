@@ -1,0 +1,39 @@
+name: Setup Rust
+description: Install Rust tooling with Cache
+
+inputs:
+  target:
+    description: Rust target platforms
+    required: false
+    default: x86_64-unknown-linux-gnu
+  toolchain:
+    description: Rust toolchain version to install
+    required: true
+    default: stable
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        target: ${{ inputs.target }}
+        components: clippy, rustfmt
+
+    - name: Cache Rust toolchain
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.rustup
+          ~/.cargo/bin
+        key: ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}
+
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}

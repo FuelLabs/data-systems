@@ -46,9 +46,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
+          targets: wasm32-unknown-unknown
+
       - uses: Swatinem/rust-cache@v2
       - run: cargo update --workspace --locked
 
@@ -82,28 +84,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@nightly
+        uses: ./.github/actions/setup-rust
         with:
-          components: clippy, rustfmt
-
-      - name: Cache Rust toolchain
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.rustup
-            ~/.cargo/bin
-          key: ${{ runner.os }}-rust-toolchain
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-deps-${{ hashFiles('**/Cargo.lock') }}
+          toolchain: nightly
+          targets: wasm32-unknown-unknown
 
       - name: Install dependencies
         uses: taiki-e/install-action@v2

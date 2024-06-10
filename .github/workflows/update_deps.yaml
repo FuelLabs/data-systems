@@ -37,10 +37,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: ${{ env.RUST_VERSION }}
+          toolchain: stable
+          targets: wasm32-unknown-unknown
 
       - name: Update Cargo Dependencies
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
