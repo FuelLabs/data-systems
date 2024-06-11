@@ -1,6 +1,9 @@
-max_width = 100
-edition = "2021"
+max_width = 90
+normalize_comments = true
+imports_layout = "Vertical"
+imports_granularity = "Crate"
+trailing_semicolon = false
 use_try_shorthand = true
+edition = "2021"
 use_field_init_shorthand = true
-hard_tabs = true
 tab_spaces = 4

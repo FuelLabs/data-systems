@@ -1,0 +1,68 @@
+name: Open Release PR
+
+on:
+  push:
+    branches: [main, staging, release]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
+  RUST_VERSION: 1.78.0
+
+jobs:
+  setup:
+    if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.set-vars.outputs.branch }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for pre-release configuration
+        id: set-vars
+        run: |
+          echo "branch=changeset/release-main" >> $GITHUB_OUTPUT
+
+  prepare-release:
+    if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.REPO_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name GitHub Actions
+          git config user.email github-actions@github.com
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: nightly
+
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-sort@1.0.9
+
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-edit@0.12.3
+
+      - uses: knope-dev/action@v2.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run knope prepare release
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          RELEASE_BRANCH: ${{ needs.setup.outputs.branch }}
+        run: knope prepare-release --verbose

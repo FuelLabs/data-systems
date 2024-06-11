@@ -1,11 +1,8 @@
 name: CI
 
-permissions:
-  contents: read
-
 on:
   pull_request:
-    types: [opened, synchronize, edited, closed, reopened]
+    types: [opened, synchronize, edited, reopened]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,13 +14,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate-itle:
+  validate-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v4
+      - uses: amannn/action-semantic-pull-request@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          requireScope: true
+          types: |
+            arch
+            build
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            test
+          scopes: |
+            repo
+            release
+            data-stream
+            sdk-rust
+            sdk-ts
 
   lockfile:
     name: Validate Lockfile
@@ -31,33 +46,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Is lockfile updated?
-        run: cargo update --workspace --locked
+          target: wasm32-unknown-unknown
 
-  clippy:
-    name: Clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo update --workspace --locked
+
+  commitlint:
+    name: Validating commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
+      - name: Install commitlint
+        run: |
+          npm install @commitlint/config-conventional
+
+      - name: Validate current commit (last commit) with commitlint
+        if: github.event_name == 'push'
+        run: npx commitlint --last --verbose
+
+      - name: Validate PR commits with commitlint
+        if: github.event_name == 'pull_request'
+        run: |
+          npx commitlint \
+            --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
+
+  lint:
+    name: Linting
+    if: "!startsWith(github.head_ref, 'releases/')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --all-features
+          toolchain: nightly
+          target: wasm32-unknown-unknown
 
-  pre-commit:
-    name: Linting & Formatting
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-      - uses: pre-commit/action@v3.0.1
+      - name: Install dependencies
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-sort@1.0.9
+
+      - name: Running linting
+        run: make lint
