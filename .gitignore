@@ -13,3 +13,4 @@ lcov.info
 node_modules/
 pnpm-lock.yaml
 ./package.json
+tmp
