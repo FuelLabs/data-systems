@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
 	let subscription = service.shared.block_importer.block_importer.subscribe();
 
-	fuel_core_nats::nats_publisher(subscription, cli.nats_url).await?;
+	fuel_core_nats::nats_publisher(&service.shared.database, subscription, cli.nats_url).await?;
 
 	Ok(())
 }
