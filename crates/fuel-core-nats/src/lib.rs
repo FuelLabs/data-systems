@@ -1,12 +1,23 @@
-use anyhow::{
-    bail,
-    Context,
-};
+use anyhow::Context;
+
 use futures_util::stream::TryStreamExt;
-use tracing::info;
+use tracing::{
+    info,
+    warn,
+};
 
 use fuel_core_types::{
-    fuel_tx::field::Inputs,
+    blockchain::block::Block,
+    fuel_tx::{
+        field::Inputs,
+        Receipt,
+        Transaction,
+        UniqueIdentifier,
+    },
+    fuel_types::{
+        AssetId,
+        ChainId,
+    },
     services::{
         block_importer::ImportResult,
         executor::TransactionExecutionResult,
@@ -25,10 +36,13 @@ const NUM_TOPICS: usize = 3;
 ///   owners.{height}.{owner_id}                                     e.g. owners.*.0xab..cd
 ///   assets.{height}.{asset_id}                                     e.g. assets.*.0xab..cd
 pub async fn nats_publisher(
+    database: &fuel_core::combined_database::CombinedDatabase,
     mut subscription: tokio::sync::broadcast::Receiver<
         std::sync::Arc<dyn std::ops::Deref<Target = ImportResult> + Send + Sync>,
     >,
     nats_url: String,
+    chain_id: &ChainId,
+    base_asset_id: &AssetId,
 ) -> anyhow::Result<()> {
     // Connect to the NATS server
     let client = async_nats::connect(&nats_url)
@@ -56,15 +70,17 @@ pub async fn nats_publisher(
                 // owners.{height}.{owner_id}
                 "owners.*.*".to_string(),
                 // assets.{height}.{asset_id}
-                "assets.*.*.".to_string(),
+                "assets.*.*".to_string(),
             ],
             storage: async_nats::jetstream::stream::StorageType::File,
             ..Default::default()
         })
         .await?;
 
+    info!("NATS Publisher started chain_id={chain_id} base_asset_id={base_asset_id}");
+
     // Check the last block height in the stream
-    let last_block_height = {
+    let stream_height = {
         let config = async_nats::jetstream::consumer::pull::Config {
             deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::Last,
             filter_subject: "blocks.*".to_string(),
@@ -82,142 +98,190 @@ pub async fn nats_publisher(
         }
     };
 
-    info!("NATS Publisher started");
+    // Fill in the stream if neccessary
+    if let Some(chain_height) = database.on_chain().latest_height()? {
+        let chain_height: u32 = chain_height.into();
+        if chain_height > stream_height + 1 {
+            warn!("NATS Publisher: missing blocks: stream block height={stream_height}, chain block height={chain_height}");
+        }
 
+        for height in stream_height + 1..=chain_height {
+            let block: Block = database
+                .on_chain()
+                .get_sealed_block_by_height(&height.into())?
+                .unwrap_or_else(|| panic!("NATS Publisher: no block at height {height}"))
+                .entity;
+
+            use fuel_core_types::services::txpool::TransactionStatus;
+            let mut receipts_: Vec<Receipt> = vec![];
+            for t in block.transactions().iter() {
+                let status: Option<TransactionStatus> =
+                    database.off_chain().get_tx_status(&t.id(chain_id))?;
+                match status {
+                    Some(TransactionStatus::Failed { mut receipts, .. }) => {
+                        receipts_.append(&mut receipts);
+                    }
+                    Some(TransactionStatus::Success { mut receipts, .. }) => {
+                        receipts_.append(&mut receipts);
+                    }
+                    Some(TransactionStatus::Submitted { .. }) => (),
+                    Some(TransactionStatus::SqueezedOut { .. }) => (),
+                    // TODO: check that we'd get the same result from the block importer subscription
+                    None => (),
+                }
+            }
+
+            let height: u32 = **block.header().height();
+
+            info!(
+                "NATS Publisher: publishing block {height} / {chain_height} with {} receipts",
+                receipts_.len()
+            );
+
+            publish_block(&jetstream, base_asset_id, &block, &receipts_).await?;
+        }
+    }
+
+    // Continue publishing blocks from the block importer subscription
     while let Ok(result) = subscription.recv().await {
-        let result = &**result;
-        let height = u32::from(result.sealed_block.entity.header().consensus().height);
-        if height != last_block_height + 1 {
-            bail!("NATS Publisher: missing blocks: stream block height={last_block_height}, chain block height={height}");
-        }
-        let block = &result.sealed_block.entity;
-
-        // Publish the block.
-        info!("NATS Publisher: Block#{height}");
-        let payload = serde_json::to_string_pretty(block)?;
-        jetstream
-            .publish(format!("blocks.{height}"), payload.into())
-            .await?;
-
-        use fuel_core_types::fuel_tx::Transaction;
-        for (index, tx) in block.transactions().iter().enumerate() {
-            if let Transaction::Script(s) = tx {
-                for i in s.inputs() {
-                    if let Some(owner_id) = i.input_owner() {
-                        let payload = serde_json::to_string_pretty(tx)?;
-                        jetstream
-                            .publish(
-                                format!("owners.{height}.{owner_id}"),
-                                payload.into(),
-                            )
-                            .await?;
-                    }
-                    use fuel_core_types::fuel_tx::AssetId;
-                    // TODO: from chain config?
-                    let base_asset_id = AssetId::zeroed();
-                    if let Some(asset_id) = i.asset_id(&base_asset_id) {
-                        let payload = serde_json::to_string_pretty(tx)?;
-                        jetstream
-                            .publish(
-                                format!("assets.{height}.{asset_id}"),
-                                payload.into(),
-                            )
-                            .await?;
-                    }
-                }
-            };
-
-            let tx_kind = match tx {
-                Transaction::Create(_) => "create",
-                Transaction::Mint(_) => "mint",
-                Transaction::Script(_) => "script",
-                Transaction::Upload(_) => "upload",
-                Transaction::Upgrade(_) => "upgrade",
-            };
-
-            // Publish the transaction.
-            info!("NATS Publisher: Transaction#{height}.{index}.{tx_kind}");
-            let payload = serde_json::to_string_pretty(tx)?;
-            jetstream
-                .publish(
-                    format!("transactions.{height}.{index}.{tx_kind}"),
-                    payload.into(),
-                )
-                .await?;
-        }
-
+        let mut receipts_: Vec<Receipt> = vec![];
         for t in result.tx_status.iter() {
-            let receipts = match &t.result {
-                TransactionExecutionResult::Success { receipts, .. } => receipts,
-                TransactionExecutionResult::Failed { receipts, .. } => receipts,
+            let mut receipts = match &t.result {
+                TransactionExecutionResult::Success { receipts, .. } => receipts.clone(),
+                TransactionExecutionResult::Failed { receipts, .. } => receipts.clone(),
             };
+            receipts_.append(&mut receipts);
+        }
+        let result = &**result;
+        publish_block(
+            &jetstream,
+            base_asset_id,
+            &result.sealed_block.entity,
+            &receipts_,
+        )
+        .await?;
+    }
 
-            use fuel_core_types::fuel_tx::Receipt;
-            for r in receipts.iter() {
-                let receipt_kind = match r {
-                    Receipt::Call { .. } => "call",
-                    Receipt::Return { .. } => "return",
-                    Receipt::ReturnData { .. } => "return_data",
-                    Receipt::Panic { .. } => "panic",
-                    Receipt::Revert { .. } => "revert",
-                    Receipt::Log { .. } => "log",
-                    Receipt::LogData { .. } => "log_data",
-                    Receipt::Transfer { .. } => "transfer",
-                    Receipt::TransferOut { .. } => "transfer_out",
-                    Receipt::ScriptResult { .. } => "script_result",
-                    Receipt::MessageOut { .. } => "message_out",
-                    Receipt::Mint { .. } => "mint",
-                    Receipt::Burn { .. } => "burn",
-                };
+    Ok(())
+}
 
-                let contract_id = r.contract_id().map(|x| x.to_string()).unwrap_or(
-                    "0000000000000000000000000000000000000000000000000000000000000000"
-                        .to_string(),
-                );
+/// Publish the Block, its Transactions, and the given Receipts into NATS.
+async fn publish_block(
+    jetstream: &async_nats::jetstream::Context,
+    base_asset_id: &AssetId,
+    block: &Block<Transaction>,
+    receipts: &[Receipt],
+) -> anyhow::Result<()> {
+    let height = u32::from(block.header().consensus().height);
 
-                // Publish the receipt.
-                info!("NATS Publisher: Receipt#{height}.{contract_id}.{receipt_kind}");
-                let payload = serde_json::to_string_pretty(r)?;
-                let subject = format!("receipts.{height}.{contract_id}.{receipt_kind}");
-                jetstream.publish(subject, payload.into()).await?;
+    // Publish the block.
+    info!("NATS Publisher: Block#{height}");
+    let payload = serde_json::to_string_pretty(block)?;
+    jetstream
+        .publish(format!("blocks.{height}"), payload.into())
+        .await?;
 
-                // Publish LogData topics, if any.
-                if let Receipt::LogData {
-                    data: Some(data), ..
-                } = r
-                {
-                    info!("NATS Publisher: Log Data Length: {}", data.len());
-                    // 0x0000000012345678
-                    let header = vec![0, 0, 0, 0, 18, 52, 86, 120];
-                    if data.starts_with(&header) {
-                        let data = &data[header.len()..];
-                        let mut topics = vec![];
-                        for i in 0..NUM_TOPICS {
-                            let topic_bytes: Vec<u8> = data[32 * i..32 * (i + 1)]
-                                .iter()
-                                .cloned()
-                                .take_while(|x| *x > 0)
-                                .collect();
-                            let topic =
-                                String::from_utf8_lossy(&topic_bytes).into_owned();
-                            if !topic.is_empty() {
-                                topics.push(topic);
-                            }
-                        }
-                        let topics = topics.join(".");
-                        // TODO: JSON payload to match other topics? {"data": payload}
-                        let payload = data[NUM_TOPICS * 32..].to_owned();
+    for (index, tx) in block.transactions().iter().enumerate() {
+        if let Transaction::Script(s) = tx {
+            for i in s.inputs() {
+                // Publish transaction to owners
+                if let Some(owner_id) = i.input_owner() {
+                    let payload = serde_json::to_string_pretty(tx)?;
+                    jetstream
+                        .publish(format!("owners.{height}.{owner_id}"), payload.into())
+                        .await?;
+                }
+                // Publish transaction to assets
+                if let Some(asset_id) = i.asset_id(base_asset_id) {
+                    let payload = serde_json::to_string_pretty(tx)?;
+                    jetstream
+                        .publish(format!("assets.{height}.{asset_id}"), payload.into())
+                        .await?;
+                }
+            }
+        }
 
-                        // Publish
-                        info!("NATS Publisher: Receipt#{height}.{contract_id}.{topics}");
-                        jetstream
-                            .publish(
-                                format!("receipts.{height}.{contract_id}.{topics}"),
-                                payload.into(),
-                            )
-                            .await?;
+        let tx_kind = match tx {
+            Transaction::Create(_) => "create",
+            Transaction::Mint(_) => "mint",
+            Transaction::Script(_) => "script",
+            Transaction::Upload(_) => "upload",
+            Transaction::Upgrade(_) => "upgrade",
+        };
+
+        // Publish the transaction.
+        info!("NATS Publisher: Transaction#{height}.{index}.{tx_kind}");
+        let payload = serde_json::to_string_pretty(tx)?;
+        jetstream
+            .publish(
+                format!("transactions.{height}.{index}.{tx_kind}"),
+                payload.into(),
+            )
+            .await?;
+    }
+
+    for r in receipts.iter() {
+        let receipt_kind = match r {
+            Receipt::Call { .. } => "call",
+            Receipt::Return { .. } => "return",
+            Receipt::ReturnData { .. } => "return_data",
+            Receipt::Panic { .. } => "panic",
+            Receipt::Revert { .. } => "revert",
+            Receipt::Log { .. } => "log",
+            Receipt::LogData { .. } => "log_data",
+            Receipt::Transfer { .. } => "transfer",
+            Receipt::TransferOut { .. } => "transfer_out",
+            Receipt::ScriptResult { .. } => "script_result",
+            Receipt::MessageOut { .. } => "message_out",
+            Receipt::Mint { .. } => "mint",
+            Receipt::Burn { .. } => "burn",
+        };
+
+        let contract_id = r.contract_id().map(|x| x.to_string()).unwrap_or(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        );
+
+        // Publish the receipt.
+        info!("NATS Publisher: Receipt#{height}.{contract_id}.{receipt_kind}");
+        let payload = serde_json::to_string_pretty(r)?;
+        let subject = format!("receipts.{height}.{contract_id}.{receipt_kind}");
+        jetstream.publish(subject, payload.into()).await?;
+
+        // Publish LogData topics, if any.
+        if let Receipt::LogData {
+            data: Some(data), ..
+        } = r
+        {
+            info!("NATS Publisher: Log Data Length: {}", data.len());
+            // 0x0000000012345678
+            let header = vec![0, 0, 0, 0, 18, 52, 86, 120];
+            if data.starts_with(&header) {
+                let data = &data[header.len()..];
+                let mut topics = vec![];
+                for i in 0..NUM_TOPICS {
+                    let topic_bytes: Vec<u8> = data[32 * i..32 * (i + 1)]
+                        .iter()
+                        .cloned()
+                        .take_while(|x| *x > 0)
+                        .collect();
+                    let topic = String::from_utf8_lossy(&topic_bytes).into_owned();
+                    if !topic.is_empty() {
+                        topics.push(topic);
                     }
                 }
+                let topics = topics.join(".");
+                // TODO: JSON payload to match other topics? {"data": payload}
+                let payload = data[NUM_TOPICS * 32..].to_owned();
+
+                // Publish receipt topics
+                info!("NATS Publisher: Receipt#{height}.{contract_id}.{topics}");
+                jetstream
+                    .publish(
+                        format!("receipts.{height}.{contract_id}.{topics}"),
+                        payload.into(),
+                    )
+                    .await?;
             }
         }
     }
