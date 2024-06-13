@@ -28,8 +28,8 @@ setup: check-commands
 #  Development
 # ------------------------------------------------------------
 
-dev:
-	cargo run
+dev/run-node:
+	./scripts/run-node.sh
 
 dev-watch:
 	cargo watch -- cargo run
@@ -50,9 +50,6 @@ stop-nats:
 
 run:
 	cargo run --release
-
-run-fuel-core-nats:
-	./scripts/run-fuel-core-nats.sh
 
 clean:
 	cargo clean

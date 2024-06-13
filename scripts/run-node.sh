@@ -23,9 +23,7 @@ check_env_var "GENERATED_P2P_SECRET"
 ETH_RPC_ENDPOINT="https://sepolia.infura.io/v3/${INFURA_API_KEY}"
 P2P_SECRET="${GENERATED_P2P_SECRET}"
 
-cd ./crates/fuel-core-nats
-
-cargo run --all-features --bin fuel-core-nats -- \
+cargo run -p fuel-core-nats -- \
     --service-name "NATS Publisher Node" \
     --ip 0.0.0.0 \
     --port 4000 \
