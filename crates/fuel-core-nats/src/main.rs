@@ -29,14 +29,15 @@ async fn main() -> anyhow::Result<()> {
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
 
-    fuel_core_nats::nats_publisher(
-        &service.shared.database,
+    let publisher = fuel_core_nats::Publisher::new(
+        &cli.nats_url,
+        chain_id,
+        *base_asset_id,
+        service.shared.database.clone(),
         subscription,
-        cli.nats_url,
-        &chain_id,
-        base_asset_id,
     )
     .await?;
+    publisher.run().await?;
 
     Ok(())
 }

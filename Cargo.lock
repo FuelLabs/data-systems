@@ -2363,6 +2363,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-nats",
+ "bytes",
  "clap 4.5.7",
  "fuel-core",
  "fuel-core-bin",
