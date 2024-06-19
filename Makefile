@@ -5,14 +5,23 @@
 TARGET ?= aarch64-apple-darwin
 PACKAGE ?= fuel-core-nats
 
-.PHONY: all build run clean lint fmt help test doc
+.PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 
 all: build
 
 install:
 	cargo fetch
 
-setup:
+check-commands:
+	@for cmd in $(COMMANDS); do \
+		if ! command -v $$cmd >/dev/null 2>&1; then \
+			echo >&2 "$$cmd is not installed. Please install $$cmd and try again.."; \
+			exit 1; \
+		fi \
+	done
+
+setup: COMMANDS=rustup pre-commit
+setup: check-commands 
 	./scripts/setup.sh
 
 # ------------------------------------------------------------
@@ -31,6 +40,13 @@ dev-watch:
 
 build: install
 	cargo build --release --target "$(TARGET)" --package "$(PACKAGE)"
+
+start-nats:	CMDS=docker-compose
+start-nats: check-commands
+	docker-compose -f docker/docker-compose.yml up
+
+stop-nats: 
+	docker-compose -f docker/docker-compose.yml down
 
 run:
 	cargo run --release
