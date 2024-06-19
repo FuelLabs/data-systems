@@ -97,7 +97,7 @@ project:
 ## 📬 Open a Pull Request
 
 1. Fork this repository and clone your fork.
-2. Create a new branch out of the `master` branch with the naming convention
+2. Create a new branch out of the `main` branch with the naming convention
    `<username>/<fix|feat|chore|build|docs>/<branch-name>`.
 3. Make and commit your changes following the conventions described above.
 4. Ensure the title of your PR is clear, concise, and follows the pattern
