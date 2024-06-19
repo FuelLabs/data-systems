@@ -20,15 +20,16 @@ anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 futures = "0.3"
 tokio = { version = "1.38", features = ["full"] }
-fuel-core-bin = { version = "0.27", features = [
+fuel-core-bin = { version = "0.30", features = [
     "env",
     "p2p",
     "relayer",
     "rocksdb",
 ] }
-fuel-core = { version = "0.27", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-types = { version = "0.27" }
-fuel-core-services = "0.27"
+fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.30" }
+fuel-core-types = { version = "0.30" }
+fuel-core-services = "0.30"
 
 [profile.release]
 opt-level = 3
