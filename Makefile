@@ -27,9 +27,9 @@ setup: check-commands
 # ------------------------------------------------------------
 #  Development
 # ------------------------------------------------------------
-
-dev/run-node:
-	./scripts/run-node.sh
+# Starts fuel-core-nats service
+start.fuel-core-nats:
+	./scripts/start-fuel-core-nats.sh
 
 dev-watch:
 	cargo watch -- cargo run
