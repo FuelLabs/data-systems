@@ -12,9 +12,11 @@ description = "Fuel library to handle data streams using Nats"
 [dependencies]
 anyhow = "1.0.86"
 async-nats = "0.35.1"
+bytes = "1.6.0"
 clap = "4.5.4"
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
+fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-types = { workspace = true }
 futures-util = "0.3.30"

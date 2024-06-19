@@ -22,11 +22,22 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
     let service = run::get_service(cli.fuel_core_config)?;
+    let chain_config = service.shared.config.snapshot_reader.chain_config();
+    let chain_id = chain_config.consensus_parameters.chain_id();
+    let base_asset_id = chain_config.consensus_parameters.base_asset_id();
     service.start()?;
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
 
-    fuel_core_nats::nats_publisher(subscription, cli.nats_url).await?;
+    let publisher = fuel_core_nats::Publisher::new(
+        &cli.nats_url,
+        chain_id,
+        *base_asset_id,
+        service.shared.database.clone(),
+        subscription,
+    )
+    .await?;
+    publisher.run().await?;
 
     Ok(())
 }
