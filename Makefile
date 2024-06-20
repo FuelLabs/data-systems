@@ -27,6 +27,22 @@ setup: check-commands
 # ------------------------------------------------------------
 #  Development
 # ------------------------------------------------------------
+# Starts all services
+start:	COMMANDS=docker
+start:	check-commands
+	docker compose -f docker/docker-compose.yml up
+
+stop:
+	docker compose -f docker/docker-compose.yml down
+
+start.nats:	COMMANDS=docker
+start.nats: check-commands
+	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 --name fuel-core-nats-server -ti nats:latest --js
+
+stop.nats:
+	docker stop $$(docker ps -q --filter ancestor=nats:latest)
+	docker rm $$(docker ps -a -q --filter ancestor=nats:latest)
+
 # Starts fuel-core-nats service
 start.fuel-core-nats:
 	./scripts/start-fuel-core-nats.sh
@@ -40,13 +56,6 @@ dev-watch:
 
 build: install
 	cargo build --release --target "$(TARGET)" --package "$(PACKAGE)"
-
-start-nats:	CMDS=docker-compose
-start-nats: check-commands
-	docker-compose -f docker/docker-compose.yml up
-
-stop-nats:
-	docker-compose -f docker/docker-compose.yml down
 
 run:
 	cargo run --release
