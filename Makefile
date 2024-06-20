@@ -21,15 +21,15 @@ check-commands:
 	done
 
 setup: COMMANDS=rustup pre-commit
-setup: check-commands 
+setup: check-commands
 	./scripts/setup.sh
 
 # ------------------------------------------------------------
 #  Development
 # ------------------------------------------------------------
-
-dev:
-	cargo run
+# Starts fuel-core-nats service
+start.fuel-core-nats:
+	./scripts/start-fuel-core-nats.sh
 
 dev-watch:
 	cargo watch -- cargo run
@@ -45,7 +45,7 @@ start-nats:	CMDS=docker-compose
 start-nats: check-commands
 	docker-compose -f docker/docker-compose.yml up
 
-stop-nats: 
+stop-nats:
 	docker-compose -f docker/docker-compose.yml down
 
 run:
