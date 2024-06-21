@@ -58,19 +58,254 @@ jobs:
       contents: read
       actions: write
     steps:
-      - uses: actions/checkout@v4.1.6
-      - uses: actions/download-artifact@v4.1.7
+      - name: Checkout Repository
+        uses: actions/checkout@v4.1.6
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4.1.7
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: List artifacts
+      - name: List Artifacts
         run: ls -R artifacts
 
-      - uses: knope-dev/action@v2.1.0
+      - name: Cache Artifacts
+        uses: actions/cache@v3
+        with:
+          path: artifacts
+          key: ${{ runner.os }}-artifacts-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-artifacts-
+
+      - name: Run Knope Action
+        uses: knope-dev/action@v2.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: knope release
+      - name: Knope Release
+        run: knope release
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+
+  publish-crates:
+    needs: [release]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Restore Artifacts Cache
+        uses: actions/cache@v3
+        with:
+          path: artifacts
+          key: ${{ runner.os }}-artifacts-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-artifacts-
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Publish Crate
+        uses: katyo/publish-crates@v2
+        with:
+          publish-delay: 60000
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Send Slack Notification
+        uses: FuelLabs/.github/.github/actions/slack-notify-template@master
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
+  publish-docker-image:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/fuellabs/fuel-core-nats
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
+            type=raw,value=sha-{{sha}}-{{date 'YYYYMMDDhhmmss'}}
+          flavor: |
+            latest=${{ github.ref == 'refs/heads/master' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to the ghcr.io registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to the docker.io registry
+        uses: docker/login-action@v2
+        with:
+          username: fuellabs
+          password: ${{ secrets.DOCKER_IO_READ_ONLY_TOKEN }}
+
+      - name: Build and push the image to ghcr.io
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:latest
+          cache-to: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:latest,mode=max
+
+  publish-fuel-core-nats-binary:
+    name: Release fuel-core-nats binaries
+    runs-on: ${{ matrix.job.os }}
+    # Only do this job if publishing a release
+    if: github.event_name == 'release' && github.event.action == 'published'
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - os: buildjet-4vcpu-ubuntu-2204
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            cross_image: x86_64-linux-gnu
+          - os: buildjet-4vcpu-ubuntu-2204
+            platform: linux-arm
+            target: aarch64-unknown-linux-gnu
+            cross_image: aarch64-linux-gnu
+          - os: macos-latest
+            platform: darwin
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            platform: darwin-arm
+            target: aarch64-apple-darwin
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        if: matrix.job.cross_image
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to the ghcr.io registry
+        if: matrix.job.os == 'buildjet-4vcpu-ubuntu-2204'
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to the docker.io registry
+        if: matrix.job.os == 'buildjet-4vcpu-ubuntu-2204'
+        uses: docker/login-action@v2
+        with:
+          username: fuellabs
+          password: ${{ secrets.DOCKER_IO_READ_ONLY_TOKEN }}
+
+      - name: Setup custom cross env ${{ matrix.job.cross_image }}
+        if: matrix.job.cross_image
+        uses: docker/build-push-action@v2
+        with:
+          context: ci
+          file: ci/Dockerfile.${{ matrix.job.target }}-clang
+          tags: ${{ matrix.job.cross_image }}:latest
+          load: true
+          cache-from: type=registry,ref=ghcr.io/fuellabs/${{ matrix.job.cross_image }}-build-cache:latest
+          cache-to: type=registry,ref=ghcr.io/fuellabs/${{ matrix.job.cross_image }}-build-cache:latest,mode=max
+
+      - name: Install packages (macOS)
+        if: matrix.job.os == 'macos-latest'
+        run: |
+          ci/macos-install-packages.sh
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: ${{ matrix.job.target }},"wasm32-unknown-unknown"
+
+      - name: Install cross
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cross
+          cache-key: ${{ matrix.job.target }}
+
+      - name: Build fuel-core-nats
+        run: |
+          cross build --profile=release --target ${{ matrix.job.target }} --no-default-features -p fuel-core-nats
+
+      - name: Strip release binary linux x86_64
+        if: matrix.job.platform == 'linux'
+        run: |
+          strip "target/${{ matrix.job.target }}/release/fuel-core-nats"
+
+      - name: Strip release binary aarch64-linux-gnu
+        if: matrix.job.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          docker run --rm -v \
+          "$PWD/target:/target:Z" \
+          aarch64-linux-gnu:latest \
+          aarch64-linux-gnu-strip \
+          /target/aarch64-unknown-linux-gnu/release/fuel-core-nats
+
+      - name: Strip release binary mac
+        if: matrix.job.os == 'macos-latest'
+        run: |
+          strip -x "target/${{ matrix.job.target }}/release/fuel-core-nats"
+
+      - name: Prepare Binary Artifact
+        env:
+          PLATFORM_NAME: ${{ matrix.job.platform }}
+          TARGET: ${{ matrix.job.target }}
+        run: |
+          # trim refs/tags/ prefix
+          FUEL_CORE_NATS_VERSION="${GITHUB_REF#refs/tags/}"
+          # optionally trim v from tag prefix
+          FUEL_CORE_NATS_VERSION="${FUEL_CORE_NATS_VERSION#v}"
+          echo "version is: $FUEL_CORE_NATS_VERSION"
+          # setup artifact filename
+          ARTIFACT="fuel-core-nats-$FUEL_CORE_NATS_VERSION-${{ env.TARGET }}"
+          ZIP_FILE_NAME="$ARTIFACT.tar.gz"
+          echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
+          # create zip file
+          mkdir -pv "$ARTIFACT"
+          cp "target/${{ matrix.job.target }}/release/fuel-core-nats" "$ARTIFACT"
+          cp "target/${{ matrix.job.target }}/release/fuel-core-nats-upgradable-executor-cache/wasm32-unknown-unknown/release/fuel-core-nats-wasm-executor.wasm" "$ARTIFACT"
+          tar -czvf "$ZIP_FILE_NAME" "$ARTIFACT"
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ env.ZIP_FILE_NAME }}
+          asset_name: ${{ env.ZIP_FILE_NAME }}
+          asset_content_type: application/gzip
+
+      - uses: FuelLabs/.github/.github/actions/slack-notify-template@master
+        if: always() && (github.ref == 'refs/heads/master' || github.ref_type == 'tag') && matrix.job.os != 'macos-latest'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
