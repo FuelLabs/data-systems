@@ -109,7 +109,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Publish Crate
-        uses: katyo/publish-crates@v2
+        uses: FuelLabs/publish-crates@v1
         with:
           publish-delay: 60000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
