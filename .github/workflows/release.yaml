@@ -1,9 +1,6 @@
 name: Release
 
-on:
-  pull_request:
-    types: [closed]
-    branches: [main]
+on: push
 
 jobs:
   build-artifacts:
@@ -304,8 +301,8 @@ jobs:
           asset_name: ${{ env.ZIP_FILE_NAME }}
           asset_content_type: application/gzip
 
-      - uses: FuelLabs/.github/.github/actions/slack-notify-template@master
-        if: always() && (github.ref == 'refs/heads/master' || github.ref_type == 'tag') && matrix.job.os != 'macos-latest'
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          slack_webhook: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+      # - uses: FuelLabs/.github/.github/actions/slack-notify-template@master
+      #   if: always() && (github.ref == 'refs/heads/master' || github.ref_type == 'tag') && matrix.job.os != 'macos-latest'
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     slack_webhook: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
