@@ -4,7 +4,8 @@ services:
   nats:
     image: nats:latest
     ports: [4222:4222, 8222:8222]
-    command: [-m, '8222', --name=fuel-core-nats-server, --js]
+    volumes: [../crates/fuel-core-nats/nats.conf:/etc/nats/nats.conf]
+    command: [-m, '8222', --name=fuel-core-nats-server, --js, --config=/etc/nats/nats.conf]
   fuel-core-nats:
     image: fuel-core-nats:latest
     depends_on: [nats]
@@ -13,3 +14,7 @@ services:
     build:
       context: .
       dockerfile: fuel-core-nats.Dockerfile
+    volumes: [fuel-core-nats-db:/mnt/db]
+
+volumes:
+  fuel-core-nats-db:
