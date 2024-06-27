@@ -44,15 +44,25 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         nats_url: &str,
+        nats_nkey: Option<String>,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_database: CombinedDatabase,
         block_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
     ) -> anyhow::Result<Self> {
         // Connect to the NATS server
-        let client = async_nats::connect(nats_url)
+        let client = match nats_nkey {
+            Some(nkey) => async_nats::connect_with_options(
+                nats_url,
+                async_nats::ConnectOptions::with_nkey(nkey),
+            )
             .await
-            .context(format!("Connecting to {nats_url}"))?;
+            .context(format!("Connecting to {nats_url}"))?,
+            None => async_nats::connect(nats_url)
+                .await
+                .context(format!("Connecting to {nats_url}"))?,
+        };
+
         let max_payload_size = client.server_info().max_payload;
         info!("NATS Publisher: max_payload_size={max_payload_size}");
         // Create a JetStream context
