@@ -12,6 +12,8 @@ pub struct Cli {
         default_value = "localhost:4222"
     )]
     nats_url: String,
+    #[arg(long, value_name = "NKEY", env = "NATS_NKEY")]
+    nats_nkey: Option<String>,
     #[command(flatten)]
     fuel_core_config: run::Command,
 }
@@ -31,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
 
     let publisher = fuel_core_nats::Publisher::new(
         &cli.nats_url,
+        cli.nats_nkey,
         chain_id,
         *base_asset_id,
         service.shared.database.clone(),
