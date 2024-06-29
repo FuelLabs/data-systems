@@ -3,6 +3,8 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 FROM --platform=$BUILDPLATFORM rust:1.75.0 AS chef
 
 ARG TARGETPLATFORM
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --no-modify-path --profile minimal
+ENV PATH="/root/.cargo/bin:$PATH"
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
 WORKDIR /build/
 
