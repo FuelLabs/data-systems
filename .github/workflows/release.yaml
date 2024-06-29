@@ -157,5 +157,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:latest
-          cache-to: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:latest,mode=max
+          cache-from: |
+            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-amd64
+            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-arm64
+          cache-to: |-
+            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-amd64,mode=max
+            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-arm64,mode=max
+          build-args: |-
+            BUILDKIT_INLINE_CACHE=1
