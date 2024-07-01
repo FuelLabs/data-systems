@@ -152,14 +152,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64
+          platforms: linux/arm64
           file: docker/fuel-core-nats.Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-amd64
-            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-arm64
-          cache-to: |-
-            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-amd64,mode=max
-            type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-build-cache:linux-arm64,mode=max
+          cache-from: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-cache:latest
+          cache-to: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-cache:latest,mode=max
