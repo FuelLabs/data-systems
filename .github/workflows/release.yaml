@@ -157,5 +157,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-cache:latest
-          cache-to: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-cache:latest,mode=max
+          cache-from: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-docker-build-cache:latest
+          cache-to: type=registry,ref=ghcr.io/fuellabs/fuel-core-nats-docker-build-cache:latest,mode=max
