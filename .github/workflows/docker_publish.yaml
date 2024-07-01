@@ -29,6 +29,6 @@ jobs:
         id: publish
         with:
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.REPO_TOKEN }}
           image: ghcr.io/fuellabs/fuel-core-nats
           dockerfile: docker/fuel-core-nats.Dockerfile
