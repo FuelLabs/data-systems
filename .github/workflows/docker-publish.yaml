@@ -24,11 +24,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build and push Fuel Explorer Graphql image
+      - name: Build and push Fuel Core NATS image
         uses: ./.github/actions/docker-publish
         id: publish
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/data-systems
+          image: ghcr.io/fuellabs/fuel-core-nats
           dockerfile: docker/fuel-core-nats.Dockerfile
