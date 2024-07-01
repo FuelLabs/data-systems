@@ -4,6 +4,7 @@ FROM --platform=$BUILDPLATFORM rust:1.75.0 AS chef
 
 ARG TARGETPLATFORM
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
+
 WORKDIR /build/
 
 COPY --from=xx / /
@@ -19,12 +20,10 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-
 FROM chef as planner
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
-
 
 FROM chef as builder
 ARG DEBUG_SYMBOLS=false
