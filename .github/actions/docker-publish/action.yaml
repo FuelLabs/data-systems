@@ -1,48 +1,48 @@
-name: 'Build & Push Docker'
+name: Build & Push Docker
 
 inputs:
   compose-version:
-    description: 'Docker Dompose version'
+    description: Docker Dompose version
     default: 2.6.0
   registry:
-    description: 'Docker registry service'
+    description: Docker registry service
     default: ghcr.io
   username:
-    description: 'Username for https://ghcr.io'
+    description: Username for https://ghcr.io
     required: true
   password:
-    description: 'Password for https://ghcr.io'
+    description: Password for https://ghcr.io
     required: true
   image:
-    description: 'Image name with provider url'
+    description: Image name with provider url
     required: true
   dockerfile:
-    description: 'Path to the Dockerfile'
+    description: Path to the Dockerfile
     required: true
   context:
-    description: 'Path to the Context'
+    description: Path to the Context
     default: .
     required: true
   build-args:
-    description: 'List of build-time variables'
+    description: List of build-time variables
     required: false
 
 outputs:
   image:
-    description: 'Image url'
-    value: ${{ steps.imageOuput.outputs.imageUrl }}
+    description: Image url
+    value: ${{ steps.imageOutput.outputs.imageUrl }}
   imageid:
-    description: 'Image ID'
+    description: Image ID
     value: ${{ steps.publish.outputs.imageId }}
   digest:
-    description: 'Image digest'
+    description: Image digest
     value: ${{ steps.publish.outputs.digest }}
   metadata:
-    description: 'Build result metadata'
+    description: Build result metadata
     value: ${{ steps.publish.outputs.metadata }}
 
 runs:
-  using: 'composite'
+  using: composite
   steps:
     - name: Log in to the ghcr.io registry
       uses: docker/login-action@v2
@@ -78,7 +78,7 @@ runs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - id: imageOuput
+    - id: imageOutput
       shell: bash
-      run: |
+      run: |-
         echo "imageUrl=${{ fromJSON(steps.publish.outputs.metadata)['image.name'] }}" >> $GITHUB_OUTPUT
