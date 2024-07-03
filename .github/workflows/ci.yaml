@@ -7,7 +7,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_VERSION: 1.78.0
+  RUST_VERSION: 1.79.0
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
