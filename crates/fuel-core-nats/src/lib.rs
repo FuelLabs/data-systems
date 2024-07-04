@@ -37,8 +37,8 @@ pub struct Publisher {
     chain_id: ChainId,
     base_asset_id: AssetId,
     max_payload_size: usize,
-    fuel_database: CombinedDatabase,
-    block_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+    fuel_core_database: CombinedDatabase,
+    blocks_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
 }
 
 impl Publisher {
@@ -47,8 +47,10 @@ impl Publisher {
         nats_nkey: Option<String>,
         chain_id: ChainId,
         base_asset_id: AssetId,
-        fuel_database: CombinedDatabase,
-        block_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+        fuel_core_database: CombinedDatabase,
+        blocks_subscription: Receiver<
+            Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
+        >,
     ) -> anyhow::Result<Self> {
         // Connect to the NATS server
         let client = match nats_nkey {
@@ -98,8 +100,8 @@ impl Publisher {
             chain_id,
             base_asset_id,
             jetstream,
-            fuel_database,
-            block_subscription,
+            fuel_core_database,
+            blocks_subscription,
         })
     }
 
@@ -141,7 +143,7 @@ impl Publisher {
         };
 
         // Fast-forward the stream using the local Fuel node database
-        if let Some(chain_height) = self.fuel_database.on_chain().latest_height()? {
+        if let Some(chain_height) = self.fuel_core_database.on_chain().latest_height()? {
             let chain_height: u32 = chain_height.into();
             if chain_height > stream_height + 1 {
                 warn!("NATS Publisher: missing blocks: stream block height={stream_height}, chain block height={chain_height}");
@@ -149,7 +151,7 @@ impl Publisher {
 
             for height in stream_height + 1..=chain_height {
                 let block: Block = self
-                    .fuel_database
+                    .fuel_core_database
                     .on_chain()
                     .get_sealed_block_by_height(&height.into())?
                     .unwrap_or_else(|| {
@@ -162,7 +164,7 @@ impl Publisher {
                 let chain_id = self.chain_id;
                 for t in block.transactions().iter() {
                     let status: Option<TransactionStatus> = self
-                        .fuel_database
+                        .fuel_core_database
                         .off_chain()
                         .get_tx_status(&t.id(&chain_id))?;
                     match status {
@@ -191,7 +193,7 @@ impl Publisher {
         }
 
         // Continue publishing blocks from the block importer subscription
-        while let Ok(result) = self.block_subscription.recv().await {
+        while let Ok(result) = self.blocks_subscription.recv().await {
             let mut receipts_: Vec<Receipt> = vec![];
             for t in result.tx_status.iter() {
                 let mut receipts = match &t.result {
