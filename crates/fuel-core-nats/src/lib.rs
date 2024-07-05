@@ -39,6 +39,7 @@ pub struct Publisher {
     max_payload_size: usize,
     fuel_core_database: CombinedDatabase,
     blocks_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+    _stream: async_nats::jetstream::stream::Stream,
 }
 
 impl Publisher {
@@ -95,6 +96,7 @@ impl Publisher {
                 ..Default::default()
             })
             .await?;
+
         Ok(Publisher {
             max_payload_size,
             chain_id,
@@ -102,6 +104,7 @@ impl Publisher {
             jetstream,
             fuel_core_database,
             blocks_subscription,
+            _stream,
         })
     }
 
@@ -211,27 +214,6 @@ impl Publisher {
                 .await?;
         }
 
-        Ok(())
-    }
-
-    /// A wrapper around JetStream::publish() that also checks that the payload size does not exceed NATS server's max_payload_size.
-    async fn publish(
-        &self,
-        subject: String,
-        payload: bytes::Bytes,
-    ) -> anyhow::Result<()> {
-        // Check message size
-        let payload_size = payload.len();
-        if payload_size > self.max_payload_size {
-            anyhow::bail!(
-                "{subject} payload size={payload_size} exceeds max_payload_size={}",
-                self.max_payload_size
-            )
-        }
-        // Publish
-        let ack_future = self.jetstream.publish(subject, payload).await?;
-        // Wait for an ACK
-        ack_future.await?;
         Ok(())
     }
 
@@ -357,5 +339,66 @@ impl Publisher {
         }
 
         Ok(())
+    }
+
+    /// A wrapper around JetStream::publish() that also checks that the payload size does not exceed NATS server's max_payload_size.
+    async fn publish(
+        &self,
+        subject: String,
+        payload: bytes::Bytes,
+    ) -> anyhow::Result<()> {
+        // Check message size
+        let payload_size = payload.len();
+        if payload_size > self.max_payload_size {
+            anyhow::bail!(
+                "{subject} payload size={payload_size} exceeds max_payload_size={}",
+                self.max_payload_size
+            )
+        }
+        // Publish
+        let ack_future = self.jetstream.publish(subject, payload).await?;
+        // Wait for an ACK
+        ack_future.await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_nats::jetstream::stream::LastRawMessageErrorKind;
+    use fuel_core::combined_database::CombinedDatabase;
+    use tokio::sync::broadcast;
+
+    const NATS_URL: &'static str = "nats://localhost:4222";
+
+    #[tokio::test]
+    async fn connects_to_nats() {
+        let nats_nkey = None;
+        let chain_id = ChainId::default();
+        let base_asset_id = AssetId::default();
+        let fuel_core_database = CombinedDatabase::default();
+        let (_, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+
+        let publisher = Publisher::new(
+            NATS_URL,
+            nats_nkey,
+            chain_id,
+            base_asset_id,
+            fuel_core_database,
+            blocks_subscription,
+        )
+        .await
+        .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+
+        assert!(publisher
+            ._stream
+            .get_last_raw_message_by_subject("*")
+            .await
+            .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+
+        assert_eq!(publisher.chain_id, chain_id);
+        assert_eq!(publisher.base_asset_id, base_asset_id);
     }
 }

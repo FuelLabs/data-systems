@@ -26,9 +26,9 @@ fuel-core-bin = { version = "0.30", features = [
     "relayer",
     "rocksdb",
 ] }
-fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb", "test-helpers"] }
 fuel-core-client = { version = "0.30" }
-fuel-core-types = { version = "0.30" }
+fuel-core-types = { version = "0.30", features = ["test-helpers"] }
 fuel-core-services = "0.30"
 
 [profile.release]
