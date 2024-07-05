@@ -1,33 +1,16 @@
 use anyhow::Context;
 
 use futures_util::stream::TryStreamExt;
-use std::{
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 use tokio::sync::broadcast::Receiver;
-use tracing::{
-    info,
-    warn,
-};
+use tracing::{info, warn};
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
-    fuel_tx::{
-        field::Inputs,
-        Receipt,
-        Transaction,
-        UniqueIdentifier,
-    },
-    fuel_types::{
-        AssetId,
-        ChainId,
-    },
-    services::{
-        block_importer::ImportResult,
-        executor::TransactionExecutionResult,
-    },
+    fuel_tx::{field::Inputs, Receipt, Transaction, UniqueIdentifier},
+    fuel_types::{AssetId, ChainId},
+    services::{block_importer::ImportResult, executor::TransactionExecutionResult},
 };
 
 const NUM_TOPICS: usize = 3;
