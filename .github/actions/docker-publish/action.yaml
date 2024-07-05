@@ -1,4 +1,5 @@
 name: Build & Push Docker
+description: Build a Dockerfile and publish to the registry
 
 inputs:
   compose-version:

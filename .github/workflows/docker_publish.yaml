@@ -2,8 +2,7 @@ name: Build and publish Docker image
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
     types: [opened, synchronize]
   release:
@@ -29,6 +28,6 @@ jobs:
         id: publish
         with:
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.REPO_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-core-nats
           dockerfile: docker/fuel-core-nats.Dockerfile
