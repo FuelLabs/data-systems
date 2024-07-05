@@ -27,7 +27,7 @@ jobs:
         uses: ./.github/actions/docker-publish
         id: publish
         with:
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-core-nats
           dockerfile: docker/fuel-core-nats.Dockerfile
