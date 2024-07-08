@@ -1,16 +1,33 @@
 use anyhow::Context;
 
 use futures_util::stream::TryStreamExt;
-use std::{ops::Deref, sync::Arc};
+use std::{
+    ops::Deref,
+    sync::Arc,
+};
 use tokio::sync::broadcast::Receiver;
-use tracing::{info, warn};
+use tracing::{
+    info,
+    warn,
+};
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
-    fuel_tx::{field::Inputs, Receipt, Transaction, UniqueIdentifier},
-    fuel_types::{AssetId, ChainId},
-    services::{block_importer::ImportResult, executor::TransactionExecutionResult},
+    fuel_tx::{
+        field::Inputs,
+        Receipt,
+        Transaction,
+        UniqueIdentifier,
+    },
+    fuel_types::{
+        AssetId,
+        ChainId,
+    },
+    services::{
+        block_importer::ImportResult,
+        executor::TransactionExecutionResult,
+    },
 };
 
 const NUM_TOPICS: usize = 3;
@@ -117,7 +134,7 @@ impl Publisher {
     ///   blocks.{height}                                                e.g. blocks.1
     ///   owners.{height}.{owner_id}                                     e.g. owners.*.0xab..cd
     ///   assets.{height}.{asset_id}                                     e.g. assets.*.0xab..cd
-    pub async fn run(mut self) -> anyhow::Result<()> {
+    pub async fn run(mut self) -> anyhow::Result<Self> {
         info!(
             "NATS Publisher chain_id={} base_asset_id={} started",
             self.chain_id, self.base_asset_id
@@ -215,7 +232,7 @@ impl Publisher {
                 .await?;
         }
 
-        Ok(())
+        Ok(self)
     }
 
     /// Publish the Block, its Transactions, and the given Receipts into NATS.
@@ -369,6 +386,9 @@ mod tests {
     use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
+    use fuel_core::combined_database::CombinedDatabase;
+    use tokio::sync::broadcast;
+
     #[tokio::test]
     async fn returns_authorization_error_without_nkey() {
         assert!(Publisher::connect_to_nats(NATS_URL, None)
@@ -383,7 +403,7 @@ mod tests {
 
     #[tokio::test]
     async fn connects_to_nats_with_nkey() {
-        setup_test();
+        setup_env();
 
         let nats = Publisher::connect_to_nats(NATS_URL, nkey())
             .await
@@ -398,7 +418,7 @@ mod tests {
 
     #[tokio::test]
     async fn returns_max_payload_size_allowed_on_the_connection() {
-        setup_test();
+        setup_env();
 
         let nats = Publisher::connect_to_nats(NATS_URL, nkey())
             .await
@@ -407,8 +427,38 @@ mod tests {
         assert_eq!(nats.max_payload_size, 8_388_608)
     }
 
+    #[tokio::test]
+    async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
+        let (_, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+
+        assert!(publisher
+            .nats
+            .jetstream_messages
+            .get_last_raw_message_by_subject("*")
+            .await
+            .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+    }
+
+    async fn get_nats_connection() -> NatsConnection {
+        setup_env();
+
+        Publisher::connect_to_nats(NATS_URL, nkey())
+            .await
+            .expect(&format!("Ensure NATS server is running at {NATS_URL}"))
+    }
     const NATS_URL: &str = "nats://localhost:4222";
-    fn setup_test() {
+    fn setup_env() {
         dotenvy::dotenv().ok();
     }
     fn nkey() -> Option<String> {
