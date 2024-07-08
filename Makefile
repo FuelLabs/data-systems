@@ -37,11 +37,13 @@ stop:
 
 start.nats:	COMMANDS=docker
 start.nats: check-commands
-	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 --name fuel-core-nats-server -ti nats:latest --js
+	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 \
+	--mount type=bind,source="$$(pwd)"/crates/fuel-core-nats/nats.conf,target=/etc/nats/nats.conf \
+	--name fuel-core-nats-server \
+	-ti nats:latest --js --config /etc/nats/nats.conf
 
 stop.nats:
-	docker stop $$(docker ps -q --filter ancestor=nats:latest)
-	docker rm $$(docker ps -a -q --filter ancestor=nats:latest)
+	docker rm -f $$(docker ps -a -q --filter ancestor=nats:latest)
 
 # Starts fuel-core-nats service
 start.fuel-core-nats:

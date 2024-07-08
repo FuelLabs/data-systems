@@ -14,6 +14,7 @@ anyhow = "1.0.86"
 async-nats = "0.35.1"
 bytes = "1.6.0"
 clap = "4.5.4"
+dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-client = { workspace = true }
