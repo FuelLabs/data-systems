@@ -32,6 +32,7 @@ use fuel_core_types::{
 
 const NUM_TOPICS: usize = 3;
 
+#[derive(Debug)]
 struct NatsConnection {
     jetstream: async_nats::jetstream::Context,
     #[allow(dead_code)]
@@ -385,12 +386,23 @@ mod tests {
     use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
-    const NATS_URL: &'static str = "nats://localhost:4222";
+    #[tokio::test]
+    async fn returns_authorization_error_without_nkey() {
+        assert!(Publisher::connect_to_nats(NATS_URL, None)
+            .await
+            .is_err_and(|e| {
+                e.source()
+                    .expect("An error source must exist")
+                    .to_string()
+                    .contains("authorization violation: nats: authorization violation")
+            }));
+    }
 
     #[tokio::test]
-    async fn connects_to_nats() {
-        let nats_nkey = None;
-        let nats = Publisher::connect_to_nats(NATS_URL, nats_nkey)
+    async fn connects_to_nats_with_nkey() {
+        setup_test();
+
+        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
             .await
             .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
 
@@ -403,11 +415,20 @@ mod tests {
 
     #[tokio::test]
     async fn returns_max_payload_size_allowed_on_the_connection() {
-        let nats_nkey = None;
-        let nats = Publisher::connect_to_nats(NATS_URL, nats_nkey)
+        setup_test();
+
+        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
             .await
             .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
 
         assert_eq!(nats.max_payload_size, 8_388_608)
+    }
+
+    const NATS_URL: &str = "nats://localhost:4222";
+    fn setup_test() {
+        dotenvy::dotenv().ok();
+    }
+    fn nkey() -> Option<String> {
+        std::env::var("NATS_NKEY").ok()
     }
 }

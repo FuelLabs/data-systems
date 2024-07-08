@@ -11,6 +11,7 @@ pub struct Cli {
         default_value = "localhost:4222"
     )]
     nats_url: String,
+    /// The NKEY seed. It is usually prefixed with an 'S'
     #[arg(long, value_name = "NKEY", env = "NATS_NKEY")]
     nats_nkey: Option<String>,
     #[command(flatten)]
