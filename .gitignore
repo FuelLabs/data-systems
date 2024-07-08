@@ -10,7 +10,7 @@
 .cov
 lcov.info
 .env
-node_modules/
 pnpm-lock.yaml
+node_modules/
 ./package.json
 tmp
