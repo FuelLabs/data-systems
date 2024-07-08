@@ -2,12 +2,15 @@ name: Build and publish Docker image
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
     types: [opened, synchronize]
   release:
     types: [published]
+
+permissions:
+  contents: read
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -22,13 +25,13 @@ jobs:
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build and push Fuel Core NATS image
         uses: ./.github/actions/docker-publish
         id: publish
         with:
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.REPO_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-core-nats
           dockerfile: docker/fuel-core-nats.Dockerfile
