@@ -384,39 +384,30 @@ impl Publisher {
 mod tests {
     use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
-    use fuel_core::combined_database::CombinedDatabase;
-    use tokio::sync::broadcast;
 
     const NATS_URL: &'static str = "nats://localhost:4222";
 
     #[tokio::test]
     async fn connects_to_nats() {
         let nats_nkey = None;
-        let chain_id = ChainId::default();
-        let base_asset_id = AssetId::default();
-        let fuel_core_database = CombinedDatabase::default();
-        let (_, blocks_subscription) =
-            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+        let nats = Publisher::connect_to_nats(NATS_URL, nats_nkey)
+            .await
+            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
 
-        let publisher = Publisher::new(
-            NATS_URL,
-            nats_nkey,
-            chain_id,
-            base_asset_id,
-            fuel_core_database,
-            blocks_subscription,
-        )
-        .await
-        .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
-
-        assert!(publisher
-            .nats
+        assert!(nats
             .jetstream_messages
             .get_last_raw_message_by_subject("*")
             .await
             .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+    }
 
-        assert_eq!(publisher.chain_id, chain_id);
-        assert_eq!(publisher.base_asset_id, base_asset_id);
+    #[tokio::test]
+    async fn returns_max_payload_size_allowed_on_the_connection() {
+        let nats_nkey = None;
+        let nats = Publisher::connect_to_nats(NATS_URL, nats_nkey)
+            .await
+            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+
+        assert_eq!(nats.max_payload_size, 8_388_608)
     }
 }
