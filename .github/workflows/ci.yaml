@@ -8,12 +8,32 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
+  CI: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  build-and-cache:
+    name: Build and Cache Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build project
+        run: make build
+
   validate-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
@@ -86,6 +106,7 @@ jobs:
 
   lint:
     name: Linting
+    needs: build-and-cache
     if: "!startsWith(github.head_ref, 'releases/')"
     runs-on: ubuntu-latest
     steps:
@@ -96,16 +117,16 @@ jobs:
           toolchain: nightly
           target: wasm32-unknown-unknown
 
-      - name: Install dependencies
-        uses: taiki-e/cache-cargo-install-action@v2
+      - uses: Swatinem/rust-cache@v2
         with:
-          tool: cargo-sort@1.0.9
+          cache-on-failure: true
 
       - name: Running linting
         run: make lint
 
   test:
     name: Cargo Tests
+    needs: build-and-cache
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -116,23 +137,14 @@ jobs:
           toolchain: stable
           target: wasm32-unknown-unknown
 
-      - name: Checking Rust Cache
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-
-      - name: Checking Go Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Install nats-io/nkeys
         run: |
@@ -152,9 +164,7 @@ jobs:
           sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
 
       - name: Run tests
-        run: |
+        run: |-
           make start/nats
           make test
           make stop/nats
-        env:
-          CI: true
