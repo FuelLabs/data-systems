@@ -2,8 +2,12 @@
 #  Setup
 # ------------------------------------------------------------
 
-TARGET ?= aarch64-apple-darwin
 PACKAGE ?= fuel-core-nats
+ifeq ($(CI),true)
+    TARGET ?= x86_64-unknown-linux-gnu
+else
+    TARGET ?= aarch64-apple-darwin
+endif
 
 .PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 

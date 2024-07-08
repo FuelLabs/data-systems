@@ -25,7 +25,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-          target: wasm32-unknown-unknown
+          target: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -70,7 +70,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-          target: wasm32-unknown-unknown
+          target: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
       - run: cargo update --workspace --locked
@@ -111,11 +111,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: nightly
-          target: wasm32-unknown-unknown
+          target: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -135,7 +136,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-          target: wasm32-unknown-unknown
+          target: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -164,7 +165,10 @@ jobs:
           sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
 
       - name: Run tests
-        run: |-
+        run: |
           make start/nats
           make test
-          make stop/nats
+
+      - name: Stop NATS
+        if: always()
+        run: make stop/nats
