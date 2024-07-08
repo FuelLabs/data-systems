@@ -106,7 +106,7 @@ impl Publisher {
                 name: "fuel".to_string(),
                 subjects: vec![
                     // blocks.{height}
-                    "blocks.**.*.*".to_string(),
+                    "blocks.*".to_string(),
                     // receipts.{height}.{contract_id}.{topic_1}.{topic_2}
                     "receipts.*.*.*.*".to_string(),
                     // receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}
