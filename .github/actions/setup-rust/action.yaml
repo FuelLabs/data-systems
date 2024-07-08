@@ -21,6 +21,14 @@ runs:
         target: ${{ inputs.target }}
         components: clippy, rustfmt
 
+    - uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: cargo-sort@1.0.9
+
+    - uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: cargo-edit@0.12.3
+
     - name: Cache Rust toolchain and dependencies
       uses: actions/cache@v4
       with:
