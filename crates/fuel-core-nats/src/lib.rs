@@ -32,13 +32,22 @@ use fuel_core_types::{
 
 const NUM_TOPICS: usize = 3;
 
-pub struct Publisher {
+#[derive(Debug)]
+struct NatsConnection {
     jetstream: async_nats::jetstream::Context,
+    #[allow(dead_code)]
+    /// Messages published to jetstream
+    jetstream_messages: async_nats::jetstream::stream::Stream,
+    /// Max publishing payload in connected NATS server
+    max_payload_size: usize,
+}
+
+pub struct Publisher {
     chain_id: ChainId,
     base_asset_id: AssetId,
-    max_payload_size: usize,
-    fuel_database: CombinedDatabase,
-    block_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+    fuel_core_database: CombinedDatabase,
+    blocks_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+    nats: NatsConnection,
 }
 
 impl Publisher {
@@ -47,10 +56,24 @@ impl Publisher {
         nats_nkey: Option<String>,
         chain_id: ChainId,
         base_asset_id: AssetId,
-        fuel_database: CombinedDatabase,
-        block_subscription: Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+        fuel_core_database: CombinedDatabase,
+        blocks_subscription: Receiver<
+            Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
+        >,
     ) -> anyhow::Result<Self> {
-        // Connect to the NATS server
+        Ok(Publisher {
+            chain_id,
+            base_asset_id,
+            fuel_core_database,
+            blocks_subscription,
+            nats: Self::connect_to_nats(nats_url, nats_nkey).await?,
+        })
+    }
+
+    async fn connect_to_nats(
+        nats_url: &str,
+        nats_nkey: Option<String>,
+    ) -> anyhow::Result<NatsConnection> {
         let client = match nats_nkey {
             Some(nkey) => async_nats::connect_with_options(
                 nats_url,
@@ -65,10 +88,11 @@ impl Publisher {
 
         let max_payload_size = client.server_info().max_payload;
         info!("NATS Publisher: max_payload_size={max_payload_size}");
+
         // Create a JetStream context
         let jetstream = async_nats::jetstream::new(client);
-        // Create a JetStream stream (if it doesn't exist)
-        let _stream = jetstream
+
+        let jetstream_messages = jetstream
             .get_or_create_stream(async_nats::jetstream::stream::Config {
                 name: "fuel".to_string(),
                 subjects: vec![
@@ -93,17 +117,15 @@ impl Publisher {
                 ..Default::default()
             })
             .await?;
-        Ok(Publisher {
-            max_payload_size,
-            chain_id,
-            base_asset_id,
+
+        Ok(NatsConnection {
             jetstream,
-            fuel_database,
-            block_subscription,
+            jetstream_messages,
+            max_payload_size,
         })
     }
 
-    /// Connect to a NATS server and publish messages
+    /// Publish messages from node(`fuel-core`) to NATS stream
     ///   receipts.{height}.{contract_id}.{kind}                         e.g. receipts.9000.*.return
     ///   receipts.{height}.{contract_id}.{topic_1}                      e.g. receipts.*.my_custom_topic
     ///   receipts.{height}.{contract_id}.{topic_1}.{topic_2}            e.g. receipts.*.counter.inrc
@@ -126,6 +148,7 @@ impl Publisher {
                 ..Default::default()
             };
             let consumer = self
+                .nats
                 .jetstream
                 .create_consumer_on_stream(config, "fuel")
                 .await?;
@@ -141,7 +164,7 @@ impl Publisher {
         };
 
         // Fast-forward the stream using the local Fuel node database
-        if let Some(chain_height) = self.fuel_database.on_chain().latest_height()? {
+        if let Some(chain_height) = self.fuel_core_database.on_chain().latest_height()? {
             let chain_height: u32 = chain_height.into();
             if chain_height > stream_height + 1 {
                 warn!("NATS Publisher: missing blocks: stream block height={stream_height}, chain block height={chain_height}");
@@ -149,7 +172,7 @@ impl Publisher {
 
             for height in stream_height + 1..=chain_height {
                 let block: Block = self
-                    .fuel_database
+                    .fuel_core_database
                     .on_chain()
                     .get_sealed_block_by_height(&height.into())?
                     .unwrap_or_else(|| {
@@ -162,7 +185,7 @@ impl Publisher {
                 let chain_id = self.chain_id;
                 for t in block.transactions().iter() {
                     let status: Option<TransactionStatus> = self
-                        .fuel_database
+                        .fuel_core_database
                         .off_chain()
                         .get_tx_status(&t.id(&chain_id))?;
                     match status {
@@ -191,7 +214,7 @@ impl Publisher {
         }
 
         // Continue publishing blocks from the block importer subscription
-        while let Ok(result) = self.block_subscription.recv().await {
+        while let Ok(result) = self.blocks_subscription.recv().await {
             let mut receipts_: Vec<Receipt> = vec![];
             for t in result.tx_status.iter() {
                 let mut receipts = match &t.result {
@@ -209,27 +232,6 @@ impl Publisher {
                 .await?;
         }
 
-        Ok(())
-    }
-
-    /// A wrapper around JetStream::publish() that also checks that the payload size does not exceed NATS server's max_payload_size.
-    async fn publish(
-        &self,
-        subject: String,
-        payload: bytes::Bytes,
-    ) -> anyhow::Result<()> {
-        // Check message size
-        let payload_size = payload.len();
-        if payload_size > self.max_payload_size {
-            anyhow::bail!(
-                "{subject} payload size={payload_size} exceeds max_payload_size={}",
-                self.max_payload_size
-            )
-        }
-        // Publish
-        let ack_future = self.jetstream.publish(subject, payload).await?;
-        // Wait for an ACK
-        ack_future.await?;
         Ok(())
     }
 
@@ -355,5 +357,78 @@ impl Publisher {
         }
 
         Ok(())
+    }
+
+    /// A wrapper around JetStream::publish() that also checks that the payload size does not exceed NATS server's max_payload_size.
+    async fn publish(
+        &self,
+        subject: String,
+        payload: bytes::Bytes,
+    ) -> anyhow::Result<()> {
+        // Check message size
+        let payload_size = payload.len();
+        if payload_size > self.nats.max_payload_size {
+            anyhow::bail!(
+                "{subject} payload size={payload_size} exceeds max_payload_size={}",
+                self.nats.max_payload_size
+            )
+        }
+        // Publish
+        let ack_future = self.nats.jetstream.publish(subject, payload).await?;
+        // Wait for an ACK
+        ack_future.await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_nats::jetstream::stream::LastRawMessageErrorKind;
+
+    #[tokio::test]
+    async fn returns_authorization_error_without_nkey() {
+        assert!(Publisher::connect_to_nats(NATS_URL, None)
+            .await
+            .is_err_and(|e| {
+                e.source()
+                    .expect("An error source must exist")
+                    .to_string()
+                    .contains("authorization violation: nats: authorization violation")
+            }));
+    }
+
+    #[tokio::test]
+    async fn connects_to_nats_with_nkey() {
+        setup_test();
+
+        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
+            .await
+            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+
+        assert!(nats
+            .jetstream_messages
+            .get_last_raw_message_by_subject("*")
+            .await
+            .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+    }
+
+    #[tokio::test]
+    async fn returns_max_payload_size_allowed_on_the_connection() {
+        setup_test();
+
+        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
+            .await
+            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+
+        assert_eq!(nats.max_payload_size, 8_388_608)
+    }
+
+    const NATS_URL: &str = "nats://localhost:4222";
+    fn setup_test() {
+        dotenvy::dotenv().ok();
+    }
+    fn nkey() -> Option<String> {
+        std::env::var("NATS_NKEY").ok()
     }
 }
