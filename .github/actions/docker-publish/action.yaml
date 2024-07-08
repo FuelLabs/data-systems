@@ -51,6 +51,7 @@ runs:
         registry: ${{ inputs.registry }}
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
+        logout: false
 
     - name: Docker meta
       id: meta
