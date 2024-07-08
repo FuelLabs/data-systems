@@ -103,3 +103,57 @@ jobs:
 
       - name: Running linting
         run: make lint
+
+  test:
+    name: Cargo Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install nats-io/nkeys
+        run: |
+          go install github.com/nats-io/nkeys/nk@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Generate NATS NKeys
+        run: |
+          NKEY_OUTPUT=$(nk -gen user)
+          echo "NATS_NKEY_SEED=$(echo "$NKEY_OUTPUT" | sed -n '1p')" >> $GITHUB_ENV
+          echo "NATS_NKEY_USER=$(echo "$NKEY_OUTPUT" | sed -n '2p')" >> $GITHUB_ENV
+
+      - name: Create .env file for NATS
+        run: |
+          cp .env.sample .env
+          sed -i 's/generated-nats-nkey-seed/${{ env.NATS_NKEY_SEED }}/g' .env
+          sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
+
+      - name: Start NATS server
+        run: make start/nats
+
+      - name: Run cargo tests
+        run: cargo test
+
+      - name: Stop NATS server
+        if: always()
+        run: make stop/nats
