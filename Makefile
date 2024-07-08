@@ -36,12 +36,15 @@ stop:
 	docker compose -f docker/docker-compose.yml down
 
 start/nats:	COMMANDS=docker
+start/nats:	COMMANDS=docker
 start/nats: check-commands
 	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 \
 	--mount type=bind,source="$$(pwd)"/crates/fuel-core-nats/nats.conf,target=/etc/nats/nats.conf \
 	--env-file .env \
 	--name fuel-core-nats-server \
-	-ti nats:latest --js --config /etc/nats/nats.conf
+	$(if $(CI),,--tty --interactive) \
+	--detach \
+	nats:latest --js --config /etc/nats/nats.conf
 
 stop/nats:
 	docker rm -f $$(docker ps -a -q --filter ancestor=nats:latest)

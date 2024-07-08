@@ -116,13 +116,16 @@ jobs:
           toolchain: stable
           target: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Checking Rust Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.20'
-      - uses: actions/cache@v3
+
+      - name: Checking Go Cache
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
@@ -148,12 +151,10 @@ jobs:
           sed -i 's/generated-nats-nkey-seed/${{ env.NATS_NKEY_SEED }}/g' .env
           sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
 
-      - name: Start NATS server
-        run: make start/nats
-
-      - name: Run cargo tests
-        run: cargo test
-
-      - name: Stop NATS server
-        if: always()
-        run: make stop/nats
+      - name: Run tests
+        run: |
+          make start/nats
+          make test
+          make stop/nats
+        env:
+          CI: true
