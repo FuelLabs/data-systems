@@ -405,6 +405,15 @@ mod tests {
 
     #[tokio::test]
     async fn connects_to_nats_with_nkey() -> anyhow::Result<()> {
+        println!(
+            "NATS_NKEY_SEED: {}",
+            env::var("NATS_NKEY_SEED").unwrap_or_default()
+        );
+        println!(
+            "NATS_NKEY_USER: {}",
+            env::var("NATS_NKEY_USER").unwrap_or_default()
+        );
+
         setup_test();
 
         let keys = nkey()?;

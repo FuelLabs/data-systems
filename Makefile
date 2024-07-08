@@ -40,7 +40,6 @@ stop:
 	docker compose -f docker/docker-compose.yml down
 
 start/nats:	COMMANDS=docker
-start/nats:	COMMANDS=docker
 start/nats: check-commands
 	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 \
 	--mount type=bind,source="$$(pwd)"/crates/fuel-core-nats/nats.conf,target=/etc/nats/nats.conf \
@@ -49,6 +48,16 @@ start/nats: check-commands
 	$(if $(CI),,--tty --interactive) \
 	--detach \
 	nats:latest --js --config /etc/nats/nats.conf
+	@echo "Waiting for NATS server to be ready..."
+	@for i in $$(seq 1 30); do \
+		if docker exec fuel-core-nats-server nats-server --ping >/dev/null 2>&1; then \
+			echo "NATS server is ready"; \
+			exit 0; \
+		fi; \
+		echo "Waiting for NATS server... ($$i/30)"; \
+		sleep 1; \
+	done; \
+	echo "NATS server failed to start" && exit 1
 
 stop/nats:
 	docker rm -f $$(docker ps -a -q --filter ancestor=nats:latest)

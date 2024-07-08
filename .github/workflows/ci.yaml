@@ -167,6 +167,8 @@ jobs:
       - name: Run tests
         run: |
           make start/nats
+          export NATS_NKEY_SEED=${{ env.NATS_NKEY_SEED }}
+          export NATS_NKEY_USER=${{ env.NATS_NKEY_USER }}
           make test
 
       - name: Stop NATS
