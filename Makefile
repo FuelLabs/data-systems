@@ -3,11 +3,8 @@
 # ------------------------------------------------------------
 
 PACKAGE ?= fuel-core-nats
-ifeq ($(CI),true)
-    TARGET ?= x86_64-unknown-linux-gnu
-else
-    TARGET ?= aarch64-apple-darwin
-endif
+TARGET ?= aarch64-apple-darwin
+DOCKER_PROFILE ?= all
 
 .PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 
@@ -32,42 +29,24 @@ setup: check-commands
 #  Development
 # ------------------------------------------------------------
 
-start:	COMMANDS=docker
-start:	check-commands
-	docker compose -f docker/docker-compose.yml up
+start: check-commands
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml up -d
 
-stop:
-	docker compose -f docker/docker-compose.yml down
+stop: check-commands
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down
 
-start/nats:	COMMANDS=docker
-start/nats: check-commands
-	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 \
-	--mount type=bind,source="$$(pwd)"/crates/fuel-core-nats/nats.conf,target=/etc/nats/nats.conf \
-	--env-file .env \
-	--name fuel-core-nats-server \
-	$(if $(CI),,--tty --interactive) \
-	--detach \
-	nats:latest --js --config /etc/nats/nats.conf
-	@echo "Waiting for NATS server to be ready..."
-	@for i in $$(seq 1 30); do \
-		if docker exec fuel-core-nats-server nats-server --ping >/dev/null 2>&1; then \
-			echo "NATS server is ready"; \
-			exit 0; \
-		fi; \
-		echo "Waiting for NATS server... ($$i/30)"; \
-		sleep 1; \
-	done; \
-	echo "NATS server failed to start" && exit 1
+restart: stop start
 
-stop/nats:
-	docker rm -f $$(docker ps -a -q --filter ancestor=nats:latest)
+clean/docker: stop
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down -v --rmi all --remove-orphans
 
-# Starts fuel-core-nats service
-start/fuel-core:
-	./scripts/start-fuel-core-nats.sh
+start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
+start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core: DOCKER_PROFILE = fuel
 
-restart/nats: stop/nats start/nats
-restart/fuel-core: stop/fuel-core start/fuel-core
+start/nats start/fuel-core: start
+stop/nats stop/fuel-core: stop
+restart/nats restart/fuel-core: restart
+clean/nats clean/fuel-core: clean/docker
 
 dev-watch:
 	cargo watch -- cargo run
