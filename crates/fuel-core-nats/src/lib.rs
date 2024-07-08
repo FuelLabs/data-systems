@@ -393,7 +393,7 @@ mod tests {
 
     #[tokio::test]
     async fn returns_authorization_error_without_nkey() -> anyhow::Result<()> {
-        let result = Publisher::connect_to_nats(NATS_URL, None).await;
+        let result = Publisher::connect_to_nats(get_url().as_str(), None).await;
 
         assert!(result.is_err());
         if let Err(e) = result {
@@ -405,6 +405,7 @@ mod tests {
 
     #[tokio::test]
     async fn connects_to_nats_with_nkey() -> anyhow::Result<()> {
+        setup_test();
         println!(
             "NATS_NKEY_SEED: {}",
             dotenvy::var("NATS_NKEY_SEED").unwrap(),
@@ -414,18 +415,13 @@ mod tests {
             dotenvy::var("NATS_NKEY_USER").unwrap(),
         );
 
-        setup_test();
-
-        let keys = nkey()?;
-        let nats = Publisher::connect_to_nats(NATS_URL, keys.seed)
-            .await
-            .unwrap_or_else(|_| panic!("Ensure NATS server is running at {NATS_URL}"));
-
+        let nats = get_conn().await?;
         assert!(nats
             .jetstream_messages
             .get_last_raw_message_by_subject("*")
             .await
             .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+
         Ok(())
     }
 
@@ -433,20 +429,21 @@ mod tests {
     async fn returns_max_payload_size_allowed_on_the_connection() -> anyhow::Result<()> {
         setup_test();
 
-        let keys = nkey()?;
-        let nats = Publisher::connect_to_nats(NATS_URL, keys.seed)
-            .await
-            .unwrap_or_else(|_| panic!("Ensure NATS server is running at {NATS_URL}"));
-
+        let nats = get_conn().await?;
         assert_eq!(nats.max_payload_size, 8_388_608);
         Ok(())
     }
 
-    const NATS_URL: &str = "nats://localhost:4222";
     fn setup_test() {
         dotenvy::dotenv().ok();
     }
-    fn nkey() -> Result<NatsNkey, anyhow::Error> {
+    async fn get_conn() -> Result<NatsConnection, anyhow::Error> {
+        Publisher::connect_to_nats(&get_url(), get_nkey()?.seed).await
+    }
+    fn get_url() -> String {
+        dotenvy::var("NATS_URL").unwrap_or("nats://localhost:4222".to_string())
+    }
+    fn get_nkey() -> Result<NatsNkey, anyhow::Error> {
         NatsNkey::new(dotenvy::var("NATS_NKEY_SEED").unwrap())
     }
 }

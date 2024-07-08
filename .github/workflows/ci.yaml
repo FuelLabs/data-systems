@@ -108,6 +108,8 @@ jobs:
   test:
     name: Cargo Tests
     runs-on: ubuntu-latest
+    env:
+      NATS_URL: nats://127.0.0.1:4222
     steps:
       - uses: actions/checkout@v4
 
@@ -133,7 +135,7 @@ jobs:
 
       - name: Generate NATS NKeys
         run: |
-          NKEY_OUTPUT=$(nk -gen user)
+          NKEY_OUTPUT=$(nk -gen user -pubout)
           echo "NATS_NKEY_SEED=$(echo "$NKEY_OUTPUT" | sed -n '1p')" >> $GITHUB_ENV
           echo "NATS_NKEY_USER=$(echo "$NKEY_OUTPUT" | sed -n '2p')" >> $GITHUB_ENV
 

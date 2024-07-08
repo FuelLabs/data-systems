@@ -51,25 +51,10 @@ clean/nats clean/fuel-core: clean/docker
 dev-watch:
 	cargo watch -- cargo run
 
-# ------------------------------------------------------------
-# Build & Release
-# ------------------------------------------------------------
-
-build: install
-	cargo build --release --target "$(TARGET)" --package "$(PACKAGE)"
-
-run:
-	cargo run --release
-
-clean:
-	cargo clean
-	rm -rf release
-
-# ------------------------------------------------------------
-# Format
-# ------------------------------------------------------------
-
-fmt: fmt-cargo fmt-rust fmt-markdown
+generate-nkey:
+	@NKEY_OUTPUT=$$(nk -gen user -pubout); \
+	echo "NATS_NKEY_SEED=$$(echo "$$NKEY_OUTPUT" | sed -n '1p')" >> .env; \
+	echo "NATS_NKEY_USER=$$(echo "$$NKEY_OUTPUT" | sed -n '2p')" >> .env
 
 fmt-cargo:
 	cargo sort -w
