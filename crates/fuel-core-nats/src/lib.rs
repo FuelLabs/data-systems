@@ -33,6 +33,16 @@ use fuel_core_types::{
 const NUM_TOPICS: usize = 3;
 
 #[derive(Debug)]
+pub struct NatsNkey {
+    seed: Option<String>,
+}
+impl NatsNkey {
+    pub fn new(seed: String) -> Result<Self, anyhow::Error> {
+        Ok(Self { seed: Some(seed) })
+    }
+}
+
+#[derive(Debug)]
 struct NatsConnection {
     jetstream: async_nats::jetstream::Context,
     #[allow(dead_code)]
@@ -53,7 +63,7 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         nats_url: &str,
-        nats_nkey: Option<String>,
+        keys: &NatsNkey,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
@@ -61,30 +71,29 @@ impl Publisher {
             Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
         >,
     ) -> anyhow::Result<Self> {
+        let seed = keys.seed.clone();
         Ok(Publisher {
             chain_id,
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            nats: Self::connect_to_nats(nats_url, nats_nkey).await?,
+            nats: Self::connect_to_nats(nats_url, seed).await?,
         })
     }
 
     async fn connect_to_nats(
         nats_url: &str,
-        nats_nkey: Option<String>,
+        seed_key: Option<String>,
     ) -> anyhow::Result<NatsConnection> {
-        let client = match nats_nkey {
-            Some(nkey) => async_nats::connect_with_options(
-                nats_url,
-                async_nats::ConnectOptions::with_nkey(nkey),
-            )
-            .await
-            .context(format!("Connecting to {nats_url}"))?,
-            None => async_nats::connect(nats_url)
-                .await
-                .context(format!("Connecting to {nats_url}"))?,
-        };
+        if seed_key.is_none() {
+            anyhow::bail!("NATS NKEY seed is empty")
+        }
+        let client = async_nats::connect_with_options(
+            nats_url,
+            async_nats::ConnectOptions::with_nkey(seed_key.unwrap()),
+        )
+        .await
+        .context(format!("Connecting to {nats_url}"))?;
 
         let max_payload_size = client.server_info().max_payload;
         info!("NATS Publisher: max_payload_size={max_payload_size}");
@@ -97,11 +106,7 @@ impl Publisher {
                 name: "fuel".to_string(),
                 subjects: vec![
                     // blocks.{height}
-                    "blocks.*".to_string(),
-                    // receipts.{height}.{contract_id}.{kind}
-                    // or
-                    // receipts.{height}.{contract_id}.{topic_1}
-                    "receipts.*.*.*".to_string(),
+                    "blocks.**.*.*".to_string(),
                     // receipts.{height}.{contract_id}.{topic_1}.{topic_2}
                     "receipts.*.*.*.*".to_string(),
                     // receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}
@@ -387,48 +392,52 @@ mod tests {
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
     #[tokio::test]
-    async fn returns_authorization_error_without_nkey() {
-        assert!(Publisher::connect_to_nats(NATS_URL, None)
-            .await
-            .is_err_and(|e| {
-                e.source()
-                    .expect("An error source must exist")
-                    .to_string()
-                    .contains("authorization violation: nats: authorization violation")
-            }));
+    async fn returns_authorization_error_without_nkey() -> anyhow::Result<()> {
+        let result = Publisher::connect_to_nats(NATS_URL, None).await;
+
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert_eq!(e.to_string(), "NATS NKEY seed is empty");
+        }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn connects_to_nats_with_nkey() {
+    async fn connects_to_nats_with_nkey() -> anyhow::Result<()> {
         setup_test();
 
-        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
+        let keys = nkey()?;
+        let nats = Publisher::connect_to_nats(NATS_URL, keys.seed)
             .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+            .unwrap_or_else(|_| panic!("Ensure NATS server is running at {NATS_URL}"));
 
         assert!(nats
             .jetstream_messages
             .get_last_raw_message_by_subject("*")
             .await
             .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn returns_max_payload_size_allowed_on_the_connection() {
+    async fn returns_max_payload_size_allowed_on_the_connection() -> anyhow::Result<()> {
         setup_test();
 
-        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
+        let keys = nkey()?;
+        let nats = Publisher::connect_to_nats(NATS_URL, keys.seed)
             .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+            .unwrap_or_else(|_| panic!("Ensure NATS server is running at {NATS_URL}"));
 
-        assert_eq!(nats.max_payload_size, 8_388_608)
+        assert_eq!(nats.max_payload_size, 8_388_608);
+        Ok(())
     }
 
     const NATS_URL: &str = "nats://localhost:4222";
     fn setup_test() {
         dotenvy::dotenv().ok();
     }
-    fn nkey() -> Option<String> {
-        std::env::var("NATS_NKEY").ok()
+    fn nkey() -> Result<NatsNkey, anyhow::Error> {
+        NatsNkey::new(dotenvy::var("NATS_NKEY_SEED").unwrap())
     }
 }

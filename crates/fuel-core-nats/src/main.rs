@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use fuel_core_nats::NatsNkey;
 use fuel_core_services::Service;
 
 #[derive(Parser)]
@@ -12,7 +13,7 @@ pub struct Cli {
     )]
     nats_url: String,
     /// The NKEY seed. It is usually prefixed with an 'S'
-    #[arg(long, value_name = "NKEY", env = "NATS_NKEY")]
+    #[arg(long, value_name = "NKEY_SEED", env = "NATS_NKEY_SEED")]
     nats_nkey: Option<String>,
     #[command(flatten)]
     fuel_core_config: fuel_core_bin::cli::run::Command,
@@ -30,10 +31,11 @@ async fn main() -> anyhow::Result<()> {
     service.start()?;
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
-
+    let seed_key = cli.nats_nkey.unwrap();
+    let keys = NatsNkey::new(seed_key)?;
     let publisher = fuel_core_nats::Publisher::new(
         &cli.nats_url,
-        cli.nats_nkey,
+        &keys,
         chain_id,
         *base_asset_id,
         service.shared.database.clone(),
