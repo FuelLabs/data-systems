@@ -33,16 +33,6 @@ use fuel_core_types::{
 const NUM_TOPICS: usize = 3;
 
 #[derive(Debug)]
-pub struct NatsNkey {
-    seed: Option<String>,
-}
-impl NatsNkey {
-    pub fn new(seed: String) -> Result<Self, anyhow::Error> {
-        Ok(Self { seed: Some(seed) })
-    }
-}
-
-#[derive(Debug)]
 struct NatsConnection {
     jetstream: async_nats::jetstream::Context,
     #[allow(dead_code)]
@@ -63,7 +53,7 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         nats_url: &str,
-        keys: &NatsNkey,
+        nkey: &str,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
@@ -71,26 +61,22 @@ impl Publisher {
             Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
         >,
     ) -> anyhow::Result<Self> {
-        let seed = keys.seed.clone();
         Ok(Publisher {
             chain_id,
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            nats: Self::connect_to_nats(nats_url, seed).await?,
+            nats: Self::connect_to_nats(nats_url, nkey.to_owned()).await?,
         })
     }
 
     async fn connect_to_nats(
         nats_url: &str,
-        seed_key: Option<String>,
+        nkey: String,
     ) -> anyhow::Result<NatsConnection> {
-        if seed_key.is_none() {
-            anyhow::bail!("NATS NKEY seed is empty")
-        }
         let client = async_nats::connect_with_options(
             nats_url,
-            async_nats::ConnectOptions::with_nkey(seed_key.unwrap()),
+            async_nats::ConnectOptions::with_nkey(nkey),
         )
         .await
         .context(format!("Connecting to {nats_url}"))?;
@@ -392,28 +378,8 @@ mod tests {
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
     #[tokio::test]
-    async fn returns_authorization_error_without_nkey() -> anyhow::Result<()> {
-        let result = Publisher::connect_to_nats(get_url().as_str(), None).await;
-
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert_eq!(e.to_string(), "NATS NKEY seed is empty");
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn connects_to_nats_with_nkey() -> anyhow::Result<()> {
         setup_test();
-        println!(
-            "NATS_NKEY_SEED: {}",
-            dotenvy::var("NATS_NKEY_SEED").unwrap(),
-        );
-        println!(
-            "NATS_NKEY_USER: {}",
-            dotenvy::var("NATS_NKEY_USER").unwrap(),
-        );
 
         let nats = get_conn().await?;
         assert!(nats
@@ -438,12 +404,12 @@ mod tests {
         dotenvy::dotenv().ok();
     }
     async fn get_conn() -> Result<NatsConnection, anyhow::Error> {
-        Publisher::connect_to_nats(&get_url(), get_nkey()?.seed).await
+        Publisher::connect_to_nats(&get_url(), get_nkey()).await
     }
     fn get_url() -> String {
         dotenvy::var("NATS_URL").unwrap_or("nats://localhost:4222".to_string())
     }
-    fn get_nkey() -> Result<NatsNkey, anyhow::Error> {
-        NatsNkey::new(dotenvy::var("NATS_NKEY_SEED").unwrap())
+    fn get_nkey() -> String {
+        dotenvy::var("NATS_NKEY_SEED").unwrap()
     }
 }

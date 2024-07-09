@@ -1,6 +1,5 @@
 use clap::Parser;
 
-use fuel_core_nats::NatsNkey;
 use fuel_core_services::Service;
 
 #[derive(Parser)]
@@ -32,10 +31,9 @@ async fn main() -> anyhow::Result<()> {
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
     let seed_key = cli.nats_nkey.unwrap();
-    let keys = NatsNkey::new(seed_key)?;
     let publisher = fuel_core_nats::Publisher::new(
         &cli.nats_url,
-        &keys,
+        &seed_key,
         chain_id,
         *base_asset_id,
         service.shared.database.clone(),

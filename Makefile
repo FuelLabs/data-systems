@@ -56,6 +56,12 @@ generate-nkey:
 	echo "NATS_NKEY_SEED=$$(echo "$$NKEY_OUTPUT" | sed -n '1p')" >> .env; \
 	echo "NATS_NKEY_USER=$$(echo "$$NKEY_OUTPUT" | sed -n '2p')" >> .env
 
+# ------------------------------------------------------------
+# Formatting
+# ------------------------------------------------------------
+
+fmt: fmt-cargo fmt-rust fmt-markdown
+
 fmt-cargo:
 	cargo sort -w
 
