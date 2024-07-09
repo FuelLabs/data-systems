@@ -30,16 +30,58 @@ use fuel_core_types::{
     },
 };
 
+#[cfg(test)]
+use async_nats::jetstream::stream;
+
 const NUM_TOPICS: usize = 3;
 
-#[derive(Debug)]
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
 struct NatsConnection {
     jetstream: async_nats::jetstream::Context,
-    #[allow(dead_code)]
     /// Messages published to jetstream
     jetstream_messages: async_nats::jetstream::stream::Stream,
     /// Max publishing payload in connected NATS server
     max_payload_size: usize,
+    subjects: Vec<String>,
+    subjects_prefix: String,
+}
+
+impl NatsConnection {
+    #[cfg(test)]
+    async fn has_no_message(&self) -> bool {
+        let raw_messages_by_all_subjects =
+            self.get_last_raw_messages_by_all_subjects().await;
+
+        raw_messages_by_all_subjects.iter().all(|result| {
+            result.as_ref().is_err_and(|e| {
+                e.kind() == stream::LastRawMessageErrorKind::NoMessageFound
+            })
+        })
+    }
+
+    #[cfg(test)]
+    async fn get_last_raw_messages_by_all_subjects(
+        &self,
+    ) -> Vec<
+        Result<
+            stream::RawMessage,
+            async_nats::error::Error<stream::LastRawMessageErrorKind>,
+        >,
+    > {
+        let mut results = vec![];
+
+        for subject in &self.subjects {
+            let result = self
+                .jetstream_messages
+                .get_last_raw_message_by_subject(subject)
+                .await;
+
+            results.push(result);
+        }
+
+        results
+    }
 }
 
 pub struct Publisher {
@@ -66,14 +108,17 @@ impl Publisher {
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            nats: Self::connect_to_nats(nats_url, nats_nkey).await?,
+            nats: Self::connect_to_nats(nats_url, nats_nkey, None).await?,
         })
     }
 
     async fn connect_to_nats(
         nats_url: &str,
         nats_nkey: Option<String>,
+        subjects_prefix: Option<String>,
     ) -> anyhow::Result<NatsConnection> {
+        let subjects_prefix = subjects_prefix.unwrap_or_default();
+
         let client = match nats_nkey {
             Some(nkey) => async_nats::connect_with_options(
                 nats_url,
@@ -92,27 +137,29 @@ impl Publisher {
         // Create a JetStream context
         let jetstream = async_nats::jetstream::new(client);
 
+        let subjects = vec![
+            // blocks.{height}
+            format!("{subjects_prefix}blocks.*"),
+            // receipts.{height}.{contract_id}.{kind}
+            // or
+            // receipts.{height}.{contract_id}.{topic_1}
+            format!("{subjects_prefix}receipts.*.*.*"),
+            // receipts.{height}.{contract_id}.{topic_1}.{topic_2}
+            format!("{subjects_prefix}receipts.*.*.*.*"),
+            // receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}
+            format!("{subjects_prefix}receipts.*.*.*.*.*"),
+            // transactions.{height}.{index}.{kind}
+            format!("{subjects_prefix}transactions.*.*.*"),
+            // owners.{height}.{owner_id}
+            format!("{subjects_prefix}owners.*.*"),
+            // assets.{height}.{asset_id}
+            format!("{subjects_prefix}assets.*.*"),
+        ];
+
         let jetstream_messages = jetstream
             .get_or_create_stream(async_nats::jetstream::stream::Config {
-                name: "fuel".to_string(),
-                subjects: vec![
-                    // blocks.{height}
-                    "blocks.*".to_string(),
-                    // receipts.{height}.{contract_id}.{kind}
-                    // or
-                    // receipts.{height}.{contract_id}.{topic_1}
-                    "receipts.*.*.*".to_string(),
-                    // receipts.{height}.{contract_id}.{topic_1}.{topic_2}
-                    "receipts.*.*.*.*".to_string(),
-                    // receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}
-                    "receipts.*.*.*.*.*".to_string(),
-                    // transactions.{height}.{index}.{kind}
-                    "transactions.*.*.*".to_string(),
-                    // owners.{height}.{owner_id}
-                    "owners.*.*".to_string(),
-                    // assets.{height}.{asset_id}
-                    "assets.*.*".to_string(),
-                ],
+                name: format!("{subjects_prefix}fuel"),
+                subjects: subjects.clone(),
                 storage: async_nats::jetstream::stream::StorageType::File,
                 ..Default::default()
             })
@@ -122,6 +169,8 @@ impl Publisher {
             jetstream,
             jetstream_messages,
             max_payload_size,
+            subjects,
+            subjects_prefix,
         })
     }
 
@@ -140,11 +189,13 @@ impl Publisher {
             self.chain_id, self.base_asset_id
         );
 
+        let subjects_prefix = self.nats.subjects_prefix.clone();
+
         // Check the last block height in the stream
         let stream_height = {
             let config = async_nats::jetstream::consumer::pull::Config {
                 deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::Last,
-                filter_subject: "blocks.*".to_string(),
+                filter_subject: format!("{subjects_prefix}blocks.*"),
                 ..Default::default()
             };
             let consumer = self
@@ -243,10 +294,12 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let height = u32::from(block.header().consensus().height);
 
+        let subjects_prefix = self.nats.subjects_prefix.clone();
+
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
         let payload = serde_json::to_string_pretty(block)?;
-        self.publish(format!("blocks.{height}"), payload.into())
+        self.publish(format!("{subjects_prefix}blocks.{height}"), payload.into())
             .await?;
 
         for (index, tx) in block.transactions().iter().enumerate() {
@@ -256,7 +309,7 @@ impl Publisher {
                     if let Some(owner_id) = i.input_owner() {
                         let payload = serde_json::to_string_pretty(tx)?;
                         self.publish(
-                            format!("owners.{height}.{owner_id}"),
+                            format!("{subjects_prefix}owners.{height}.{owner_id}"),
                             payload.into(),
                         )
                         .await?;
@@ -265,7 +318,7 @@ impl Publisher {
                     if let Some(asset_id) = i.asset_id(&self.base_asset_id) {
                         let payload = serde_json::to_string_pretty(tx)?;
                         self.publish(
-                            format!("assets.{height}.{asset_id}"),
+                            format!("{subjects_prefix}assets.{height}.{asset_id}"),
                             payload.into(),
                         )
                         .await?;
@@ -285,7 +338,7 @@ impl Publisher {
             info!("NATS Publisher: Transaction#{height}.{index}.{tx_kind}");
             let payload = serde_json::to_string_pretty(tx)?;
             self.publish(
-                format!("transactions.{height}.{index}.{tx_kind}"),
+                format!("{subjects_prefix}transactions.{height}.{index}.{tx_kind}"),
                 payload.into(),
             )
             .await?;
@@ -316,7 +369,9 @@ impl Publisher {
             // Publish the receipt.
             info!("NATS Publisher: Receipt#{height}.{contract_id}.{receipt_kind}");
             let payload = serde_json::to_string_pretty(r)?;
-            let subject = format!("receipts.{height}.{contract_id}.{receipt_kind}");
+            let subject = format!(
+                "{subjects_prefix}receipts.{height}.{contract_id}.{receipt_kind}"
+            );
             self.publish(subject, payload.into()).await?;
 
             // Publish LogData topics, if any.
@@ -348,7 +403,9 @@ impl Publisher {
                     // Publish receipt topics
                     info!("NATS Publisher: Receipt#{height}.{contract_id}.{topics}");
                     self.publish(
-                        format!("receipts.{height}.{contract_id}.{topics}"),
+                        format!(
+                            "{subjects_prefix}receipts.{height}.{contract_id}.{topics}"
+                        ),
                         payload.into(),
                     )
                     .await?;
@@ -387,31 +444,37 @@ mod tests {
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
     use fuel_core::combined_database::CombinedDatabase;
+    use rand::Rng;
     use tokio::sync::broadcast;
 
     #[tokio::test]
     async fn returns_authorization_error_without_nkey() {
-        assert!(Publisher::connect_to_nats(NATS_URL, None)
-            .await
-            .is_err_and(|e| {
-                e.source()
-                    .expect("An error source must exist")
-                    .to_string()
-                    .contains("authorization violation: nats: authorization violation")
-            }));
+        assert!(Publisher::connect_to_nats(
+            NATS_URL,
+            None,
+            Some(random_subjects_prefix())
+        )
+        .await
+        .is_err_and(|e| {
+            e.source()
+                .expect("An error source must exist")
+                .to_string()
+                .contains("authorization violation: nats: authorization violation")
+        }));
     }
 
     #[tokio::test]
     async fn connects_to_nats_with_nkey() {
         setup_env();
 
-        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
-            .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+        let nats =
+            Publisher::connect_to_nats(NATS_URL, nkey(), Some(random_subjects_prefix()))
+                .await
+                .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
 
         assert!(nats
             .jetstream_messages
-            .get_last_raw_message_by_subject("*")
+            .get_last_raw_message_by_subject(">")
             .await
             .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
     }
@@ -420,9 +483,10 @@ mod tests {
     async fn returns_max_payload_size_allowed_on_the_connection() {
         setup_env();
 
-        let nats = Publisher::connect_to_nats(NATS_URL, nkey())
-            .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+        let nats =
+            Publisher::connect_to_nats(NATS_URL, nkey(), Some(random_subjects_prefix()))
+                .await
+                .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
 
         assert_eq!(nats.max_payload_size, 8_388_608)
     }
@@ -442,20 +506,103 @@ mod tests {
 
         let publisher = publisher.run().await.unwrap();
 
+        assert!(publisher.nats.has_no_message().await);
+    }
+
+    #[tokio::test]
+    async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
+        let (blocks_subscriber, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+        let block = Arc::new(ImportResult {
+            sealed_block: Default::default(),
+            tx_status: vec![],
+            events: vec![],
+            source: Default::default(),
+        });
+        let _ = blocks_subscriber.send(block);
+
+        // manually drop blocks to ensure `blocks_subscription` completes
+        let _ = blocks_subscriber.clone();
+        drop(blocks_subscriber);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+        let nats_subject_prefix = publisher.nats.subjects_prefix.clone();
+
         assert!(publisher
             .nats
             .jetstream_messages
-            .get_last_raw_message_by_subject("*")
+            .get_last_raw_message_by_subject(&format!("{nats_subject_prefix}blocks.*"))
             .await
-            .is_err_and(|err| err.kind() == LastRawMessageErrorKind::NoMessageFound));
+            .is_ok_and(|raw_message| raw_message.sequence == 1));
+    }
+
+    #[tokio::test]
+    async fn doesnt_publish_any_other_message_for_blocks_with_no_transactions() {
+        let (blocks_subscriber, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+        let block = Arc::new(ImportResult {
+            sealed_block: Default::default(),
+            tx_status: vec![],
+            events: vec![],
+            source: Default::default(),
+        });
+        let _ = blocks_subscriber.send(block);
+
+        // manually drop blocks to ensure `blocks_subscription` completes
+        let _ = blocks_subscriber.clone();
+        drop(blocks_subscriber);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+        let nats_subject_prefix = publisher.nats.subjects_prefix.clone();
+
+        let non_block_subjects_count = publisher.nats.subjects.len() - 1;
+
+        let raw_messages_by_all_subjects =
+            publisher.nats.get_last_raw_messages_by_all_subjects().await;
+        let last_non_block_subjects =
+            raw_messages_by_all_subjects.iter().filter(|result| {
+                result
+                    .as_ref()
+                    .is_err_and(|e| e.kind() == LastRawMessageErrorKind::NoMessageFound)
+            });
+
+        assert!(non_block_subjects_count == last_non_block_subjects.count());
+
+        assert!(publisher
+            .nats
+            .jetstream_messages
+            .get_last_raw_message_by_subject(&format!("{nats_subject_prefix}blocks.*"))
+            .await
+            .is_ok_and(|raw_message| raw_message.sequence == 1));
     }
 
     async fn get_nats_connection() -> NatsConnection {
         setup_env();
 
-        Publisher::connect_to_nats(NATS_URL, nkey())
+        Publisher::connect_to_nats(NATS_URL, nkey(), Some(random_subjects_prefix()))
             .await
             .expect(&format!("Ensure NATS server is running at {NATS_URL}"))
+    }
+    fn random_subjects_prefix() -> String {
+        let mut rng = rand::thread_rng();
+        let random_int: u16 = rng.gen();
+        format!("test{random_int}")
     }
     const NATS_URL: &str = "nats://localhost:4222";
     fn setup_env() {

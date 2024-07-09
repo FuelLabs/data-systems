@@ -2407,6 +2407,7 @@ dependencies = [
  "fuel-core-services",
  "fuel-core-types",
  "futures-util",
+ "rand",
  "serde_json",
  "tokio",
  "tracing",
