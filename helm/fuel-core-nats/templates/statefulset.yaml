@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "fuel-core-nats.fullname" . }}
   labels:
     {{- include "fuel-core-nats.labels" . | nindent 4 }}
 spec:
+  serviceName: {{ include "fuel-core-nats.fullname" . | quote }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
@@ -19,9 +20,9 @@ spec:
       {{- end }}
       labels:
         {{- include "fuel-core-nats.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+          {{- with .Values.podLabels }}
+          {{- toYaml . | nindent 8 }}
+          {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -50,10 +51,13 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.volumes }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}
       volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: fueldrop-allocation-config
+          configMap:
+            name: fueldrop-allocation-config
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -66,3 +70,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- with .Values.volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
