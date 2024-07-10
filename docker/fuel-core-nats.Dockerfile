@@ -77,14 +77,14 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-RUN adduser nats
-USER nats
-
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
 
 EXPOSE $PORT
 EXPOSE $P2P_PORT
+
+RUN mkdir /mnt/db
+RUN chown -R 1000:1000 /mnt/db
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
