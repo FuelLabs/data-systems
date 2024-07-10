@@ -68,7 +68,7 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 
-RUN addgroup -S nats && adduser -S nats -G nats
+RUN adduser nats
 USER nats
 
 WORKDIR /usr/src
