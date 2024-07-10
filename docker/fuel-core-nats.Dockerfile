@@ -68,7 +68,7 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 
-WORKDIR /root/
+WORKDIR /usr/src
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates \
