@@ -68,9 +68,6 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 
-RUN adduser nats
-USER nats
-
 WORKDIR /usr/src
 
 RUN apt-get update -y \
@@ -79,6 +76,9 @@ RUN apt-get update -y \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+RUN adduser nats
+USER nats
 
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
