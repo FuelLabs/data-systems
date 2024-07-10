@@ -68,6 +68,9 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 
+RUN addgroup -S nats && adduser -S nats -G nats
+USER nats
+
 WORKDIR /usr/src
 
 RUN apt-get update -y \
@@ -82,8 +85,6 @@ COPY --from=builder /build/target/release/fuel-core-nats.d .
 
 EXPOSE $PORT
 EXPOSE $P2P_PORT
-
-RUN mkdir /mnt/db
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
