@@ -54,6 +54,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}
+            - secretRef:
+                name: {{ .Release.Name }}
       volumes:
         - name: fueldrop-allocation-config
           configMap:
