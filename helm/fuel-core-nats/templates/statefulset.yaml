@@ -31,6 +31,16 @@ spec:
       serviceAccountName: {{ include "fuel-core-nats.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      
+      initContainers:
+        - name: "init"
+          image: {{ .Values.initContainer.image }}
+          imagePullPolicy: "IfNotPresent"
+          command: {{ .Values.initContainer.command }}
+          args: {{ .Values.initContainer.args }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -53,6 +63,8 @@ spec:
           {{- end }}
           envFrom:
             - configMapRef:
+                name: {{ .Release.Name }}
+            - secretRef:
                 name: {{ .Release.Name }}
       volumes:
         - name: fueldrop-allocation-config
