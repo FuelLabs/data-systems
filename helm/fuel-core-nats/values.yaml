@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/fuellabs/fuel-core-nats
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "9d944ae"
+  tag: "7e14a2a"
 
 imagePullSecrets: []
 nameOverride: ""
