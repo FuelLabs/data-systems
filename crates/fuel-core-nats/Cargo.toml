@@ -21,9 +21,9 @@ fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-types = { workspace = true }
 futures-util = "0.3.30"
+rand = { workspace = true }
 serde_json = "1.0.117"
+strum = { workspace = true }
+strum_macros = { workspace = true }
 tokio = { workspace = true }
 tracing = "0.1.40"
-
-[dev-dependencies]
-rand = { workspace = true }

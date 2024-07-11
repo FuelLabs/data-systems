@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
         subscription,
     )
     .await?;
-    publisher.run().await?;
+    publisher.run(&None).await?;
 
     Ok(())
 }

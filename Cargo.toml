@@ -3,7 +3,7 @@ name = "fuel-nats"
 version = "0.0.1"
 
 [workspace]
-members = ["crates/fuel-core-nats"]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -31,6 +31,8 @@ fuel-core-client = { version = "0.30" }
 fuel-core-types = { version = "0.30", features = ["test-helpers"] }
 fuel-core-services = "0.30"
 rand = "0.8"
+strum = "0.26"
+strum_macros = "0.26"
 tokio = { version = "1.38", features = ["full"] }
 
 [profile.release]
