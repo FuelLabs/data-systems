@@ -444,6 +444,7 @@ mod tests {
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
     use fuel_core::combined_database::CombinedDatabase;
+    use fuel_core_types::blockchain::SealedBlock;
     use rand::Rng;
     use tokio::sync::broadcast;
 
@@ -590,6 +591,52 @@ mod tests {
             .get_last_raw_message_by_subject(&format!("{nats_subject_prefix}blocks.*"))
             .await
             .is_ok_and(|raw_message| raw_message.sequence == 1));
+    }
+
+    #[tokio::test]
+    async fn publishes_transactions_for_each_published_block() {
+        let (blocks_subscriber, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+
+        let mut block_entity = Block::default();
+        *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
+
+        let block = Arc::new(ImportResult {
+            sealed_block: SealedBlock {
+                entity: block_entity,
+                ..Default::default()
+            },
+            tx_status: vec![],
+            events: vec![],
+            source: Default::default(),
+        });
+        let _ = blocks_subscriber.send(block);
+
+        // manually drop blocks to ensure `blocks_subscription` completes
+        let _ = blocks_subscriber.clone();
+        drop(blocks_subscriber);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+        let nats_subject_prefix = publisher.nats.subjects_prefix.clone();
+
+        for subject in ["transactions.*.*.*", "owners.*.*", "assets.*.*"] {
+            assert!(publisher
+                .nats
+                .jetstream_messages
+                .get_last_raw_message_by_subject(&format!(
+                    "{nats_subject_prefix}{subject}"
+                ))
+                .await
+                .is_ok());
+        }
     }
 
     async fn get_nats_connection() -> NatsConnection {
