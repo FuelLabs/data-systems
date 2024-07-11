@@ -344,8 +344,8 @@ impl Publisher {
             .await?;
         }
 
-        for r in receipts.iter() {
-            let receipt_kind = match r {
+        for receipt in receipts.iter() {
+            let receipt_kind = match receipt {
                 Receipt::Call { .. } => "call",
                 Receipt::Return { .. } => "return",
                 Receipt::ReturnData { .. } => "return_data",
@@ -361,14 +361,14 @@ impl Publisher {
                 Receipt::Burn { .. } => "burn",
             };
 
-            let contract_id = r.contract_id().map(|x| x.to_string()).unwrap_or(
+            let contract_id = receipt.contract_id().map(|x| x.to_string()).unwrap_or(
                 "0000000000000000000000000000000000000000000000000000000000000000"
                     .to_string(),
             );
 
             // Publish the receipt.
             info!("NATS Publisher: Receipt#{height}.{contract_id}.{receipt_kind}");
-            let payload = serde_json::to_string_pretty(r)?;
+            let payload = serde_json::to_string_pretty(receipt)?;
             let subject = format!(
                 "{subjects_prefix}receipts.{height}.{contract_id}.{receipt_kind}"
             );
@@ -377,7 +377,7 @@ impl Publisher {
             // Publish LogData topics, if any.
             if let Receipt::LogData {
                 data: Some(data), ..
-            } = r
+            } = receipt
             {
                 info!("NATS Publisher: Log Data Length: {}", data.len());
                 // 0x0000000012345678
@@ -443,8 +443,15 @@ mod tests {
     use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
-    use fuel_core::combined_database::CombinedDatabase;
-    use fuel_core_types::blockchain::SealedBlock;
+    use fuel_core::{
+        combined_database::CombinedDatabase,
+        schema::tx::receipt::all_receipts,
+    };
+    use fuel_core_types::{
+        blockchain::SealedBlock,
+        fuel_tx::Bytes32,
+        services::executor::TransactionExecutionStatus,
+    };
     use rand::Rng;
     use tokio::sync::broadcast;
 
@@ -514,12 +521,7 @@ mod tests {
     async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
         let (blocks_subscriber, blocks_subscription) =
             broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
-        let block = Arc::new(ImportResult {
-            sealed_block: Default::default(),
-            tx_status: vec![],
-            events: vec![],
-            source: Default::default(),
-        });
+        let block = Arc::new(ImportResult::default());
         let _ = blocks_subscriber.send(block);
 
         // manually drop blocks to ensure `blocks_subscription` completes
@@ -549,12 +551,7 @@ mod tests {
     async fn doesnt_publish_any_other_message_for_blocks_with_no_transactions() {
         let (blocks_subscriber, blocks_subscription) =
             broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
-        let block = Arc::new(ImportResult {
-            sealed_block: Default::default(),
-            tx_status: vec![],
-            events: vec![],
-            source: Default::default(),
-        });
+        let block = Arc::new(ImportResult::default());
         let _ = blocks_subscriber.send(block);
 
         // manually drop blocks to ensure `blocks_subscription` completes
@@ -606,9 +603,7 @@ mod tests {
                 entity: block_entity,
                 ..Default::default()
             },
-            tx_status: vec![],
-            events: vec![],
-            source: Default::default(),
+            ..Default::default()
         });
         let _ = blocks_subscriber.send(block);
 
@@ -637,6 +632,98 @@ mod tests {
                 .await
                 .is_ok());
         }
+    }
+
+    #[tokio::test]
+    async fn publishes_receipt_for_successful_tx_statuses() {
+        let (blocks_subscriber, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+
+        let successful_tx_status = TransactionExecutionStatus {
+            id: Bytes32::default(),
+            result: TransactionExecutionResult::Success {
+                result: None,
+                receipts: all_receipts(),
+                total_gas: 0,
+                total_fee: 0,
+            },
+        };
+
+        let block = Arc::new(ImportResult {
+            tx_status: vec![successful_tx_status],
+            ..Default::default()
+        });
+        let _ = blocks_subscriber.send(block);
+
+        // manually drop blocks to ensure `blocks_subscription` completes
+        let _ = blocks_subscriber.clone();
+        drop(blocks_subscriber);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+        let nats_subject_prefix = publisher.nats.subjects_prefix.clone();
+
+        assert!(publisher
+            .nats
+            .jetstream_messages
+            .get_last_raw_message_by_subject(&format!(
+                "{nats_subject_prefix}receipts.*.*.*"
+            ))
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test]
+    async fn publishes_receipt_for_failed_tx_statuses() {
+        let (blocks_subscriber, blocks_subscription) =
+            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
+
+        let successful_tx_status = TransactionExecutionStatus {
+            id: Bytes32::default(),
+            result: TransactionExecutionResult::Failed {
+                result: None,
+                receipts: all_receipts(),
+                total_gas: 0,
+                total_fee: 0,
+            },
+        };
+
+        let block = Arc::new(ImportResult {
+            tx_status: vec![successful_tx_status],
+            ..Default::default()
+        });
+        let _ = blocks_subscriber.send(block);
+
+        // manually drop blocks to ensure `blocks_subscription` completes
+        let _ = blocks_subscriber.clone();
+        drop(blocks_subscriber);
+
+        let publisher = Publisher {
+            base_asset_id: AssetId::default(),
+            chain_id: ChainId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            nats: get_nats_connection().await,
+        };
+
+        let publisher = publisher.run().await.unwrap();
+        let nats_subject_prefix = publisher.nats.subjects_prefix.clone();
+
+        assert!(publisher
+            .nats
+            .jetstream_messages
+            .get_last_raw_message_by_subject(&format!(
+                "{nats_subject_prefix}receipts.*.*.*"
+            ))
+            .await
+            .is_ok());
     }
 
     async fn get_nats_connection() -> NatsConnection {
