@@ -31,16 +31,10 @@ spec:
       serviceAccountName: {{ include "fuel-core-nats.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.initContainers }}  
       initContainers:
-        - name: "init"
-          image: {{ .Values.initContainer.image }}
-          imagePullPolicy: "IfNotPresent"
-          command: {{ .Values.initContainer.command }}
-          args: {{ .Values.initContainer.args }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
