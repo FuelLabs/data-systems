@@ -37,8 +37,10 @@ spec:
           imagePullPolicy: "IfNotPresent"
           command: {{ .Values.initContainer.command }}
           args: {{ .Values.initContainer.args }}
+          {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
