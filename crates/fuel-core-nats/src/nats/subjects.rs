@@ -1,3 +1,4 @@
+use fuel_core_types::fuel_types::BlockHeight;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -40,10 +41,10 @@ impl std::fmt::Display for SubjectName {
 #[derive(Debug)]
 pub enum Subject {
     Blocks {
-        height: u32,
+        height: BlockHeight,
     },
     Transactions {
-        height: u32,
+        height: BlockHeight,
         index: usize,
         kind: String,
     },

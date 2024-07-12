@@ -150,7 +150,7 @@ impl Publisher {
 
     /// Publish the Block, its Transactions, and the given Receipts into NATS.
     pub async fn publish_block(&self, block: &Block<Transaction>) -> anyhow::Result<()> {
-        let height = u32::from(block.header().consensus().height);
+        let height = block.header().consensus().height;
 
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
