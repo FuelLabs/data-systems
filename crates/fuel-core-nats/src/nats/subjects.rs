@@ -17,10 +17,10 @@ pub enum SubjectName {
 }
 
 impl SubjectName {
-    pub fn to_subject_string(&self, sandbox_id: &Option<String>) -> String {
-        let sandbox_id = sandbox_id.clone().unwrap_or_default();
-        let to_string = self.to_string();
-        format!("{sandbox_id}{to_string}")
+    // TODO: Extract this in a ConnectionAware trait? where there
+    // are more connection-related operations
+    pub fn get_string(&self, connection_id: &str) -> String {
+        [connection_id, &self.to_string()].concat()
     }
 }
 
@@ -120,10 +120,8 @@ impl std::fmt::Display for Subject {
 }
 
 impl Subject {
-    pub fn get_value(&self, sandbox_id: &Option<String>) -> String {
-        let sandbox_id = sandbox_id.clone().unwrap_or_default();
-        let to_string = self.to_string();
-        format!("{sandbox_id}{to_string}")
+    pub fn get_string(&self, connection_id: &str) -> String {
+        [connection_id, &self.to_string()].concat()
     }
 
     #[allow(dead_code)]
@@ -140,13 +138,12 @@ impl Subject {
     }
 }
 
-pub fn get_all_in_sandbox(sandbox_id: &str) -> Vec<String> {
+pub fn get_all_in_connection(connection_id: &str) -> Vec<String> {
     get_all()
         .iter()
-        .map(|name| format!("{sandbox_id}{name}"))
+        .map(|name| format!("{connection_id}{name}"))
         .collect()
 }
-
-pub fn get_all() -> Vec<String> {
+fn get_all() -> Vec<String> {
     SubjectName::iter().map(|name| name.to_string()).collect()
 }
