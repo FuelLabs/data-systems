@@ -5,12 +5,7 @@ use strum_macros::EnumIter;
 #[derive(Debug, EnumIter)]
 pub enum SubjectName {
     Blocks,
-    Receipts1,
-    Receipts2,
-    Receipts3,
     Transactions,
-    Owners,
-    Assets,
 }
 
 impl SubjectName {
@@ -25,12 +20,7 @@ impl std::fmt::Display for SubjectName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value: &'static str = match self {
             SubjectName::Blocks => "blocks.*",
-            SubjectName::Receipts1 => "receipts.*.*.*",
-            SubjectName::Receipts2 => "receipts.*.*.*.*",
-            SubjectName::Receipts3 => "receipts.*.*.*.*.*",
             SubjectName::Transactions => "transactions.*.*.*",
-            SubjectName::Owners => "owners.*.*",
-            SubjectName::Assets => "assets.*.*",
         };
 
         write!(f, "{value}")
