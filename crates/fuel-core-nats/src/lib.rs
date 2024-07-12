@@ -15,7 +15,6 @@ use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{
-        field::Inputs,
         Receipt,
         Transaction,
         UniqueIdentifier,
@@ -24,13 +23,8 @@ use fuel_core_types::{
         AssetId,
         ChainId,
     },
-    services::{
-        block_importer::ImportResult,
-        executor::TransactionExecutionResult,
-    },
+    services::block_importer::ImportResult,
 };
-
-const NUM_TOPICS: usize = 3;
 
 pub struct Publisher {
     chain_id: ChainId,
@@ -63,14 +57,8 @@ impl Publisher {
     }
 
     /// Publish messages from node(`fuel-core`) to NATS stream
-    ///   receipts.{height}.{contract_id}.{kind}                         e.g. receipts.9000.*.return
-    ///   receipts.{height}.{contract_id}.{topic_1}                      e.g. receipts.*.my_custom_topic
-    ///   receipts.{height}.{contract_id}.{topic_1}.{topic_2}            e.g. receipts.*.counter.inrc
-    ///   receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}
     ///   transactions.{height}.{index}.{kind}                           e.g. transactions.1.1.mint
     ///   blocks.{height}                                                e.g. blocks.1
-    ///   owners.{height}.{owner_id}                                     e.g. owners.*.0xab..cd
-    ///   assets.{height}.{asset_id}                                     e.g. assets.*.0xab..cd
     pub async fn run(mut self) -> anyhow::Result<Self> {
         info!(
             "NATS Publisher chain_id={} base_asset_id={} started",
@@ -147,38 +135,21 @@ impl Publisher {
                 receipts_.len()
             );
 
-                self.publish_block(&block, &receipts_).await?;
+                self.publish_block(&block).await?;
             }
         }
 
         // Continue publishing blocks from the block importer subscription
         while let Ok(result) = self.blocks_subscription.recv().await {
-            let mut receipts_: Vec<Receipt> = vec![];
-            for t in result.tx_status.iter() {
-                let mut receipts = match &t.result {
-                    TransactionExecutionResult::Success { receipts, .. } => {
-                        receipts.clone()
-                    }
-                    TransactionExecutionResult::Failed { receipts, .. } => {
-                        receipts.clone()
-                    }
-                };
-                receipts_.append(&mut receipts);
-            }
             let result = &**result;
-            self.publish_block(&result.sealed_block.entity, &receipts_)
-                .await?;
+            self.publish_block(&result.sealed_block.entity).await?;
         }
 
         Ok(self)
     }
 
     /// Publish the Block, its Transactions, and the given Receipts into NATS.
-    pub async fn publish_block(
-        &self,
-        block: &Block<Transaction>,
-        receipts: &[Receipt],
-    ) -> anyhow::Result<()> {
+    pub async fn publish_block(&self, block: &Block<Transaction>) -> anyhow::Result<()> {
         let height = u32::from(block.header().consensus().height);
 
         // Publish the block.
@@ -189,23 +160,6 @@ impl Publisher {
         self.nats.publish(block_subject, payload.into()).await?;
 
         for (index, tx) in block.transactions().iter().enumerate() {
-            if let Transaction::Script(s) = tx {
-                for i in s.inputs() {
-                    // Publish transaction to owners
-                    if let Some(owner_id) = i.input_owner().cloned() {
-                        let payload = serde_json::to_string_pretty(tx)?;
-                        let owners_subject = nats::Subject::Owners { height, owner_id };
-                        self.nats.publish(owners_subject, payload.into()).await?;
-                    }
-                    // Publish transaction to assets
-                    if let Some(asset_id) = i.asset_id(&self.base_asset_id).cloned() {
-                        let payload = serde_json::to_string_pretty(tx)?;
-                        let assets_subject = nats::Subject::Assets { height, asset_id };
-                        self.nats.publish(assets_subject, payload.into()).await?;
-                    }
-                }
-            }
-
             let tx_kind = match tx {
                 Transaction::Create(_) => "create",
                 Transaction::Mint(_) => "mint",
@@ -226,72 +180,6 @@ impl Publisher {
                 .await?;
         }
 
-        for receipt in receipts.iter() {
-            let receipt_kind = match receipt {
-                Receipt::Call { .. } => "call",
-                Receipt::Return { .. } => "return",
-                Receipt::ReturnData { .. } => "return_data",
-                Receipt::Panic { .. } => "panic",
-                Receipt::Revert { .. } => "revert",
-                Receipt::Log { .. } => "log",
-                Receipt::LogData { .. } => "log_data",
-                Receipt::Transfer { .. } => "transfer",
-                Receipt::TransferOut { .. } => "transfer_out",
-                Receipt::ScriptResult { .. } => "script_result",
-                Receipt::MessageOut { .. } => "message_out",
-                Receipt::Mint { .. } => "mint",
-                Receipt::Burn { .. } => "burn",
-            };
-
-            let contract_id = receipt.contract_id().map(|x| x.to_string()).unwrap_or(
-                "0000000000000000000000000000000000000000000000000000000000000000"
-                    .to_string(),
-            );
-
-            let payload = serde_json::to_string_pretty(receipt)?;
-            let receipt1_subject = nats::Subject::Receipts1 {
-                height,
-                contract_id: contract_id.clone(),
-                topic_or_kind: receipt_kind.to_string(),
-            };
-            self.nats.publish(receipt1_subject, payload.into()).await?;
-
-            // Publish LogData topics, if any.
-            if let Receipt::LogData {
-                data: Some(data), ..
-            } = receipt
-            {
-                info!("NATS Publisher: Log Data Length: {}", data.len());
-                // 0x0000000012345678
-                let header = vec![0, 0, 0, 0, 18, 52, 86, 120];
-                if data.starts_with(&header) {
-                    let data = &data[header.len()..];
-                    let mut topics = vec![];
-                    for i in 0..NUM_TOPICS {
-                        let topic_bytes: Vec<u8> = data[32 * i..32 * (i + 1)]
-                            .iter()
-                            .cloned()
-                            .take_while(|x| *x > 0)
-                            .collect();
-                        let topic = String::from_utf8_lossy(&topic_bytes).into_owned();
-                        if !topic.is_empty() {
-                            topics.push(topic);
-                        }
-                    }
-                    let topics = topics.join(".");
-                    // TODO: JSON payload to match other topics? {"data": payload}
-                    let payload = data[NUM_TOPICS * 32..].to_owned();
-
-                    let receipt1_subject = nats::Subject::Receipts1 {
-                        height,
-                        contract_id,
-                        topic_or_kind: topics.to_string(),
-                    };
-                    self.nats.publish(receipt1_subject, payload.into()).await?;
-                }
-            }
-        }
-
         Ok(())
     }
 }
@@ -301,15 +189,8 @@ mod tests {
     use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
-    use fuel_core::{
-        combined_database::CombinedDatabase,
-        schema::tx::receipt::all_receipts,
-    };
-    use fuel_core_types::{
-        blockchain::SealedBlock,
-        fuel_tx::Bytes32,
-        services::executor::TransactionExecutionStatus,
-    };
+    use fuel_core::combined_database::CombinedDatabase;
+    use fuel_core_types::blockchain::SealedBlock;
     use nats::SubjectName;
     use strum::IntoEnumIterator;
     use tokio::sync::broadcast;
@@ -440,107 +321,11 @@ mod tests {
 
         let publisher = publisher.run().await.unwrap();
 
-        for subject in [
-            SubjectName::Transactions,
-            SubjectName::Owners,
-            SubjectName::Assets,
-        ] {
-            assert!(publisher
-                .nats
-                .jetstream_messages
-                .get_last_raw_message_by_subject(&subject.get_string(&connection_id))
-                .await
-                .is_ok());
-        }
-    }
-
-    #[tokio::test]
-    async fn publishes_receipt_for_successful_tx_statuses() {
-        let (blocks_subscriber, blocks_subscription) =
-            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
-
-        let successful_tx_status = TransactionExecutionStatus {
-            id: Bytes32::default(),
-            result: TransactionExecutionResult::Success {
-                result: None,
-                receipts: all_receipts(),
-                total_gas: 0,
-                total_fee: 0,
-            },
-        };
-
-        let block = Arc::new(ImportResult {
-            tx_status: vec![successful_tx_status],
-            ..Default::default()
-        });
-        let _ = blocks_subscriber.send(block);
-
-        // manually drop blocks to ensure `blocks_subscription` completes
-        let _ = blocks_subscriber.clone();
-        drop(blocks_subscriber);
-
-        let connection_id = nats::tests::get_random_connection_id();
-        let publisher = Publisher {
-            base_asset_id: AssetId::default(),
-            chain_id: ChainId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
-            nats: nats::tests::get_nats_connection(&connection_id).await,
-        };
-
-        let publisher = publisher.run().await.unwrap();
-
         assert!(publisher
             .nats
             .jetstream_messages
             .get_last_raw_message_by_subject(
-                &SubjectName::Receipts1.get_string(&connection_id)
-            )
-            .await
-            .is_ok());
-    }
-
-    #[tokio::test]
-    async fn publishes_receipt_for_failed_tx_statuses() {
-        let (blocks_subscriber, blocks_subscription) =
-            broadcast::channel::<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>(1);
-
-        let successful_tx_status = TransactionExecutionStatus {
-            id: Bytes32::default(),
-            result: TransactionExecutionResult::Failed {
-                result: None,
-                receipts: all_receipts(),
-                total_gas: 0,
-                total_fee: 0,
-            },
-        };
-
-        let block = Arc::new(ImportResult {
-            tx_status: vec![successful_tx_status],
-            ..Default::default()
-        });
-        let _ = blocks_subscriber.send(block);
-
-        // manually drop blocks to ensure `blocks_subscription` completes
-        let _ = blocks_subscriber.clone();
-        drop(blocks_subscriber);
-
-        let connection_id = nats::tests::get_random_connection_id();
-        let publisher = Publisher {
-            base_asset_id: AssetId::default(),
-            chain_id: ChainId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
-            nats: nats::tests::get_nats_connection(&connection_id).await,
-        };
-
-        let publisher = publisher.run().await.unwrap();
-
-        assert!(publisher
-            .nats
-            .jetstream_messages
-            .get_last_raw_message_by_subject(
-                &SubjectName::Receipts1.get_string(&connection_id)
+                &SubjectName::Transactions.get_string(&connection_id)
             )
             .await
             .is_ok());

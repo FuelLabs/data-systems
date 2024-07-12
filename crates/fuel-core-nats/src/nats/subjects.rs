@@ -1,7 +1,3 @@
-use fuel_core_types::fuel_tx::{
-    Address,
-    AssetId,
-};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -46,36 +42,10 @@ pub enum Subject {
     Blocks {
         height: u32,
     },
-    Receipts1 {
-        height: u32,
-        contract_id: String,
-        topic_or_kind: String,
-    },
-    Receipts2 {
-        height: u32,
-        contract_id: String,
-        topic_1: String,
-        topic_2: String,
-    },
-    Receipts3 {
-        height: u32,
-        contract_id: String,
-        topic_1: String,
-        topic_2: String,
-        topic_3: String,
-    },
     Transactions {
         height: u32,
         index: usize,
         kind: String,
-    },
-    Owners {
-        height: u32,
-        owner_id: Address,
-    },
-    Assets {
-        height: u32,
-        asset_id: AssetId,
     },
 }
 
@@ -83,38 +53,11 @@ impl std::fmt::Display for Subject {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Subject::Blocks { height } => write!(f, "blocks.{height}"),
-            Subject::Receipts1 {
-                height,
-                contract_id,
-                topic_or_kind,
-            } => write!(f, "receipts.{height}.{contract_id}.{topic_or_kind}"),
-            Subject::Receipts2 {
-                height,
-                contract_id,
-                topic_1,
-                topic_2,
-            } => write!(f, "receipts.{height}.{contract_id}.{topic_1}.{topic_2}"),
-            Subject::Receipts3 {
-                height,
-                contract_id,
-                topic_1,
-                topic_2,
-                topic_3,
-            } => write!(
-                f,
-                "receipts.{height}.{contract_id}.{topic_1}.{topic_2}.{topic_3}"
-            ),
             Subject::Transactions {
                 height,
                 index,
                 kind,
             } => write!(f, "transactions.{height}.{index}.{kind}"),
-            Subject::Owners { height, owner_id } => {
-                write!(f, "owners.{height}.{owner_id}")
-            }
-            Subject::Assets { height, asset_id } => {
-                write!(f, "assets.{height}.{asset_id}")
-            }
         }
     }
 }
@@ -128,12 +71,7 @@ impl Subject {
     fn get_name(&self) -> SubjectName {
         match self {
             Subject::Blocks { .. } => SubjectName::Blocks,
-            Subject::Receipts1 { .. } => SubjectName::Receipts1,
-            Subject::Receipts2 { .. } => SubjectName::Receipts2,
-            Subject::Receipts3 { .. } => SubjectName::Receipts3,
             Subject::Transactions { .. } => SubjectName::Transactions,
-            Subject::Owners { .. } => SubjectName::Owners,
-            Subject::Assets { .. } => SubjectName::Assets,
         }
     }
 }
