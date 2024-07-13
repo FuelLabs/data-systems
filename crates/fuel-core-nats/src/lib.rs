@@ -403,7 +403,7 @@ mod tests {
     fn setup_test() {
         dotenvy::dotenv().ok();
     }
-    async fn get_conn() -> Result<NatsConnection, anyhow::Error> {
+    async fn get_conn() -> anyhow::Result<NatsConnection> {
         Publisher::connect_to_nats(&get_url(), get_nkey()).await
     }
     fn get_url() -> String {
