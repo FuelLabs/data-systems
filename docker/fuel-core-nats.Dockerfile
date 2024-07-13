@@ -48,7 +48,7 @@ FROM ubuntu:22.04 as run
 ARG IP=0.0.0.0
 ARG PORT=4000
 ARG P2P_PORT=30333
-ARG DB_PATH=./mnt/db/
+ARG DB_PATH=/mnt/db/
 ARG POA_INSTANT=false
 ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
@@ -68,7 +68,7 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 
-WORKDIR /root/
+WORKDIR /usr/src
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates \
