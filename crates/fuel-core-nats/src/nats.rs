@@ -82,7 +82,7 @@ impl NatsConnection {
 
 pub async fn connect(
     nats_url: &str,
-    nats_nkey: Option<String>,
+    nats_nkey: &str,
     connection_id: Option<String>,
 ) -> anyhow::Result<NatsConnection> {
     let connection_id = &connection_id.unwrap_or_default();
@@ -93,17 +93,12 @@ pub async fn connect(
         ..Default::default()
     };
 
-    let client = match nats_nkey {
-        Some(nkey) => async_nats::connect_with_options(
-            nats_url,
-            async_nats::ConnectOptions::with_nkey(nkey),
-        )
-        .await
-        .context(format!("Connecting to {nats_url}"))?,
-        None => async_nats::connect(nats_url)
-            .await
-            .context(format!("Connecting to {nats_url}"))?,
-    };
+    let client = async_nats::connect_with_options(
+        nats_url,
+        async_nats::ConnectOptions::with_nkey(nats_nkey.to_string()),
+    )
+    .await
+    .context(format!("Connecting to {nats_url}"))?;
 
     let max_payload_size = client.server_info().max_payload;
     info!("NATS Publisher: max_payload_size={max_payload_size}");
@@ -132,24 +127,36 @@ pub mod tests {
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
 
     #[tokio::test]
-    async fn returns_authorization_error_without_nkey() {
-        assert!(connect(NATS_URL, None, Some(get_random_connection_id()))
+    async fn returns_signature_error_empty_nkey() {
+        assert!(connect(&get_url(), "", Some(get_random_connection_id()))
             .await
             .is_err_and(|e| {
                 e.source()
                     .expect("An error source must exist")
                     .to_string()
-                    .contains("authorization violation: nats: authorization violation")
+                    .contains("failed signing nonce")
             }));
     }
 
     #[tokio::test]
-    async fn connects_to_nats_with_nkey() {
-        setup_env();
+    async fn returns_authorization_error_invalid_nkey() {
+        assert!(connect(
+            &get_url(),
+            "some-invalid-nkey",
+            Some(get_random_connection_id())
+        )
+        .await
+        .is_err_and(|e| {
+            e.source()
+                .expect("An error source must exist")
+                .to_string()
+                .contains("failed signing nonce")
+        }));
+    }
 
-        let nats = connect(NATS_URL, nkey(), Some(get_random_connection_id()))
-            .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+    #[tokio::test]
+    async fn connects_to_nats_with_nkey() {
+        let nats = get_nats_connection(&get_random_connection_id()).await;
 
         assert!(nats
             .get_last_raw_messages_by_all_subjects()
@@ -164,21 +171,9 @@ pub mod tests {
 
     #[tokio::test]
     async fn returns_max_payload_size_allowed_on_the_connection() {
-        setup_env();
-
-        let nats = connect(NATS_URL, nkey(), Some(get_random_connection_id()))
-            .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"));
+        let nats = get_nats_connection(&get_random_connection_id()).await;
 
         assert_eq!(nats.max_payload_size, 8_388_608)
-    }
-
-    pub async fn get_nats_connection(connection_id: &str) -> NatsConnection {
-        setup_env();
-
-        connect(NATS_URL, nkey(), Some(connection_id.to_string()))
-            .await
-            .expect(&format!("Ensure NATS server is running at {NATS_URL}"))
     }
 
     pub fn get_random_connection_id() -> String {
@@ -188,11 +183,17 @@ pub mod tests {
         format!("connection-{connection_id}")
     }
 
-    const NATS_URL: &str = "nats://localhost:4222";
-    fn setup_env() {
-        dotenvy::dotenv().ok();
+    pub async fn get_nats_connection(connection_id: &str) -> NatsConnection {
+        let url = &get_url();
+
+        connect(url, &get_nkey(), Some(connection_id.to_string()))
+            .await
+            .expect(&format!("Ensure NATS server is running at {url}"))
     }
-    fn nkey() -> Option<String> {
-        std::env::var("NATS_NKEY").ok()
+    fn get_url() -> String {
+        dotenvy::var("NATS_URL").unwrap_or("nats://localhost:4222".to_string())
+    }
+    fn get_nkey() -> String {
+        dotenvy::var("NATS_NKEY_SEED").unwrap()
     }
 }

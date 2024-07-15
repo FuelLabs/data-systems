@@ -1,12 +1,14 @@
-version: '3.9'
-
 services:
   nats:
+    profiles: [all, nats]
     image: nats:latest
     ports: [4222:4222, 8222:8222]
     volumes: [../crates/fuel-core-nats/nats.conf:/etc/nats/nats.conf]
     command: [-m, '8222', --name=fuel-core-nats-server, --js, --config=/etc/nats/nats.conf]
+    env_file: [./../.env]
+
   fuel-core-nats:
+    profiles: [all, fuel]
     image: fuel-core-nats:latest
     depends_on: [nats]
     env_file: [./../.env]

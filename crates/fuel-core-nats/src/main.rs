@@ -12,8 +12,8 @@ pub struct Cli {
     )]
     nats_url: String,
     /// The NKEY seed. It is usually prefixed with an 'S'
-    #[arg(long, value_name = "NKEY", env = "NATS_NKEY")]
-    nats_nkey: Option<String>,
+    #[arg(long, value_name = "NKEY_SEED", env = "NATS_NKEY_SEED")]
+    nats_nkey: String,
     #[command(flatten)]
     fuel_core_config: fuel_core_bin::cli::run::Command,
 }
@@ -30,10 +30,9 @@ async fn main() -> anyhow::Result<()> {
     service.start()?;
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
-
     let publisher = fuel_core_nats::Publisher::new(
         &cli.nats_url,
-        cli.nats_nkey,
+        &cli.nats_nkey,
         chain_id,
         *base_asset_id,
         service.shared.database.clone(),
