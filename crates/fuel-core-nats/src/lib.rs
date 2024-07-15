@@ -37,7 +37,7 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         nats_url: &str,
-        nats_nkey: Option<String>,
+        nats_nkey: &str,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,

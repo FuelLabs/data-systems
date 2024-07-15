@@ -2,8 +2,9 @@
 #  Setup
 # ------------------------------------------------------------
 
-TARGET ?= aarch64-apple-darwin
 PACKAGE ?= fuel-core-nats
+TARGET ?= aarch64-apple-darwin
+DOCKER_PROFILE ?= all
 
 .PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 
@@ -27,47 +28,36 @@ setup: check-commands
 # ------------------------------------------------------------
 #  Development
 # ------------------------------------------------------------
-# Starts all services
-start:	COMMANDS=docker
-start:	check-commands
-	docker compose -f docker/docker-compose.yml up
 
-stop:
-	docker compose -f docker/docker-compose.yml down
+start: check-commands
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml up -d
 
-start.nats:	COMMANDS=docker
-start.nats: check-commands
-	docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 \
-	--mount type=bind,source="$$(pwd)"/crates/fuel-core-nats/nats.conf,target=/etc/nats/nats.conf \
-	--name fuel-core-nats-server \
-	-ti nats:latest --js --config /etc/nats/nats.conf
+stop: check-commands
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down
 
-stop.nats:
-	docker rm -f $$(docker ps -a -q --filter ancestor=nats:latest)
+restart: stop start
 
-# Starts fuel-core-nats service
-start.fuel-core-nats:
-	./scripts/start-fuel-core-nats.sh
+clean/docker: stop
+	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down -v --rmi all --remove-orphans
+
+start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
+start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core: DOCKER_PROFILE = fuel
+
+start/nats start/fuel-core: start
+stop/nats stop/fuel-core: stop
+restart/nats restart/fuel-core: restart
+clean/nats clean/fuel-core: clean/docker
 
 dev-watch:
 	cargo watch -- cargo run
 
-# ------------------------------------------------------------
-# Build & Release
-# ------------------------------------------------------------
-
-build: install
-	cargo build --release --target "$(TARGET)" --package "$(PACKAGE)"
-
-run:
-	cargo run --release
-
-clean:
-	cargo clean
-	rm -rf release
+generate-nkey:
+	@NKEY_OUTPUT=$$(nk -gen user -pubout); \
+	echo "NATS_NKEY_SEED=$$(echo "$$NKEY_OUTPUT" | sed -n '1p')" >> .env; \
+	echo "NATS_NKEY_USER=$$(echo "$$NKEY_OUTPUT" | sed -n '2p')" >> .env
 
 # ------------------------------------------------------------
-# Format
+# Formatting
 # ------------------------------------------------------------
 
 fmt: fmt-cargo fmt-rust fmt-markdown
@@ -101,6 +91,13 @@ lint-clippy:
 
 lint-markdown:
 	npx prettier *.md **/*.md --check --no-error-on-unmatched-pattern
+
+# ------------------------------------------------------------
+# Build
+# ------------------------------------------------------------
+
+build:
+	cargo build --all
 
 # ------------------------------------------------------------
 # Test
