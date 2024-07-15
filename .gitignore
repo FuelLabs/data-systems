@@ -12,5 +12,5 @@ lcov.info
 .env
 pnpm-lock.yaml
 node_modules/
-./package.json
+package.json
 tmp
