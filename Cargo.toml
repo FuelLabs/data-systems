@@ -3,7 +3,7 @@ name = "fuel-nats"
 version = "0.0.1"
 
 [workspace]
-members = ["crates/fuel-core-nats"]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -20,7 +20,6 @@ anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 dotenvy = "0.15"
 futures = "0.3"
-tokio = { version = "1.38", features = ["full"] }
 fuel-core-bin = { version = "0.30", features = [
     "env",
     "p2p",
@@ -31,6 +30,10 @@ fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb", "test-h
 fuel-core-client = { version = "0.30" }
 fuel-core-types = { version = "0.30", features = ["test-helpers"] }
 fuel-core-services = "0.30"
+rand = "0.8"
+strum = "0.26"
+strum_macros = "0.26"
+tokio = { version = "1.38", features = ["full"] }
 
 [profile.release]
 opt-level = 3
