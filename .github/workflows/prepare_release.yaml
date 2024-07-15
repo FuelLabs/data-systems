@@ -49,14 +49,6 @@ jobs:
         with:
           toolchain: nightly
 
-      - uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-sort@1.0.9
-
-      - uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-edit@0.12.3
-
       - uses: knope-dev/action@v2.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -101,4 +101,4 @@ CMD exec ./fuel-core-nats \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --service-name "${SERVICE_NAME}" \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
-    --nats-url "${NATS_URL}" \
+    --nats-url "${NATS_URL}"

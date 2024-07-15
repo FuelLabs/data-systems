@@ -1,5 +1,5 @@
 name: Setup Rust
-description: Install Rust tooling with Cache
+description: Install Rust tooling with Cache and Build Dependencies
 
 inputs:
   target:
@@ -21,23 +21,34 @@ runs:
         target: ${{ inputs.target }}
         components: clippy, rustfmt
 
-    - name: Cache Rust toolchain
+    - uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: cargo-sort@1.0.9
+
+    - uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: cargo-edit@0.12.3
+
+    - name: Cache Rust toolchain and dependencies
       uses: actions/cache@v4
       with:
         path: |
           ~/.rustup
           ~/.cargo/bin
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
         key: ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-
 
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-rust-target-${{ inputs.toolchain }}-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |-
-          ${{ runner.os }}-rust-target-${{ inputs.toolchain }}-${{ inputs.target }}-
+    - name: Run sccache-cache only on non-release runs
+      if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+      uses: mozilla-actions/sccache-action@v0.0.5
+
+    - name: Set Rust caching env vars only on non-release runs
+      shell: sh
+      if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+      run: |-
+        echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
