@@ -14,9 +14,10 @@ services:
     env_file: [./../.env]
     environment: [NATS_URL=nats://nats:4222]
     build:
-      context: .
-      dockerfile: fuel-core-nats.Dockerfile
+      context: ..
+      dockerfile: docker/fuel-core-nats.Dockerfile
     volumes: [fuel-core-nats-db:/mnt/db]
+    ports: [4000:4000]
 
 volumes:
   fuel-core-nats-db:
