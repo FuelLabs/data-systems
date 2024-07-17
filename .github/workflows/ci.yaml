@@ -38,10 +38,9 @@ jobs:
             repo
             deps
             release
-            data-stream
             core
-            sdk-rust
-            sdk-ts
+            fuel-core-nats
+            fuel-streams
 
   lockfile:
     name: Validate Lockfile
