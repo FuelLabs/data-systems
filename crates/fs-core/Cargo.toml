@@ -1,0 +1,25 @@
+[package]
+name = "fs_core"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+bytes = "1.6.0"
+dotenvy = { workspace = true }
+fuel-core = { workspace = true }
+fuel-core-types = { workspace = true }
+futures-util = "0.3.30"
+rand = { workspace = true }
+serde_json = "1.0.117"
+strum = { workspace = true }
+strum_macros = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
