@@ -14,12 +14,6 @@ repos:
       - id: check-case-conflict
       - id: detect-private-key
 
-  # - repo: https://github.com/lyz-code/yamlfix/
-  #   rev: 1.16.0
-  #   hooks:
-  #     - id: yamlfix
-  #       args: [-c, .yamlfix.toml]
-
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.16.0
     hooks:
@@ -41,12 +35,12 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
-      - id: fmt-markdown
-        name: lint-markdown
-        description: Lint config files using Prettier
+      - id: prettier
+        name: prettier
+        description: Format config files using Prettier
         entry: npx prettier --write --no-error-on-unmatched-pattern
         language: system
-        types: [markdown]
+        types: [markdown, yaml]
       - id: fmt-rust
         name: fmt-rust
         description: Format files with cargo fmt.

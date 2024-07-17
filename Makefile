@@ -71,6 +71,9 @@ fmt-rust:
 fmt-markdown:
 	npx prettier *.md **/*.md --write --no-error-on-unmatched-pattern
 
+fmt-yaml:
+	npx prettier *.yaml **/*.yaml --write --no-error-on-unmatched-pattern
+
 # ------------------------------------------------------------
 # Validate code
 # ------------------------------------------------------------

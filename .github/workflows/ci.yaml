@@ -42,6 +42,13 @@ jobs:
             fuel-core-nats
             fuel-streams
 
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v3
+      - uses: pre-commit/action@v3.0.1
+
   lockfile:
     name: Validate Lockfile
     runs-on: ubuntu-latest
