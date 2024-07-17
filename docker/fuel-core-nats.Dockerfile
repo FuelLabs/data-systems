@@ -67,6 +67,7 @@ ENV RELAYER=
 ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
+ENV NATS_NKEY_SEED=
 
 WORKDIR /usr/src
 
@@ -87,18 +88,22 @@ EXPOSE $P2P_PORT
 # https://stackoverflow.com/a/40454758
 # hadolint ignore=DL3025
 CMD exec ./fuel-core-nats \
+    --service-name "${SERVICE_NAME}" \
+    --keypair $KEYPAIR \
+    --relayer $RELAYER \
     --ip $IP \
     --port $PORT \
+    --peering-port $P2P \
     --db-path "${DB_PATH}" \
-    --enable-p2p \
-    --poa-instant $POA_INSTANT \
     --utxo-validation \
-    --keypair $KEYPAIR \
+    --poa-instant $POA_INSTANT \
+    --enable-p2p \
+    --reserved-nodes /dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf \
+    --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
     --enable-relayer \
-    --relayer $RELAYER \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --service-name "${SERVICE_NAME}" \
-    --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
-    --nats-url "${NATS_URL}"
+    --sync-block-stream-buffer-size 30 \
+    --nats-url "${NATS_URL}" \
+    --nats-nkey "${NATS_NKEY_SEED}"
