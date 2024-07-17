@@ -1,8 +1,7 @@
 mod subjects;
-pub use subjects::*;
-
 use anyhow::Context;
 use async_nats::jetstream::stream;
+pub use subjects::*;
 use tracing::info;
 
 #[allow(dead_code)]
@@ -123,8 +122,9 @@ pub async fn connect(
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use async_nats::jetstream::stream::LastRawMessageErrorKind;
+
+    use super::*;
 
     #[tokio::test]
     async fn returns_signature_error_empty_nkey() {

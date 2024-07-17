@@ -1,5 +1,4 @@
 use clap::Parser;
-
 use fuel_core_services::Service;
 
 #[derive(Parser)]
