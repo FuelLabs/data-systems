@@ -47,6 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
+        with:
+          toolchain: nightly
+          target: x86_64-unknown-linux-gnu
       - uses: actions/setup-python@v3
       - uses: pre-commit/action@v3.0.1
 
