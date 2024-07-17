@@ -1,19 +1,19 @@
 [package]
 name = "fuel-core-nats"
-version = { workspace = true }
 authors = { workspace = true }
+keywords = { workspace = true }
 edition = { workspace = true }
 homepage = { workspace = true }
-keywords = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
+version = { workspace = true }
 description = "Fuel library to handle data streams using Nats"
 
 [dependencies]
-anyhow = "1.0.86"
-async-nats = "0.35.1"
+anyhow = { workspace = true }
+async-nats = { workspace = true }
 bytes = "1.6.0"
-clap = "4.5.4"
+clap = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
@@ -26,4 +26,4 @@ serde_json = "1.0.117"
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tokio = { workspace = true }
-tracing = "0.1.40"
+tracing = { workspace = true }
