@@ -93,7 +93,7 @@ CMD exec ./fuel-core-nats \
     --relayer $RELAYER \
     --ip $IP \
     --port $PORT \
-    --peering-port $P2P \
+    --peering-port $P2P_PORT \
     --db-path "${DB_PATH}" \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
