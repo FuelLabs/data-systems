@@ -10,3 +10,5 @@ pub use async_nats::jetstream::{
     Message as NatsMessage,
 };
 pub use async_nats::ConnectOptions as NatsConnectOptions;
+
+pub type PayloadSize = usize;

@@ -1,4 +1,5 @@
 use async_nats::connection;
+use bytes::Bytes;
 use futures_util::StreamExt;
 use tracing::info;
 
@@ -10,10 +11,11 @@ use super::types::{
     NatsMessage,
     NatsStorageType,
     NatsStream,
+    PayloadSize,
     PullConsumerConfig,
 };
 use super::{NatsError, Subject, Subjects};
-use crate::types::{Bytes, PayloadSize, Result};
+use crate::types::BoxedResult;
 
 #[derive(Debug, Clone)]
 pub struct NatsClient {
@@ -28,7 +30,7 @@ impl NatsClient {
         url: impl ToString,
         nkey: Option<String>,
         conn_id: &impl ToString,
-    ) -> Result<Self> {
+    ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
         let url = url.to_string();
         let options =
@@ -52,17 +54,15 @@ impl NatsClient {
         })
     }
 
-    pub fn is_connected(&self) -> Result<&Self> {
+    pub fn check_connection(&self) -> Result<&Self, NatsError> {
         let client = self.client.to_owned();
         let conn_state = client.connection_state();
         match conn_state {
             connection::State::Pending => {
-                anyhow::bail!(NatsError::ConnectionPending(self.url.to_owned()))
+                Err(NatsError::ConnectionPending(self.url.to_owned()))
             }
             connection::State::Disconnected => {
-                anyhow::bail!(NatsError::ConnectionDisconnected(
-                    self.url.to_owned()
-                ))
+                Err(NatsError::ConnectionDisconnected(self.url.to_owned()))
             }
             connection::State::Connected => Ok(self),
         }
@@ -72,15 +72,15 @@ impl NatsClient {
         &self,
         payload: Bytes,
         subject: Subject,
-    ) -> Result<()> {
+    ) -> Result<(), NatsError> {
         let payload_size = payload.len();
         let max_payload_size = self.max_payload_size;
         if payload_size > max_payload_size {
-            anyhow::bail!(NatsError::PayloadTooLarge {
+            return Err(NatsError::PayloadTooLarge {
                 subject,
                 payload_size,
-                max_payload_size
-            })
+                max_payload_size,
+            });
         }
 
         Ok(())
@@ -91,7 +91,7 @@ impl NatsClient {
         context: &JetStreamContext,
         name: &str,
         subjects: Subjects,
-    ) -> Result<NatsStream> {
+    ) -> Result<NatsStream, NatsError> {
         let stream = context
             .get_or_create_stream(JetStreamConfig {
                 name: format!("{}_{}", self.conn_id, name),
@@ -100,7 +100,10 @@ impl NatsClient {
                 ..Default::default()
             })
             .await
-            .map_err(|e| NatsError::CreateStreamFailed { source: e })?;
+            .map_err(|e| NatsError::CreateStreamFailed {
+                name: name.to_owned(),
+                source: e,
+            })?;
 
         Ok(stream)
     }
@@ -110,7 +113,7 @@ impl NatsClient {
         stream: &NatsStream,
         name: &str,
         subjects: Subjects,
-    ) -> Result<NatsConsumer<PullConsumerConfig>> {
+    ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
         let name = format!("{}_consumer_{}", self.conn_id, name);
         let consumer = stream
             .get_or_create_consumer(
@@ -122,7 +125,10 @@ impl NatsClient {
                 },
             )
             .await
-            .map_err(|e| NatsError::CreateConsumerFailed { source: e })?;
+            .map_err(|e| NatsError::CreateConsumerFailed {
+                name: name.to_owned(),
+                source: e,
+            })?;
 
         Ok(consumer)
     }
@@ -138,7 +144,7 @@ impl From<NatsClient> for async_nats::Client {
 pub struct Nats {
     pub conn_id: String,
     pub client: NatsClient,
-    pub context: JetStreamContext,
+    pub jetstream: JetStreamContext,
     pub main_stream: NatsStream,
 }
 
@@ -147,17 +153,17 @@ impl Nats {
         conn_id: String,
         nats_url: &str,
         nats_nkey: Option<String>,
-    ) -> Result<Self> {
+    ) -> Result<Self, NatsError> {
         let client = NatsClient::connect(nats_url, nats_nkey, &conn_id).await?;
-        let context = async_nats::jetstream::new(client.to_owned().into());
+        let jetstream = async_nats::jetstream::new(client.to_owned().into());
         let subjects = Subjects::build_all(&conn_id);
         let main_stream =
-            client.create_stream(&context, "fuel", subjects).await?;
+            client.create_stream(&jetstream, "fuel", subjects).await?;
 
         Ok(Self {
             conn_id,
             client,
-            context,
+            jetstream,
             main_stream,
         })
     }
@@ -166,10 +172,10 @@ impl Nats {
         &self,
         subject: Subject,
         payload: Bytes,
-    ) -> Result<()> {
-        let _conn = self.client.is_connected()?;
+    ) -> BoxedResult<()> {
         let subject = subject.with_prefix(&self.conn_id);
-        let ack_future = self.context.publish(subject, payload).await?;
+
+        let ack_future = self.jetstream.publish(subject, payload).await?;
         ack_future.await?;
         Ok(())
     }
@@ -178,10 +184,13 @@ impl Nats {
         &self,
         name: &impl ToString,
         subjects: Subjects,
-        handler: impl Fn(NatsMessage) -> Result<()> + Send + Sync + 'static,
-    ) -> Result<()> {
+        handler: impl Fn(NatsMessage) -> Result<(), NatsError>
+            + Send
+            + Sync
+            + 'static,
+    ) -> BoxedResult<()> {
         let client = self.client.to_owned();
-        let _conn = client.is_connected()?;
+        let _conn = client.check_connection()?;
         let consumer = client
             .create_pull_consumer(
                 &self.main_stream,

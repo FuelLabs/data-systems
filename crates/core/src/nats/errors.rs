@@ -1,10 +1,10 @@
 use async_nats::jetstream::context::CreateStreamErrorKind;
 use async_nats::jetstream::stream::ConsumerErrorKind;
-use async_nats::ConnectErrorKind;
+use async_nats::{error, ConnectErrorKind};
 use thiserror::Error;
 
+use super::types::PayloadSize;
 use super::Subject;
-use crate::types::PayloadSize;
 
 #[derive(Error, Debug)]
 pub enum NatsError {
@@ -15,27 +15,30 @@ pub enum NatsError {
         max_payload_size: PayloadSize,
     },
 
-    #[error("Failed to create NATS stream")]
+    #[error("Failed to create NATS stream {name}: {source}")]
     CreateStreamFailed {
+        name: String,
         #[source]
-        source: async_nats::error::Error<CreateStreamErrorKind>,
+        source: error::Error<CreateStreamErrorKind>,
     },
 
-    #[error("Failed to create NATS consumer")]
+    #[error("Failed to create NATS consumer {name}: {source}")]
     CreateConsumerFailed {
+        name: String,
         #[source]
-        source: async_nats::error::Error<ConsumerErrorKind>,
+        source: error::Error<ConsumerErrorKind>,
     },
 
-    #[error("Failed to connect to NATS server at {url}")]
+    #[error("Failed to connect to NATS server at {url}: {source}")]
     ConnectError {
         url: String,
         #[source]
-        source: async_nats::error::Error<ConnectErrorKind>,
+        source: error::Error<ConnectErrorKind>,
     },
 
     #[error("Connection to NATS server at {0} is pending")]
     ConnectionPending(String),
+
     #[error("Connection to NATS server at {0} is disconnected")]
     ConnectionDisconnected(String),
 }

@@ -1,10 +1,10 @@
+use std::error::Error;
+
 // --------------------------------------------------------------------------------
 // General
 // --------------------------------------------------------------------------------
 
-pub type Result<T, E = anyhow::Error> = anyhow::Result<T, E>;
-pub type Bytes = bytes::Bytes;
-pub type PayloadSize = usize;
+pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
 
 // --------------------------------------------------------------------------------
 // Block
