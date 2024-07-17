@@ -2171,26 +2171,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 
 [[package]]
-name = "fs_core"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "async-nats",
- "bytes",
- "dotenvy",
- "fuel-core",
- "fuel-core-types",
- "futures-util",
- "rand",
- "serde_json",
- "strum 0.26.2",
- "strum_macros 0.26.4",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "fuel-asm"
 version = "0.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2708,17 +2688,6 @@ name = "fuel-storage"
 version = "0.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8be80f1cf059ac87c63fa21b5fa3036472bdb4757c3ba5bae16f0256651e37a1"
-
-[[package]]
-name = "fuel-streams"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "async-nats",
- "dotenvy",
- "thiserror",
- "tracing",
-]
 
 [[package]]
 name = "fuel-tx"
