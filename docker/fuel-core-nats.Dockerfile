@@ -49,7 +49,6 @@ ARG IP=0.0.0.0
 ARG PORT=4000
 ARG P2P_PORT=30333
 ARG DB_PATH=/mnt/db/
-ARG SNAPSHOT_PATH=./mnt/config
 ARG POA_INSTANT=false
 ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
@@ -60,7 +59,6 @@ ENV IP=$IP
 ENV PORT=$PORT
 ENV DB_PATH=$DB_PATH
 ENV POA_INSTANT=false
-ENV SNAPSHOT_PATH=$SNAPSHOT_PATH
 ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
 ENV SERVICE_NAME=$SERVICE_NAME
 ENV SYNC_HEADER_BATCH_SIZE=$SYNC_HEADER_BATCH_SIZE
@@ -85,7 +83,7 @@ RUN apt-get update -y \
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
 
-COPY /docker/chain-config ./fuel-core-nats/mnt/config
+COPY /docker/chain-config ./chain-config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
@@ -100,7 +98,7 @@ CMD exec ./fuel-core-nats \
     --db-path "${DB_PATH}" \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
-    --snapshot "${SNAPSHOT_PATH}" \
+    --snapshot ./chain-config \
     --enable-p2p \
     --reserved-nodes $RESERVED_NODE_DNS \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
