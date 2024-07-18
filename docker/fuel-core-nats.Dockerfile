@@ -85,7 +85,7 @@ RUN apt-get update -y \
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
 
-COPY docker/chain-config /mnt/config
+COPY /docker/chain-config /mnt/config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
@@ -100,7 +100,7 @@ CMD exec ./fuel-core-nats \
     --db-path "${DB_PATH}" \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
-    --snapshot $SNAPSHOT_PATH \
+    --snapshot "${SNAPSHOT_PATH}" \
     --enable-p2p \
     --reserved-nodes $RESERVED_NODE_DNS \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
