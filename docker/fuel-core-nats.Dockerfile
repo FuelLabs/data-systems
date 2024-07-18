@@ -49,7 +49,7 @@ ARG IP=0.0.0.0
 ARG PORT=4000
 ARG P2P_PORT=30333
 ARG DB_PATH=/mnt/db/
-ARG SNAPSHOT_PATH=/mnt/config
+ARG SNAPSHOT_PATH=./mnt/config
 ARG POA_INSTANT=false
 ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
@@ -85,7 +85,7 @@ RUN apt-get update -y \
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
 
-COPY /docker/chain-config /mnt/config
+COPY /docker/chain-config ./mnt/config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
