@@ -2,9 +2,6 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 FROM --platform=$BUILDPLATFORM rust:1.75.0 AS chef
 
-RUN mkdir -p /mnt/config
-COPY docker/chain-config /mnt/config
-
 ARG TARGETPLATFORM
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
 WORKDIR /build/
@@ -87,6 +84,8 @@ RUN apt-get update -y \
 
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
+
+COPY docker/chain-config /mnt/config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
