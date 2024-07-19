@@ -1,17 +1,38 @@
+use std::collections::HashMap;
+
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::types::{BlockHeight, TransactionKind};
 
-#[derive(Debug, EnumIter, Clone)]
+pub type SubjectMap = HashMap<SubjectName, Vec<String>>;
+
+#[derive(Debug, EnumIter, Clone, Hash, Eq, PartialEq)]
 pub enum SubjectName {
     Blocks,
     Transactions,
 }
 
 impl SubjectName {
+    pub fn to_vec_string(prefix: &str) -> Vec<String> {
+        SubjectName::iter()
+            .map(|name| name.with_prefix(prefix))
+            .collect()
+    }
+    pub fn to_map(prefix: &str) -> SubjectMap {
+        SubjectName::iter()
+            .map(|value| (value.to_owned(), vec![value.with_prefix(prefix)]))
+            .collect()
+    }
+
     pub fn with_prefix(&self, prefix: &str) -> String {
         [prefix, &self.to_string()].concat()
+    }
+    pub fn entity(&self) -> &'static str {
+        match self {
+            SubjectName::Blocks => "blocks",
+            SubjectName::Transactions => "transactions",
+        }
     }
 }
 
@@ -68,35 +89,15 @@ impl Subject {
 
 #[derive(Debug, Clone)]
 pub struct Subjects {
-    prefix: String,
-    subjects: Vec<SubjectName>,
+    pub prefix: String,
+    pub map: SubjectMap,
 }
 
 impl Subjects {
-    pub fn build(prefix: &str, subjects: Vec<SubjectName>) -> Self {
+    pub fn new(prefix: &str) -> Self {
         Self {
             prefix: prefix.to_string(),
-            subjects,
+            map: SubjectName::to_map(prefix),
         }
-    }
-
-    pub fn build_all(prefix: &str) -> Self {
-        Self {
-            prefix: prefix.to_string(),
-            subjects: SubjectName::iter().collect(),
-        }
-    }
-
-    pub fn to_vec(&self) -> Vec<String> {
-        self.subjects
-            .iter()
-            .map(|name| name.with_prefix(&self.prefix))
-            .collect()
-    }
-}
-
-impl From<Subjects> for Vec<String> {
-    fn from(val: Subjects) -> Self {
-        val.to_vec()
     }
 }

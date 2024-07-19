@@ -11,11 +11,13 @@ version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
+async-trait = "0.1.81"
 bytes = "1.6.0"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
 futures-util = "0.3.30"
+mockall = "0.12.1"
 rand = { workspace = true }
 serde_json = "1.0.117"
 strum = { workspace = true }

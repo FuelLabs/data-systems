@@ -41,4 +41,7 @@ pub enum NatsError {
 
     #[error("Connection to NATS server at {0} is disconnected")]
     ConnectionDisconnected(String),
+
+    #[error("Subject {0} not found")]
+    SubjectNotFound(String),
 }

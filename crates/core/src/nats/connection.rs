@@ -1,151 +1,17 @@
-use async_nats::connection;
+use async_nats::jetstream::consumer::PullConsumer;
 use bytes::Bytes;
 use futures_util::StreamExt;
-use tracing::info;
 
-use super::types::{
-    JetStreamConfig,
-    JetStreamContext,
-    NatsConnectOptions,
-    NatsConsumer,
-    NatsMessage,
-    NatsStorageType,
-    NatsStream,
-    PayloadSize,
-    PullConsumerConfig,
-};
-use super::{NatsError, Subject, Subjects};
+use super::types::{JetStreamContext, NatsMessage, NatsStream};
+use super::{NatsClient, NatsError, Streams, Subject, SubjectName};
 use crate::types::BoxedResult;
-
-#[derive(Debug, Clone)]
-pub struct NatsClient {
-    pub url: String,
-    pub conn_id: String,
-    pub client: async_nats::Client,
-    max_payload_size: PayloadSize,
-}
-
-impl NatsClient {
-    pub async fn connect(
-        url: impl ToString,
-        nkey: Option<String>,
-        conn_id: &impl ToString,
-    ) -> Result<Self, NatsError> {
-        let conn_id = conn_id.to_string();
-        let url = url.to_string();
-        let options =
-            nkey.map(NatsConnectOptions::with_nkey).unwrap_or_default();
-
-        let client = async_nats::connect_with_options(&url, options)
-            .await
-            .map_err(|e| NatsError::ConnectError {
-                url: url.to_owned(),
-                source: e,
-            })?;
-
-        let max_payload_size = client.server_info().max_payload;
-        info!("NATS Connected: url={url} max_payload_size={max_payload_size}");
-
-        Ok(Self {
-            url,
-            conn_id,
-            client,
-            max_payload_size,
-        })
-    }
-
-    pub fn check_connection(&self) -> Result<&Self, NatsError> {
-        let client = self.client.to_owned();
-        let conn_state = client.connection_state();
-        match conn_state {
-            connection::State::Pending => {
-                Err(NatsError::ConnectionPending(self.url.to_owned()))
-            }
-            connection::State::Disconnected => {
-                Err(NatsError::ConnectionDisconnected(self.url.to_owned()))
-            }
-            connection::State::Connected => Ok(self),
-        }
-    }
-
-    pub fn validate_payload(
-        &self,
-        payload: Bytes,
-        subject: Subject,
-    ) -> Result<(), NatsError> {
-        let payload_size = payload.len();
-        let max_payload_size = self.max_payload_size;
-        if payload_size > max_payload_size {
-            return Err(NatsError::PayloadTooLarge {
-                subject,
-                payload_size,
-                max_payload_size,
-            });
-        }
-
-        Ok(())
-    }
-
-    pub async fn create_stream(
-        &self,
-        context: &JetStreamContext,
-        name: &str,
-        subjects: Subjects,
-    ) -> Result<NatsStream, NatsError> {
-        let stream = context
-            .get_or_create_stream(JetStreamConfig {
-                name: format!("{}_{}", self.conn_id, name),
-                storage: NatsStorageType::File,
-                subjects: subjects.into(),
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| NatsError::CreateStreamFailed {
-                name: name.to_owned(),
-                source: e,
-            })?;
-
-        Ok(stream)
-    }
-
-    pub async fn create_pull_consumer(
-        &self,
-        stream: &NatsStream,
-        name: &str,
-        subjects: Subjects,
-    ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
-        let name = format!("{}_consumer_{}", self.conn_id, name);
-        let consumer = stream
-            .get_or_create_consumer(
-                name.as_str(),
-                PullConsumerConfig {
-                    durable_name: Some(name.to_owned()),
-                    filter_subjects: subjects.into(),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|e| NatsError::CreateConsumerFailed {
-                name: name.to_owned(),
-                source: e,
-            })?;
-
-        Ok(consumer)
-    }
-}
-
-impl From<NatsClient> for async_nats::Client {
-    fn from(client: NatsClient) -> Self {
-        client.client.clone()
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Nats {
     pub conn_id: String,
     pub client: NatsClient,
     pub jetstream: JetStreamContext,
-    pub main_stream: NatsStream,
+    pub streams: Streams,
 }
 
 impl Nats {
@@ -156,15 +22,13 @@ impl Nats {
     ) -> Result<Self, NatsError> {
         let client = NatsClient::connect(nats_url, nats_nkey, &conn_id).await?;
         let jetstream = async_nats::jetstream::new(client.to_owned().into());
-        let subjects = Subjects::build_all(&conn_id);
-        let main_stream =
-            client.create_stream(&jetstream, "fuel", subjects).await?;
+        let streams = Streams::new(&client, &jetstream).await?;
 
         Ok(Self {
             conn_id,
             client,
             jetstream,
-            main_stream,
+            streams,
         })
     }
 
@@ -182,23 +46,12 @@ impl Nats {
 
     pub async fn consume(
         &self,
-        name: &impl ToString,
-        subjects: Subjects,
+        consumer: PullConsumer,
         handler: impl Fn(NatsMessage) -> Result<(), NatsError>
             + Send
             + Sync
             + 'static,
     ) -> BoxedResult<()> {
-        let client = self.client.to_owned();
-        let _conn = client.check_connection()?;
-        let consumer = client
-            .create_pull_consumer(
-                &self.main_stream,
-                name.to_string().as_str(),
-                subjects,
-            )
-            .await?;
-
         let mut messages = consumer.messages().await?;
         while let Some(message) = messages.next().await {
             let message = message?;
@@ -208,7 +61,15 @@ impl Nats {
         Ok(())
     }
 
-    pub fn client(&self) -> &NatsClient {
+    pub fn get_client(&self) -> &NatsClient {
         &self.client
+    }
+
+    pub fn get_stream(&self, subject: &SubjectName) -> Option<&NatsStream> {
+        self.streams.stream_of(subject)
+    }
+
+    pub fn get_subjects(&self, subject: &SubjectName) -> Option<&Vec<String>> {
+        self.streams.subjects_of(subject)
     }
 }
