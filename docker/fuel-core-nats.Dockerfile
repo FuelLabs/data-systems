@@ -53,6 +53,7 @@ ARG POA_INSTANT=false
 ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
 ARG SYNC_HEADER_BATCH_SIZE=100
+ARG RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
 
 ENV IP=$IP
 ENV PORT=$PORT
@@ -68,6 +69,7 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 ENV NATS_NKEY_SEED=
+ENV RESERVED_NODE_DNS=
 
 WORKDIR /usr/src
 
@@ -81,8 +83,7 @@ RUN apt-get update -y \
 COPY --from=builder /build/target/release/fuel-core-nats .
 COPY --from=builder /build/target/release/fuel-core-nats.d .
 
-EXPOSE $PORT
-EXPOSE $P2P_PORT
+COPY /docker/chain-config ./chain-config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
@@ -97,8 +98,9 @@ CMD exec ./fuel-core-nats \
     --db-path "${DB_PATH}" \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
+    --snapshot ./chain-config \
     --enable-p2p \
-    --reserved-nodes /dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf \
+    --reserved-nodes $RESERVED_NODE_DNS \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
     --enable-relayer \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
