@@ -153,7 +153,7 @@ impl Publisher {
         &self,
         block: &Block<Transaction>,
     ) -> anyhow::Result<()> {
-        let height = block.header().consensus().height;
+        let height: u32 = *block.header().consensus().height;
 
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
