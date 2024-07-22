@@ -36,12 +36,6 @@ pub enum NatsError {
         source: error::Error<ConnectErrorKind>,
     },
 
-    #[error("Connection to NATS server at {0} is pending")]
-    ConnectionPending(String),
-
-    #[error("Connection to NATS server at {0} is disconnected")]
-    ConnectionDisconnected(String),
-
-    #[error("Subject {0} not found")]
-    SubjectNotFound(String),
+    #[error("No valid stream {name} was found no method {method}")]
+    NoStreamFound { name: String, method: &'static str },
 }

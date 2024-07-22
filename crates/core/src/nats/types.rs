@@ -1,3 +1,4 @@
+pub use async_nats::jetstream::consumer::pull::Config as PullConsumerConfig;
 pub use async_nats::jetstream::consumer::Consumer as NatsConsumer;
 pub use async_nats::jetstream::stream::{
     Config as JetStreamConfig,

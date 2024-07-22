@@ -1,9 +1,7 @@
-use async_nats::jetstream::consumer::PullConsumer;
 use bytes::Bytes;
-use futures_util::StreamExt;
 
-use super::types::{JetStreamContext, NatsMessage, NatsStream};
-use super::{NatsClient, NatsError, Streams, Subject, SubjectName};
+use super::types::JetStreamContext;
+use super::{NatsClient, NatsError, Streams, Subject};
 use crate::types::BoxedResult;
 
 #[derive(Debug, Clone)]
@@ -38,38 +36,8 @@ impl Nats {
         payload: Bytes,
     ) -> BoxedResult<()> {
         let subject = subject.with_prefix(&self.conn_id);
-
         let ack_future = self.jetstream.publish(subject, payload).await?;
         ack_future.await?;
         Ok(())
-    }
-
-    pub async fn consume(
-        &self,
-        consumer: PullConsumer,
-        handler: impl Fn(NatsMessage) -> Result<(), NatsError>
-            + Send
-            + Sync
-            + 'static,
-    ) -> BoxedResult<()> {
-        let mut messages = consumer.messages().await?;
-        while let Some(message) = messages.next().await {
-            let message = message?;
-            handler(message)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn get_client(&self) -> &NatsClient {
-        &self.client
-    }
-
-    pub fn get_stream(&self, subject: &SubjectName) -> Option<&NatsStream> {
-        self.streams.stream_of(subject)
-    }
-
-    pub fn get_subjects(&self, subject: &SubjectName) -> Option<&Vec<String>> {
-        self.streams.subjects_of(subject)
     }
 }
