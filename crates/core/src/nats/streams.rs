@@ -1,20 +1,21 @@
 use std::collections::HashMap;
 
 use futures_util::future::try_join_all;
-use futures_util::StreamExt;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use super::client::NatsClient;
-use super::types::{
-    JetStreamConfig,
-    JetStreamContext,
-    NatsMessage,
-    NatsStorageType,
-    NatsStream,
+use super::{
+    client::NatsClient,
+    types::{
+        JetStreamConfig,
+        NatsConsumer,
+        NatsStorageType,
+        NatsStream,
+        PullConsumerConfig,
+    },
+    NatsError,
+    SubjectName,
 };
-use super::{NatsError, SubjectName};
-use crate::types::BoxedResult;
 
 #[derive(Debug, EnumIter, Clone, Hash, Eq, PartialEq)]
 pub enum StreamKind {
@@ -60,22 +61,18 @@ pub type StreamMap = HashMap<StreamKind, NatsStream>;
 
 #[derive(Debug, Clone)]
 pub struct Streams {
-    client: NatsClient,
+    pub client: NatsClient,
     pub prefix: String,
     pub map: StreamMap,
 }
 
 impl Streams {
-    pub async fn new(
-        client: &NatsClient,
-        jetstream: &JetStreamContext,
-    ) -> Result<Self, NatsError> {
+    pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
         let prefix = client.conn_id.as_str();
         let stream_futures = StreamKind::iter().map(|stream_kind| async move {
             let name = stream_kind.get_name();
             let config = stream_kind.get_stream_config(prefix);
-            let nats_stream =
-                client.create_stream(jetstream, name, config).await?;
+            let nats_stream = client.create_stream(name, config).await?;
             Ok((stream_kind, nats_stream))
         });
 
@@ -83,7 +80,7 @@ impl Streams {
             try_join_all(stream_futures).await?.into_iter().collect();
 
         Ok(Self {
-            client: client.to_owned(),
+            client: client.clone(),
             prefix: prefix.to_string(),
             map: stream_map,
         })
@@ -93,25 +90,100 @@ impl Streams {
         self.map.get(kind)
     }
 
-    pub async fn consume_stream(
+    pub async fn consumer_from_stream(
         &self,
         kind: &StreamKind,
-        handler: impl Fn(NatsMessage) -> Result<(), NatsError>
-            + Send
-            + Sync
-            + 'static,
-    ) -> BoxedResult<()> {
+    ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
         let name = &kind.get_name();
-        let stream = self.stream_of(kind);
-        let consumer =
-            self.client.create_pull_consumer(name, stream, None).await?;
+        let stream = self.stream_of(kind).unwrap();
+        self.client.create_pull_consumer(name, stream, None).await
+    }
+}
 
-        let mut messages = consumer.messages().await?;
-        while let Some(message) = messages.next().await {
-            let message = message?;
-            handler(message)?;
+#[cfg(test)]
+mod tests {
+    use std::str::from_utf8;
+
+    use futures_util::StreamExt;
+
+    use super::*;
+    use crate::{
+        nats::{client::NatsClient, Subject},
+        types::BoxedResult,
+    };
+
+    #[tokio::test]
+    async fn new_instance() -> BoxedResult<()> {
+        let (client, cleanup) =
+            NatsClient::connect_with_testcontainer().await?;
+        let streams = Streams::new(&client).await?;
+
+        assert_eq!(streams.prefix, client.conn_id);
+        assert_eq!(streams.map.len(), StreamKind::iter().count());
+
+        cleanup.await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn testing_stream_map() -> BoxedResult<()> {
+        let (client, cleanup) =
+            NatsClient::connect_with_testcontainer().await?;
+
+        let streams = Streams::new(&client).await?;
+        for kind in StreamKind::iter() {
+            assert!(
+                streams.stream_of(&kind).is_some(),
+                "Stream {:?} not found",
+                kind
+            );
         }
 
+        cleanup.await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn consume_stream() -> BoxedResult<()> {
+        let (client, cleanup) =
+            NatsClient::connect_with_testcontainer().await?;
+        let jetstream = client.jetstream.as_ref();
+        let streams = Streams::new(&client).await?;
+        let mut consumer =
+            streams.consumer_from_stream(&StreamKind::Blocks).await?;
+
+        // Check if the consumer was created with the correct name
+        let info = consumer.info().await?;
+        let name = info.config.durable_name.clone().unwrap();
+        assert_eq!(name, "test__consumer:blocks");
+
+        // Publish 10 messages to the blocks stream
+        for i in 0..10 {
+            let subject = Subject::Blocks {
+                producer: format!("0x00{}", i),
+                height: i,
+            };
+            jetstream
+                .publish(subject.with_prefix(&streams.prefix), "data".into())
+                .await?;
+        }
+
+        // Consume the messages and check if they are correct
+        let mut messages = consumer.messages().await?.take(10);
+        let mut count = 0;
+        while let Some(message) = messages.next().await {
+            let message = message?;
+            let payload = from_utf8(&message.payload);
+            assert_eq!(
+                message.subject.as_str(),
+                format!("test.blocks.0x00{count}.{count}")
+            );
+            assert_eq!(payload.unwrap(), "data");
+            message.ack().await.unwrap();
+            count += 1;
+        }
+
+        cleanup.await?;
         Ok(())
     }
 }

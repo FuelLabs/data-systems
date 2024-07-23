@@ -1,16 +1,17 @@
-use async_nats::jetstream::context::CreateStreamErrorKind;
-use async_nats::jetstream::stream::ConsumerErrorKind;
-use async_nats::{error, ConnectErrorKind};
+use async_nats::{
+    error,
+    jetstream::{context::CreateStreamErrorKind, stream::ConsumerErrorKind},
+    ConnectErrorKind,
+};
 use thiserror::Error;
 
 use super::types::PayloadSize;
-use super::Subject;
 
 #[derive(Error, Debug)]
 pub enum NatsError {
     #[error("{subject:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}")]
     PayloadTooLarge {
-        subject: Subject,
+        subject: String,
         payload_size: PayloadSize,
         max_payload_size: PayloadSize,
     },
@@ -38,4 +39,10 @@ pub enum NatsError {
 
     #[error("No valid stream {name} was found no method {method}")]
     NoStreamFound { name: String, method: &'static str },
+
+    #[error("Connection to NATS server at {0} is pending")]
+    ConnectionPending(String),
+
+    #[error("Connection to NATS server at {0} is disconnected")]
+    ConnectionDisconnected(String),
 }
