@@ -25,6 +25,7 @@ jobs:
         with:
           requireScope: true
           types: |
+            arch
             build
             ci
             docs
