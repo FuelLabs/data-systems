@@ -21,7 +21,7 @@ impl Nats {
     pub async fn new(
         conn_id: &str,
         nats_url: &str,
-        nats_nkey: Option<String>,
+        nats_nkey: &str,
     ) -> Result<Self, NatsError> {
         let client = NatsClient::connect(nats_url, conn_id, nats_nkey).await?;
         let streams = Streams::new(&client).await.unwrap();

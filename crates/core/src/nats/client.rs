@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use bytes::Bytes;
 use tracing::info;
@@ -20,20 +20,19 @@ use crate::types::BoxedResult;
 pub struct NatsClient {
     pub url: String,
     pub conn_id: String,
-    pub conn: Arc<async_nats::Client>,
-    pub jetstream: Arc<JetStreamContext>,
+    pub conn: async_nats::Client,
+    pub jetstream: JetStreamContext,
 }
 
 impl NatsClient {
     pub async fn connect(
         url: &str,
         conn_id: &str,
-        nkey: Option<String>,
+        nkey: &str,
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
         let conn = Self::create_conn(url, nkey).await?;
-        let context =
-            Arc::new(async_nats::jetstream::new(conn.as_ref().clone()));
+        let context = async_nats::jetstream::new(conn.clone());
 
         info!("Connected to NATS server at {}", url);
         Ok(Self {
@@ -46,27 +45,18 @@ impl NatsClient {
 
     async fn create_conn(
         url: &str,
-        nkey: Option<String>,
-    ) -> Result<Arc<async_nats::Client>, NatsError> {
+        nkey: &str,
+    ) -> Result<async_nats::Client, NatsError> {
         let options = async_nats::ConnectOptions::new()
             .connection_timeout(Duration::from_secs(30))
             .max_reconnects(10);
 
-        if nkey.is_none() {
-            return Err(NatsError::NkeyNotProvided {
+        async_nats::connect_with_options(&url, options.nkey(nkey.to_string()))
+            .await
+            .map_err(|e| NatsError::ConnectError {
                 url: url.to_owned(),
+                source: e,
             })
-        }
-
-        let conn =
-            async_nats::connect_with_options(&url, options.nkey(nkey.unwrap()))
-                .await
-                .map_err(|e| NatsError::ConnectError {
-                    url: url.to_owned(),
-                    source: e,
-                })?;
-
-        Ok(Arc::new(conn))
     }
 
     pub fn validate_payload(
@@ -93,8 +83,8 @@ impl NatsClient {
         payload: Bytes,
     ) -> BoxedResult<&Self> {
         let subject_prefixed = subject.with_prefix(&self.conn_id);
-        let context = self.jetstream.as_ref();
-        let ack_future = context.publish(subject_prefixed, payload).await?;
+        let ack_future =
+            self.jetstream.publish(subject_prefixed, payload).await?;
         ack_future.await?;
         Ok(self)
     }
@@ -115,8 +105,7 @@ impl NatsClient {
         config: JetStreamConfig,
     ) -> Result<NatsStream, NatsError> {
         let name = self.stream_name(name);
-        let context = self.jetstream.as_ref();
-        context
+        self.jetstream
             .create_stream(JetStreamConfig {
                 name: name.clone(),
                 ..config
@@ -169,7 +158,7 @@ impl NatsClient {
             format!(r"connection-{random_int}")
         };
 
-        NatsClient::connect(url, conn_id.as_str(), Some(nkey)).await
+        NatsClient::connect(url, conn_id.as_str(), nkey.as_str()).await
     }
 }
 

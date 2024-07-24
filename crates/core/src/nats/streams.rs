@@ -135,7 +135,7 @@ mod tests {
     #[tokio::test]
     async fn consume_stream() -> BoxedResult<()> {
         let client = NatsClient::connect_when_testing(None).await?;
-        let jetstream = client.jetstream.as_ref();
+        let jetstream = client.jetstream.clone();
         let streams = Streams::new(&client).await?;
         let mut consumer =
             streams.consumer_from_stream(&StreamKind::Blocks).await?;
