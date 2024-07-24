@@ -25,7 +25,6 @@ jobs:
         with:
           requireScope: true
           types: |
-            arch
             build
             ci
             docs
@@ -38,10 +37,9 @@ jobs:
             repo
             deps
             release
-            data-stream
             core
-            sdk-rust
-            sdk-ts
+            publisher
+            data-stream
 
   pre-commit:
     runs-on: ubuntu-latest
