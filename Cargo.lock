@@ -394,9 +394,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.80"
+version = "0.1.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6fa2087f2753a7da8cc1c0dbfcf89579dd57458e36769de5ac750b4671737ca"
+checksum = "6e0c28dcc82d7c8ead5cb13beb15405b57b8546e93215673ff8ca0349a028107"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3792,9 +3792,9 @@ dependencies = [
 
 [[package]]
 name = "lazy_static"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lazycell"
@@ -4748,9 +4748,9 @@ dependencies = [
 
 [[package]]
 name = "nkeys"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc522a19199a0795776406619aa6aa78e1e55690fbeb3181b8db5265fd0e89ce"
+checksum = "9d3669c39cc155872799f8b4f8cfec40fb85e2e099466a1ca110f70652ec0b51"
 dependencies = [
  "data-encoding",
  "ed25519",
@@ -6538,6 +6538,27 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "streams_core"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "async-trait",
+ "bytes",
+ "dotenvy",
+ "fuel-core",
+ "fuel-core-types",
+ "futures-util",
+ "rand",
+ "serde_json",
+ "strum 0.26.2",
+ "strum_macros 0.26.4",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "strsim"

@@ -1,13 +1,14 @@
 mod nats;
 
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use fuel_core::combined_database::CombinedDatabase;
-use fuel_core_types::blockchain::block::Block;
-use fuel_core_types::fuel_tx::{Receipt, Transaction, UniqueIdentifier};
-use fuel_core_types::fuel_types::{AssetId, ChainId};
-use fuel_core_types::services::block_importer::ImportResult;
+use fuel_core_types::{
+    blockchain::block::Block,
+    fuel_tx::{Receipt, Transaction, UniqueIdentifier},
+    fuel_types::{AssetId, ChainId},
+    services::block_importer::ImportResult,
+};
 use futures_util::stream::TryStreamExt;
 use tokio::sync::broadcast::Receiver;
 use tracing::{info, warn};

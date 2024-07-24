@@ -38,9 +38,9 @@ jobs:
             repo
             deps
             release
+            core
+            publisher
             data-stream
-            sdk-rust
-            sdk-ts
 
   pre-commit:
     runs-on: ubuntu-latest
