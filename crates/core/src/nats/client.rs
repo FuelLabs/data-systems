@@ -69,9 +69,9 @@ impl NatsClient {
         Ok(Arc::new(conn))
     }
 
-    pub async fn validate_payload(
+    pub fn validate_payload(
         &self,
-        payload: Bytes,
+        payload: &Bytes,
         subject_name: &str,
     ) -> Result<&Self, NatsError> {
         let payload_size = payload.len();
@@ -184,16 +184,14 @@ mod test {
         // Test with a payload within the size limit
         let small_payload = Bytes::from(vec![0; 100]);
         assert!(client
-            .validate_payload(small_payload, "test.subject")
-            .await
+            .validate_payload(&small_payload, "test.subject")
             .is_ok());
 
         // Test with a payload exceeding the size limit
         let max_payload_size = client.conn.server_info().max_payload;
         let large_payload = Bytes::from(vec![0; max_payload_size + 1]);
         assert!(client
-            .validate_payload(large_payload, "test.subject")
-            .await
+            .validate_payload(&large_payload, "test.subject")
             .is_err());
 
         Ok(())
