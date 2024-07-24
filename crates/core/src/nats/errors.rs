@@ -30,6 +30,9 @@ pub enum NatsError {
         source: error::Error<ConsumerErrorKind>,
     },
 
+    #[error("No NATS key found when connecting to {url}")]
+    NkeyNotProvided { url: String },
+
     #[error("Failed to connect to NATS server at {url}: {source}")]
     ConnectError {
         url: String,

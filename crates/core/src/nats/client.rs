@@ -71,15 +71,18 @@ impl NatsClient {
             .connection_timeout(Duration::from_secs(30))
             .max_reconnects(10);
 
-        if let Some(nkey) = nkey {
-            async_nats::connect_with_options(&url, options.nkey(nkey)).await
-        } else {
-            async_nats::connect_with_options(&url, options).await
+        if nkey.is_none() {
+            return Err(NatsError::NkeyNotProvided {
+                url: url.to_owned(),
+            })
         }
-        .map_err(|e| NatsError::ConnectError {
-            url: url.to_owned(),
-            source: e,
-        })
+
+        async_nats::connect_with_options(&url, options.nkey(nkey.unwrap()))
+            .await
+            .map_err(|e| NatsError::ConnectError {
+                url: url.to_owned(),
+                source: e,
+            })
     }
 
     pub async fn is_connected(&self) -> Result<bool, NatsError> {
@@ -149,50 +152,26 @@ impl NatsClient {
     }
 
     #[cfg(test)]
-    pub async fn setup_container() -> Result<
-        testcontainers::ContainerAsync<testcontainers::GenericImage>,
-        testcontainers::TestcontainersError,
-    > {
-        use testcontainers::{
-            core::{IntoContainerPort, WaitFor},
-            runners::AsyncRunner,
-            GenericImage,
-            ImageExt,
+    pub async fn connect_when_testing(
+        connection_id: Option<String>,
+    ) -> NatsClient {
+        let host = "nats://localhost:4222".to_string();
+        let url = &dotenvy::var("NATS_URL").unwrap_or(host);
+        let nkey = dotenvy::var("NATS_NKEY_SEED").unwrap();
+        let conn_id = if let Some(id) = connection_id {
+            id
+        } else {
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            let random_int: u32 = rng.gen();
+            format!(r"connection-{random_int}")
         };
 
-        std::env::set_var("TESTCONTAINERS_COMMAND", "keep");
-
-        GenericImage::new("nats", "latest")
-            .with_exposed_port(4222.tcp())
-            .with_wait_for(WaitFor::message_on_stderr("Server is ready"))
-            .with_wait_for(WaitFor::message_on_stderr(
-                "Listening for client connections on 0.0.0.0:4222",
-            ))
-            // This is needed to avoid intermittent failures
-            .with_wait_for(WaitFor::millis(2000))
-            .with_cmd(["-m", "8222", "--name", "fuel-core-nats-server", "--js"])
-            .start()
+        NatsClient::connect(url, conn_id.as_str(), Some(nkey))
             .await
-    }
-
-    #[cfg(test)]
-    pub async fn connect_with_testcontainer() -> anyhow::Result<(
-        Self,
-        impl std::future::Future<Output = anyhow::Result<()>>,
-    )> {
-        let container = Self::setup_container().await?;
-        let host = container.get_host().await?;
-        let host_port = container.get_host_port_ipv4(4222).await?;
-        let url = format!("{host}:{host_port}");
-        let client = NatsClient::connect(url.as_str(), "test", None).await?;
-
-        let cleanup = async move {
-            container.stop().await?;
-            container.rm().await?;
-            Ok(())
-        };
-
-        Ok((client, cleanup))
+            .unwrap_or_else(|_| {
+                panic!("Ensure NATS server is running at {url}")
+            })
     }
 }
 
@@ -202,17 +181,14 @@ mod test {
 
     #[tokio::test]
     async fn create_connection() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
+        let client = NatsClient::connect_when_testing(None).await;
         assert!(client.is_connected().await?);
-        cleanup.await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn validate_payload_size() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
+        let client = NatsClient::connect_when_testing(None).await;
 
         // Test with a payload within the size limit
         let small_payload = Bytes::from(vec![0; 100]);
@@ -229,15 +205,12 @@ mod test {
             .await
             .is_err());
 
-        cleanup.await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn create_stream_and_consumer() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
-
+        let client = NatsClient::connect_when_testing(None).await;
         let mut stream = client
             .create_stream("test_stream", JetStreamConfig::default())
             .await?;
@@ -254,7 +227,6 @@ mod test {
         let name = consumer_info.config.durable_name.clone().unwrap();
         assert_eq!(name, "test__consumer:test_consumer");
 
-        cleanup.await?;
         Ok(())
     }
 }

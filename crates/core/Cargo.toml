@@ -11,19 +11,16 @@ version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-async-trait = "0.1.81"
+async-trait = { workspace = true }
 bytes = "1.6.0"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
-futures-util = "0.3.30"
-lazy_static = "1.5.0"
-nkeys = "0.4.2"
+futures-util = { workspace = true }
 rand = { workspace = true }
-serde_json = "1.0.117"
+serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-testcontainers = "0.20.1"
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

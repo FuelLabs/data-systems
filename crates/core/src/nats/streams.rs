@@ -107,21 +107,18 @@ mod tests {
 
     #[tokio::test]
     async fn new_instance() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
+        let client = NatsClient::connect_when_testing(None).await;
         let streams = Streams::new(&client).await?;
 
         assert_eq!(streams.prefix, client.conn_id);
         assert_eq!(streams.map.len(), StreamKind::iter().count());
 
-        cleanup.await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn testing_stream_map() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
+        let client = NatsClient::connect_when_testing(None).await;
 
         let streams = Streams::new(&client).await?;
         for kind in StreamKind::iter() {
@@ -132,14 +129,12 @@ mod tests {
             );
         }
 
-        cleanup.await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn consume_stream() -> BoxedResult<()> {
-        let (client, cleanup) =
-            NatsClient::connect_with_testcontainer().await?;
+        let client = NatsClient::connect_when_testing(None).await;
         let jetstream = client.jetstream.as_ref();
         let streams = Streams::new(&client).await?;
         let mut consumer =
@@ -176,7 +171,6 @@ mod tests {
             count += 1;
         }
 
-        cleanup.await?;
         Ok(())
     }
 }
