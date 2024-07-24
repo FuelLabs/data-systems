@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use async_nats::connection;
 use bytes::Bytes;
 use tracing::info;
 
@@ -85,19 +84,6 @@ impl NatsClient {
             })
     }
 
-    pub async fn is_connected(&self) -> Result<bool, NatsError> {
-        let conn_state = self.conn.connection_state();
-        match conn_state {
-            connection::State::Pending => {
-                Err(NatsError::ConnectionPending(self.url.to_owned()))
-            }
-            connection::State::Disconnected => {
-                Err(NatsError::ConnectionDisconnected(self.url.to_owned()))
-            }
-            connection::State::Connected => Ok(true),
-        }
-    }
-
     pub async fn create_stream(
         &self,
         name: &str,
@@ -178,13 +164,6 @@ impl NatsClient {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[tokio::test]
-    async fn create_connection() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
-        assert!(client.is_connected().await?);
-        Ok(())
-    }
 
     #[tokio::test]
     async fn validate_payload_size() -> BoxedResult<()> {
