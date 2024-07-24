@@ -34,13 +34,6 @@ impl StreamKind {
         }
     }
 
-    pub fn get_storage(&self) -> NatsStorageType {
-        match self {
-            Self::Blocks => NatsStorageType::File,
-            Self::Transactions => NatsStorageType::File,
-        }
-    }
-
     pub fn get_name(&self) -> &'static str {
         match self {
             Self::Blocks => "blocks",
@@ -51,7 +44,7 @@ impl StreamKind {
     pub fn get_stream_config(&self, prefix: &str) -> JetStreamConfig {
         JetStreamConfig {
             subjects: self.get_subjects(prefix),
-            storage: self.get_storage(),
+            storage: NatsStorageType::File,
             ..Default::default()
         }
     }

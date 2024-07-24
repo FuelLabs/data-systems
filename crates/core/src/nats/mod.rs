@@ -18,11 +18,11 @@ pub struct Nats {
 
 impl Nats {
     pub async fn new(
-        conn_id: String,
+        conn_id: &str,
         nats_url: &str,
         nats_nkey: Option<String>,
     ) -> Result<Self, NatsError> {
-        let client = NatsClient::connect(nats_url, &conn_id, nats_nkey).await?;
+        let client = NatsClient::connect(nats_url, conn_id, nats_nkey).await?;
         let streams = Streams::new(&client).await.unwrap();
 
         Ok(Self {

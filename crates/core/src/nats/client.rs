@@ -142,10 +142,6 @@ impl NatsClient {
         payload: Bytes,
     ) -> BoxedResult<()> {
         let subject_prefixed = subject.with_prefix(&self.conn_id);
-        let _ = self
-            .validate_payload(payload.clone(), &subject_prefixed)
-            .await;
-
         let context = self.jetstream.as_ref();
         let ack_future = context.publish(subject_prefixed, payload).await?;
         ack_future.await?;
@@ -190,11 +186,13 @@ impl NatsClient {
         let url = format!("{host}:{host_port}");
         let client = NatsClient::connect(url.as_str(), "test", None).await?;
 
-        Ok((client, async move {
+        let cleanup = async move {
             container.stop().await?;
             container.rm().await?;
             Ok(())
-        }))
+        };
+
+        Ok((client, cleanup))
     }
 }
 
