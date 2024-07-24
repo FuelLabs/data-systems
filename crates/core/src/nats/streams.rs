@@ -107,7 +107,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_instance() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
+        let client = NatsClient::connect_when_testing(None).await?;
         let streams = Streams::new(&client).await?;
 
         assert_eq!(streams.prefix, client.conn_id);
@@ -117,8 +117,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn testing_stream_map() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
+    async fn stream_maps() -> BoxedResult<()> {
+        let client = NatsClient::connect_when_testing(None).await?;
 
         let streams = Streams::new(&client).await?;
         for kind in StreamKind::iter() {
@@ -134,7 +134,7 @@ mod tests {
 
     #[tokio::test]
     async fn consume_stream() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
+        let client = NatsClient::connect_when_testing(None).await?;
         let jetstream = client.jetstream.as_ref();
         let streams = Streams::new(&client).await?;
         let mut consumer =
@@ -143,7 +143,7 @@ mod tests {
         // Check if the consumer was created with the correct name
         let info = consumer.info().await?;
         let name = info.config.durable_name.clone().unwrap();
-        assert_eq!(name, "test__consumer:blocks");
+        assert_eq!(name, client.consumer_name("blocks"));
 
         // Publish 10 messages to the blocks stream
         for i in 0..10 {
@@ -164,7 +164,7 @@ mod tests {
             let payload = from_utf8(&message.payload);
             assert_eq!(
                 message.subject.as_str(),
-                format!("test.blocks.0x00{count}.{count}")
+                format!("{}.blocks.0x00{count}.{count}", client.conn_id)
             );
             assert_eq!(payload.unwrap(), "data");
             message.ack().await.unwrap();

@@ -16,6 +16,7 @@ pub struct Nats {
     pub streams: Streams,
 }
 
+/// Constructors
 impl Nats {
     pub async fn new(
         conn_id: &str,

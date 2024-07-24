@@ -31,7 +31,7 @@ impl NatsClient {
         nkey: Option<String>,
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
-        let conn = Arc::new(Self::create_conn(url, nkey).await?);
+        let conn = Self::create_conn(url, nkey).await?;
         let context =
             Arc::new(async_nats::jetstream::new(conn.as_ref().clone()));
 
@@ -44,28 +44,10 @@ impl NatsClient {
         })
     }
 
-    pub async fn validate_payload(
-        &self,
-        payload: Bytes,
-        subject_name: &str,
-    ) -> Result<(), NatsError> {
-        let payload_size = payload.len();
-        let max_payload_size = self.conn.server_info().max_payload;
-        if payload_size > max_payload_size {
-            return Err(NatsError::PayloadTooLarge {
-                subject: subject_name.to_string(),
-                payload_size,
-                max_payload_size,
-            });
-        }
-
-        Ok(())
-    }
-
-    pub async fn create_conn(
+    async fn create_conn(
         url: &str,
         nkey: Option<String>,
-    ) -> Result<async_nats::Client, NatsError> {
+    ) -> Result<Arc<async_nats::Client>, NatsError> {
         let options = async_nats::ConnectOptions::new()
             .connection_timeout(Duration::from_secs(30))
             .max_reconnects(10);
@@ -76,12 +58,55 @@ impl NatsClient {
             })
         }
 
-        async_nats::connect_with_options(&url, options.nkey(nkey.unwrap()))
-            .await
-            .map_err(|e| NatsError::ConnectError {
-                url: url.to_owned(),
-                source: e,
-            })
+        let conn =
+            async_nats::connect_with_options(&url, options.nkey(nkey.unwrap()))
+                .await
+                .map_err(|e| NatsError::ConnectError {
+                    url: url.to_owned(),
+                    source: e,
+                })?;
+
+        Ok(Arc::new(conn))
+    }
+
+    pub async fn validate_payload(
+        &self,
+        payload: Bytes,
+        subject_name: &str,
+    ) -> Result<&Self, NatsError> {
+        let payload_size = payload.len();
+        let max_payload_size = self.conn.server_info().max_payload;
+        if payload_size > max_payload_size {
+            return Err(NatsError::PayloadTooLarge {
+                subject: subject_name.to_string(),
+                payload_size,
+                max_payload_size,
+            });
+        }
+
+        Ok(self)
+    }
+
+    pub async fn publish(
+        &self,
+        subject: Subject,
+        payload: Bytes,
+    ) -> BoxedResult<&Self> {
+        let subject_prefixed = subject.with_prefix(&self.conn_id);
+        let context = self.jetstream.as_ref();
+        let ack_future = context.publish(subject_prefixed, payload).await?;
+        ack_future.await?;
+        Ok(self)
+    }
+
+    pub(crate) fn stream_name(&self, val: &str) -> String {
+        let id = self.conn_id.clone();
+        format!("{id}_stream:{val}")
+    }
+
+    pub(crate) fn consumer_name(&self, val: &str) -> String {
+        let id = self.conn_id.clone();
+        format!("{id}_consumer:{val}")
     }
 
     pub async fn create_stream(
@@ -89,7 +114,7 @@ impl NatsClient {
         name: &str,
         config: JetStreamConfig,
     ) -> Result<NatsStream, NatsError> {
-        let name = format!("{}__stream:{}", self.conn_id, name);
+        let name = self.stream_name(name);
         let context = self.jetstream.as_ref();
         context
             .create_stream(JetStreamConfig {
@@ -109,7 +134,7 @@ impl NatsClient {
         stream: &NatsStream,
         config: Option<PullConsumerConfig>,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
-        let name = format!("{}__consumer:{}", self.conn_id, name);
+        let name = self.consumer_name(name);
         stream
             .get_or_create_consumer(
                 name.as_str(),
@@ -124,23 +149,14 @@ impl NatsClient {
                 source: e,
             })
     }
+}
 
-    pub async fn publish(
-        &self,
-        subject: Subject,
-        payload: Bytes,
-    ) -> BoxedResult<()> {
-        let subject_prefixed = subject.with_prefix(&self.conn_id);
-        let context = self.jetstream.as_ref();
-        let ack_future = context.publish(subject_prefixed, payload).await?;
-        ack_future.await?;
-        Ok(())
-    }
-
+/// Tests helpers
+impl NatsClient {
     #[cfg(test)]
     pub async fn connect_when_testing(
         connection_id: Option<String>,
-    ) -> NatsClient {
+    ) -> Result<NatsClient, NatsError> {
         let host = "nats://localhost:4222".to_string();
         let url = &dotenvy::var("NATS_URL").unwrap_or(host);
         let nkey = dotenvy::var("NATS_NKEY_SEED").unwrap();
@@ -153,11 +169,7 @@ impl NatsClient {
             format!(r"connection-{random_int}")
         };
 
-        NatsClient::connect(url, conn_id.as_str(), Some(nkey))
-            .await
-            .unwrap_or_else(|_| {
-                panic!("Ensure NATS server is running at {url}")
-            })
+        NatsClient::connect(url, conn_id.as_str(), Some(nkey)).await
     }
 }
 
@@ -167,7 +179,7 @@ mod test {
 
     #[tokio::test]
     async fn validate_payload_size() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
+        let client = NatsClient::connect_when_testing(None).await?;
 
         // Test with a payload within the size limit
         let small_payload = Bytes::from(vec![0; 100]);
@@ -189,14 +201,14 @@ mod test {
 
     #[tokio::test]
     async fn create_stream_and_consumer() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await;
+        let client = NatsClient::connect_when_testing(None).await?;
         let mut stream = client
             .create_stream("test_stream", JetStreamConfig::default())
             .await?;
 
         let stream_info = stream.info().await?;
         let name = stream_info.config.name.clone();
-        assert_eq!(name, "test__stream:test_stream");
+        assert_eq!(name, client.stream_name("test_stream"));
 
         let mut consumer = client
             .create_pull_consumer("test_consumer", &stream, None)
@@ -204,7 +216,7 @@ mod test {
 
         let consumer_info = consumer.info().await?;
         let name = consumer_info.config.durable_name.clone().unwrap();
-        assert_eq!(name, "test__consumer:test_consumer");
+        assert_eq!(name, client.consumer_name("test_consumer"));
 
         Ok(())
     }
