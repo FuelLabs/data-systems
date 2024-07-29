@@ -3,6 +3,10 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize, edited, reopened]
+  push:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
 
 env:
   CARGO_TERM_COLOR: always
@@ -112,6 +116,24 @@ jobs:
 
       - name: Running linting
         run: make lint
+
+  audit:
+    name: Cargo audit
+    if: >
+      github.event_name == 'push' &&
+      github.event.commits != '' &&
+      (
+        contains(github.event.commits[0].added, 'Cargo.lock') ||
+        contains(github.event.commits[0].modified, 'Cargo.lock') ||
+        contains(github.event.commits[0].added, 'Cargo.toml') ||
+        contains(github.event.commits[0].modified, 'Cargo.toml')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   test:
     name: Cargo Tests
