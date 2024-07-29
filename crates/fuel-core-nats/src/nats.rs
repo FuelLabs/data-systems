@@ -1,6 +1,6 @@
 mod subjects;
 use anyhow::Context;
-use async_nats::jetstream::stream;
+use async_nats::jetstream::{context::Publish, stream};
 pub use subjects::*;
 use tracing::info;
 
@@ -37,7 +37,12 @@ impl NatsConnection {
             )
         }
         // Publish
-        let ack_future = self.jetstream.publish(subject, payload).await?;
+        let publish_payload =
+            Publish::build().message_id(&subject).payload(payload);
+        let ack_future = self
+            .jetstream
+            .send_publish(subject, publish_payload)
+            .await?;
         // Wait for an ACK
         ack_future.await?;
         Ok(())
