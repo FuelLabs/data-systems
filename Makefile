@@ -5,7 +5,7 @@
 PACKAGE ?= fuel-core-nats
 TARGET ?= aarch64-apple-darwin
 DOCKER_PROFILE ?= all
-RUST_NIGHTLY_VERSION ?= nightly-2023-07-10
+RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
 
 .PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 

@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
-  RUST_NIGHTLY_VERSION: 'nightly-2023-07-10'
+  RUST_NIGHTLY_VERSION: 'nightly-2024-07-28'
   CI: true
 
 concurrency:
