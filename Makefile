@@ -96,6 +96,19 @@ lint-markdown:
 	npx prettier *.md **/*.md --check --no-error-on-unmatched-pattern
 
 # ------------------------------------------------------------
+# Audit crates
+# ------------------------------------------------------------
+
+audit:
+	cargo audit
+
+audit-fix-test:
+	cargo audit fix --dry-run
+
+audit-fix:
+	cargo audit fix
+
+# ------------------------------------------------------------
 # Build
 # ------------------------------------------------------------
 
@@ -131,5 +144,6 @@ help:
 	@echo "  clean     - Clean the build artifacts and release directory"
 	@echo "  fmt       - Format the code and Markdown files"
 	@echo "  lint      - Perform linting checks on the code and Markdown files"
+	@echo "  audit     - Perform audit checks on Rust crates
 	@echo "  test      - Run tests"
 	@echo "  doc       - Generate documentation"
