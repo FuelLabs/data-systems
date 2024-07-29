@@ -3,8 +3,8 @@
 # Install pre-commit hooks
 pre-commit install
 
-# Install nightly toolchain
-rustup toolchain install nightly -c rustfmt
+# Install fixed nightly toolchain
+rustup toolchain install nightly-2024-07-28 -c rustfmt
 
 # Install cargo global crates
 cargo install cargo-binstall
