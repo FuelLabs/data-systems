@@ -5,6 +5,7 @@
 PACKAGE ?= fuel-core-nats
 TARGET ?= aarch64-apple-darwin
 DOCKER_PROFILE ?= all
+RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
 
 .PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
 
@@ -66,7 +67,7 @@ fmt-cargo:
 	cargo sort -w
 
 fmt-rust:
-	cargo +nightly fmt -- --color always
+	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --color always
 
 fmt-markdown:
 	npx prettier *.md **/*.md --write --no-error-on-unmatched-pattern
@@ -87,7 +88,7 @@ lint-cargo:
 	cargo sort -w --check
 
 lint-rust:
-	cargo +nightly fmt -- --check --color always
+	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --check --color always
 
 lint-clippy:
 	cargo clippy --workspace -- -D warnings
