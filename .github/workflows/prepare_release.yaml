@@ -12,6 +12,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
+  RUST_NIGHTLY_VERSION: 'nightly-2023-07-10'
 
 jobs:
   setup:
@@ -47,7 +48,7 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-          toolchain: nightly
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - uses: knope-dev/action@v2.1.0
         with:
