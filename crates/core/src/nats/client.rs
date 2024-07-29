@@ -6,14 +6,13 @@ use tracing::info;
 
 use super::{
     types::{
+        AsyncNatsStream,
         JetStreamConfig,
         JetStreamContext,
         NatsConsumer,
-        NatsStream,
         PullConsumerConfig,
     },
     NatsError,
-    Subject,
 };
 use crate::types::BoxedResult;
 
@@ -80,10 +79,10 @@ impl NatsClient {
 
     pub async fn publish(
         &self,
-        subject: Subject,
+        subject: String,
         payload: Bytes,
     ) -> BoxedResult<&Self> {
-        let subject_prefixed = subject.with_prefix(&self.conn_id);
+        let subject_prefixed = format!("{}.{subject}", self.conn_id);
         let publish_payload = Publish::build()
             .message_id(subject.to_string())
             .payload(payload);
@@ -109,7 +108,7 @@ impl NatsClient {
         &self,
         name: &str,
         config: JetStreamConfig,
-    ) -> Result<NatsStream, NatsError> {
+    ) -> Result<AsyncNatsStream, NatsError> {
         let name = self.stream_name(name);
         self.jetstream
             .create_stream(JetStreamConfig {
@@ -126,7 +125,7 @@ impl NatsClient {
     pub async fn create_pull_consumer(
         &self,
         name: &str,
-        stream: &NatsStream,
+        stream: &AsyncNatsStream,
         config: Option<PullConsumerConfig>,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
         let name = self.consumer_name(name);
