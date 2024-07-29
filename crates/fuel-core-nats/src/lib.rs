@@ -158,7 +158,7 @@ impl Publisher {
 
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
-        let payload = serde_json::to_string_pretty(block)?;
+        let payload = serde_json::to_string(block)?;
 
         let block_subject = nats::Subject::Blocks { height };
         self.nats.publish(block_subject, payload.into()).await?;
@@ -173,7 +173,7 @@ impl Publisher {
             };
 
             // Publish the transaction.
-            let payload = serde_json::to_string_pretty(tx)?;
+            let payload = serde_json::to_string(tx)?;
             let transactions_subject = nats::Subject::Transactions {
                 height,
                 index,
