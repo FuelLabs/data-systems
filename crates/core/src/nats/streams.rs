@@ -173,4 +173,52 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn consume_stream_with_dedup() -> BoxedResult<()> {
+        let client = NatsClient::connect_when_testing(None).await?;
+        let streams = Streams::new(&client).await?;
+        let mut consumer =
+            streams.consumer_from_stream(&StreamKind::Blocks).await?;
+
+        // Check if the consumer was created with the correct name
+        let info = consumer.info().await?;
+        let name = info.config.durable_name.clone().unwrap();
+        assert_eq!(name, client.consumer_name("blocks"));
+
+        // Publish 100 equal messages to the blocks stream
+        let prod_name = "0x005".to_owned();
+        let block_height = 10 as u32;
+        let payload_data = "data".to_owned();
+        let subject = Subject::Blocks {
+            producer: prod_name.clone(),
+            height: block_height,
+        };
+        for _ in 0..100 {
+            client
+                .publish(subject.clone(), payload_data.clone().into())
+                .await?;
+        }
+
+        // Consume the messages and check if they are correct
+        let mut messages = consumer.messages().await?.take(1);
+        if let Some(message) = messages.next().await.transpose().ok().flatten()
+        {
+            let payload = from_utf8(&message.payload);
+            assert_eq!(
+                message.subject.as_str(),
+                format!(
+                    "{}.blocks.{}.{}",
+                    client.conn_id, prod_name, block_height
+                )
+            );
+            assert_eq!(payload.unwrap(), payload_data);
+            message.ack().await.unwrap();
+        }
+
+        // assert we only consumed one single message and the repeated ones were deduplicated by nats
+        assert!(messages.next().await.transpose().ok().flatten().is_none());
+
+        Ok(())
+    }
 }

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use async_nats::jetstream::context::Publish;
 use bytes::Bytes;
 use tracing::info;
 
@@ -83,8 +84,13 @@ impl NatsClient {
         payload: Bytes,
     ) -> BoxedResult<&Self> {
         let subject_prefixed = subject.with_prefix(&self.conn_id);
-        let ack_future =
-            self.jetstream.publish(subject_prefixed, payload).await?;
+        let publish_payload = Publish::build()
+            .message_id(subject.to_string())
+            .payload(payload);
+        let ack_future = self
+            .jetstream
+            .send_publish(subject_prefixed, publish_payload)
+            .await?;
         ack_future.await?;
         Ok(self)
     }
