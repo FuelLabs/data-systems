@@ -11,13 +11,13 @@ pub enum SubjectName {
 }
 
 impl SubjectName {
-    pub fn with_prefix(&self, prefix: &str) -> String {
-        [prefix, ".", &self.to_string()].concat()
+    pub fn with_prefix(&self, prefix: impl AsRef<str>) -> String {
+        [prefix.as_ref(), ".", &self.to_string()].concat()
     }
 
-    pub fn to_vec(prefix: &str) -> Vec<String> {
+    pub fn to_vec(prefix: impl AsRef<str>) -> Vec<String> {
         SubjectName::iter()
-            .map(|name| name.with_prefix(prefix))
+            .map(|name| name.with_prefix(prefix.as_ref()))
             .collect()
     }
 }
@@ -58,8 +58,8 @@ pub enum Subject {
 }
 
 impl Subject {
-    pub fn with_prefix(&self, prefix: &str) -> String {
-        [prefix, ".", &self.to_string()].concat()
+    pub fn with_prefix(&self, prefix: impl AsRef<str>) -> String {
+        [prefix.as_ref(), ".", &self.to_string()].concat()
     }
 
     #[allow(dead_code)]

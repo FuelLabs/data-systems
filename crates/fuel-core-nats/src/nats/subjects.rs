@@ -10,8 +10,8 @@ pub enum SubjectName {
 impl SubjectName {
     // TODO: Extract this in a ConnectionAware trait? where there
     // are more connection-related operations
-    pub fn get_string(&self, connection_id: &str) -> String {
-        [connection_id, &self.to_string()].concat()
+    pub fn get_string(&self, connection_id: impl AsRef<str>) -> String {
+        [connection_id.as_ref(), &self.to_string()].concat()
     }
 }
 
@@ -53,8 +53,8 @@ impl std::fmt::Display for Subject {
 }
 
 impl Subject {
-    pub fn get_string(&self, connection_id: &str) -> String {
-        [connection_id, &self.to_string()].concat()
+    pub fn get_string(&self, connection_id: impl AsRef<str>) -> String {
+        [connection_id.as_ref(), &self.to_string()].concat()
     }
 
     #[allow(dead_code)]
@@ -66,7 +66,8 @@ impl Subject {
     }
 }
 
-pub fn get_all_in_connection(connection_id: &str) -> Vec<String> {
+pub fn get_all_in_connection(connection_id: impl AsRef<str>) -> Vec<String> {
+    let connection_id = connection_id.as_ref();
     get_all()
         .iter()
         .map(|name| format!("{connection_id}{name}"))

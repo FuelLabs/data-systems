@@ -24,7 +24,8 @@ pub enum StreamKind {
 }
 
 impl StreamKind {
-    pub fn get_subjects(&self, prefix: &str) -> Vec<String> {
+    pub fn get_subjects(&self, prefix: impl AsRef<str>) -> Vec<String> {
+        let prefix = prefix.as_ref();
         match self {
             Self::Blocks => vec![SubjectName::Blocks.with_prefix(prefix)],
             Self::Transactions => vec![
@@ -41,7 +42,10 @@ impl StreamKind {
         }
     }
 
-    pub fn get_stream_config(&self, prefix: &str) -> JetStreamConfig {
+    pub fn get_stream_config(
+        &self,
+        prefix: impl AsRef<str>,
+    ) -> JetStreamConfig {
         JetStreamConfig {
             subjects: self.get_subjects(prefix),
             storage: NatsStorageType::File,
@@ -87,8 +91,12 @@ impl Streams {
         &self,
         kind: &StreamKind,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
-        let name = &kind.get_name();
-        let stream = self.stream_of(kind).unwrap();
+        let name = kind.get_name();
+        let stream = self.stream_of(kind).ok_or_else(|| {
+            NatsError::MissingStreamOfKind {
+                name: name.to_owned(),
+            }
+        })?;
         self.client.create_pull_consumer(name, stream, None).await
     }
 }

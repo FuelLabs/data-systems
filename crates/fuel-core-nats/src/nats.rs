@@ -80,10 +80,11 @@ impl NatsConnection {
 }
 
 pub async fn connect(
-    nats_url: &str,
-    nats_nkey: &str,
+    nats_url: impl AsRef<str>,
+    nats_nkey: impl AsRef<str>,
     connection_id: Option<String>,
 ) -> anyhow::Result<NatsConnection> {
+    let nats_url = nats_url.as_ref();
     let connection_id = &connection_id.unwrap_or_default();
     let config = stream::Config {
         name: format!("{connection_id}fuel"),
@@ -94,7 +95,7 @@ pub async fn connect(
 
     let client = async_nats::connect_with_options(
         nats_url,
-        async_nats::ConnectOptions::with_nkey(nats_nkey.to_string()),
+        async_nats::ConnectOptions::with_nkey(nats_nkey.as_ref().to_string()),
     )
     .await
     .context(format!("Connecting to {nats_url}"))?;

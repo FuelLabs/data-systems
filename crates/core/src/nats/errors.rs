@@ -48,4 +48,7 @@ pub enum NatsError {
 
     #[error("Connection to NATS server at {0} is disconnected")]
     ConnectionDisconnected(String),
+
+    #[error("Missing stream of kind {name}")]
+    MissingStreamOfKind { name: String },
 }

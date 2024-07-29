@@ -24,8 +24,8 @@ pub struct Publisher {
 
 impl Publisher {
     pub async fn new(
-        nats_url: &str,
-        nats_nkey: &str,
+        nats_url: impl AsRef<str>,
+        nats_nkey: impl AsRef<str>,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
@@ -33,7 +33,8 @@ impl Publisher {
             Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
         >,
     ) -> anyhow::Result<Self> {
-        let nats = nats::connect(nats_url, nats_nkey, None).await?;
+        let nats =
+            nats::connect(nats_url.as_ref(), nats_nkey.as_ref(), None).await?;
 
         Ok(Publisher {
             chain_id,

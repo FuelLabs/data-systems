@@ -26,17 +26,17 @@ pub struct NatsClient {
 
 impl NatsClient {
     pub async fn connect(
-        url: &str,
-        conn_id: &str,
-        nkey: &str,
+        url: impl AsRef<str>,
+        conn_id: impl AsRef<str>,
+        nkey: impl AsRef<str>,
     ) -> Result<Self, NatsError> {
-        let conn_id = conn_id.to_string();
-        let conn = Self::create_conn(url, nkey).await?;
+        let conn_id = conn_id.as_ref().to_string();
+        let conn = Self::create_conn(url.as_ref(), nkey.as_ref()).await?;
         let context = async_nats::jetstream::new(conn.clone());
 
-        info!("Connected to NATS server at {}", url);
+        info!("Connected to NATS server at {}", url.as_ref());
         Ok(Self {
-            url: url.to_string(),
+            url: url.as_ref().to_string(),
             conn_id,
             conn,
             jetstream: context,
@@ -44,19 +44,22 @@ impl NatsClient {
     }
 
     async fn create_conn(
-        url: &str,
-        nkey: &str,
+        url: impl AsRef<str>,
+        nkey: impl AsRef<str>,
     ) -> Result<async_nats::Client, NatsError> {
         let options = async_nats::ConnectOptions::new()
             .connection_timeout(Duration::from_secs(30))
             .max_reconnects(10);
 
-        async_nats::connect_with_options(&url, options.nkey(nkey.to_string()))
-            .await
-            .map_err(|e| NatsError::ConnectError {
-                url: url.to_owned(),
-                source: e,
-            })
+        async_nats::connect_with_options(
+            url.as_ref(),
+            options.nkey(nkey.as_ref().to_string()),
+        )
+        .await
+        .map_err(|e| NatsError::ConnectError {
+            url: url.as_ref().to_owned(),
+            source: e,
+        })
     }
 
     pub fn validate_payload(
@@ -89,19 +92,21 @@ impl NatsClient {
         Ok(self)
     }
 
-    pub(crate) fn stream_name(&self, val: &str) -> String {
+    pub(crate) fn stream_name(&self, val: impl AsRef<str>) -> String {
         let id = self.conn_id.clone();
+        let val = val.as_ref();
         format!("{id}_stream:{val}")
     }
 
-    pub(crate) fn consumer_name(&self, val: &str) -> String {
+    pub(crate) fn consumer_name(&self, val: impl AsRef<str>) -> String {
         let id = self.conn_id.clone();
+        let val = val.as_ref();
         format!("{id}_consumer:{val}")
     }
 
     pub async fn create_stream(
         &self,
-        name: &str,
+        name: impl AsRef<str>,
         config: JetStreamConfig,
     ) -> Result<NatsStream, NatsError> {
         let name = self.stream_name(name);
@@ -119,7 +124,7 @@ impl NatsClient {
 
     pub async fn create_pull_consumer(
         &self,
-        name: &str,
+        name: impl AsRef<str>,
         stream: &NatsStream,
         config: Option<PullConsumerConfig>,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {

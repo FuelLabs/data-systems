@@ -18,9 +18,9 @@ pub struct Nats {
 
 impl Nats {
     pub async fn new(
-        conn_id: &str,
-        nats_url: &str,
-        nats_nkey: &str,
+        conn_id: impl AsRef<str>,
+        nats_url: impl AsRef<str>,
+        nats_nkey: impl AsRef<str>,
     ) -> Result<Self, NatsError> {
         let client = NatsClient::connect(nats_url, conn_id, nats_nkey).await?;
         let streams = Streams::new(&client).await.unwrap();
