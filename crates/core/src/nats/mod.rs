@@ -1,33 +1,33 @@
 mod client;
+mod conn_streams;
 mod errors;
-mod streams;
-mod subjects;
 mod types;
 
+pub mod streams;
+
 pub use client::*;
+pub use conn_streams::*;
 pub use errors::*;
-pub use streams::*;
-pub use subjects::*;
 pub use types::*;
 
 #[derive(Debug, Clone)]
-pub struct Nats {
+pub struct NatsConn {
     pub client: NatsClient,
-    pub streams: Streams,
+    pub streams: ConnStreams,
 }
 
-impl Nats {
+impl NatsConn {
     pub async fn new(
         conn_id: &str,
         nats_url: &str,
         nats_nkey: &str,
     ) -> Result<Self, NatsError> {
         let client = NatsClient::connect(nats_url, conn_id, nats_nkey).await?;
-        let streams = Streams::new(&client).await.unwrap();
+        let streams = ConnStreams::new(&client).await?;
 
         Ok(Self {
-            client: client.clone(),
             streams,
+            client: client.clone(),
         })
     }
 }

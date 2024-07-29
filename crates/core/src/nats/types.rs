@@ -3,7 +3,7 @@ pub use async_nats::jetstream::{
     stream::{
         Config as JetStreamConfig,
         StorageType as NatsStorageType,
-        Stream as NatsStream,
+        Stream as AsyncNatsStream,
     },
     Context as JetStreamContext,
 };
