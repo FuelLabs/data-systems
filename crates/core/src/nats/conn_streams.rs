@@ -60,6 +60,7 @@ mod tests {
         let stream_list = ConnStreams::get_stream_list(&streams);
         let all_subjects = ConnStreams::collect_subjects(stream_list).await?;
 
+        assert_eq!(all_subjects.len(), 3);
         assert_eq!(
             all_subjects,
             vec![
