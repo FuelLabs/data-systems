@@ -1,5 +1,5 @@
 [package]
-name = "streams_tests"
+name = "streams-tests"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -19,7 +19,7 @@ path = "tests/lib.rs"
 [dependencies]
 anyhow = { workspace = true }
 futures-util = { workspace = true }
-streams_core = { path = "../crates/core", features = ["test_helpers"] }
+streams-core = { path = "../crates/core", features = ["test_helpers"] }
 tokio = { workspace = true }
 
 [dev-dependencies]

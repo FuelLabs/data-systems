@@ -6556,7 +6556,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "streams_core"
+name = "streams-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -6578,13 +6578,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "streams_tests"
+name = "streams-tests"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "futures-util",
  "pretty_assertions",
- "streams_core",
+ "streams-core",
  "tokio",
 ]
 

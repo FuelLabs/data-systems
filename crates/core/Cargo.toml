@@ -1,5 +1,5 @@
 [package]
-name = "streams_core"
+name = "streams-core"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
