@@ -1,0 +1,26 @@
+[package]
+name = "streams_tests"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+publish = false
+version = "0.0.0"
+autobenches = false
+autotests = false
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+futures-util = { workspace = true }
+streams_core = { path = "../crates/core", features = ["test_helpers"] }
+tokio = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
