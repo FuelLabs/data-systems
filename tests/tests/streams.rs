@@ -11,13 +11,14 @@ use streams_tests::TestStreamsBuilder;
 async fn has_conn_and_context_same_streams() -> types::BoxedResult<()> {
     let ctx = TestStreamsBuilder::setup().await?;
     let streams = ConnStreams::new(&ctx.client).await?;
-    let stream_list = ConnStreams::get_stream_list(&streams);
+    let stream_list = streams.get_stream_list();
     let mut jetstreams_streams = ctx.client.jetstream.streams();
 
     let mut found = HashSet::new();
     while let Some(stream) = jetstreams_streams.try_next().await? {
         found.insert(stream.config.name.clone());
     }
+
     for mut stream in stream_list {
         let info = stream.info().await?;
         assert!(
@@ -33,7 +34,7 @@ async fn has_conn_and_context_same_streams() -> types::BoxedResult<()> {
 #[tokio::test]
 async fn can_consume_stream_for_blocks() -> types::BoxedResult<()> {
     let ctx = TestStreamsBuilder::setup().await?;
-    let stream = ctx.streams.blocks;
+    let stream = ctx.streams.clone().blocks;
     let consumer = stream.create_pull_consumer(&ctx.client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),

@@ -31,7 +31,7 @@ impl NatsClient {
         nkey: &str,
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
-        let conn = Self::create_conn(url, nkey).await?;
+        let conn = Self::create_conn(url, nkey, conn_id.as_str()).await?;
         let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", url);
@@ -46,9 +46,11 @@ impl NatsClient {
     async fn create_conn(
         url: &str,
         nkey: &str,
+        conn_id: &str,
     ) -> Result<async_nats::Client, NatsError> {
         let options = async_nats::ConnectOptions::new()
             .connection_timeout(Duration::from_secs(30))
+            .name(conn_id)
             .max_reconnects(10);
 
         async_nats::connect_with_options(&url, options.nkey(nkey.to_string()))
