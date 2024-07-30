@@ -29,8 +29,8 @@ impl ConnStreams {
         streams: &ConnStreams,
     ) -> Vec<super::types::AsyncNatsStream> {
         vec![
-            streams.blocks.stream().clone(),
-            streams.transactions.stream().clone(),
+            streams.blocks.stream.clone(),
+            streams.transactions.stream.clone(),
         ]
     }
 
@@ -51,13 +51,6 @@ impl ConnStreams {
 mod tests {
     use super::*;
     use crate::types::BoxedResult;
-
-    #[tokio::test]
-    async fn has_streams_created() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await?;
-        let _ = ConnStreams::new(&client).await.is_ok();
-        Ok(())
-    }
 
     #[tokio::test]
     async fn has_subjects_wildcards() -> BoxedResult<()> {

@@ -31,7 +31,7 @@ impl NatsClient {
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
         let conn = Self::create_conn(url, nkey).await?;
-        let context = async_nats::jetstream::new(conn.clone());
+        let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", url);
         Ok(Self {
@@ -81,17 +81,21 @@ impl NatsClient {
         subject: String,
         payload: Bytes,
     ) -> BoxedResult<&Self> {
-        let ack_future = self.jetstream.publish(subject, payload).await?;
+        let conn_id = self.clone().conn_id;
+        let ack_future = self
+            .jetstream
+            .publish(format!("{conn_id}.{subject}"), payload)
+            .await?;
         ack_future.await?;
         Ok(self)
     }
 
-    pub(crate) fn stream_name(&self, val: &str) -> String {
+    pub fn stream_name(&self, val: &str) -> String {
         let id = self.conn_id.clone();
         format!("{id}_stream:{val}")
     }
 
-    pub(crate) fn consumer_name(&self, val: &str) -> String {
+    pub fn consumer_name(&self, val: &str) -> String {
         let id = self.conn_id.clone();
         format!("{id}_consumer:{val}")
     }
@@ -103,7 +107,7 @@ impl NatsClient {
     ) -> Result<AsyncNatsStream, NatsError> {
         let name = self.stream_name(name);
         self.jetstream
-            .create_stream(JetStreamConfig {
+            .get_or_create_stream(JetStreamConfig {
                 name: name.clone(),
                 ..config
             })
@@ -130,10 +134,7 @@ impl NatsClient {
                 },
             )
             .await
-            .map_err(|e| NatsError::CreateConsumerFailed {
-                name: name.clone(),
-                source: e,
-            })
+            .map_err(|e| NatsError::CreateConsumerFailed { source: e })
     }
 }
 

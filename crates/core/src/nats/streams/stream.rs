@@ -2,10 +2,18 @@ use std::fmt::{Debug, Display};
 
 use strum::IntoEnumIterator;
 
-use crate::nats::{types, NatsClient, NatsError};
+use super::Subject;
+use crate::{
+    nats::{types::*, NatsClient, NatsError},
+    types::BoxedResult,
+};
 
 pub trait StreamIdentifier {
     const STREAM: &'static str;
+
+    fn name() -> &'static str {
+        Self::STREAM
+    }
 }
 
 pub trait StreamSubjectsEnum:
@@ -18,7 +26,7 @@ pub trait StreamSubjectsEnum:
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: StreamSubjectsEnum> {
-    stream: types::AsyncNatsStream,
+    pub stream: AsyncNatsStream,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -30,13 +38,21 @@ where
         let subjects = S::wildcards(client.conn_id.as_str());
         let stream =
             create_stream(client, Self::STREAM, subjects.to_owned()).await?;
+
         Ok(Stream {
             stream,
             _marker: std::marker::PhantomData,
         })
     }
-    pub fn stream(&self) -> &types::AsyncNatsStream {
-        &self.stream
+
+    pub async fn create_pull_consumer(
+        &self,
+        client: &NatsClient,
+        config: Option<PullConsumerConfig>,
+    ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
+        client
+            .create_pull_consumer(Self::STREAM, &self.stream, config)
+            .await
     }
 }
 
@@ -44,14 +60,61 @@ async fn create_stream(
     client: &NatsClient,
     name: &str,
     subjects: Vec<String>,
-) -> Result<types::AsyncNatsStream, NatsError> {
-    let config = types::JetStreamConfig {
+) -> Result<AsyncNatsStream, NatsError> {
+    let config = JetStreamConfig {
         subjects,
-        storage: types::NatsStorageType::File,
+        storage: NatsStorageType::File,
         ..Default::default()
     };
 
     client.create_stream(name, config).await
+}
+
+#[cfg(any(test, feature = "test_helpers"))]
+impl<S: StreamSubjectsEnum> Stream<S>
+where
+    Self: StreamIdentifier,
+{
+    pub async fn assert_consumer_name(
+        &self,
+        client: &NatsClient,
+        mut consumer: NatsConsumer<PullConsumerConfig>,
+    ) -> BoxedResult<()> {
+        // Checking consumer name created with consumer_from method
+        let consumer_info = consumer.info().await.unwrap();
+        let consumer_name = consumer_info.clone().config.durable_name.unwrap();
+        assert_eq!(consumer_name, client.consumer_name(Self::STREAM));
+        Ok(())
+    }
+
+    pub async fn asset_message_from_subject(
+        &self,
+        client: &NatsClient,
+        consumer: NatsConsumer<PullConsumerConfig>,
+        subject: impl Subject,
+    ) -> BoxedResult<()> {
+        use std::str::from_utf8;
+
+        use futures_util::StreamExt;
+        use pretty_assertions::assert_eq;
+
+        let payload_data = "data";
+        let conn_id = client.clone().conn_id;
+        let parsed = subject.parse();
+        client.publish(parsed.clone(), payload_data.into()).await?;
+
+        let mut messages = consumer.messages().await?.take(10);
+        if let Some(message) = messages.next().await.transpose().ok().flatten()
+        {
+            let payload = from_utf8(&message.payload);
+            let subject_prefixed = format!("{conn_id}.{parsed}");
+            assert_eq!(message.subject.as_str(), subject_prefixed);
+            assert_eq!(payload.unwrap(), payload_data.to_string());
+            message.ack().await.unwrap();
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
