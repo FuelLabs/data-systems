@@ -10,6 +10,7 @@ pub use client::*;
 pub use conn_streams::*;
 pub use errors::*;
 pub use nats_conn::*;
+pub use streams::{stream::*, subject::*};
 
 pub mod subjects {
     pub use streams::{

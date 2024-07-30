@@ -1,5 +1,8 @@
 pub use async_nats::jetstream::{
-    consumer::{pull::Config as PullConsumerConfig, Consumer as NatsConsumer},
+    consumer::{
+        pull::{Config as PullConsumerConfig, Stream as PullConsumerStream},
+        Consumer as NatsConsumer,
+    },
     stream::{
         Config as JetStreamConfig,
         StorageType as NatsStorageType,

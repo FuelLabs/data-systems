@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
 
+use futures_util::stream::Take;
 use strum::IntoEnumIterator;
 
 use super::Subject;
@@ -25,6 +26,7 @@ pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
 #[derive(Debug, Clone)]
 pub struct Stream<S: StreamSubjects> {
     pub stream: AsyncNatsStream,
+    pub prefix: String,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -33,12 +35,14 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let subjects = S::wildcards(client.conn_id.as_str());
+        let prefix = client.conn_id.clone();
+        let subjects = S::wildcards(&prefix);
         let stream =
             create_stream(client, Self::STREAM, subjects.to_owned()).await?;
 
         Ok(Stream {
             stream,
+            prefix,
             _marker: std::marker::PhantomData,
         })
     }
@@ -85,33 +89,28 @@ where
         Ok(())
     }
 
-    pub async fn asset_message_from_subject(
+    pub async fn assert_messages_consumed(
         &self,
-        client: &NatsClient,
-        consumer: NatsConsumer<PullConsumerConfig>,
+        mut messages: Take<PullConsumerStream>,
         subject: impl Subject,
-    ) -> BoxedResult<()> {
+        payload_data: &'static str,
+    ) -> BoxedResult<Take<PullConsumerStream>> {
         use std::str::from_utf8;
 
         use futures_util::StreamExt;
         use pretty_assertions::assert_eq;
 
-        let payload_data = "data";
-        let conn_id = client.clone().conn_id;
         let parsed = subject.parse();
-        client.publish(parsed.clone(), payload_data.into()).await?;
-
-        let mut messages = consumer.messages().await?.take(10);
-        if let Some(message) = messages.next().await.transpose().ok().flatten()
-        {
+        if let Some(message) = messages.next().await {
+            let message = message?;
             let payload = from_utf8(&message.payload);
-            let subject_prefixed = format!("{conn_id}.{parsed}");
+            let subject_prefixed = format!("{}.{parsed}", self.prefix);
             assert_eq!(message.subject.as_str(), subject_prefixed);
             assert_eq!(payload.unwrap(), payload_data.to_string());
             message.ack().await.unwrap();
         }
 
-        Ok(())
+        Ok(messages)
     }
 }
 

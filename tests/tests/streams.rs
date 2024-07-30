@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use futures_util::TryStreamExt;
+use futures_util::{StreamExt, TryStreamExt};
 use streams_core::{
-    nats::{subjects, ConnStreams},
+    nats::{subjects, ConnStreams, Subject},
     types,
 };
 use streams_tests::TestStreamsBuilder;
@@ -40,13 +40,18 @@ async fn can_consume_stream_for_blocks() -> types::BoxedResult<()> {
         height: Some(100_u32),
     };
 
-    // Checking consumer name created with consumer_from method
     stream
         .assert_consumer_name(&ctx.client, consumer.to_owned())
         .await?;
 
+    let payload_data = "data";
+    ctx.client
+        .publish(subject.parse(), payload_data.into())
+        .await?;
+
+    let messages = consumer.messages().await?.take(10);
     stream
-        .asset_message_from_subject(&ctx.client, consumer, subject)
+        .assert_messages_consumed(messages, subject, payload_data)
         .await?;
 
     Ok(())
@@ -69,9 +74,45 @@ async fn can_consume_stream_for_transactions() -> types::BoxedResult<()> {
         .assert_consumer_name(&ctx.client, consumer.to_owned())
         .await?;
 
-    stream
-        .asset_message_from_subject(&ctx.client, consumer, subject)
+    let payload_data = "data";
+    ctx.client
+        .publish(subject.parse(), payload_data.into())
         .await?;
+
+    let messages = consumer.messages().await?.take(10);
+    stream
+        .assert_messages_consumed(messages, subject, payload_data)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn consume_stream_with_dedup() -> types::BoxedResult<()> {
+    let ctx = TestStreamsBuilder::setup().await?;
+    let stream = ctx.streams.blocks;
+    let consumer = stream.create_pull_consumer(&ctx.client, None).await?;
+    let subject = subjects::blocks::Blocks {
+        producer: Some("0x000".to_string()),
+        height: Some(100_u32),
+    };
+
+    let payload_data = "data";
+    let parsed = subject.parse();
+    for _ in 0..100 {
+        ctx.client
+            .publish(parsed.to_owned(), payload_data.into())
+            .await
+            .is_ok();
+    }
+
+    let messages = consumer.messages().await?.take(1);
+    let mut messages = stream
+        .assert_messages_consumed(messages, subject, payload_data)
+        .await?;
+
+    // assert we only consumed one single message and the repeated ones were deduplicated by nats
+    assert!(messages.next().await.transpose().ok().flatten().is_none());
 
     Ok(())
 }
