@@ -23,9 +23,8 @@ pub enum NatsError {
         source: error::Error<CreateStreamErrorKind>,
     },
 
-    #[error("Failed to create NATS consumer {name}: {source}")]
+    #[error("Failed to create NATS consumer: {source}")]
     CreateConsumerFailed {
-        name: String,
         #[source]
         source: error::Error<ConsumerErrorKind>,
     },
