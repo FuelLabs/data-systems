@@ -83,9 +83,8 @@ impl NatsClient {
         payload: Bytes,
     ) -> BoxedResult<&Self> {
         let subject_prefixed = format!("{}.{subject}", self.conn_id);
-        let publish_payload = Publish::build()
-            .message_id(subject.to_string())
-            .payload(payload);
+        let publish_payload =
+            Publish::build().message_id(subject).payload(payload);
         let ack_future = self
             .jetstream
             .send_publish(subject_prefixed, publish_payload)
