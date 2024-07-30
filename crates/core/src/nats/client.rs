@@ -1,18 +1,18 @@
 use std::time::Duration;
 
+use async_nats::jetstream::context::Publish;
 use bytes::Bytes;
 use tracing::info;
 
 use super::{
     types::{
+        AsyncNatsStream,
         JetStreamConfig,
         JetStreamContext,
         NatsConsumer,
-        NatsStream,
         PullConsumerConfig,
     },
     NatsError,
-    Subject,
 };
 use crate::types::BoxedResult;
 
@@ -31,8 +31,8 @@ impl NatsClient {
         nkey: &str,
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
-        let conn = Self::create_conn(url, nkey).await?;
-        let context = async_nats::jetstream::new(conn.clone());
+        let conn = Self::create_conn(url, nkey, &conn_id).await?;
+        let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", url);
         Ok(Self {
@@ -46,9 +46,11 @@ impl NatsClient {
     async fn create_conn(
         url: &str,
         nkey: &str,
+        conn_id: &str,
     ) -> Result<async_nats::Client, NatsError> {
         let options = async_nats::ConnectOptions::new()
             .connection_timeout(Duration::from_secs(30))
+            .name(conn_id)
             .max_reconnects(10);
 
         async_nats::connect_with_options(&url, options.nkey(nkey.to_string()))
@@ -79,22 +81,26 @@ impl NatsClient {
 
     pub async fn publish(
         &self,
-        subject: Subject,
+        subject: String,
         payload: Bytes,
     ) -> BoxedResult<&Self> {
-        let subject_prefixed = subject.with_prefix(&self.conn_id);
-        let ack_future =
-            self.jetstream.publish(subject_prefixed, payload).await?;
+        let subject_prefixed = format!("{}.{subject}", self.conn_id);
+        let publish_payload =
+            Publish::build().message_id(subject).payload(payload);
+        let ack_future = self
+            .jetstream
+            .send_publish(subject_prefixed, publish_payload)
+            .await?;
         ack_future.await?;
         Ok(self)
     }
 
-    pub(crate) fn stream_name(&self, val: &str) -> String {
+    pub fn stream_name(&self, val: &str) -> String {
         let id = self.conn_id.clone();
         format!("{id}_stream:{val}")
     }
 
-    pub(crate) fn consumer_name(&self, val: &str) -> String {
+    pub fn consumer_name(&self, val: &str) -> String {
         let id = self.conn_id.clone();
         format!("{id}_consumer:{val}")
     }
@@ -103,10 +109,10 @@ impl NatsClient {
         &self,
         name: &str,
         config: JetStreamConfig,
-    ) -> Result<NatsStream, NatsError> {
+    ) -> Result<AsyncNatsStream, NatsError> {
         let name = self.stream_name(name);
         self.jetstream
-            .create_stream(JetStreamConfig {
+            .get_or_create_stream(JetStreamConfig {
                 name: name.clone(),
                 ..config
             })
@@ -120,29 +126,26 @@ impl NatsClient {
     pub async fn create_pull_consumer(
         &self,
         name: &str,
-        stream: &NatsStream,
+        stream: &AsyncNatsStream,
         config: Option<PullConsumerConfig>,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
         let name = self.consumer_name(name);
         stream
             .get_or_create_consumer(
-                name.as_str(),
+                &name,
                 PullConsumerConfig {
                     durable_name: Some(name.to_owned()),
                     ..config.unwrap_or_default()
                 },
             )
             .await
-            .map_err(|e| NatsError::CreateConsumerFailed {
-                name: name.clone(),
-                source: e,
-            })
+            .map_err(|e| NatsError::CreateConsumerFailed { source: e })
     }
 }
 
 /// Tests helpers
 impl NatsClient {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test_helpers"))]
     pub async fn connect_when_testing(
         connection_id: Option<String>,
     ) -> Result<NatsClient, NatsError> {
@@ -158,7 +161,7 @@ impl NatsClient {
             format!(r"connection-{random_int}")
         };
 
-        NatsClient::connect(url, conn_id.as_str(), nkey.as_str()).await
+        NatsClient::connect(url, &conn_id, &nkey).await
     }
 }
 

@@ -707,9 +707,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
+checksum = "a12916984aab3fa6e39d655a33e09c0071eb36d6ab3aea5c2d78551f1df6d952"
 dependencies = [
  "serde",
 ]
@@ -1607,6 +1607,12 @@ dependencies = [
  "rustc_version",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "diff"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "difflib"
@@ -2653,6 +2659,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-data-systems"
+version = "0.0.1"
+
+[[package]]
 name = "fuel-derive"
 version = "0.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2678,10 +2688,6 @@ dependencies = [
  "serde",
  "sha2 0.10.8",
 ]
-
-[[package]]
-name = "fuel-nats"
-version = "0.0.1"
 
 [[package]]
 name = "fuel-storage"
@@ -5281,6 +5287,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pretty_assertions"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af7cee1a6c8a5b9208b3cb1061f10c0cb689087b3d8ce85fb9d2dd7a29b6ba66"
+dependencies = [
+ "diff",
+ "yansi",
+]
+
+[[package]]
 name = "prettyplease"
 version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6540,8 +6556,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "streams_core"
-version = "0.0.1"
+name = "streams-core"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -6551,6 +6567,7 @@ dependencies = [
  "fuel-core",
  "fuel-core-types",
  "futures-util",
+ "pretty_assertions",
  "rand",
  "serde_json",
  "strum 0.26.2",
@@ -6558,6 +6575,17 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "streams-tests"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "pretty_assertions",
+ "streams-core",
+ "tokio",
 ]
 
 [[package]]
@@ -8097,6 +8125,12 @@ dependencies = [
  "static_assertions",
  "web-time",
 ]
+
+[[package]]
+name = "yansi"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "yasna"

@@ -1,22 +1,24 @@
 [package]
-name = "streams_core"
+name = "streams-core"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
-version = { workspace = true }
+publish = false
+version = "0.0.0"
 
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-bytes = "1.6.0"
+bytes = "1.6.1"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
 futures-util = { workspace = true }
+pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
@@ -24,3 +26,6 @@ strum_macros = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[features]
+test_helpers = ["dep:pretty_assertions"]
