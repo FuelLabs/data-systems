@@ -1,14 +1,22 @@
 mod client;
 mod conn_streams;
 mod errors;
-mod types;
 
 pub mod streams;
+pub mod types;
 
 pub use client::*;
 pub use conn_streams::*;
 pub use errors::*;
-pub use types::*;
+
+pub mod subjects {
+    pub use streams::{
+        stream_blocks::{subjects as blocks, BlockSubjects},
+        stream_transactions::{subjects as transactions, TransactionSubjects},
+    };
+
+    use super::*;
+}
 
 #[derive(Debug, Clone)]
 pub struct NatsConn {

@@ -28,7 +28,8 @@ where
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
         let subjects = S::wildcards(client.conn_id.as_str());
-        let stream = create_stream(client, Self::STREAM, subjects).await?;
+        let stream =
+            create_stream(client, Self::STREAM, subjects.to_owned()).await?;
         Ok(Stream {
             stream,
             _marker: std::marker::PhantomData,

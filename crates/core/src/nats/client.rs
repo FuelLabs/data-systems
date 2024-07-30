@@ -147,7 +147,7 @@ impl NatsClient {
 
 /// Tests helpers
 impl NatsClient {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test_helpers"))]
     pub async fn connect_when_testing(
         connection_id: Option<String>,
     ) -> Result<NatsClient, NatsError> {
