@@ -16,21 +16,19 @@ pub trait StreamIdentifier {
     }
 }
 
-pub trait StreamSubjectsEnum:
-    Display + Debug + Clone + IntoEnumIterator
-{
+pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
     fn wildcards(prefix: &str) -> Vec<String> {
         Self::iter().map(|s| format!("{prefix}.{s}")).collect()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Stream<S: StreamSubjectsEnum> {
+pub struct Stream<S: StreamSubjects> {
     pub stream: AsyncNatsStream,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: StreamSubjectsEnum> Stream<S>
+impl<S: StreamSubjects> Stream<S>
 where
     Self: StreamIdentifier,
 {
@@ -71,7 +69,7 @@ async fn create_stream(
 }
 
 #[cfg(any(test, feature = "test_helpers"))]
-impl<S: StreamSubjectsEnum> Stream<S>
+impl<S: StreamSubjects> Stream<S>
 where
     Self: StreamIdentifier,
 {
@@ -138,7 +136,7 @@ mod tests {
         }
     }
 
-    impl StreamSubjectsEnum for TestSubjects {}
+    impl StreamSubjects for TestSubjects {}
     impl StreamIdentifier for Stream<TestSubjects> {
         const STREAM: &'static str = "test_stream";
     }

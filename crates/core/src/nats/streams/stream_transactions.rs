@@ -58,7 +58,7 @@ impl fmt::Display for TransactionSubjects {
     }
 }
 
-impl stream::StreamSubjectsEnum for TransactionSubjects {}
+impl stream::StreamSubjects for TransactionSubjects {}
 impl stream::StreamIdentifier for stream::Stream<TransactionSubjects> {
     const STREAM: &'static str = "transactions";
 }
