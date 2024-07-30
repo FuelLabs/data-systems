@@ -10,8 +10,7 @@ impl TestStreamsBuilder {
     pub async fn setup() -> anyhow::Result<Self> {
         let client = NatsClient::connect_when_testing(None).await?;
         let streams = ConnStreams::new(&client).await?;
-        let stream_list = streams.get_stream_list();
-        let all_subjects = ConnStreams::collect_subjects(stream_list).await?;
+        let all_subjects = streams.collect_subjects().await?;
 
         Ok(Self {
             client,

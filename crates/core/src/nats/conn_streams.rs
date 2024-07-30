@@ -29,9 +29,8 @@ impl ConnStreams {
         vec![self.blocks.stream.clone(), self.transactions.stream.clone()]
     }
 
-    pub async fn collect_subjects(
-        streams: Vec<super::types::AsyncNatsStream>,
-    ) -> anyhow::Result<Vec<String>> {
+    pub async fn collect_subjects(&self) -> anyhow::Result<Vec<String>> {
+        let streams = self.get_stream_list();
         let mut all_subjects = Vec::new();
         for mut stream in streams {
             let info = stream.info().await?;
@@ -52,8 +51,7 @@ mod tests {
         let client = NatsClient::connect_when_testing(None).await?;
         let conn_id = client.clone().conn_id;
         let streams = ConnStreams::new(&client).await?;
-        let stream_list = ConnStreams::get_stream_list(&streams);
-        let all_subjects = ConnStreams::collect_subjects(stream_list).await?;
+        let all_subjects = streams.collect_subjects().await?;
 
         assert_eq!(all_subjects.len(), 3);
         assert_eq!(

@@ -31,7 +31,7 @@ impl NatsClient {
         nkey: &str,
     ) -> Result<Self, NatsError> {
         let conn_id = conn_id.to_string();
-        let conn = Self::create_conn(url, nkey, conn_id.as_str()).await?;
+        let conn = Self::create_conn(url, nkey, &conn_id).await?;
         let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", url);
@@ -132,7 +132,7 @@ impl NatsClient {
         let name = self.consumer_name(name);
         stream
             .get_or_create_consumer(
-                name.as_str(),
+                &name,
                 PullConsumerConfig {
                     durable_name: Some(name.to_owned()),
                     ..config.unwrap_or_default()
@@ -161,7 +161,7 @@ impl NatsClient {
             format!(r"connection-{random_int}")
         };
 
-        NatsClient::connect(url, conn_id.as_str(), nkey.as_str()).await
+        NatsClient::connect(url, &conn_id, &nkey).await
     }
 }
 
