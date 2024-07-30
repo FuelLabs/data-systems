@@ -45,6 +45,11 @@ jobs:
       - name: Update Cargo Dependencies
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
+      - name: Cargo audit dependencies
+        uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Cargo.lock Artifact
         uses: actions/upload-artifact@v3
         with:
