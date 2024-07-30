@@ -1,5 +1,7 @@
 use std::error::Error;
 
+pub use crate::nats::types as nats;
+
 // --------------------------------------------------------------------------------
 // General
 // --------------------------------------------------------------------------------
@@ -14,17 +16,17 @@ pub type Address = String;
 
 #[derive(Debug, Clone)]
 pub enum IdentifierKind {
-    Address(String),
-    ContractID(String),
-    AssetID(String),
+    Address,
+    ContractID,
+    AssetID,
 }
 
 impl std::fmt::Display for IdentifierKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value: &'static str = match self {
-            IdentifierKind::Address(_) => "address",
-            IdentifierKind::ContractID(_) => "contract_id",
-            IdentifierKind::AssetID(_) => "asset_id",
+            IdentifierKind::Address => "address",
+            IdentifierKind::ContractID => "contract_id",
+            IdentifierKind::AssetID => "asset_id",
         };
         write!(f, "{value}")
     }
