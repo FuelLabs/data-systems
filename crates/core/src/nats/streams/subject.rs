@@ -13,7 +13,7 @@ pub trait Subject: fmt::Debug + Clone + Default {
         Self::WILDCARD
     }
 
-    fn parse(&self) -> impl ToString;
+    fn parse(&self) -> String;
 }
 
 #[cfg(test)]
@@ -28,7 +28,7 @@ mod tests {
     impl Subject for TestSubject {
         const WILDCARD: &'static str = "blocks.*.*";
 
-        fn parse(&self) -> impl ToString {
+        fn parse(&self) -> String {
             let foo = parse_param(&self.foo);
             format!("test.{foo}")
         }
