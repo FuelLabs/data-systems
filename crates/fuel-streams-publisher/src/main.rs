@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
     service.start()?;
 
     let subscription = service.shared.block_importer.block_importer.subscribe();
-    let publisher = fuel_core_nats::Publisher::new(
+    let publisher = fuel_streams_publisher::Publisher::new(
         &cli.nats_url,
         &cli.nats_nkey,
         chain_id,

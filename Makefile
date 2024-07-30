@@ -2,7 +2,7 @@
 #  Setup
 # ------------------------------------------------------------
 
-PACKAGE ?= fuel-core-nats
+PACKAGE ?= fuel-streams-publisher
 TARGET ?= aarch64-apple-darwin
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
