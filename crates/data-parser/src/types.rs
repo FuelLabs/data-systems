@@ -62,4 +62,7 @@ pub enum SerializationType {
     /// Postcard serialization
     #[strum(serialize = "postcard")]
     Postcard,
+    /// json serialization
+    #[strum(serialize = "json")]
+    Json,
 }

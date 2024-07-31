@@ -33,6 +33,8 @@ pub enum SerdeError {
     ProstEncode(#[from] prost::EncodeError),
     /// serde prost decode error
     ProstDecode(#[from] prost::DecodeError),
+    /// serde json error
+    Json(#[from] serde_json::Error),
 }
 
 /// Password hashing error types.

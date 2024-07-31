@@ -29,25 +29,54 @@ use crate::{
 };
 
 /// Prost Message Wrapper allowing serialization/deserialization
-pub struct ProstDataParser<T: prost::Message>(pub(crate) T);
+pub struct ProstDataParser {
+    data_parser: DataParser,
+}
 
-impl<T> ProstDataParser<T>
-where
-    T: prost::Message + std::default::Default,
-{
+impl ProstDataParser {
+    /// Constructor for ProstDataParser
+    pub fn new(
+        compression_type: CompressionType,
+        compression_level: Level,
+        serialization_type: SerializationType,
+    ) -> Self {
+        Self {
+            data_parser: DataParser::new(
+                compression_type,
+                compression_level,
+                serialization_type,
+            ),
+        }
+    }
+
     /// Method to serialize
-    pub fn serialize(&self) -> Result<Vec<u8>, Error> {
+    pub fn serialize<T>(&self, data: T) -> Result<Vec<u8>, Error>
+    where
+        T: prost::Message + std::default::Default,
+    {
         let mut buf = Vec::new();
-        self.0
-            .encode(&mut buf)
+        data.encode(&mut buf)
             .map_err(|e| Error::Serde(SerdeError::ProstEncode(e)))?;
         Ok(buf)
     }
 
     /// Method to deserialize
-    pub fn deserialize(buf: Vec<u8>) -> Result<T, Error> {
+    pub fn deserialize<T>(buf: Vec<u8>) -> Result<T, Error>
+    where
+        T: prost::Message + std::default::Default,
+    {
         T::decode(Bytes::from(buf))
             .map_err(|e| Error::Serde(SerdeError::ProstDecode(e)))
+    }
+
+    /// Compress the data
+    pub async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+        self.data_parser.compress(raw_data).await
+    }
+
+    /// Decompress the data
+    pub async fn deompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+        self.data_parser.decompress(raw_data).await
     }
 }
 
@@ -129,6 +158,8 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
             SerializationType::Postcard => postcard::to_allocvec(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
+            SerializationType::Json => serde_json::to_vec(&raw_data)
+                .map_err(|e| Error::Serde(SerdeError::Json(e))),
         }
     }
 
@@ -142,6 +173,8 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
             SerializationType::Postcard => postcard::from_bytes(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
+            SerializationType::Json => serde_json::from_slice(raw_data)
+                .map_err(|e| Error::Serde(SerdeError::Json(e))),
         }
     }
 
