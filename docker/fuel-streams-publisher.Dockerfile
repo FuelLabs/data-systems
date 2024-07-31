@@ -33,14 +33,14 @@ ENV CARGO_PROFILE_RELEASE_DEBUG=$DEBUG_SYMBOLS
 COPY --from=planner /build/recipe.json recipe.json
 RUN echo $CARGO_PROFILE_RELEASE_DEBUG
 # Build our project dependencies, not our application!
-RUN xx-cargo chef cook --release --no-default-features -p fuel-core-nats --recipe-path recipe.json
+RUN xx-cargo chef cook --release --no-default-features -p fuel-streams-publisher --recipe-path recipe.json
 # Up to this point, if our dependency tree stays the same,
 # all layers should be cached.
 COPY . .
-RUN xx-cargo build --release --no-default-features -p fuel-core-nats \
-    && xx-verify ./target/$(xx-cargo --print-target-triple)/release/fuel-core-nats \
-    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-core-nats ./target/release/fuel-core-nats \
-    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-core-nats.d ./target/release/fuel-core-nats.d
+RUN xx-cargo build --release --no-default-features -p fuel-streams-publisher \
+    && xx-verify ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher \
+    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher ./target/release/fuel-streams-publisher \
+    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher.d ./target/release/fuel-streams-publisher.d
 
 # Stage 2: Run
 FROM ubuntu:22.04 as run
@@ -80,15 +80,15 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/target/release/fuel-core-nats .
-COPY --from=builder /build/target/release/fuel-core-nats.d .
+COPY --from=builder /build/target/release/fuel-streams-publisher .
+COPY --from=builder /build/target/release/fuel-streams-publisher.d .
 
 COPY /docker/chain-config ./chain-config
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
 # hadolint ignore=DL3025
-CMD exec ./fuel-core-nats \
+CMD exec ./fuel-streams-publisher \
     --service-name "${SERVICE_NAME}" \
     --keypair $KEYPAIR \
     --relayer $RELAYER \

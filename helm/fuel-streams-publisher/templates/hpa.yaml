@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "fuel-core-nats.fullname" . }}
+  name: {{ include "fuel-streams-publisher.fullname" . }}
   labels:
-    {{- include "fuel-core-nats.labels" . | nindent 4 }}
+    {{- include "fuel-streams-publisher.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "fuel-core-nats.fullname" . }}
+    name: {{ include "fuel-streams-publisher.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:
