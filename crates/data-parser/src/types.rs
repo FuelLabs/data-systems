@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use strum::{AsRefStr, EnumIter, EnumString};
 
 /// Compression types
@@ -6,10 +5,13 @@ use strum::{AsRefStr, EnumIter, EnumString};
     Debug,
     Copy,
     Clone,
-    Deserialize,
     EnumString,
     AsRefStr,
     EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
     strum_macros::Display,
 )]
 pub enum CompressionType {
@@ -44,10 +46,13 @@ pub enum CompressionType {
     Debug,
     Copy,
     Clone,
-    Deserialize,
     EnumString,
     AsRefStr,
     EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
     strum_macros::Display,
 )]
 pub enum SerializationType {

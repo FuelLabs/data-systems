@@ -5,7 +5,7 @@ use thiserror::Error;
 
 /// Password hashing error types.
 #[derive(Debug, DisplayDoc, Error)]
-pub(crate) enum CompressionError {
+pub enum CompressionError {
     /// Compression/Decompression zlib error
     Zlib(std::io::Error),
     /// Compression/Decompression gzip error
@@ -24,7 +24,7 @@ pub(crate) enum CompressionError {
 
 /// Password hashing error types.
 #[derive(Debug, DisplayDoc, Error)]
-pub(crate) enum SerdeError {
+pub enum SerdeError {
     /// serde bincode error
     Bincode(#[from] bincode::ErrorKind),
     /// serde postcard error
@@ -37,7 +37,7 @@ pub(crate) enum SerdeError {
 
 /// Password hashing error types.
 #[derive(Debug, DisplayDoc, Error)]
-pub(crate) enum Error {
+pub enum Error {
     /// compression error: {0}
     Compression(#[from] CompressionError),
     /// serde error: {0}

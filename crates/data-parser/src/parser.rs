@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused)]
 
 use async_compression::{
     tokio::write::{
@@ -28,14 +29,14 @@ use crate::{
 };
 
 /// Prost Message Wrapper allowing serialization/deserialization
-pub(crate) struct ProstMessageSerdelizer<T: prost::Message>(pub(crate) T);
+pub struct ProstDataParser<T: prost::Message>(pub(crate) T);
 
-impl<T> ProstMessageSerdelizer<T>
+impl<T> ProstDataParser<T>
 where
     T: prost::Message + std::default::Default,
 {
     /// Method to serialize
-    pub(crate) fn serialize(&self) -> Result<Vec<u8>, Error> {
+    pub fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut buf = Vec::new();
         self.0
             .encode(&mut buf)
@@ -44,7 +45,7 @@ where
     }
 
     /// Method to deserialize
-    pub(crate) fn deserialize(buf: Vec<u8>) -> Result<T, Error> {
+    pub fn deserialize(buf: Vec<u8>) -> Result<T, Error> {
         T::decode(Bytes::from(buf))
             .map_err(|e| Error::Serde(SerdeError::ProstDecode(e)))
     }
@@ -98,9 +99,9 @@ impl DataParser {
     define_compression_methods!(Zlib, Gzip, Brotli, Bz, Lzma, Deflate, Zstd);
 
     /// Serializes and compresses the data
-    pub(crate) async fn serialize_and_compress(
+    pub async fn serialize_and_compress(
         &self,
-        raw_data: &[u8],
+        raw_data: impl serde::Serialize,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let serialized_data = self.serialize(raw_data).await?;
         let compressed_data = self.compress(&serialized_data[..]).await?;
@@ -108,10 +109,10 @@ impl DataParser {
     }
 
     /// Decompresses and deserializes the data
-    pub(crate) async fn decompress_and_deserialize(
+    pub async fn decompress_and_deserialize<T: serde::de::DeserializeOwned>(
         &self,
         raw_data: &[u8],
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<T, Box<dyn std::error::Error>> {
         let decompressed_data = self.decompress(raw_data).await?;
         let deserialized_data =
             self.deserialize(&decompressed_data[..]).await?;
@@ -119,36 +120,33 @@ impl DataParser {
     }
 
     /// Serializes the data
-    pub(crate) async fn serialize(
+    pub async fn serialize(
         &self,
-        raw_data: &[u8],
+        raw_data: impl serde::Serialize,
     ) -> Result<Vec<u8>, Error> {
         match self.serialization_type {
-            SerializationType::Bincode => bincode::serialize(raw_data)
+            SerializationType::Bincode => bincode::serialize(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
-            SerializationType::Postcard => postcard::to_allocvec(raw_data)
+            SerializationType::Postcard => postcard::to_allocvec(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
         }
     }
 
     /// Deserializes the data
-    pub(crate) async fn deserialize(
+    pub async fn deserialize<'a, T: serde::Deserialize<'a>>(
         &self,
-        in_data: &[u8],
-    ) -> Result<Vec<u8>, Error> {
+        raw_data: &'a [u8],
+    ) -> Result<T, Error> {
         match self.serialization_type {
-            SerializationType::Bincode => bincode::deserialize(in_data)
+            SerializationType::Bincode => bincode::deserialize(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
-            SerializationType::Postcard => postcard::from_bytes(in_data)
+            SerializationType::Postcard => postcard::from_bytes(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
         }
     }
 
     /// Compresses the data
-    pub(crate) async fn compress(
-        &self,
-        raw_data: &[u8],
-    ) -> Result<Vec<u8>, Error> {
+    pub async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         match self.compression_type {
             CompressionType::None => Ok(raw_data.to_vec()),
             CompressionType::Zlib => self.compress_zlib(raw_data).await,
@@ -162,10 +160,7 @@ impl DataParser {
     }
 
     /// Decompresses the data
-    pub(crate) async fn decompress(
-        &self,
-        raw_data: &[u8],
-    ) -> Result<Vec<u8>, Error> {
+    pub async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         match self.compression_type {
             CompressionType::None => Ok(raw_data.to_vec()),
             CompressionType::Zlib => self.decompress_zlib(raw_data).await,
@@ -182,6 +177,12 @@ impl DataParser {
 #[cfg(test)]
 mod test {
     use async_compression::Level;
+    use fuel_core_types::{
+        blockchain::block::Block as FuelBlock,
+        fuel_tx::{Receipt, Transaction, UniqueIdentifier},
+        fuel_types::{AssetId, ChainId},
+        services::block_importer::ImportResult,
+    };
     use rand::{thread_rng, Rng};
     use serde_json::Value;
 
@@ -192,6 +193,26 @@ mod test {
 
     #[tokio::test]
     async fn test_data_parser_builder() {
+        let data_parser = DataParserBuilder::new()
+            .with_compression(CompressionType::Gzip)
+            .with_compression_level(Level::Fastest)
+            .with_serialization(SerializationType::Bincode)
+            .build();
+
+        assert!(
+            data_parser.compression_type == CompressionType::Gzip,
+            "Compression type"
+        );
+        assert!(
+            data_parser.serialization_type == SerializationType::Bincode,
+            "Compression type"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_block_data_serialization() {
+        use fuel_core_types::blockchain::block::Block as FuelBlock;
+
         let data_parser = DataParserBuilder::new()
             .with_compression(CompressionType::Gzip)
             .with_compression_level(Level::Fastest)
