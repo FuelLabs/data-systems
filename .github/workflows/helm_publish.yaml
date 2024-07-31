@@ -3,7 +3,7 @@ name: Build and publish Helm Chart
 on:
   push:
     branches: [main]
-    paths: [helm/fuel-core-nats/Chart.yaml]
+    paths: [helm/fuel-streams-publisher/Chart.yaml]
 
 permissions:
   contents: read
@@ -31,4 +31,4 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./helm/fuel-core-nats
+          chart-folder: ./helm/fuel-streams-publisher

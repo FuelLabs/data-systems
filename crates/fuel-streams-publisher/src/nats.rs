@@ -1,6 +1,10 @@
 mod subjects;
+
 use anyhow::Context;
-use async_nats::jetstream::{context::Publish, stream};
+use async_nats::jetstream::{
+    context::{Publish, PublishErrorKind},
+    stream,
+};
 pub use subjects::*;
 use tracing::info;
 
@@ -25,27 +29,27 @@ impl NatsConnection {
         payload: bytes::Bytes,
     ) -> anyhow::Result<()> {
         let subject = subject.get_string(&self.id);
-        info!("NATS: Publishing: {subject}");
-
-        // Check message size
         let payload_size = payload.len();
-        if payload_size > self.max_payload_size {
-            let subject = &subject;
-            anyhow::bail!(
-                "{subject} payload size={payload_size} exceeds max_payload_size={}",
-                self.max_payload_size
-            )
+        let payload = Publish::build().message_id(&subject).payload(payload);
+
+        info!("NATS: Publishing for {subject}");
+
+        match self.jetstream.send_publish(subject.clone(), payload).await {
+            Ok(ack_future) => {
+                ack_future.await?;
+
+                Ok(())
+            }
+            Err(error) => {
+                if error.kind() == PublishErrorKind::TimedOut
+                    && payload_size > self.max_payload_size
+                {
+                    anyhow::bail!("NATS: {} payload size={payload_size} exceeds max_payload_size={}", &subject, self.max_payload_size);
+                }
+
+                Err(error)?
+            }
         }
-        // Publish
-        let publish_payload =
-            Publish::build().message_id(&subject).payload(payload);
-        let ack_future = self
-            .jetstream
-            .send_publish(subject, publish_payload)
-            .await?;
-        // Wait for an ACK
-        ack_future.await?;
-        Ok(())
     }
 
     #[cfg(test)]

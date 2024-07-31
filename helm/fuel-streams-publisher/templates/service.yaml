@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: {{★include★"fuel-streams-publisher.fullname"★.★: null}: null}
+  labels: {{-★include★"fuel-streams-publisher.labels"★.★|★nindent★4★: null}: null}
+
+spec:
+  type: {{★.Values.service.type★: null}: null}
+  ports:
+    - port: {{★.Values.service.port★: null}: null}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector: {{-★include★"fuel-streams-publisher.selectorLabels"★.★|★nindent★4★: null}: null}

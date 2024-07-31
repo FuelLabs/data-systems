@@ -31,7 +31,7 @@ check_env_vars() {
 
 check_env_vars
 
-cargo run -p fuel-core-nats -- \
+cargo run -p fuel-streams-publisher -- \
     --service-name "NATS Publisher Node" \
     --ip 0.0.0.0 \
     --port 4000 \
