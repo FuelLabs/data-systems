@@ -1,5 +1,5 @@
 [package]
-name = "fuel-core-nats"
+name = "fuel-streams-publisher"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -7,7 +7,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
-description = "Fuel library to handle data streams using Nats"
+description = "Fuel library for publishing data streams from events that happen in Fuel chain(s)"
 
 [dependencies]
 anyhow = { workspace = true }

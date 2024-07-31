@@ -20,7 +20,7 @@ Connect to `devnet`:
 ETH_RPC_ENDPOINT="https://sepolia.infura.io/v3/{API_KEY}"
 P2P_SECRET="{GENERATED_P2P_SECRET}"
 
-cargo run --all-features --bin fuel-core-nats -- \
+cargo run --all-features --bin fuel-streams-publisher -- \
 	--service-name "NATS Publisher Node" \
 	--ip 0.0.0.0 \
 	--port 4000 \
