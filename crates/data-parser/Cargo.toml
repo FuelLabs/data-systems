@@ -8,6 +8,11 @@ license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 
+[[bench]]
+name = "parser"
+harness = false  # do not use the default harness test
+path = "benches/parser.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 
@@ -39,3 +44,6 @@ strum_macros = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }

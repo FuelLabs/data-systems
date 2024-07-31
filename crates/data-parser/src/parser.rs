@@ -104,7 +104,7 @@ macro_rules! define_compression_methods {
 
 /// DataParser implementation
 #[derive(Debug)]
-pub(crate) struct DataParser {
+pub struct DataParser {
     pub compression_type: CompressionType,
     pub compression_level: Level,
     pub serialization_type: SerializationType,
@@ -130,8 +130,8 @@ impl DataParser {
     /// Serializes and compresses the data
     pub async fn serialize_and_compress(
         &self,
-        raw_data: impl serde::Serialize,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        raw_data: &impl serde::Serialize,
+    ) -> Result<Vec<u8>, Error> {
         let serialized_data = self.serialize(raw_data).await?;
         let compressed_data = self.compress(&serialized_data[..]).await?;
         Ok(compressed_data)
@@ -141,7 +141,7 @@ impl DataParser {
     pub async fn decompress_and_deserialize<T: serde::de::DeserializeOwned>(
         &self,
         raw_data: &[u8],
-    ) -> Result<T, Box<dyn std::error::Error>> {
+    ) -> Result<T, Error> {
         let decompressed_data = self.decompress(raw_data).await?;
         let deserialized_data =
             self.deserialize(&decompressed_data[..]).await?;
@@ -151,7 +151,7 @@ impl DataParser {
     /// Serializes the data
     pub async fn serialize(
         &self,
-        raw_data: impl serde::Serialize,
+        raw_data: &impl serde::Serialize,
     ) -> Result<Vec<u8>, Error> {
         match self.serialization_type {
             SerializationType::Bincode => bincode::serialize(&raw_data)
@@ -209,14 +209,17 @@ impl DataParser {
 
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use async_compression::Level;
     use fuel_core_types::{
         blockchain::block::Block as FuelBlock,
         fuel_tx::{Receipt, Transaction, UniqueIdentifier},
-        fuel_types::{AssetId, ChainId},
+        fuel_types::{canonical::Deserialize, AssetId, ChainId},
         services::block_importer::ImportResult,
     };
     use rand::{thread_rng, Rng};
+    use serde::{Deserialize as SerdeDeserialize, Serialize};
     use serde_json::Value;
 
     use crate::{
@@ -246,10 +249,47 @@ mod test {
     async fn test_block_data_serialization() {
         use fuel_core_types::blockchain::block::Block as FuelBlock;
 
+        // define a test data structure
+        #[derive(Clone, Debug, Serialize, SerdeDeserialize, Eq, PartialEq)]
+        struct MyTestData {
+            ids: Vec<String>,
+            version: u64,
+            receipts: Vec<String>,
+            assets: Vec<AssetId>,
+            chain_id: ChainId,
+        }
+
+        // construct the data parser
         let data_parser = DataParserBuilder::new()
             .with_compression(CompressionType::Gzip)
             .with_compression_level(Level::Fastest)
             .with_serialization(SerializationType::Bincode)
             .build();
+
+        let test_data = MyTestData {
+            ids: vec!["1".to_string(), "2".to_string(), "3".to_string()],
+            version: 1u64,
+            receipts: vec![
+                "receipt_1".to_string(),
+                "receipt_2".to_string(),
+                "receipt_3".to_string(),
+            ],
+            assets: vec![AssetId::zeroed()],
+            chain_id: ChainId::new(1),
+        };
+
+        // compress and serialize
+        let ser_compressed_data = data_parser
+            .serialize_and_compress(&test_data)
+            .await
+            .unwrap();
+
+        // deserialize and decompress
+        let my_test_data_recreated = data_parser
+            .decompress_and_deserialize::<MyTestData>(&ser_compressed_data)
+            .await
+            .unwrap();
+
+        assert_eq!(my_test_data_recreated, test_data);
     }
 }

@@ -21,7 +21,7 @@ futures = "0.3"
 fuel-core-bin = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
 fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-client = { version = "0.30" }
-fuel-core-types = { version = "0.30" }
+fuel-core-types = { version = "0.30", features = ["test-helpers", "serde"] }
 fuel-core-services = "0.30"
 futures-util = "0.3.30"
 pretty_assertions = "1.4.0"

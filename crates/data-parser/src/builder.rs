@@ -7,8 +7,8 @@ use crate::{
     types::{CompressionType, SerializationType},
 };
 
-#[derive(Debug, Clone)]
-pub(crate) struct DataParserBuilder {
+#[derive(Debug, Clone, Default)]
+pub struct DataParserBuilder {
     compression_type: Option<CompressionType>,
     compression_level: Option<Level>,
     serialization_type: Option<SerializationType>,
