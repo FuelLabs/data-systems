@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pkg: [fuel-core-nats]
+        pkg: [fuel-streams-publisher]
         os: [ubuntu-latest]
         target: [x86_64-unknown-linux-gnu]
 

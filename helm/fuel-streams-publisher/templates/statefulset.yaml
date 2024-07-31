@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "fuel-core-nats.fullname" . }}
+  name: {{ include "fuel-streams-publisher.fullname" . }}
   labels:
-    {{- include "fuel-core-nats.labels" . | nindent 4 }}
+    {{- include "fuel-streams-publisher.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "fuel-core-nats.fullname" . | quote }}
+  serviceName: {{ include "fuel-streams-publisher.fullname" . | quote }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "fuel-core-nats.selectorLabels" . | nindent 6 }}
+      {{- include "fuel-streams-publisher.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "fuel-core-nats.labels" . | nindent 8 }}
+        {{- include "fuel-streams-publisher.labels" . | nindent 8 }}
           {{- with .Values.podLabels }}
           {{- toYaml . | nindent 8 }}
           {{- end }}
@@ -28,7 +28,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "fuel-core-nats.serviceAccountName" . }}
+      serviceAccountName: {{ include "fuel-streams-publisher.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.initContainers }}

@@ -32,5 +32,5 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-core-nats
-          dockerfile: docker/fuel-core-nats.Dockerfile
+          image: ghcr.io/fuellabs/fuel-streams-publisher
+          dockerfile: docker/fuel-streams-publisher.Dockerfile
