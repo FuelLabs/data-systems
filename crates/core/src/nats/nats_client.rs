@@ -42,7 +42,7 @@ impl NatsClient {
         auth_user: &str,
         auth_pass: &str,
     ) -> Result<Self, NatsError> {
-        let conn = self.create_connection(auth_pass, auth_user).await?;
+        let conn = self.create_conn(auth_pass, auth_user).await?;
         let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", &self.url);
@@ -54,7 +54,7 @@ impl NatsClient {
         })
     }
 
-    async fn create_connection(
+    async fn create_conn(
         &self,
         auth_pass: &str,
         auth_user: &str,
