@@ -35,10 +35,15 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let prefix = client.conn_id.clone();
+        let prefix = client.conn_id.to_string();
         let subjects = S::wildcards(&prefix);
-        let stream =
-            create_stream(client, Self::STREAM, subjects.to_owned()).await?;
+        let config = JetStreamConfig {
+            subjects,
+            storage: NatsStorageType::File,
+            ..Default::default()
+        };
+
+        let stream = client.create_stream(Self::STREAM, config).await?;
 
         Ok(Stream {
             stream,
@@ -58,20 +63,6 @@ where
     }
 }
 
-async fn create_stream(
-    client: &NatsClient,
-    name: &str,
-    subjects: Vec<String>,
-) -> Result<AsyncNatsStream, NatsError> {
-    let config = JetStreamConfig {
-        subjects,
-        storage: NatsStorageType::File,
-        ..Default::default()
-    };
-
-    client.create_stream(name, config).await
-}
-
 #[cfg(any(test, feature = "test_helpers"))]
 impl<S: StreamSubjects> Stream<S>
 where
@@ -82,6 +73,7 @@ where
         client: &NatsClient,
         mut consumer: NatsConsumer<PullConsumerConfig>,
     ) -> BoxedResult<()> {
+        use pretty_assertions::assert_eq;
         // Checking consumer name created with consumer_from method
         let consumer_info = consumer.info().await.unwrap();
         let consumer_name = consumer_info.clone().config.durable_name.unwrap();
@@ -117,6 +109,8 @@ where
 #[cfg(test)]
 mod tests {
     use std::fmt;
+
+    use pretty_assertions::assert_eq;
 
     use super::*;
 

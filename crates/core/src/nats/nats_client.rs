@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use async_nats::jetstream::context::Publish;
+use async_nats::{
+    jetstream::context::{Publish, Streams},
+    ConnectOptions,
+};
 use bytes::Bytes;
 use tracing::info;
 
@@ -12,53 +15,57 @@ use super::{
         NatsConsumer,
         PullConsumerConfig,
     },
+    ConnId,
     NatsError,
 };
 use crate::types::BoxedResult;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NatsClient {
     pub url: String,
-    pub conn_id: String,
-    pub conn: async_nats::Client,
-    pub jetstream: JetStreamContext,
+    pub conn_id: ConnId,
+    pub conn: Option<async_nats::Client>,
+    pub jetstream: Option<JetStreamContext>,
 }
 
 impl NatsClient {
-    pub async fn connect(
-        url: &str,
-        conn_id: &str,
-        nkey: &str,
-    ) -> Result<Self, NatsError> {
-        let conn_id = conn_id.to_string();
-        let conn = Self::create_conn(url, nkey, &conn_id).await?;
-        let context = async_nats::jetstream::new(conn.to_owned());
-
-        info!("Connected to NATS server at {}", url);
-        Ok(Self {
+    pub fn new(url: impl ToString, conn_id: ConnId) -> Self {
+        Self {
             url: url.to_string(),
             conn_id,
-            conn,
-            jetstream: context,
-        })
+            ..Default::default()
+        }
     }
 
-    async fn create_conn(
-        url: &str,
-        nkey: &str,
-        conn_id: &str,
-    ) -> Result<async_nats::Client, NatsError> {
-        let options = async_nats::ConnectOptions::new()
-            .connection_timeout(Duration::from_secs(30))
-            .name(conn_id)
-            .max_reconnects(10);
+    pub async fn connect(
+        self,
+        auth_user: &str,
+        auth_pass: &str,
+    ) -> Result<Self, NatsError> {
+        let options = ConnectOptions::with_user_and_password(
+            auth_user.to_owned(),
+            auth_pass.to_owned(),
+        )
+        .connection_timeout(Duration::from_secs(5))
+        .name(&self.conn_id)
+        .max_reconnects(1);
 
-        async_nats::connect_with_options(&url, options.nkey(nkey.to_string()))
+        let conn = async_nats::connect_with_options(&self.url, options)
             .await
-            .map_err(|e| NatsError::ConnectError {
-                url: url.to_owned(),
-                source: e,
-            })
+            .map_err(|e| NatsError::ConnectionError {
+            url: self.url.to_owned(),
+            source: e,
+        })?;
+
+        let context = async_nats::jetstream::new(conn.to_owned());
+
+        info!("Connected to NATS server at {}", &self.url);
+        Ok(Self {
+            url: self.url,
+            conn_id: self.conn_id,
+            conn: Some(conn),
+            jetstream: Some(context),
+        })
     }
 
     pub fn validate_payload(
@@ -67,7 +74,8 @@ impl NatsClient {
         subject_name: &str,
     ) -> Result<&Self, NatsError> {
         let payload_size = payload.len();
-        let max_payload_size = self.conn.server_info().max_payload;
+        let conn = self.conn.clone().unwrap();
+        let max_payload_size = conn.server_info().max_payload;
         if payload_size > max_payload_size {
             return Err(NatsError::PayloadTooLarge {
                 subject: subject_name.to_string(),
@@ -87,22 +95,23 @@ impl NatsClient {
         let subject_prefixed = format!("{}.{subject}", self.conn_id);
         let publish_payload =
             Publish::build().message_id(subject).payload(payload);
-        let ack_future = self
-            .jetstream
+
+        self.jetstream
+            .clone()
+            .unwrap()
             .send_publish(subject_prefixed, publish_payload)
+            .await?
             .await?;
-        ack_future.await?;
+
         Ok(self)
     }
 
     pub fn stream_name(&self, val: &str) -> String {
-        let id = self.conn_id.clone();
-        format!("{id}_stream:{val}")
+        format!("{}:stream:{val}", self.conn_id)
     }
 
     pub fn consumer_name(&self, val: &str) -> String {
-        let id = self.conn_id.clone();
-        format!("{id}_consumer:{val}")
+        format!("{}:consumer:{val}", self.conn_id)
     }
 
     pub async fn create_stream(
@@ -112,6 +121,8 @@ impl NatsClient {
     ) -> Result<AsyncNatsStream, NatsError> {
         let name = self.stream_name(name);
         self.jetstream
+            .clone()
+            .unwrap()
             .get_or_create_stream(JetStreamConfig {
                 name: name.clone(),
                 ..config
@@ -141,37 +152,28 @@ impl NatsClient {
             .await
             .map_err(|e| NatsError::CreateConsumerFailed { source: e })
     }
-}
 
-/// Tests helpers
-impl NatsClient {
-    #[cfg(any(test, feature = "test_helpers"))]
-    pub async fn connect_when_testing(
-        connection_id: Option<String>,
-    ) -> Result<NatsClient, NatsError> {
-        let host = "nats://localhost:4222".to_string();
-        let url = &dotenvy::var("NATS_URL").unwrap_or(host);
-        let nkey = dotenvy::var("NATS_NKEY_SEED").unwrap();
-        let conn_id = if let Some(id) = connection_id {
-            id
-        } else {
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
-            let random_int: u32 = rng.gen();
-            format!(r"connection-{random_int}")
-        };
-
-        NatsClient::connect(url, &conn_id, &nkey).await
+    pub fn context_streams(&self) -> Streams {
+        self.jetstream.clone().unwrap().streams()
     }
 }
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
+
     use super::*;
+    async fn connect() -> Result<NatsClient, NatsError> {
+        let host = "nats://localhost:4222".to_string();
+        let pass = dotenvy::var("NATS_ADMIN_PASS").unwrap();
+        let url = dotenvy::var("NATS_URL").unwrap_or(host);
+        let conn_id = ConnId::rnd();
+        NatsClient::new(url, conn_id).connect("admin", &pass).await
+    }
 
     #[tokio::test]
     async fn validate_payload_size() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await?;
+        let client = connect().await?;
 
         // Test with a payload within the size limit
         let small_payload = Bytes::from(vec![0; 100]);
@@ -180,7 +182,9 @@ mod test {
             .is_ok());
 
         // Test with a payload exceeding the size limit
-        let max_payload_size = client.conn.server_info().max_payload;
+        let max_payload_size =
+            client.conn.clone().unwrap().server_info().max_payload;
+
         let large_payload = Bytes::from(vec![0; max_payload_size + 1]);
         assert!(client
             .validate_payload(&large_payload, "test.subject")
@@ -191,7 +195,7 @@ mod test {
 
     #[tokio::test]
     async fn create_stream_and_consumer() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await?;
+        let client = connect().await?;
         let mut stream = client
             .create_stream("test_stream", JetStreamConfig::default())
             .await?;

@@ -27,5 +27,8 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
 [features]
 test_helpers = ["dep:pretty_assertions"]
