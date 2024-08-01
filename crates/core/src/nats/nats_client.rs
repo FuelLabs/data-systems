@@ -42,21 +42,7 @@ impl NatsClient {
         auth_user: &str,
         auth_pass: &str,
     ) -> Result<Self, NatsError> {
-        let options = ConnectOptions::with_user_and_password(
-            auth_user.to_owned(),
-            auth_pass.to_owned(),
-        )
-        .connection_timeout(Duration::from_secs(5))
-        .name(&self.conn_id)
-        .max_reconnects(1);
-
-        let conn = async_nats::connect_with_options(&self.url, options)
-            .await
-            .map_err(|e| NatsError::ConnectionError {
-            url: self.url.to_owned(),
-            source: e,
-        })?;
-
+        let conn = self.create_connection(auth_pass, auth_user).await?;
         let context = async_nats::jetstream::new(conn.to_owned());
 
         info!("Connected to NATS server at {}", &self.url);
@@ -66,6 +52,27 @@ impl NatsClient {
             conn: Some(conn),
             jetstream: Some(context),
         })
+    }
+
+    async fn create_connection(
+        &self,
+        auth_pass: &str,
+        auth_user: &str,
+    ) -> Result<async_nats::Client, NatsError> {
+        let options = ConnectOptions::with_user_and_password(
+            auth_user.to_owned(),
+            auth_pass.to_owned(),
+        )
+        .connection_timeout(Duration::from_secs(5))
+        .name(&self.conn_id)
+        .max_reconnects(1);
+
+        async_nats::connect_with_options(&self.url, options)
+            .await
+            .map_err(|e| NatsError::ConnectionError {
+                url: self.url.to_owned(),
+                source: e,
+            })
     }
 
     pub fn validate_payload(
