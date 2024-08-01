@@ -6455,6 +6455,7 @@ name = "streams-tests"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "fuel-streams",
  "futures-util",
  "pretty_assertions",
  "streams-core",
