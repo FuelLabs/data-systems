@@ -1,54 +1,39 @@
-use std::collections::HashSet;
-
-use futures_util::{StreamExt, TryStreamExt};
-use streams_core::{
-    nats::{subjects, ConnStreams, Subject},
-    types,
-};
-use streams_tests::TestStreamsBuilder;
+use futures_util::StreamExt;
+use streams_core::prelude::*;
+use streams_tests::TestSetupBuilder;
 
 #[tokio::test]
-async fn has_conn_and_context_same_streams() -> types::BoxedResult<()> {
-    let ctx = TestStreamsBuilder::setup().await?;
-    let streams = ConnStreams::new(&ctx.client).await?;
-    let stream_list = streams.get_stream_list();
-    let mut jetstreams_streams = ctx.client.jetstream.streams();
+async fn public_user_cannot_create_streams() {
+    assert!(TestSetupBuilder::as_public(None).await.is_err());
+}
 
-    let mut found = HashSet::new();
-    while let Some(stream) = jetstreams_streams.try_next().await? {
-        found.insert(stream.config.name.clone());
-    }
-
-    for mut stream in stream_list {
-        let info = stream.info().await?;
-        assert!(
-            found.contains(&info.config.name),
-            "Stream {} not found in JetStream",
-            info.config.name
-        );
-    }
+#[tokio::test]
+async fn public_user_can_access_streams_after_created() -> BoxedResult<()> {
+    let ctx = TestSetupBuilder::as_admin(None).await?;
+    assert!(TestSetupBuilder::as_public(Some(ctx.conn_id()))
+        .await
+        .is_ok());
 
     Ok(())
 }
 
 #[tokio::test]
-async fn can_consume_stream_for_blocks() -> types::BoxedResult<()> {
-    let ctx = TestStreamsBuilder::setup().await?;
-    let stream = ctx.streams.clone().blocks;
-    let consumer = stream.create_pull_consumer(&ctx.client, None).await?;
+async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
+    let ctx = TestSetupBuilder::as_admin(None).await?;
+    let client = ctx.conn.client();
+    let stream = ctx.conn.streams().blocks();
+    let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
 
     stream
-        .assert_consumer_name(&ctx.client, consumer.to_owned())
+        .assert_consumer_name(&client, consumer.to_owned())
         .await?;
 
     let payload_data = "data";
-    ctx.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    client.publish(subject.parse(), payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -59,26 +44,25 @@ async fn can_consume_stream_for_blocks() -> types::BoxedResult<()> {
 }
 
 #[tokio::test]
-async fn can_consume_stream_for_transactions() -> types::BoxedResult<()> {
-    let ctx = TestStreamsBuilder::setup().await?;
-    let stream = ctx.streams.transactions;
-    let consumer = stream.create_pull_consumer(&ctx.client, None).await?;
+async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
+    let ctx = TestSetupBuilder::as_admin(None).await?;
+    let client = ctx.conn.client();
+    let stream = ctx.conn.streams().transactions();
+    let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::transactions::Transactions {
         height: Some(100_u32),
         tx_index: Some(1),
         tx_id: Some("0x000".to_string()),
-        status: Some(types::TransactionStatus::Success),
-        kind: Some(types::TransactionKind::Script),
+        status: Some(TransactionStatus::Success),
+        kind: Some(TransactionKind::Script),
     };
 
     stream
-        .assert_consumer_name(&ctx.client, consumer.to_owned())
+        .assert_consumer_name(&client, consumer.to_owned())
         .await?;
 
     let payload_data = "data";
-    ctx.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    client.publish(subject.parse(), payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -89,10 +73,11 @@ async fn can_consume_stream_for_transactions() -> types::BoxedResult<()> {
 }
 
 #[tokio::test]
-async fn consume_stream_with_dedup() -> types::BoxedResult<()> {
-    let ctx = TestStreamsBuilder::setup().await?;
-    let stream = ctx.streams.blocks;
-    let consumer = stream.create_pull_consumer(&ctx.client, None).await?;
+async fn consume_stream_with_dedup() -> BoxedResult<()> {
+    let ctx = TestSetupBuilder::as_admin(None).await?;
+    let client = ctx.conn.client();
+    let stream = ctx.conn.streams().blocks();
+    let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
@@ -101,7 +86,7 @@ async fn consume_stream_with_dedup() -> types::BoxedResult<()> {
     let payload_data = "data";
     let parsed = subject.parse();
     for _ in 0..100 {
-        ctx.client
+        client
             .publish(parsed.to_owned(), payload_data.into())
             .await
             .is_ok();

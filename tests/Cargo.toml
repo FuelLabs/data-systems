@@ -18,6 +18,7 @@ path = "tests/lib.rs"
 
 [dependencies]
 anyhow = { workspace = true }
+fuel-streams = { path = "../crates/fuel-streams", features = ["test_helpers"] }
 futures-util = { workspace = true }
 streams-core = { path = "../crates/core", features = ["test_helpers"] }
 tokio = { workspace = true }
