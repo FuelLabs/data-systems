@@ -2,14 +2,16 @@ apiVersion: v1
 kind: Service
 
 metadata:
-  name: {{★include★"fuel-streams-publisher.fullname"★.★: null}: null}
-  labels: {{-★include★"fuel-streams-publisher.labels"★.★|★nindent★4★: null}: null}
+  name: {{ include "fuel-streams-publisher.fullname" . }}
+  labels:
+    {{- include "fuel-streams-publisher.labels" . | nindent 4 }}
 
 spec:
-  type: {{★.Values.service.type★: null}: null}
+  type: {{ .Values.service.type }}
   ports:
-    - port: {{★.Values.service.port★: null}: null}
+    - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
       name: http
-  selector: {{-★include★"fuel-streams-publisher.selectorLabels"★.★|★nindent★4★: null}: null}
+  selector:
+    {{- include "fuel-streams-publisher.selectorLabels" . | nindent 4 }}
