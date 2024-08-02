@@ -21,13 +21,6 @@ impl ConnStreams {
             blocks,
         })
     }
-
-    pub fn blocks(&self) -> Stream<BlockSubjects> {
-        self.blocks.clone()
-    }
-    pub fn transactions(&self) -> Stream<TransactionSubjects> {
-        self.transactions.clone()
-    }
 }
 
 #[cfg(feature = "test-helpers")]
