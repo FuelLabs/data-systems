@@ -1,8 +1,8 @@
 use async_nats::connection::State;
 use fuel_streams::prelude::*;
+use fuel_streams_core::prelude::*;
 use futures_util::future::try_join_all;
 use pretty_assertions::assert_eq;
-use streams_core::prelude::*;
 
 #[tokio::test]
 async fn fuel_streams_client_connection() -> BoxedResult<()> {
