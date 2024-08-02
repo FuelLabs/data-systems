@@ -1,10 +1,5 @@
-[package]
-name = "fuel-data-systems"
-version = "0.0.1"
-edition = "2021"
-
 [workspace]
-members = [".", "crates/*", "tests"]
+members = ["crates/*", "tests"]
 resolver = "2"
 
 [workspace.package]
@@ -23,20 +18,10 @@ async-trait = "0.1.81"
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 futures = "0.3"
-fuel-core-bin = { version = "0.30", features = [
-    "env",
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core = { version = "0.30", features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
-] }
+fuel-core-bin = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.30", features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-client = { version = "0.30" }
-fuel-core-types = { version = "0.30", features = ["test-helpers"] }
+fuel-core-types = { version = "0.30" }
 fuel-core-services = "0.30"
 futures-util = "0.3.30"
 pretty_assertions = "1.4.0"
