@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
-  RUST_NIGHTLY_VERSION: 'nightly-2024-07-28'
+  RUST_NIGHTLY_VERSION: "nightly-2024-07-28"
   CI: true
 
 concurrency:
@@ -26,7 +26,6 @@ jobs:
         with:
           requireScope: true
           types: |
-            arch
             build
             ci
             docs
@@ -41,7 +40,8 @@ jobs:
             release
             core
             publisher
-            data-stream
+            data-parser
+            fuel-streams
 
   pre-commit:
     runs-on: ubuntu-latest

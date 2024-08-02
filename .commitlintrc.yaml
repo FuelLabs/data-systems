@@ -5,4 +5,4 @@ rules:
   type-enum:
     - 2
     - always
-    - [arch, build, ci, docs, feat, fix, perf, refactor, test]
+    - [build, ci, docs, feat, fix, perf, refactor, test]
