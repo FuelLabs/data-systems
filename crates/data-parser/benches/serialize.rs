@@ -1,52 +1,15 @@
 use async_compression::Level;
 use criterion::{criterion_group, criterion_main, Criterion};
 use data_parser::{
-    builder::DataParserBuilder,
+    generate_test_data,
+    perform_serialization,
     types::{CompressionType, SerializationType},
 };
-use fuel_core_types::{fuel_tx::AssetId, fuel_types::ChainId};
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-struct MyTestData {
-    ids: Vec<String>,
-    version: u64,
-    receipts: Vec<String>,
-    assets: Vec<AssetId>,
-    chain_id: ChainId,
-}
-
-// Function to perform serialization and compression based on parameters
-async fn perform_serialization(
-    test_data: &MyTestData,
-    serialization_type: SerializationType,
-    compression_type: CompressionType,
-    compression_level: Level,
-) {
-    let data_parser = DataParserBuilder::new()
-        .with_compression(compression_type)
-        .with_compression_level(compression_level)
-        .with_serialization(serialization_type)
-        .build();
-
-    for _ in 0..10_000 {
-        let _ = data_parser.serialize_and_compress(test_data).await.unwrap();
-    }
-}
 
 fn bench_serialize(c: &mut Criterion) {
     let mut group = c.benchmark_group("serialize");
 
-    let test_data = MyTestData {
-        ids: vec!["1".to_string(), "2".to_string(), "3".to_string()],
-        version: 1u64,
-        receipts: vec![
-            "receipt_1".to_string(),
-            "receipt_2".to_string(),
-            "receipt_3".to_string(),
-        ],
-        assets: vec![AssetId::zeroed()],
-        chain_id: ChainId::new(1),
-    };
+    let test_data = generate_test_data();
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
