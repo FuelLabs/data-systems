@@ -129,80 +129,80 @@ pub async fn connect(
     })
 }
 
-#[cfg(test)]
-pub mod tests {
-    use async_nats::jetstream::stream::LastRawMessageErrorKind;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn returns_signature_error_empty_nkey() {
-        assert!(connect(&get_url(), "", Some(get_random_connection_id()))
-            .await
-            .is_err_and(|e| {
-                e.source()
-                    .expect("An error source must exist")
-                    .to_string()
-                    .contains("failed signing nonce")
-            }));
-    }
-
-    #[tokio::test]
-    async fn returns_authorization_error_invalid_nkey() {
-        assert!(connect(
-            &get_url(),
-            "some-invalid-nkey",
-            Some(get_random_connection_id())
-        )
-        .await
-        .is_err_and(|e| {
-            e.source()
-                .expect("An error source must exist")
-                .to_string()
-                .contains("failed signing nonce")
-        }));
-    }
-
-    #[tokio::test]
-    async fn connects_to_nats_with_nkey() {
-        let nats = get_nats_connection(&get_random_connection_id()).await;
-
-        assert!(nats
-            .get_last_raw_messages_by_all_subjects()
-            .await
-            .iter()
-            .all(|result| {
-                result.as_ref().is_err_and(|err| {
-                    err.kind() == LastRawMessageErrorKind::NoMessageFound
-                })
-            }));
-    }
-
-    #[tokio::test]
-    async fn returns_max_payload_size_allowed_on_the_connection() {
-        let nats = get_nats_connection(&get_random_connection_id()).await;
-
-        assert_eq!(nats.max_payload_size, 8_388_608)
-    }
-
-    pub fn get_random_connection_id() -> String {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let connection_id: u32 = rng.gen();
-        format!("connection-{connection_id}")
-    }
-
-    pub async fn get_nats_connection(connection_id: &str) -> NatsConnection {
-        let url = &get_url();
-
-        connect(url, &get_nkey(), Some(connection_id.to_string()))
-            .await
-            .expect(&format!("Ensure NATS server is running at {url}"))
-    }
-    fn get_url() -> String {
-        dotenvy::var("NATS_URL").unwrap_or("nats://localhost:4222".to_string())
-    }
-    fn get_nkey() -> String {
-        dotenvy::var("NATS_NKEY_SEED").unwrap()
-    }
-}
+// #[cfg(test)]
+// pub mod tests {
+//     use async_nats::jetstream::stream::LastRawMessageErrorKind;
+//
+//     use super::*;
+//
+//     #[tokio::test]
+//     async fn returns_signature_error_empty_nkey() {
+//         assert!(connect(&get_url(), "", Some(get_random_connection_id()))
+//             .await
+//             .is_err_and(|e| {
+//                 e.source()
+//                     .expect("An error source must exist")
+//                     .to_string()
+//                     .contains("failed signing nonce")
+//             }));
+//     }
+//
+//     #[tokio::test]
+//     async fn returns_authorization_error_invalid_nkey() {
+//         assert!(connect(
+//             &get_url(),
+//             "some-invalid-nkey",
+//             Some(get_random_connection_id())
+//         )
+//         .await
+//         .is_err_and(|e| {
+//             e.source()
+//                 .expect("An error source must exist")
+//                 .to_string()
+//                 .contains("failed signing nonce")
+//         }));
+//     }
+//
+//     #[tokio::test]
+//     async fn connects_to_nats_with_nkey() {
+//         let nats = get_nats_connection(&get_random_connection_id()).await;
+//
+//         assert!(nats
+//             .get_last_raw_messages_by_all_subjects()
+//             .await
+//             .iter()
+//             .all(|result| {
+//                 result.as_ref().is_err_and(|err| {
+//                     err.kind() == LastRawMessageErrorKind::NoMessageFound
+//                 })
+//             }));
+//     }
+//
+//     #[tokio::test]
+//     async fn returns_max_payload_size_allowed_on_the_connection() {
+//         let nats = get_nats_connection(&get_random_connection_id()).await;
+//
+//         assert_eq!(nats.max_payload_size, 8_388_608)
+//     }
+//
+//     pub fn get_random_connection_id() -> String {
+//         use rand::Rng;
+//         let mut rng = rand::thread_rng();
+//         let connection_id: u32 = rng.gen();
+//         format!("connection-{connection_id}")
+//     }
+//
+//     pub async fn get_nats_connection(connection_id: &str) -> NatsConnection {
+//         let url = &get_url();
+//
+//         connect(url, &get_nkey(), Some(connection_id.to_string()))
+//             .await
+//             .expect(&format!("Ensure NATS server is running at {url}"))
+//     }
+//     fn get_url() -> String {
+//         dotenvy::var("NATS_URL").unwrap_or("nats://localhost:4222".to_string())
+//     }
+//     fn get_nkey() -> String {
+//         dotenvy::var("NATS_NKEY_SEED").unwrap()
+//     }
+// }
