@@ -11,8 +11,8 @@ version = { workspace = true }
 [dependencies]
 async-trait = { workspace = true }
 dotenvy = { workspace = true }
+fuel-streams-core = { path = "../fuel-streams-core" }
 futures-util = { workspace = true }
-streams-core = { path = "../fuel-streams-core" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

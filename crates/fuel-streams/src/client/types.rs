@@ -1,4 +1,4 @@
-use streams_core::nats::NatsError;
+use fuel_streams_core::nats::NatsError;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub enum ClientStatus {

@@ -1,5 +1,5 @@
+use fuel_streams_core::prelude::*;
 use futures_util::StreamExt;
-use streams_core::prelude::*;
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() {

@@ -1,5 +1,5 @@
 [package]
-name = "streams-core"
+name = "fuel-streams-core"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
