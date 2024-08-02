@@ -3,7 +3,7 @@ services:
     profiles: [all, nats]
     image: nats:latest
     ports: [4222:4222, 8222:8222]
-    volumes: [../crates/fuel-streams-publisher/nats.conf:/etc/nats/nats.conf]
+    volumes: [./nats.conf:/etc/nats/nats.conf]
     command:
       [
         -m,
