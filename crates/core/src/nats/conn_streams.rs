@@ -7,8 +7,8 @@ use crate::nats::{
 
 #[derive(Debug, Clone)]
 pub struct ConnStreams {
-    blocks: Stream<BlockSubjects>,
-    transactions: Stream<TransactionSubjects>,
+    pub blocks: Stream<BlockSubjects>,
+    pub transactions: Stream<TransactionSubjects>,
 }
 
 impl ConnStreams {
@@ -30,7 +30,7 @@ impl ConnStreams {
     }
 }
 
-#[cfg(any(test, feature = "test_helpers"))]
+#[cfg(feature = "test-helpers")]
 impl ConnStreams {
     pub fn get_stream_list(&self) -> Vec<super::types::AsyncNatsStream> {
         vec![self.blocks.stream.clone(), self.transactions.stream.clone()]

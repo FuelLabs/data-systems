@@ -19,7 +19,7 @@ pub struct Client {
 #[async_trait]
 impl ClientConn for Client {
     async fn connect(url: impl ToString + Send) -> ConnectionResult<Self> {
-        let opts = ClientOpts::public_opts(url, ConnId::default());
+        let opts = ClientOpts::new(url);
         let conn = NatsConn::connect(opts).await?;
         Ok(Self { conn })
     }

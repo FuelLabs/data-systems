@@ -6,6 +6,7 @@ use strum::IntoEnumIterator;
 use super::Subject;
 use crate::{
     nats::{types::*, NatsClient, NatsError},
+    prelude::NatsNamespace,
     types::BoxedResult,
 };
 
@@ -26,7 +27,7 @@ pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
 #[derive(Debug, Clone)]
 pub struct Stream<S: StreamSubjects> {
     pub stream: AsyncNatsStream,
-    pub(self) prefix: String,
+    pub(self) namespace: NatsNamespace,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -35,8 +36,7 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let prefix = client.opts.nats_prefix.to_string();
-        let subjects = client.prefix_subjects(S::wildcards());
+        let subjects = client.namespace.prepend_subjects(S::wildcards());
         let config = JetStreamConfig {
             subjects,
             storage: NatsStorageType::File,
@@ -47,7 +47,7 @@ where
 
         Ok(Stream {
             stream,
-            prefix,
+            namespace: client.namespace.to_owned(),
             _marker: std::marker::PhantomData,
         })
     }
@@ -63,7 +63,7 @@ where
     }
 }
 
-#[cfg(any(test, feature = "test_helpers"))]
+#[cfg(feature = "test-helpers")]
 impl<S: StreamSubjects> Stream<S>
 where
     Self: StreamIdentifier,
@@ -77,7 +77,7 @@ where
         // Checking consumer name created with consumer_from method
         let consumer_info = consumer.info().await.unwrap();
         let consumer_name = consumer_info.clone().config.durable_name.unwrap();
-        assert_eq!(consumer_name, client.consumer_name(Self::STREAM));
+        assert_eq!(consumer_name, client.namespace.consumer_name(Self::STREAM));
         Ok(())
     }
 
@@ -96,8 +96,8 @@ where
         if let Some(message) = messages.next().await {
             let message = message?;
             let payload = from_utf8(&message.payload);
-            let subject_prefixed = format!("{}.{parsed}", self.prefix);
-            assert_eq!(message.subject.as_str(), subject_prefixed);
+            let subject_name = self.namespace.subject_name(&parsed);
+            assert_eq!(message.subject.as_str(), subject_name);
             assert_eq!(payload.unwrap(), payload_data.to_string());
             message.ack().await.unwrap();
         }

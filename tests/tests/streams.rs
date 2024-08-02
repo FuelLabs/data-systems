@@ -3,16 +3,16 @@ use streams_core::prelude::*;
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() {
-    let opts = ClientOpts::public_opts(NATS_URL, ConnId::rnd())
-        .with_prefix("test1")
+    let opts = ClientOpts::public_opts(NATS_URL)
+        .with_namespace("test1")
         .with_timeout(1);
     assert!(NatsConn::connect(opts).await.is_err());
 }
 
 #[tokio::test]
 async fn public_user_can_access_streams_after_created() {
-    let opts = ClientOpts::new(NATS_URL, ConnId::rnd())
-        .with_prefix("test2")
+    let opts = ClientOpts::new(NATS_URL)
+        .with_namespace("test2")
         .with_timeout(1);
 
     let admin_opts = opts.clone().with_role(NatsUserRole::Admin);
@@ -24,22 +24,23 @@ async fn public_user_can_access_streams_after_created() {
 
 #[tokio::test]
 async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let opts = ClientOpts::admin_opts(NATS_URL);
     let conn = NatsConn::connect(opts).await?;
-    let client = conn.client();
-    let stream = conn.streams().blocks();
-    let consumer = stream.create_pull_consumer(&client, None).await?;
+    let stream = conn.streams.blocks;
+    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
 
     stream
-        .assert_consumer_name(&client, consumer.to_owned())
+        .assert_consumer_name(&conn.client, consumer.to_owned())
         .await?;
 
     let payload_data = "data";
-    client.publish(subject.parse(), payload_data.into()).await?;
+    conn.client
+        .publish(subject.parse(), payload_data.into())
+        .await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -51,11 +52,10 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let opts = ClientOpts::admin_opts(NATS_URL);
     let conn = NatsConn::connect(opts).await?;
-    let client = conn.client();
-    let stream = conn.streams().transactions();
-    let consumer = stream.create_pull_consumer(&client, None).await?;
+    let stream = conn.streams.transactions;
+    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
     let subject = subjects::transactions::Transactions {
         height: Some(100_u32),
         tx_index: Some(1),
@@ -65,11 +65,13 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
     };
 
     stream
-        .assert_consumer_name(&client, consumer.to_owned())
+        .assert_consumer_name(&conn.client, consumer.to_owned())
         .await?;
 
     let payload_data = "data";
-    client.publish(subject.parse(), payload_data.into()).await?;
+    conn.client
+        .publish(subject.parse(), payload_data.into())
+        .await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -81,11 +83,10 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn consume_stream_with_dedup() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let opts = ClientOpts::admin_opts(NATS_URL);
     let conn = NatsConn::connect(opts).await?;
-    let client = conn.client();
-    let stream = conn.streams().blocks();
-    let consumer = stream.create_pull_consumer(&client, None).await?;
+    let stream = conn.streams.blocks;
+    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
@@ -94,7 +95,7 @@ async fn consume_stream_with_dedup() -> BoxedResult<()> {
     let payload_data = "data";
     let parsed = subject.parse();
     for _ in 0..100 {
-        client
+        conn.client
             .publish(parsed.to_owned(), payload_data.into())
             .await
             .is_ok();

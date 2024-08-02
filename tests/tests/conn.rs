@@ -5,10 +5,10 @@ use streams_core::prelude::*;
 
 #[tokio::test]
 async fn conn_streams_has_same_context_streams() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let opts = ClientOpts::admin_opts(NATS_URL);
     let conn = NatsConn::connect(opts).await?;
     let stream_list = conn.streams().get_stream_list();
-    let mut jetstreams_streams = conn.client().context_streams();
+    let mut jetstreams_streams = conn.jetstream().streams();
 
     let mut found = HashSet::new();
     while let Some(stream) = jetstreams_streams.try_next().await? {

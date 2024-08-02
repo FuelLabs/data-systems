@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-static DEFAULT_CONN_ID: &str = "fuel";
+static DEFAULT_CONN_ID: &str = "fuel-streams";
 
 #[derive(Debug, Clone, Default)]
 pub enum ConnId {

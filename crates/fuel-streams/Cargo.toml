@@ -17,4 +17,5 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 
 [features]
-test_helpers = []
+default = []
+test-helpers = []
