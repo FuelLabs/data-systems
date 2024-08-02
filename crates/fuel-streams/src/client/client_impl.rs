@@ -1,7 +1,7 @@
 use std::fmt;
 
 use async_trait::async_trait;
-use streams_core::prelude::*;
+use fuel_streams_core::prelude::*;
 
 use super::ConnectionResult;
 

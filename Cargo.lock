@@ -2641,10 +2641,32 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "dotenvy",
+ "fuel-streams-core",
  "futures-util",
- "streams-core",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "fuel-streams-core"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "async-trait",
+ "bytes",
+ "dotenvy",
+ "fuel-core",
+ "fuel-core-types",
+ "futures-util",
+ "pretty_assertions",
+ "rand",
+ "serde_json",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -6327,38 +6349,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "streams-core"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-nats",
- "async-trait",
- "bytes",
- "dotenvy",
- "fuel-core",
- "fuel-core-types",
- "futures-util",
- "pretty_assertions",
- "rand",
- "serde_json",
- "strum 0.26.3",
- "strum_macros 0.26.4",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "streams-tests"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-nats",
  "fuel-streams",
+ "fuel-streams-core",
  "futures",
  "futures-util",
  "pretty_assertions",
- "streams-core",
  "tokio",
 ]
 
