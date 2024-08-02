@@ -35,7 +35,7 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let prefix = client.opts.prefix.to_string();
+        let prefix = client.opts.nats_prefix.to_string();
         let subjects = client.prefix_subjects(S::wildcards());
         let config = JetStreamConfig {
             subjects,

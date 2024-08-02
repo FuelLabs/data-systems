@@ -45,15 +45,15 @@ impl NatsClient {
     }
 
     pub fn stream_name(&self, val: &str) -> String {
-        format!("{}:stream:{val}", self.opts.prefix)
+        format!("{}:stream:{val}", self.opts.nats_prefix)
     }
 
     pub fn consumer_name(&self, val: &str) -> String {
-        format!("{}:consumer:{val}", self.opts.prefix)
+        format!("{}:consumer:{val}", self.opts.nats_prefix)
     }
 
     pub fn subject_name(&self, val: &str) -> String {
-        format!("{}.{val}", self.opts.prefix)
+        format!("{}.{val}", self.opts.nats_prefix)
     }
 
     pub async fn publish(
@@ -70,7 +70,7 @@ impl NatsClient {
     pub fn prefix_subjects(&self, subjects: Vec<String>) -> Vec<String> {
         subjects
             .iter()
-            .map(|s| format!("{}.{s}", self.opts.prefix))
+            .map(|s| format!("{}.{s}", self.opts.nats_prefix))
             .collect()
     }
 
