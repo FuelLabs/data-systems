@@ -11,6 +11,7 @@ services:
         --name=fuel-streams-publisher-server,
         --js,
         --config=/etc/nats/nats.conf,
+        -V,
       ]
     env_file: [./../.env]
 

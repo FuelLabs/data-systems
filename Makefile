@@ -52,11 +52,6 @@ clean/nats clean/fuel-core: clean/docker
 dev-watch:
 	cargo watch -- cargo run
 
-generate-nkey:
-	@NKEY_OUTPUT=$$(nk -gen user -pubout); \
-	echo "NATS_NKEY_SEED=$$(echo "$$NKEY_OUTPUT" | sed -n '1p')" >> .env; \
-	echo "NATS_NKEY_USER=$$(echo "$$NKEY_OUTPUT" | sed -n '2p')" >> .env
-
 # ------------------------------------------------------------
 # Formatting
 # ------------------------------------------------------------

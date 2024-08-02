@@ -23,7 +23,7 @@ impl ConnStreams {
     }
 }
 
-#[cfg(any(test, feature = "test_helpers"))]
+#[cfg(feature = "test-helpers")]
 impl ConnStreams {
     pub fn get_stream_list(&self) -> Vec<super::types::AsyncNatsStream> {
         vec![self.blocks.stream.clone(), self.transactions.stream.clone()]
@@ -38,31 +38,5 @@ impl ConnStreams {
         }
 
         Ok(all_subjects)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::types::BoxedResult;
-
-    #[tokio::test]
-    async fn has_subjects_wildcards() -> BoxedResult<()> {
-        let client = NatsClient::connect_when_testing(None).await?;
-        let conn_id = client.clone().conn_id;
-        let streams = ConnStreams::new(&client).await?;
-        let all_subjects = streams.collect_subjects().await?;
-
-        assert_eq!(all_subjects.len(), 3);
-        assert_eq!(
-            all_subjects,
-            vec![
-                format!("{conn_id}.blocks.*.*"),
-                format!("{conn_id}.transactions.*.*.*.*.*"),
-                format!("{conn_id}.by_id.transactions.*.*")
-            ]
-        );
-
-        Ok(())
     }
 }
