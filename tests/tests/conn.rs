@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
+use fuel_streams_core::prelude::*;
 use futures_util::TryStreamExt;
-use streams_core::prelude::*;
 
 #[tokio::test]
 async fn conn_streams_has_same_context_streams() -> BoxedResult<()> {
