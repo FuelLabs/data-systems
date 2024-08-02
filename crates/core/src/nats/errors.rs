@@ -29,22 +29,10 @@ pub enum NatsError {
         source: error::Error<ConsumerErrorKind>,
     },
 
-    #[error("No NATS key found when connecting to {url}")]
-    NkeyNotProvided { url: String },
-
     #[error("Failed to connect to NATS server at {url}: {source}")]
-    ConnectError {
+    ConnectionError {
         url: String,
         #[source]
         source: error::Error<ConnectErrorKind>,
     },
-
-    #[error("No valid stream {name} was found no method {method}")]
-    NoStreamFound { name: String, method: &'static str },
-
-    #[error("Connection to NATS server at {0} is pending")]
-    ConnectionPending(String),
-
-    #[error("Connection to NATS server at {0} is disconnected")]
-    ConnectionDisconnected(String),
 }
