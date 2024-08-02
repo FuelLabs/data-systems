@@ -2636,7 +2636,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-systems"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "fuel-derive"
@@ -2673,7 +2673,7 @@ checksum = "8be80f1cf059ac87c63fa21b5fa3036472bdb4757c3ba5bae16f0256651e37a1"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "dotenvy",
@@ -2685,7 +2685,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-publisher"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -6430,7 +6430,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "streams-core"
-version = "0.0.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -6452,7 +6452,7 @@ dependencies = [
 
 [[package]]
 name = "streams-tests"
-version = "0.0.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
