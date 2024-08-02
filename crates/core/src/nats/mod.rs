@@ -1,3 +1,4 @@
+mod client_opts;
 mod conn_id;
 mod conn_streams;
 mod errors;
@@ -7,6 +8,7 @@ mod nats_conn;
 pub mod streams;
 pub mod types;
 
+pub use client_opts::*;
 pub use conn_id::*;
 pub use conn_streams::*;
 pub use errors::*;

@@ -30,6 +30,7 @@ impl ConnStreams {
     }
 }
 
+#[cfg(any(test, feature = "test_helpers"))]
 impl ConnStreams {
     pub fn get_stream_list(&self) -> Vec<super::types::AsyncNatsStream> {
         vec![self.blocks.stream.clone(), self.transactions.stream.clone()]

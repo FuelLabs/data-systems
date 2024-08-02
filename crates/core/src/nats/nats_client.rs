@@ -1,78 +1,28 @@
-use std::time::Duration;
-
-use async_nats::{
-    jetstream::context::{Publish, Streams},
-    ConnectOptions,
-};
+use async_nats::jetstream::context::{Publish, Streams};
 use bytes::Bytes;
 use tracing::info;
 
-use super::{
-    types::{
-        AsyncNatsStream,
-        JetStreamConfig,
-        JetStreamContext,
-        NatsConsumer,
-        PullConsumerConfig,
-    },
-    ConnId,
-    NatsError,
-};
+use super::{types::*, ClientOpts, NatsError};
 use crate::types::BoxedResult;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct NatsClient {
-    pub url: String,
-    pub conn_id: ConnId,
-    pub conn: Option<async_nats::Client>,
-    pub jetstream: Option<JetStreamContext>,
+    pub nats_client: async_nats::Client,
+    pub jetstream: JetStreamContext,
+    pub(crate) opts: ClientOpts,
 }
 
 impl NatsClient {
-    pub fn new(url: impl ToString, conn_id: ConnId) -> Self {
-        Self {
-            url: url.to_string(),
-            conn_id,
-            ..Default::default()
-        }
-    }
+    pub async fn connect(opts: ClientOpts) -> Result<Self, NatsError> {
+        let nats_client = opts.to_owned().connect().await?;
+        let jetstream = async_nats::jetstream::new(nats_client.to_owned());
+        info!("Connected to NATS server at {}", &opts.url);
 
-    pub async fn connect(
-        self,
-        auth_user: &str,
-        auth_pass: &str,
-    ) -> Result<Self, NatsError> {
-        let conn = self.create_conn(auth_pass, auth_user).await?;
-        let context = async_nats::jetstream::new(conn.to_owned());
-
-        info!("Connected to NATS server at {}", &self.url);
         Ok(Self {
-            url: self.url,
-            conn_id: self.conn_id,
-            conn: Some(conn),
-            jetstream: Some(context),
+            opts: opts.to_owned(),
+            nats_client,
+            jetstream,
         })
-    }
-
-    async fn create_conn(
-        &self,
-        auth_pass: &str,
-        auth_user: &str,
-    ) -> Result<async_nats::Client, NatsError> {
-        let options = ConnectOptions::with_user_and_password(
-            auth_user.to_owned(),
-            auth_pass.to_owned(),
-        )
-        .connection_timeout(Duration::from_secs(5))
-        .name(&self.conn_id)
-        .max_reconnects(1);
-
-        async_nats::connect_with_options(&self.url, options)
-            .await
-            .map_err(|e| NatsError::ConnectionError {
-                url: self.url.to_owned(),
-                source: e,
-            })
     }
 
     pub fn validate_payload(
@@ -81,7 +31,7 @@ impl NatsClient {
         subject_name: &str,
     ) -> Result<&Self, NatsError> {
         let payload_size = payload.len();
-        let conn = self.conn.clone().unwrap();
+        let conn = self.nats_client.clone();
         let max_payload_size = conn.server_info().max_payload;
         if payload_size > max_payload_size {
             return Err(NatsError::PayloadTooLarge {
@@ -94,31 +44,34 @@ impl NatsClient {
         Ok(self)
     }
 
+    pub fn stream_name(&self, val: &str) -> String {
+        format!("{}:stream:{val}", self.opts.prefix)
+    }
+
+    pub fn consumer_name(&self, val: &str) -> String {
+        format!("{}:consumer:{val}", self.opts.prefix)
+    }
+
+    pub fn subject_name(&self, val: &str) -> String {
+        format!("{}.{val}", self.opts.prefix)
+    }
+
     pub async fn publish(
         &self,
         subject: String,
         payload: Bytes,
     ) -> BoxedResult<&Self> {
-        let subject_prefixed = format!("{}.{subject}", self.conn_id);
-        let publish_payload =
-            Publish::build().message_id(subject).payload(payload);
-
-        self.jetstream
-            .clone()
-            .unwrap()
-            .send_publish(subject_prefixed, publish_payload)
-            .await?
-            .await?;
-
+        let subject = self.subject_name(&subject);
+        let payload = Publish::build().message_id(&subject).payload(payload);
+        self.jetstream.send_publish(subject, payload).await?.await?;
         Ok(self)
     }
 
-    pub fn stream_name(&self, val: &str) -> String {
-        format!("{}:stream:{val}", self.conn_id)
-    }
-
-    pub fn consumer_name(&self, val: &str) -> String {
-        format!("{}:consumer:{val}", self.conn_id)
+    pub fn prefix_subjects(&self, subjects: Vec<String>) -> Vec<String> {
+        subjects
+            .iter()
+            .map(|s| format!("{}.{s}", self.opts.prefix))
+            .collect()
     }
 
     pub async fn create_stream(
@@ -128,8 +81,6 @@ impl NatsClient {
     ) -> Result<AsyncNatsStream, NatsError> {
         let name = self.stream_name(name);
         self.jetstream
-            .clone()
-            .unwrap()
             .get_or_create_stream(JetStreamConfig {
                 name: name.clone(),
                 ..config
@@ -161,7 +112,7 @@ impl NatsClient {
     }
 
     pub fn context_streams(&self) -> Streams {
-        self.jetstream.clone().unwrap().streams()
+        self.jetstream.streams()
     }
 }
 
@@ -170,12 +121,12 @@ mod test {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::prelude::*;
     async fn connect() -> Result<NatsClient, NatsError> {
-        let host = "nats://localhost:4222".to_string();
-        let pass = dotenvy::var("NATS_ADMIN_PASS").unwrap();
+        let host = "localhost:4222".to_string();
         let url = dotenvy::var("NATS_URL").unwrap_or(host);
-        let conn_id = ConnId::rnd();
-        NatsClient::new(url, conn_id).connect("admin", &pass).await
+        let opts = ClientOpts::admin_opts(url, ConnId::rnd());
+        NatsClient::connect(opts).await
     }
 
     #[tokio::test]
@@ -189,9 +140,7 @@ mod test {
             .is_ok());
 
         // Test with a payload exceeding the size limit
-        let max_payload_size =
-            client.conn.clone().unwrap().server_info().max_payload;
-
+        let max_payload_size = client.nats_client.server_info().max_payload;
         let large_payload = Bytes::from(vec![0; max_payload_size + 1]);
         assert!(client
             .validate_payload(&large_payload, "test.subject")

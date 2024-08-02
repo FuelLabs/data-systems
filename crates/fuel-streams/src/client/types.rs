@@ -1,4 +1,4 @@
-use super::errors::ClientError;
+use streams_core::nats::NatsError;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub enum ClientStatus {
@@ -7,4 +7,4 @@ pub enum ClientStatus {
     Connected,
 }
 
-pub type ConnectionResult<R> = Result<R, ClientError>;
+pub type ConnectionResult<R> = Result<R, NatsError>;

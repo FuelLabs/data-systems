@@ -13,7 +13,7 @@ version = "0.0.0"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-bytes = "1.6.1"
+bytes = "1.7.1"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }

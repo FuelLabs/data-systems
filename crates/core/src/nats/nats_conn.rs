@@ -1,4 +1,4 @@
-use super::{ConnId, ConnStreams, NatsClient, NatsError};
+use super::{types::*, ClientOpts, ConnId, ConnStreams, NatsClient, NatsError};
 
 #[derive(Debug, Clone)]
 pub struct NatsConn {
@@ -7,13 +7,9 @@ pub struct NatsConn {
 }
 
 impl NatsConn {
-    async fn connect(
-        url: &str,
-        conn_id: ConnId,
-        user: &str,
-        pass: &str,
-    ) -> Result<Self, NatsError> {
-        let client = NatsClient::new(url, conn_id).connect(user, pass).await?;
+    #[cfg(feature = "test_helpers")]
+    pub async fn connect(opts: ClientOpts) -> Result<Self, NatsError> {
+        let client = NatsClient::connect(opts).await?;
         let streams = ConnStreams::new(&client).await?;
 
         Ok(Self {
@@ -22,26 +18,34 @@ impl NatsConn {
         })
     }
 
-    #[cfg(feature = "test_helpers")]
-    pub async fn as_admin(
-        url: impl AsRef<str>,
-        conn_id: ConnId,
-    ) -> Result<Self, NatsError> {
-        let pass = dotenvy::var("NATS_ADMIN_PASS").unwrap();
-        Self::connect(url.as_ref(), conn_id, "admin", &pass).await
+    pub fn opts(&self) -> ClientOpts {
+        self.client().opts.clone()
     }
 
-    pub async fn as_public(
-        url: impl AsRef<str>,
-        conn_id: ConnId,
-    ) -> Result<Self, NatsError> {
-        let pass = dotenvy::var("NATS_PUBLIC_PASS").unwrap();
-        Self::connect(url.as_ref(), conn_id, "public", &pass).await
+    pub fn conn_id(&self) -> ConnId {
+        self.client().opts.conn_id.clone()
+    }
+
+    pub fn url(&self) -> String {
+        self.client().opts.url
     }
 
     pub fn client(&self) -> NatsClient {
         self.client.clone()
     }
+
+    pub fn state(&self) -> ConnectionState {
+        self.nats_client().connection_state()
+    }
+
+    pub fn nats_client(&self) -> AsyncNatsClient {
+        self.client().nats_client.clone()
+    }
+
+    pub fn jetstream(&self) -> JetStreamContext {
+        self.client().jetstream.clone()
+    }
+
     pub fn streams(&self) -> ConnStreams {
         self.streams.clone()
     }

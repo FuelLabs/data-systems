@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+static DEFAULT_CONN_ID: &str = "fuel";
+
 #[derive(Debug, Clone, Default)]
 pub enum ConnId {
     Custom(String),
@@ -27,8 +29,20 @@ impl Display for ConnId {
         let value = match self {
             ConnId::Custom(s) => s,
             ConnId::Rnd(s) => s,
-            ConnId::Default => &ConnId::rnd().to_string(),
+            ConnId::Default => DEFAULT_CONN_ID,
         };
         write!(f, "{value}")
+    }
+}
+
+impl From<&str> for ConnId {
+    fn from(value: &str) -> Self {
+        ConnId::Custom(value.into())
+    }
+}
+
+impl From<ConnId> for String {
+    fn from(val: ConnId) -> Self {
+        val.to_string()
     }
 }

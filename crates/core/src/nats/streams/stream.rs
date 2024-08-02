@@ -18,15 +18,15 @@ pub trait StreamIdentifier {
 }
 
 pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
-    fn wildcards(prefix: &str) -> Vec<String> {
-        Self::iter().map(|s| format!("{prefix}.{s}")).collect()
+    fn wildcards() -> Vec<String> {
+        Self::iter().map(|s| s.to_string()).collect()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: StreamSubjects> {
     pub stream: AsyncNatsStream,
-    pub prefix: String,
+    pub(self) prefix: String,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -35,8 +35,8 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let prefix = client.conn_id.to_string();
-        let subjects = S::wildcards(&prefix);
+        let prefix = client.opts.prefix.to_string();
+        let subjects = client.prefix_subjects(S::wildcards());
         let config = JetStreamConfig {
             subjects,
             storage: NatsStorageType::File,
@@ -136,8 +136,8 @@ mod tests {
 
     #[test]
     fn subjects_wildcards() {
-        let wildcards = TestSubjects::wildcards("prefix");
-        assert_eq!(wildcards, vec!["prefix.test1", "prefix.test2"]);
+        let wildcards = TestSubjects::wildcards();
+        assert_eq!(wildcards, vec!["test1", "test2"]);
     }
 
     #[test]

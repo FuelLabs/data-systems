@@ -1,27 +1,33 @@
 use futures_util::StreamExt;
 use streams_core::prelude::*;
-use streams_tests::TestSetupBuilder;
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() {
-    assert!(TestSetupBuilder::as_public(None).await.is_err());
+    let opts = ClientOpts::public_opts(NATS_URL, ConnId::rnd())
+        .with_prefix("test1")
+        .with_timeout(1);
+    assert!(NatsConn::connect(opts).await.is_err());
 }
 
 #[tokio::test]
-async fn public_user_can_access_streams_after_created() -> BoxedResult<()> {
-    let ctx = TestSetupBuilder::as_admin(None).await?;
-    assert!(TestSetupBuilder::as_public(Some(ctx.conn_id()))
-        .await
-        .is_ok());
+async fn public_user_can_access_streams_after_created() {
+    let opts = ClientOpts::new(NATS_URL, ConnId::rnd())
+        .with_prefix("test2")
+        .with_timeout(1);
 
-    Ok(())
+    let admin_opts = opts.clone().with_role(NatsUserRole::Admin);
+    assert!(NatsConn::connect(admin_opts).await.is_ok());
+
+    let public_opts = opts.clone().with_role(NatsUserRole::Public);
+    assert!(NatsConn::connect(public_opts).await.is_ok());
 }
 
 #[tokio::test]
 async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
-    let ctx = TestSetupBuilder::as_admin(None).await?;
-    let client = ctx.conn.client();
-    let stream = ctx.conn.streams().blocks();
+    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let conn = NatsConn::connect(opts).await?;
+    let client = conn.client();
+    let stream = conn.streams().blocks();
     let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
@@ -45,9 +51,10 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
-    let ctx = TestSetupBuilder::as_admin(None).await?;
-    let client = ctx.conn.client();
-    let stream = ctx.conn.streams().transactions();
+    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let conn = NatsConn::connect(opts).await?;
+    let client = conn.client();
+    let stream = conn.streams().transactions();
     let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::transactions::Transactions {
         height: Some(100_u32),
@@ -74,9 +81,10 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn consume_stream_with_dedup() -> BoxedResult<()> {
-    let ctx = TestSetupBuilder::as_admin(None).await?;
-    let client = ctx.conn.client();
-    let stream = ctx.conn.streams().blocks();
+    let opts = ClientOpts::admin_opts(NATS_URL, ConnId::rnd());
+    let conn = NatsConn::connect(opts).await?;
+    let client = conn.client();
+    let stream = conn.streams().blocks();
     let consumer = stream.create_pull_consumer(&client, None).await?;
     let subject = subjects::blocks::Blocks {
         producer: Some("0x000".to_string()),
@@ -99,6 +107,5 @@ async fn consume_stream_with_dedup() -> BoxedResult<()> {
 
     // assert we only consumed one single message and the repeated ones were deduplicated by nats
     assert!(messages.next().await.transpose().ok().flatten().is_none());
-
     Ok(())
 }
