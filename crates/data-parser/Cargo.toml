@@ -9,9 +9,14 @@ repository = { workspace = true }
 version = { workspace = true }
 
 [[bench]]
-name = "parser"
+name = "serialize"
 harness = false  # do not use the default harness test
-path = "benches/parser.rs"
+path = "benches/serialize.rs"
+
+[[bench]]
+name = "serialize_compress"
+harness = false  # do not use the default harness test
+path = "benches/serialize_compress.rs"
 
 [dependencies]
 anyhow = { workspace = true }
