@@ -13,7 +13,7 @@ version = "0.0.0"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-bytes = "1.6.1"
+bytes = "1.7.1"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
@@ -27,5 +27,9 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
 [features]
-test_helpers = ["dep:pretty_assertions"]
+default = []
+test-helpers = ["dep:pretty_assertions"]

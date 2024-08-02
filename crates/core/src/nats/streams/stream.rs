@@ -6,6 +6,7 @@ use strum::IntoEnumIterator;
 use super::Subject;
 use crate::{
     nats::{types::*, NatsClient, NatsError},
+    prelude::NatsNamespace,
     types::BoxedResult,
 };
 
@@ -18,15 +19,15 @@ pub trait StreamIdentifier {
 }
 
 pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
-    fn wildcards(prefix: &str) -> Vec<String> {
-        Self::iter().map(|s| format!("{prefix}.{s}")).collect()
+    fn wildcards() -> Vec<String> {
+        Self::iter().map(|s| s.to_string()).collect()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: StreamSubjects> {
     pub stream: AsyncNatsStream,
-    pub prefix: String,
+    pub(self) namespace: NatsNamespace,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -35,14 +36,18 @@ where
     Self: StreamIdentifier,
 {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let prefix = client.conn_id.clone();
-        let subjects = S::wildcards(&prefix);
-        let stream =
-            create_stream(client, Self::STREAM, subjects.to_owned()).await?;
+        let subjects = client.namespace.prepend_subjects(S::wildcards());
+        let config = JetStreamConfig {
+            subjects,
+            storage: NatsStorageType::File,
+            ..Default::default()
+        };
+
+        let stream = client.create_stream(Self::STREAM, config).await?;
 
         Ok(Stream {
             stream,
-            prefix,
+            namespace: client.namespace.to_owned(),
             _marker: std::marker::PhantomData,
         })
     }
@@ -58,21 +63,7 @@ where
     }
 }
 
-async fn create_stream(
-    client: &NatsClient,
-    name: &str,
-    subjects: Vec<String>,
-) -> Result<AsyncNatsStream, NatsError> {
-    let config = JetStreamConfig {
-        subjects,
-        storage: NatsStorageType::File,
-        ..Default::default()
-    };
-
-    client.create_stream(name, config).await
-}
-
-#[cfg(any(test, feature = "test_helpers"))]
+#[cfg(feature = "test-helpers")]
 impl<S: StreamSubjects> Stream<S>
 where
     Self: StreamIdentifier,
@@ -82,10 +73,11 @@ where
         client: &NatsClient,
         mut consumer: NatsConsumer<PullConsumerConfig>,
     ) -> BoxedResult<()> {
+        use pretty_assertions::assert_eq;
         // Checking consumer name created with consumer_from method
         let consumer_info = consumer.info().await.unwrap();
         let consumer_name = consumer_info.clone().config.durable_name.unwrap();
-        assert_eq!(consumer_name, client.consumer_name(Self::STREAM));
+        assert_eq!(consumer_name, client.namespace.consumer_name(Self::STREAM));
         Ok(())
     }
 
@@ -104,8 +96,8 @@ where
         if let Some(message) = messages.next().await {
             let message = message?;
             let payload = from_utf8(&message.payload);
-            let subject_prefixed = format!("{}.{parsed}", self.prefix);
-            assert_eq!(message.subject.as_str(), subject_prefixed);
+            let subject_name = self.namespace.subject_name(&parsed);
+            assert_eq!(message.subject.as_str(), subject_name);
             assert_eq!(payload.unwrap(), payload_data.to_string());
             message.ack().await.unwrap();
         }
@@ -117,6 +109,8 @@ where
 #[cfg(test)]
 mod tests {
     use std::fmt;
+
+    use pretty_assertions::assert_eq;
 
     use super::*;
 
@@ -142,8 +136,8 @@ mod tests {
 
     #[test]
     fn subjects_wildcards() {
-        let wildcards = TestSubjects::wildcards("prefix");
-        assert_eq!(wildcards, vec!["prefix.test1", "prefix.test2"]);
+        let wildcards = TestSubjects::wildcards();
+        assert_eq!(wildcards, vec!["test1", "test2"]);
     }
 
     #[test]

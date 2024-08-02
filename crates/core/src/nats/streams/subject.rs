@@ -18,6 +18,8 @@ pub trait Subject: fmt::Debug + Clone + Default {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[derive(Debug, Clone, Default)]
