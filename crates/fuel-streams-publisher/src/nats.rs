@@ -3,7 +3,7 @@ mod subjects;
 use anyhow::Context;
 use async_nats::jetstream::{
     context::{Publish, PublishErrorKind},
-    stream,
+    stream::{self, Compression},
 };
 pub use subjects::*;
 use tracing::info;
@@ -98,6 +98,7 @@ pub async fn connect(
         name: format!("{connection_id}fuel"),
         subjects: subjects::get_all_in_connection(connection_id),
         storage: async_nats::jetstream::stream::StorageType::File,
+        compression: Some(Compression::S2),
         ..Default::default()
     };
 
