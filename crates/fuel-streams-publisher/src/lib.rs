@@ -2,6 +2,7 @@ mod nats;
 
 use std::{ops::Deref, sync::Arc};
 
+use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
@@ -154,14 +155,15 @@ impl Publisher {
         &self,
         block: &Block<Transaction>,
     ) -> anyhow::Result<()> {
+        let chain_id = self.chain_id;
         let height: u32 = *block.header().consensus().height;
+        let payload = block.compress(&chain_id);
+        let encoded = bincode::serialize(&payload)?;
+        let block_subject = nats::Subject::Blocks { height };
+        self.nats.publish(block_subject, encoded.into()).await?;
 
         // Publish the block.
-        info!("NATS Publisher: Block#{height}");
-        let payload = serde_json::to_string(block)?;
-
-        let block_subject = nats::Subject::Blocks { height };
-        self.nats.publish(block_subject, payload.into()).await?;
+        info!("NATS Publisher: Block #{height}");
 
         for (index, tx) in block.transactions().iter().enumerate() {
             let tx_kind = match tx {
@@ -173,15 +175,17 @@ impl Publisher {
             };
 
             // Publish the transaction.
-            let payload = serde_json::to_string(tx)?;
+            let tx_id = tx.id(&chain_id).to_string();
+            let encoded = bincode::serialize(tx)?;
             let transactions_subject = nats::Subject::Transactions {
                 height,
                 index,
                 kind: tx_kind.to_string(),
             };
             self.nats
-                .publish(transactions_subject, payload.into())
+                .publish(transactions_subject, encoded.into())
                 .await?;
+            info!("NATS Publisher: Transaction 0x#{tx_id}");
         }
 
         Ok(())
