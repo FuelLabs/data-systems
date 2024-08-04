@@ -2,7 +2,6 @@ mod nats;
 
 use std::{ops::Deref, sync::Arc};
 
-use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
