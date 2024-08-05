@@ -156,8 +156,7 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let chain_id = self.chain_id;
         let height: u32 = *block.header().consensus().height;
-        let payload = block.compress(&chain_id);
-        let encoded = bincode::serialize(&payload)?;
+        let encoded = bincode::serialize(&block)?;
         let block_subject = nats::Subject::Blocks { height };
         self.nats.publish(block_subject, encoded.into()).await?;
 
