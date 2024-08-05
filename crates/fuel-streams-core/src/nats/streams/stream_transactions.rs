@@ -58,8 +58,7 @@ impl fmt::Display for TransactionSubjects {
     }
 }
 
-impl stream::StreamSubjects for TransactionSubjects {}
-impl stream::StreamIdentifier for stream::Stream<TransactionSubjects> {
+impl stream::Streamable for TransactionSubjects {
     const STREAM: &'static str = "transactions";
 }
 
@@ -76,7 +75,7 @@ mod tests {
     };
 
     #[test]
-    fn can_parse_subjecs() -> BoxedResult<()> {
+    fn can_parse_subjects() -> BoxedResult<()> {
         let subject_transactions = subjects::Transactions {
             height: Some(100_u32),
             tx_index: Some(1),

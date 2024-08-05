@@ -35,8 +35,7 @@ impl fmt::Display for BlockSubjects {
     }
 }
 
-impl stream::StreamSubjects for BlockSubjects {}
-impl stream::StreamIdentifier for stream::Stream<BlockSubjects> {
+impl stream::Streamable for BlockSubjects {
     const STREAM: &'static str = "blocks";
 }
 

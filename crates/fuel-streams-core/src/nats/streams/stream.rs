@@ -10,31 +10,26 @@ use crate::{
     types::BoxedResult,
 };
 
-pub trait StreamIdentifier {
+pub trait Streamable: Display + Debug + Clone + IntoEnumIterator {
     const STREAM: &'static str;
 
     fn name() -> &'static str {
         Self::STREAM
     }
-}
 
-pub trait StreamSubjects: Display + Debug + Clone + IntoEnumIterator {
     fn wildcards() -> Vec<String> {
         Self::iter().map(|s| s.to_string()).collect()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Stream<S: StreamSubjects> {
+pub struct Stream<S: Streamable> {
     pub stream: AsyncNatsStream,
     pub(self) namespace: NatsNamespace,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: StreamSubjects> Stream<S>
-where
-    Self: StreamIdentifier,
-{
+impl<S: Streamable> Stream<S> {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
         let subjects = client.namespace.prepend_subjects(S::wildcards());
         let config = JetStreamConfig {
@@ -43,7 +38,7 @@ where
             ..Default::default()
         };
 
-        let stream = client.create_stream(Self::STREAM, config).await?;
+        let stream = client.create_stream(S::name(), config).await?;
 
         Ok(Stream {
             stream,
@@ -58,16 +53,13 @@ where
         config: Option<PullConsumerConfig>,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
         client
-            .create_pull_consumer(Self::STREAM, &self.stream, config)
+            .create_pull_consumer(S::name(), &self.stream, config)
             .await
     }
 }
 
 #[cfg(feature = "test-helpers")]
-impl<S: StreamSubjects> Stream<S>
-where
-    Self: StreamIdentifier,
-{
+impl<S: Streamable> Stream<S> {
     pub async fn assert_consumer_name(
         &self,
         client: &NatsClient,
@@ -77,7 +69,7 @@ where
         // Checking consumer name created with consumer_from method
         let consumer_info = consumer.info().await.unwrap();
         let consumer_name = consumer_info.clone().config.durable_name.unwrap();
-        assert_eq!(consumer_name, client.namespace.consumer_name(Self::STREAM));
+        assert_eq!(consumer_name, client.namespace.consumer_name(S::name()));
         Ok(())
     }
 
@@ -129,8 +121,7 @@ mod tests {
         }
     }
 
-    impl StreamSubjects for TestSubjects {}
-    impl StreamIdentifier for Stream<TestSubjects> {
+    impl Streamable for TestSubjects {
         const STREAM: &'static str = "test_stream";
     }
 
@@ -138,11 +129,6 @@ mod tests {
     fn subjects_wildcards() {
         let wildcards = TestSubjects::wildcards();
         assert_eq!(wildcards, vec!["test1", "test2"]);
-    }
-
-    #[test]
-    fn identifier() {
-        assert_eq!(Stream::<TestSubjects>::STREAM, "test_stream");
     }
 
     #[test]
