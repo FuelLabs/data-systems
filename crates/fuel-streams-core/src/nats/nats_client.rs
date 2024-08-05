@@ -2,7 +2,7 @@ use async_nats::jetstream::context::Publish;
 use bytes::Bytes;
 use tracing::info;
 
-use super::{types::*, ClientOpts, NatsError, NatsNamespace};
+use super::{types::*, ClientOpts, NatsError, NatsNamespace, Subject};
 use crate::types::BoxedResult;
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,19 @@ impl NatsClient {
         })
     }
 
-    pub fn validate_payload(
+    pub async fn publish(
+        &self,
+        subject: &impl Subject,
+        payload: Bytes,
+    ) -> BoxedResult<&Self> {
+        let subject = self.namespace.subject_name(&subject.parse());
+        let payload = Publish::build().message_id(&subject).payload(payload);
+        self.jetstream.send_publish(subject, payload).await?.await?;
+        Ok(self)
+    }
+
+    #[allow(dead_code)]
+    fn validate_payload(
         &self,
         payload: &Bytes,
         subject_name: &str,
@@ -43,23 +55,12 @@ impl NatsClient {
         let max_payload_size = conn.server_info().max_payload;
         if payload_size > max_payload_size {
             return Err(NatsError::PayloadTooLarge {
-                subject: subject_name.to_string(),
+                subject_name: subject_name.to_string(),
                 payload_size,
                 max_payload_size,
             });
         }
 
-        Ok(self)
-    }
-
-    pub async fn publish(
-        &self,
-        subject: String,
-        payload: Bytes,
-    ) -> BoxedResult<&Self> {
-        let subject = self.namespace.subject_name(&subject);
-        let payload = Publish::build().message_id(&subject).payload(payload);
-        self.jetstream.send_publish(subject, payload).await?.await?;
         Ok(self)
     }
 

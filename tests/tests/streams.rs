@@ -38,9 +38,7 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
         .await?;
 
     let payload_data = "data";
-    conn.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    conn.client.publish(&subject, payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -69,9 +67,7 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
         .await?;
 
     let payload_data = "data";
-    conn.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    conn.client.publish(&subject, payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -93,10 +89,9 @@ async fn consume_stream_with_dedup() -> BoxedResult<()> {
     };
 
     let payload_data = "data";
-    let parsed = subject.parse();
     for _ in 0..100 {
         conn.client
-            .publish(parsed.to_owned(), payload_data.into())
+            .publish(&subject, payload_data.into())
             .await
             .is_ok();
     }
