@@ -1,9 +1,6 @@
 use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
-use fuel_core_types::{
-    blockchain::block::Block,
-    fuel_types::{BlockHeight, ChainId},
-};
+use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
 use tracing::info;
 
 use super::nats::NatsHelper;
@@ -11,19 +8,13 @@ use super::nats::NatsHelper;
 #[derive(Clone)]
 pub struct BlockHelper {
     nats: NatsHelper,
-    chain_id: ChainId,
     database: CombinedDatabase,
 }
 
 impl BlockHelper {
-    pub fn new(
-        nats: NatsHelper,
-        chain_id: &ChainId,
-        database: &CombinedDatabase,
-    ) -> Self {
+    pub fn new(nats: NatsHelper, database: &CombinedDatabase) -> Self {
         Self {
             nats,
-            chain_id: chain_id.to_owned(),
             database: database.to_owned(),
         }
     }
@@ -40,6 +31,7 @@ impl BlockHelper {
     }
 
     pub async fn publish(&self, block: &Block) -> anyhow::Result<()> {
+        self.publish_core(block).await?;
         self.publish_encoded(block).await?;
         self.publish_json(block).await?;
         self.publish_to_kv(block).await?;
@@ -49,13 +41,24 @@ impl BlockHelper {
 
 /// Publisher
 impl BlockHelper {
+    async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
+        let encoded = self.encode_block(block)?;
+        let subject = self.get_subject(None, block);
+        self.nats.context.publish(subject, encoded.into()).await?;
+        Ok(())
+    }
     async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
         let encoded = self.encode_block(block)?;
         let height = self.get_height(block);
         let subject = self.get_subject(Some("encoded"), block);
         let payload = Publish::build()
             .message_id(&subject)
-            .payload(encoded.into());
+            .payload(encoded.clone().into());
+
+        self.nats
+            .context
+            .publish(subject.clone(), encoded.into())
+            .await?;
 
         self.nats
             .context
@@ -94,7 +97,7 @@ impl BlockHelper {
     async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
         let encoded = self.encode_block(block)?;
         let height = self.get_height(block);
-        let subject = self.get_subject(None, block);
+        let subject = self.get_subject(Some("kv"), block);
         self.nats
             .kv_blocks
             .put(subject, encoded.clone().into())
@@ -108,8 +111,7 @@ impl BlockHelper {
 /// Getters
 impl BlockHelper {
     fn encode_block(&self, block: &Block) -> Result<Vec<u8>, bincode::Error> {
-        let compressed = block.compress(&self.chain_id);
-        bincode::serialize(&compressed)
+        bincode::serialize(&block)
     }
 
     fn get_height(&self, block: &Block) -> u32 {

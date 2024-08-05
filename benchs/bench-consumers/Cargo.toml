@@ -1,5 +1,5 @@
 [package]
-name = "test-jetstream"
+name = "bench-consumers"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }

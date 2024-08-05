@@ -7,8 +7,10 @@ use async_nats::{
     ConnectOptions,
 };
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct NatsHelper {
+    pub client: async_nats::Client,
     pub kv_blocks: Store,
     pub kv_transactions: Store,
     pub context: Context,
@@ -31,6 +33,7 @@ impl NatsHelper {
             st_transactions_json,
         ) = create_resources(&client).await?;
         Ok(Self {
+            client,
             context,
             kv_blocks,
             kv_transactions,
@@ -42,7 +45,7 @@ impl NatsHelper {
     }
 }
 
-async fn connect() -> anyhow::Result<async_nats::Client> {
+pub async fn connect() -> anyhow::Result<async_nats::Client> {
     Ok(ConnectOptions::new()
         .user_and_password("admin".into(), "secret".into())
         .connect("localhost:4222")
