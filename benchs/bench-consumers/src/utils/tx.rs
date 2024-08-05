@@ -37,6 +37,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
+        self.publish_core(block, tx, index).await?;
         self.publish_encoded(block, tx, index).await?;
         self.publish_json(block, tx, index).await?;
         self.publish_to_kv(block, tx, index).await?;
@@ -46,6 +47,18 @@ impl TxHelper {
 
 /// Publishers
 impl TxHelper {
+    async fn publish_core(
+        &self,
+        block: &Block,
+        tx: &Transaction,
+        index: usize,
+    ) -> anyhow::Result<()> {
+        let encoded = bincode::serialize(tx)?;
+        let subject = self.get_subject(None, block, tx, index);
+        self.nats.context.publish(subject, encoded.into()).await?;
+        Ok(())
+    }
+
     async fn publish_encoded(
         &self,
         block: &Block,
@@ -105,7 +118,7 @@ impl TxHelper {
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
         let encoded = bincode::serialize(tx)?;
-        let subject = self.get_subject(None, block, tx, index);
+        let subject = self.get_subject(Some("kv"), block, tx, index);
         self.nats
             .kv_transactions
             .put(subject, encoded.clone().into())

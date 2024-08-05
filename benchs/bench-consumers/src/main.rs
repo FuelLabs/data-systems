@@ -1,3 +1,4 @@
+mod runners;
 mod utils;
 
 use clap::Parser;
@@ -26,8 +27,8 @@ async fn main() -> anyhow::Result<()> {
     // NATS
     // ------------------------------------------------------------------------
     let nats = NatsHelper::connect().await?;
-    let block_helper = BlockHelper::new(nats.to_owned(), &chain_id, &database);
-    let tx_helper = TxHelper::new(nats, &chain_id, &database);
+    let block_helper = BlockHelper::new(nats.to_owned(), &database);
+    let tx_helper = TxHelper::new(nats.to_owned(), &chain_id, &database);
 
     // ------------------------------------------------------------------------
     // OLD BLOCKS

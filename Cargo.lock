@@ -635,6 +635,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
+name = "bench-consumers"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "bincode",
+ "bytes",
+ "clap 4.5.13",
+ "criterion",
+ "fuel-core",
+ "fuel-core-bin",
+ "fuel-core-client",
+ "fuel-core-services",
+ "fuel-core-types",
+ "futures-util",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6852,27 +6873,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "test-jetstream"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "async-nats",
- "bincode",
- "bytes",
- "clap 4.5.13",
- "criterion",
- "fuel-core",
- "fuel-core-bin",
- "fuel-core-client",
- "fuel-core-services",
- "fuel-core-types",
- "futures-util",
- "serde_json",
- "tokio",
- "tracing",
 ]
 
 [[package]]
