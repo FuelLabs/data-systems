@@ -14,9 +14,19 @@ harness = false  # do not use the default harness test
 path = "benches/serialize.rs"
 
 [[bench]]
+name = "deserialize"
+harness = false  # do not use the default harness test
+path = "benches/deserialize.rs"
+
+[[bench]]
 name = "serialize_compress"
 harness = false  # do not use the default harness test
 path = "benches/serialize_compress.rs"
+
+[[bench]]
+name = "deserialize_decompress"
+harness = false  # do not use the default harness test
+path = "benches/deserialize_decompress.rs"
 
 [dependencies]
 anyhow = { workspace = true }

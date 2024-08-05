@@ -1,8 +1,8 @@
 use async_compression::Level;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use data_parser::{
-    generate_test_data,
-    perform_serialization,
+    builder::DataParserBuilder,
+    generate_test_block,
     types::{CompressionType, SerializationType},
 };
 use strum::IntoEnumIterator;
@@ -10,7 +10,7 @@ use strum::IntoEnumIterator;
 fn bench_serialize_compress(c: &mut Criterion) {
     let mut group = c.benchmark_group("serialize_compress");
 
-    let test_data = generate_test_data();
+    let test_block = generate_test_block();
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -29,14 +29,21 @@ fn bench_serialize_compress(c: &mut Criterion) {
                     compression_type.to_string(),
                     compression_level
                 );
+
                 group.bench_function(&bench_name, |b| {
-                    b.to_async(&runtime).iter(|| {
-                        perform_serialization(
-                            &test_data,
-                            serialization_type,
-                            compression_type,
-                            compression_level,
-                        )
+                    let data_parser = DataParserBuilder::new()
+                        .with_compression(compression_type)
+                        .with_compression_level(compression_level)
+                        .with_serialization(serialization_type)
+                        .build();
+
+                    b.to_async(&runtime).iter(|| async {
+                        let result = data_parser
+                            .serialize(&test_block)
+                            .await
+                            .expect("serialization");
+                        // Use black_box to make sure 'result' is considered used by the compiler
+                        black_box(result.len()); // record size of the data
                     });
                 });
             }
