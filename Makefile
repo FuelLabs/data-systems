@@ -148,5 +148,6 @@ help:
 	@echo "  fmt       - Format the code and Markdown files"
 	@echo "  lint      - Perform linting checks on the code and Markdown files"
 	@echo "  audit     - Perform audit checks on Rust crates
+	@echo "  bench     - Run benchmarks
 	@echo "  test      - Run tests"
 	@echo "  doc       - Generate documentation"

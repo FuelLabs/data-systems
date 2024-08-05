@@ -33,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
         &cli.nats_url,
         &cli.nats_nkey,
         chain_id,
+        None,
         *base_asset_id,
         service.shared.database.clone(),
         subscription,

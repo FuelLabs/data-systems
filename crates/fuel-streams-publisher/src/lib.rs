@@ -2,11 +2,12 @@ mod nats;
 
 use std::{ops::Deref, sync::Arc};
 
+use data_parser::parser::DataParser;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Receipt, Transaction, UniqueIdentifier},
-    fuel_types::{AssetId, ChainId},
+    fuel_types::{canonical::Serialize, AssetId, ChainId},
     services::block_importer::ImportResult,
 };
 use futures_util::stream::TryStreamExt;
@@ -20,6 +21,7 @@ pub struct Publisher {
     blocks_subscription:
         Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
     nats: nats::NatsConnection,
+    data_parser: DataParser,
 }
 
 impl Publisher {
@@ -27,6 +29,7 @@ impl Publisher {
         nats_url: &str,
         nats_nkey: &str,
         chain_id: ChainId,
+        data_parser: Option<DataParser>,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
         blocks_subscription: Receiver<
@@ -41,6 +44,7 @@ impl Publisher {
             fuel_core_database,
             blocks_subscription,
             nats,
+            data_parser: data_parser.unwrap_or_default(),
         })
     }
 
@@ -156,12 +160,17 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let chain_id = self.chain_id;
         let height: u32 = *block.header().consensus().height;
-        let encoded = bincode::serialize(&block)?;
-        let block_subject = nats::Subject::Blocks { height };
-        self.nats.publish(block_subject, encoded.into()).await?;
 
         // Publish the block.
-        info!("NATS Publisher: Block #{height}");
+        info!("NATS Publisher: Block#{height}");
+
+        let block_subject = nats::Subject::Blocks { height };
+        let payload = block.compress(&chain_id);
+        let encoded_payload =
+            self.data_parser.serialize_and_compress(&payload).await?;
+        self.nats
+            .publish(block_subject, encoded_payload.into())
+            .await?;
 
         for (index, tx) in block.transactions().iter().enumerate() {
             let tx_kind = match tx {
@@ -173,8 +182,11 @@ impl Publisher {
             };
 
             // Publish the transaction.
-            let tx_id = tx.id(&chain_id).to_string();
-            let encoded = bincode::serialize(tx)?;
+            let tx_id = tx.id(&chain_id);
+            let encoded = self
+                .data_parser
+                .serialize_and_compress(&tx_id.to_bytes())
+                .await?;
             let transactions_subject = nats::Subject::Transactions {
                 height,
                 index,

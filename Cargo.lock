@@ -2867,6 +2867,7 @@ dependencies = [
  "bincode",
  "bytes",
  "clap 4.5.13",
+ "data_parser",
  "dotenvy",
  "fuel-core",
  "fuel-core-bin",

@@ -75,7 +75,7 @@ impl ProstDataParser {
     }
 
     /// Decompress the data
-    pub async fn deompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+    pub async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         self.data_parser.decompress(raw_data).await
     }
 }
@@ -108,6 +108,16 @@ pub struct DataParser {
     pub compression_type: CompressionType,
     pub compression_level: Level,
     pub serialization_type: SerializationType,
+}
+
+impl Default for DataParser {
+    fn default() -> Self {
+        Self {
+            compression_type: CompressionType::Zlib,
+            compression_level: Level::Fastest,
+            serialization_type: SerializationType::Postcard,
+        }
+    }
 }
 
 impl DataParser {
