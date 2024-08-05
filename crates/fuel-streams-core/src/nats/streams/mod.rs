@@ -1,5 +1,5 @@
-pub(super) mod stream_blocks;
-pub(super) mod stream_transactions;
+pub mod blocks;
+pub mod transactions;
 
 pub(crate) mod stream;
 pub(crate) mod subject;

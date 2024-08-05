@@ -28,7 +28,7 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.blocks;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::blocks::Blocks {
+    let subject = streams::blocks::BlocksSubject {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
@@ -54,7 +54,7 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.transactions;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::transactions::Transactions {
+    let subject = streams::transactions::TransactionsSubject {
         height: Some(100_u32),
         tx_index: Some(1),
         tx_id: Some("0x000".to_string()),
@@ -83,7 +83,7 @@ async fn consume_stream_with_dedup() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.blocks;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::blocks::Blocks {
+    let subject = streams::blocks::BlocksSubject {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
