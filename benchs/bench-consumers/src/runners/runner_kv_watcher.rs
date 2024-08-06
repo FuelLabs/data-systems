@@ -1,33 +1,34 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
-use tokio::time::timeout;
+use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
 
 use super::benchmark_results::BenchmarkResult;
-use crate::utils::nats::NatsHelper;
 
 #[allow(dead_code)]
-pub async fn run_watch_kv_blocks() -> Result<BenchmarkResult> {
-    let nats_helper = NatsHelper::connect().await?;
-    let mut result = BenchmarkResult::new("KV Blocks Watcher".to_string());
-    let mut watch = nats_helper.kv_blocks.watch("blocks.>").await?;
+pub async fn run_watch_kv_blocks(
+    nats: &NatsHelper,
+    limit: usize,
+) -> Result<()> {
+    let mut result =
+        BenchmarkResult::new("KV Blocks Watcher".to_string(), limit);
+    let mut watch = nats.kv_blocks.watch_all().await?;
 
-    while !result.is_complete() {
-        match timeout(Duration::from_secs(5), watch.next()).await {
-            Ok(Some(entry)) => {
-                let item = entry?;
-                match bincode::deserialize::<Block>(&item.value) {
-                    Ok(_) => result.increment_message_count(),
-                    Err(_) => result.increment_error_count(),
+    while let Some(message) = watch.next().await {
+        let item = message?;
+        match NatsPayload::<Block>::from_slice(&item.value) {
+            Err(_) => result.increment_error_count(),
+            Ok(decoded) => {
+                result
+                    .add_publish_time(decoded.timestamp)
+                    .increment_message_count();
+                if result.is_complete() {
+                    result.finalize().print_result();
+                    break;
                 }
             }
-            Ok(None) => break,
-            Err(_) => continue,
         }
     }
 
-    result.finalize();
-    Ok(result)
+    Ok(())
 }

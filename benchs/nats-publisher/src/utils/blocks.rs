@@ -1,9 +1,10 @@
-use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
+use futures_util::future::try_join_all;
+use tokio::try_join;
 use tracing::info;
 
-use super::nats::NatsHelper;
+use super::{nats::NatsHelper, payload::NatsPayload};
 
 #[derive(Clone)]
 pub struct BlockHelper {
@@ -31,34 +32,37 @@ impl BlockHelper {
     }
 
     pub async fn publish(&self, block: &Block) -> anyhow::Result<()> {
-        self.publish_core(block).await?;
-        self.publish_encoded(block).await?;
-        self.publish_json(block).await?;
-        self.publish_to_kv(block).await?;
+        let message = NatsPayload::new(block.clone());
+        try_join!(
+            self.publish_core(message.clone(), block),
+            self.publish_encoded(message.clone(), block),
+            self.publish_to_kv(message.clone(), block)
+        )?;
         Ok(())
     }
 }
 
 /// Publisher
 impl BlockHelper {
-    async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
-        let encoded = self.encode_block(block)?;
-        let subject = self.get_subject(None, block);
-        self.nats.context.publish(subject, encoded.into()).await?;
+    async fn publish_core(
+        &self,
+        mut msg: NatsPayload<Block>,
+        block: &Block,
+    ) -> anyhow::Result<()> {
+        let subject = self.get_subject(Some("sub"), block);
+        let payload = msg.with_subject(subject.clone()).serialize()?;
+        self.nats.context.publish(subject, payload.into()).await?;
+
         Ok(())
     }
-    async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
-        let encoded = self.encode_block(block)?;
+    async fn publish_encoded(
+        &self,
+        mut msg: NatsPayload<Block>,
+        block: &Block,
+    ) -> anyhow::Result<()> {
         let height = self.get_height(block);
         let subject = self.get_subject(Some("encoded"), block);
-        let payload = Publish::build()
-            .message_id(&subject)
-            .payload(encoded.clone().into());
-
-        self.nats
-            .context
-            .publish(subject.clone(), encoded.into())
-            .await?;
+        let payload = msg.with_subject(subject.clone()).to_publish()?;
 
         self.nats
             .context
@@ -73,35 +77,15 @@ impl BlockHelper {
         Ok(())
     }
 
-    async fn publish_json(&self, block: &Block) -> anyhow::Result<()> {
-        let block_str = serde_json::to_string(block)?;
-        let height = self.get_height(block);
-        let subject = self.get_subject(Some("json"), block);
-        let payload = Publish::build()
-            .message_id(subject.clone())
-            .payload(block_str.into());
-
-        self.nats
-            .context
-            .send_publish(subject, payload)
-            .await?
-            .await?;
-
-        info!(
-            "NATS: publishing block {} json to stream \"blocks_json\"",
-            height
-        );
-        Ok(())
-    }
-
-    async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
-        let encoded = self.encode_block(block)?;
+    async fn publish_to_kv(
+        &self,
+        mut msg: NatsPayload<Block>,
+        block: &Block,
+    ) -> anyhow::Result<()> {
         let height = self.get_height(block);
         let subject = self.get_subject(Some("kv"), block);
-        self.nats
-            .kv_blocks
-            .put(subject, encoded.clone().into())
-            .await?;
+        let payload = msg.with_subject(subject.clone()).serialize()?;
+        self.nats.kv_blocks.put(subject, payload.into()).await?;
 
         info!("NATS: publishing block {} to kv store \"blocks\"", height);
         Ok(())
@@ -110,10 +94,6 @@ impl BlockHelper {
 
 /// Getters
 impl BlockHelper {
-    fn encode_block(&self, block: &Block) -> Result<Vec<u8>, bincode::Error> {
-        bincode::serialize(&block)
-    }
-
     fn get_height(&self, block: &Block) -> u32 {
         *block.header().consensus().height
     }
