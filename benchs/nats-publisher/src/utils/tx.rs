@@ -10,6 +10,7 @@ use tracing::info;
 
 use super::{nats::NatsHelper, payload::NatsPayload};
 
+#[allow(unused)]
 #[derive(Clone)]
 pub struct TxHelper {
     nats: NatsHelper,
@@ -17,6 +18,7 @@ pub struct TxHelper {
     database: CombinedDatabase,
 }
 
+#[allow(unused)]
 /// Public
 impl TxHelper {
     pub fn new(
