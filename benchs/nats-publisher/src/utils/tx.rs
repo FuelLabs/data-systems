@@ -1,4 +1,3 @@
-use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
@@ -6,9 +5,10 @@ use fuel_core_types::{
     fuel_types::ChainId,
     services::txpool::TransactionStatus,
 };
+use tokio::try_join;
 use tracing::info;
 
-use super::nats::NatsHelper;
+use super::{nats::NatsHelper, payload::NatsPayload};
 
 #[derive(Clone)]
 pub struct TxHelper {
@@ -37,10 +37,12 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        self.publish_core(block, tx, index).await?;
-        self.publish_encoded(block, tx, index).await?;
-        self.publish_json(block, tx, index).await?;
-        self.publish_to_kv(block, tx, index).await?;
+        let message = NatsPayload::new(tx.clone());
+        try_join!(
+            self.publish_core(message.clone(), block, tx, index),
+            self.publish_encoded(message.clone(), block, tx, index),
+            self.publish_to_kv(message.clone(), block, tx, index)
+        )?;
         Ok(())
     }
 }
@@ -49,29 +51,27 @@ impl TxHelper {
 impl TxHelper {
     async fn publish_core(
         &self,
+        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let encoded = bincode::serialize(tx)?;
-        let subject = self.get_subject(None, block, tx, index);
-        self.nats.context.publish(subject, encoded.into()).await?;
+        let subject = self.get_subject(Some("sub"), block, tx, index);
+        let payload = msg.with_subject(subject.clone()).serialize()?;
+        self.nats.context.publish(subject, payload.into()).await?;
         Ok(())
     }
 
     async fn publish_encoded(
         &self,
+        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let encoded = bincode::serialize(tx)?;
         let subject = self.get_subject(Some("encoded"), block, tx, index);
-        let payload = Publish::build()
-            .message_id(&subject)
-            .payload(encoded.into());
-
+        let payload = msg.with_subject(subject.clone()).to_publish()?;
         self.nats
             .context
             .send_publish(subject, payload)
@@ -85,43 +85,19 @@ impl TxHelper {
         Ok(())
     }
 
-    async fn publish_json(
-        &self,
-        block: &Block,
-        tx: &Transaction,
-        index: usize,
-    ) -> anyhow::Result<()> {
-        let tx_id = self.get_id(tx);
-        let tx_str = tx.to_json();
-        let subject = self.get_subject(Some("json"), block, tx, index);
-        let payload =
-            Publish::build().message_id(&subject).payload(tx_str.into());
-
-        self.nats
-            .context
-            .send_publish(subject, payload)
-            .await?
-            .await?;
-
-        info!(
-            "NATS: publishing transaction {} json to stream \"transactions_json\"",
-            tx_id
-        );
-        Ok(())
-    }
-
     async fn publish_to_kv(
         &self,
+        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let encoded = bincode::serialize(tx)?;
         let subject = self.get_subject(Some("kv"), block, tx, index);
+        let payload = msg.with_subject(subject.clone()).serialize()?;
         self.nats
             .kv_transactions
-            .put(subject, encoded.clone().into())
+            .put(subject, payload.into())
             .await?;
 
         info!(

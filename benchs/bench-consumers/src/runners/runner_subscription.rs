@@ -1,26 +1,29 @@
-use std::time::Duration;
-
 use anyhow::Result;
+use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
-use tokio::time::timeout;
+use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
 
 use super::benchmark_results::BenchmarkResult;
-use crate::utils::nats::connect;
 
 #[allow(dead_code)]
-pub async fn run_subscriptions() -> Result<BenchmarkResult> {
-    let client = connect().await?;
-    let mut result = BenchmarkResult::new("Subscriptions".to_string());
-    let mut subscriber = client.subscribe("blocks.>").await?;
-
-    while !result.is_complete() {
-        match timeout(Duration::from_secs(5), subscriber.next()).await {
-            Ok(Some(_)) => result.increment_message_count(),
-            Ok(None) => break,
-            Err(_) => continue,
+pub async fn run_subscriptions(nats: &NatsHelper, limit: usize) -> Result<()> {
+    let mut result = BenchmarkResult::new("Pub/Sub".to_string(), limit);
+    let mut subscriber = nats.client.subscribe("blocks.sub.*").await?;
+    while let Some(message) = subscriber.next().await {
+        let payload = message.payload;
+        match NatsPayload::<Block>::from_slice(&payload) {
+            Err(_) => result.increment_error_count(),
+            Ok(decoded) => {
+                result
+                    .add_publish_time(decoded.timestamp)
+                    .increment_message_count();
+                if result.is_complete() {
+                    result.finalize().print_result();
+                    break;
+                }
+            }
         }
     }
 
-    result.finalize();
-    Ok(result)
+    Ok(())
 }

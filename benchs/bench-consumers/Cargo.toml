@@ -9,31 +9,12 @@ repository = { workspace = true }
 version = { workspace = true }
 description = "Fuel library for publishing data streams from events that happen in Fuel chain(s)"
 
-[[bench]]
-name = "consumers"
-harness = false
-path = "benches/consumers.rs"
-
-[[bench]]
-name = "kv_watch"
-harness = false
-path = "benches/kv_watch.rs"
-
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-bincode = "1.3.3"
-bytes = "1.6.0"
-clap = { workspace = true }
-fuel-core = { workspace = true }
-fuel-core-bin = { workspace = true }
-fuel-core-client = { workspace = true }
-fuel-core-services = { workspace = true }
+chrono = "0.4.38"
 fuel-core-types = { workspace = true }
 futures-util = "0.3.30"
-serde_json = "1.0.117"
 tokio = { workspace = true }
-tracing = { workspace = true }
-
-[dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
+nats-publisher = { path = "../nats-publisher" }
+statrs = "0.17.1"
