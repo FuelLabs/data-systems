@@ -1,6 +1,5 @@
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
-use futures_util::future::try_join_all;
 use tokio::try_join;
 use tracing::info;
 

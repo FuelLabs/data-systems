@@ -45,6 +45,7 @@ where
             .payload(self.serialize()?.into()))
     }
 
+    #[allow(unused)]
     pub fn from_slice(slice: &[u8]) -> Result<Self, bincode::Error> {
         bincode::deserialize(slice)
     }

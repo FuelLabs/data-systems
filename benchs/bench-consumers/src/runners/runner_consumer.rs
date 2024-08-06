@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use async_nats::jetstream::consumer::AckPolicy;
 pub use async_nats::jetstream::consumer::{
@@ -9,7 +7,6 @@ pub use async_nats::jetstream::consumer::{
 use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
 use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
-use tokio::time::sleep;
 
 use super::benchmark_results::BenchmarkResult;
 
