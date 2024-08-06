@@ -650,6 +650,7 @@ dependencies = [
  "anyhow",
  "async-nats",
  "chrono",
+ "criterion",
  "fuel-core-types",
  "futures-util",
  "nats-publisher",

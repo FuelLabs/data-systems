@@ -9,12 +9,20 @@ repository = { workspace = true }
 version = { workspace = true }
 description = "Fuel library for publishing data streams from events that happen in Fuel chain(s)"
 
+[[bench]]
+name = "consumers"
+harness = false
+path = "benches/consumers.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 chrono = "0.4.38"
 fuel-core-types = { workspace = true }
 futures-util = "0.3.30"
+tokio = { workspace = true }
 nats-publisher = { path = "../nats-publisher" }
 statrs = "0.17.1"
-tokio = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
