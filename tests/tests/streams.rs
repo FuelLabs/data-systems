@@ -28,7 +28,7 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.blocks;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::blocks::Blocks {
+    let subject = streams::blocks::BlocksSubject {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
@@ -38,9 +38,7 @@ async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
         .await?;
 
     let payload_data = "data";
-    conn.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    conn.client.publish(&subject, payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -56,7 +54,7 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.transactions;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::transactions::Transactions {
+    let subject = streams::transactions::TransactionsSubject {
         height: Some(100_u32),
         tx_index: Some(1),
         tx_id: Some("0x000".to_string()),
@@ -69,9 +67,7 @@ async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
         .await?;
 
     let payload_data = "data";
-    conn.client
-        .publish(subject.parse(), payload_data.into())
-        .await?;
+    conn.client.publish(&subject, payload_data.into()).await?;
 
     let messages = consumer.messages().await?.take(10);
     stream
@@ -87,16 +83,15 @@ async fn consume_stream_with_dedup() -> BoxedResult<()> {
     let conn = NatsConn::connect(opts).await?;
     let stream = conn.streams.blocks;
     let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = subjects::blocks::Blocks {
+    let subject = streams::blocks::BlocksSubject {
         producer: Some("0x000".to_string()),
         height: Some(100_u32),
     };
 
     let payload_data = "data";
-    let parsed = subject.parse();
     for _ in 0..100 {
         conn.client
-            .publish(parsed.to_owned(), payload_data.into())
+            .publish(&subject, payload_data.into())
             .await
             .is_ok();
     }

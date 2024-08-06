@@ -1,20 +1,19 @@
-use crate::nats::{
-    streams::Stream,
-    subjects::{BlockSubjects, TransactionSubjects},
-    NatsClient,
-    NatsError,
+use super::streams::Stream;
+use crate::{
+    nats::{NatsClient, NatsError},
+    types::{Block, Transaction},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ConnStreams {
-    pub blocks: Stream<BlockSubjects>,
-    pub transactions: Stream<TransactionSubjects>,
+    pub blocks: Stream<Block>,
+    pub transactions: Stream<Transaction>,
 }
 
 impl ConnStreams {
     pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let transactions = Stream::<TransactionSubjects>::new(client).await?;
-        let blocks = Stream::<BlockSubjects>::new(client).await?;
+        let transactions = Stream::<Transaction>::new(client).await?;
+        let blocks = Stream::<Block>::new(client).await?;
 
         Ok(Self {
             transactions,

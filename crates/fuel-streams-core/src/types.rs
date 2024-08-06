@@ -77,3 +77,5 @@ impl std::fmt::Display for TransactionStatus {
         write!(f, "{value}")
     }
 }
+
+pub use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};

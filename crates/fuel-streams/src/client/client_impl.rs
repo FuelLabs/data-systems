@@ -1,17 +1,15 @@
-use std::fmt;
-
 use async_trait::async_trait;
 use fuel_streams_core::prelude::*;
 
 use super::ConnectionResult;
 
 #[async_trait]
-pub trait ClientConn: Clone + fmt::Debug + Send {
+pub trait ClientConn: Clone + Send {
     async fn connect(url: impl ToString + Send) -> ConnectionResult<Self>;
     async fn with_opts(opts: ClientOpts) -> ConnectionResult<Self>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     pub conn: NatsConn,
 }
