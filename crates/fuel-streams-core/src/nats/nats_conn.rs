@@ -1,6 +1,6 @@
 use super::{types::*, ClientOpts, ConnStreams, NatsClient, NatsError};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NatsConn {
     pub client: NatsClient,
     pub streams: ConnStreams,

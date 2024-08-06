@@ -44,7 +44,7 @@ impl NatsNamespace {
         format!("{self}:consumer:{val}")
     }
 
-    pub fn prepend_subjects(&self, subjects: Vec<String>) -> Vec<String> {
+    pub fn prepend_subjects(&self, subjects: Vec<&str>) -> Vec<String> {
         subjects.iter().map(|s| format!("{self}.{s}")).collect()
     }
 }

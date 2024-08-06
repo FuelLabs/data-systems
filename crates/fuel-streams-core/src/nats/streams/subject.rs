@@ -9,6 +9,7 @@ pub(super) fn parse_param<V: ToString>(param: &Option<V>) -> String {
 
 pub trait Subject: fmt::Debug + Clone + Default {
     const WILDCARD: &'static str;
+
     fn wildcard(&self) -> &'static str {
         Self::WILDCARD
     }

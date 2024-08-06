@@ -9,9 +9,9 @@ use super::types::PayloadSize;
 
 #[derive(Error, Debug)]
 pub enum NatsError {
-    #[error("{subject:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}")]
+    #[error("{subject_name:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}")]
     PayloadTooLarge {
-        subject: String,
+        subject_name: String,
         payload_size: PayloadSize,
         max_payload_size: PayloadSize,
     },
