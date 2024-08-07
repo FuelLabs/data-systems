@@ -1,11 +1,8 @@
 use async_compression::Level;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use data_parser::generate_test_block;
 use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};
-use fuel_data_parser::{
-    builder::DataParserBuilder,
-    generate_test_block,
-    types::{CompressionType, SerializationType},
-};
+use fuel_data_parser::{CompressionType, DataParserBuilder, SerializationType};
 use strum::IntoEnumIterator;
 
 fn bench_deserialize(c: &mut Criterion) {

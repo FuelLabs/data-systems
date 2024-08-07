@@ -7,7 +7,7 @@ use fuel_core_types::{
     fuel_types::{canonical::Serialize, AssetId, ChainId},
     services::block_importer::ImportResult,
 };
-use fuel_data_parser::parser::DataParser;
+use fuel_data_parser::DataParser;
 use fuel_streams_core::{
     nats::{
         subjects::{blocks::Blocks, transactions::Transactions, BlockSubjects},
