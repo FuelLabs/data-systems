@@ -1,7 +1,5 @@
 use std::error::Error;
 
-use fuel_core_types::fuel_tx::Transaction;
-
 pub use crate::nats::types as nats;
 
 // --------------------------------------------------------------------------------

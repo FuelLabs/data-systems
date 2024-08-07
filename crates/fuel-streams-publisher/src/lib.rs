@@ -10,11 +10,13 @@ use fuel_core_types::{
 use fuel_data_parser::DataParser;
 use fuel_streams_core::{
     nats::{
-        subjects::{blocks::Blocks, transactions::Transactions, BlockSubjects},
+        streams::{
+            blocks::BlocksSubject,
+            transactions::TransactionsSubject,
+            Subject,
+        },
         ClientOpts,
         NatsClient,
-        StreamSubjects,
-        Subject,
     },
     prelude::types::JetStreamConfig,
     types::TransactionKind,
@@ -70,7 +72,7 @@ impl Publisher {
             let config = async_nats::jetstream::consumer::pull::Config {
                 deliver_policy:
                     async_nats::jetstream::consumer::DeliverPolicy::Last,
-                filter_subject: BlockSubjects::wildcards().join(","),
+                filter_subject: BlocksSubject::WILDCARD.into(),
                 ..Default::default()
             };
             let mut stream = self
@@ -176,7 +178,7 @@ impl Publisher {
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
 
-        let block_subject = Blocks {
+        let block_subject = BlocksSubject {
             producer: None,
             height: Some(height),
         };
@@ -187,7 +189,7 @@ impl Publisher {
             .await?;
         if let Err(e) = self
             .nats
-            .publish(block_subject.parse(), encoded_payload.into())
+            .publish(&block_subject, encoded_payload.into())
             .await
         {
             panic!("Failed to publish block: {}", e);
@@ -196,7 +198,7 @@ impl Publisher {
         for (index, tx) in block.transactions().iter().enumerate() {
             // Publish the transaction.
             let tx_id = tx.id(&chain_id);
-            let transactions_subject = Transactions {
+            let transactions_subject = TransactionsSubject {
                 height: Some(height),
                 tx_index: Some(index),
                 tx_id: Some(tx_id.to_string()),
@@ -209,7 +211,7 @@ impl Publisher {
                 .await?;
             if let Err(e) = self
                 .nats
-                .publish(transactions_subject.parse(), encoded.into())
+                .publish(&transactions_subject, encoded.into())
                 .await
             {
                 panic!("Failed to publish transaction: {}", e);
