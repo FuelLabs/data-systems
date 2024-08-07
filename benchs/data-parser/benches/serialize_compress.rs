@@ -1,6 +1,6 @@
 use async_compression::Level;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use data_parser::{
+use fuel_data_parser::{
     builder::DataParserBuilder,
     generate_test_block,
     types::{CompressionType, SerializationType},
@@ -39,7 +39,7 @@ fn bench_serialize_compress(c: &mut Criterion) {
 
                     b.to_async(&runtime).iter(|| async {
                         let result = data_parser
-                            .serialize(&test_block)
+                            .test_serialize(&test_block)
                             .await
                             .expect("serialization");
                         // Use black_box to make sure 'result' is considered used by the compiler

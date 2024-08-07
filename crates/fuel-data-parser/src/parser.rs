@@ -21,11 +21,18 @@ use async_compression::{
     Level,
 };
 use bytes::Bytes;
+use chrono::{DateTime, Utc};
+use fuel_streams_core::nats::Subject;
 use tokio::io::AsyncWriteExt as _;
 
 use crate::{
     error::{CompressionError, Error, SerdeError},
-    types::{CompressionType, SerializationType},
+    types::{
+        CompressionType,
+        NatsFormattedMessage,
+        NatsInternalMessage,
+        SerializationType,
+    },
 };
 
 /// Prost Message Wrapper allowing serialization/deserialization
@@ -50,7 +57,7 @@ impl ProstDataParser {
     }
 
     /// Method to serialize
-    pub fn serialize<T>(&self, data: T) -> Result<Vec<u8>, Error>
+    fn serialize<T>(&self, data: T) -> Result<Vec<u8>, Error>
     where
         T: prost::Message + std::default::Default,
     {
@@ -61,7 +68,7 @@ impl ProstDataParser {
     }
 
     /// Method to deserialize
-    pub fn deserialize<T>(buf: Vec<u8>) -> Result<T, Error>
+    fn deserialize<T>(buf: Vec<u8>) -> Result<T, Error>
     where
         T: prost::Message + std::default::Default,
     {
@@ -70,12 +77,12 @@ impl ProstDataParser {
     }
 
     /// Compress the data
-    pub async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+    async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         self.data_parser.compress(raw_data).await
     }
 
     /// Decompress the data
-    pub async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+    async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         self.data_parser.decompress(raw_data).await
     }
 }
@@ -84,14 +91,14 @@ macro_rules! define_compression_methods {
     ($($name:ident),+) => {
         paste::item! {
             $(
-                pub(crate) async fn [<compress_ $name:lower>](&self, in_data: &[u8]) -> Result<Vec<u8>, Error> {
+                async fn [<compress_ $name:lower>](&self, in_data: &[u8]) -> Result<Vec<u8>, Error> {
                     let mut encoder = [<$name Encoder>]::with_quality(Vec::new(), self.compression_level);
                     encoder.write_all(in_data).await.map_err(|e| Error::Compression(CompressionError::[<$name>](e)))?;
                     encoder.shutdown().await.map_err(|e| Error::Compression(CompressionError::[<$name>](e)))?;
                     Ok(encoder.into_inner())
                 }
 
-                pub(crate) async fn [<decompress_ $name:lower>](&self, in_data: &[u8]) -> Result<Vec<u8>, Error> {
+                async fn [<decompress_ $name:lower>](&self, in_data: &[u8]) -> Result<Vec<u8>, Error> {
                     let mut decoder = [<$name Decoder>]::new(Vec::new());
                     decoder.write_all(in_data).await.map_err(|e| Error::Compression(CompressionError::[<$name>](e)))?;
                     decoder.shutdown().await.map_err(|e| Error::Compression(CompressionError::[<$name>](e)))?;
@@ -137,8 +144,16 @@ impl DataParser {
     // Macro invocation to generate methods
     define_compression_methods!(Zlib, Gzip, Brotli, Bz, Lzma, Deflate, Zstd);
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_serialize_and_compress(
+        &self,
+        raw_data: &impl serde::Serialize,
+    ) -> Result<Vec<u8>, Error> {
+        self.serialize_and_compress(raw_data).await
+    }
+
     /// Serializes and compresses the data
-    pub async fn serialize_and_compress(
+    async fn serialize_and_compress(
         &self,
         raw_data: &impl serde::Serialize,
     ) -> Result<Vec<u8>, Error> {
@@ -147,8 +162,18 @@ impl DataParser {
         Ok(compressed_data)
     }
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_decompress_and_deserialize<
+        T: serde::de::DeserializeOwned,
+    >(
+        &self,
+        raw_data: &[u8],
+    ) -> Result<T, Error> {
+        self.decompress_and_deserialize(raw_data).await
+    }
+
     /// Decompresses and deserializes the data
-    pub async fn decompress_and_deserialize<T: serde::de::DeserializeOwned>(
+    async fn decompress_and_deserialize<T: serde::de::DeserializeOwned>(
         &self,
         raw_data: &[u8],
     ) -> Result<T, Error> {
@@ -158,8 +183,34 @@ impl DataParser {
         Ok(deserialized_data)
     }
 
+    /// Deserialized and decompresses the data received from nats
+    pub async fn from_nats_message<T: serde::de::DeserializeOwned>(
+        &self,
+        nats_data: Vec<u8>,
+    ) -> Result<NatsFormattedMessage<T>, Error> {
+        let nats_formatted_message =
+            NatsInternalMessage::deserialize_from_json(&nats_data)
+                .map_err(|e| Error::Serde(SerdeError::Json(e)))?;
+        let original_message_data = self
+            .decompress_and_deserialize::<T>(&nats_formatted_message.data)
+            .await?;
+        Ok(NatsFormattedMessage {
+            subject: nats_formatted_message.subject,
+            timestamp: nats_formatted_message.timestamp,
+            data: original_message_data,
+        })
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_serialize(
+        &self,
+        raw_data: &impl serde::Serialize,
+    ) -> Result<Vec<u8>, Error> {
+        self.serialize(raw_data).await
+    }
+
     /// Serializes the data
-    pub async fn serialize(
+    async fn serialize(
         &self,
         raw_data: &impl serde::Serialize,
     ) -> Result<Vec<u8>, Error> {
@@ -173,8 +224,16 @@ impl DataParser {
         }
     }
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_deserialize<'a, T: serde::Deserialize<'a>>(
+        &self,
+        raw_data: &'a [u8],
+    ) -> Result<T, Error> {
+        self.deserialize(raw_data).await
+    }
+
     /// Deserializes the data
-    pub async fn deserialize<'a, T: serde::Deserialize<'a>>(
+    async fn deserialize<'a, T: serde::Deserialize<'a>>(
         &self,
         raw_data: &'a [u8],
     ) -> Result<T, Error> {
@@ -188,8 +247,16 @@ impl DataParser {
         }
     }
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_compress(
+        &self,
+        raw_data: &[u8],
+    ) -> Result<Vec<u8>, Error> {
+        self.compress(raw_data).await
+    }
+
     /// Compresses the data
-    pub async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+    async fn compress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         match self.compression_type {
             CompressionType::None => Ok(raw_data.to_vec()),
             CompressionType::Zlib => self.compress_zlib(raw_data).await,
@@ -202,8 +269,16 @@ impl DataParser {
         }
     }
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn test_decompress(
+        &self,
+        raw_data: &[u8],
+    ) -> Result<Vec<u8>, Error> {
+        self.decompress(raw_data).await
+    }
+
     /// Decompresses the data
-    pub async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
+    async fn decompress(&self, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
         match self.compression_type {
             CompressionType::None => Ok(raw_data.to_vec()),
             CompressionType::Zlib => self.decompress_zlib(raw_data).await,
@@ -214,6 +289,20 @@ impl DataParser {
             CompressionType::Deflate => self.decompress_deflate(raw_data).await,
             CompressionType::Zstd => self.decompress_zstd(raw_data).await,
         }
+    }
+
+    pub async fn to_nats_payload(
+        &self,
+        subject: &impl Subject,
+        raw_data: &impl serde::Serialize,
+    ) -> Result<Vec<u8>, Error> {
+        let modified_raw_data = self.serialize_and_compress(raw_data).await?;
+        let nats_internal_message =
+            NatsInternalMessage::new(subject, modified_raw_data);
+        let nats_internal_message_json_serialized = nats_internal_message
+            .json_serialize()
+            .map_err(|e| Error::Serde(SerdeError::Json(e)))?;
+        Ok(nats_internal_message_json_serialized)
     }
 }
 

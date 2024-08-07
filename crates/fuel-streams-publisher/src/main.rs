@@ -10,9 +10,6 @@ pub struct Cli {
         default_value = "localhost:4222"
     )]
     nats_url: String,
-    /// The NKEY seed. It is usually prefixed with an 'S'
-    #[arg(long, value_name = "NKEY_SEED", env = "NATS_NKEY_SEED")]
-    nats_nkey: String,
     #[command(flatten)]
     fuel_core_config: fuel_core_bin::cli::run::Command,
 }
@@ -31,7 +28,6 @@ async fn main() -> anyhow::Result<()> {
     let subscription = service.shared.block_importer.block_importer.subscribe();
     let publisher = fuel_streams_publisher::Publisher::new(
         &cli.nats_url,
-        &cli.nats_nkey,
         chain_id,
         None,
         *base_asset_id,

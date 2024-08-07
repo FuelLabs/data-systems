@@ -1,11 +1,11 @@
 use async_compression::Level;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use data_parser::{
+use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};
+use fuel_data_parser::{
     builder::DataParserBuilder,
     generate_test_block,
     types::{CompressionType, SerializationType},
 };
-use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};
 use strum::IntoEnumIterator;
 
 fn bench_decompress_deserialize(c: &mut Criterion) {
@@ -31,7 +31,7 @@ fn bench_decompress_deserialize(c: &mut Criterion) {
                 // Perform serialization asynchronously and collect the results
                 let serialized_and_compressed = runtime.block_on(async {
                     data_parser
-                        .serialize_and_compress(&test_block)
+                        .test_serialize_and_compress(&test_block)
                         .await
                         .expect("serialization failed")
                 });
@@ -72,7 +72,7 @@ fn bench_decompress_deserialize(c: &mut Criterion) {
 
             b.to_async(&runtime).iter(|| async {
                 let result = data_parser
-                    .decompress_and_deserialize::<Block<Transaction>>(
+                    .test_decompress_and_deserialize::<Block<Transaction>>(
                         serialized_compressed_data,
                     )
                     .await

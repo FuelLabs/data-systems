@@ -1,14 +1,23 @@
-mod nats;
-
 use std::{ops::Deref, sync::Arc};
 
-use data_parser::parser::DataParser;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Receipt, Transaction, UniqueIdentifier},
     fuel_types::{canonical::Serialize, AssetId, ChainId},
     services::block_importer::ImportResult,
+};
+use fuel_data_parser::parser::DataParser;
+use fuel_streams_core::{
+    nats::{
+        subjects::{blocks::Blocks, transactions::Transactions, BlockSubjects},
+        ClientOpts,
+        NatsClient,
+        StreamSubjects,
+        Subject,
+    },
+    prelude::types::JetStreamConfig,
+    types::TransactionKind,
 };
 use futures_util::stream::TryStreamExt;
 use tokio::sync::broadcast::Receiver;
@@ -20,14 +29,13 @@ pub struct Publisher {
     fuel_core_database: CombinedDatabase,
     blocks_subscription:
         Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
-    nats: nats::NatsConnection,
+    nats: NatsClient,
     data_parser: DataParser,
 }
 
 impl Publisher {
     pub async fn new(
         nats_url: &str,
-        nats_nkey: &str,
         chain_id: ChainId,
         data_parser: Option<DataParser>,
         base_asset_id: AssetId,
@@ -36,7 +44,7 @@ impl Publisher {
             Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
         >,
     ) -> anyhow::Result<Self> {
-        let nats = nats::connect(nats_url, nats_nkey, None).await?;
+        let nats = NatsClient::connect(ClientOpts::new(nats_url)).await?;
 
         Ok(Publisher {
             chain_id,
@@ -57,22 +65,26 @@ impl Publisher {
             self.chain_id, self.base_asset_id
         );
 
-        let connection_id = &self.nats.id;
         // Check the last block height in the stream
         let stream_height = {
             let config = async_nats::jetstream::consumer::pull::Config {
                 deliver_policy:
                     async_nats::jetstream::consumer::DeliverPolicy::Last,
-                filter_subject: nats::SubjectName::Blocks
-                    .get_string(connection_id),
+                filter_subject: BlockSubjects::wildcards().join(","),
                 ..Default::default()
             };
+            let mut stream = self
+                .nats
+                .create_stream("test_stream", JetStreamConfig::default())
+                .await?;
+            let stream_info = stream.info().await?;
+            let name = stream_info.config.name.clone();
             let consumer = self
                 .nats
-                .jetstream
-                .create_consumer_on_stream(
-                    config,
-                    self.nats.stream_name.clone(),
+                .create_pull_consumer(
+                    &format!("{}-consumer", name),
+                    &stream,
+                    Some(config),
                 )
                 .await?;
             let mut batch = consumer.fetch().max_messages(1).messages().await?;
@@ -164,37 +176,44 @@ impl Publisher {
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
 
-        let block_subject = nats::Subject::Blocks { height };
+        let block_subject = Blocks {
+            producer: None,
+            height: Some(height),
+        };
         let payload = block.compress(&chain_id);
-        let encoded_payload =
-            self.data_parser.serialize_and_compress(&payload).await?;
-        self.nats
-            .publish(block_subject, encoded_payload.into())
+        let encoded_payload = self
+            .data_parser
+            .to_nats_payload(&block_subject, &payload)
             .await?;
+        if let Err(e) = self
+            .nats
+            .publish(block_subject.parse(), encoded_payload.into())
+            .await
+        {
+            panic!("Failed to publish block: {}", e);
+        }
 
         for (index, tx) in block.transactions().iter().enumerate() {
-            let tx_kind = match tx {
-                Transaction::Create(_) => "create",
-                Transaction::Mint(_) => "mint",
-                Transaction::Script(_) => "script",
-                Transaction::Upload(_) => "upload",
-                Transaction::Upgrade(_) => "upgrade",
-            };
-
             // Publish the transaction.
             let tx_id = tx.id(&chain_id);
+            let transactions_subject = Transactions {
+                height: Some(height),
+                tx_index: Some(index),
+                tx_id: Some(tx_id.to_string()),
+                status: None, // TODO: get tx status
+                kind: Some(TransactionKind::from(tx)),
+            };
             let encoded = self
                 .data_parser
-                .serialize_and_compress(&tx_id.to_bytes())
+                .to_nats_payload(&transactions_subject, &tx_id.to_bytes())
                 .await?;
-            let transactions_subject = nats::Subject::Transactions {
-                height,
-                index,
-                kind: tx_kind.to_string(),
-            };
-            self.nats
-                .publish(transactions_subject, encoded.into())
-                .await?;
+            if let Err(e) = self
+                .nats
+                .publish(transactions_subject.parse(), encoded.into())
+                .await
+            {
+                panic!("Failed to publish transaction: {}", e);
+            }
             info!("NATS Publisher: Transaction 0x#{tx_id}");
         }
 

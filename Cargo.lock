@@ -1715,30 +1715,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "data_parser"
+name = "data-parser"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-compression",
  "async-nats",
- "async-trait",
  "bincode",
  "bytes",
+ "chrono",
+ "clap 4.5.13",
  "criterion",
- "displaydoc",
- "dotenvy",
  "fuel-core",
+ "fuel-core-bin",
+ "fuel-core-client",
+ "fuel-core-services",
  "fuel-core-types",
+ "fuel-data-parser",
  "futures-util",
- "paste",
- "postcard",
- "prost 0.13.1",
- "rand",
  "serde",
- "serde_json",
  "strum 0.26.3",
  "strum_macros 0.26.4",
- "thiserror",
  "tokio",
  "tracing",
 ]
@@ -2824,6 +2821,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-data-parser"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-compression",
+ "async-nats",
+ "async-trait",
+ "bincode",
+ "bytes",
+ "chrono",
+ "displaydoc",
+ "dotenvy",
+ "fuel-core",
+ "fuel-core-types",
+ "fuel-streams-core",
+ "futures-util",
+ "paste",
+ "postcard",
+ "prost 0.13.1",
+ "rand",
+ "serde",
+ "serde_json",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fuel-derive"
 version = "0.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2899,13 +2926,14 @@ dependencies = [
  "bincode",
  "bytes",
  "clap 4.5.13",
- "data_parser",
  "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-services",
  "fuel-core-types",
+ "fuel-data-parser",
+ "fuel-streams-core",
  "futures-util",
  "rand",
  "serde_json",

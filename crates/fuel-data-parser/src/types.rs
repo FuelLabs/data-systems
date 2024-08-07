@@ -1,3 +1,6 @@
+use chrono::{DateTime, Utc};
+use fuel_streams_core::nats::Subject;
+use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, EnumString};
 
 /// Compression types
@@ -65,4 +68,43 @@ pub enum SerializationType {
     /// json serialization
     #[strum(serialize = "json")]
     Json,
+}
+
+/// nats formatted internal message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct NatsInternalMessage {
+    pub subject: String,
+    pub timestamp: String,
+    pub data: Vec<u8>,
+}
+
+impl NatsInternalMessage {
+    pub fn new(subject: &impl Subject, data: Vec<u8>) -> Self {
+        let now: DateTime<Utc> = Utc::now();
+        // Formatting the datetime as an ISO 8601 string
+        let timestamp = now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        Self {
+            subject: subject.parse(),
+            timestamp,
+            data,
+        }
+    }
+
+    pub fn json_serialize(&self) -> Result<Vec<u8>, serde_json::Error> {
+        serde_json::to_vec(self)
+    }
+
+    pub fn deserialize_from_json(
+        serialized: &[u8],
+    ) -> Result<Self, serde_json::Error> {
+        serde_json::from_slice(serialized)
+    }
+}
+
+/// nats formatted user message
+#[derive(Debug, Clone, Serialize)]
+pub struct NatsFormattedMessage<T: serde::de::DeserializeOwned> {
+    pub subject: String,
+    pub timestamp: String,
+    pub data: T,
 }

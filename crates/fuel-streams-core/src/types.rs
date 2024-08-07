@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use fuel_core_types::fuel_tx::Transaction;
+
 pub use crate::nats::types as nats;
 
 // --------------------------------------------------------------------------------
@@ -43,6 +45,18 @@ pub enum TransactionKind {
     Script,
     Upgrade,
     Upload,
+}
+
+impl From<&Transaction> for TransactionKind {
+    fn from(value: &Transaction) -> Self {
+        match value {
+            Transaction::Create(_) => TransactionKind::Create,
+            Transaction::Mint(_) => TransactionKind::Mint,
+            Transaction::Script(_) => TransactionKind::Script,
+            Transaction::Upload(_) => TransactionKind::Upgrade,
+            Transaction::Upgrade(_) => TransactionKind::Upgrade,
+        }
+    }
 }
 
 impl std::fmt::Display for TransactionKind {
