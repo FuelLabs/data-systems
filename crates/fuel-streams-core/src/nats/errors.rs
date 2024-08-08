@@ -1,38 +1,67 @@
 use async_nats::{
     error,
-    jetstream::{context::CreateStreamErrorKind, stream::ConsumerErrorKind},
+    jetstream::{
+        context::CreateKeyValueErrorKind,
+        kv::{PutErrorKind, WatchErrorKind},
+        stream::ConsumerErrorKind,
+    },
     ConnectErrorKind,
 };
+use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
 use super::types::PayloadSize;
 
-#[derive(Error, Debug)]
+#[derive(Error, DisplayDoc, Debug)]
 pub enum NatsError {
-    #[error("{subject_name:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}")]
+    /// {subject_name:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}
     PayloadTooLarge {
         subject_name: String,
         payload_size: PayloadSize,
         max_payload_size: PayloadSize,
     },
 
-    #[error("Failed to create NATS stream {name}: {source}")]
-    CreateStreamFailed {
+    /// failed to create KV Store with name {name}
+    CreateStoreFailed {
         name: String,
         #[source]
-        source: error::Error<CreateStreamErrorKind>,
+        source: error::Error<CreateKeyValueErrorKind>,
     },
 
-    #[error("Failed to create NATS consumer: {source}")]
-    CreateConsumerFailed {
-        #[source]
-        source: error::Error<ConsumerErrorKind>,
-    },
-
-    #[error("Failed to connect to NATS server at {url}: {source}")]
+    /// failed to connect to {url}
     ConnectionError {
         url: String,
         #[source]
         source: error::Error<ConnectErrorKind>,
     },
+}
+
+#[derive(Error, DisplayDoc, Debug)]
+pub enum StoreError {
+    /// failed to serialize/deserialize store item
+    SerializationFailed(#[from] bincode::Error),
+
+    /// failed to upsert item {key}
+    UpsertFailed {
+        key: String,
+        #[source]
+        source: error::Error<PutErrorKind>,
+    },
+
+    /// failed to watch all on store {store:?}
+    WatchAllFailed {
+        store: String,
+        #[source]
+        source: error::Error<WatchErrorKind>,
+    },
+
+    /// failed to watch subject {subject:?}
+    WatchFailed {
+        subject: String,
+        #[source]
+        source: error::Error<WatchErrorKind>,
+    },
+
+    /// failed to create consumer
+    CreateConsumerFailed(#[from] error::Error<ConsumerErrorKind>),
 }

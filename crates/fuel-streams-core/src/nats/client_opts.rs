@@ -15,9 +15,7 @@ pub enum NatsUserRole {
 pub struct ClientOpts {
     pub(crate) url: String,
     pub(crate) role: NatsUserRole,
-    // This ID is being used just to identify the connection in the ConnectOptions
     pub(crate) conn_id: ConnId,
-    // This is being used as prefix for nats streams, consumers and subjects names
     pub(crate) namespace: NatsNamespace,
     pub(crate) timeout_secs: u64,
 }
@@ -33,29 +31,38 @@ impl ClientOpts {
         }
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn public_opts(url: impl ToString) -> Self {
         Self::new(url).with_role(NatsUserRole::Public)
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn admin_opts(url: impl ToString) -> Self {
         Self::new(url).with_role(NatsUserRole::Admin)
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_role(self, role: NatsUserRole) -> Self {
         Self { role, ..self }
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_conn_id(self, conn_id: ConnId) -> Self {
         Self { conn_id, ..self }
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_namespace(self, namespace: &str) -> Self {
         let namespace = namespace.into();
+        Self { namespace, ..self }
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn with_rdn_namespace(self) -> Self {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let random_int: u32 = rng.gen();
+        let namespace = format!(r"namespace-{random_int}").into();
         Self { namespace, ..self }
     }
 
