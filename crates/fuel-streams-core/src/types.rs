@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use fuel_core_types::services::txpool::TransactionStatus as FuelTransactionStatus;
+
 pub use crate::nats::types as nats;
 
 // --------------------------------------------------------------------------------
@@ -45,6 +47,18 @@ pub enum TransactionKind {
     Upload,
 }
 
+impl From<&Transaction> for TransactionKind {
+    fn from(value: &Transaction) -> Self {
+        match value {
+            Transaction::Create(_) => TransactionKind::Create,
+            Transaction::Mint(_) => TransactionKind::Mint,
+            Transaction::Script(_) => TransactionKind::Script,
+            Transaction::Upload(_) => TransactionKind::Upgrade,
+            Transaction::Upgrade(_) => TransactionKind::Upgrade,
+        }
+    }
+}
+
 impl std::fmt::Display for TransactionKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value: &'static str = match self {
@@ -64,6 +78,21 @@ pub enum TransactionStatus {
     Submitted,
     SqueezedOut,
     Success,
+}
+
+impl From<FuelTransactionStatus> for TransactionStatus {
+    fn from(value: FuelTransactionStatus) -> Self {
+        match value {
+            FuelTransactionStatus::Failed { .. } => TransactionStatus::Failed,
+            FuelTransactionStatus::Submitted { .. } => {
+                TransactionStatus::Submitted
+            }
+            FuelTransactionStatus::SqueezedOut { .. } => {
+                TransactionStatus::SqueezedOut
+            }
+            FuelTransactionStatus::Success { .. } => TransactionStatus::Success,
+        }
+    }
 }
 
 impl std::fmt::Display for TransactionStatus {

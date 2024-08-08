@@ -1,0 +1,54 @@
+[package]
+name = "data-parser"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+publish = false
+
+[[bench]]
+name = "serialize"
+harness = false  # do not use the default harness test
+path = "benches/serialize.rs"
+
+[[bench]]
+name = "deserialize"
+harness = false  # do not use the default harness test
+path = "benches/deserialize.rs"
+
+[[bench]]
+name = "serialize_compress"
+harness = false  # do not use the default harness test
+path = "benches/serialize_compress.rs"
+
+[[bench]]
+name = "deserialize_decompress"
+harness = false  # do not use the default harness test
+path = "benches/deserialize_decompress.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+async-compression = { version = "0.4.11", features = ["all"] }
+async-nats = { workspace = true }
+bincode = "1.3.3"
+bytes = "1.6.0"
+chrono = "0.4.38"
+clap = { workspace = true }
+fuel-core = { workspace = true }
+fuel-core-bin = { workspace = true }
+fuel-core-client = { workspace = true }
+fuel-core-services = { workspace = true }
+fuel-core-types = { workspace = true }
+fuel-data-parser = { path = "../../crates/fuel-data-parser", features = ["test-helpers"] }
+futures-util = "0.3.30"
+serde = { version = "1.0.204", features = ["derive"] }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }

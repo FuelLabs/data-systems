@@ -13,5 +13,6 @@ lcov.info
 pnpm-lock.yaml
 node_modules/
 package.json
+docker/db
 tmp
 /docker/db
