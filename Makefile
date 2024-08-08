@@ -130,7 +130,7 @@ doc:
 # ------------------------------------------------------------
 
 bench:
-	cargo bench -p data_parser
+	cargo bench -p data-parser -p nats-publisher -p bench-consumers
 
 # ------------------------------------------------------------
 # Help

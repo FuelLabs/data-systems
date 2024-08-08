@@ -291,6 +291,7 @@ impl DataParser {
         }
     }
 
+    /// Receives a subject and a serializable data to prepare a payload to send over nats
     pub async fn to_nats_payload(
         &self,
         subject: &impl Subject,
@@ -312,19 +313,41 @@ mod test {
 
     use async_compression::Level;
     use fuel_core_types::{
-        blockchain::block::Block as FuelBlock,
-        fuel_tx::{Receipt, Transaction, UniqueIdentifier},
-        fuel_types::{canonical::Deserialize, AssetId, ChainId},
-        services::block_importer::ImportResult,
+        blockchain::block::Block,
+        fuel_tx::Transaction,
+        fuel_types::{AssetId, ChainId},
     };
-    use rand::{thread_rng, Rng};
+    use fuel_streams_core::nats::streams::blocks::BlocksSubject;
     use serde::{Deserialize as SerdeDeserialize, Serialize};
-    use serde_json::Value;
 
     use crate::{
         builder::DataParserBuilder,
         types::{CompressionType, SerializationType},
     };
+
+    // test data structure
+    #[derive(Clone, Debug, Serialize, SerdeDeserialize, Eq, PartialEq)]
+    struct MyTestData {
+        ids: Vec<String>,
+        version: u64,
+        receipts: Vec<String>,
+        assets: Vec<AssetId>,
+        chain_id: ChainId,
+    }
+
+    fn gen_test_data() -> MyTestData {
+        MyTestData {
+            ids: vec!["1".to_string(), "2".to_string(), "3".to_string()],
+            version: 1u64,
+            receipts: vec![
+                "receipt_1".to_string(),
+                "receipt_2".to_string(),
+                "receipt_3".to_string(),
+            ],
+            assets: vec![AssetId::zeroed()],
+            chain_id: ChainId::new(1),
+        }
+    }
 
     #[tokio::test]
     async fn test_data_parser_builder() {
@@ -345,19 +368,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_block_data_serialization() {
-        use fuel_core_types::blockchain::block::Block as FuelBlock;
-
-        // define a test data structure
-        #[derive(Clone, Debug, Serialize, SerdeDeserialize, Eq, PartialEq)]
-        struct MyTestData {
-            ids: Vec<String>,
-            version: u64,
-            receipts: Vec<String>,
-            assets: Vec<AssetId>,
-            chain_id: ChainId,
-        }
-
+    async fn test_data_serialization() {
         // construct the data parser
         let data_parser = DataParserBuilder::new()
             .with_compression(CompressionType::Gzip)
@@ -365,17 +376,8 @@ mod test {
             .with_serialization(SerializationType::Bincode)
             .build();
 
-        let test_data = MyTestData {
-            ids: vec!["1".to_string(), "2".to_string(), "3".to_string()],
-            version: 1u64,
-            receipts: vec![
-                "receipt_1".to_string(),
-                "receipt_2".to_string(),
-                "receipt_3".to_string(),
-            ],
-            assets: vec![AssetId::zeroed()],
-            chain_id: ChainId::new(1),
-        };
+        // gen some test data
+        let test_data = gen_test_data();
 
         // compress and serialize
         let ser_compressed_data = data_parser
@@ -390,5 +392,40 @@ mod test {
             .unwrap();
 
         assert_eq!(my_test_data_recreated, test_data);
+    }
+
+    #[tokio::test]
+    async fn test_nats_message_serialization() {
+        // construct the data parser
+        let data_parser = DataParserBuilder::new()
+            .with_compression(CompressionType::Gzip)
+            .with_compression_level(Level::Fastest)
+            .with_serialization(SerializationType::Bincode)
+            .build();
+
+        // gen some test data
+        let test_data = gen_test_data();
+
+        // create subject
+        let block_subject = BlocksSubject {
+            producer: None,
+            height: Some(100),
+        };
+
+        // compress and serialize
+        let nats_payload = data_parser
+            .to_nats_payload(&block_subject, &test_data)
+            .await
+            .unwrap();
+
+        // deserialize and decompress
+        let my_test_data_recreated = data_parser
+            .from_nats_message::<MyTestData>(nats_payload)
+            .await
+            .unwrap();
+
+        assert!(my_test_data_recreated.subject.len() > 0);
+        assert!(my_test_data_recreated.subject.len() > 0);
+        assert_eq!(my_test_data_recreated.data, test_data);
     }
 }
