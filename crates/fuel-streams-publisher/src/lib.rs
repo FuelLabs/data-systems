@@ -198,11 +198,20 @@ impl Publisher {
         for (index, tx) in block.transactions().iter().enumerate() {
             // Publish the transaction.
             let tx_id = tx.id(&chain_id);
+
+            let status = self
+                .fuel_core_database
+                .off_chain()
+                .get_tx_status(&tx_id)
+                .ok()
+                .flatten()
+                .map(Into::into);
+
             let transactions_subject = TransactionsSubject {
                 height: Some(height),
                 tx_index: Some(index),
                 tx_id: Some(tx_id.to_string()),
-                status: None, // TODO: get tx status
+                status,
                 kind: Some(TransactionKind::from(tx)),
             };
             let encoded = self

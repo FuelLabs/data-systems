@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use fuel_core_types::services::txpool::TransactionStatus as FuelTransactionStatus;
+
 pub use crate::nats::types as nats;
 
 // --------------------------------------------------------------------------------
@@ -76,6 +78,21 @@ pub enum TransactionStatus {
     Submitted,
     SqueezedOut,
     Success,
+}
+
+impl From<FuelTransactionStatus> for TransactionStatus {
+    fn from(value: FuelTransactionStatus) -> Self {
+        match value {
+            FuelTransactionStatus::Failed { .. } => TransactionStatus::Failed,
+            FuelTransactionStatus::Submitted { .. } => {
+                TransactionStatus::Submitted
+            }
+            FuelTransactionStatus::SqueezedOut { .. } => {
+                TransactionStatus::SqueezedOut
+            }
+            FuelTransactionStatus::Success { .. } => TransactionStatus::Success,
+        }
+    }
 }
 
 impl std::fmt::Display for TransactionStatus {
