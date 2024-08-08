@@ -62,7 +62,7 @@ pub fn from_input(
     Ok(fields)
 }
 
-pub fn names_from_fiels(fields: &Punctuated<Field, Comma>) -> Vec<&Ident> {
+pub fn names_from_fields(fields: &Punctuated<Field, Comma>) -> Vec<&Ident> {
     fields.iter().filter_map(|f| f.ident.as_ref()).collect()
 }
 
