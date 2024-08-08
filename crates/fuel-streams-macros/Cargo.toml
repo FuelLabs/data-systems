@@ -1,0 +1,13 @@
+[package]
+name = "fuel-streams-macros"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+publish = false
+version = "0.0.0"
+
+[dependencies]
+subject-derive = { path = "./subject-derive" }
