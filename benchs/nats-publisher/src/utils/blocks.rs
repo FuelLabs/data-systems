@@ -1,9 +1,11 @@
+use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
+use fuel_streams_core::nats::{streams::blocks::BlocksSubject, Subject};
 use tokio::try_join;
 use tracing::info;
 
-use super::{nats::NatsHelper, payload::NatsPayload};
+use super::nats::NatsHelper;
 
 #[derive(Clone)]
 pub struct BlockHelper {
@@ -31,11 +33,10 @@ impl BlockHelper {
     }
 
     pub async fn publish(&self, block: &Block) -> anyhow::Result<()> {
-        let message = NatsPayload::new(block.clone());
         try_join!(
-            self.publish_core(message.clone(), block),
-            self.publish_encoded(message.clone(), block),
-            self.publish_to_kv(message.clone(), block)
+            self.publish_core(block),
+            self.publish_encoded(block),
+            self.publish_to_kv(block)
         )?;
         Ok(())
     }
@@ -43,29 +44,35 @@ impl BlockHelper {
 
 /// Publisher
 impl BlockHelper {
-    async fn publish_core(
-        &self,
-        mut msg: NatsPayload<Block>,
-        block: &Block,
-    ) -> anyhow::Result<()> {
-        let subject = self.get_subject(Some("sub"), block);
-        let payload = msg.with_subject(subject.clone()).serialize()?;
-        self.nats.context.publish(subject, payload.into()).await?;
+    async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
+        let subject = self.get_subject(block);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
+        self.nats
+            .context
+            .publish(subject.parse(), payload.into())
+            .await?;
 
         Ok(())
     }
-    async fn publish_encoded(
-        &self,
-        mut msg: NatsPayload<Block>,
-        block: &Block,
-    ) -> anyhow::Result<()> {
+    async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
         let height = self.get_height(block);
-        let subject = self.get_subject(Some("encoded"), block);
-        let payload = msg.with_subject(subject.clone()).to_publish()?;
+        let subject = self.get_subject(block);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
+        let nats_payload = Publish::build()
+            .message_id(subject.parse())
+            .payload(payload.into());
 
         self.nats
             .context
-            .send_publish(subject, payload)
+            .send_publish(subject.parse(), nats_payload)
             .await?
             .await?;
 
@@ -76,15 +83,18 @@ impl BlockHelper {
         Ok(())
     }
 
-    async fn publish_to_kv(
-        &self,
-        mut msg: NatsPayload<Block>,
-        block: &Block,
-    ) -> anyhow::Result<()> {
+    async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
         let height = self.get_height(block);
-        let subject = self.get_subject(Some("kv"), block);
-        let payload = msg.with_subject(subject.clone()).serialize()?;
-        self.nats.kv_blocks.put(subject, payload.into()).await?;
+        let subject = self.get_subject(block);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
+        self.nats
+            .kv_blocks
+            .put(subject.parse(), payload.into())
+            .await?;
 
         info!("NATS: publishing block {} to kv store \"blocks\"", height);
         Ok(())
@@ -97,17 +107,11 @@ impl BlockHelper {
         *block.header().consensus().height
     }
 
-    fn get_subject(
-        &self,
-        publish_type: Option<&'static str>,
-        block: &Block,
-    ) -> String {
+    fn get_subject(&self, block: &Block) -> BlocksSubject {
         let height = self.get_height(block);
-        if publish_type.is_some() {
-            let pt = publish_type.unwrap();
-            format!("blocks.{}.{}", pt, height)
-        } else {
-            format!("blocks.{}", height)
+        BlocksSubject {
+            producer: None,
+            height: Some(height),
         }
     }
 }

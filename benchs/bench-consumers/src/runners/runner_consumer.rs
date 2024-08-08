@@ -6,7 +6,7 @@ pub use async_nats::jetstream::consumer::{
 };
 use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
-use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
+use nats_publisher::utils::nats::NatsHelper;
 
 use super::benchmark_results::BenchmarkResult;
 
@@ -31,11 +31,15 @@ pub async fn run_blocks_consumer(
     let mut messages = consumer.messages().await?;
     while let Some(message) = messages.next().await {
         let msg = message?;
-        match NatsPayload::<Block>::from_slice(&msg.payload) {
+        match nats
+            .data_parser()
+            .from_nats_message::<Block>(msg.payload.to_vec())
+            .await
+        {
             Err(_) => result.increment_error_count(),
             Ok(decoded) => {
                 result
-                    .add_publish_time(decoded.timestamp)
+                    .add_publish_time(decoded.ts_as_millis())
                     .increment_message_count();
                 if result.is_complete() {
                     result.finalize().print_result();

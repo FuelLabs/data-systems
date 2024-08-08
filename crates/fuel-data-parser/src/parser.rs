@@ -110,7 +110,7 @@ macro_rules! define_compression_methods {
 }
 
 /// DataParser implementation
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DataParser {
     pub compression_type: CompressionType,
     pub compression_level: Level,
@@ -139,6 +139,21 @@ impl DataParser {
             compression_level,
             serialization_type,
         }
+    }
+
+    pub fn set_compression_type(&mut self, compression_type: CompressionType) {
+        self.compression_type = compression_type;
+    }
+
+    pub fn set_compression_level(&mut self, compression_level: Level) {
+        self.compression_level = compression_level;
+    }
+
+    pub fn set_serialization_type(
+        &mut self,
+        serialization_type: SerializationType,
+    ) {
+        self.serialization_type = serialization_type;
     }
 
     // Macro invocation to generate methods
@@ -184,7 +199,7 @@ impl DataParser {
     }
 
     /// Deserialized and decompresses the data received from nats
-    pub async fn from_nats_message<T: serde::de::DeserializeOwned>(
+    pub async fn from_nats_message<T: serde::de::DeserializeOwned + Clone>(
         &self,
         nats_data: Vec<u8>,
     ) -> Result<NatsFormattedMessage<T>, Error> {

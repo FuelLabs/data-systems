@@ -1,14 +1,19 @@
+use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Transaction, UniqueIdentifier},
     fuel_types::ChainId,
-    services::txpool::TransactionStatus,
+    services::txpool::TransactionStatus as TxPoolTransactionStatus,
+};
+use fuel_streams_core::{
+    nats::{streams::transactions::TransactionsSubject, Subject},
+    types::TransactionKind,
 };
 use tokio::try_join;
 use tracing::info;
 
-use super::{nats::NatsHelper, payload::NatsPayload};
+use super::nats::NatsHelper;
 
 #[allow(unused)]
 #[derive(Clone)]
@@ -39,11 +44,10 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let message = NatsPayload::new(tx.clone());
         try_join!(
-            self.publish_core(message.clone(), block, tx, index),
-            self.publish_encoded(message.clone(), block, tx, index),
-            self.publish_to_kv(message.clone(), block, tx, index)
+            self.publish_core(block, tx, index),
+            self.publish_encoded(block, tx, index),
+            self.publish_to_kv(block, tx, index)
         )?;
         Ok(())
     }
@@ -53,30 +57,43 @@ impl TxHelper {
 impl TxHelper {
     async fn publish_core(
         &self,
-        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let subject = self.get_subject(Some("sub"), block, tx, index);
-        let payload = msg.with_subject(subject.clone()).serialize()?;
-        self.nats.context.publish(subject, payload.into()).await?;
+        let subject = self.get_subject(block, tx, index);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
+        self.nats
+            .context
+            .publish(subject.parse(), payload.into())
+            .await?;
         Ok(())
     }
 
     async fn publish_encoded(
         &self,
-        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let subject = self.get_subject(Some("encoded"), block, tx, index);
-        let payload = msg.with_subject(subject.clone()).to_publish()?;
+        let subject = self.get_subject(block, tx, index);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
+        let nats_payload = Publish::build()
+            .message_id(subject.parse())
+            .payload(payload.into());
+
         self.nats
             .context
-            .send_publish(subject, payload)
+            .send_publish(subject.parse(), nats_payload)
             .await?
             .await?;
 
@@ -89,17 +106,20 @@ impl TxHelper {
 
     async fn publish_to_kv(
         &self,
-        mut msg: NatsPayload<Transaction>,
         block: &Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let subject = self.get_subject(Some("kv"), block, tx, index);
-        let payload = msg.with_subject(subject.clone()).serialize()?;
+        let subject = self.get_subject(block, tx, index);
+        let payload = self
+            .nats
+            .data_parser()
+            .to_nats_payload(&subject, block)
+            .await?;
         self.nats
             .kv_transactions
-            .put(subject, payload.into())
+            .put(subject.parse(), payload.into())
             .await?;
 
         info!(
@@ -117,54 +137,29 @@ impl TxHelper {
         format!("0x{id}")
     }
 
-    fn get_kind(&self, tx: &Transaction) -> &'static str {
-        match tx {
-            Transaction::Create(_) => "create",
-            Transaction::Mint(_) => "mint",
-            Transaction::Script(_) => "script",
-            Transaction::Upload(_) => "upload",
-            Transaction::Upgrade(_) => "upgrade",
-        }
-    }
-
-    fn get_status(&self, tx: &Transaction) -> &'static str {
-        let status = self
-            .database
+    fn get_status(&self, tx: &Transaction) -> Option<TxPoolTransactionStatus> {
+        self.database
             .off_chain()
             .get_tx_status(&tx.id(&self.chain_id))
-            .unwrap();
-
-        match status {
-            Some(TransactionStatus::Failed { .. }) => "failed",
-            Some(TransactionStatus::Success { .. }) => "success",
-            Some(TransactionStatus::Submitted { .. }) => "submitted",
-            Some(TransactionStatus::SqueezedOut { .. }) => "squeezed_out",
-            None => "none",
-        }
+            .ok()
+            .flatten()
     }
 
     fn get_subject(
         &self,
-        publish_type: Option<&'static str>,
         block: &Block,
         tx: &Transaction,
         index: usize,
-    ) -> String {
+    ) -> TransactionsSubject {
         let height = *block.header().consensus().height;
         let id = self.get_id(tx);
-        let kind = self.get_kind(tx);
         let status = self.get_status(tx);
-        if publish_type.is_some() {
-            let pt = publish_type.unwrap();
-            format!(
-                "transactions.{}.{}.{}.{}.{}.{}",
-                pt, height, index, id, kind, status
-            )
-        } else {
-            format!(
-                "transactions.{}.{}.{}.{}.{}",
-                height, index, id, kind, status
-            )
+        TransactionsSubject {
+            height: Some(height),
+            tx_index: Some(index),
+            tx_id: Some(id),
+            status: status.map(Into::into),
+            kind: Some(TransactionKind::from(tx)),
         }
     }
 }

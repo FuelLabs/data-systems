@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
-use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
+use nats_publisher::utils::nats::NatsHelper;
 
 use super::benchmark_results::BenchmarkResult;
 
@@ -16,11 +16,15 @@ pub async fn run_watch_kv_blocks(
 
     while let Some(message) = watch.next().await {
         let item = message?;
-        match NatsPayload::<Block>::from_slice(&item.value) {
+        match nats
+            .data_parser()
+            .from_nats_message::<Block>(item.value.to_vec())
+            .await
+        {
             Err(_) => result.increment_error_count(),
             Ok(decoded) => {
                 result
-                    .add_publish_time(decoded.timestamp)
+                    .add_publish_time(decoded.ts_as_millis())
                     .increment_message_count();
                 if result.is_complete() {
                     result.finalize().print_result();

@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     // ------------------------------------------------------------------------
     // NATS
     // ------------------------------------------------------------------------
-    let nats = NatsHelper::connect().await?;
+    let nats = NatsHelper::connect(true).await?;
     let block_helper = BlockHelper::new(nats.to_owned(), &database);
     let tx_helper = TxHelper::new(nats.to_owned(), &chain_id, &database);
 

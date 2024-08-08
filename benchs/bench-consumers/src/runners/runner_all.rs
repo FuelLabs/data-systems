@@ -1,4 +1,5 @@
 use anyhow::Result;
+use fuel_data_parser::{CompressionLevel, CompressionType, SerializationType};
 use nats_publisher::utils::nats::NatsHelper;
 use tokio::try_join;
 
@@ -12,7 +13,15 @@ use super::{
 
 #[allow(dead_code)]
 pub async fn run_all_benchmarks() -> Result<()> {
-    let nats = NatsHelper::connect().await?;
+    let use_nats_compression = false; // adjust as needed
+    let mut nats = NatsHelper::connect(use_nats_compression).await?;
+    nats.data_parser_mut()
+        .set_serialization_type(SerializationType::Postcard); // adjust as needed
+    nats.data_parser_mut()
+        .set_compression_type(CompressionType::Zlib); // adjust as needed
+    nats.data_parser_mut()
+        .set_compression_level(CompressionLevel::Fastest); // adjust as needed
+
     let _ = try_join!(
         run_subscriptions(&nats, MSGS_LIMIT),
         run_watch_kv_blocks(&nats, MSGS_LIMIT),

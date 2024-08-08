@@ -21,6 +21,8 @@ fuel-core-bin = { workspace = true }
 fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-types = { workspace = true }
+fuel-data-parser = { path = "../../crates/fuel-data-parser" }
+fuel-streams-core = { path = "../../crates/fuel-streams-core" }
 futures-util = "0.3.30"
 serde = { version = "1.0.204", features = ["derive"] }
 tokio = { workspace = true }

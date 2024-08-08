@@ -103,8 +103,20 @@ impl NatsInternalMessage {
 
 /// nats formatted user message
 #[derive(Debug, Clone, Serialize)]
-pub struct NatsFormattedMessage<T: serde::de::DeserializeOwned> {
+pub struct NatsFormattedMessage<T: serde::de::DeserializeOwned + Clone> {
     pub subject: String,
     pub timestamp: String,
     pub data: T,
+}
+
+impl<T> NatsFormattedMessage<T>
+where
+    T: serde::de::DeserializeOwned + Clone,
+{
+    pub fn ts_as_millis(&self) -> u128 {
+        DateTime::parse_from_rfc3339(&self.timestamp)
+            .ok()
+            .map(|ts| ts.timestamp_millis() as u128)
+            .unwrap_or_else(|| Utc::now().timestamp_millis() as u128)
+    }
 }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fuel_core_types::blockchain::block::Block;
 use futures_util::StreamExt;
-use nats_publisher::utils::{nats::NatsHelper, payload::NatsPayload};
+use nats_publisher::utils::nats::NatsHelper;
 
 use super::benchmark_results::BenchmarkResult;
 
@@ -11,11 +11,15 @@ pub async fn run_subscriptions(nats: &NatsHelper, limit: usize) -> Result<()> {
     let mut subscriber = nats.client.subscribe("blocks.sub.*").await?;
     while let Some(message) = subscriber.next().await {
         let payload = message.payload;
-        match NatsPayload::<Block>::from_slice(&payload) {
+        match nats
+            .data_parser()
+            .from_nats_message::<Block>(payload.to_vec())
+            .await
+        {
             Err(_) => result.increment_error_count(),
             Ok(decoded) => {
                 result
-                    .add_publish_time(decoded.timestamp)
+                    .add_publish_time(decoded.ts_as_millis())
                     .increment_message_count();
                 if result.is_complete() {
                     result.finalize().print_result();
