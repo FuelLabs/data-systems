@@ -24,6 +24,11 @@ impl From<&str> for NatsNamespace {
         NatsNamespace::Custom(value.into())
     }
 }
+impl From<String> for NatsNamespace {
+    fn from(value: String) -> Self {
+        NatsNamespace::Custom(value)
+    }
+}
 
 impl From<NatsNamespace> for String {
     fn from(val: NatsNamespace) -> Self {
@@ -36,15 +41,7 @@ impl NatsNamespace {
         format!("{self}.{}", val)
     }
 
-    pub fn stream_name(&self, val: &str) -> String {
-        format!("{self}:stream:{val}")
-    }
-
-    pub fn consumer_name(&self, val: &str) -> String {
-        format!("{self}:consumer:{val}")
-    }
-
-    pub fn prepend_subjects(&self, subjects: Vec<&str>) -> Vec<String> {
-        subjects.iter().map(|s| format!("{self}.{s}")).collect()
+    pub fn store_name(&self, val: &str) -> String {
+        format!("{self}_{val}")
     }
 }

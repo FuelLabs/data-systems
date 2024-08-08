@@ -1,9 +1,7 @@
-use async_nats::jetstream::context::Publish;
 use bytes::Bytes;
 use tracing::info;
 
-use super::{types::*, ClientOpts, NatsError, NatsNamespace, Subject};
-use crate::types::BoxedResult;
+use super::{types::*, ClientOpts, NatsError, NatsNamespace};
 
 #[derive(Debug, Clone)]
 pub struct NatsClient {
@@ -33,17 +31,6 @@ impl NatsClient {
         })
     }
 
-    pub async fn publish(
-        &self,
-        subject: &impl Subject,
-        payload: Bytes,
-    ) -> BoxedResult<&Self> {
-        let subject = self.namespace.subject_name(&subject.parse());
-        let payload = Publish::build().message_id(&subject).payload(payload);
-        self.jetstream.send_publish(subject, payload).await?.await?;
-        Ok(self)
-    }
-
     #[allow(dead_code)]
     fn validate_payload(
         &self,
@@ -64,46 +51,39 @@ impl NatsClient {
         Ok(self)
     }
 
-    pub async fn create_stream(
+    pub async fn create_store(
         &self,
-        name: &str,
-        config: JetStreamConfig,
-    ) -> Result<AsyncNatsStream, NatsError> {
-        let name = self.namespace.stream_name(name);
-        self.jetstream
-            .get_or_create_stream(JetStreamConfig {
-                name: name.clone(),
-                ..config
-            })
-            .await
-            .map_err(|e| NatsError::CreateStreamFailed {
-                name: name.clone(),
-                source: e,
-            })
-    }
-
-    pub async fn create_pull_consumer(
-        &self,
-        name: &str,
-        stream: &AsyncNatsStream,
-        config: Option<PullConsumerConfig>,
-    ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError> {
-        let name = self.namespace.consumer_name(name);
-        stream
-            .get_or_create_consumer(
-                &name,
-                PullConsumerConfig {
-                    durable_name: Some(name.to_owned()),
+        bucket: &str,
+        config: Option<NatsStoreConfig>,
+    ) -> Result<NatsStore, NatsError> {
+        let bucket = self.namespace.store_name(bucket);
+        let store = self.jetstream.get_key_value(&bucket).await;
+        let store = match store {
+            Ok(store) => store,
+            Err(_) => self
+                .jetstream
+                .create_key_value(NatsStoreConfig {
+                    bucket: bucket.to_owned(),
+                    storage: NatsStorageType::File,
+                    compression: true,
                     ..config.unwrap_or_default()
-                },
-            )
-            .await
-            .map_err(|e| NatsError::CreateConsumerFailed { source: e })
+                })
+                .await
+                .map_err(|s| NatsError::CreateStoreFailed {
+                    name: bucket,
+                    source: s,
+                })?,
+        };
+
+        Ok(store)
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::str::from_utf8;
+
+    use futures_util::StreamExt;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -136,23 +116,19 @@ mod test {
     }
 
     #[tokio::test]
-    async fn create_stream_and_consumer() -> BoxedResult<()> {
+    async fn creating_store() -> BoxedResult<()> {
         let client = connect().await?;
-        let mut stream = client
-            .create_stream("test_stream", JetStreamConfig::default())
-            .await?;
+        let store = client.create_store("test_store", None).await?;
+        assert_eq!(&store.stream_name, "KV_fuel_test_store");
 
-        let stream_info = stream.info().await?;
-        let name = stream_info.config.name.clone();
-        assert_eq!(name, client.namespace.stream_name("test_stream"));
+        let mut watch = store.watch("test.*").await?;
+        store.put("test.1", "data".into()).await?;
 
-        let mut consumer = client
-            .create_pull_consumer("test_consumer", &stream, None)
-            .await?;
-
-        let consumer_info = consumer.info().await?;
-        let name = consumer_info.config.durable_name.clone().unwrap();
-        assert_eq!(name, client.namespace.consumer_name("test_consumer"));
+        let entry = watch.next().await.unwrap()?;
+        let entry_value = from_utf8(&entry.value)?;
+        assert_eq!(entry.bucket, client.namespace.store_name("test_store"));
+        assert_eq!(entry.key, "test.1");
+        assert_eq!(entry_value, "data");
 
         Ok(())
     }
