@@ -1719,16 +1719,10 @@ dependencies = [
 name = "data-parser"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "async-compression",
- "async-nats",
- "bincode",
- "bytes",
- "chrono",
  "criterion",
  "fuel-core-types",
  "fuel-data-parser",
- "serde",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tokio",
