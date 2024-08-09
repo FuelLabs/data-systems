@@ -1725,20 +1725,13 @@ dependencies = [
  "bincode",
  "bytes",
  "chrono",
- "clap 4.5.13",
  "criterion",
- "fuel-core",
- "fuel-core-bin",
- "fuel-core-client",
- "fuel-core-services",
  "fuel-core-types",
  "fuel-data-parser",
- "futures-util",
  "serde",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tokio",
- "tracing",
 ]
 
 [[package]]
