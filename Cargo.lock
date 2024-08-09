@@ -1723,6 +1723,7 @@ dependencies = [
  "criterion",
  "fuel-core-types",
  "fuel-data-parser",
+ "rand",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tokio",
