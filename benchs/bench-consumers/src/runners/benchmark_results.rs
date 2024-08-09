@@ -1,3 +1,4 @@
+use core::fmt;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
@@ -14,6 +15,24 @@ pub struct BenchmarkResult {
     pub publish_times: Vec<Duration>,
     pub mean_publish_time: Option<Duration>,
     pub messages_limit: usize,
+}
+
+impl fmt::Display for BenchmarkResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "\n{}\nBenchmark Results: {}\n{}\nTotal Messages: {}\nTotal Errors: {}\nElapsed Time: {:?}\nMessages per Second: {:.2}\nMean Publish Time: {:?}\n{}",
+            "=".repeat(50),
+            self.name,
+            "=".repeat(50),
+            self.message_count,
+            self.error_count,
+            self.elapsed_time.unwrap_or_default(),
+            self.messages_per_second.unwrap_or_default(),
+            self.mean_publish_time.unwrap_or_default(),
+            "=".repeat(50)
+        )
+    }
 }
 
 impl BenchmarkResult {
@@ -40,7 +59,7 @@ impl BenchmarkResult {
     }
 
     pub fn finalize(&mut self) -> &mut Self {
-        self.calculate_statistics();
+        self.calculate_mean_publish_time();
         let elapsed = self.start_time.elapsed();
         self.elapsed_time = Some(elapsed);
         self.messages_per_second =
@@ -66,7 +85,7 @@ impl BenchmarkResult {
         self
     }
 
-    pub fn calculate_statistics(&mut self) {
+    pub fn calculate_mean_publish_time(&mut self) {
         if self.publish_times.is_empty() {
             return;
         }
@@ -80,23 +99,5 @@ impl BenchmarkResult {
         let data = Data::new(times_ns);
         let mean_ns = data.mean().unwrap();
         self.mean_publish_time = Some(Duration::from_nanos(mean_ns as u64));
-    }
-
-    pub fn print_result(&self) {
-        println!("\n{}", "=".repeat(50));
-        println!("Benchmark Results: {}", self.name);
-        println!("{}", "=".repeat(50));
-        println!("Total Messages: {}", self.message_count);
-        println!("Total Errors: {}", self.error_count);
-        println!("Elapsed Time: {:?}", self.elapsed_time.unwrap_or_default());
-        println!(
-            "Messages per Second: {:.2}",
-            self.messages_per_second.unwrap_or_default()
-        );
-        println!(
-            "Mean Publish Time: {:?}",
-            self.mean_publish_time.unwrap_or_default()
-        );
-        println!("{}", "=".repeat(50));
     }
 }

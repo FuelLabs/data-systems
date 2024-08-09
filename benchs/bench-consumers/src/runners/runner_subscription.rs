@@ -22,7 +22,8 @@ pub async fn run_subscriptions(nats: &NatsHelper, limit: usize) -> Result<()> {
                     .add_publish_time(decoded.ts_as_millis())
                     .increment_message_count();
                 if result.is_complete() {
-                    result.finalize().print_result();
+                    result.finalize();
+                    println!("{}", result);
                     break;
                 }
             }

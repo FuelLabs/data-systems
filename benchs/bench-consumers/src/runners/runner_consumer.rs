@@ -42,7 +42,8 @@ pub async fn run_blocks_consumer(
                     .add_publish_time(decoded.ts_as_millis())
                     .increment_message_count();
                 if result.is_complete() {
-                    result.finalize().print_result();
+                    result.finalize();
+                    println!("{}", result);
                     break;
                 }
             }
