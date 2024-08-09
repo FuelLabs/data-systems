@@ -2911,7 +2911,6 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-nats",
- "bincode",
  "bytes",
  "clap 4.5.13",
  "dotenvy",
@@ -4822,7 +4821,6 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-nats",
- "bincode",
  "bytes",
  "chrono",
  "clap 4.5.13",
