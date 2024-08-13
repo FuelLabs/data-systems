@@ -8,6 +8,7 @@ use async_nats::{
     ConnectErrorKind,
 };
 use displaydoc::Display as DisplayDoc;
+use fuel_data_parser::Error as DataParserError;
 use thiserror::Error;
 
 use super::types::PayloadSize;
@@ -38,9 +39,6 @@ pub enum NatsError {
 
 #[derive(Error, DisplayDoc, Debug)]
 pub enum StoreError {
-    /// failed to serialize/deserialize store item
-    SerializationFailed(#[from] bincode::Error),
-
     /// failed to upsert item {key}
     UpsertFailed {
         key: String,
@@ -61,6 +59,9 @@ pub enum StoreError {
         #[source]
         source: error::Error<WatchErrorKind>,
     },
+
+    /// data parser error
+    DataParser(#[from] DataParserError),
 
     /// failed to create consumer
     CreateConsumerFailed(#[from] error::Error<ConsumerErrorKind>),

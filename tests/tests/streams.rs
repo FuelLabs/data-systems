@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use fuel_data_parser::DataParser;
 use fuel_streams_core::prelude::*;
 use futures::StreamExt;
 use pretty_assertions::assert_eq;
@@ -46,8 +47,16 @@ async fn can_watch_blocks_store() {
     while let Some((i, entry)) = watch.next().await {
         let entry = entry.unwrap();
         let (subject, block) = items[i].to_owned();
+        let data_parser = DataParser::default();
         assert_eq!(entry.key, store.subject_name(&subject.parse()));
-        assert_eq!(Block::store_decode(&entry.value).unwrap(), block);
+        assert_eq!(
+            Block::store_decode::<Block>(entry.value.to_vec(), &data_parser)
+                .await
+                .unwrap()
+                .data,
+            block
+        );
+
         if i == 9 {
             break;
         }
@@ -88,9 +97,16 @@ async fn can_watch_transactions_store() {
     while let Some((i, entry)) = watch.next().await {
         let entry = entry.unwrap();
         let (subject, transaction) = items[i].to_owned();
+        let data_parser = DataParser::default();
         assert_eq!(entry.key, store.subject_name(&subject.parse()));
         assert_eq!(
-            Transaction::store_decode(&entry.value).unwrap(),
+            Transaction::store_decode::<Transaction>(
+                entry.value.to_vec(),
+                &data_parser
+            )
+            .await
+            .unwrap()
+            .data,
             transaction
         );
         if i == 9 {
