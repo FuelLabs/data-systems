@@ -6,10 +6,12 @@ pub use async_nats::{
                 Config as PullConsumerConfig,
                 Stream as PullConsumerStream,
             },
+            Config as ConsumerConfig,
             Consumer as NatsConsumer,
         },
+        kv::{Config as NatsStoreConfig, Store as NatsStore},
         stream::{
-            Config as JetStreamConfig,
+            Config as NatsStreamConfig,
             StorageType as NatsStorageType,
             Stream as AsyncNatsStream,
         },

@@ -1,5 +1,6 @@
 use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
+use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Transaction, UniqueIdentifier},
@@ -7,8 +8,9 @@ use fuel_core_types::{
     services::txpool::TransactionStatus as TxPoolTransactionStatus,
 };
 use fuel_streams_core::{
-    nats::{streams::transactions::TransactionsSubject, Subject},
-    types::TransactionKind,
+    blocks::types::BlockHeight,
+    nats::IntoSubject,
+    transactions::TransactionsSubject,
 };
 use tokio::try_join;
 use tracing::info;
@@ -61,7 +63,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let subject = self.get_subject(block, tx, index);
+        let subject = self.get_subject(tx, block, index);
         let payload = self
             .nats
             .data_parser()
@@ -81,7 +83,7 @@ impl TxHelper {
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let subject = self.get_subject(block, tx, index);
+        let subject = self.get_subject(tx, block, index);
         let payload = self
             .nats
             .data_parser()
@@ -111,7 +113,7 @@ impl TxHelper {
         index: usize,
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
-        let subject = self.get_subject(block, tx, index);
+        let subject = self.get_subject(tx, block, index);
         let payload = self
             .nats
             .data_parser()
@@ -132,34 +134,37 @@ impl TxHelper {
 
 /// Getters
 impl TxHelper {
+    fn get_subject(
+        &self,
+        tx: &Transaction,
+        block: &Block,
+        index: usize,
+    ) -> TransactionsSubject {
+        // construct tx subject
+        let mut subject: TransactionsSubject = tx.into();
+        subject = subject
+            .with_tx_index(Some(index))
+            .with_height(Some(BlockHeight::from(self.get_height(block))))
+            .with_status(self.get_status(tx).map(Into::into));
+        subject
+    }
+
     fn get_id(&self, tx: &Transaction) -> String {
         let id = tx.id(&self.chain_id).to_string();
         format!("0x{id}")
     }
 
+    fn get_height(&self, block: &Block) -> u32 {
+        *block.header().consensus().height
+    }
+
     fn get_status(&self, tx: &Transaction) -> Option<TxPoolTransactionStatus> {
         self.database
             .off_chain()
+            .latest_view()
+            .unwrap()
             .get_tx_status(&tx.id(&self.chain_id))
             .ok()
             .flatten()
-    }
-
-    fn get_subject(
-        &self,
-        block: &Block,
-        tx: &Transaction,
-        index: usize,
-    ) -> TransactionsSubject {
-        let height = *block.header().consensus().height;
-        let id = self.get_id(tx);
-        let status = self.get_status(tx);
-        TransactionsSubject {
-            height: Some(height),
-            tx_index: Some(index),
-            tx_id: Some(id),
-            status: status.map(Into::into),
-            kind: Some(TransactionKind::from(tx)),
-        }
     }
 }

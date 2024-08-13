@@ -19,6 +19,7 @@ fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
+fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../../crates/fuel-data-parser" }
 fuel-streams-core = { path = "../../crates/fuel-streams-core" }

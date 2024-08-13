@@ -1,17 +1,19 @@
-use super::{types::*, ClientOpts, ConnStreams, NatsClient, NatsError};
+use super::{conn_stores::ConnStores, types::*, ClientOpts, NatsClient};
 
 #[derive(Clone)]
 pub struct NatsConn {
     pub client: NatsClient,
-    pub streams: ConnStreams,
+    pub stores: ConnStores,
 }
 
 impl NatsConn {
     #[cfg(feature = "test-helpers")]
-    pub async fn connect(opts: ClientOpts) -> Result<Self, NatsError> {
+    pub async fn connect(opts: ClientOpts) -> Result<Self, super::NatsError> {
+        use fuel_data_parser::DataParser;
+
         let client = NatsClient::connect(opts).await?;
-        let streams = ConnStreams::new(&client).await?;
-        Ok(Self { streams, client })
+        let stores = ConnStores::new(&client, &DataParser::default()).await?;
+        Ok(Self { client, stores })
     }
 
     pub fn opts(&self) -> &ClientOpts {
@@ -30,7 +32,7 @@ impl NatsConn {
         &self.client.nats_client
     }
 
-    pub fn streams(&self) -> &ConnStreams {
-        &self.streams
+    pub fn stores(&self) -> &ConnStores {
+        &self.stores
     }
 }

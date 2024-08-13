@@ -1,8 +1,12 @@
+use std::time::Duration;
+
+use fuel_data_parser::DataParser;
 use fuel_streams_core::prelude::*;
-use futures_util::StreamExt;
+use futures::StreamExt;
+use pretty_assertions::assert_eq;
 
 #[tokio::test]
-async fn public_user_cannot_create_streams() {
+async fn public_user_cannot_create_stores() {
     let opts = ClientOpts::public_opts(NATS_URL)
         .with_namespace("test1")
         .with_timeout(1);
@@ -10,98 +14,103 @@ async fn public_user_cannot_create_streams() {
 }
 
 #[tokio::test]
-async fn public_user_can_access_streams_after_created() {
-    let opts = ClientOpts::new(NATS_URL)
-        .with_namespace("test2")
-        .with_timeout(1);
-
-    let admin_opts = opts.clone().with_role(NatsUserRole::Admin);
-    assert!(NatsConn::connect(admin_opts).await.is_ok());
-
-    let public_opts = opts.clone().with_role(NatsUserRole::Public);
-    assert!(NatsConn::connect(public_opts).await.is_ok());
-}
-
-#[tokio::test]
-async fn can_consume_stream_for_blocks() -> BoxedResult<()> {
+async fn can_watch_blocks_store() {
     let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
-    let stream = conn.streams.blocks;
-    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = streams::blocks::BlocksSubject {
-        producer: Some("0x000".to_string()),
-        height: Some(100_u32),
-    };
+    let conn = NatsConn::connect(opts).await.unwrap();
+    let store = conn.stores.blocks;
+    let producer = Some("0x000".into());
+    let wildcard = BlocksSubject::wildcard(producer.clone(), None);
 
-    stream
-        .assert_consumer_name(&conn.client, consumer.to_owned())
-        .await?;
-
-    let payload_data = "data";
-    conn.client.publish(&subject, payload_data.into()).await?;
-
-    let messages = consumer.messages().await?.take(10);
-    stream
-        .assert_messages_consumed(messages, subject, payload_data)
-        .await?;
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn can_consume_stream_for_transactions() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
-    let stream = conn.streams.transactions;
-    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = streams::transactions::TransactionsSubject {
-        height: Some(100_u32),
-        tx_index: Some(1),
-        tx_id: Some("0x000".to_string()),
-        status: Some(TransactionStatus::Success),
-        kind: Some(TransactionKind::Script),
-    };
-
-    stream
-        .assert_consumer_name(&conn.client, consumer.to_owned())
-        .await?;
-
-    let payload_data = "data";
-    conn.client.publish(&subject, payload_data.into()).await?;
-
-    let messages = consumer.messages().await?.take(10);
-    stream
-        .assert_messages_consumed(messages, subject, payload_data)
-        .await?;
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn consume_stream_with_dedup() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
-    let stream = conn.streams.blocks;
-    let consumer = stream.create_pull_consumer(&conn.client, None).await?;
-    let subject = streams::blocks::BlocksSubject {
-        producer: Some("0x000".to_string()),
-        height: Some(100_u32),
-    };
-
-    let payload_data = "data";
-    for _ in 0..100 {
-        conn.client
-            .publish(&subject, payload_data.into())
-            .await
-            .is_ok();
+    let mut items = Vec::new();
+    for i in 0..10 {
+        let block_item = MockBlock::build();
+        let subject = BlocksSubject {
+            producer: producer.clone(),
+            height: Some(i.into()),
+        };
+        items.push((subject, block_item));
     }
 
-    let messages = consumer.messages().await?.take(1);
-    let mut messages = stream
-        .assert_messages_consumed(messages, subject, payload_data)
-        .await?;
+    tokio::task::spawn({
+        let store = store.clone();
+        let items = items.clone();
+        async move {
+            for item in items {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                let payload = item.1.clone();
+                store.upsert(&item.0, &payload).await.unwrap();
+            }
+        }
+    });
 
-    // assert we only consumed one single message and the repeated ones were deduplicated by nats
-    assert!(messages.next().await.transpose().ok().flatten().is_none());
-    Ok(())
+    let mut watch = store.watch(&wildcard).await.unwrap().enumerate();
+    while let Some((i, entry)) = watch.next().await {
+        let entry = entry.unwrap();
+        let (subject, block) = items[i].to_owned();
+        let data_parser = DataParser::default();
+        assert_eq!(entry.key, store.subject_name(&subject.parse()));
+        assert_eq!(
+            Block::store_decode::<Block>(entry.value.to_vec(), &data_parser)
+                .await
+                .unwrap()
+                .data,
+            block
+        );
+
+        if i == 9 {
+            break;
+        }
+    }
+}
+
+#[tokio::test]
+async fn can_watch_transactions_store() {
+    let opts = ClientOpts::admin_opts(NATS_URL);
+    let conn = NatsConn::connect(opts).await.unwrap();
+    let store = conn.stores.transactions;
+    let wildcard = TransactionsSubject::all();
+
+    let mut items = Vec::new();
+    let mock_block = MockBlock::build();
+    for i in 0..10 {
+        let tx = MockTransaction::build();
+        let subject = TransactionsSubject::from(tx.clone())
+            .with_height(Some(mock_block.clone().into()))
+            .with_tx_index(Some(i))
+            .with_status(Some(TransactionStatus::Success));
+        items.push((subject, tx));
+    }
+
+    tokio::task::spawn({
+        let store = store.clone();
+        let items = items.clone();
+        async move {
+            for item in items {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                let payload = item.1.clone();
+                store.upsert(&item.0, &payload).await.unwrap();
+            }
+        }
+    });
+
+    let mut watch = store.watch(wildcard).await.unwrap().enumerate();
+    while let Some((i, entry)) = watch.next().await {
+        let entry = entry.unwrap();
+        let (subject, transaction) = items[i].to_owned();
+        let data_parser = DataParser::default();
+        assert_eq!(entry.key, store.subject_name(&subject.parse()));
+        assert_eq!(
+            Transaction::store_decode::<Transaction>(
+                entry.value.to_vec(),
+                &data_parser
+            )
+            .await
+            .unwrap()
+            .data,
+            transaction
+        );
+        if i == 9 {
+            break;
+        }
+    }
 }

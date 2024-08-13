@@ -1,27 +1,23 @@
-use std::{ops::Deref, sync::Arc};
-
 use fuel_core::combined_database::CombinedDatabase;
+use fuel_core_importer::ImporterResult;
+use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Receipt, Transaction, UniqueIdentifier},
-    fuel_types::{canonical::Serialize, AssetId, ChainId},
-    services::block_importer::ImportResult,
+    fuel_types::{AssetId, ChainId},
 };
 use fuel_data_parser::DataParser;
 use fuel_streams_core::{
-    nats::{
-        streams::{
-            blocks::BlocksSubject,
-            transactions::TransactionsSubject,
-            Subject,
-        },
-        ClientOpts,
-        NatsClient,
+    blocks::BlocksSubject,
+    nats::{ClientOpts, IntoSubject, NatsClient, NatsNamespace, Store},
+    transactions::TransactionsSubject,
+    types::{
+        Block as StoreBlock,
+        NatsStoreConfig,
+        Transaction as StoreTransaction,
     },
-    prelude::types::JetStreamConfig,
-    types::TransactionKind,
 };
-use futures_util::stream::TryStreamExt;
+use futures_util::TryStreamExt;
 use tokio::sync::broadcast::Receiver;
 use tracing::{info, warn};
 
@@ -29,22 +25,17 @@ pub struct Publisher {
     chain_id: ChainId,
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
-    blocks_subscription:
-        Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
+    blocks_subscription: Receiver<ImporterResult>,
     nats: NatsClient,
-    data_parser: DataParser,
 }
 
 impl Publisher {
     pub async fn new(
         nats_url: &str,
         chain_id: ChainId,
-        data_parser: Option<DataParser>,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
-        blocks_subscription: Receiver<
-            Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
-        >,
+        blocks_subscription: Receiver<ImporterResult>,
     ) -> anyhow::Result<Self> {
         let nats = NatsClient::connect(ClientOpts::new(nats_url)).await?;
 
@@ -54,7 +45,6 @@ impl Publisher {
             fuel_core_database,
             blocks_subscription,
             nats,
-            data_parser: data_parser.unwrap_or_default(),
         })
     }
 
@@ -68,35 +58,40 @@ impl Publisher {
         );
 
         // Check the last block height in the stream
-        let stream_height = {
+        let (stream_height, fuel_block_store, fuel_tx_store) = {
             let config = async_nats::jetstream::consumer::pull::Config {
                 deliver_policy:
                     async_nats::jetstream::consumer::DeliverPolicy::Last,
-                filter_subject: BlocksSubject::WILDCARD.into(),
+                filter_subject: BlocksSubject::WILDCARD.to_owned(),
                 ..Default::default()
             };
-            let mut stream = self
+            let store = self
                 .nats
-                .create_stream("test_stream", JetStreamConfig::default())
+                .create_store("fuel_store", Some(NatsStoreConfig::default()))
                 .await?;
-            let stream_info = stream.info().await?;
-            let name = stream_info.config.name.clone();
-            let consumer = self
-                .nats
-                .create_pull_consumer(
-                    &format!("{}-consumer", name),
-                    &stream,
-                    Some(config),
-                )
+
+            let fuel_block_store: Store<StoreBlock> = Store::new(
+                store.clone(),
+                &NatsNamespace::Fuel,
+                &DataParser::default(),
+            );
+            let fuel_tx_store: Store<StoreTransaction> =
+                Store::new(store, &NatsNamespace::Fuel, &DataParser::default());
+
+            let mut batch = fuel_block_store
+                .create_consumer(config)
+                .await?
+                .fetch()
+                .max_messages(1)
+                .messages()
                 .await?;
-            let mut batch = consumer.fetch().max_messages(1).messages().await?;
 
             if let Ok(Some(message)) = batch.try_next().await {
                 let block_height: u32 =
                     message.subject.strip_prefix("blocks.").unwrap().parse()?;
-                block_height
+                (block_height, fuel_block_store, fuel_tx_store)
             } else {
-                0
+                (0, fuel_block_store, fuel_tx_store)
             }
         };
 
@@ -113,6 +108,7 @@ impl Publisher {
                 let block: Block = self
                     .fuel_core_database
                     .on_chain()
+                    .latest_view()?
                     .get_sealed_block_by_height(&height.into())?
                     .unwrap_or_else(|| {
                         panic!("NATS Publisher: no block at height {height}")
@@ -122,11 +118,14 @@ impl Publisher {
                 use fuel_core_types::services::txpool::TransactionStatus;
                 let mut receipts_: Vec<Receipt> = vec![];
                 let chain_id = self.chain_id;
+
                 for t in block.transactions().iter() {
                     let status: Option<TransactionStatus> = self
                         .fuel_core_database
                         .off_chain()
+                        .latest_view()?
                         .get_tx_status(&t.id(&chain_id))?;
+
                     match status {
                         Some(TransactionStatus::Failed {
                             mut receipts,
@@ -154,22 +153,30 @@ impl Publisher {
                 receipts_.len()
             );
 
-                self.publish_block(&block).await?;
+                self.publish_block(&fuel_block_store, &fuel_tx_store, &block)
+                    .await?;
             }
         }
 
         // Continue publishing blocks from the block importer subscription
         while let Ok(result) = self.blocks_subscription.recv().await {
             let result = &**result;
-            self.publish_block(&result.sealed_block.entity).await?;
+            self.publish_block(
+                &fuel_block_store,
+                &fuel_tx_store,
+                &result.sealed_block.entity,
+            )
+            .await?;
         }
 
         Ok(self)
     }
 
     /// Publish the Block, its Transactions, and the given Receipts into NATS.
-    pub async fn publish_block(
+    async fn publish_block(
         &self,
+        fuel_block_store: &Store<StoreBlock>,
+        fuel_tx_store: &Store<StoreTransaction>,
         block: &Block<Transaction>,
     ) -> anyhow::Result<()> {
         let chain_id = self.chain_id;
@@ -178,53 +185,19 @@ impl Publisher {
         // Publish the block.
         info!("NATS Publisher: Block#{height}");
 
-        let block_subject = BlocksSubject {
-            producer: None,
-            height: Some(height),
-        };
-        let payload = block.compress(&chain_id);
-        let encoded_payload = self
-            .data_parser
-            .to_nats_payload(&block_subject, &payload)
-            .await?;
-        if let Err(e) = self
-            .nats
-            .publish(&block_subject, encoded_payload.into())
-            .await
-        {
+        let block_subject: BlocksSubject = block.into();
+
+        if let Err(e) = fuel_block_store.upsert(&block_subject, block).await {
             panic!("Failed to publish block: {}", e);
         }
 
-        for (index, tx) in block.transactions().iter().enumerate() {
+        for tx in block.transactions().iter() {
             // Publish the transaction.
             let tx_id = tx.id(&chain_id);
 
-            let status = self
-                .fuel_core_database
-                .off_chain()
-                .get_tx_status(&tx_id)
-                .ok()
-                .flatten()
-                .map(Into::into);
+            let tx_subject: TransactionsSubject = tx.into();
 
-            let transactions_subject = TransactionsSubject {
-                height: Some(height),
-                tx_index: Some(index),
-                tx_id: Some(tx_id.to_string()),
-                status,
-                kind: Some(TransactionKind::from(tx)),
-            };
-            let encoded = self
-                .data_parser
-                .to_nats_payload(&transactions_subject, &tx_id.to_bytes())
-                .await?;
-            if let Err(e) = self
-                .nats
-                .publish(&transactions_subject, encoded.into())
-                .await
-            {
-                panic!("Failed to publish transaction: {}", e);
-            }
+            let _ = fuel_tx_store.upsert(&tx_subject, tx).await?;
             info!("NATS Publisher: Transaction 0x#{tx_id}");
         }
 

@@ -21,7 +21,7 @@ displaydoc = "0.2"
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-streams-core = { path = "../fuel-streams-core" }
+fuel-streams-macros = { path = "../fuel-streams-macros" }
 futures-util = { workspace = true }
 paste = "1.0.15"
 postcard = "1.0.8"
@@ -31,6 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+subject-derive = { path = "../fuel-streams-macros/subject-derive" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

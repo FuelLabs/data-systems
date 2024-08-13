@@ -1,20 +1,17 @@
 use std::error::Error;
 
-use fuel_core_types::services::txpool::TransactionStatus as FuelTransactionStatus;
+pub use crate::{blocks::types::*, nats::types::*, transactions::types::*};
 
-pub use crate::nats::types as nats;
-
-// --------------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // General
-// --------------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
-pub type BlockHeight = u32;
 pub type Address = String;
 
-// --------------------------------------------------------------------------------
-// Identifier Kind
-// --------------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Identifier
+// ------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
 pub enum IdentifierKind {
@@ -33,78 +30,3 @@ impl std::fmt::Display for IdentifierKind {
         write!(f, "{value}")
     }
 }
-
-// --------------------------------------------------------------------------------
-// Transaction
-// --------------------------------------------------------------------------------
-
-#[derive(Debug, Clone)]
-pub enum TransactionKind {
-    Create,
-    Mint,
-    Script,
-    Upgrade,
-    Upload,
-}
-
-impl From<&Transaction> for TransactionKind {
-    fn from(value: &Transaction) -> Self {
-        match value {
-            Transaction::Create(_) => TransactionKind::Create,
-            Transaction::Mint(_) => TransactionKind::Mint,
-            Transaction::Script(_) => TransactionKind::Script,
-            Transaction::Upload(_) => TransactionKind::Upgrade,
-            Transaction::Upgrade(_) => TransactionKind::Upgrade,
-        }
-    }
-}
-
-impl std::fmt::Display for TransactionKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value: &'static str = match self {
-            TransactionKind::Create => "create",
-            TransactionKind::Mint => "mint",
-            TransactionKind::Script => "script",
-            TransactionKind::Upgrade => "upgrade",
-            TransactionKind::Upload => "upload",
-        };
-        write!(f, "{value}")
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum TransactionStatus {
-    Failed,
-    Submitted,
-    SqueezedOut,
-    Success,
-}
-
-impl From<FuelTransactionStatus> for TransactionStatus {
-    fn from(value: FuelTransactionStatus) -> Self {
-        match value {
-            FuelTransactionStatus::Failed { .. } => TransactionStatus::Failed,
-            FuelTransactionStatus::Submitted { .. } => {
-                TransactionStatus::Submitted
-            }
-            FuelTransactionStatus::SqueezedOut { .. } => {
-                TransactionStatus::SqueezedOut
-            }
-            FuelTransactionStatus::Success { .. } => TransactionStatus::Success,
-        }
-    }
-}
-
-impl std::fmt::Display for TransactionStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value: &'static str = match self {
-            TransactionStatus::Failed => "failed",
-            TransactionStatus::Submitted => "submitted",
-            TransactionStatus::SqueezedOut => "squeezed_out",
-            TransactionStatus::Success => "success",
-        };
-        write!(f, "{value}")
-    }
-}
-
-pub use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};

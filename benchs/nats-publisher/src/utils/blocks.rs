@@ -1,7 +1,8 @@
 use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
+use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
-use fuel_streams_core::nats::{streams::blocks::BlocksSubject, Subject};
+use fuel_streams_core::{blocks::BlocksSubject, nats::IntoSubject};
 use tokio::try_join;
 use tracing::info;
 
@@ -24,6 +25,8 @@ impl BlockHelper {
     pub fn find_by_height(&self, height: BlockHeight) -> Block {
         self.database
             .on_chain()
+            .latest_view()
+            .unwrap()
             .get_sealed_block_by_height(&height)
             .unwrap()
             .unwrap_or_else(|| {
@@ -45,7 +48,7 @@ impl BlockHelper {
 /// Publisher
 impl BlockHelper {
     async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
-        let subject = self.get_subject(block);
+        let subject: BlocksSubject = block.into();
         let payload = self
             .nats
             .data_parser()
@@ -60,7 +63,7 @@ impl BlockHelper {
     }
     async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
         let height = self.get_height(block);
-        let subject = self.get_subject(block);
+        let subject: BlocksSubject = block.into();
         let payload = self
             .nats
             .data_parser()
@@ -85,7 +88,8 @@ impl BlockHelper {
 
     async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
         let height = self.get_height(block);
-        let subject = self.get_subject(block);
+        let subject: BlocksSubject = block.into();
+
         let payload = self
             .nats
             .data_parser()
@@ -105,13 +109,5 @@ impl BlockHelper {
 impl BlockHelper {
     fn get_height(&self, block: &Block) -> u32 {
         *block.header().consensus().height
-    }
-
-    fn get_subject(&self, block: &Block) -> BlocksSubject {
-        let height = self.get_height(block);
-        BlocksSubject {
-            producer: None,
-            height: Some(height),
-        }
     }
 }

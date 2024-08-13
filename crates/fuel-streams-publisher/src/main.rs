@@ -29,7 +29,6 @@ async fn main() -> anyhow::Result<()> {
     let publisher = fuel_streams_publisher::Publisher::new(
         &cli.nats_url,
         chain_id,
-        None,
         *base_asset_id,
         service.shared.database.clone(),
         subscription,

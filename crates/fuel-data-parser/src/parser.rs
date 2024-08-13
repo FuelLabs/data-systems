@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
+use std::fmt::Debug;
+
 use async_compression::{
     tokio::write::{
         BrotliDecoder,
@@ -22,7 +24,7 @@ use async_compression::{
 };
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
-use fuel_streams_core::nats::Subject;
+use fuel_streams_macros::subject::IntoSubject;
 use tokio::io::AsyncWriteExt as _;
 
 use crate::{
@@ -34,6 +36,24 @@ use crate::{
         SerializationType,
     },
 };
+
+pub trait DataParserSerializable:
+    serde::Serialize + Clone + Send + Sync + Debug
+{
+}
+impl<T: serde::Serialize + Clone + Send + Sync + Debug> DataParserSerializable
+    for T
+{
+}
+
+pub trait DataParserDeserializable:
+    serde::de::DeserializeOwned + Clone + Send + Sync + Debug
+{
+}
+impl<T: serde::de::DeserializeOwned + Clone + Send + Sync + Debug>
+    DataParserDeserializable for T
+{
+}
 
 /// Prost Message Wrapper allowing serialization/deserialization
 pub struct ProstDataParser {
@@ -160,17 +180,17 @@ impl DataParser {
     define_compression_methods!(Zlib, Gzip, Brotli, Bz, Lzma, Deflate, Zstd);
 
     #[cfg(feature = "test-helpers")]
-    pub async fn test_serialize_and_compress(
+    pub async fn test_serialize_and_compress<T: DataParserSerializable>(
         &self,
-        raw_data: &impl serde::Serialize,
+        raw_data: &T,
     ) -> Result<Vec<u8>, Error> {
         self.serialize_and_compress(raw_data).await
     }
 
     /// Serializes and compresses the data
-    async fn serialize_and_compress(
+    async fn serialize_and_compress<T: DataParserSerializable>(
         &self,
-        raw_data: &impl serde::Serialize,
+        raw_data: &T,
     ) -> Result<Vec<u8>, Error> {
         let serialized_data = self.serialize(raw_data).await?;
         let compressed_data = self.compress(&serialized_data[..]).await?;
@@ -179,7 +199,7 @@ impl DataParser {
 
     #[cfg(feature = "test-helpers")]
     pub async fn test_decompress_and_deserialize<
-        T: serde::de::DeserializeOwned,
+        T: DataParserDeserializable,
     >(
         &self,
         raw_data: &[u8],
@@ -188,7 +208,7 @@ impl DataParser {
     }
 
     /// Decompresses and deserializes the data
-    async fn decompress_and_deserialize<T: serde::de::DeserializeOwned>(
+    async fn decompress_and_deserialize<T: DataParserDeserializable>(
         &self,
         raw_data: &[u8],
     ) -> Result<T, Error> {
@@ -199,7 +219,7 @@ impl DataParser {
     }
 
     /// Deserialized and decompresses the data received from nats
-    pub async fn from_nats_message<T: serde::de::DeserializeOwned + Clone>(
+    pub async fn from_nats_message<T: DataParserDeserializable>(
         &self,
         nats_data: Vec<u8>,
     ) -> Result<NatsFormattedMessage<T>, Error> {
@@ -217,17 +237,17 @@ impl DataParser {
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn test_serialize(
+    pub async fn test_serialize<T: DataParserSerializable>(
         &self,
-        raw_data: &impl serde::Serialize,
+        raw_data: &T,
     ) -> Result<Vec<u8>, Error> {
         self.serialize(raw_data).await
     }
 
     /// Serializes the data
-    async fn serialize(
+    async fn serialize<T: DataParserSerializable>(
         &self,
-        raw_data: &impl serde::Serialize,
+        raw_data: &T,
     ) -> Result<Vec<u8>, Error> {
         match self.serialization_type {
             SerializationType::Bincode => bincode::serialize(&raw_data)
@@ -309,8 +329,8 @@ impl DataParser {
     /// Receives a subject and a serializable data to prepare a payload to send over nats
     pub async fn to_nats_payload(
         &self,
-        subject: &impl Subject,
-        raw_data: &impl serde::Serialize,
+        subject: &impl IntoSubject,
+        raw_data: &impl DataParserSerializable,
     ) -> Result<Vec<u8>, Error> {
         let modified_raw_data = self.serialize_and_compress(raw_data).await?;
         let nats_internal_message =
@@ -332,7 +352,7 @@ mod test {
         fuel_tx::Transaction,
         fuel_types::{AssetId, ChainId},
     };
-    use fuel_streams_core::nats::streams::blocks::BlocksSubject;
+    use fuel_streams_macros::subject::*;
     use serde::{Deserialize as SerdeDeserialize, Serialize};
 
     use crate::{
@@ -341,26 +361,33 @@ mod test {
     };
 
     // test data structure
-    #[derive(Clone, Debug, Serialize, SerdeDeserialize, Eq, PartialEq)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Subject,
+        Serialize,
+        SerdeDeserialize,
+        Eq,
+        PartialEq,
+    )]
+    #[subject_wildcard = "test.>"]
+    #[subject_format = "test.{id}.{version}.{receipt}.{asset}.{chain_id}"]
     struct MyTestData {
-        ids: Vec<String>,
-        version: u64,
-        receipts: Vec<String>,
-        assets: Vec<AssetId>,
-        chain_id: ChainId,
+        id: Option<String>,
+        version: Option<u64>,
+        receipt: Option<String>,
+        asset: Option<AssetId>,
+        chain_id: Option<ChainId>,
     }
 
     fn gen_test_data() -> MyTestData {
         MyTestData {
-            ids: vec!["1".to_string(), "2".to_string(), "3".to_string()],
-            version: 1u64,
-            receipts: vec![
-                "receipt_1".to_string(),
-                "receipt_2".to_string(),
-                "receipt_3".to_string(),
-            ],
-            assets: vec![AssetId::zeroed()],
-            chain_id: ChainId::new(1),
+            id: Some("1".to_string()),
+            version: Some(1u64),
+            receipt: Some("receipt_1".to_string()),
+            asset: Some(AssetId::zeroed()),
+            chain_id: Some(ChainId::new(1)),
         }
     }
 
@@ -421,15 +448,9 @@ mod test {
         // gen some test data
         let test_data = gen_test_data();
 
-        // create subject
-        let block_subject = BlocksSubject {
-            producer: None,
-            height: Some(100),
-        };
-
         // compress and serialize
         let nats_payload = data_parser
-            .to_nats_payload(&block_subject, &test_data)
+            .to_nats_payload(&test_data, &test_data)
             .await
             .unwrap();
 
