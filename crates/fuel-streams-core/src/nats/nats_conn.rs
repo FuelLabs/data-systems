@@ -9,8 +9,10 @@ pub struct NatsConn {
 impl NatsConn {
     #[cfg(feature = "test-helpers")]
     pub async fn connect(opts: ClientOpts) -> Result<Self, super::NatsError> {
+        use fuel_data_parser::DataParser;
+
         let client = NatsClient::connect(opts).await?;
-        let stores = ConnStores::new(&client).await?;
+        let stores = ConnStores::new(&client, &DataParser::default()).await?;
         Ok(Self { client, stores })
     }
 

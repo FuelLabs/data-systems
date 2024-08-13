@@ -1,15 +1,18 @@
-mod nats;
-
-use std::{ops::Deref, sync::Arc};
-
 use fuel_core::combined_database::CombinedDatabase;
+use fuel_core_importer::ImporterResult;
+use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
     blockchain::block::Block,
     fuel_tx::{Receipt, Transaction, UniqueIdentifier},
     fuel_types::{AssetId, ChainId},
-    services::block_importer::ImportResult,
 };
-use futures_util::stream::TryStreamExt;
+use fuel_data_parser::DataParser;
+use fuel_streams_core::{
+    blocks::BlocksSubject,
+    nats::{ClientOpts, ConnStores, IntoSubject, NatsClient, NatsUserRole},
+    transactions::TransactionsSubject,
+};
+use futures_util::TryStreamExt;
 use tokio::sync::broadcast::Receiver;
 use tracing::{info, warn};
 
@@ -17,30 +20,29 @@ pub struct Publisher {
     chain_id: ChainId,
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
-    blocks_subscription:
-        Receiver<Arc<dyn Deref<Target = ImportResult> + Send + Sync>>,
-    nats: nats::NatsConnection,
+    blocks_subscription: Receiver<ImporterResult>,
+    stores: ConnStores,
 }
 
 impl Publisher {
     pub async fn new(
         nats_url: &str,
-        nats_nkey: &str,
         chain_id: ChainId,
         base_asset_id: AssetId,
         fuel_core_database: CombinedDatabase,
-        blocks_subscription: Receiver<
-            Arc<dyn Deref<Target = ImportResult> + Send + Sync>,
-        >,
+        blocks_subscription: Receiver<ImporterResult>,
     ) -> anyhow::Result<Self> {
-        let nats = nats::connect(nats_url, nats_nkey, None).await?;
+        let opts = ClientOpts::new(nats_url).with_role(NatsUserRole::Admin);
+        let nats = NatsClient::connect(opts).await?;
+        let data_parser = DataParser::default();
+        let stores = ConnStores::new(&nats, &data_parser).await?;
 
         Ok(Publisher {
             chain_id,
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            nats,
+            stores,
         })
     }
 
@@ -53,25 +55,24 @@ impl Publisher {
             self.chain_id, self.base_asset_id
         );
 
-        let connection_id = &self.nats.id;
         // Check the last block height in the stream
         let stream_height = {
             let config = async_nats::jetstream::consumer::pull::Config {
                 deliver_policy:
                     async_nats::jetstream::consumer::DeliverPolicy::Last,
-                filter_subject: nats::SubjectName::Blocks
-                    .get_string(connection_id),
+                filter_subject: BlocksSubject::WILDCARD.to_owned(),
                 ..Default::default()
             };
-            let consumer = self
-                .nats
-                .jetstream
-                .create_consumer_on_stream(
-                    config,
-                    self.nats.stream_name.clone(),
-                )
+
+            let mut batch = self
+                .stores
+                .blocks
+                .create_consumer(config)
+                .await?
+                .fetch()
+                .max_messages(1)
+                .messages()
                 .await?;
-            let mut batch = consumer.fetch().max_messages(1).messages().await?;
 
             if let Ok(Some(message)) = batch.try_next().await {
                 let block_height: u32 =
@@ -95,6 +96,7 @@ impl Publisher {
                 let block: Block = self
                     .fuel_core_database
                     .on_chain()
+                    .latest_view()?
                     .get_sealed_block_by_height(&height.into())?
                     .unwrap_or_else(|| {
                         panic!("NATS Publisher: no block at height {height}")
@@ -104,11 +106,14 @@ impl Publisher {
                 use fuel_core_types::services::txpool::TransactionStatus;
                 let mut receipts_: Vec<Receipt> = vec![];
                 let chain_id = self.chain_id;
+
                 for t in block.transactions().iter() {
                     let status: Option<TransactionStatus> = self
                         .fuel_core_database
                         .off_chain()
+                        .latest_view()?
                         .get_tx_status(&t.id(&chain_id))?;
+
                     match status {
                         Some(TransactionStatus::Failed {
                             mut receipts,
@@ -150,39 +155,26 @@ impl Publisher {
     }
 
     /// Publish the Block, its Transactions, and the given Receipts into NATS.
-    pub async fn publish_block(
+    async fn publish_block(
         &self,
         block: &Block<Transaction>,
     ) -> anyhow::Result<()> {
         let chain_id = self.chain_id;
         let height: u32 = *block.header().consensus().height;
-        let encoded = bincode::serialize(&block)?;
-        let block_subject = nats::Subject::Blocks { height };
-        self.nats.publish(block_subject, encoded.into()).await?;
 
         // Publish the block.
-        info!("NATS Publisher: Block #{height}");
+        info!("NATS Publisher: Block#{height}");
 
-        for (index, tx) in block.transactions().iter().enumerate() {
-            let tx_kind = match tx {
-                Transaction::Create(_) => "create",
-                Transaction::Mint(_) => "mint",
-                Transaction::Script(_) => "script",
-                Transaction::Upload(_) => "upload",
-                Transaction::Upgrade(_) => "upgrade",
-            };
+        let block_subject: BlocksSubject = block.into();
+        if let Err(e) = self.stores.blocks.upsert(&block_subject, block).await {
+            panic!("Failed to publish block: {}", e);
+        }
 
+        for tx in block.transactions().iter() {
             // Publish the transaction.
-            let tx_id = tx.id(&chain_id).to_string();
-            let encoded = bincode::serialize(tx)?;
-            let transactions_subject = nats::Subject::Transactions {
-                height,
-                index,
-                kind: tx_kind.to_string(),
-            };
-            self.nats
-                .publish(transactions_subject, encoded.into())
-                .await?;
+            let tx_id = tx.id(&chain_id);
+            let tx_subject: TransactionsSubject = tx.into();
+            let _ = self.stores.transactions.upsert(&tx_subject, tx).await?;
             info!("NATS Publisher: Transaction 0x#{tx_id}");
         }
 
