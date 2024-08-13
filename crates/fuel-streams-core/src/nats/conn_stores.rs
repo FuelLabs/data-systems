@@ -1,3 +1,5 @@
+use fuel_data_parser::DataParser;
+
 use super::store::{Storable, Store};
 use crate::{
     nats::{NatsClient, NatsError},
@@ -11,9 +13,13 @@ pub struct ConnStores {
 }
 
 impl ConnStores {
-    pub async fn new(client: &NatsClient) -> Result<Self, NatsError> {
-        let transactions = Transaction::create_store(client).await?;
-        let blocks = Block::create_store(client).await?;
+    pub async fn new(
+        client: &NatsClient,
+        data_parser: &DataParser,
+    ) -> Result<Self, NatsError> {
+        let transactions =
+            Transaction::create_store(client, data_parser).await?;
+        let blocks = Block::create_store(client, data_parser).await?;
 
         Ok(Self {
             transactions,

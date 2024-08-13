@@ -5,33 +5,50 @@ use async_nats::jetstream::{
     kv::Watch,
 };
 use async_trait::async_trait;
+use fuel_data_parser::{
+    DataParser,
+    DataParserDeserializable,
+    DataParserSerializable,
+    NatsFormattedMessage,
+};
 use fuel_streams_macros::subject::IntoSubject;
 
 use super::{NatsClient, NatsNamespace, StoreError};
 use crate::nats::{types::*, NatsError};
 
 #[async_trait]
-pub trait Storable: Debug + Clone + serde::Serialize {
+pub trait Storable: DataParserSerializable {
     const STORE: &'static str;
 
     /// This is temporary until we have the data parser
-    fn store_encode(&self) -> Result<Vec<u8>, StoreError> {
-        bincode::serialize(self).map_err(StoreError::SerializationFailed)
+    async fn store_encode(
+        &self,
+        subject: &impl IntoSubject,
+        data_parser: &DataParser,
+    ) -> Result<Vec<u8>, StoreError> {
+        data_parser
+            .to_nats_payload(subject, self)
+            .await
+            .map_err(StoreError::DataParser)
     }
 
     /// This is temporary until we have the data parser
-    fn store_decode<'a>(val: &'a [u8]) -> Result<Self, StoreError>
-    where
-        Self: serde::Deserialize<'a>,
-    {
-        bincode::deserialize(val).map_err(StoreError::SerializationFailed)
+    async fn store_decode<T: DataParserDeserializable>(
+        val: Vec<u8>,
+        data_parser: &DataParser,
+    ) -> Result<NatsFormattedMessage<T>, StoreError> {
+        Ok(data_parser
+            .from_nats_message(val)
+            .await
+            .map_err(StoreError::DataParser)?)
     }
 
     async fn create_store(
         client: &NatsClient,
+        data_parser: &DataParser,
     ) -> Result<Store<Self>, NatsError> {
         let nats_store = client.create_store(Self::STORE, None).await?;
-        Ok(Store::new(nats_store, &client.namespace))
+        Ok(Store::new(nats_store, &client.namespace, data_parser))
     }
 }
 
@@ -39,14 +56,20 @@ pub trait Storable: Debug + Clone + serde::Serialize {
 pub struct Store<S: Storable> {
     pub store: NatsStore,
     namespace: NatsNamespace,
+    data_parser: DataParser,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: Storable> Store<S> {
-    pub fn new(store: NatsStore, namespace: &NatsNamespace) -> Self {
+impl<S: Storable + Send + Sync> Store<S> {
+    pub fn new(
+        store: NatsStore,
+        namespace: &NatsNamespace,
+        data_parser: &DataParser,
+    ) -> Self {
         Self {
             store,
             namespace: namespace.to_owned(),
+            data_parser: data_parser.clone(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -58,7 +81,13 @@ impl<S: Storable> Store<S> {
     ) -> Result<u64, StoreError> {
         let key = self.subject_name(&subject.parse());
         self.store
-            .put(key.to_owned(), payload.store_encode()?.into())
+            .put(
+                key.to_owned(),
+                payload
+                    .store_encode(subject, &self.data_parser)
+                    .await?
+                    .into(),
+            )
             .await
             .map_err(|s| StoreError::UpsertFailed { key, source: s })
     }
