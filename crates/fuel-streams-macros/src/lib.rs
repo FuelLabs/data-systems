@@ -1,6 +1,8 @@
 pub mod subject {
     pub use subject_derive::*;
-    pub trait IntoSubject: std::fmt::Debug + Clone + Default {
+    pub trait IntoSubject:
+        std::fmt::Debug + Clone + Default + Send + Sync
+    {
         const WILDCARD: &'static str;
 
         fn all() -> &'static str {
