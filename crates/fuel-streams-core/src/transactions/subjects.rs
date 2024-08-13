@@ -25,6 +25,17 @@ impl From<Transaction> for TransactionsSubject {
     }
 }
 
+impl From<&Transaction> for TransactionsSubject {
+    fn from(value: &Transaction) -> Self {
+        let subject = TransactionsSubject::new();
+        let tx_id = value.cached_id().unwrap();
+        let kind = TransactionKind::from(value.to_owned());
+        subject
+            .with_tx_id(Some(tx_id.to_string()))
+            .with_kind(Some(kind))
+    }
+}
+
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "by_id.transactions.>"]
 #[subject_format = "by_id.transactions.{id_kind}.{id_value}"]

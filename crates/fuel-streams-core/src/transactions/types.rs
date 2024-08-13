@@ -2,6 +2,7 @@
 // Transaction
 // ------------------------------------------------------------------------
 pub use fuel_core_types::fuel_tx::Transaction;
+use fuel_core_types::services::txpool::TransactionStatus as TxPoolTransactionStatus;
 
 #[cfg(any(test, feature = "test-helpers"))]
 use crate::blocks::types::Block;
@@ -78,5 +79,22 @@ impl From<Transaction> for TransactionStatus {
     fn from(_value: Transaction) -> Self {
         // TODO: get the transactions status here
         TransactionStatus::Success
+    }
+}
+
+impl From<TxPoolTransactionStatus> for TransactionStatus {
+    fn from(value: TxPoolTransactionStatus) -> Self {
+        match value {
+            TxPoolTransactionStatus::Failed { .. } => TransactionStatus::Failed,
+            TxPoolTransactionStatus::Submitted { .. } => {
+                TransactionStatus::Submitted
+            }
+            TxPoolTransactionStatus::SqueezedOut { .. } => {
+                TransactionStatus::SqueezedOut
+            }
+            TxPoolTransactionStatus::Success { .. } => {
+                TransactionStatus::Success
+            }
+        }
     }
 }

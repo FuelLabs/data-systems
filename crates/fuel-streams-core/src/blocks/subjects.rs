@@ -16,6 +16,13 @@ impl From<Block> for BlocksSubject {
     }
 }
 
+impl From<&Block> for BlocksSubject {
+    fn from(block: &Block) -> Self {
+        let block_height = *block.header().height();
+        BlocksSubject::new().with_height(Some(BlockHeight::from(block_height)))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use fuel_streams_macros::subject::IntoSubject;

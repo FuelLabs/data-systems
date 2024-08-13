@@ -36,7 +36,8 @@ cargo run -p fuel-streams-publisher -- \
     --ip 0.0.0.0 \
     --port 4000 \
     --peering-port 30333 \
-    --db-path tmp/fuel-core-db  \
+    --db-path ./docker/db \
+    --snapshot ./docker/chain-config \
     --utxo-validation \
     --poa-instant false \
     --enable-p2p \
