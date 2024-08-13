@@ -23,7 +23,7 @@ fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../fuel-data-parser" }
-fuel-streams-core = { path = "../fuel-streams-core" }
+fuel-streams-core = { path = "../fuel-streams-core", features = ["test-helpers"] }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
 futures-util = { workspace = true }
 rand = { workspace = true }

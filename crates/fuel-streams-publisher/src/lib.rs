@@ -9,13 +9,17 @@ use fuel_core_types::{
 use fuel_data_parser::DataParser;
 use fuel_streams_core::{
     blocks::BlocksSubject,
-    nats::{ClientOpts, IntoSubject, NatsClient, NatsNamespace, Store},
-    transactions::TransactionsSubject,
-    types::{
-        Block as StoreBlock,
-        NatsStoreConfig,
-        Transaction as StoreTransaction,
+    nats::{
+        types::NatsStoreConfig,
+        ClientOpts,
+        IntoSubject,
+        NatsClient,
+        NatsNamespace,
+        NatsUserRole,
+        Store,
     },
+    transactions::TransactionsSubject,
+    types::{Block as StoreBlock, Transaction as StoreTransaction},
 };
 use futures_util::TryStreamExt;
 use tokio::sync::broadcast::Receiver;
@@ -37,7 +41,10 @@ impl Publisher {
         fuel_core_database: CombinedDatabase,
         blocks_subscription: Receiver<ImporterResult>,
     ) -> anyhow::Result<Self> {
-        let nats = NatsClient::connect(ClientOpts::new(nats_url)).await?;
+        let nats = NatsClient::connect(
+            ClientOpts::new(nats_url).with_role(NatsUserRole::Admin),
+        )
+        .await?;
 
         Ok(Publisher {
             chain_id,
@@ -67,7 +74,7 @@ impl Publisher {
             };
             let store = self
                 .nats
-                .create_store("fuel_store", Some(NatsStoreConfig::default()))
+                .create_store("pub_store", Some(NatsStoreConfig::default()))
                 .await?;
 
             let fuel_block_store: Store<StoreBlock> = Store::new(
