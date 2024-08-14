@@ -15,7 +15,7 @@ impl Streamable for Block {
     type Builder = NatsStore<Self>;
     type MainSubject = BlocksSubject;
 }
-    
+
 use crate::Streamable;
 
 impl Streamable for Block {

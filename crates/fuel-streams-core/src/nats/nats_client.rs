@@ -82,4 +82,3 @@ impl NatsClient {
         &self.nats_client
     }
 }
-

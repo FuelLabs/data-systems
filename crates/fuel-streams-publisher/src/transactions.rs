@@ -1,17 +1,44 @@
+use fuel_core::combined_database::CombinedDatabase;
+use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
     transactions::TransactionsSubject,
-    types::{Transaction, UniqueIdentifier},
+    types::{
+        BlockHeight,
+        ChainId,
+        Transaction,
+        TransactionKind,
+        TransactionStatus,
+        UniqueIdentifier,
+    },
     Stream,
 };
 use tracing::info;
 
 pub async fn publish(
+    chain_id: &ChainId,
+    block_height: &BlockHeight,
+    fuel_core_database: &CombinedDatabase,
     transactions_stream: &Stream<Transaction>,
     transactions: &[Transaction],
 ) -> anyhow::Result<()> {
-    for transaction in transactions.iter() {
+    let off_chain_database = fuel_core_database.off_chain().latest_view()?;
+
+    for (transaction_index, transaction) in transactions.iter().enumerate() {
         // Publish the transaction.
-        let transactions_subject: TransactionsSubject = transaction.into();
+        let tx_id = transaction.id(chain_id);
+        let kind = TransactionKind::from(transaction.to_owned());
+        let status: TransactionStatus = off_chain_database
+            .get_tx_status(&tx_id)?
+            .map(|status| status.into())
+            .unwrap_or_default();
+
+        let transactions_subject: TransactionsSubject =
+            TransactionsSubject::new()
+                .with_tx_id(Some(tx_id.to_string()))
+                .with_kind(Some(kind))
+                .with_status(Some(status))
+                .with_height(Some(block_height.clone()))
+                .with_tx_index(Some(transaction_index));
 
         // Publish the block.
         let transaction_id = transaction.cached_id().unwrap();

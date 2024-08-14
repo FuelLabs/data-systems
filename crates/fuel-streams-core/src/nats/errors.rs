@@ -3,7 +3,7 @@ use async_nats::{
     jetstream::{
         context::CreateKeyValueErrorKind,
         kv::{PutErrorKind, WatchErrorKind},
-        stream::DirectGetErrorKind,
+        stream::LastRawMessageErrorKind,
     },
     ConnectErrorKind,
 };
@@ -47,6 +47,6 @@ pub enum StreamError {
     GetLastPublishedFailed {
         subject_name: String,
         #[source]
-        source: error::Error<DirectGetErrorKind>,
+        source: error::Error<LastRawMessageErrorKind>,
     },
 }

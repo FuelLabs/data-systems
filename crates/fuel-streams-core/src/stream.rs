@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use async_nats::jetstream::stream::DirectGetErrorKind;
+use async_nats::{jetstream::stream::LastRawMessageErrorKind, Message};
 use async_trait::async_trait;
 use fuel_data_parser::DataParser;
 use fuel_streams_macros::subject::IntoSubject;
@@ -103,28 +103,44 @@ impl<S: Streamable> Stream<S> {
     }
 
     #[cfg(feature = "test-helpers")]
+    pub async fn is_empty(&self, wildcard: &str) -> bool
+    where
+        S: for<'de> serde::Deserialize<'de>,
+    {
+        self.get_last_published(wildcard)
+            .await
+            .is_ok_and(|result| result.is_none())
+    }
+
+    /// TODO: investigate why this always returns None even after publishing (putting to the KV Store)
     pub async fn get_last_published(
         &self,
-        wildcard: &'static str,
+        wildcard: &str,
     ) -> Result<Option<S>, StreamError>
     where
         S: for<'de> serde::Deserialize<'de>,
     {
-        let subject_name = &self.subject_name(wildcard);
+        let wildcard = &self.subject_name(wildcard);
+
+        // An hack to ensure we keep the KV namespace when interacting
+        // with the KV store's stream
+        let subject_name = &format!("$KV.*.{wildcard}");
+
         let message = self
             .store
             .stream
-            .direct_get_last_for_subject(subject_name)
+            .get_last_raw_message_by_subject(subject_name)
             .await;
 
         match message {
             Ok(message) => {
+                let message: Message = message.try_into().unwrap();
                 let payload = S::decode(&message.payload).await;
 
                 Ok(Some(payload))
             }
             Err(error) => match &error.kind() {
-                DirectGetErrorKind::NotFound => Ok(None),
+                LastRawMessageErrorKind::NoMessageFound => Ok(None),
                 _ => Err(StreamError::GetLastPublishedFailed {
                     subject_name: subject_name.to_string(),
                     source: error,

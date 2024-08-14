@@ -41,8 +41,8 @@ mod test {
 
     #[test]
     fn transactions_subjects_all() {
-        assert_eq!(TransactionsSubject::all(), "transactions.>");
-        assert_eq!(TransactionsByIdSubject::all(), "by_id.transactions.>");
+        assert_eq!(TransactionsSubject::WILDCARD, "transactions.>");
+        assert_eq!(TransactionsByIdSubject::WILDCARD, "by_id.transactions.>");
     }
 
     #[test]
