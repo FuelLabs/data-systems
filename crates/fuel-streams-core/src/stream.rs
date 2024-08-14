@@ -19,7 +19,7 @@ pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
     const STORE: &'static str;
 
     async fn encode(&self, subject: &str) -> Vec<u8> {
-        data_parser()
+        Self::data_parser()
             .to_nats_payload(subject, self)
             .await
             .expect("Streamable must be encode correctly")
@@ -29,7 +29,7 @@ pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
     where
         Self: for<'de> serde::Deserialize<'de>,
     {
-        let message = data_parser()
+        let message = Self::data_parser()
             .from_nats_message(bytes.to_vec())
             .await
             .expect("Streamable must be decode correctly");
@@ -42,6 +42,10 @@ pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
     ) -> Result<Stream<Self>, NatsError> {
         let nats_kv_store = client.create_kv_store(Self::STORE, None).await?;
         Ok(Stream::new(nats_kv_store, &client.namespace))
+    }
+
+    fn data_parser() -> DataParser {
+        DataParser::default()
     }
 }
 
@@ -84,6 +88,21 @@ impl<S: Streamable> Stream<S> {
             })
     }
 
+    pub async fn subscribe(
+        &self,
+        key: &str,
+    ) -> Result<impl futures_util::Stream, StreamError> {
+        let subject_name = &self.namespace.subject_name(key);
+
+        self.store.watch(&subject_name).await.map_err(|source| {
+            StreamError::SubscriptionFailed {
+                subject_name: subject_name.to_string(),
+                source,
+            }
+        })
+    }
+
+    #[cfg(feature = "test-helpers")]
     pub async fn get_last_published(
         &self,
         wildcard: &'static str,
@@ -113,22 +132,4 @@ impl<S: Streamable> Stream<S> {
             },
         }
     }
-
-    pub async fn subscribe(
-        &self,
-        key: &str,
-    ) -> Result<impl futures_util::Stream, StreamError> {
-        let subject_name = &self.namespace.subject_name(key);
-
-        self.store.watch(&subject_name).await.map_err(|source| {
-            StreamError::SubscriptionFailed {
-                subject_name: subject_name.to_string(),
-                source,
-            }
-        })
-    }
-}
-
-fn data_parser() -> DataParser {
-    DataParser::default()
 }

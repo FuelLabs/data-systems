@@ -1,9 +1,5 @@
-use std::collections::HashSet;
-
-use async_nats::connection::State;
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
-use futures::TryStreamExt;
 use futures_util::future::try_join_all;
 use pretty_assertions::assert_eq;
 use streams_tests::server_setup;
@@ -57,10 +53,10 @@ async fn multiple_client_connections() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() -> BoxedResult<()> {
-    let opts = ClientOpts::public_opts(NATS_URL)
+    let opts = NatsClientOpts::public_opts(NATS_URL)
         .with_rdn_namespace()
         .with_timeout(1);
-    let client = NatsClient::connect(opts).await?;
+    let client = NatsClient::connect(&opts).await?;
 
     assert!(client
         .jetstream
@@ -77,7 +73,7 @@ async fn public_user_cannot_create_streams() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_stores() -> BoxedResult<()> {
-    let opts = ClientOpts::public_opts(NATS_URL)
+    let opts = NatsClientOpts::public_opts(NATS_URL)
         .with_rdn_namespace()
         .with_timeout(1);
 

@@ -6,7 +6,7 @@ use super::ConnectionResult;
 #[async_trait]
 pub trait ClientConn: Clone + Send {
     async fn connect(url: impl ToString + Send) -> ConnectionResult<Self>;
-    async fn with_opts(opts: NatsClientOpts) -> ConnectionResult<Self>;
+    async fn with_opts(opts: &NatsClientOpts) -> ConnectionResult<Self>;
 }
 
 #[derive(Debug, Clone)]
@@ -27,8 +27,8 @@ impl ClientConn for Client {
         Ok(Self { conn })
     }
 
-    async fn with_opts(opts: NatsClientOpts) -> ConnectionResult<Self> {
-        let conn = NatsClient::connect(&opts).await?;
+    async fn with_opts(opts: &NatsClientOpts) -> ConnectionResult<Self> {
+        let conn = NatsClient::connect(opts).await?;
         Ok(Self { conn })
     }
 }
