@@ -24,6 +24,44 @@ use crate::{nats::types::*, prelude::NatsClient};
 // ------------------------------------------------------------------------
 
 #[async_trait]
+pub trait StreamEncoder:
+    Debug
+    + Clone
+    + Send
+    + Sync
+    + DataParserSerializable
+    + DataParserDeserializable
+    + 'static
+{
+    async fn stream_encode(
+        &self,
+        subject: &str,
+    ) -> Result<bytes::Bytes, NatsError> {
+        let data_parser = DataParser::default();
+        let encoded = data_parser.to_nats_payload(subject, self).await?;
+        Ok(encoded.into())
+    }
+
+    async fn stream_decode(
+        encoded: Vec<u8>,
+    ) -> Result<NatsFormattedMessage<Self>, NatsError> {
+        let data_parser = DataParser::default();
+        Ok(data_parser.from_nats_message(encoded).await?)
+    }
+}
+
+#[async_trait]
+pub trait Streamable:
+    Debug + Clone + Send + Sync + Sized + StreamEncoder
+{
+    const NAME: &'static str;
+    const WILDCARD_LIST: &'static [&'static str];
+
+    type Builder: StreamItem<Self> + Send + Sync;
+    type MainSubject: IntoSubject + Send + Sync;
+}
+
+#[async_trait]
 pub trait StreamItem<S: Streamable + StreamEncoder>:
     Debug + Clone + Send + Sync
 {
@@ -62,44 +100,6 @@ pub trait StreamItem<S: Streamable + StreamEncoder>:
         &self,
         config: PullConsumerConfig,
     ) -> Result<NatsConsumer<PullConsumerConfig>, NatsError>;
-}
-
-#[async_trait]
-pub trait StreamEncoder:
-    Debug
-    + Clone
-    + Send
-    + Sync
-    + DataParserSerializable
-    + DataParserDeserializable
-    + 'static
-{
-    async fn stream_encode(
-        &self,
-        subject: &str,
-    ) -> Result<bytes::Bytes, NatsError> {
-        let data_parser = DataParser::default();
-        let encoded = data_parser.to_nats_payload(subject, self).await?;
-        Ok(encoded.into())
-    }
-
-    async fn stream_decode(
-        encoded: Vec<u8>,
-    ) -> Result<NatsFormattedMessage<Self>, NatsError> {
-        let data_parser = DataParser::default();
-        Ok(data_parser.from_nats_message(encoded).await?)
-    }
-}
-
-#[async_trait]
-pub trait Streamable:
-    Debug + Clone + Send + Sync + Sized + StreamEncoder
-{
-    const NAME: &'static str;
-    const WILDCARD_LIST: &'static [&'static str];
-
-    type Builder: StreamItem<Self> + Send + Sync;
-    type MainSubject: IntoSubject + Send + Sync;
 }
 
 // ------------------------------------------------------------------------
@@ -289,9 +289,11 @@ impl<S: Streamable> NatsStream<S> {
             .map(|s| client.namespace.subject_name(s))
             .collect()
     }
+
     fn prefix_subject(&self, val: &str) -> String {
         self.namespace.subject_name(val)
     }
+
     fn prefix_filter_subjects(
         &self,
         mut config: PullConsumerConfig,

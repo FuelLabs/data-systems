@@ -14,7 +14,7 @@ pub enum NatsUserRole {
 #[derive(Debug, Clone)]
 pub struct ClientOpts {
     pub(crate) url: String,
-    pub role: NatsUserRole,
+    pub(crate) role: NatsUserRole,
     pub(crate) conn_id: ConnId,
     pub(crate) namespace: NatsNamespace,
     pub(crate) timeout_secs: u64,

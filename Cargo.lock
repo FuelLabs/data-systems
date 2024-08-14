@@ -2905,7 +2905,6 @@ dependencies = [
  "fuel-data-parser",
  "fuel-streams-macros",
  "futures-util",
- "lazy_static",
  "pretty_assertions",
  "rand",
  "serde",

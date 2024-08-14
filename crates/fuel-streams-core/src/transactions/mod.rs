@@ -5,10 +5,7 @@ use fuel_streams_macros::subject::IntoSubject;
 pub use subjects::*;
 use types::*;
 
-use crate::{
-    nats::stream::{NatsStore, Streamable},
-    prelude::StreamEncoder,
-};
+use crate::prelude::*;
 
 impl StreamEncoder for Transaction {}
 impl Streamable for Transaction {

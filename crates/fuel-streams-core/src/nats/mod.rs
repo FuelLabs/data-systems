@@ -5,8 +5,8 @@ mod error;
 mod nats_client;
 mod nats_namespace;
 
-pub use fuel_streams_macros::subject::*;
 pub(crate) mod stream;
+pub use fuel_streams_macros::subject::*;
 pub mod types;
 
 pub use client_opts::*;
