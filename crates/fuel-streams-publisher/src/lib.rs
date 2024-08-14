@@ -6,10 +6,9 @@ use fuel_core_types::{
     fuel_tx::{Receipt, Transaction, UniqueIdentifier},
     fuel_types::{AssetId, ChainId},
 };
-use fuel_data_parser::DataParser;
 use fuel_streams_core::{
     blocks::BlocksSubject,
-    nats::{ClientOpts, ConnStores, IntoSubject, NatsClient, NatsUserRole},
+    nats::{ClientOpts, ConnStreams, IntoSubject, NatsClient, NatsUserRole},
     transactions::TransactionsSubject,
 };
 use futures_util::TryStreamExt;
@@ -21,7 +20,7 @@ pub struct Publisher {
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
     blocks_subscription: Receiver<ImporterResult>,
-    stores: ConnStores,
+    streams: ConnStreams,
 }
 
 impl Publisher {
@@ -34,15 +33,14 @@ impl Publisher {
     ) -> anyhow::Result<Self> {
         let opts = ClientOpts::new(nats_url).with_role(NatsUserRole::Admin);
         let nats = NatsClient::connect(opts).await?;
-        let data_parser = DataParser::default();
-        let stores = ConnStores::new(&nats, &data_parser).await?;
+        let streams = ConnStreams::new(&nats).await?;
 
         Ok(Publisher {
             chain_id,
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            stores,
+            streams,
         })
     }
 
@@ -65,7 +63,7 @@ impl Publisher {
             };
 
             let mut batch = self
-                .stores
+                .streams
                 .blocks
                 .create_consumer(config)
                 .await?
@@ -166,7 +164,12 @@ impl Publisher {
         info!("NATS Publisher: Block#{height}");
 
         let block_subject: BlocksSubject = block.into();
-        if let Err(e) = self.stores.blocks.upsert(&block_subject, block).await {
+        if let Err(e) = self
+            .streams
+            .blocks
+            .publish(&block_subject.parse(), block)
+            .await
+        {
             panic!("Failed to publish block: {}", e);
         }
 
@@ -174,7 +177,10 @@ impl Publisher {
             // Publish the transaction.
             let tx_id = tx.id(&chain_id);
             let tx_subject: TransactionsSubject = tx.into();
-            let _ = self.stores.transactions.upsert(&tx_subject, tx).await?;
+            self.streams
+                .transactions
+                .publish(&tx_subject.parse(), tx)
+                .await?;
             info!("NATS Publisher: Transaction 0x#{tx_id}");
         }
 

@@ -9,10 +9,12 @@ repository = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+async-nats = { workspace = true }
 async-trait = { workspace = true }
+displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-streams-core = { path = "../fuel-streams-core" }
-futures-util = { workspace = true }
+futures = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

@@ -6,51 +6,40 @@ use fuel_streams_core::prelude::*;
 use futures::TryStreamExt;
 use futures_util::future::try_join_all;
 use pretty_assertions::assert_eq;
+use streams_tests::server_setup;
 
 #[tokio::test]
-async fn conn_has_all_stores_by_default() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
-    let store_list = conn.stores().get_store_list();
-    let mut context_streams = conn.jetstream().stream_names();
+async fn conn_streams_has_required_streams() -> BoxedResult<()> {
+    let (client, streams) = server_setup().await.unwrap();
+    let mut context_streams = client.jetstream().stream_names();
 
     let mut names = HashSet::new();
     while let Some(name) = context_streams.try_next().await? {
         names.insert(name);
     }
 
-    for store in store_list {
-        assert!(
-            names.contains(&store.stream_name),
-            "store {} not found in JetStream",
-            store.stream_name
-        );
-    }
+    streams.blocks.assert_has_nats_stream(&names).await;
+    streams.transactions.assert_has_nats_stream(&names).await;
 
     Ok(())
 }
 
 #[tokio::test]
 async fn fuel_streams_client_connection() -> BoxedResult<()> {
-    // We need to first connect as admin to have the streams created by first hand
-    // since public users doesnt have permissions to
     let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
-    let client = Client::with_opts(conn.client.opts.to_owned()).await?;
-    assert_eq!(conn.state(), State::Connected);
-    assert_eq!(client.conn.state(), State::Connected);
+    let client = NatsClient::connect(opts).await?;
+    assert_eq!(client.state(), State::Connected);
     Ok(())
 }
 
 #[tokio::test]
 async fn multiple_client_connections() -> BoxedResult<()> {
     let opts = ClientOpts::admin_opts(NATS_URL);
-    let conn = NatsConn::connect(opts).await?;
     let tasks: Vec<_> = (0..100)
         .map(|_| {
-            let conn = conn.clone();
+            let opts = opts.clone();
             async move {
-                let client = Client::with_opts(conn.client.opts).await?;
+                let client = Client::with_opts(opts).await.unwrap();
                 let nats_client = client.conn.nats_client();
                 assert_eq!(nats_client.connection_state(), State::Connected);
                 Ok::<(), NatsError>(())
@@ -89,20 +78,27 @@ async fn public_user_cannot_create_stores() -> BoxedResult<()> {
         .with_timeout(1);
 
     let client = NatsClient::connect(opts).await?;
-    assert!(client.create_store("test", None).await.is_err());
+    assert!(client
+        .jetstream
+        .create_key_value(types::KvStoreConfig {
+            bucket: "test".into(),
+            ..Default::default()
+        })
+        .await
+        .is_err());
 
     Ok(())
 }
 
 #[tokio::test]
-async fn public_user_can_access_stores_after_created() {
+async fn public_user_can_access_streams_after_created() {
     let opts = ClientOpts::new(NATS_URL)
         .with_rdn_namespace()
         .with_timeout(1);
 
     let admin_opts = opts.clone().with_role(NatsUserRole::Admin);
-    assert!(NatsConn::connect(admin_opts).await.is_ok());
+    assert!(NatsClient::connect(admin_opts).await.is_ok());
 
     let public_opts = opts.clone().with_role(NatsUserRole::Public);
-    assert!(NatsConn::connect(public_opts).await.is_ok());
+    assert!(NatsClient::connect(public_opts).await.is_ok());
 }
