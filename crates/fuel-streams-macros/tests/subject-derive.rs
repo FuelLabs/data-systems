@@ -26,9 +26,23 @@ fn subject_derive_wildcard() {
 }
 
 #[test]
+fn subject_derive_build() {
+    let subject = TestSubject::build(Some("foo".into()), Some(55));
+    assert_eq!(subject.parse(), "test.foo.55");
+}
+
+#[test]
 fn subject_derive_builder() {
     let subject = TestSubject::new()
         .with_field1(Some("foo".into()))
         .with_field2(Some(55));
     assert_eq!(subject.parse(), "test.foo.55");
+}
+
+#[test]
+fn subject_derive_to_string() {
+    let subject = TestSubject::new()
+        .with_field1(Some("foo".into()))
+        .with_field2(Some(55));
+    assert_eq!(&subject.to_string(), "test.foo.55")
 }

@@ -41,7 +41,7 @@ impl NatsNamespace {
         format!("{self}.{}", val)
     }
 
-    pub fn store_name(&self, val: &str) -> String {
+    pub fn stream_name(&self, val: &str) -> String {
         format!("{self}_{val}")
     }
 }

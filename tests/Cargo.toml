@@ -19,6 +19,7 @@ path = "tests/lib.rs"
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
+bytes = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../crates/fuel-data-parser" }
 fuel-streams = { path = "../crates/fuel-streams", features = ["test-helpers"] }
@@ -27,7 +28,10 @@ fuel-streams-core = { path = "../crates/fuel-streams-core", features = [
 ] }
 futures = { workspace = true }
 futures-util = { workspace = true }
-tokio = { workspace = true }
+postcard = "1.0.8"
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing = { workspace = true }
+tracing-test = "0.2.5"
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

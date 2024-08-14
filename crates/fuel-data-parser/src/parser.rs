@@ -24,7 +24,6 @@ use async_compression::{
 };
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
-use fuel_streams_macros::subject::IntoSubject;
 use tokio::io::AsyncWriteExt as _;
 
 use crate::{
@@ -329,7 +328,7 @@ impl DataParser {
     /// Receives a subject and a serializable data to prepare a payload to send over nats
     pub async fn to_nats_payload(
         &self,
-        subject: &impl IntoSubject,
+        subject: &str,
         raw_data: &impl DataParserSerializable,
     ) -> Result<Vec<u8>, Error> {
         let modified_raw_data = self.serialize_and_compress(raw_data).await?;
@@ -450,7 +449,7 @@ mod test {
 
         // compress and serialize
         let nats_payload = data_parser
-            .to_nats_payload(&test_data, &test_data)
+            .to_nats_payload(&test_data.parse(), &test_data)
             .await
             .unwrap();
 
@@ -460,8 +459,8 @@ mod test {
             .await
             .unwrap();
 
-        assert!(my_test_data_recreated.subject.len() > 0);
-        assert!(my_test_data_recreated.subject.len() > 0);
+        assert!(!my_test_data_recreated.subject.is_empty());
+        assert!(!my_test_data_recreated.subject.is_empty());
         assert_eq!(my_test_data_recreated.data, test_data);
     }
 }

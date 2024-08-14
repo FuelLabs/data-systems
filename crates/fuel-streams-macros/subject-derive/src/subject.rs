@@ -28,22 +28,27 @@ pub fn expanded<'a>(
     let with_methods = create_with_methods(field_names, field_types);
     quote! {
         impl #name {
-            pub fn new() -> #name{
-                #name {
-                    #(#field_names: None,)*
+            pub fn build(
+                #(#field_names: #field_types,)*
+            ) -> Self {
+                Self {
+                    #(#field_names,)*
                 }
             }
 
             pub fn wildcard(
                 #(#field_names: #field_types,)*
             ) -> String {
-                Self {
-                    #(#field_names,)*
-                }
-                .parse()
+                Self::build(#(#field_names,)*).parse()
             }
 
             #(#with_methods)*
+        }
+
+        impl std::fmt::Display for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.parse())
+            }
         }
     }
 }

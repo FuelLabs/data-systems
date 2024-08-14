@@ -14,9 +14,13 @@ pub struct MockBlock(pub Block);
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockBlock {
-    pub fn build() -> Block {
+    pub fn build(height: u32) -> Block {
         use crate::transactions::types::Transaction;
         let mut block: Block<Transaction> = Block::V1(BlockV1::default());
+        block
+            .header_mut()
+            .set_block_height(fuel_types::BlockHeight::new(height));
+
         let txs = (0..50)
             .map(|_| Transaction::default_test_tx())
             .collect::<Vec<_>>();
