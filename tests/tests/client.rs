@@ -29,12 +29,16 @@ async fn fuel_streams_client_connection() -> BoxedResult<()> {
     let opts = ClientOpts::admin_opts(NATS_URL);
     let client = NatsClient::connect(opts).await?;
     assert_eq!(client.state(), State::Connected);
+    let client = Client::with_opts(conn.client.opts.to_owned()).await?;
+    assert_eq!(conn.state(), State::Connected);
+    assert_eq!(client.conn.state(), State::Connected);
     Ok(())
 }
 
 #[tokio::test]
 async fn multiple_client_connections() -> BoxedResult<()> {
     let opts = ClientOpts::admin_opts(NATS_URL);
+    let client = NatsClient::connect(opts).await?;
     let tasks: Vec<_> = (0..100)
         .map(|_| {
             let opts = opts.clone();

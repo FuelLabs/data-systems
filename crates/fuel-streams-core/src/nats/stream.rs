@@ -361,6 +361,7 @@ impl<S: Streamable> Streamer<S> {
         self.item.subscribe(subject).await
     }
 
+    // TODO: Accept a more generic/custom config
     pub async fn subscribe_consumer(
         &self,
         config: SubscribeConsumerConfig,

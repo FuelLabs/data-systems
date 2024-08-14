@@ -10,12 +10,6 @@ pub struct BlocksSubject {
     pub height: Option<BlockHeight>,
 }
 
-impl From<Block> for BlocksSubject {
-    fn from(block: Block) -> Self {
-        BlocksSubject::new().with_height(Some(block.into()))
-    }
-}
-
 impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
         let block_height = *block.header().height();
@@ -60,6 +54,7 @@ mod test {
     fn block_subjects_from_block() {
         let mock_block = MockBlock::build(1);
         let subject = BlocksSubject::from(mock_block.to_owned());
+
         assert!(subject.producer.is_none());
         assert_eq!(subject.height.unwrap(), mock_block.into());
     }

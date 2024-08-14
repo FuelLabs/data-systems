@@ -1,7 +1,7 @@
 // ------------------------------------------------------------------------
 // Transaction
 // ------------------------------------------------------------------------
-pub use fuel_core_types::fuel_tx::Transaction;
+pub use fuel_core_types::fuel_tx::{Receipt, Transaction, UniqueIdentifier};
 use fuel_core_types::services::txpool::TransactionStatus as TxPoolTransactionStatus;
 
 #[cfg(any(test, feature = "test-helpers"))]

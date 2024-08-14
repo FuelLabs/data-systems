@@ -14,17 +14,6 @@ pub struct TransactionsSubject {
     pub kind: Option<TransactionKind>,
 }
 
-impl From<Transaction> for TransactionsSubject {
-    fn from(value: Transaction) -> Self {
-        let subject = TransactionsSubject::new();
-        let tx_id = value.cached_id().unwrap();
-        let kind = TransactionKind::from(value.to_owned());
-        subject
-            .with_tx_id(Some(tx_id.to_string()))
-            .with_kind(Some(kind))
-    }
-}
-
 impl From<&Transaction> for TransactionsSubject {
     fn from(value: &Transaction) -> Self {
         let subject = TransactionsSubject::new();
@@ -115,7 +104,7 @@ mod test {
     #[test]
     fn transactions_subject_from_transaction() {
         let mock_tx = MockTransaction::build();
-        let subject = TransactionsSubject::from(mock_tx.to_owned());
+        let subject = TransactionsSubject::from(&mock_tx);
         assert!(subject.height.is_none());
         assert!(subject.tx_index.is_none());
         assert!(subject.status.is_none());

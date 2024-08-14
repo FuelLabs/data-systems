@@ -1,5 +1,10 @@
 use std::error::Error;
 
+pub use fuel_core_types::{
+    fuel_types::{AssetId, ChainId},
+    services::block_importer::ImportResult,
+};
+
 pub use crate::{blocks::types::*, nats::types::*, transactions::types::*};
 
 // ------------------------------------------------------------------------
