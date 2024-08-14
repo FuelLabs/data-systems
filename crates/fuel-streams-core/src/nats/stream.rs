@@ -62,9 +62,7 @@ pub trait Streamable:
 }
 
 #[async_trait]
-pub trait StreamItem<S: Streamable + StreamEncoder>:
-    Debug + Clone + Send + Sync
-{
+pub trait StreamItem<S: Streamable>: Debug + Clone + Send + Sync {
     type Config: Send + Sync;
     type Subscriber;
 
@@ -107,13 +105,13 @@ pub trait StreamItem<S: Streamable + StreamEncoder>:
 // ------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
-pub struct NatsStore<S: Streamable + StreamEncoder> {
+pub struct NatsStore<S: Streamable> {
     pub store: kv::Store,
     _marker: std::marker::PhantomData<S>,
 }
 
 #[async_trait]
-impl<S: Streamable + StreamEncoder> StreamItem<S> for NatsStore<S> {
+impl<S: Streamable> StreamItem<S> for NatsStore<S> {
     type Config = ();
     type Subscriber = kv::Watch;
 
@@ -179,7 +177,7 @@ impl<S: Streamable + StreamEncoder> StreamItem<S> for NatsStore<S> {
     }
 }
 
-impl<S: Streamable + StreamEncoder> NatsStore<S> {
+impl<S: Streamable> NatsStore<S> {
     fn prefix_filter_subjects(
         &self,
         mut config: PullConsumerConfig,
@@ -198,14 +196,14 @@ impl<S: Streamable + StreamEncoder> NatsStore<S> {
 // ------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
-pub struct NatsStream<S: Streamable + StreamEncoder> {
+pub struct NatsStream<S: Streamable> {
     pub stream: stream::Stream,
     pub namespace: NatsNamespace,
     _marker: std::marker::PhantomData<S>,
 }
 
 #[async_trait]
-impl<S: Streamable + StreamEncoder> StreamItem<S> for NatsStream<S> {
+impl<S: Streamable> StreamItem<S> for NatsStream<S> {
     type Config = stream::Config;
     type Subscriber = NatsConsumer<PullConsumerConfig>;
 
@@ -318,12 +316,12 @@ pub struct SubscribeConsumerConfig {
 }
 
 #[derive(Debug, Clone)]
-pub struct Streamer<S: Streamable + StreamEncoder> {
+pub struct Streamer<S: Streamable> {
     item: S::Builder,
     client: NatsClient,
 }
 
-impl<S: Streamable + StreamEncoder> Streamer<S> {
+impl<S: Streamable> Streamer<S> {
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
     pub async fn get_or_init(
@@ -349,7 +347,10 @@ impl<S: Streamable + StreamEncoder> Streamer<S> {
         &self,
         subject: &str,
         payload: &S,
-    ) -> Result<(), NatsError> {
+    ) -> Result<(), NatsError>
+    where
+        S: StreamEncoder,
+    {
         let encoded = payload.stream_encode(subject).await?;
         self.item.publish(&self.client, subject, encoded).await?;
         Ok(())
