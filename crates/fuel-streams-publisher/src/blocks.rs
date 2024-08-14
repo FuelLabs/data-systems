@@ -12,7 +12,6 @@ pub async fn publish(
 ) -> anyhow::Result<()> {
     let block_subject: BlocksSubject = block.into();
 
-    // Publish the block.
     info!("NATS Publisher: Publishing Block #{block_height}");
 
     blocks_stream.publish(&block_subject, block).await?;

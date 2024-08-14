@@ -3,11 +3,7 @@ use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
     transactions::TransactionsSubject,
     types::{
-        BlockHeight,
-        ChainId,
-        Transaction,
-        TransactionKind,
-        TransactionStatus,
+        BlockHeight, ChainId, Transaction, TransactionKind, TransactionStatus,
         UniqueIdentifier,
     },
     Stream,
@@ -24,7 +20,6 @@ pub async fn publish(
     let off_chain_database = fuel_core_database.off_chain().latest_view()?;
 
     for (transaction_index, transaction) in transactions.iter().enumerate() {
-        // Publish the transaction.
         let tx_id = transaction.id(chain_id);
         let kind = TransactionKind::from(transaction.to_owned());
         let status: TransactionStatus = off_chain_database
@@ -40,7 +35,6 @@ pub async fn publish(
                 .with_height(Some(block_height.clone()))
                 .with_tx_index(Some(transaction_index));
 
-        // Publish the block.
         let transaction_id = transaction.cached_id().unwrap();
         info!("NATS Publisher: Publishing Transaction 0x#{transaction_id}");
 

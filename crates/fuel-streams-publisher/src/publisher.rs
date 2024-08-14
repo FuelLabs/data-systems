@@ -7,8 +7,7 @@ use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{IntoSubject, NatsClient, NatsClientOpts},
     types::{AssetId, Block, BlockHeight, ChainId, Transaction},
-    Stream,
-    Streamable,
+    Stream, Streamable,
 };
 use tokio::sync::broadcast::Receiver;
 use tracing::warn;
@@ -72,9 +71,6 @@ impl Publisher {
         })
     }
 
-    /// Publish messages from node(`fuel-core`) to NATS stream
-    ///   transactions.{height}.{index}.{kind}                           e.g. transactions.1.1.mint
-    ///   blocks.{height}                                                e.g. blocks.1
     pub async fn run(mut self) -> anyhow::Result<Self> {
         let last_published_block = self
             .streams
@@ -145,8 +141,7 @@ mod tests {
     use fuel_core_importer::ImporterResult;
     use fuel_core_types::blockchain::SealedBlock;
     use fuel_streams_core::{
-        transactions::TransactionsSubject,
-        types::ImportResult,
+        transactions::TransactionsSubject, types::ImportResult,
     };
     use tokio::sync::broadcast;
 
