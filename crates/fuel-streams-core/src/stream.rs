@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use async_nats::jetstream::stream::DirectGetErrorKind;
 use async_trait::async_trait;
+use fuel_data_parser::DataParser;
 use fuel_streams_macros::subject::IntoSubject;
 
 use crate::nats::{
@@ -14,20 +15,26 @@ use crate::nats::{
 
 /// Houses nats-agnostic APIs for making a fuel-core type streamable
 #[async_trait]
-pub trait Streamable: Debug + Clone + serde::Serialize {
+pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
     const STORE: &'static str;
 
-    /// This is temporary until we have the data parser
-    fn encode(&self) -> Vec<u8> {
-        bincode::serialize(self).expect("Streamable must be serializable")
+    async fn encode(&self, subject: &str) -> Vec<u8> {
+        data_parser()
+            .to_nats_payload(subject, self)
+            .await
+            .expect("Streamable must be encode correctly")
     }
 
-    /// This is temporary until we have the data parser
-    fn decode(val: &[u8]) -> Self
+    async fn decode(bytes: &[u8]) -> Self
     where
         Self: for<'de> serde::Deserialize<'de>,
     {
-        bincode::deserialize(val).expect("Streamable must be deserializable")
+        let message = data_parser()
+            .from_nats_message(bytes.to_vec())
+            .await
+            .expect("Streamable must be decode correctly");
+
+        message.data
     }
 
     async fn create_stream(
@@ -66,7 +73,10 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<u64, StreamError> {
         let subject_name = &self.subject_name(&subject.parse());
         self.store
-            .put(subject_name.to_owned(), payload.encode().into())
+            .put(
+                subject_name.to_owned(),
+                payload.encode(subject_name).await.into(),
+            )
             .await
             .map_err(|s| StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
@@ -90,7 +100,7 @@ impl<S: Streamable> Stream<S> {
 
         match message {
             Ok(message) => {
-                let payload = S::decode(&message.payload);
+                let payload = S::decode(&message.payload).await;
 
                 Ok(Some(payload))
             }
@@ -117,4 +127,8 @@ impl<S: Streamable> Stream<S> {
             }
         })
     }
+}
+
+fn data_parser() -> DataParser {
+    DataParser::default()
 }

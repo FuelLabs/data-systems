@@ -63,7 +63,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let subject = self.get_subject(tx, block, index);
+        let subject = &self.get_subject(tx, block, index);
         let payload = self
             .nats
             .data_parser()
