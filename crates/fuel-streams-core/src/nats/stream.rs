@@ -51,9 +51,7 @@ pub trait StreamEncoder:
 }
 
 #[async_trait]
-pub trait Streamable:
-    Debug + Clone + Send + Sync + Sized + StreamEncoder
-{
+pub trait Streamable: StreamEncoder {
     const NAME: &'static str;
     const WILDCARD_LIST: &'static [&'static str];
 

@@ -34,7 +34,7 @@ async fn fuel_streams_client_connection() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn multiple_client_connections() -> BoxedResult<()> {
-    let opts = ClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+    let opts = ClientOpts::admin_opts(NATS_URL);
     let tasks: Vec<_> = (0..100)
         .map(|_| {
             let opts = opts.clone();

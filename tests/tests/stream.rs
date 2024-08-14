@@ -6,9 +6,8 @@ use streams_tests::{publish_blocks, publish_transactions, server_setup};
 
 #[tokio::test]
 async fn blocks_streams_subscribe() {
-    server_setup().await.unwrap();
-
-    let client = Client::connect(NATS_URL).await.unwrap();
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(conn.opts).await.unwrap();
     let stream = Stream::<Block>::new(&client).await.unwrap();
     let streamer = stream.streamer();
     let producer = Some("0x000".into());
@@ -71,9 +70,8 @@ async fn blocks_streams_subscribe_with_config() {
 
 #[tokio::test]
 async fn transactions_streams_subscribe() {
-    server_setup().await.unwrap();
-
-    let client = Client::connect(NATS_URL).await.unwrap();
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(conn.opts).await.unwrap();
     let stream = Stream::<Transaction>::new(&client).await.unwrap();
     let streamer = stream.streamer();
 
@@ -98,9 +96,8 @@ async fn transactions_streams_subscribe() {
 
 #[tokio::test]
 async fn transactions_streams_subscribe_with_config() {
-    server_setup().await.unwrap();
-
-    let client = Client::connect(NATS_URL).await.unwrap();
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(conn.opts).await.unwrap();
     let mut stream = Stream::<Transaction>::new(&client).await.unwrap();
     let streamer = stream.streamer();
 
