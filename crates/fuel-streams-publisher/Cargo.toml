@@ -12,7 +12,6 @@ description = "Fuel library for publishing data streams from events that happen 
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-bincode = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true }
 dotenvy = { workspace = true }
