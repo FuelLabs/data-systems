@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use fuel_streams_macros::subject::IntoSubject;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, EnumString};
 
@@ -79,12 +78,12 @@ pub(crate) struct NatsInternalMessage {
 }
 
 impl NatsInternalMessage {
-    pub fn new(subject: &impl IntoSubject, data: Vec<u8>) -> Self {
+    pub fn new(subject: &str, data: Vec<u8>) -> Self {
         let now: DateTime<Utc> = Utc::now();
         // Formatting the datetime as an ISO 8601 string
         let timestamp = now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
         Self {
-            subject: subject.parse(),
+            subject: subject.to_string(),
             timestamp,
             data,
         }
