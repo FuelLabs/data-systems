@@ -24,6 +24,12 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
         impl IntoSubject for #name {
             const WILDCARD: &'static str = #wildcard;
             #parse_fn
+
+            fn new() -> Self {
+                Self {
+                    #(#field_names: None,)*
+                }
+            }
         }
     }
     .into()

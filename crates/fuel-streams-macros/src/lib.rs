@@ -17,5 +17,6 @@ pub mod subject {
         }
 
         fn parse(&self) -> String;
+        fn new() -> Self;
     }
 }

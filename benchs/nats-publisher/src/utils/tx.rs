@@ -67,7 +67,7 @@ impl TxHelper {
         let payload = self
             .nats
             .data_parser()
-            .to_nats_payload(&subject, block)
+            .to_nats_payload(&subject.parse(), block)
             .await?;
         self.nats
             .context
@@ -87,7 +87,7 @@ impl TxHelper {
         let payload = self
             .nats
             .data_parser()
-            .to_nats_payload(&subject, block)
+            .to_nats_payload(&subject.parse(), block)
             .await?;
         let nats_payload = Publish::build()
             .message_id(subject.parse())
@@ -117,7 +117,7 @@ impl TxHelper {
         let payload = self
             .nats
             .data_parser()
-            .to_nats_payload(&subject, block)
+            .to_nats_payload(&subject.parse(), block)
             .await?;
         self.nats
             .kv_transactions
