@@ -9,21 +9,21 @@ pub trait ClientConn: Clone + Send {
     async fn with_opts(opts: ClientOpts) -> ConnectionResult<Self>;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
-    pub conn: NatsConn,
+    pub conn: NatsClient,
 }
 
 #[async_trait]
 impl ClientConn for Client {
     async fn connect(url: impl ToString + Send) -> ConnectionResult<Self> {
         let opts = ClientOpts::new(url);
-        let conn = NatsConn::connect(opts).await?;
+        let conn = NatsClient::connect(opts).await?;
         Ok(Self { conn })
     }
 
     async fn with_opts(opts: ClientOpts) -> ConnectionResult<Self> {
-        let conn = NatsConn::connect(opts).await?;
+        let conn = NatsClient::connect(opts).await?;
         Ok(Self { conn })
     }
 }

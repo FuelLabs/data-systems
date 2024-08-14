@@ -1,3 +1,11 @@
+use async_nats::{
+    error,
+    jetstream::{
+        context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
+        kv,
+        stream,
+    },
+};
 use bytes::Bytes;
 use tracing::info;
 
@@ -51,41 +59,46 @@ impl NatsClient {
         Ok(self)
     }
 
-    pub async fn create_store(
+    pub async fn get_or_create_store(
         &self,
-        bucket: &str,
-        config: Option<NatsStoreConfig>,
-    ) -> Result<NatsStore, NatsError> {
-        let bucket = self.namespace.store_name(bucket);
+        options: kv::Config,
+    ) -> Result<kv::Store, error::Error<CreateKeyValueErrorKind>> {
+        let bucket = options.bucket.clone();
         let store = self.jetstream.get_key_value(&bucket).await;
         let store = match store {
             Ok(store) => store,
-            Err(_) => self
-                .jetstream
-                .create_key_value(NatsStoreConfig {
-                    bucket: bucket.to_owned(),
-                    storage: NatsStorageType::File,
-                    compression: true,
-                    ..config.unwrap_or_default()
-                })
-                .await
-                .map_err(|s| NatsError::CreateStoreFailed {
-                    name: bucket,
-                    source: s,
-                })?,
+            Err(_) => self.jetstream.create_key_value(options).await?,
         };
 
         Ok(store)
+    }
+
+    pub async fn get_or_create_stream(
+        &self,
+        options: stream::Config,
+    ) -> Result<stream::Stream, error::Error<CreateStreamErrorKind>> {
+        self.jetstream.get_or_create_stream(options).await
+    }
+
+    pub fn opts(&self) -> &ClientOpts {
+        &self.opts
+    }
+
+    pub fn jetstream(&self) -> &JetStreamContext {
+        &self.jetstream
+    }
+
+    pub fn state(&self) -> ConnectionState {
+        self.nats_client.connection_state()
+    }
+
+    pub fn nats_client(&self) -> &AsyncNatsClient {
+        &self.nats_client
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::str::from_utf8;
-
-    use futures_util::StreamExt;
-    use pretty_assertions::assert_eq;
-
     use super::*;
     use crate::prelude::*;
     async fn connect() -> Result<NatsClient, NatsError> {
@@ -111,24 +124,6 @@ mod test {
         assert!(client
             .validate_payload(&large_payload, "test.subject")
             .is_err());
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn creating_store() -> BoxedResult<()> {
-        let client = connect().await?;
-        let store = client.create_store("test_store", None).await?;
-        assert_eq!(&store.stream_name, "KV_fuel_test_store");
-
-        let mut watch = store.watch("test.*").await?;
-        store.put("test.1", "data".into()).await?;
-
-        let entry = watch.next().await.unwrap()?;
-        let entry_value = from_utf8(&entry.value)?;
-        assert_eq!(entry.bucket, client.namespace.store_name("test_store"));
-        assert_eq!(entry.key, "test.1");
-        assert_eq!(entry_value, "data");
 
         Ok(())
     }
