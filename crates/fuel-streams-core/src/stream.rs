@@ -1,47 +1,55 @@
+mod error;
+
 use std::fmt::Debug;
 
-use async_nats::{jetstream::stream::LastRawMessageErrorKind, Message};
-use async_trait::async_trait;
-use fuel_data_parser::DataParser;
-use fuel_streams_macros::subject::IntoSubject;
-
-use crate::nats::{
-    types::*,
-    NatsClient,
-    NatsError,
-    NatsNamespace,
-    StreamError,
+use async_nats::{
+    jetstream::{
+        consumer::AckPolicy,
+        kv,
+        stream::{self, LastRawMessageErrorKind},
+    },
+    Message,
 };
+use async_trait::async_trait;
+pub use error::StreamError;
+use fuel_data_parser::{
+    DataParser,
+    DataParserDeserializable,
+    DataParserSerializable,
+    NatsFormattedMessage,
+};
+use fuel_streams_macros::subject::IntoSubject;
+use futures_util::StreamExt;
+use tokio::sync::OnceCell;
 
-/// Houses nats-agnostic APIs for making a fuel-core type streamable
+use crate::{nats::types::*, prelude::NatsClient};
+
 #[async_trait]
-pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
-    const STORE: &'static str;
-
+pub trait StreamEncoder:
+    Debug
+    + Clone
+    + Send
+    + Sync
+    + DataParserSerializable
+    + DataParserDeserializable
+    + 'static
+{
     async fn encode(&self, subject: &str) -> Vec<u8> {
         Self::data_parser()
             .to_nats_payload(subject, self)
             .await
-            .expect("Streamable must be encode correctly")
+            .expect("Streamable must encode correctly")
     }
 
-    async fn decode(bytes: &[u8]) -> Self
-    where
-        Self: for<'de> serde::Deserialize<'de>,
-    {
-        let message = Self::data_parser()
-            .from_nats_message(bytes.to_vec())
+    async fn decode(encoded: Vec<u8>) -> Self {
+        Self::decode_raw(encoded).await.data
+    }
+
+    async fn decode_raw(encoded: Vec<u8>) -> NatsFormattedMessage<Self> {
+        Self::data_parser()
+            .from_nats_message(encoded)
             .await
-            .expect("Streamable must be decode correctly");
-
-        message.data
-    }
-
-    async fn create_stream(
-        client: &NatsClient,
-    ) -> Result<Stream<Self>, NatsError> {
-        let nats_kv_store = client.create_kv_store(Self::STORE, None).await?;
-        Ok(Stream::new(nats_kv_store, &client.namespace))
+            .expect("Streamable must decode correctly")
     }
 
     fn data_parser() -> DataParser {
@@ -49,23 +57,47 @@ pub trait Streamable: Debug + Clone + serde::Serialize + Send + Sync {
     }
 }
 
+#[async_trait]
+pub trait Streamable: StreamEncoder {
+    const NAME: &'static str;
+    const WILDCARD_LIST: &'static [&'static str];
+}
+
 /// Houses nats-agnostic APIs for publishing and consuming a streamable type
+/// TODO: Split this into two traits StreamPublisher + StreamSubscriber
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    pub store: NatsStore,
-    namespace: NatsNamespace,
+    store: kv::Store,
     _marker: std::marker::PhantomData<S>,
 }
 
 impl<S: Streamable> Stream<S> {
-    fn subject_name(&self, val: &str) -> String {
-        self.namespace.subject_name(val)
+    #[allow(clippy::declare_interior_mutable_const)]
+    const INSTANCE: OnceCell<Self> = OnceCell::const_new();
+
+    pub async fn get_or_init(client: &NatsClient) -> Self {
+        let cell = Self::INSTANCE;
+        cell.get_or_init(|| async { Self::new(client).await.to_owned() })
+            .await
+            .to_owned()
     }
 
-    fn new(store: NatsStore, namespace: &NatsNamespace) -> Self {
+    pub async fn new(client: &NatsClient) -> Self {
+        let namespace = &client.namespace;
+        let bucket_name = namespace.stream_name(S::NAME);
+
+        let store = client
+            .get_or_create_kv_store(kv::Config {
+                bucket: bucket_name.to_owned(),
+                storage: stream::StorageType::File,
+                compression: true,
+                ..Default::default()
+            })
+            .await
+            .expect("Streams must be created");
+
         Self {
             store,
-            namespace: namespace.to_owned(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -75,12 +107,9 @@ impl<S: Streamable> Stream<S> {
         subject: &impl IntoSubject,
         payload: &S,
     ) -> Result<u64, StreamError> {
-        let subject_name = &self.subject_name(&subject.parse());
+        let subject_name = &subject.parse();
         self.store
-            .put(
-                subject_name.to_owned(),
-                payload.encode(subject_name).await.into(),
-            )
+            .put(subject_name, payload.encode(subject_name).await.into())
             .await
             .map_err(|s| StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
@@ -90,16 +119,40 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn subscribe(
         &self,
-        key: &str,
-    ) -> Result<impl futures_util::Stream, StreamError> {
-        let subject_name = &self.namespace.subject_name(key);
+        // TODO: Allow encapsulating Subject to return wildcard token type
+        wildcard: &str,
+    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
+        Ok(self
+            .store
+            .watch(&wildcard)
+            .await
+            .map(|stream| stream.map(|entry| entry.unwrap().value.to_vec()))?)
+    }
 
-        self.store.watch(&subject_name).await.map_err(|source| {
-            StreamError::SubscriptionFailed {
-                subject_name: subject_name.to_string(),
-                source,
-            }
-        })
+    // TODO: Make this interface more Stream-like and Nats agnostic
+    pub async fn subscribe_consumer(
+        &self,
+        config: SubscribeConsumerConfig,
+    ) -> Result<PullConsumerStream, StreamError> {
+        let config = PullConsumerConfig {
+            filter_subjects: config.filter_subjects,
+            deliver_policy: config.deliver_policy,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        };
+
+        let config = self.prefix_filter_subjects(config);
+        let consumer = self.store.stream.create_consumer(config).await?;
+        Ok(consumer.messages().await?)
+    }
+
+    // TODO: Make this interface more Stream-like and Nats agnostic
+    pub async fn create_consumer(
+        &self,
+        config: PullConsumerConfig,
+    ) -> Result<NatsConsumer<PullConsumerConfig>, StreamError> {
+        let config = self.prefix_filter_subjects(config);
+        Ok(self.store.stream.create_consumer(config).await?)
     }
 
     #[cfg(feature = "test-helpers")]
@@ -116,15 +169,8 @@ impl<S: Streamable> Stream<S> {
     pub async fn get_last_published(
         &self,
         wildcard: &str,
-    ) -> Result<Option<S>, StreamError>
-    where
-        S: for<'de> serde::Deserialize<'de>,
-    {
-        let wildcard = &self.subject_name(wildcard);
-
-        // An hack to ensure we keep the KV namespace when interacting
-        // with the KV store's stream
-        let subject_name = &format!("$KV.*.{wildcard}");
+    ) -> Result<Option<S>, StreamError> {
+        let subject_name = &Self::prefix_filter_subject(wildcard);
 
         let message = self
             .store
@@ -135,17 +181,50 @@ impl<S: Streamable> Stream<S> {
         match message {
             Ok(message) => {
                 let message: Message = message.try_into().unwrap();
-                let payload = S::decode(&message.payload).await;
+                let payload = S::decode(message.payload.to_vec()).await;
 
                 Ok(Some(payload))
             }
             Err(error) => match &error.kind() {
                 LastRawMessageErrorKind::NoMessageFound => Ok(None),
-                _ => Err(StreamError::GetLastPublishedFailed {
-                    subject_name: subject_name.to_string(),
-                    source: error,
-                }),
+                _ => Err(error.into()),
             },
         }
     }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub async fn assert_has_stream(
+        &self,
+        names: &std::collections::HashSet<String>,
+    ) {
+        let mut stream = self.store.stream.clone();
+        let info = stream.info().await.unwrap();
+        let has_stream = names.iter().any(|n| n.eq(&info.config.name));
+        assert!(has_stream)
+    }
+
+    fn prefix_filter_subjects(
+        &self,
+        mut config: PullConsumerConfig,
+    ) -> PullConsumerConfig {
+        config.filter_subjects = config
+            .filter_subjects
+            .iter()
+            .map(Self::prefix_filter_subject)
+            .collect();
+        config
+    }
+
+    fn prefix_filter_subject(subject: impl Into<String>) -> String {
+        // An hack to ensure we keep the KV namespace when reading
+        // from the KV store's stream
+        let subject = subject.into();
+        format!("$KV.*.{subject}")
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SubscribeConsumerConfig {
+    pub filter_subjects: Vec<String>,
+    pub deliver_policy: DeliverPolicy,
 }

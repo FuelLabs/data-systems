@@ -2929,6 +2929,7 @@ dependencies = [
  "dotenvy",
  "fuel-streams-core",
  "futures",
+ "futures-util",
  "thiserror",
  "tokio",
 ]
@@ -2949,6 +2950,7 @@ dependencies = [
  "fuel-core-types",
  "fuel-data-parser",
  "fuel-streams-macros",
+ "futures",
  "futures-util",
  "pretty_assertions",
  "rand",

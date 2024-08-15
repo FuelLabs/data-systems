@@ -55,10 +55,10 @@ mod test {
 
     #[test]
     fn block_subjects_from_block() {
-        let mock_block = MockBlock::build(1);
-        let subject = BlocksSubject::from(mock_block.to_owned());
+        let mock_block = &MockBlock::build(1);
+        let subject: BlocksSubject = mock_block.into();
 
         assert!(subject.producer.is_some());
-        assert_eq!(subject.height.unwrap(), mock_block.into());
+        assert_eq!(subject.height.unwrap(), mock_block.clone().into());
     }
 }

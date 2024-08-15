@@ -5,9 +5,10 @@ use fuel_core::{
 use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
     blocks::BlocksSubject,
-    nats::{IntoSubject, NatsClient, NatsClientOpts},
+    nats::{NatsClient, NatsClientOpts},
+    prelude::IntoSubject,
     types::{AssetId, Block, BlockHeight, ChainId, Transaction},
-    Stream, Streamable,
+    Stream,
 };
 use tokio::sync::broadcast::Receiver;
 use tracing::warn;
@@ -21,11 +22,11 @@ struct Streams {
 }
 
 impl Streams {
-    pub async fn new(nats_client: &NatsClient) -> anyhow::Result<Self> {
-        Ok(Self {
-            transactions: Transaction::create_stream(nats_client).await?,
-            blocks: Block::create_stream(nats_client).await?,
-        })
+    pub async fn new(nats_client: &NatsClient) -> Self {
+        Self {
+            transactions: Stream::<Transaction>::new(nats_client).await,
+            blocks: Stream::<Block>::new(nats_client).await,
+        }
     }
 
     #[cfg(test)]
@@ -67,7 +68,7 @@ impl Publisher {
             base_asset_id,
             fuel_core_database,
             blocks_subscription,
-            streams: Streams::new(&nats_client).await?,
+            streams: Streams::new(&nats_client).await,
         })
     }
 
@@ -141,8 +142,10 @@ mod tests {
     use fuel_core_importer::ImporterResult;
     use fuel_core_types::blockchain::SealedBlock;
     use fuel_streams_core::{
-        transactions::TransactionsSubject, types::ImportResult,
+        transactions::TransactionsSubject,
+        types::ImportResult,
     };
+    use fuel_streams_macros::subject::IntoSubject;
     use tokio::sync::broadcast;
 
     use super::*;
@@ -240,9 +243,7 @@ mod tests {
     }
 
     async fn streams() -> Streams {
-        Streams::new(&nats_client().await)
-            .await
-            .expect("Streams creation failed")
+        Streams::new(&nats_client().await).await
     }
 
     async fn nats_client() -> NatsClient {

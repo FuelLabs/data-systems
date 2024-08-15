@@ -6,7 +6,6 @@ use async_nats::{
         stream,
     },
 };
-use bytes::Bytes;
 use tracing::info;
 
 use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
@@ -44,7 +43,6 @@ impl NatsClient {
         })
     }
 
-
     pub async fn get_or_create_kv_store(
         &self,
         options: kv::Config,
@@ -66,19 +64,11 @@ impl NatsClient {
         self.jetstream.get_or_create_stream(options).await
     }
 
-    pub fn opts(&self) -> &ClientOpts {
-        &self.opts
+    pub fn is_connected(&self) -> bool {
+        self.state() == ConnectionState::Connected
     }
 
-    pub fn jetstream(&self) -> &JetStreamContext {
-        &self.jetstream
-    }
-
-    pub fn state(&self) -> ConnectionState {
+    fn state(&self) -> ConnectionState {
         self.nats_client.connection_state()
-    }
-
-    pub fn nats_client(&self) -> &AsyncNatsClient {
-        &self.nats_client
     }
 }

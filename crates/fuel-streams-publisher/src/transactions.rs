@@ -1,9 +1,14 @@
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
+    prelude::IntoSubject,
     transactions::TransactionsSubject,
     types::{
-        BlockHeight, ChainId, Transaction, TransactionKind, TransactionStatus,
+        BlockHeight,
+        ChainId,
+        Transaction,
+        TransactionKind,
+        TransactionStatus,
         UniqueIdentifier,
     },
     Stream,

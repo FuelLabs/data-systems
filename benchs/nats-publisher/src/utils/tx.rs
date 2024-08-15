@@ -9,7 +9,7 @@ use fuel_core_types::{
 };
 use fuel_streams_core::{
     blocks::types::BlockHeight,
-    nats::IntoSubject,
+    prelude::IntoSubject,
     transactions::TransactionsSubject,
 };
 use tokio::try_join;

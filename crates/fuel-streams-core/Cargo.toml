@@ -22,6 +22,7 @@ fuel-core-client = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../fuel-data-parser" }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
+futures = { workspace = true }
 futures-util = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
