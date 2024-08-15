@@ -7,21 +7,18 @@ use streams_tests::{publish_blocks, publish_transactions, server_setup};
 #[tokio::test]
 async fn blocks_streams_subscribe() {
     let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(conn.opts).await.unwrap();
-    let stream = Stream::<Block>::new(&client).await.unwrap();
-    let streamer = stream.streamer();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let stream = fuel_streams::Stream::<Block>::new(&client).await;
     let producer = Some("0x000".into());
-    let items = publish_blocks(streamer, producer).unwrap();
+    let items = publish_blocks(stream.stream(), producer).unwrap();
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
-    while let Some((i, entry)) = sub.next().await {
-        let entry = entry.unwrap();
-        let payload = entry.value.into();
-        let decoded_msg = Block::stream_decode(payload).await.unwrap();
+    while let Some((i, bytes)) = sub.next().await {
+        let decoded_msg = Block::decode_raw(bytes).await;
         let (subject, block) = items[i].to_owned();
         let height = *decoded_msg.data.header().consensus().height;
 
-        assert_eq!(entry.key, subject.parse());
+        assert_eq!(decoded_msg.subject, subject.parse());
         assert_eq!(decoded_msg.data, block);
         assert_eq!(height, i as u32);
         if i == 9 {
@@ -33,13 +30,12 @@ async fn blocks_streams_subscribe() {
 #[tokio::test]
 async fn blocks_streams_subscribe_with_config() {
     let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(conn.clone().opts).await.unwrap();
-    let mut stream = Stream::<Block>::new(&client).await.unwrap();
-    let streamer = stream.streamer();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let mut stream = fuel_streams::Stream::<Block>::new(&client).await;
     let producer = Some("0x000".into());
 
     // publishing 10 blocks
-    publish_blocks(streamer, producer).unwrap();
+    publish_blocks(stream.stream(), producer).unwrap();
 
     // filtering by producer 0x000 and height 5
     let filter = Filter::<BlocksSubject>::build()
@@ -57,9 +53,8 @@ async fn blocks_streams_subscribe_with_config() {
     // result should be just 1 single message with height 5
     while let Some(message) = sub.next().await {
         let message = message.unwrap();
-        let decoded_msg = Block::stream_decode(message.payload.clone().into())
-            .await
-            .unwrap();
+        let decoded_msg =
+            Block::decode_raw(message.payload.clone().into()).await;
         let height = *decoded_msg.data.header().consensus().height;
         assert_eq!(height, 5);
         if height == 5 {
@@ -71,22 +66,17 @@ async fn blocks_streams_subscribe_with_config() {
 #[tokio::test]
 async fn transactions_streams_subscribe() {
     let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(conn.opts).await.unwrap();
-    let stream = Stream::<Transaction>::new(&client).await.unwrap();
-    let streamer = stream.streamer();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     let mock_block = MockBlock::build(1);
-    let items = publish_transactions(streamer, &mock_block).unwrap();
+    let items = publish_transactions(stream.stream(), &mock_block).unwrap();
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
-    while let Some((i, entry)) = sub.next().await {
-        let entry = entry.unwrap();
-        let decoded_msg = Transaction::stream_decode(entry.value.into())
-            .await
-            .unwrap();
+    while let Some((i, bytes)) = sub.next().await {
+        let decoded_msg = Transaction::decode_raw(bytes.to_vec()).await;
 
-        let (subject, transaction) = items[i].to_owned();
-        assert_eq!(entry.key, subject.parse());
+        let (_, transaction) = items[i].to_owned();
         assert_eq!(decoded_msg.data, transaction);
         if i == 9 {
             break;
@@ -97,13 +87,12 @@ async fn transactions_streams_subscribe() {
 #[tokio::test]
 async fn transactions_streams_subscribe_with_config() {
     let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(conn.opts).await.unwrap();
-    let mut stream = Stream::<Transaction>::new(&client).await.unwrap();
-    let streamer = stream.streamer();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let mut stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     // publishing 10 transactions
     let mock_block = MockBlock::build(5);
-    let items = publish_transactions(streamer, &mock_block).unwrap();
+    let items = publish_transactions(stream.stream(), &mock_block).unwrap();
 
     // filtering by transaction on block with height 5
     let filter =
@@ -122,11 +111,11 @@ async fn transactions_streams_subscribe_with_config() {
     while let Some((i, message)) = sub.next().await {
         let message = message.unwrap();
         let payload = message.payload.clone().into();
-        let decoded_msg = Transaction::stream_decode(payload).await.unwrap();
+        let decoded_msg = Transaction::decode(payload).await;
 
         println!("{}", &message.subject);
         let (_, transaction) = items[i].to_owned();
-        assert_eq!(decoded_msg.data, transaction);
+        assert_eq!(decoded_msg, transaction);
         if i == 9 {
             break;
         }

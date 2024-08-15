@@ -19,17 +19,6 @@ impl fmt::Display for NatsNamespace {
     }
 }
 
-impl From<&str> for NatsNamespace {
-    fn from(value: &str) -> Self {
-        NatsNamespace::Custom(value.into())
-    }
-}
-impl From<String> for NatsNamespace {
-    fn from(value: String) -> Self {
-        NatsNamespace::Custom(value)
-    }
-}
-
 impl From<NatsNamespace> for String {
     fn from(val: NatsNamespace) -> Self {
         val.to_string()
