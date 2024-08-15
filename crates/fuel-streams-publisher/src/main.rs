@@ -14,6 +14,7 @@ pub struct Cli {
     fuel_core_config: fuel_core_bin::cli::run::Command,
 }
 
+#[cfg(not(tarpaulin_include))]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     fuel_core_bin::cli::init_logging();

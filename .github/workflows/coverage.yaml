@@ -1,0 +1,58 @@
+name: Coverage
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
+  RUST_VERSION: 1.79.0
+  RUST_NIGHTLY_VERSION: "nightly-2024-07-28"
+  CI: true
+
+jobs:
+  test:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+            toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+            target: x86_64-unknown-linux-gnu
+
+      - name: Install dependencies
+        run: |
+            apt-get update
+            apt-get install -y libclang-dev
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Generate code coverage
+        run: |
+          cargo +${{ env.RUST_NIGHTLY_VERSION }} tarpaulin \
+          --color always \
+          --locked \
+          --count     \
+          --all-features \
+          --workspace \
+          --timeout 120 \
+          --out xml
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          name: codecov-data-systems
+          # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
+          fail_ci_if_error: true
+          verbose: true
