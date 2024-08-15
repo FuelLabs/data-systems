@@ -1,25 +1,13 @@
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
-use fuel_streams_core::{
-    prelude::IntoSubject,
-    transactions::TransactionsSubject,
-    types::{
-        BlockHeight,
-        ChainId,
-        Transaction,
-        TransactionKind,
-        TransactionStatus,
-        UniqueIdentifier,
-    },
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tracing::info;
 
 pub async fn publish(
     chain_id: &ChainId,
     block_height: &BlockHeight,
     fuel_core_database: &CombinedDatabase,
-    transactions_stream: &Stream<Transaction>,
+    transactions_stream: &Streamer<Transaction>,
     transactions: &[Transaction],
 ) -> anyhow::Result<()> {
     let off_chain_database = fuel_core_database.off_chain().latest_view()?;

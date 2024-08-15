@@ -1,13 +1,9 @@
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    types::{Block, BlockHeight, Transaction},
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tracing::info;
 
 pub async fn publish(
     block_height: &BlockHeight,
-    blocks_stream: &Stream<Block>,
+    blocks_stream: &Streamer<Block>,
     block: &Block<Transaction>,
 ) -> anyhow::Result<()> {
     let block_subject: BlocksSubject = block.into();

@@ -1,10 +1,8 @@
 pub mod blocks;
 pub mod nats;
-mod stream;
+pub mod stream;
 pub mod transactions;
 pub mod types;
-
-pub use stream::*;
 
 pub mod prelude {
     pub use fuel_streams_macros::subject::*;

@@ -1,9 +1,4 @@
-use fuel_streams_core::{
-    prelude::IntoSubject,
-    types::{DeliverPolicy, PullConsumerStream},
-    Streamable,
-    SubscribeConsumerConfig,
-};
+use fuel_streams_core::prelude::*;
 
 use crate::{client::Client, StreamError};
 
@@ -25,14 +20,13 @@ pub struct StreamConfig {
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    stream: fuel_streams_core::Stream<S>,
+    stream: Streamer<S>,
     filter_subjects: Vec<String>,
 }
 
 impl<S: Streamable> Stream<S> {
     pub async fn new(client: &Client) -> Self {
-        let stream =
-            fuel_streams_core::Stream::<S>::get_or_init(&client.conn).await;
+        let stream = Streamer::<S>::get_or_init(&client.conn).await;
         Self {
             stream,
             filter_subjects: Vec::new(),
@@ -69,7 +63,7 @@ impl<S: Streamable> Stream<S> {
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn stream(&self) -> &fuel_streams_core::Stream<S> {
+    pub fn stream(&self) -> &Streamer<S> {
         &self.stream
     }
 }

@@ -3,13 +3,7 @@ use fuel_core::{
     database::database_description::DatabaseHeight,
 };
 use fuel_core_storage::transactional::AtomicView;
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    nats::{NatsClient, NatsClientOpts},
-    prelude::IntoSubject,
-    types::{AssetId, Block, BlockHeight, ChainId, Transaction},
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tokio::sync::broadcast::Receiver;
 use tracing::warn;
 
@@ -17,15 +11,15 @@ use crate::{blocks, transactions};
 
 /// Streams we currently support publishing to.
 struct Streams {
-    transactions: Stream<Transaction>,
-    blocks: Stream<Block>,
+    transactions: Streamer<Transaction>,
+    blocks: Streamer<Block>,
 }
 
 impl Streams {
     pub async fn new(nats_client: &NatsClient) -> Self {
         Self {
-            transactions: Stream::<Transaction>::new(nats_client).await,
-            blocks: Stream::<Block>::new(nats_client).await,
+            transactions: Streamer::<Transaction>::new(nats_client).await,
+            blocks: Streamer::<Block>::new(nats_client).await,
         }
     }
 
