@@ -1,12 +1,8 @@
 use fuel_streams_core::{
-    nats::{
-        IntoSubject,
-        StreamItem,
-        Streamable,
-        Streamer,
-        SubscribeConsumerConfig,
-    },
+    prelude::IntoSubject,
     types::{DeliverPolicy, PullConsumerStream},
+    Streamable,
+    SubscribeConsumerConfig,
 };
 
 use crate::{client::Client, StreamError};
@@ -29,19 +25,18 @@ pub struct StreamConfig {
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    stream: Streamer<S>,
+    stream: fuel_streams_core::Stream<S>,
     filter_subjects: Vec<String>,
 }
 
 impl<S: Streamable> Stream<S> {
-    pub async fn new(client: &Client) -> Result<Self, StreamError> {
-        let stream = Streamer::<S>::get_or_init(&client.conn, None)
-            .await
-            .map_err(|s| StreamError::GetOrInitStream { source: s })?;
-        Ok(Self {
+    pub async fn new(client: &Client) -> Self {
+        let stream =
+            fuel_streams_core::Stream::<S>::get_or_init(&client.conn).await;
+        Self {
             stream,
             filter_subjects: Vec::new(),
-        })
+        }
     }
 
     pub fn with_filter(&mut self, filter: impl IntoSubject) -> &Self {
@@ -51,10 +46,11 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn subscribe(
         &self,
-    ) -> Result<<S::Builder as StreamItem<S>>::Subscriber, StreamError> {
-        let subject = S::MainSubject::all();
+    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
+        // TODO: Why implicitly select a stream for the user?
+        // TODO: Should this be a combination of streams
         self.stream
-            .subscribe(subject)
+            .subscribe(S::WILDCARD_LIST[0])
             .await
             .map_err(|s| StreamError::Subscribe { source: s })
     }
@@ -73,7 +69,7 @@ impl<S: Streamable> Stream<S> {
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn streamer(&self) -> &Streamer<S> {
+    pub fn stream(&self) -> &fuel_streams_core::Stream<S> {
         &self.stream
     }
 }

@@ -10,16 +10,13 @@ pub struct BlocksSubject {
     pub height: Option<BlockHeight>,
 }
 
-impl From<Block> for BlocksSubject {
-    fn from(block: Block) -> Self {
-        BlocksSubject::new().with_height(Some(block.into()))
-    }
-}
-
 impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
         let block_height = *block.header().height();
-        BlocksSubject::new().with_height(Some(BlockHeight::from(block_height)))
+        BlocksSubject::new()
+        // TODO: Use correct block producer here
+            .with_producer(Some("0x".to_string()))
+            .with_height(Some(BlockHeight::from(block_height)))
     }
 }
 
@@ -32,7 +29,7 @@ mod test {
 
     #[test]
     fn block_subjects_all() {
-        assert_eq!(BlocksSubject::all(), "blocks.>")
+        assert_eq!(BlocksSubject::WILDCARD, "blocks.>")
     }
 
     #[test]
@@ -58,9 +55,10 @@ mod test {
 
     #[test]
     fn block_subjects_from_block() {
-        let mock_block = MockBlock::build(1);
-        let subject = BlocksSubject::from(mock_block.to_owned());
-        assert!(subject.producer.is_none());
-        assert_eq!(subject.height.unwrap(), mock_block.into());
+        let mock_block = &MockBlock::build(1);
+        let subject: BlocksSubject = mock_block.into();
+
+        assert!(subject.producer.is_some());
+        assert_eq!(subject.height.unwrap(), mock_block.clone().into());
     }
 }

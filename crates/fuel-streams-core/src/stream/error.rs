@@ -2,36 +2,26 @@ use async_nats::{
     error,
     jetstream::{
         consumer::StreamErrorKind,
-        context::{
-            CreateKeyValueErrorKind,
-            CreateStreamErrorKind,
-            PublishError,
-        },
-        kv::{PutError, WatchErrorKind},
-        stream::ConsumerErrorKind,
+        context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
+        kv::{PutError, PutErrorKind, WatchErrorKind},
+        stream::{ConsumerErrorKind, LastRawMessageErrorKind},
     },
-    ConnectErrorKind,
+    PublishError,
 };
 use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
-use super::types::PayloadSize;
-
 #[derive(Error, DisplayDoc, Debug)]
-pub enum NatsError {
-    /// {subject_name:?} payload size={payload_size:?} exceeds max_payload_size={max_payload_size:?}
-    PayloadTooLarge {
+pub enum StreamError {
+    /// failed to publish stream
+    PublishFailed {
         subject_name: String,
-        payload_size: PayloadSize,
-        max_payload_size: PayloadSize,
+        #[source]
+        source: error::Error<PutErrorKind>,
     },
 
-    /// failed to connect to {url}
-    ConnectionError {
-        url: String,
-        #[source]
-        source: error::Error<ConnectErrorKind>,
-    },
+    /// failed to subscribe to stream
+    GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
 
     /// failed to create KV Store
     StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),

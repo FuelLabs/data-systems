@@ -15,6 +15,7 @@ displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-streams-core = { path = "../fuel-streams-core" }
 futures = { workspace = true }
+futures-util = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 
