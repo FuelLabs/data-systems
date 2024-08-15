@@ -9,7 +9,7 @@ use fuel_core_types::{
 };
 use fuel_streams_core::{
     blocks::types::BlockHeight,
-    nats::IntoSubject,
+    prelude::IntoSubject,
     transactions::TransactionsSubject,
 };
 use tokio::try_join;
@@ -63,7 +63,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let subject = self.get_subject(tx, block, index);
+        let subject = &self.get_subject(tx, block, index);
         let payload = self
             .nats
             .data_parser()

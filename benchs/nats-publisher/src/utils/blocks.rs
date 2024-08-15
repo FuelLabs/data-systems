@@ -2,7 +2,7 @@ use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
-use fuel_streams_core::{blocks::BlocksSubject, nats::IntoSubject};
+use fuel_streams_core::{blocks::BlocksSubject, prelude::IntoSubject};
 use tokio::try_join;
 use tracing::info;
 

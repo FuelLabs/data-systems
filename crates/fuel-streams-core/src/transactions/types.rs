@@ -1,7 +1,7 @@
 // ------------------------------------------------------------------------
 // Transaction
 // ------------------------------------------------------------------------
-pub use fuel_core_types::fuel_tx::Transaction;
+pub use fuel_core_types::fuel_tx::{Receipt, Transaction, UniqueIdentifier};
 use fuel_core_types::services::txpool::TransactionStatus as TxPoolTransactionStatus;
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -55,12 +55,14 @@ impl From<Transaction> for TransactionKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum TransactionStatus {
     Failed,
     Submitted,
     SqueezedOut,
     Success,
+    #[default]
+    None,
 }
 
 impl std::fmt::Display for TransactionStatus {
@@ -70,15 +72,9 @@ impl std::fmt::Display for TransactionStatus {
             TransactionStatus::Submitted => "submitted",
             TransactionStatus::SqueezedOut => "squeezed_out",
             TransactionStatus::Success => "success",
+            TransactionStatus::None => "none",
         };
         write!(f, "{value}")
-    }
-}
-
-impl From<Transaction> for TransactionStatus {
-    fn from(_value: Transaction) -> Self {
-        // TODO: get the transactions status here
-        TransactionStatus::Success
     }
 }
 

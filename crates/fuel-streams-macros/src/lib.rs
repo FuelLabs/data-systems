@@ -1,13 +1,9 @@
 pub mod subject {
     pub use subject_derive::*;
-    pub trait IntoSubject:
-        std::fmt::Debug + Clone + Default + Send + Sync
-    {
-        const WILDCARD: &'static str;
 
-        fn all() -> &'static str {
-            Self::WILDCARD
-        }
+    /// A subject is a topic/channel/queue/event that is used to publish and subscribe to messages.
+    pub trait IntoSubject: std::fmt::Debug + Clone + Default {
+        const WILDCARD: &'static str;
 
         fn parse_param<V: ToString>(param: &Option<V>) -> String {
             match param {

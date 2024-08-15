@@ -11,7 +11,4 @@ impl StreamEncoder for Block {}
 impl Streamable for Block {
     const NAME: &'static str = "blocks";
     const WILDCARD_LIST: &'static [&'static str] = &[BlocksSubject::WILDCARD];
-
-    type Builder = NatsStore<Self>;
-    type MainSubject = BlocksSubject;
 }
