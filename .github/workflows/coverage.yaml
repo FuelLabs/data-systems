@@ -22,7 +22,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -38,21 +37,14 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: Generate code coverage
-        run: |
-          cargo +${{ env.RUST_NIGHTLY_VERSION }} tarpaulin \
-          --color always \
-          --locked \
-          --count     \
-          --all-features \
-          --workspace \
-          --timeout 120 \
-          --out xml
+      - name: Generate Code Coverage
+        run: make coverage
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
         with:
           name: codecov-data-systems
-          # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
           fail_ci_if_error: true
           verbose: true
+          files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
+          token: ${{ secrets.CODECOV_TOKEN }}

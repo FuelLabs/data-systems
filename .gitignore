@@ -16,3 +16,4 @@ package.json
 docker/db
 tmp
 /docker/db
+build_rs_cov.profraw
