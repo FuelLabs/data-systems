@@ -1,0 +1,38 @@
+## 0.0.2 (2024-08-16)
+
+### 🚀 Features
+
+-   basic project structure and tooling (#4)
+-   add fuel-core-nats V2 (#12)
+-   bootstrap the stream from Fuel node's storage (#22)
+-   include nats server config in docker-compose (#34)
+-   add nkey auth (#32)
+-   Publish Docker image (#37)
+-   add helm chart (#38)
+-   simple connection test (#39)
+-   add helmchart statefulset (#47)
+-   update working directory in dockerfile (#50)
+-   add init container to statefulset (#51)
+-   bump chart version (#53)
+-   init containers from helm release (#55)
+-   add publishing tests (#48)
+-   disable pod health checks (#57)
+-   bump app version (#58)
+-   add first version of streams-core crate (#61)
+-   added nats publishing deduplication logic and tests (#107)
+-   bump chart version (#117)
+-   add Client (#114)
+-   data-parser implementation (#111)
+-   add Stream and Filter (#125)
+-   refactor core and publisher to integrate coherently (#124)
+
+### 🐛 Fixes
+
+-   misplaced end in helm chart (#52)
+-   init containers volume mounts (#54)
+-   use u32 for block height to avoid hex outputs in block subjects (#66)
+-   publish compact json rather than pretty json (#105)
+-   template for service (#115)
+-   service template (#116)
+-   temporary solution for nats storage size (#120)
+-   block compress for bincode (#122)
