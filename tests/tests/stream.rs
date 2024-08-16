@@ -10,7 +10,7 @@ async fn blocks_streams_subscribe() {
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
     let producer = Some("0x000".into());
-    let items = publish_blocks(stream.get_internal_stream(), producer).unwrap();
+    let items = publish_blocks(stream.get_streamer(), producer).unwrap();
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
@@ -35,7 +35,7 @@ async fn blocks_streams_subscribe_with_config() {
     let producer = Some("0x000".into());
 
     // publishing 10 blocks
-    publish_blocks(stream.get_internal_stream(), producer).unwrap();
+    publish_blocks(stream.get_streamer(), producer).unwrap();
 
     // filtering by producer 0x000 and height 5
     let filter = Filter::<BlocksSubject>::build()
@@ -70,8 +70,8 @@ async fn transactions_streams_subscribe() {
     let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     let mock_block = MockBlock::build(1);
-    let items = publish_transactions(stream.get_internal_stream(), &mock_block)
-        .unwrap();
+    let items =
+        publish_transactions(stream.get_streamer(), &mock_block).unwrap();
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
@@ -93,8 +93,8 @@ async fn transactions_streams_subscribe_with_config() {
 
     // publishing 10 transactions
     let mock_block = MockBlock::build(5);
-    let items = publish_transactions(stream.get_internal_stream(), &mock_block)
-        .unwrap();
+    let items =
+        publish_transactions(stream.get_streamer(), &mock_block).unwrap();
 
     // filtering by transaction on block with height 5
     let filter =
