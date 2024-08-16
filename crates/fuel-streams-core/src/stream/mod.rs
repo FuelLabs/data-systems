@@ -1,6 +1,5 @@
 mod error;
-#[allow(clippy::module_inception)]
-mod stream;
+mod stream_impl;
 
 pub use error::*;
-pub use stream::*;
+pub use stream_impl::*;
