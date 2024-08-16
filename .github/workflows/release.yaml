@@ -4,16 +4,18 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-artifacts:
+    if: (github.head_ref == 'changeset/release-main' && github.event.pull_request.merged == true) || github.event_name == 'workflow_dispatch'
     env:
       archive_name: artifact
 
     strategy:
       fail-fast: false
       matrix:
-        pkg: [fuel-streams-publisher]
+        pkg: [fuel-streams-publisher, fuel-streams]
         os: [ubuntu-latest]
         target: [x86_64-unknown-linux-gnu]
 
@@ -90,7 +92,6 @@ jobs:
 
   publish-crates:
     needs: [release]
-    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
 
     steps:
