@@ -35,6 +35,7 @@ impl NatsClientOpts {
         Self::new(url).with_role(NatsUserRole::Public)
     }
 
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn admin_opts(url: impl ToString) -> Self {
         Self::new(url).with_role(NatsUserRole::Admin)
     }

@@ -97,7 +97,7 @@ lint-markdown:
 # ------------------------------------------------------------
 
 coverage:
-	cargo tarpaulin --out Xml --fail-under 80
+	cargo tarpaulin --config ./tarpaulin.toml
 
 # ------------------------------------------------------------
 # Audit crates
