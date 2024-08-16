@@ -7,7 +7,7 @@ pub async fn publish(
     chain_id: &ChainId,
     block_height: &BlockHeight,
     fuel_core_database: &CombinedDatabase,
-    transactions_stream: &Streamer<Transaction>,
+    transactions_stream: &Stream<Transaction>,
     transactions: &[Transaction],
 ) -> anyhow::Result<()> {
     let off_chain_database = fuel_core_database.off_chain().latest_view()?;

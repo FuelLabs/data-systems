@@ -20,15 +20,16 @@ pub struct StreamConfig {
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    stream: Streamer<S>,
+    internal_stream: fuel_streams_core::Stream<S>,
     filter_subjects: Vec<String>,
 }
 
 impl<S: Streamable> Stream<S> {
     pub async fn new(client: &Client) -> Self {
-        let stream = Streamer::<S>::get_or_init(&client.conn).await;
+        let internal_stream =
+            fuel_streams_core::Stream::<S>::get_or_init(&client.conn).await;
         Self {
-            stream,
+            internal_stream,
             filter_subjects: Vec::new(),
         }
     }
@@ -43,7 +44,7 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
         // TODO: Why implicitly select a stream for the user?
         // TODO: Should this be a combination of streams
-        self.stream
+        self.internal_stream
             .subscribe(S::WILDCARD_LIST[0])
             .await
             .map_err(|s| StreamError::Subscribe { source: s })
@@ -53,7 +54,7 @@ impl<S: Streamable> Stream<S> {
         &self,
         opts: StreamConfig,
     ) -> Result<PullConsumerStream, StreamError> {
-        self.stream
+        self.internal_stream
             .subscribe_consumer(SubscribeConsumerConfig {
                 deliver_policy: opts.deliver_policy,
                 filter_subjects: self.filter_subjects.to_owned(),
@@ -63,7 +64,7 @@ impl<S: Streamable> Stream<S> {
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn stream(&self) -> &Streamer<S> {
-        &self.stream
+    pub fn get_internal_stream(&self) -> &fuel_streams_core::Stream<S> {
+        &self.internal_stream
     }
 }

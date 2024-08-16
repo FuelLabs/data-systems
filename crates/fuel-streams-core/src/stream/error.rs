@@ -12,7 +12,7 @@ use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
 #[derive(Error, DisplayDoc, Debug)]
-pub enum StreamerError {
+pub enum StreamError {
     /// failed to publish stream
     PublishFailed {
         subject_name: String,

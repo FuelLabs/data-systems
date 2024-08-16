@@ -19,7 +19,7 @@ use fuel_streams_macros::subject::IntoSubject;
 use futures_util::StreamExt;
 use tokio::sync::OnceCell;
 
-use super::error::StreamerError;
+use super::error::StreamError;
 use crate::{nats::types::*, prelude::NatsClient};
 
 #[async_trait]
@@ -64,12 +64,12 @@ pub trait Streamable: StreamEncoder {
 /// Houses nats-agnostic APIs for publishing and consuming a streamable type
 /// TODO: Split this into two traits StreamPublisher + StreamSubscriber
 #[derive(Debug, Clone)]
-pub struct Streamer<S: Streamable> {
+pub struct Stream<S: Streamable> {
     store: kv::Store,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: Streamable> Streamer<S> {
+impl<S: Streamable> Stream<S> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
@@ -104,12 +104,12 @@ impl<S: Streamable> Streamer<S> {
         &self,
         subject: &impl IntoSubject,
         payload: &S,
-    ) -> Result<u64, StreamerError> {
+    ) -> Result<u64, StreamError> {
         let subject_name = &subject.parse();
         self.store
             .put(subject_name, payload.encode(subject_name).await.into())
             .await
-            .map_err(|s| StreamerError::PublishFailed {
+            .map_err(|s| StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
                 source: s,
             })
@@ -119,7 +119,7 @@ impl<S: Streamable> Streamer<S> {
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
         wildcard: &str,
-    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamerError> {
+    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
         Ok(self
             .store
             .watch(&wildcard)
@@ -131,7 +131,7 @@ impl<S: Streamable> Streamer<S> {
     pub async fn subscribe_consumer(
         &self,
         config: SubscribeConsumerConfig,
-    ) -> Result<PullConsumerStream, StreamerError> {
+    ) -> Result<PullConsumerStream, StreamError> {
         let config = PullConsumerConfig {
             filter_subjects: config.filter_subjects,
             deliver_policy: config.deliver_policy,
@@ -148,7 +148,7 @@ impl<S: Streamable> Streamer<S> {
     pub async fn create_consumer(
         &self,
         config: PullConsumerConfig,
-    ) -> Result<NatsConsumer<PullConsumerConfig>, StreamerError> {
+    ) -> Result<NatsConsumer<PullConsumerConfig>, StreamError> {
         let config = self.prefix_filter_subjects(config);
         Ok(self.store.stream.create_consumer(config).await?)
     }
@@ -167,7 +167,7 @@ impl<S: Streamable> Streamer<S> {
     pub async fn get_last_published(
         &self,
         wildcard: &str,
-    ) -> Result<Option<S>, StreamerError> {
+    ) -> Result<Option<S>, StreamError> {
         let subject_name = &Self::prefix_filter_subject(wildcard);
 
         let message = self

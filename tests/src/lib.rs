@@ -11,7 +11,7 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
 }
 
 pub fn publish_blocks(
-    stream: &Streamer<Block>,
+    stream: &Stream<Block>,
     producer: Option<String>,
 ) -> BoxedResult<Vec<(BlocksSubject, Block)>> {
     let mut items = Vec::new();
@@ -37,7 +37,7 @@ pub fn publish_blocks(
 }
 
 pub fn publish_transactions(
-    stream: &Streamer<Transaction>,
+    stream: &Stream<Transaction>,
     mock_block: &Block,
 ) -> BoxedResult<Vec<(TransactionsSubject, Transaction)>> {
     let mut items = Vec::new();

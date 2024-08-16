@@ -3,7 +3,7 @@ use tracing::info;
 
 pub async fn publish(
     block_height: &BlockHeight,
-    blocks_stream: &Streamer<Block>,
+    blocks_stream: &Stream<Block>,
     block: &Block<Transaction>,
 ) -> anyhow::Result<()> {
     let block_subject: BlocksSubject = block.into();

@@ -1,5 +1,5 @@
 mod error;
-mod streamer;
+mod stream;
 
 pub use error::*;
-pub use streamer::*;
+pub use stream::*;
