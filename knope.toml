@@ -65,7 +65,7 @@ shell = true
 
 [[workflows.steps]]
 type = "Command"
-command = "git commit -m \"ci(release): preparing $VERSION\""
+command = "git commit -m \"ci(release): Preparing $VERSION\""
 variables = { "$VERSION" = "Version" }
 
 [[workflows.steps]]
@@ -79,7 +79,7 @@ base = "main"
 variables = { "$VERSION" = "Version" }
 
 [workflows.steps.title]
-template = "ci(release): preparing v$VERSION"
+template = "ci(release): Preparing v$VERSION"
 variables = { "$VERSION" = "Version" }
 
 [workflows.steps.body]

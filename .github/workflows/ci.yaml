@@ -25,6 +25,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           requireScope: true
+          subjectPattern: ^([A-Z]).+$
           types: |
             build
             ci
