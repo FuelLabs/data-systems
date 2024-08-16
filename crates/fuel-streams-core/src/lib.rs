@@ -10,7 +10,10 @@ pub mod prelude {
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{
-        blocks::subjects::*, nats::*, stream::*, transactions::subjects::*,
+        blocks::subjects::*,
+        nats::*,
+        stream::*,
+        transactions::subjects::*,
         types::*,
     };
 

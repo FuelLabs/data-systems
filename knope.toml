@@ -1,9 +1,26 @@
-[package]
-versioned_files = ["Cargo.toml"]
+[packages.fuel-streams]
+versioned_files = ["crates/fuel-streams/Cargo.toml"]
 changelog = "CHANGELOG.md"
+extra_changelog_sections = [
+    { types = [
+        "major",
+    ], name = "⚠️ Breaking Change" },
+    { types = [
+        "minor",
+    ], name = "🚀 Features" },
+    { types = [
+        "patch",
+    ], name = "🐛 Fixes" },
+    { footers = [
+        "Changelog-Note",
+    ], name = "📝 Notes" },
+]
 
-[[package.assets]]
+[[packages.fuel-streams.assets]]
 path = "artifacts/fuel-streams-publisher-x86_64-unknown-linux-gnu.tgz"
+
+[[packages.fuel-streams.assets]]
+path = "artifacts/fuel-streams-x86_64-unknown-linux-gnu.tgz"
 
 # ------------------------------------------------------------
 # Workflow to get the current version
