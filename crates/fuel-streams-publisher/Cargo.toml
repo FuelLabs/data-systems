@@ -1,5 +1,6 @@
 [package]
 name = "fuel-streams-publisher"
+description = "Fuel library for publishing data streams from events that happen in Fuel chain(s)"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -7,7 +8,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
-description = "Fuel library for publishing data streams from events that happen in Fuel chain(s)"
+publish = false
 
 [dependencies]
 anyhow = { workspace = true }
@@ -23,7 +24,9 @@ fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../fuel-data-parser" }
-fuel-streams-core = { path = "../fuel-streams-core", features = ["test-helpers"] }
+fuel-streams-core = { path = "../fuel-streams-core", features = [
+    "test-helpers",
+] }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
 futures-util = { workspace = true }
 rand = { workspace = true }
