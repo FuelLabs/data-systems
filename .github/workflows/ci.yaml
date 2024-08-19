@@ -166,3 +166,66 @@ jobs:
       - name: Stop NATS
         if: always()
         run: make stop/nats
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    env:
+      NATS_URL: nats://127.0.0.1:4222
+      NATS_ADMIN_PASS: secret
+      NATS_PUBLIC_PASS: secret
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env file with NATS environment variables
+        run: |
+          echo "NATS_URL=${{ env.NATS_URL }}" > .env
+          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
+          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+            toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+            target: x86_64-unknown-linux-gnu
+
+      - name: Install dependencies
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y libclang-dev curl
+
+      - name: Install Rustup
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+      - name: Install wasm32 target
+        run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Install Tarpaulin (Pre-built Binary)
+        run: |
+          sudo mkdir -p /usr/local/bin
+          curl -L https://github.com/xd009642/tarpaulin/releases/download/0.31.1/cargo-tarpaulin-x86_64-unknown-linux-gnu.tar.gz | sudo tar xz -C /usr/local/bin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Start Nats
+        run: |
+          make start/nats
+
+      - name: Generate Code Coverage
+        run: make coverage
+
+      - name: Stop Nats
+        if: always()
+        run: make stop/nats
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          name: codecov-data-systems
+          fail_ci_if_error: true
+          verbose: true
+          files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
+          token: ${{ secrets.CODECOV_TOKEN }}

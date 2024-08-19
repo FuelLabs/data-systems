@@ -97,7 +97,7 @@ lint-markdown:
 # ------------------------------------------------------------
 
 coverage:
-	cargo tarpaulin --config ./tarpaulin.toml
+	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
 
 # ------------------------------------------------------------
 # Audit crates

@@ -8,6 +8,15 @@ run-types = [
     "Lib",
     "Tests",
 ]
+timeout = "120s"
+color = "Always"
+locked = true
+count = true
+no-dead-code = true
+fail-immediately = true
+skip-clean = true
+engine = "Llvm"
+#fail-under = 80
 
 # ==========================================
 [cov_fuel_streams]
@@ -20,6 +29,15 @@ run-types = [
     "Lib",
     "Tests",
 ]
+timeout = "120s"
+color = "Always"
+locked = true
+count = true
+no-dead-code = true
+fail-immediately = true
+skip-clean = true
+engine = "Llvm"
+#fail-under = 80
 
 # ==========================================
 [cov_fuel_streams_core]
@@ -32,6 +50,15 @@ run-types = [
     "Lib",
     "Tests",
 ]
+timeout = "120s"
+color = "Always"
+locked = true
+count = true
+no-dead-code = true
+fail-immediately = true
+skip-clean = true
+engine = "Llvm"
+#fail-under = 80
 
 # ==========================================
 [cov_fuel_streams_macros]
@@ -44,18 +71,36 @@ run-types = [
     "Lib",
     "Tests"
 ]
+timeout = "120s"
+color = "Always"
+locked = true
+count = true
+no-dead-code = true
+fail-immediately = true
+skip-clean = true
+engine = "Llvm"
+#fail-under = 80
 
 # ==========================================
-[cov_fuel_streams_publisher]
-name = "Fuel Streams Publisher Coverage Analysis"
-packages = [
-    "fuel-streams-publisher"
-]
-all-features = true
-run-types = [
-    "Lib",
-    "Tests"
-]
+# ignore due to wasm incompatibility
+# [cov_fuel_streams_publisher]
+# name = "Fuel Streams Publisher Coverage Analysis"
+# packages = [
+#     "fuel-streams-publisher"
+# ]
+# all-features = true
+# run-types = [
+#     "Tests"
+# ]
+# timeout = "120s"
+# color = "Always"
+# locked = true
+# count = true
+# no-dead-code = true
+# fail-immediately = true
+# skip-clean = true
+# engine = "Llvm"
+#fail-under = 80
 
 # ==========================================
 [cov_fuel_streams_tests]
@@ -66,13 +111,8 @@ packages = [
 all-features = true
 run-types = [
     "Lib",
-    "Tests",
-    "Benchmarks",
-    "Bins"
+    "Tests"
 ]
-
-# ==========================================
-[common]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -80,10 +120,7 @@ count = true
 no-dead-code = true
 fail-immediately = true
 skip-clean = true
-engine = "Auto"
-
-# ==========================================
-[criteria]
+engine = "Llvm"
 #fail-under = 80
 
 # ==========================================
