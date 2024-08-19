@@ -4,11 +4,7 @@ use fuel_streams_core::{
     prelude::IntoSubject,
     transactions::TransactionsSubject,
     types::{
-        BlockHeight,
-        ChainId,
-        Transaction,
-        TransactionKind,
-        TransactionStatus,
+        BlockHeight, ChainId, Transaction, TransactionKind, TransactionStatus,
         UniqueIdentifier,
     },
     Stream,
@@ -34,7 +30,7 @@ pub async fn publish(
 
         let transactions_subject: TransactionsSubject =
             TransactionsSubject::new()
-                .with_tx_id(Some(tx_id.to_string()))
+                .with_tx_id(Some(tx_id.into()))
                 .with_kind(Some(kind))
                 .with_status(Some(status))
                 .with_height(Some(block_height.clone()))

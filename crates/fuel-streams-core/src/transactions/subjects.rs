@@ -9,7 +9,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 pub struct TransactionsSubject {
     pub height: Option<BlockHeight>,
     pub tx_index: Option<usize>,
-    pub tx_id: Option<Address>,
+    pub tx_id: Option<Bytes32>,
     pub status: Option<TransactionStatus>,
     pub kind: Option<TransactionKind>,
 }
@@ -19,9 +19,7 @@ impl From<&Transaction> for TransactionsSubject {
         let subject = TransactionsSubject::new();
         let tx_id = value.cached_id().unwrap();
         let kind = TransactionKind::from(value.to_owned());
-        subject
-            .with_tx_id(Some(tx_id.to_string()))
-            .with_kind(Some(kind))
+        subject.with_tx_id(Some(tx_id.into())).with_kind(Some(kind))
     }
 }
 
@@ -50,22 +48,22 @@ mod test {
         let transactions_subject = TransactionsSubject {
             height: Some(23.into()),
             tx_index: Some(1),
-            tx_id: Some("0x000".into()),
+            tx_id: Some(Bytes32::zeroed()),
             status: Some(TransactionStatus::Success),
             kind: Some(TransactionKind::Script),
         };
         assert_eq!(
             transactions_subject.parse(),
-            "transactions.23.1.0x000.success.script"
+            "transactions.23.1.0x0000000000000000000000000000000000000000000000000000000000000000.success.script"
         );
 
         let transactions_by_id_subject = TransactionsByIdSubject {
             id_kind: Some(IdentifierKind::ContractID),
-            id_value: Some("0x000".into()),
+            id_value: Some(Address::zeroed()),
         };
         assert_eq!(
             transactions_by_id_subject.parse(),
-            "by_id.transactions.contract_id.0x000"
+            "by_id.transactions.contract_id.0x0000000000000000000000000000000000000000000000000000000000000000"
         )
     }
 
@@ -74,11 +72,11 @@ mod test {
         let wildcard1 = TransactionsSubject::wildcard(
             None,
             None,
-            Some("0x000".into()),
+            Some(Bytes32::zeroed()),
             None,
             None,
         );
-        assert_eq!(wildcard1, "transactions.*.*.0x000.*.*");
+        assert_eq!(wildcard1, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
 
         let wildcard2 = TransactionsByIdSubject::wildcard(
             Some(IdentifierKind::ContractID),
@@ -111,7 +109,7 @@ mod test {
         assert!(subject.kind.is_some());
         assert_eq!(
             subject.tx_id.unwrap(),
-            mock_tx.to_owned().cached_id().unwrap().to_string()
+            mock_tx.to_owned().cached_id().unwrap().into()
         );
     }
 }
