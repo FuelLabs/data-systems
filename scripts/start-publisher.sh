@@ -32,7 +32,7 @@ check_env_vars() {
 check_env_vars
 
 cargo run -p fuel-streams-publisher -- \
-    --service-name "NATS Publisher Node" \
+    --service-name "Fuel Streams Publisher" \
     --ip 0.0.0.0 \
     --port 4000 \
     --peering-port 30333 \
@@ -48,3 +48,4 @@ cargo run -p fuel-streams-publisher -- \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
+    --reserved-nodes /dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf \
