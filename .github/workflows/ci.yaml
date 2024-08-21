@@ -121,6 +121,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
+      NATS_ADMIN_PASS: secret
+      NATS_PUBLIC_PASS: secret
     steps:
       - uses: actions/checkout@v4
 
@@ -134,33 +136,18 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.20"
-
-      - name: Install nats-io/nkeys
-        run: |
-          go install github.com/nats-io/nkeys/nk@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-
-      - name: Generate NATS NKeys
-        run: |
-          NKEY_OUTPUT=$(nk -gen user -pubout)
-          echo "NATS_NKEY_SEED=$(echo "$NKEY_OUTPUT" | sed -n '1p')" >> $GITHUB_ENV
-          echo "NATS_NKEY_USER=$(echo "$NKEY_OUTPUT" | sed -n '2p')" >> $GITHUB_ENV
-
       - name: Create .env file for NATS
         run: |
-          cp .env.sample .env
-          sed -i 's/generated-nats-nkey-seed/${{ env.NATS_NKEY_SEED }}/g' .env
-          sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
+          echo "NATS_URL=${{ env.NATS_URL }}" > .env
+          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
+          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
+      - name: Start Nats
+        run: |
+          make start/nats
 
       - name: Run tests
         run: |
-          make start/nats
-          export NATS_NKEY_SEED=${{ env.NATS_NKEY_SEED }}
-          export NATS_NKEY_USER=${{ env.NATS_NKEY_USER }}
           make test
 
       - name: Stop NATS
