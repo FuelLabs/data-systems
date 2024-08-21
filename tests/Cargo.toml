@@ -20,10 +20,15 @@ path = "tests/lib.rs"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 bytes = { workspace = true }
+fuel-core = { workspace = true }
+fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../crates/fuel-data-parser" }
 fuel-streams = { path = "../crates/fuel-streams", features = ["test-helpers"] }
 fuel-streams-core = { path = "../crates/fuel-streams-core", features = [
+    "test-helpers",
+] }
+fuel-streams-publisher = { path = "../crates/fuel-streams-publisher", features = [
     "test-helpers",
 ] }
 futures = { workspace = true }

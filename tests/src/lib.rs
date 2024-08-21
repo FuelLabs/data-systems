@@ -33,7 +33,7 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
 
 pub fn publish_blocks(
     stream: &Stream<Block>,
-    producer: Option<String>,
+    producer: Option<Address>,
 ) -> BoxedResult<Vec<(BlocksSubject, Block)>> {
     let mut items = Vec::new();
     for i in 0..10 {

@@ -4,7 +4,11 @@ use fuel_streams_core::{
     prelude::IntoSubject,
     transactions::TransactionsSubject,
     types::{
-        BlockHeight, ChainId, Transaction, TransactionKind, TransactionStatus,
+        BlockHeight,
+        ChainId,
+        Transaction,
+        TransactionKind,
+        TransactionStatus,
         UniqueIdentifier,
     },
     Stream,
