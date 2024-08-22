@@ -116,59 +116,8 @@ jobs:
       - name: Running linting
         run: make lint
 
-  test:
-    name: Cargo Tests
-    runs-on: ubuntu-latest
-    env:
-      NATS_URL: nats://127.0.0.1:4222
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: stable
-          target: x86_64-unknown-linux-gnu
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.20"
-
-      - name: Install nats-io/nkeys
-        run: |
-          go install github.com/nats-io/nkeys/nk@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-
-      - name: Generate NATS NKeys
-        run: |
-          NKEY_OUTPUT=$(nk -gen user -pubout)
-          echo "NATS_NKEY_SEED=$(echo "$NKEY_OUTPUT" | sed -n '1p')" >> $GITHUB_ENV
-          echo "NATS_NKEY_USER=$(echo "$NKEY_OUTPUT" | sed -n '2p')" >> $GITHUB_ENV
-
-      - name: Create .env file for NATS
-        run: |
-          cp .env.sample .env
-          sed -i 's/generated-nats-nkey-seed/${{ env.NATS_NKEY_SEED }}/g' .env
-          sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
-
-      - name: Run tests
-        run: |
-          make start/nats
-          export NATS_NKEY_SEED=${{ env.NATS_NKEY_SEED }}
-          export NATS_NKEY_USER=${{ env.NATS_NKEY_USER }}
-          make test
-
-      - name: Stop NATS
-        if: always()
-        run: make stop/nats
-
-  coverage:
-    name: Coverage
+  test-coverage:
+    name: Test & Coverage
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
@@ -187,32 +136,32 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-            toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-            target: x86_64-unknown-linux-gnu
-
-      - name: Install dependencies
-        run: |
-            sudo apt-get update
-            sudo apt-get install -y libclang-dev curl
-
-      - name: Install Rustup
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
-      - name: Install wasm32 target
-        run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_NIGHTLY_VERSION }}
-
-      - name: Install Tarpaulin (Pre-built Binary)
-        run: |
-          sudo mkdir -p /usr/local/bin
-          curl -L https://github.com/xd009642/tarpaulin/releases/download/0.31.1/cargo-tarpaulin-x86_64-unknown-linux-gnu.tar.gz | sudo tar xz -C /usr/local/bin
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+          target: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev curl
+
+      - name: Install wasm32 target
+        run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Install Tarpaulin (Pre-built Binary)
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-tarpaulin@0.31
+
       - name: Start Nats
         run: |
           make start/nats
+
+      - name: Run tests
+        run: make test
 
       - name: Generate Code Coverage
         run: make coverage
