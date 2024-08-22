@@ -7,7 +7,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
-description = "Fuel library for consuming data streams of events that happen in Fuel chain(s)"
+publish = false
 
 [[bench]]
 name = "consumers"
