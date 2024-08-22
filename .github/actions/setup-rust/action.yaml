@@ -9,7 +9,7 @@ inputs:
   toolchain:
     description: Rust toolchain version to install
     required: true
-    default: stable
+    default: 1.79.0
   sscache:
     description: Use sscache
     required: false
@@ -33,18 +33,9 @@ runs:
       with:
         tool: cargo-edit@0.12.3
 
-    - name: Cache Rust toolchain and dependencies
-      uses: actions/cache@v4
+    - uses: Swatinem/rust-cache@v2
       with:
-        path: |
-          ~/.rustup
-          ~/.cargo/bin
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-rust-${{ inputs.toolchain }}-${{ inputs.target }}-
+        cache-on-failure: true
 
     - name: Run sccache-cache only on non-release runs
       if: inputs.sscache == 'true' && github.event_name != 'release' && github.event_name != 'workflow_dispatch'

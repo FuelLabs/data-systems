@@ -10,7 +10,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_VERSION: 1.79.0
   RUST_NIGHTLY_VERSION: "nightly-2024-07-28"
   CI: true
 
@@ -53,9 +52,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-      - uses: Swatinem/rust-cache@v2
+
       - run: cargo update --workspace --locked
 
   pre-commit:
@@ -63,9 +63,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-rust
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
       - uses: actions/setup-python@v3
       - uses: pre-commit/action@v3.0.1
 
@@ -103,9 +106,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-      - uses: Swatinem/rust-cache@v2
 
       - name: Publish crate check
         uses: katyo/publish-crates@v2
@@ -128,11 +131,7 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Check for typos
         uses: crate-ci/typos@master
@@ -146,55 +145,61 @@ jobs:
       - name: Lint project
         run: make lint
 
-  test:
+  test-coverage:
     needs:
       - cargo-verifications
-    name: Cargo Tests
+    name: Test & Coverage
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
+      NATS_ADMIN_PASS: secret
+      NATS_PUBLIC_PASS: secret
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create .env file with NATS environment variables
+        run: |
+          echo "NATS_URL=${{ env.NATS_URL }}" > .env
+          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
+          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-        with:
-          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.20"
-
-      - name: Install nats-io/nkeys
-        run: |
-          go install github.com/nats-io/nkeys/nk@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-
-      - name: Generate NATS NKeys
-        run: |
-          NKEY_OUTPUT=$(nk -gen user -pubout)
-          echo "NATS_NKEY_SEED=$(echo "$NKEY_OUTPUT" | sed -n '1p')" >> $GITHUB_ENV
-          echo "NATS_NKEY_USER=$(echo "$NKEY_OUTPUT" | sed -n '2p')" >> $GITHUB_ENV
-
-      - name: Create .env file for NATS
-        run: |
-          cp .env.sample .env
-          sed -i 's/generated-nats-nkey-seed/${{ env.NATS_NKEY_SEED }}/g' .env
-          sed -i 's/generated-nats-nkey-user/${{ env.NATS_NKEY_USER }}/g' .env
-
-      - name: Run tests
+      - name: Start Nats
         run: |
           make start/nats
-          export NATS_NKEY_SEED=${{ env.NATS_NKEY_SEED }}
-          export NATS_NKEY_USER=${{ env.NATS_NKEY_USER }}
-          make test
 
-      - name: Stop NATS
+      - name: Run tests
+        run: make test
+
+      - name: Install dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev curl
+
+      - name: Install Tarpaulin (Pre-built Binary)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-tarpaulin@0.31
+
+      - name: Generate Code Coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: make coverage
+
+      - name: Upload to codecov.io
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: codecov/codecov-action@v4
+        with:
+          name: codecov-data-systems
+          fail_ci_if_error: true
+          verbose: true
+          files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Stop Nats
         if: always()
         run: make stop/nats
 
@@ -244,7 +249,6 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
           sscache: "false"
 
@@ -358,9 +362,6 @@ jobs:
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
 
       - name: Publish Crate
         uses: FuelLabs/publish-crates@v1

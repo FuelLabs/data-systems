@@ -41,12 +41,12 @@ clean/docker: stop
 	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down -v --rmi all --remove-orphans
 
 start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
-start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core: DOCKER_PROFILE = fuel
+start/publisher stop/publisher restart/publisher clean/publisher: DOCKER_PROFILE = fuel
 
-start/nats start/fuel-core: start
-stop/nats stop/fuel-core: stop
-restart/nats restart/fuel-core: restart
-clean/nats clean/fuel-core: clean/docker
+start/nats start/publisher: start
+stop/nats stop/publisher: stop
+restart/nats restart/publisher: restart
+clean/nats clean/publisher: clean/docker
 
 dev-watch:
 	cargo watch -- cargo run
@@ -92,6 +92,13 @@ lint-markdown:
 
 lint-yaml:
 	npx prettier *.yaml **/*.yaml --check --no-error-on-unmatched-pattern
+
+# ------------------------------------------------------------
+# Coverage
+# ------------------------------------------------------------
+
+coverage:
+	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
 
 # ------------------------------------------------------------
 # Audit crates
