@@ -2936,7 +2936,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -2965,7 +2965,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "subject-derive",
 ]
@@ -7116,7 +7116,7 @@ dependencies = [
 
 [[package]]
 name = "streams-tests"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -7214,7 +7214,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "proc-macro2",
  "quote",

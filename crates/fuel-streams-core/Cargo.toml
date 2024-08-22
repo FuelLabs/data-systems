@@ -6,8 +6,8 @@ edition = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
+version = { workspace = true }
 publish = false
-version = "0.0.0"
 
 [dependencies]
 anyhow = { workspace = true }
