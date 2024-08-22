@@ -137,7 +137,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          target: x86_64-unknown-linux-gnu
+          target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -147,9 +147,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-dev curl
-
-      - name: Install wasm32 target
-        run: rustup target add wasm32-unknown-unknown --toolchain ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Install Tarpaulin (Pre-built Binary)
         uses: taiki-e/cache-cargo-install-action@v2
