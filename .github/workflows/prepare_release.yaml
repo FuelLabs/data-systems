@@ -2,7 +2,10 @@ name: Open Release PR
 
 on:
   push:
-    branches: [main, staging, release]
+    branches:
+      - main
+      - staging
+      - release
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

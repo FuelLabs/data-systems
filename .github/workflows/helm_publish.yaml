@@ -2,8 +2,10 @@ name: Build and publish Helm Chart
 
 on:
   push:
-    branches: [main]
-    paths: [helm/fuel-streams-publisher/Chart.yaml]
+    branches:
+      - main
+    paths:
+      - helm/fuel-streams-publisher/Chart.yaml
 
 permissions:
   contents: read
