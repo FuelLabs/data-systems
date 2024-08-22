@@ -4,8 +4,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "prettier:fix": "prettier --write \"**/*.@(json|md|yaml|sh|toml)\"",
-    "prettier:validate": "prettier --check \"**/*.@(json|md|yaml|sh|toml)\""
+    "prettier:fix": "prettier --write \"**/*.@(json|md|sh|toml)\"",
+    "prettier:validate": "prettier --check \"**/*.@(json|md|sh|toml)\""
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^19.2.2",

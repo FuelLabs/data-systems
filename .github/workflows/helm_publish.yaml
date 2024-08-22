@@ -18,11 +18,9 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Package and Push Charts
         uses: bsord/helm-push@v4.1.0
         with:

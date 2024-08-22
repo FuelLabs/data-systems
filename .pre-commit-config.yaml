@@ -1,5 +1,11 @@
 default_install_hook_types: [pre-commit]
 default_stages: [pre-commit]
+exclude: |
+  (?x)^(
+    CHANGELOG.md|
+    pnpm-lock.yaml|
+    helm/.*
+  )$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -10,11 +16,15 @@ repos:
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
-        args: ["--maxkb=3000"]
+        args: [--maxkb=3000]
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: detect-private-key
-
+  - repo: https://github.com/lyz-code/yamlfix/
+    rev: 1.17.0
+    hooks:
+      - id: yamlfix
+        args: [-c, .yamlfix.toml, --include, pnpm-lock.yaml]
   - repo: local
     hooks:
       - id: format

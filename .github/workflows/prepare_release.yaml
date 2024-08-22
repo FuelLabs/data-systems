@@ -12,7 +12,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
-  RUST_NIGHTLY_VERSION: "nightly-2024-07-28"
+  RUST_NIGHTLY_VERSION: nightly-2024-07-28
 
 jobs:
   setup:
@@ -23,12 +23,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Check for pre-release configuration
         id: set-vars
         run: |
           echo "branch=changeset/release-main" >> $GITHUB_OUTPUT
-
   prepare-release:
     if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
     needs: setup
@@ -39,21 +37,17 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.REPO_TOKEN }}
-
       - name: Configure Git
         run: |
           git config --global user.name GitHub Actions
           git config user.email github-actions@github.com
-
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-
       - uses: knope-dev/action@v2.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run knope prepare release
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}

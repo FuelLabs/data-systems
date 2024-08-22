@@ -23,7 +23,7 @@ env:
   # Prevents cargo from complaining about unstable features
   RUSTC_BOOTSTRAP: 1
   RUST_VERSION: 1.79.0
-  PR_TITLE: "chore(deps): weekly `cargo update`"
+  PR_TITLE: 'chore(deps): weekly `cargo update`'
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.
     The following is the output from `cargo update`:
@@ -36,34 +36,28 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
-
       - name: Update Cargo Dependencies
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-
       - name: Cargo audit dependencies
         uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload Cargo.lock Artifact
         uses: actions/upload-artifact@v3
         with:
           name: Cargo-lock
           path: Cargo.lock
           retention-days: 1
-
       - name: Upload Cargo Update Log Artifact
         uses: actions/upload-artifact@v3
         with:
           name: cargo-updates
           path: cargo_update.log
           retention-days: 1
-
   pr:
     name: Create or Update Pull Request
     needs: update
@@ -71,17 +65,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Download Cargo.lock from Update Job
         uses: actions/download-artifact@v3
         with:
           name: Cargo-lock
-
       - name: Download Cargo Update Log from Update Job
         uses: actions/download-artifact@v3
         with:
           name: cargo-updates
-
       - name: Craft PR Body and Commit Message
         run: |
           echo "${{ env.COMMIT_MESSAGE }}" > commit.txt
@@ -90,7 +81,6 @@ jobs:
           echo '```txt' >> body.md
           cat cargo_update.log >> body.md
           echo '```' >> body.md
-
       - name: Commit Changes
         run: |
           git config user.name github-actions
@@ -98,7 +88,6 @@ jobs:
           git switch --force-create cargo_update
           git add ./Cargo.lock
           git commit --no-verify --file=commit.txt
-
       - name: Create or Update Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
