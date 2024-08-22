@@ -20,16 +20,7 @@
       "prettier-plugin-toml"
     ],
     "singleQuote": false,
-    "overrides": [
-      {
-        "files": [
-          "**/*.@(json|md|toml)"
-        ],
-        "options": {
-          "printWidth": 100
-        }
-      }
-    ]
+    "printWidth": 100
   },
   "commitlint": {
     "extends": [

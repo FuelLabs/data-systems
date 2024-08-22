@@ -82,6 +82,9 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v3
 
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
       - name: Run Pre Commit
         uses: pre-commit/action@v3.0.1
 
@@ -147,6 +150,9 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
 
       - name: Check for typos
         uses: crate-ci/typos@master
