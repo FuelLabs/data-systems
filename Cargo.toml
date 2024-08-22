@@ -1,10 +1,15 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 members = [
-    "benchs/*",
-    "crates/*",
+    "benchs/bench-consumers",
+    "benchs/data-parser",
+    "benchs/nats-publisher",
+    "crates/fuel-data-parser",
+    "crates/fuel-streams",
+    "crates/fuel-streams-core",
     "crates/fuel-streams-macros",
     "crates/fuel-streams-macros/subject-derive",
+    "crates/fuel-streams-publisher",
     "tests",
 ]
 resolver = "2"
