@@ -1,6 +1,12 @@
+//! This binary subscribes to events emitted from a Fuel client or node
+//! to publish streams that can consumed via the `fuel-streams` SDK.
 use clap::Parser;
 use fuel_core_services::Service;
 
+/// CLI structure for parsing command-line arguments.
+///
+/// - `nats_url`: The URL of the NATS server to connect to.
+/// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
 #[derive(Parser)]
 pub struct Cli {
     #[arg(
@@ -10,6 +16,7 @@ pub struct Cli {
         default_value = "localhost:4222"
     )]
     nats_url: String,
+    /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     fuel_core_config: fuel_core_bin::cli::run::Command,
 }
