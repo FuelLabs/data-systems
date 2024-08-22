@@ -20,7 +20,7 @@ async-nats = { workspace = true }
 chrono = "0.4.38"
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../../crates/fuel-data-parser" }
-futures-util = "0.3.30"
+futures = { workspace = true }
 nats-publisher = { path = "../nats-publisher" }
 statrs = "0.17.1"
 tokio = { workspace = true }

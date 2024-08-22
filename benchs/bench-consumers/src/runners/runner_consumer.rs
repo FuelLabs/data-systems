@@ -5,7 +5,7 @@ pub use async_nats::jetstream::consumer::{
     DeliverPolicy,
 };
 use fuel_core_types::blockchain::block::Block;
-use futures_util::StreamExt;
+use futures::StreamExt;
 use nats_publisher::utils::nats::NatsHelper;
 
 use super::benchmark_results::BenchmarkResult;

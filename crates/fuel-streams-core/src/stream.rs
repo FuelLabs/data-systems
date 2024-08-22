@@ -19,7 +19,7 @@ use fuel_data_parser::{
     NatsFormattedMessage,
 };
 use fuel_streams_macros::subject::IntoSubject;
-use futures_util::StreamExt;
+use futures::StreamExt;
 use tokio::sync::OnceCell;
 
 use crate::{nats::types::*, prelude::NatsClient};
@@ -121,7 +121,7 @@ impl<S: Streamable> Stream<S> {
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
         wildcard: &str,
-    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
+    ) -> Result<impl futures::Stream<Item = Vec<u8>>, StreamError> {
         Ok(self
             .store
             .watch(&wildcard)

@@ -120,8 +120,9 @@ jobs:
       - name: Publish crate check
         uses: katyo/publish-crates@v2
         with:
-          args: --no-verify
+          no-verify: true
           dry-run: true
+          check-repo: false
           ignore-unpublished-changes: true
 
   cargo-verifications:

@@ -9,31 +9,23 @@ repository = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
 async-compression = { version = "0.4.11", features = ["all"] }
-async-nats = { workspace = true }
-async-trait = { workspace = true }
 bincode = "1.3.3"
 bytes = { workspace = true }
 chrono = { workspace = true }
 displaydoc = { workspace = true }
-dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
-futures-util = { workspace = true }
 paste = "1.0.15"
 postcard = "1.0.8"
 prost = "0.13.1"
-rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-subject-derive = { path = "../fuel-streams-macros/subject-derive" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tracing = { workspace = true }
 
 [features]
 default = []

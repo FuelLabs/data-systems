@@ -12,19 +12,14 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-bytes = { workspace = true }
-chrono = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
-fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { path = "../../crates/fuel-data-parser" }
 fuel-streams-core = { path = "../../crates/fuel-streams-core" }
-futures-util = { workspace = true }
-serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

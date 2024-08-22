@@ -9,15 +9,11 @@ repository = "https://github.com/fuellabs/data-systems"
 version = "0.0.1"
 
 [dependencies]
-async-nats = { workspace = true }
 async-trait = { workspace = true }
 displaydoc = { workspace = true }
-dotenvy = { workspace = true }
 fuel-streams-core = { path = "../fuel-streams-core" }
 futures = { workspace = true }
-futures-util = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
 
 [features]
 default = []

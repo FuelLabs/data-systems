@@ -2,8 +2,7 @@ use std::collections::HashSet;
 
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
-use futures::TryStreamExt;
-use futures_util::future::try_join_all;
+use futures::{future::try_join_all, TryStreamExt};
 use streams_tests::server_setup;
 
 #[tokio::test]

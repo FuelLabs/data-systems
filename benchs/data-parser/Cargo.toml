@@ -37,7 +37,6 @@ fuel-data-parser = { path = "../../crates/fuel-data-parser", features = [
 ] }
 rand = { workspace = true }
 strum = { workspace = true }
-strum_macros = { workspace = true }
 tokio = { workspace = true }
 
 [dev-dependencies]
