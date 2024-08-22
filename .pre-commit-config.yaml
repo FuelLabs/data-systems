@@ -20,11 +20,7 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: detect-private-key
-  - repo: https://github.com/lyz-code/yamlfix/
-    rev: 1.17.0
-    hooks:
-      - id: yamlfix
-        args: [-c, .yamlfix.toml, --include, pnpm-lock.yaml]
+
   - repo: local
     hooks:
       - id: format
@@ -33,3 +29,9 @@ repos:
         entry: make fmt
         language: system
         pass_filenames: false
+
+  - repo: https://github.com/lyz-code/yamlfix/
+    rev: 1.17.0
+    hooks:
+      - id: yamlfix
+        args: [-c, .yamlfix.toml]

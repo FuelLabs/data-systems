@@ -46,6 +46,7 @@ jobs:
             publisher
             data-parser
             fuel-streams
+
   lockfile:
     name: Validate Lockfile
     runs-on: ubuntu-latest
@@ -54,25 +55,31 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
       - run: cargo update --workspace --locked
+
   pre-commit:
     name: Pre-commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Check workflow files
         uses: docker://rhysd/actionlint:latest
         env:
-          SHELLCHECK_OPTS: --exclude=SC2086
+          SHELLCHECK_OPTS: --exclude=SC2086,SC2129
         with:
           args: -color
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
       - name: Install Python
         uses: actions/setup-python@v3
+
       - name: Run Pre Commit
         uses: pre-commit/action@v3.0.1
+
   commitlint:
     name: Validating commits
     runs-on: ubuntu-latest
@@ -80,29 +87,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Setup Node && PNPM
         uses: ./.github/actions/setup-node
+
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
-        run: pnpm commitlint --config ./.commitlintrc.yaml --last --verbose
+        run: pnpm commitlint --last --verbose
+
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
         run: |
           pnpm commitlint \
-            --config ./.commitlintrc.yaml \
             --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
             --to ${{ github.event.pull_request.head.sha }} \
             --verbose
+
   publish-crates-check:
     name: Publish Check
     needs: [validate-title, lockfile, pre-commit, commitlint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache: 'false'
+          cache: false
+
       - name: Publish crate check
         uses: katyo/publish-crates@v2
         with:
@@ -110,25 +122,31 @@ jobs:
           dry-run: true
           check-repo: false
           ignore-unpublished-changes: true
+
   cargo-verifications:
     name: Cargo verifications
     needs: [validate-title, lockfile, pre-commit, commitlint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
       - name: Check for typos
         uses: crate-ci/typos@master
         with:
           config: ./.typos.toml
+
       - uses: taiki-e/install-action@cargo-machete
       - name: Check unused dependencies
         run: cargo machete --skip-target-dir
+
       - name: Lint project
         run: make lint
+
   test-coverage:
     needs: [cargo-verifications]
     name: Test & Coverage
@@ -139,31 +157,39 @@ jobs:
       NATS_PUBLIC_PASS: secret
     steps:
       - uses: actions/checkout@v4
+
       - name: Create .env file with NATS environment variables
         run: |
           echo "NATS_URL=${{ env.NATS_URL }}" > .env
           echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
           echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
+
       - name: Start Nats
         run: |
           make start/nats
+
       - name: Run tests
         run: make test
+
       - name: Install dependencies
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-dev curl
+
       - name: Install Tarpaulin (Pre-built Binary)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: taiki-e/cache-cargo-install-action@v2
         with:
           tool: cargo-tarpaulin@0.31
+
       - name: Generate Code Coverage
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: make coverage
+
       - name: Upload to codecov.io
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
@@ -173,9 +199,11 @@ jobs:
           verbose: true
           files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Stop Nats
         if: always()
         run: make stop/nats
+
   build:
     needs: [cargo-verifications]
     name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
@@ -210,18 +238,18 @@ jobs:
             target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.platform.target }}
-          cache: 'false'
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
+          cache: false
+
       - name: Install packages (macOS)
         if: matrix.platform.os == 'macOS-latest'
         run: |
           brew install llvm
+
       - name: Install cross
         if: matrix.platform.os != 'macOS-latest'
         uses: baptiste0928/cargo-install@v3
@@ -229,34 +257,41 @@ jobs:
           crate: cross
           cache-key: ${{ matrix.platform.target }}
           git: https://github.com/cross-rs/cross
+
       - name: Build with cross for Linux
         if: matrix.platform.os != 'macOS-latest'
         run: |
           cross build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
       - name: Build with cargo for MacOS
         if: matrix.platform.os == 'macOS-latest'
         run: |
           rustup target add ${{ matrix.platform.target }}
           cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
       - name: Strip binaries
         run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
+
       - name: Set Artifact Name
         id: artifact-name
         shell: bash
         run: |
           echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
+
       - name: Package as archive
         shell: bash
         run: |
           cd target/${{ matrix.platform.target }}/release
           tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
           cd -
+
       - name: Publish release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact-name.outputs.value }}
           path: ${{ matrix.package }}-*
           if-no-files-found: error
+
   release:
     name: Create Release with Knope
     if: (github.head_ref == 'changeset/release-main' && github.event.pull_request.merged == true) || github.event_name
@@ -269,13 +304,16 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.1.6
+
       - name: Download Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
           path: artifacts
           merge-multiple: true
+
       - name: List Artifacts
         run: ls -R artifacts
+
       - name: Cache Artifacts
         uses: actions/cache@v4
         with:
@@ -283,14 +321,17 @@ jobs:
           key: ${{ runner.os }}-artifacts-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-artifacts-
+
       - name: Run Knope Action
         uses: knope-dev/action@v2.1.0
         with:
           github-token: ${{ secrets.REPO_TOKEN }}
+
       - name: Knope Release
         run: knope release
         env:
           github-token: ${{ secrets.REPO_TOKEN }}
+
   publish-crates:
     name: Publish on Crates.io
     needs: [publish-crates-check, release]
@@ -298,6 +339,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
       - name: Restore Artifacts Cache
         uses: actions/cache@v4
         with:
@@ -305,8 +347,10 @@ jobs:
           key: ${{ runner.os }}-artifacts-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-artifacts-
+
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@master
+
       - name: Publish Crate
         uses: FuelLabs/publish-crates@v1
         with:

@@ -13,7 +13,7 @@ inputs:
   cache:
     description: Use sscache
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
   using: composite
