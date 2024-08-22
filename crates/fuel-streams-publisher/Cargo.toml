@@ -19,9 +19,7 @@ fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-streams-core = { path = "../fuel-streams-core", features = [
-    "test-helpers",
-] }
+fuel-streams-core = { path = "../fuel-streams-core", features = ["test-helpers"] }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
 tokio = { workspace = true }
 tracing = { workspace = true }

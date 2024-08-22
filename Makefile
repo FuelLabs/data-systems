@@ -21,7 +21,7 @@ check-commands:
 		fi \
 	done
 
-setup: COMMANDS=rustup
+setup: COMMANDS=rustup npm pre-commit
 setup: check-commands
 	./scripts/setup.sh
 
@@ -55,7 +55,7 @@ dev-watch:
 # Formatting
 # ------------------------------------------------------------
 
-fmt: fmt-cargo fmt-rust fmt-markdown fmt-yaml
+fmt: fmt-cargo fmt-rust fmt-prettier
 
 fmt-cargo:
 	cargo sort -w
@@ -63,11 +63,8 @@ fmt-cargo:
 fmt-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --color always
 
-fmt-markdown:
-	npx prettier *.md **/*.md --write --no-error-on-unmatched-pattern
-
-fmt-yaml:
-	npx prettier *.yaml **/*.yaml --write --no-error-on-unmatched-pattern
+fmt-prettier:
+	pnpm prettier:fix
 
 # ------------------------------------------------------------
 # Validate code
@@ -76,7 +73,7 @@ fmt-yaml:
 check:
 	cargo check --all-targets --all-features
 
-lint: check lint-cargo lint-rust lint-clippy lint-markdown lint-yaml
+lint: check lint-cargo lint-rust lint-clippy lint-prettier
 
 lint-cargo:
 	cargo sort -w --check
@@ -87,11 +84,8 @@ lint-rust:
 lint-clippy:
 	cargo clippy --workspace -- -D warnings
 
-lint-markdown:
-	npx prettier *.md **/*.md --check --no-error-on-unmatched-pattern
-
-lint-yaml:
-	npx prettier *.yaml **/*.yaml --check --no-error-on-unmatched-pattern
+lint-prettier:
+	pnpm prettier:validate
 
 # ------------------------------------------------------------
 # Coverage

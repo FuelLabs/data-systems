@@ -1,7 +1,6 @@
 name: 🐛 Bug Report
 description: Something is wrong within Fuel Data Systems.
 labels: [bug, triage]
-
 body:
   - type: markdown
     attributes:

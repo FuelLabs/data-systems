@@ -1,6 +1,2 @@
 [files]
-extend-exclude = [
-    "crates/fuel-streams-publisher/README.md",
-    "docker/chain-config",
-    "helm",
-]
+extend-exclude = ["crates/fuel-streams-publisher/README.md", "docker/chain-config", "helm"]
