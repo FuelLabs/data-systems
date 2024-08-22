@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize, edited, reopened]
+  push:
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -143,16 +145,6 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev curl
-
-      - name: Install Tarpaulin (Pre-built Binary)
-        uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-tarpaulin@0.31
-
       - name: Start Nats
         run: |
           make start/nats
@@ -160,14 +152,24 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Install dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev curl
+
+      - name: Install Tarpaulin (Pre-built Binary)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-tarpaulin@0.31
+
       - name: Generate Code Coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: make coverage
 
-      - name: Stop Nats
-        if: always()
-        run: make stop/nats
-
       - name: Upload to codecov.io
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
         with:
           name: codecov-data-systems
@@ -175,3 +177,7 @@ jobs:
           verbose: true
           files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Stop Nats
+        if: always()
+        run: make stop/nats
