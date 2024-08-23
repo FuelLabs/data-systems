@@ -6794,13 +6794,8 @@ dependencies = [
 name = "streams-tests"
 version = "0.0.1"
 dependencies = [
- "anyhow",
- "async-nats",
- "bytes",
- "fuel-core",
  "fuel-core-importer",
  "fuel-core-types",
- "fuel-data-parser",
  "fuel-streams",
  "fuel-streams-core",
  "fuel-streams-publisher",
