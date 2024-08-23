@@ -23,3 +23,7 @@ fuel-streams-core = { path = "../fuel-streams-core", features = ["test-helpers"]
 fuel-streams-macros = { path = "../fuel-streams-macros" }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[features]
+default = []
+test-helpers = []

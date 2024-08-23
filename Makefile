@@ -115,7 +115,7 @@ build:
 	cargo build --package $(PACKAGE)
 
 test:
-	cargo test
+	cargo test --workspace
 
 doc:
 	cargo doc --no-deps
