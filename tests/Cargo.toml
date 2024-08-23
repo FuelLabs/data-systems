@@ -29,6 +29,7 @@ fuel-streams-core = { path = "../crates/fuel-streams-core", features = [
 futures = { workspace = true }
 futures-util = { workspace = true }
 postcard = "1.0.8"
+rand = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }
 tracing-test = "0.2.5"

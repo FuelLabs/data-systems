@@ -31,6 +31,42 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
     Ok((client, streams))
 }
 
+pub fn publish_items<T: Streamable>(
+    stream: &Stream<T>,
+    items: Vec<(impl IntoSubject + Sync + Send + 'static, T)>,
+) {
+    tokio::task::spawn({
+        let stream = stream.clone();
+        let items = items.clone();
+        async move {
+            for item in items {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                let payload = item.1.clone();
+                let subject = item.0;
+                stream.publish(&subject, &payload).await.unwrap();
+            }
+        }
+    });
+}
+
+pub fn publish_same_blocks(
+    stream: &Stream<Block>,
+    producer: Option<String>,
+) -> BoxedResult<Vec<(BlocksSubject, Block)>> {
+    let height = 99;
+    let block_item = MockBlock::build(height);
+    let mut items = Vec::new();
+    for _ in 0..10 {
+        let subject =
+            BlocksSubject::build(producer.clone(), Some(height.into()));
+        items.push((subject, block_item.clone()));
+    }
+
+    publish_items::<Block>(stream, items.clone());
+
+    Ok(items)
+}
+
 pub fn publish_blocks(
     stream: &Stream<Block>,
     producer: Option<String>,
@@ -42,17 +78,7 @@ pub fn publish_blocks(
         items.push((subject, block_item));
     }
 
-    tokio::task::spawn({
-        let stream = stream.clone();
-        let items = items.clone();
-        async move {
-            for item in items {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-                let payload = item.1.clone();
-                stream.publish(&item.0, &payload).await.unwrap();
-            }
-        }
-    });
+    publish_items::<Block>(stream, items.clone());
 
     Ok(items)
 }
@@ -71,17 +97,7 @@ pub fn publish_transactions(
         items.push((subject, tx));
     }
 
-    tokio::task::spawn({
-        let stream = stream.clone();
-        let items = items.clone();
-        async move {
-            for item in items {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-                let payload = item.1.clone();
-                stream.publish(&item.0, &payload).await.unwrap();
-            }
-        }
-    });
+    publish_items::<Transaction>(stream, items.clone());
 
     Ok(items)
 }
