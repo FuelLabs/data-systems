@@ -53,6 +53,9 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
       - uses: knope-dev/action@v2.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
