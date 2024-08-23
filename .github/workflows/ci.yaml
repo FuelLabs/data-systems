@@ -115,7 +115,6 @@ jobs:
   publish-crates-check:
     name: Publish Check
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
@@ -139,7 +138,6 @@ jobs:
   cargo-verifications:
     name: Cargo verifications
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
@@ -187,6 +185,8 @@ jobs:
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Start Nats
         run: |
@@ -317,8 +317,11 @@ jobs:
 
   release:
     name: Create Release with Knope
-    if: (github.head_ref == 'changeset/release-main' && github.event.pull_request.merged == true) || github.event_name
-      == 'workflow_dispatch'
+    if: >-
+      (github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+      github.event_name == 'workflow_dispatch'
     needs:
       - test-coverage
       - build
