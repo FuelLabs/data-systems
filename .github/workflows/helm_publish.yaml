@@ -2,8 +2,10 @@ name: Build and publish Helm Chart
 
 on:
   push:
-    branches: [main]
-    paths: [helm/fuel-streams-publisher/Chart.yaml]
+    branches:
+      - main
+    paths:
+      - helm/fuel-streams-publisher/Chart.yaml
 
 permissions:
   contents: read
@@ -11,14 +13,13 @@ permissions:
 jobs:
   helm-release:
     name: Build Helm Chart
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     if: |
       (github.event_name == 'release' && github.event.action == 'published') ||
       github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Check out code
         uses: actions/checkout@v4

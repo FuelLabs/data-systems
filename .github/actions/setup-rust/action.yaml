@@ -9,7 +9,11 @@ inputs:
   toolchain:
     description: Rust toolchain version to install
     required: true
-    default: stable
+    default: 1.79.0
+  cache:
+    description: Use sscache
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -20,26 +24,22 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         target: ${{ inputs.target }}
         components: clippy, rustfmt
-
     - uses: taiki-e/cache-cargo-install-action@v2
       with:
         tool: cargo-sort@1.0.9
-
     - uses: taiki-e/cache-cargo-install-action@v2
       with:
         tool: cargo-edit@0.12.3
-
     - uses: Swatinem/rust-cache@v2
+      if: inputs.cache == 'true'
       with:
         cache-on-failure: true
-
     - name: Run sccache-cache only on non-release runs
-      if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+      if: inputs.cache == 'true' && github.event_name != 'release' && github.event_name != 'workflow_dispatch'
       uses: mozilla-actions/sccache-action@v0.0.5
-
     - name: Set Rust caching env vars only on non-release runs
       shell: sh
-      if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+      if: inputs.cache == 'true' && github.event_name != 'release' && github.event_name != 'workflow_dispatch'
       run: |-
         echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
         echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV

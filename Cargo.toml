@@ -1,12 +1,6 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
-members = [
-    "benchs/*",
-    "crates/*",
-    "crates/fuel-streams-macros",
-    "crates/fuel-streams-macros/subject-derive",
-    "tests",
-]
+members = ["benchs/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
 resolver = "2"
 
 [workspace.package]
@@ -45,6 +39,9 @@ strum_macros = "0.26"
 tokio = { version = "1.39", features = ["full"] }
 tracing = "0.1.40"
 thiserror = "1.0"
+
+[workspace.metadata.cargo-machete]
+ignored = ["fuel-core"]
 
 [profile.release]
 opt-level = 3

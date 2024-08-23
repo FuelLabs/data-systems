@@ -1,6 +1,9 @@
 name: 🐛 Bug Report
 description: Something is wrong within Fuel Data Systems.
-labels: [bug, triage]
+
+labels:
+  - bug
+  - triage
 
 body:
   - type: markdown
@@ -43,4 +46,9 @@ body:
     attributes:
       label: What os are you seeing the problem on?
       description: Android, iOS, Windows, Mac
-      options: [Android Mobile, iOS Mobile, Windows Desktop, Mac/Apple Desktop, Linux]
+      options:
+        - Android Mobile
+        - iOS Mobile
+        - Windows Desktop
+        - Mac/Apple Desktop
+        - Linux

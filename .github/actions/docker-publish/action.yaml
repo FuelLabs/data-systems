@@ -52,7 +52,6 @@ runs:
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
         logout: false
-
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v3
@@ -63,10 +62,8 @@ runs:
           type=ref,event=branch
           type=sha,prefix=
           type=semver,pattern={{raw}}
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
     - name: Build and push the image to ghcr.io
       uses: docker/build-push-action@v6
       id: publish
@@ -79,7 +76,6 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-
     - id: imageOutput
       shell: bash
       run: |-

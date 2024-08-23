@@ -32,18 +32,18 @@ check_env_vars() {
 check_env_vars
 
 cargo run -p nats-publisher -- \
-            --service-name "test-jetstream" \
-            --keypair $KEYPAIR \
-            --relayer $RELAYER \
-            --ip 0.0.0.0 \
-            --port 4004 \
-            --peering-port 30333 \
-            --db-path ./docker/db \
-            --snapshot ./docker/chain-config \
-            --enable-p2p \
-            --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
-            --enable-relayer \
-            --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
-            --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
-            --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-            --sync-block-stream-buffer-size 30
+    --service-name "test-jetstream" \
+    --keypair $KEYPAIR \
+    --relayer $RELAYER \
+    --ip 0.0.0.0 \
+    --port 4004 \
+    --peering-port 30333 \
+    --db-path ./docker/db \
+    --snapshot ./docker/chain-config \
+    --enable-p2p \
+    --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
+    --enable-relayer \
+    --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
+    --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
+    --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
+    --sync-block-stream-buffer-size 30

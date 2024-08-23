@@ -1,13 +1,8 @@
 [cov_fuel_data_parser]
 name = "Fuel Data Parser Coverage Analysis"
-packages = [
-    "fuel-data-parser",
-]
+packages = ["fuel-data-parser"]
 all-features = true
-run-types = [
-    "Lib",
-    "Tests",
-]
+run-types = ["Lib", "Tests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -21,14 +16,9 @@ engine = "Llvm"
 # ==========================================
 [cov_fuel_streams]
 name = "Fuel Streams Coverage Analysis"
-packages = [
-    "fuel-streams",
-]
+packages = ["fuel-streams"]
 all-features = true
-run-types = [
-    "Lib",
-    "Tests",
-]
+run-types = ["Lib", "Tests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -42,14 +32,9 @@ engine = "Llvm"
 # ==========================================
 [cov_fuel_streams_core]
 name = "Fuel Streams Core Coverage Analysis"
-packages = [
-    "fuel-streams-core",
-]
+packages = ["fuel-streams-core"]
 all-features = true
-run-types = [
-    "Lib",
-    "Tests",
-]
+run-types = ["Lib", "Tests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -63,14 +48,9 @@ engine = "Llvm"
 # ==========================================
 [cov_fuel_streams_macros]
 name = "Fuel Streams Macros Coverage Analysis"
-packages = [
-    "fuel-streams-macros"
-]
+packages = ["fuel-streams-macros"]
 all-features = true
-run-types = [
-    "Lib",
-    "Tests"
-]
+run-types = ["Lib", "Tests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -105,14 +85,9 @@ engine = "Llvm"
 # ==========================================
 [cov_fuel_streams_tests]
 name = "Fuel Data Systems Tests Coverage Analysis"
-packages = [
-    "streams-tests"
-]
+packages = ["streams-tests"]
 all-features = true
-run-types = [
-    "Lib",
-    "Tests"
-]
+run-types = ["Lib", "Tests"]
 timeout = "120s"
 color = "Always"
 locked = true

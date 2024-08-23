@@ -2,7 +2,10 @@ name: Open Release PR
 
 on:
   push:
-    branches: [main, staging, release]
+    branches:
+      - main
+      - staging
+      - release
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -12,7 +15,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_VERSION: 1.79.0
-  RUST_NIGHTLY_VERSION: 'nightly-2024-07-28'
+  RUST_NIGHTLY_VERSION: nightly-2024-07-28
 
 jobs:
   setup:

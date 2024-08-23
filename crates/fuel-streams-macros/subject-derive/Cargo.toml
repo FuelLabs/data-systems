@@ -6,8 +6,7 @@ edition = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
-publish = false
-version = "0.0.0"
+version = { workspace = true }
 
 [lib]
 proc-macro = true

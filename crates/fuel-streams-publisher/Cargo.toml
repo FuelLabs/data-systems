@@ -12,28 +12,15 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = { workspace = true }
-bytes = { workspace = true }
 clap = { workspace = true }
-dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
-fuel-core-client = { workspace = true }
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../fuel-data-parser" }
-fuel-streams-core = { path = "../fuel-streams-core", features = [
-    "test-helpers",
-] }
+fuel-streams-core = { path = "../fuel-streams-core", features = ["test-helpers"] }
 fuel-streams-macros = { path = "../fuel-streams-macros" }
-futures-util = { workspace = true }
-rand = { workspace = true }
-serde_json = { workspace = true }
-strum = { workspace = true }
-strum_macros = { workspace = true }
-subject-derive = { path = "../fuel-streams-macros/subject-derive" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

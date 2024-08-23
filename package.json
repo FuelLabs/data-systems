@@ -1,0 +1,17 @@
+{
+  "name": "data-systems",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "prettier:fix": "prettier --write \"**/*.@(json|md|sh|toml)\"",
+    "prettier:validate": "prettier --check \"**/*.@(json|md|sh|toml)\""
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^19.2.2",
+    "commitlint": "^19.4.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-sh": "^0.14.0",
+    "prettier-plugin-toml": "^2.0.1"
+  }
+}
