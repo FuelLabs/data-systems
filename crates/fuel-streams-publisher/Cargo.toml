@@ -36,3 +36,7 @@ strum_macros = { workspace = true }
 subject-derive = { path = "../fuel-streams-macros/subject-derive" }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[features]
+default = []
+test-helpers = []

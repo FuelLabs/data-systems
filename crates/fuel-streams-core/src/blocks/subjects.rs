@@ -13,10 +13,7 @@ pub struct BlocksSubject {
 impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
         let block_height = *block.header().height();
-        BlocksSubject::new()
-        // TODO: Use correct block producer here
-            .with_producer(Some("0x".to_string()))
-            .with_height(Some(BlockHeight::from(block_height)))
+        BlocksSubject::new().with_height(Some(BlockHeight::from(block_height)))
     }
 }
 
@@ -35,10 +32,10 @@ mod test {
     #[test]
     fn block_subjects_parse() {
         let subject = BlocksSubject {
-            producer: Some("0x000".into()),
+            producer: Some(Address::zeroed()),
             height: Some(23.into()),
         };
-        assert_eq!(subject.parse(), "blocks.0x000.23");
+        assert_eq!(subject.parse(), "blocks.0x0000000000000000000000000000000000000000000000000000000000000000.23");
     }
 
     #[test]
@@ -58,7 +55,7 @@ mod test {
         let mock_block = &MockBlock::build(1);
         let subject: BlocksSubject = mock_block.into();
 
-        assert!(subject.producer.is_some());
+        assert!(subject.producer.is_none());
         assert_eq!(subject.height.unwrap(), mock_block.clone().into());
     }
 }
