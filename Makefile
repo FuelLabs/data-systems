@@ -91,6 +91,14 @@ lint-clippy:
 lint-markdown:
 	npx prettier *.md **/*.md --check --no-error-on-unmatched-pattern
 
+
+# ------------------------------------------------------------
+# Coverage
+# ------------------------------------------------------------
+
+coverage:
+	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
+
 # ------------------------------------------------------------
 # Audit crates
 # ------------------------------------------------------------
