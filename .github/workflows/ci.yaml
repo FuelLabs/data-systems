@@ -115,7 +115,6 @@ jobs:
   publish-crates-check:
     name: Publish Check
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
@@ -139,7 +138,6 @@ jobs:
   cargo-verifications:
     name: Cargo verifications
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
@@ -167,7 +165,42 @@ jobs:
       - name: Lint project
         run: make lint
 
+  test:
+    needs:
+      - cargo-verifications
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      NATS_URL: nats://127.0.0.1:4222
+      NATS_ADMIN_PASS: secret
+      NATS_PUBLIC_PASS: secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file with NATS environment variables
+        run: |
+          echo "NATS_URL=${{ env.NATS_URL }}" > .env
+          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
+          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Start Nats
+        run: |
+          make start/nats
+
+      - name: Run tests
+        run: make test
+
+      - name: Stop Nats
+        if: always()
+        run: make stop/nats
+
   test-coverage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - cargo-verifications
     name: Test & Coverage
@@ -187,32 +220,28 @@ jobs:
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+          target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
 
       - name: Start Nats
         run: |
           make start/nats
 
-      - name: Run tests
-        run: make test
-
       - name: Install dependencies
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-dev curl
 
       - name: Install Tarpaulin (Pre-built Binary)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: taiki-e/cache-cargo-install-action@v2
         with:
           tool: cargo-tarpaulin@0.31
 
       - name: Generate Code Coverage
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: make coverage
 
       - name: Upload to codecov.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
         with:
           name: codecov-data-systems
@@ -317,10 +346,13 @@ jobs:
 
   release:
     name: Create Release with Knope
-    if: (github.head_ref == 'changeset/release-main' && github.event.pull_request.merged == true) || github.event_name
-      == 'workflow_dispatch'
+    if: >-
+      (github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+      github.event_name == 'workflow_dispatch'
     needs:
-      - test-coverage
+      - test
       - build
     runs-on: ubuntu-latest
     permissions:
