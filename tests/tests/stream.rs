@@ -9,7 +9,7 @@ async fn blocks_streams_subscribe() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some("0x000".into());
+    let producer = Some(Address::zeroed());
     let items = publish_blocks(stream.stream(), producer).unwrap();
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
@@ -32,14 +32,14 @@ async fn blocks_streams_subscribe_with_config() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let mut stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some("0x000".into());
+    let producer = Some(Address::zeroed());
 
     // publishing 10 blocks
     publish_blocks(stream.stream(), producer).unwrap();
 
     // filtering by producer 0x000 and height 5
     let filter = Filter::<BlocksSubject>::build()
-        .with_producer(Some("0x000".into()))
+        .with_producer(Some(Address::zeroed()))
         .with_height(Some(5.into()));
 
     // creating subscription
