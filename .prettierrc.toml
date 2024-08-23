@@ -1,0 +1,3 @@
+plugins = ["prettier-plugin-sh", "prettier-plugin-toml"]
+singleQuote = false
+printWidth = 100
