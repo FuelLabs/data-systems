@@ -115,7 +115,6 @@ jobs:
   publish-crates-check:
     name: Publish Check
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
@@ -139,7 +138,6 @@ jobs:
   cargo-verifications:
     name: Cargo verifications
     needs:
-      - validate-title
       - lockfile
       - pre-commit
       - commitlint
