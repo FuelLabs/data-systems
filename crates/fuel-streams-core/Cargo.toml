@@ -1,5 +1,6 @@
 [package]
 name = "fuel-streams-core"
+description = "Core components for working with streams of Fuel blockchain data"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -15,8 +16,8 @@ displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../fuel-data-parser" }
-fuel-streams-macros = { path = "../fuel-streams-macros" }
+fuel-data-parser = { path = "../fuel-data-parser", version = "0.0.1" }
+fuel-streams-macros = { path = "../fuel-streams-macros", version = "0.0.1" }
 futures = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
