@@ -1,17 +1,18 @@
 [package]
 name = "fuel-streams"
+description = "A library for working with streams of Fuel blockchain data"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 keywords = ["data-stream", "blockchain", "cryptocurrencies"]
 edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-version = "0.0.1"
+version = "0.0.3"
 
 [dependencies]
 async-trait = { workspace = true }
 displaydoc = { workspace = true }
-fuel-streams-core = { path = "../fuel-streams-core" }
+fuel-streams-core = { workspace = true }
 futures = { workspace = true }
 thiserror = { workspace = true }
 

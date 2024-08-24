@@ -18,8 +18,8 @@ fuel-core-bin = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../../crates/fuel-data-parser" }
-fuel-streams-core = { path = "../../crates/fuel-streams-core" }
+fuel-data-parser = { workspace = true }
+fuel-streams-core = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
