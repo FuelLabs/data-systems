@@ -1,5 +1,6 @@
 [package]
 name = "fuel-data-parser"
+description = "A parser for Fuel blockchain data structures and formats"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -16,7 +17,7 @@ chrono = { workspace = true }
 displaydoc = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-streams-macros = { path = "../fuel-streams-macros" }
+fuel-streams-macros = { workspace = true }
 paste = "1.0.15"
 postcard = "1.0.8"
 prost = "0.13.1"
