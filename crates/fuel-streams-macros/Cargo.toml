@@ -10,4 +10,4 @@ repository = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-subject-derive = { path = "./subject-derive", version = "0.0.1" }
+subject-derive = { path = "./subject-derive", version = "0.0.2" }

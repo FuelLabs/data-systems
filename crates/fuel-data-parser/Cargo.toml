@@ -17,7 +17,7 @@ chrono = { workspace = true }
 displaydoc = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-streams-macros = { path = "../fuel-streams-macros", version = "0.0.1" }
+fuel-streams-macros = { path = "../fuel-streams-macros", version = "0.0.2" }
 paste = "1.0.15"
 postcard = "1.0.8"
 prost = "0.13.1"
