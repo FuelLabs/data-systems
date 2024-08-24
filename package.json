@@ -1,6 +1,6 @@
 {
-  "name": "data-systems",
-  "version": "0.0.0",
+  "name": "fuel-streams",
+  "version": "0.0.2",
   "license": "MIT",
   "private": true,
   "scripts": {

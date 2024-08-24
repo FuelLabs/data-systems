@@ -19,9 +19,9 @@ path = "tests/lib.rs"
 [dependencies]
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-types = { workspace = true }
-fuel-streams = { path = "../crates/fuel-streams", features = ["test-helpers"] }
-fuel-streams-core = { path = "../crates/fuel-streams-core", features = ["test-helpers"] }
-fuel-streams-publisher = { path = "../crates/fuel-streams-publisher", features = ["test-helpers"] }
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-publisher = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 

@@ -32,7 +32,7 @@ path = "benches/deserialize_decompress.rs"
 [dependencies]
 async-compression = { version = "0.4.11", features = ["all"] }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../../crates/fuel-data-parser", features = ["test-helpers"] }
+fuel-data-parser = { workspace = true, features = ["test-helpers"] }
 rand = { workspace = true }
 strum = { workspace = true }
 tokio = { workspace = true }
