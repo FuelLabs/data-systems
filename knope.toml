@@ -17,10 +17,22 @@ extra_changelog_sections = [
 ]
 
 [[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-publisher-x86_64-unknown-linux-gnu.tgz"
+path = "artifacts/fuel-streams-publisher-Linux-aarch64-gnu.tar.gz"
 
 [[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-x86_64-unknown-linux-gnu.tgz"
+path = "artifacts/fuel-streams-publisher-Linux-aarch64-musl.tar.gz"
+
+[[packages.fuel-streams.assets]]
+path = "artifacts/fuel-streams-publisher-Linux-x86_64-gnu.tar.gz"
+
+[[packages.fuel-streams.assets]]
+path = "artifacts/fuel-streams-publisher-Linux-x86_64-musl.tar.gz"
+
+[[packages.fuel-streams.assets]]
+path = "artifacts/fuel-streams-publisher-macOS-aarch64.tar.gz"
+
+[[packages.fuel-streams.assets]]
+path = "artifacts/fuel-streams-publisher-macOS-x86_64.tar.gz"
 
 # ------------------------------------------------------------
 # Workflow to get the current version
