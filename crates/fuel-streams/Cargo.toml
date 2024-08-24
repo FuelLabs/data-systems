@@ -11,7 +11,7 @@ version = "0.0.1"
 [dependencies]
 async-trait = { workspace = true }
 displaydoc = { workspace = true }
-fuel-streams-core = { path = "../fuel-streams-core" }
+fuel-streams-core = { workspace = true }
 futures = { workspace = true }
 thiserror = { workspace = true }
 
