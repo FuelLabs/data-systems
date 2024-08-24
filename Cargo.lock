@@ -639,7 +639,7 @@ checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
 name = "bench-consumers"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-compression",
  "criterion",
@@ -2659,7 +2659,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-compression",
  "bincode",
@@ -2726,7 +2726,7 @@ checksum = "4c1b711f28553ddc5f3546711bd220e144ce4c1af7d9e9a1f70b2f20d9f5b791"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "displaydoc",
@@ -2737,7 +2737,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2758,14 +2758,14 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "subject-derive",
 ]
 
 [[package]]
 name = "fuel-streams-publisher"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap 4.5.15",
@@ -4812,7 +4812,7 @@ dependencies = [
 
 [[package]]
 name = "nats-publisher"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -6792,7 +6792,7 @@ dependencies = [
 
 [[package]]
 name = "streams-tests"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fuel-core-importer",
  "fuel-core-types",
@@ -6884,7 +6884,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
