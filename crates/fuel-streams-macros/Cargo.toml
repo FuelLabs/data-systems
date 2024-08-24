@@ -1,5 +1,6 @@
 [package]
 name = "fuel-streams-macros"
+description = "Macros for implementing traits and deriving functionality in the fuel-streams crate"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }

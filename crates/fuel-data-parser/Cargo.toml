@@ -1,5 +1,6 @@
 [package]
 name = "fuel-data-parser"
+description = "A parser for Fuel blockchain data structures and formats"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }

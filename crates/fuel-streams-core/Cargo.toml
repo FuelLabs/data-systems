@@ -1,5 +1,6 @@
 [package]
 name = "fuel-streams-core"
+description = "Core components for working with streams of Fuel blockchain data"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
