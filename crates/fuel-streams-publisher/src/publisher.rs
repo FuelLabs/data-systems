@@ -3,11 +3,12 @@ use fuel_core::{
     database::database_description::DatabaseHeight,
 };
 use fuel_core_storage::transactional::AtomicView;
+use fuel_core_types::blockchain::consensus::Sealed;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     prelude::IntoSubject,
-    types::{AssetId, Block, BlockHeight, ChainId, Transaction},
+    types::{Address, AssetId, Block, BlockHeight, ChainId, Transaction},
     Stream,
 };
 use tokio::sync::broadcast::Receiver;
@@ -16,9 +17,9 @@ use tracing::warn;
 use crate::{blocks, transactions};
 
 /// Streams we currently support publishing to.
-struct Streams {
-    transactions: Stream<Transaction>,
-    blocks: Stream<Block>,
+pub struct Streams {
+    pub transactions: Stream<Transaction>,
+    pub blocks: Stream<Block>,
 }
 
 impl Streams {
@@ -29,7 +30,7 @@ impl Streams {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(feature = "test-helpers")]
     pub async fn is_empty(&self) -> bool {
         use fuel_streams_core::transactions::TransactionsSubject;
 
@@ -72,6 +73,25 @@ impl Publisher {
         })
     }
 
+    #[cfg(feature = "test-helpers")]
+    pub async fn default_with_publisher(
+        nats_client: &NatsClient,
+        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+    ) -> anyhow::Result<Self> {
+        Ok(Publisher {
+            chain_id: ChainId::default(),
+            base_asset_id: AssetId::default(),
+            fuel_core_database: CombinedDatabase::default(),
+            blocks_subscription,
+            streams: Streams::new(nats_client).await,
+        })
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub fn get_streams(&self) -> &Streams {
+        &self.streams
+    }
+
     pub async fn run(mut self) -> anyhow::Result<Self> {
         let last_published_block = self
             .streams
@@ -95,31 +115,58 @@ impl Publisher {
             }
 
             for height in next_height_to_publish..=latest_fuel_core_height {
-                let block = self
+                let sealed_block = self
                     .fuel_core_database
                     .on_chain()
                     .latest_view()?
                     .get_sealed_block_by_height(&(height as u32).into())?
-                    .expect("NATS Publisher: no block at height {height}")
-                    .entity;
+                    .expect("NATS Publisher: no block at height {height}");
 
-                self.publish(&block).await?;
+                let (block, block_producer) =
+                    Self::get_block_and_producer(&sealed_block);
+
+                self.publish(&block, &block_producer).await?;
             }
         }
 
         while let Ok(result) = self.blocks_subscription.recv().await {
-            let block = &result.sealed_block.entity;
-            self.publish(block).await?;
+            let (block, block_producer) =
+                Self::get_block_and_producer(&result.sealed_block);
+
+            self.publish(&block, &block_producer).await?;
         }
 
         Ok(self)
     }
 
-    async fn publish(&self, block: &Block<Transaction>) -> anyhow::Result<()> {
+    #[cfg(not(feature = "test-helpers"))]
+    fn get_block_and_producer(
+        sealed_block: &Sealed<Block>,
+    ) -> (Block, Address) {
+        let block = sealed_block.entity.clone();
+        let block_producer = sealed_block
+            .consensus
+            .block_producer(&block.id())
+            .expect("Failed to get Block Producer");
+
+        (block, block_producer.into())
+    }
+
+    async fn publish(
+        &self,
+        block: &Block<Transaction>,
+        block_producer: &Address,
+    ) -> anyhow::Result<()> {
         let block_height: BlockHeight =
             block.header().consensus().height.into();
 
-        blocks::publish(&block_height, &self.streams.blocks, block).await?;
+        blocks::publish(
+            &block_height,
+            &self.streams.blocks,
+            block,
+            block_producer,
+        )
+        .await?;
 
         transactions::publish(
             &self.chain_id,
@@ -132,126 +179,17 @@ impl Publisher {
 
         Ok(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    #[cfg(feature = "test-helpers")]
+    fn get_block_and_producer(
+        sealed_block: &Sealed<Block>,
+    ) -> (Block, Address) {
+        let block = sealed_block.entity.clone();
+        let block_producer = sealed_block
+            .consensus
+            .block_producer(&block.id())
+            .unwrap_or_default();
 
-    use fuel_core::combined_database::CombinedDatabase;
-    use fuel_core_importer::ImporterResult;
-    use fuel_core_types::blockchain::SealedBlock;
-    use fuel_streams_core::{
-        transactions::TransactionsSubject,
-        types::ImportResult,
-    };
-    use fuel_streams_macros::subject::IntoSubject;
-    use tokio::sync::broadcast;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
-        let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
-
-        let publisher = Publisher {
-            base_asset_id: AssetId::default(),
-            chain_id: ChainId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
-            streams: streams().await,
-        };
-        let publisher = publisher.run().await.unwrap();
-
-        assert!(publisher.streams.is_empty().await);
-    }
-
-    #[tokio::test]
-    async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
-        let (blocks_subscriber, blocks_subscription) =
-            broadcast::channel::<ImporterResult>(1);
-
-        let block = ImporterResult {
-            shared_result: Arc::new(ImportResult::default()),
-            changes: Arc::new(HashMap::new()),
-        };
-        let _ = blocks_subscriber.send(block);
-
-        // manually drop blocks to ensure `blocks_subscription` completes
-        let _ = blocks_subscriber.clone();
-        drop(blocks_subscriber);
-
-        let publisher = Publisher {
-            base_asset_id: AssetId::default(),
-            chain_id: ChainId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
-            streams: streams().await,
-        };
-
-        let publisher = publisher.run().await.unwrap();
-
-        assert!(publisher
-            .streams
-            .blocks
-            .get_last_published(BlocksSubject::WILDCARD)
-            .await
-            .is_ok_and(|result| result.is_some()));
-    }
-
-    #[tokio::test]
-    async fn publishes_transaction_for_each_published_block() {
-        let (blocks_subscriber, blocks_subscription) =
-            broadcast::channel::<ImporterResult>(1);
-
-        let mut block_entity = Block::default();
-        *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
-
-        // publish block
-        let block = ImporterResult {
-            shared_result: Arc::new(ImportResult {
-                sealed_block: SealedBlock {
-                    entity: block_entity,
-                    ..Default::default()
-                },
-                ..Default::default()
-            }),
-            changes: Arc::new(HashMap::new()),
-        };
-        let _ = blocks_subscriber.send(block);
-
-        // manually drop blocks to ensure `blocks_subscription` completes
-        let _ = blocks_subscriber.clone();
-        drop(blocks_subscriber);
-
-        let publisher = Publisher {
-            base_asset_id: AssetId::default(),
-            chain_id: ChainId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
-            streams: streams().await,
-        };
-
-        let publisher = publisher.run().await.unwrap();
-
-        assert!(publisher
-            .streams
-            .transactions
-            .get_last_published(TransactionsSubject::WILDCARD)
-            .await
-            .is_ok_and(|result| result.is_some()));
-    }
-
-    async fn streams() -> Streams {
-        Streams::new(&nats_client().await).await
-    }
-
-    async fn nats_client() -> NatsClient {
-        const NATS_URL: &str = "nats://localhost:4222";
-        let nats_client_opts =
-            NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
-        NatsClient::connect(&nats_client_opts)
-            .await
-            .expect("NATS connection failed")
+        (block, block_producer.into())
     }
 }

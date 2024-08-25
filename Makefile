@@ -3,11 +3,10 @@
 # ------------------------------------------------------------
 
 PACKAGE ?= fuel-streams-publisher
-TARGET ?= aarch64-apple-darwin
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
 
-.PHONY: all build run clean lint fmt help setup start-nats stop-nats test doc
+.PHONY: all build clean lint fmt help setup start stop restart clean/docker start/nats stop/nats restart/nats clean/nats start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core dev-watch fmt-cargo fmt-rust fmt-markdown fmt-yaml check lint-cargo lint-rust lint-clippy lint-markdown audit audit-fix-test audit-fix test doc bench
 
 all: build
 
@@ -17,12 +16,12 @@ install:
 check-commands:
 	@for cmd in $(COMMANDS); do \
 		if ! command -v $$cmd >/dev/null 2>&1; then \
-			echo >&2 "$$cmd is not installed. Please install $$cmd and try again.."; \
+			echo >&2 "$$cmd is not installed. Please install $$cmd and try again."; \
 			exit 1; \
 		fi \
 	done
 
-setup: COMMANDS=rustup pre-commit
+setup: COMMANDS=rustup npm pre-commit
 setup: check-commands
 	./scripts/setup.sh
 
@@ -56,7 +55,7 @@ dev-watch:
 # Formatting
 # ------------------------------------------------------------
 
-fmt: fmt-cargo fmt-rust fmt-markdown
+fmt: fmt-cargo fmt-rust fmt-prettier
 
 fmt-cargo:
 	cargo sort -w
@@ -64,11 +63,8 @@ fmt-cargo:
 fmt-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --color always
 
-fmt-markdown:
-	npx prettier *.md **/*.md --write --no-error-on-unmatched-pattern
-
-fmt-yaml:
-	npx prettier *.yaml **/*.yaml --write --no-error-on-unmatched-pattern
+fmt-prettier:
+	pnpm prettier:fix
 
 # ------------------------------------------------------------
 # Validate code
@@ -77,7 +73,7 @@ fmt-yaml:
 check:
 	cargo check --all-targets --all-features
 
-lint: check lint-cargo lint-rust lint-clippy lint-markdown
+lint: check lint-cargo lint-rust lint-clippy lint-prettier
 
 lint-cargo:
 	cargo sort -w --check
@@ -88,9 +84,8 @@ lint-rust:
 lint-clippy:
 	cargo clippy --workspace -- -D warnings
 
-lint-markdown:
-	npx prettier *.md **/*.md --check --no-error-on-unmatched-pattern
-
+lint-prettier:
+	pnpm prettier:validate
 
 # ------------------------------------------------------------
 # Coverage
@@ -113,22 +108,14 @@ audit-fix:
 	cargo audit fix
 
 # ------------------------------------------------------------
-# Build
+# Build, Test, and Documentation
 # ------------------------------------------------------------
 
 build:
-	cargo build
-
-# ------------------------------------------------------------
-# Test
-# ------------------------------------------------------------
+	cargo build --package $(PACKAGE)
 
 test:
-	cargo test
-
-# ------------------------------------------------------------
-# Documentation
-# ------------------------------------------------------------
+	cargo test --workspace
 
 doc:
 	cargo doc --no-deps
@@ -146,16 +133,17 @@ bench:
 
 help:
 	@echo "Available commands:"
-	@echo "  install   - Install project dependencies"
-	@echo "  setup     - Run the setup script"
-	@echo "  dev       - Run the project in development mode"
-	@echo "  dev-watch - Run the project in development mode with auto-reload"
-	@echo "  build     - Build the project"
-	@echo "  run       - Run the project in release mode"
-	@echo "  clean     - Clean the build artifacts and release directory"
-	@echo "  fmt       - Format the code and Markdown files"
-	@echo "  lint      - Perform linting checks on the code and Markdown files"
-	@echo "  audit     - Perform audit checks on Rust crates
-	@echo "  bench     - Run benchmarks
-	@echo "  test      - Run tests"
-	@echo "  doc       - Generate documentation"
+	@echo "  install     - Install project dependencies"
+	@echo "  setup       - Run the setup script"
+	@echo "  start       - Start Docker containers"
+	@echo "  stop        - Stop Docker containers"
+	@echo "  restart     - Restart Docker containers"
+	@echo "  dev-watch   - Run the project in development mode with auto-reload"
+	@echo "  build       - Build the project"
+	@echo "  clean       - Clean Docker containers and images"
+	@echo "  fmt         - Format the code, Markdown, and YAML files"
+	@echo "  lint        - Perform linting checks on the code and Markdown files"
+	@echo "  audit       - Perform audit checks on Rust crates"
+	@echo "  test        - Run tests"
+	@echo "  doc         - Generate documentation"
+	@echo "  bench       - Run benchmarks"

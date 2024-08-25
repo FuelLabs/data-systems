@@ -2,8 +2,11 @@ use std::collections::HashSet;
 
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
-use futures::{future::BoxFuture, FutureExt, TryStreamExt};
-use futures_util::future::try_join_all;
+use futures::{
+    future::{try_join_all, BoxFuture},
+    FutureExt,
+    TryStreamExt,
+};
 use rand::{distributions::Alphanumeric, Rng};
 use streams_tests::server_setup;
 
@@ -107,6 +110,70 @@ async fn public_user_cannot_create_stores() -> BoxedResult<()> {
 }
 
 #[tokio::test]
+async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
+    let opts = NatsClientOpts::admin_opts(NATS_URL)
+        .with_rdn_namespace()
+        .with_timeout(1);
+
+    let random_bucket_title = gen_random_string(6);
+
+    let client = NatsClient::connect(&opts).await?;
+    client
+        .jetstream
+        .create_key_value(types::KvStoreConfig {
+            bucket: random_bucket_title.clone(),
+            ..Default::default()
+        })
+        .await?;
+
+    let opts = NatsClientOpts::public_opts(NATS_URL)
+        .with_rdn_namespace()
+        .with_timeout(1);
+    let client = NatsClient::connect(&opts).await?;
+
+    assert!(client
+        .jetstream
+        .delete_key_value(&random_bucket_title)
+        .await
+        .is_err());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
+    let opts = NatsClientOpts::admin_opts(NATS_URL)
+        .with_rdn_namespace()
+        .with_timeout(1);
+    let client = NatsClient::connect(&opts).await?;
+
+    let (random_stream_title, random_subject) =
+        (gen_random_string(6), gen_random_string(6));
+
+    client
+        .jetstream
+        .create_stream(types::NatsStreamConfig {
+            name: random_stream_title.clone(),
+            subjects: vec![random_subject],
+            ..Default::default()
+        })
+        .await?;
+
+    let public_opts = opts.clone().with_role(NatsUserRole::Public);
+    let public_client = NatsClient::connect(&public_opts).await?;
+
+    assert!(
+        public_client
+            .jetstream
+            .delete_stream(&random_stream_title)
+            .await
+            .is_err(),
+        "Stream must be deleted at this point"
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn public_user_can_access_streams_after_created() {
     let opts = NatsClientOpts::new(NATS_URL)
         .with_rdn_namespace()
@@ -131,7 +198,7 @@ async fn public_and_admin_user_can_access_streams_after_created(
                 assert!(client.conn.is_connected());
                 Ok::<(), NatsError>(())
             }
-            .boxed() // Convert the future to a BoxFuture
+            .boxed()
         })
         .collect();
 
@@ -144,7 +211,7 @@ async fn public_and_admin_user_can_access_streams_after_created(
                 assert!(client.conn.is_connected());
                 Ok::<(), NatsError>(())
             }
-            .boxed() // Convert the future to a BoxFuture
+            .boxed()
         })
         .collect();
 
@@ -183,34 +250,27 @@ async fn admin_user_can_delete_stream() -> BoxedResult<()> {
 }
 
 #[tokio::test]
-async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
+async fn admin_user_can_delete_stores() -> BoxedResult<()> {
     let opts = NatsClientOpts::admin_opts(NATS_URL)
         .with_rdn_namespace()
         .with_timeout(1);
+
+    let random_bucket_title = gen_random_string(6);
+
     let client = NatsClient::connect(&opts).await?;
-
-    let (random_stream_title, random_subject) =
-        (gen_random_string(6), gen_random_string(6));
-
     client
         .jetstream
-        .create_stream(types::NatsStreamConfig {
-            name: random_stream_title.clone(),
-            subjects: vec![random_subject],
+        .create_key_value(types::KvStoreConfig {
+            bucket: random_bucket_title.clone(),
             ..Default::default()
         })
         .await?;
 
-    let public_opts = opts.clone().with_role(NatsUserRole::Public);
-    let public_client = NatsClient::connect(&public_opts).await?;
+    assert!(client
+        .jetstream
+        .delete_key_value(&random_bucket_title)
+        .await
+        .is_ok());
 
-    assert!(
-        public_client
-            .jetstream
-            .delete_stream(&random_stream_title)
-            .await
-            .is_err(),
-        "Stream must be deleted at this point"
-    );
     Ok(())
 }

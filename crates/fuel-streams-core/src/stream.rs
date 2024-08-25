@@ -2,12 +2,10 @@ mod error;
 
 use std::fmt::Debug;
 
-use async_nats::{
-    jetstream::{
-        consumer::AckPolicy,
-        kv,
-        stream::{self, LastRawMessageErrorKind},
-    },
+use async_nats::jetstream::{
+    consumer::AckPolicy,
+    kv,
+    stream::{self, LastRawMessageErrorKind},
     Message,
 };
 use async_trait::async_trait;
@@ -19,7 +17,7 @@ use fuel_data_parser::{
     NatsFormattedMessage,
 };
 use fuel_streams_macros::subject::IntoSubject;
-use futures_util::StreamExt;
+use futures::StreamExt;
 use tokio::sync::OnceCell;
 
 use crate::{nats::types::*, prelude::NatsClient};
@@ -121,12 +119,12 @@ impl<S: Streamable> Stream<S> {
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
         wildcard: &str,
-    ) -> Result<impl futures_util::Stream<Item = Vec<u8>>, StreamError> {
-        Ok(self
-            .store
-            .watch(&wildcard)
-            .await
-            .map(|stream| stream.map(|entry| entry.unwrap().value.to_vec()))?)
+    ) -> Result<impl futures::Stream<Item = Option<Vec<u8>>>, StreamError> {
+        Ok(self.store.watch(&wildcard).await.map(|stream| {
+            stream.map(|entry| {
+                entry.ok().map(|entry_item| entry_item.value.to_vec())
+            })
+        })?)
     }
 
     // TODO: Make this interface more Stream-like and Nats agnostic
@@ -180,7 +178,6 @@ impl<S: Streamable> Stream<S> {
 
         match message {
             Ok(message) => {
-                let message: Message = message.try_into().unwrap();
                 let payload = S::decode(message.payload.to_vec()).await;
 
                 Ok(Some(payload))

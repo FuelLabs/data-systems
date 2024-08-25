@@ -1,12 +1,6 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
-members = [
-    "benchs/*",
-    "crates/*",
-    "crates/fuel-streams-macros",
-    "crates/fuel-streams-macros/subject-derive",
-    "tests",
-]
+members = ["benchs/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
 resolver = "2"
 
 [workspace.package]
@@ -16,11 +10,11 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-version = "0.0.1"
+version = "0.0.4"
 
 [workspace.dependencies]
 anyhow = "1.0"
-async-nats = "0.35.1"
+async-nats = { git = "https://github.com/0xterminator/nats.rs.git", package = "async-nats" }
 async-trait = "0.1.81"
 bytes = "1.7.1"
 chrono = { version = "0.4.38", features = ["serde"] }
@@ -45,6 +39,17 @@ strum_macros = "0.26"
 tokio = { version = "1.39", features = ["full"] }
 tracing = "0.1.40"
 thiserror = "1.0"
+
+fuel-streams = { path = "crates/fuel-streams" }
+fuel-data-parser = { version = "0.0.4", path = "crates/fuel-data-parser" }
+fuel-streams-core = { version = "0.0.4", path = "crates/fuel-streams-core" }
+fuel-streams-publisher = { version = "0.0.4", path = "crates/fuel-streams-publisher" }
+fuel-streams-macros = { version = "0.0.4", path = "crates/fuel-streams-macros" }
+subject-derive = { version = "0.0.4", path = "crates/fuel-streams-macros/subject-derive" }
+
+# Workspace projects
+[workspace.metadata.cargo-machete]
+ignored = ["fuel-core"]
 
 [profile.release]
 opt-level = 3

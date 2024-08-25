@@ -45,10 +45,7 @@ impl NatsClientOpts {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_rdn_namespace(self) -> Self {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let random_int: u32 = rng.gen();
-        let namespace = format!(r"namespace-{random_int}");
+        let namespace = format!(r"namespace-{}", Self::random_int());
         self.with_namespace(&namespace)
     }
 
@@ -82,6 +79,16 @@ impl NatsClientOpts {
         ConnectOptions::with_user_and_password(user.into(), pass)
             .connection_timeout(Duration::from_secs(self.timeout_secs))
             .max_reconnects(1)
-            .name(self.namespace.to_string())
+            .name(Self::conn_id())
+    }
+
+    // This will be useful for debugging and monitoring connections
+    fn conn_id() -> String {
+        format!(r"connection-{}", Self::random_int())
+    }
+
+    fn random_int() -> u32 {
+        use rand::Rng;
+        rand::thread_rng().gen()
     }
 }

@@ -4,39 +4,65 @@ use futures::{future::try_join_all, StreamExt};
 use pretty_assertions::assert_eq;
 use streams_tests::{publish_blocks, publish_transactions, server_setup};
 
-// #[tokio::test]
-// async fn blocks_streams_subscribe_dedup_txs() {
-//     let (conn, _) = server_setup().await.unwrap();
-//     let client = Client::with_opts(&conn.opts).await.unwrap();
-//     let stream = fuel_streams::Stream::<Block>::new(&client).await;
-//     let producer = Some("0x000".into());
-//     let items = publish_same_blocks(stream.stream(), producer).unwrap();
+#[tokio::test]
+async fn blocks_streams_subscribe_dedup_blocks() {
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let stream = fuel_streams::Stream::<Block>::new(&client).await;
+    let producer = Some(Address::zeroed());
+    let const_block_height = 1001;
+    let items =
+        publish_blocks(stream.stream(), producer, Some(const_block_height))
+            .unwrap()
+            .0;
+    let mut sub = stream.subscribe().await.unwrap().enumerate();
+    let received_item = sub.next().await;
+    assert!(received_item.is_some());
+    let (i, bytes) = received_item.unwrap();
+    let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
+    let (subject, block) = items[i].to_owned();
+    let height = *decoded_msg.data.header().consensus().height;
+    assert_eq!(decoded_msg.subject, subject.parse());
+    assert_eq!(decoded_msg.data, block);
+    assert_eq!(height, const_block_height);
+}
 
-//     let mut sub = stream.subscribe().await.unwrap().enumerate();
-//     let received_item = sub.next().await;
-//     assert!(received_item.is_some());
-//     let (i, bytes) = received_item.unwrap();
-//     let decoded_msg = Block::decode_raw(bytes).await;
-//     let (subject, block) = items[i].to_owned();
-//     let height = *decoded_msg.data.header().consensus().height;
-//     assert_eq!(decoded_msg.subject, subject.parse());
-//     assert_eq!(decoded_msg.data, block);
-//     assert_eq!(height, 99);
+#[tokio::test]
+async fn blocks_streams_subscribe_dedup_txs() {
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
+    let const_tx_height = 1;
+    let mock_block = MockBlock::build(1);
+    let items = publish_transactions(
+        stream.stream(),
+        &mock_block,
+        Some(const_tx_height),
+    )
+    .unwrap()
+    .0;
 
-//     assert!(sub.next().await.is_none(), "no more items in the list");
-// }
+    let mut sub = stream.subscribe().await.unwrap().enumerate();
+    let received_item = sub.next().await;
+    assert!(received_item.is_some());
+    let (i, bytes) = received_item.unwrap();
+    let decoded_msg = Transaction::decode_raw(bytes.unwrap()).await;
+    let (subject, transaction) = items[i].to_owned();
+    assert_eq!(decoded_msg.subject, subject.parse());
+    assert_eq!(decoded_msg.data, transaction);
+}
 
 #[tokio::test]
 async fn blocks_streams_subscribe() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some("0x000".into());
-    let items = publish_blocks(stream.stream(), producer).unwrap();
+    let producer = Some(Address::zeroed());
+    let items = publish_blocks(stream.stream(), producer, None).unwrap().0;
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
-        let decoded_msg = Block::decode_raw(bytes).await;
+        let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
         let (subject, block) = items[i].to_owned();
         let height = *decoded_msg.data.header().consensus().height;
 
@@ -54,14 +80,14 @@ async fn blocks_streams_subscribe_with_filter() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let mut stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some("0x000".into());
+    let producer = Some(Address::zeroed());
 
     // publishing 10 blocks
-    publish_blocks(stream.stream(), producer).unwrap();
+    publish_blocks(stream.stream(), producer, None).unwrap();
 
     // filtering by producer 0x000 and height 5
     let filter = Filter::<BlocksSubject>::build()
-        .with_producer(Some("0x000".into()))
+        .with_producer(Some(Address::zeroed()))
         .with_height(Some(5.into()));
 
     // creating subscription
@@ -92,11 +118,14 @@ async fn transactions_streams_subscribe() {
     let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     let mock_block = MockBlock::build(1);
-    let items = publish_transactions(stream.stream(), &mock_block).unwrap();
+    let items = publish_transactions(stream.stream(), &mock_block, None)
+        .unwrap()
+        .0;
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
-        let decoded_msg = Transaction::decode_raw(bytes.to_vec()).await;
+        let decoded_msg =
+            Transaction::decode_raw(bytes.unwrap().to_vec()).await;
 
         let (_, transaction) = items[i].to_owned();
         assert_eq!(decoded_msg.data, transaction);
@@ -114,7 +143,9 @@ async fn transactions_streams_subscribe_with_filter() {
 
     // publishing 10 transactions
     let mock_block = MockBlock::build(5);
-    let items = publish_transactions(stream.stream(), &mock_block).unwrap();
+    let items = publish_transactions(stream.stream(), &mock_block, None)
+        .unwrap()
+        .0;
 
     // filtering by transaction on block with height 5
     let filter =
@@ -135,7 +166,6 @@ async fn transactions_streams_subscribe_with_filter() {
         let payload = message.payload.clone().into();
         let decoded_msg = Transaction::decode(payload).await;
 
-        println!("{}", &message.subject);
         let (_, transaction) = items[i].to_owned();
         assert_eq!(decoded_msg, transaction);
         if i == 9 {
@@ -149,8 +179,10 @@ async fn multiple_subscribers_same_subject() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some("0x000".into());
-    let items = publish_blocks(stream.stream(), producer.clone()).unwrap();
+    let producer = Some(Address::zeroed());
+    let items = publish_blocks(stream.stream(), producer.clone(), None)
+        .unwrap()
+        .0;
 
     let clients_count = 100;
     let done_signal = 99;
@@ -161,7 +193,7 @@ async fn multiple_subscribers_same_subject() {
         handles.push(tokio::spawn(async move {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
-                let decoded_msg = Block::decode_raw(bytes).await;
+                let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
                 let (subject, block) = items[i].to_owned();
                 let height = *decoded_msg.data.header().consensus().height;
 
@@ -196,15 +228,19 @@ async fn multiple_subscribers_same_subject() {
 async fn multiple_subscribers_different_subjects() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
-    let producer = Some("0x000".into());
+    let producer = Some(Address::zeroed());
     let block_stream = fuel_streams::Stream::<Block>::new(&client).await;
     let block_items =
-        publish_blocks(block_stream.stream(), producer.clone()).unwrap();
+        publish_blocks(block_stream.stream(), producer.clone(), None)
+            .unwrap()
+            .0;
 
     let txs_stream = fuel_streams::Stream::<Transaction>::new(&client).await;
     let mock_block = MockBlock::build(1);
     let txs_items =
-        publish_transactions(txs_stream.stream(), &mock_block).unwrap();
+        publish_transactions(txs_stream.stream(), &mock_block, None)
+            .unwrap()
+            .0;
 
     let clients_count = 100;
     let done_signal = 99;
@@ -216,7 +252,7 @@ async fn multiple_subscribers_different_subjects() {
         handles.push(tokio::spawn(async move {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
-                let decoded_msg = Block::decode_raw(bytes).await;
+                let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
                 let (subject, block) = items[i].to_owned();
                 let height = *decoded_msg.data.header().consensus().height;
 
@@ -236,7 +272,8 @@ async fn multiple_subscribers_different_subjects() {
         handles.push(tokio::spawn(async move {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
-                let decoded_msg = Transaction::decode_raw(bytes.to_vec()).await;
+                let decoded_msg =
+                    Transaction::decode_raw(bytes.unwrap().to_vec()).await;
                 let (_, transaction) = items[i].to_owned();
                 assert_eq!(decoded_msg.data, transaction);
                 if i == 9 {

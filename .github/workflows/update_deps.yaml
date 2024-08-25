@@ -46,7 +46,7 @@ jobs:
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
 
       - name: Cargo audit dependencies
-        uses: actions-rs/audit-check@v1
+        uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 

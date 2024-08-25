@@ -1,5 +1,15 @@
-default_install_hook_types: [pre-commit, pre-push, commit-msg]
-default_stages: [pre-commit]
+default_install_hook_types:
+  - pre-commit
+
+default_stages:
+  - pre-commit
+
+exclude: |
+  (?x)^(
+    CHANGELOG.md|
+    pnpm-lock.yaml|
+    helm/.*
+  )$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -10,55 +20,25 @@ repos:
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
-        args: ["--maxkb=3000"]
+        args:
+          - --maxkb=3000
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: detect-private-key
-        stages: [pre-push]
-
-  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-    rev: v9.16.0
-    hooks:
-      - id: commitlint
-        stages: [commit-msg]
-        additional_dependencies: ["@commitlint/config-conventional"]
-
-  - repo: https://github.com/crate-ci/typos
-    rev: typos-v0.10.26
-    hooks:
-      - id: typos
-        stages: [pre-push]
 
   - repo: local
     hooks:
-      - id: clippy
-        name: clippy
-        description: Lint rust sources
-        entry: make lint-clippy
+      - id: format
+        name: format
+        description: Format files using different tools
+        entry: make fmt
         language: system
-        types: [rust]
         pass_filenames: false
-        stages: [pre-push]
-      - id: prettier
-        name: prettier
-        description: Format config files using Prettier
-        entry: npx prettier --write --no-error-on-unmatched-pattern
-        language: system
-        types: [markdown, yaml]
-        stages: [pre-push]
-      - id: fmt-rust
-        name: fmt-rust
-        description: Format files with cargo fmt.
-        entry: make fmt-rust
-        language: system
-        types: [rust]
-        pass_filenames: false
-        stages: [pre-push]
-      - id: fmt-cargo
-        name: fmt-cargo
-        description: Lint Cargo.toml files using cargo-sort
-        entry: make fmt-cargo
-        language: system
-        types: [toml]
-        pass_filenames: false
-        stages: [pre-push]
+
+  - repo: https://github.com/lyz-code/yamlfix/
+    rev: 1.17.0
+    hooks:
+      - id: yamlfix
+        args:
+          - -c
+          - .yamlfix.toml

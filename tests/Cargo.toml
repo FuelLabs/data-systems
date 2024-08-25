@@ -6,8 +6,8 @@ edition = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
+version = { workspace = true }
 publish = false
-version = "0.0.0"
 autobenches = false
 autotests = false
 
@@ -16,23 +16,19 @@ harness = true
 name = "integration_tests"
 path = "tests/lib.rs"
 
+[[bin]]
+name = "special_integration_tests"
+path = "src/main.rs"
+
 [dependencies]
-anyhow = { workspace = true }
-async-nats = { workspace = true }
-bytes = { workspace = true }
+fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../crates/fuel-data-parser" }
-fuel-streams = { path = "../crates/fuel-streams", features = ["test-helpers"] }
-fuel-streams-core = { path = "../crates/fuel-streams-core", features = [
-    "test-helpers",
-] }
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-publisher = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
-futures-util = { workspace = true }
-postcard = "1.0.8"
 rand = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-tracing = { workspace = true }
-tracing-test = "0.2.5"
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

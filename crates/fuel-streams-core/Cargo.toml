@@ -1,35 +1,27 @@
 [package]
 name = "fuel-streams-core"
+description = "Core components for working with streams of Fuel blockchain data"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
-publish = false
-version = "0.0.0"
+version = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-buildstructor = "0.5.4"
-bytes = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
-fuel-core-client = { workspace = true }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { path = "../fuel-data-parser" }
-fuel-streams-macros = { path = "../fuel-streams-macros" }
+fuel-data-parser = { workspace = true }
+fuel-streams-macros = { workspace = true }
 futures = { workspace = true }
-futures-util = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
 serde = "1.0.204"
-serde_json = { workspace = true }
-strum = { workspace = true }
-strum_macros = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

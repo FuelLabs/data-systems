@@ -1,16 +1,21 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, edited, reopened]
+    types:
+      - opened
+      - synchronize
+      - edited
+      - reopened
   push:
-    branches: [main]
+    branches:
+      - main
 
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_VERSION: 1.79.0
-  RUST_NIGHTLY_VERSION: "nightly-2024-07-28"
+  RUST_NIGHTLY_VERSION: nightly-2024-07-28
   CI: true
 
 concurrency:
@@ -21,6 +26,7 @@ jobs:
   validate-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: amannn/action-semantic-pull-request@v5
         env:
@@ -47,17 +53,6 @@ jobs:
             data-parser
             fuel-streams
 
-  pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          target: x86_64-unknown-linux-gnu
-      - uses: actions/setup-python@v3
-      - uses: pre-commit/action@v3.0.1
-
   lockfile:
     name: Validate Lockfile
     runs-on: ubuntu-latest
@@ -66,6 +61,33 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
       - run: cargo update --workspace --locked
+
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check workflow files
+        uses: docker://rhysd/actionlint:latest
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2086,SC2129
+        with:
+          args: -color
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Install Python
+        uses: actions/setup-python@v3
+
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
+      - name: Run Pre Commit
+        uses: pre-commit/action@v3.0.1
 
   commitlint:
     name: Validating commits
@@ -78,40 +100,109 @@ jobs:
       - name: Setup Node && PNPM
         uses: ./.github/actions/setup-node
 
-      - name: Install commitlint
-        run: |
-          npm install commitlint@latest
-          npm install @commitlint/config-conventional
-
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
-        run: npx commitlint --config ./.commitlintrc.yaml --last --verbose
+        run: pnpm commitlint --last --verbose
 
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
         run: |
-          npx commitlint \
-            --config ./.commitlintrc.yaml \
+          pnpm commitlint \
             --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
             --to ${{ github.event.pull_request.head.sha }} \
             --verbose
 
-  lint:
-    name: Linting
-    if: "!startsWith(github.head_ref, 'releases/')"
+  publish-crates-check:
+    name: Publish Check
+    needs:
+      - lockfile
+      - pre-commit
+      - commitlint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache: false
+
+      - name: Publish crate check
+        uses: katyo/publish-crates@v2
+        with:
+          no-verify: true
+          dry-run: true
+          check-repo: false
+          ignore-unpublished-changes: true
+
+  cargo-verifications:
+    name: Cargo verifications
+    needs:
+      - lockfile
+      - pre-commit
+      - commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          target: x86_64-unknown-linux-gnu
 
-      - name: Running linting
+      - name: Setup Node && PNPM
+        uses: ./.github/actions/setup-node
+
+      - name: Check for typos
+        uses: crate-ci/typos@master
+        with:
+          config: ./.typos.toml
+
+      - uses: taiki-e/install-action@cargo-machete
+      - name: Check unused dependencies
+        run: cargo machete --skip-target-dir
+
+      - name: Lint project
         run: make lint
 
+  test:
+    needs:
+      - cargo-verifications
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      NATS_URL: nats://127.0.0.1:4222
+      NATS_ADMIN_PASS: secret
+      NATS_PUBLIC_PASS: secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file with NATS environment variables
+        run: |
+          echo "NATS_URL=${{ env.NATS_URL }}" > .env
+          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
+          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Start Nats
+        run: |
+          make start/nats
+
+      - name: Run tests
+        run: make test
+
+      - name: Stop Nats
+        if: always()
+        run: make stop/nats
+
   test-coverage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - cargo-verifications
     name: Test & Coverage
     runs-on: ubuntu-latest
     env:
@@ -119,8 +210,7 @@ jobs:
       NATS_ADMIN_PASS: secret
       NATS_PUBLIC_PASS: secret
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Create .env file with NATS environment variables
         run: |
@@ -133,32 +223,26 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
+          cache: false
 
       - name: Start Nats
         run: |
           make start/nats
 
-      - name: Run tests
-        run: make test
-
       - name: Install dependencies
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-dev curl
 
       - name: Install Tarpaulin (Pre-built Binary)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: taiki-e/cache-cargo-install-action@v2
         with:
           tool: cargo-tarpaulin@0.31
 
       - name: Generate Code Coverage
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: make coverage
 
       - name: Upload to codecov.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
         with:
           name: codecov-data-systems
@@ -170,3 +254,129 @@ jobs:
       - name: Stop Nats
         if: always()
         run: make stop/nats
+
+  build:
+    needs:
+      - cargo-verifications
+    name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - fuel-streams-publisher
+        platform:
+          # linux x86_64
+          - os_name: Linux-x86_64-gnu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os_name: Linux-x86_64-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+
+            # linux aarch64
+          - os_name: Linux-aarch64-gnu
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os_name: Linux-aarch64-musl
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+
+            # macOS
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.platform.target }}
+          cache: false
+
+      - name: Install packages (macOS)
+        if: matrix.platform.os == 'macOS-latest'
+        run: |
+          brew install llvm
+
+      - name: Install cross
+        if: matrix.platform.os != 'macOS-latest'
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cross
+          cache-key: ${{ matrix.platform.target }}
+          git: https://github.com/cross-rs/cross
+
+      - name: Build with cross for Linux
+        if: matrix.platform.os != 'macOS-latest'
+        run: |
+          cross build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
+      - name: Build with cargo for MacOS
+        if: matrix.platform.os == 'macOS-latest'
+        run: |
+          rustup target add ${{ matrix.platform.target }}
+          cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
+      - name: Strip binaries
+        run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
+
+      - name: Set Artifact Name
+        id: artifact-name
+        shell: bash
+        run: |
+          echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
+
+      - name: Package as archive
+        shell: bash
+        run: |
+          cd target/${{ matrix.platform.target }}/release
+          tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
+          cd -
+
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-name.outputs.value }}
+          path: ${{ matrix.package }}-*
+          if-no-files-found: error
+
+  release:
+    name: Create Release with Knope
+    if: >-
+      (github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+      github.event_name == 'workflow_dispatch'
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List Artifacts
+        run: ls -R artifacts
+
+      - name: Run Knope Action
+        uses: knope-dev/action@v2.1.0
+        with:
+          github-token: ${{ secrets.REPO_TOKEN }}
+
+      - name: Knope Release
+        run: knope release
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}

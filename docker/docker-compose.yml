@@ -1,25 +1,32 @@
 services:
   nats:
-    profiles: [all, nats]
+    profiles:
+      - all
+      - nats
     image: nats:latest
-    ports: [4222:4222, 8222:8222]
-    volumes: [./nats.conf:/etc/nats/nats.conf]
+    ports:
+      - 4222:4222
+      - 8222:8222
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf
     command:
-      [
-        -m,
-        "8222",
-        --name=fuel-streams-publisher-server,
-        --js,
-        --config=/etc/nats/nats.conf,
-        -V,
-      ]
-    env_file: [./../.env]
-
+      - -m
+      - '8222'
+      - --name=fuel-streams-publisher-server
+      - --js
+      - --config=/etc/nats/nats.conf
+      - -V
+    env_file:
+      - ./../.env
   fuel-streams-publisher:
-    profiles: [all, fuel]
+    profiles:
+      - all
+      - fuel
     image: fuel-streams-publisher:latest
-    depends_on: [nats]
-    env_file: [./../.env]
+    depends_on:
+      - nats
+    env_file:
+      - ./../.env
     environment:
       - NATS_URL=nats://nats:4222
       - P2P_PORT=30333
@@ -29,8 +36,10 @@ services:
     build:
       context: ..
       dockerfile: docker/fuel-streams-publisher.Dockerfile
-    volumes: [fuel-streams-publisher-db:/mnt/db]
-    ports: [4000:4000]
+    volumes:
+      - fuel-streams-publisher-db:/mnt/db
+    ports:
+      - 4000:4000
 
 volumes:
   fuel-streams-publisher-db:
