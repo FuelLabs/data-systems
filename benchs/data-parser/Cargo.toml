@@ -30,9 +30,8 @@ harness = false                            # do not use the default harness test
 path = "benches/deserialize_decompress.rs"
 
 [dependencies]
-async-compression = { version = "0.4.11", features = ["all"] }
 fuel-core-types = { workspace = true }
-fuel-data-parser = { workspace = true, features = ["test-helpers"] }
+fuel-data-parser = { workspace = true, features = ["test-helpers", "bench-helpers"] }
 rand = { workspace = true }
 strum = { workspace = true }
 tokio = { workspace = true }

@@ -12,6 +12,7 @@ version = { workspace = true }
 [dependencies]
 async-nats = { workspace = true }
 async-trait = { workspace = true }
+chrono = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true }
@@ -21,7 +22,7 @@ fuel-streams-macros = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
-serde = "1.0.204"
+serde = "1"
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
@@ -32,3 +33,4 @@ pretty_assertions = { workspace = true }
 [features]
 default = []
 test-helpers = ["dep:pretty_assertions"]
+bench-helpers = ["dep:pretty_assertions"]

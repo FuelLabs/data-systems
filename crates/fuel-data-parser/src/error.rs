@@ -29,10 +29,6 @@ pub enum SerdeError {
     Bincode(#[from] bincode::ErrorKind),
     /// serde postcard error
     Postcard(#[from] postcard::Error),
-    /// serde prost encode error
-    ProstEncode(#[from] prost::EncodeError),
-    /// serde prost decode error
-    ProstDecode(#[from] prost::DecodeError),
     /// serde json error
     Json(#[from] serde_json::Error),
 }
