@@ -18,6 +18,7 @@ services:
       - -V
     env_file:
       - ./../.env
+
   fuel-streams-publisher:
     profiles:
       - all
@@ -41,5 +42,67 @@ services:
     ports:
       - 4000:4000
 
+  prometheus:
+    profiles:
+      - all
+      - monitoring
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    network_mode: host
+
+  grafana:
+    profiles:
+      - all
+      - monitoring
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: '472'
+    restart: always
+    environment:
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./monitoring/grafana/config.monitoring
+    ports:
+      - 3000:3000
+    network_mode: host
+    depends_on:
+      - prometheus
+
+  prometheus-nats-exporter:
+    profiles:
+      - all
+      - nats
+    image: natsio/prometheus-nats-exporter:0.15.0
+    container_name: prometheus-nats-exporter
+    restart: always
+    command:
+      - "-varz"
+      - "-jsz=all"
+      - "-channelz"
+      - "-serverz"
+      - "http://localhost:8222"
+    ports:
+      - 7777:7777
+    depends_on:
+      - nats
+
 volumes:
   fuel-streams-publisher-db:
+  prometheus_data:
+  grafana_data:
