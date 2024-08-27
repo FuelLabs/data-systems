@@ -6,6 +6,7 @@ pub use async_nats::{
                 Config as PullConsumerConfig,
                 Stream as PullConsumerStream,
             },
+            AckPolicy,
             Config as ConsumerConfig,
             Consumer as NatsConsumer,
             DeliverPolicy,

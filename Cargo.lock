@@ -384,7 +384,8 @@ dependencies = [
 [[package]]
 name = "async-nats"
 version = "0.35.1"
-source = "git+https://github.com/0xterminator/nats.rs.git#f48d933ac97246fb6f74b38eb5770f2781ae7e36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab8df97cb8fc4a884af29ab383e9292ea0939cfcdd7d2a17179086dc6c427e7f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -408,7 +409,6 @@ dependencies = [
  "time",
  "tokio",
  "tokio-rustls 0.26.0",
- "tokio-util",
  "tracing",
  "tryhard",
  "url",

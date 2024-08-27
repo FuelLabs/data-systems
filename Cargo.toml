@@ -14,7 +14,7 @@ version = "0.0.4"
 
 [workspace.dependencies]
 anyhow = "1.0"
-async-nats = { git = "https://github.com/0xterminator/nats.rs.git", package = "async-nats" }
+async-nats = "0.35.1"
 async-trait = "0.1.81"
 bytes = "1.7.1"
 chrono = { version = "0.4.38", features = ["serde"] }

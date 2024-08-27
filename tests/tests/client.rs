@@ -1,14 +1,16 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
 use futures::{
     future::{try_join_all, BoxFuture},
     FutureExt,
+    StreamExt,
     TryStreamExt,
 };
 use rand::{distributions::Alphanumeric, Rng};
-use streams_tests::server_setup;
+use streams_tests::{publish_blocks, server_setup};
+use tokio::time::timeout;
 
 fn gen_random_string(size: usize) -> String {
     rand::thread_rng()
@@ -34,7 +36,6 @@ async fn conn_streams_has_required_streams() -> BoxedResult<()> {
         let empty = streams.blocks.is_empty(name).await;
         assert!(empty, "stream must be empty after creation");
     }
-
     Ok(())
 }
 
@@ -170,6 +171,7 @@ async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
             .is_err(),
         "Stream must be deleted at this point"
     );
+
     Ok(())
 }
 
@@ -246,6 +248,7 @@ async fn admin_user_can_delete_stream() -> BoxedResult<()> {
 
     let status = client.jetstream.delete_stream(&random_stream_title).await?;
     assert!(status.success, "Stream must be deleted at this point");
+
     Ok(())
 }
 
@@ -271,6 +274,43 @@ async fn admin_user_can_delete_stores() -> BoxedResult<()> {
         .delete_key_value(&random_bucket_title)
         .await
         .is_ok());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn ensure_deduplication_when_publishing() -> BoxedResult<()> {
+    let (conn, _) = server_setup().await.unwrap();
+    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let stream = fuel_streams::Stream::<Block>::new(&client).await;
+    let producer = Some(Address::zeroed());
+    let const_block_height = 1001;
+    let items =
+        publish_blocks(stream.stream(), producer, Some(const_block_height))
+            .unwrap()
+            .0;
+
+    let mut sub = stream.subscribe().await.unwrap().enumerate();
+    let timeout_duration = Duration::from_secs(1);
+
+    // ensure just one message was published
+    'l: loop {
+        match timeout(timeout_duration, sub.next()).await {
+            Ok(Some((idx, entry))) => {
+                assert!(entry.is_some());
+                let decoded_msg = Block::decode_raw(entry.unwrap()).await;
+                let (subject, block) = items[idx].to_owned();
+                let height = *decoded_msg.data.header().consensus().height;
+                assert_eq!(decoded_msg.subject, subject.parse());
+                assert_eq!(decoded_msg.data, block);
+                assert_eq!(height, const_block_height);
+                assert!(idx < 1);
+            }
+            _ => {
+                break 'l;
+            }
+        }
+    }
 
     Ok(())
 }

@@ -4,9 +4,8 @@ use std::fmt::Debug;
 
 use async_nats::jetstream::{
     consumer::AckPolicy,
-    kv,
-    stream::{self, LastRawMessageErrorKind},
-    Message,
+    kv::{self, CreateErrorKind},
+    stream::{self, DirectGetErrorKind, LastRawMessageErrorKind},
 };
 use async_trait::async_trait;
 pub use error::StreamError;
@@ -88,6 +87,7 @@ impl<S: Streamable> Stream<S> {
             .get_or_create_kv_store(kv::Config {
                 bucket: bucket_name.to_owned(),
                 storage: stream::StorageType::File,
+                history: 1,
                 compression: true,
                 ..Default::default()
             })
@@ -104,15 +104,24 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &impl IntoSubject,
         payload: &S,
-    ) -> Result<u64, StreamError> {
+    ) -> Result<i64, StreamError> {
         let subject_name = &subject.parse();
-        self.store
-            .put(subject_name, payload.encode(subject_name).await.into())
-            .await
-            .map_err(|s| StreamError::PublishFailed {
+        let result = self
+            .store
+            .create(subject_name, payload.encode(subject_name).await.into())
+            .await;
+
+        match result {
+            Ok(sequence) => Ok(sequence as i64),
+            Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
+                // This is a workaround to avoid publish two times the same message
+                Ok(-1)
+            }
+            Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
-                source: s,
-            })
+                source: e,
+            }),
+        }
     }
 
     pub async fn subscribe(
@@ -163,27 +172,24 @@ impl<S: Streamable> Stream<S> {
             .is_ok_and(|result| result.is_none())
     }
 
-    /// TODO: investigate why this always returns None even after publishing (putting to the KV Store)
     pub async fn get_last_published(
         &self,
         wildcard: &str,
     ) -> Result<Option<S>, StreamError> {
         let subject_name = &Self::prefix_filter_subject(wildcard);
-
         let message = self
             .store
             .stream
-            .get_last_raw_message_by_subject(subject_name)
+            .direct_get_last_for_subject(subject_name)
             .await;
 
         match message {
             Ok(message) => {
                 let payload = S::decode(message.payload.to_vec()).await;
-
                 Ok(Some(payload))
             }
             Err(error) => match &error.kind() {
-                LastRawMessageErrorKind::NoMessageFound => Ok(None),
+                DirectGetErrorKind::NotFound => Ok(None),
                 _ => Err(error.into()),
             },
         }
@@ -217,6 +223,11 @@ impl<S: Streamable> Stream<S> {
         // from the KV store's stream
         let subject = subject.into();
         format!("$KV.*.{subject}")
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn store(&self) -> &kv::Store {
+        &self.store
     }
 }
 

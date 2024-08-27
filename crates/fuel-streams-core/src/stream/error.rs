@@ -3,8 +3,8 @@ use async_nats::{
     jetstream::{
         consumer::StreamErrorKind,
         context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
-        kv::{PutError, PutErrorKind, WatchErrorKind},
-        stream::{ConsumerErrorKind, LastRawMessageErrorKind},
+        kv::{CreateErrorKind, WatchErrorKind},
+        stream::{ConsumerErrorKind, DirectGetErrorKind},
     },
     PublishError,
 };
@@ -17,17 +17,14 @@ pub enum StreamError {
     PublishFailed {
         subject_name: String,
         #[source]
-        source: error::Error<PutErrorKind>,
+        source: error::Error<CreateErrorKind>,
     },
 
     /// failed to subscribe to stream
-    GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
+    GetLastPublishedFailed(#[from] error::Error<DirectGetErrorKind>),
 
     /// failed to create KV Store
     StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),
-
-    /// failed to publish item
-    StorePublish(#[from] PutError),
 
     /// failed to subscribe to subject
     StoreSubscribe(#[from] error::Error<WatchErrorKind>),

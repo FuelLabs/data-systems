@@ -5,54 +5,6 @@ use pretty_assertions::assert_eq;
 use streams_tests::{publish_blocks, publish_transactions, server_setup};
 
 #[tokio::test]
-async fn blocks_streams_subscribe_dedup_blocks() {
-    let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(&conn.opts).await.unwrap();
-    let stream = fuel_streams::Stream::<Block>::new(&client).await;
-    let producer = Some(Address::zeroed());
-    let const_block_height = 1001;
-    let items =
-        publish_blocks(stream.stream(), producer, Some(const_block_height))
-            .unwrap()
-            .0;
-    let mut sub = stream.subscribe().await.unwrap().enumerate();
-    let received_item = sub.next().await;
-    assert!(received_item.is_some());
-    let (i, bytes) = received_item.unwrap();
-    let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
-    let (subject, block) = items[i].to_owned();
-    let height = *decoded_msg.data.header().consensus().height;
-    assert_eq!(decoded_msg.subject, subject.parse());
-    assert_eq!(decoded_msg.data, block);
-    assert_eq!(height, const_block_height);
-}
-
-#[tokio::test]
-async fn blocks_streams_subscribe_dedup_txs() {
-    let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(&conn.opts).await.unwrap();
-    let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
-    let const_tx_height = 1;
-    let mock_block = MockBlock::build(1);
-    let items = publish_transactions(
-        stream.stream(),
-        &mock_block,
-        Some(const_tx_height),
-    )
-    .unwrap()
-    .0;
-
-    let mut sub = stream.subscribe().await.unwrap().enumerate();
-    let received_item = sub.next().await;
-    assert!(received_item.is_some());
-    let (i, bytes) = received_item.unwrap();
-    let decoded_msg = Transaction::decode_raw(bytes.unwrap()).await;
-    let (subject, transaction) = items[i].to_owned();
-    assert_eq!(decoded_msg.subject, subject.parse());
-    assert_eq!(decoded_msg.data, transaction);
-}
-
-#[tokio::test]
 async fn blocks_streams_subscribe() {
     let (conn, _) = server_setup().await.unwrap();
     let client = Client::with_opts(&conn.opts).await.unwrap();
@@ -219,7 +171,7 @@ async fn multiple_subscribers_same_subject() {
         "all clients must have the same result"
     );
     assert!(
-        client_results.get(0).cloned().unwrap() == done_signal,
+        client_results.first().cloned().unwrap() == done_signal,
         "all clients must have the same received the complete signal"
     );
 }
@@ -295,7 +247,7 @@ async fn multiple_subscribers_different_subjects() {
         "all clients must have the same result"
     );
     assert!(
-        client_results.get(0).cloned().unwrap() == done_signal,
+        client_results.first().cloned().unwrap() == done_signal,
         "all clients must have the same received the complete signal"
     );
 }
