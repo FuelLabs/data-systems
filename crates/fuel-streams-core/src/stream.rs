@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use async_nats::jetstream::{
     consumer::AckPolicy,
     kv::{self, CreateErrorKind},
-    stream::{self, DirectGetErrorKind, LastRawMessageErrorKind},
+    stream::{self, DirectGetErrorKind},
 };
 use async_trait::async_trait;
 pub use error::StreamError;
@@ -104,7 +104,7 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &impl IntoSubject,
         payload: &S,
-    ) -> Result<i64, StreamError> {
+    ) -> Result<(), StreamError> {
         let subject_name = &subject.parse();
         let result = self
             .store
@@ -112,10 +112,10 @@ impl<S: Streamable> Stream<S> {
             .await;
 
         match result {
-            Ok(sequence) => Ok(sequence as i64),
+            Ok(_) => Ok(()),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
                 // This is a workaround to avoid publish two times the same message
-                Ok(-1)
+                Ok(())
             }
             Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
