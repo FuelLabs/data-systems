@@ -67,6 +67,7 @@ pub trait Streamable: StreamEncoder {
 /// TODO: Split this into two traits StreamPublisher + StreamSubscriber
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
+    client: NatsClient,
     store: kv::Store,
     _marker: std::marker::PhantomData<S>,
 }
@@ -83,6 +84,7 @@ impl<S: Streamable> Stream<S> {
     }
 
     pub async fn new(client: &NatsClient) -> Self {
+        let client = client.clone();
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
 
@@ -97,6 +99,7 @@ impl<S: Streamable> Stream<S> {
             .expect("Streams must be created");
 
         Self {
+            client,
             store,
             _marker: std::marker::PhantomData,
         }
@@ -190,6 +193,17 @@ impl<S: Streamable> Stream<S> {
                 _ => Err(error.into()),
             },
         }
+    }
+
+    pub async fn flush_await(&self) -> Result<(), StreamError> {
+        if self.client.is_connected() {
+            self.client
+                .nats_client
+                .flush()
+                .await
+                .map_err(StreamError::StreamFlush)?;
+        }
+        Ok(())
     }
 
     #[cfg(any(test, feature = "test-helpers"))]

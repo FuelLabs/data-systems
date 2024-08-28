@@ -1,4 +1,5 @@
 use async_nats::{
+    client::FlushErrorKind,
     error,
     jetstream::{
         consumer::StreamErrorKind,
@@ -43,4 +44,7 @@ pub enum StreamError {
 
     /// failed to consume messages from stream
     ConsumerMessages(#[from] error::Error<StreamErrorKind>),
+
+    /// failed to flush messages in the stream
+    StreamFlush(#[from] error::Error<FlushErrorKind>),
 }

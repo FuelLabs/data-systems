@@ -2777,6 +2777,7 @@ dependencies = [
  "fuel-core-types",
  "fuel-streams-core",
  "fuel-streams-macros",
+ "futures-util",
  "tokio",
  "tracing",
 ]

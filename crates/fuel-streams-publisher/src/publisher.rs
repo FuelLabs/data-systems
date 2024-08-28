@@ -1,7 +1,12 @@
+use std::sync::Arc;
+
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::database_description::DatabaseHeight,
 };
+use fuel_core_bin::FuelService;
+use fuel_core_importer::ImporterResult;
+use fuel_core_services::Service;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::blockchain::consensus::Sealed;
 use fuel_streams_core::{
@@ -11,10 +16,11 @@ use fuel_streams_core::{
     types::{Address, AssetId, Block, BlockHeight, ChainId, Transaction},
     Stream,
 };
-use tokio::sync::broadcast::Receiver;
+use futures_util::{future::try_join_all, FutureExt};
+use tokio::sync::broadcast::{self, Receiver};
 use tracing::warn;
 
-use crate::{blocks, transactions};
+use crate::{blocks, shutdown::stop_signal, transactions};
 
 /// Streams we currently support publishing to.
 pub struct Streams {
@@ -46,6 +52,7 @@ impl Streams {
 /// TODO: Remove right after using chain_id and base_asset_id to publish
 /// TransactionsById subject
 pub struct Publisher {
+    fuel_core: Arc<FuelService>,
     chain_id: ChainId,
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
@@ -55,6 +62,7 @@ pub struct Publisher {
 
 impl Publisher {
     pub async fn new(
+        fuel_core: Arc<FuelService>,
         nats_url: &str,
         chain_id: ChainId,
         base_asset_id: AssetId,
@@ -65,6 +73,7 @@ impl Publisher {
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
         Ok(Publisher {
+            fuel_core,
             chain_id,
             base_asset_id,
             fuel_core_database,
@@ -73,12 +82,23 @@ impl Publisher {
         })
     }
 
+    pub async fn flush_await_all_streams(&self) -> anyhow::Result<()> {
+        let streams = [
+            self.streams.blocks.flush_await().boxed(),
+            self.streams.transactions.flush_await().boxed(),
+        ];
+        try_join_all(streams).await?;
+        Ok(())
+    }
+
     #[cfg(feature = "test-helpers")]
     pub async fn default_with_publisher(
+        fuel_core: Arc<FuelService>,
         nats_client: &NatsClient,
         blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
+            fuel_core,
             chain_id: ChainId::default(),
             base_asset_id: AssetId::default(),
             fuel_core_database: CombinedDatabase::default(),
@@ -92,7 +112,31 @@ impl Publisher {
         &self.streams
     }
 
+    async fn publish_block_data(
+        &self,
+        result: ImporterResult,
+    ) -> anyhow::Result<()> {
+        let (block, block_producer) =
+            Self::get_block_and_producer(&result.sealed_block);
+        self.publish(&block, &block_producer).await?;
+        Ok(())
+    }
+
+    async fn shutdown_internal_services(&self) -> anyhow::Result<()> {
+        tracing::info!("Flushing in-flight messages to nats ...");
+        self.flush_await_all_streams().await?;
+        tracing::info!("Flushed in-flight messages to nats");
+        tracing::info!("Stopping fuel core ...");
+        self.fuel_core.stop_and_await().await?;
+        tracing::info!("Stopped fuel core");
+        Ok(())
+    }
+
     pub async fn run(mut self) -> anyhow::Result<Self> {
+        let (shutdown_send, mut shutdown_recv) =
+            tokio::sync::broadcast::channel::<()>(1);
+        tokio::spawn(stop_signal(shutdown_send));
+
         let last_published_block = self
             .streams
             .blocks
@@ -114,26 +158,50 @@ impl Publisher {
                 warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
-            for height in next_height_to_publish..=latest_fuel_core_height {
-                let sealed_block = self
-                    .fuel_core_database
-                    .on_chain()
-                    .latest_view()?
-                    .get_sealed_block_by_height(&(height as u32).into())?
-                    .expect("NATS Publisher: no block at height {height}");
+            // publish historical data i needed
+            let mut height = next_height_to_publish;
+            while height <= latest_fuel_core_height {
+                tokio::select! {
+                    _ = shutdown_recv.recv() => {
+                        tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
+                        self.shutdown_internal_services().await?;
+                        return Ok(self);
+                    },
+                    result = async {
+                        let sealed_block = self
+                            .fuel_core_database
+                            .on_chain()
+                            .latest_view()?
+                            .get_sealed_block_by_height(&(height as u32).into())?
+                            .expect("NATS Publisher: no block at height {height}");
 
-                let (block, block_producer) =
-                    Self::get_block_and_producer(&sealed_block);
+                        let (block, block_producer) =
+                            Self::get_block_and_producer(&sealed_block);
 
-                self.publish(&block, &block_producer).await?;
+                        self.publish(&block, &block_producer).await
+                    } => {
+                        if let Err(err) = result {
+                            tracing::warn!("Failed to publish block data: {}", err);
+                        }
+                        height += 1;
+                    }
+                }
             }
         }
 
-        while let Ok(result) = self.blocks_subscription.recv().await {
-            let (block, block_producer) =
-                Self::get_block_and_producer(&result.sealed_block);
-
-            self.publish(&block, &block_producer).await?;
+        // publish subscribed data
+        loop {
+            tokio::select! {
+                result = self.blocks_subscription.recv() => {
+                    if let Ok(result) = result {
+                        self.publish_block_data(result).await?;
+                    }
+                }
+                _ = shutdown_recv.recv() => {
+                    self.shutdown_internal_services().await?;
+                    break;
+                }
+            }
         }
 
         Ok(self)

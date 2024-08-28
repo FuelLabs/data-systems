@@ -1,5 +1,7 @@
 //! This binary subscribes to events emitted from a Fuel client or node
 //! to publish streams that can consumed via the `fuel-streams` SDK.
+use std::sync::Arc;
+
 use clap::Parser;
 use fuel_core_services::Service;
 
@@ -28,6 +30,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let fuel_core = fuel_core_bin::cli::run::get_service(cli.fuel_core_config)?;
+    let fuel_core = Arc::new(fuel_core);
     fuel_core.start()?;
 
     let fuel_core_subscription =
@@ -38,7 +41,9 @@ async fn main() -> anyhow::Result<()> {
     let chain_id = chain_config.consensus_parameters.chain_id();
     let base_asset_id = chain_config.consensus_parameters.base_asset_id();
 
+    let fuel_core = Arc::clone(&fuel_core);
     let publisher = fuel_streams_publisher::Publisher::new(
+        fuel_core,
         &cli.nats_url,
         chain_id,
         *base_asset_id,
@@ -46,7 +51,14 @@ async fn main() -> anyhow::Result<()> {
         fuel_core_subscription,
     )
     .await?;
-    publisher.run().await?;
+
+    tracing::info!("Publisher started, awaiting shutdown signal...");
+
+    if let Err(err) = publisher.run().await {
+        tracing::error!("Publisher encountered an error: {:?}", err);
+    }
+
+    tracing::info!("Publisher stopped, shutdown complete.");
 
     Ok(())
 }
