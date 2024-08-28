@@ -1,6 +1,6 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
-members = ["benchs/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
+members = ["benches/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
 resolver = "2"
 
 [workspace.package]
