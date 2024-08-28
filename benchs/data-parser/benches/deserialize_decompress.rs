@@ -1,8 +1,11 @@
-use async_compression::Level;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use data_parser::generate_test_block;
 use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};
-use fuel_data_parser::{CompressionType, DataParserBuilder, SerializationType};
+use fuel_data_parser::{
+    DataParser,
+    SerializationType,
+    ALL_COMPRESSION_STRATEGIES,
+};
 use strum::IntoEnumIterator;
 
 fn bench_decompress_deserialize(c: &mut Criterion) {
@@ -14,68 +17,51 @@ fn bench_decompress_deserialize(c: &mut Criterion) {
     // Pre-serialize data for each combination type
     let mut parametric_matrix = vec![];
     for serialization_type in SerializationType::iter() {
-        for compression_type in CompressionType::iter() {
-            for compression_level in
-                [Level::Default, Level::Fastest, Level::Best]
-            {
-                let test_block = generate_test_block();
-                let data_parser = DataParserBuilder::new()
-                    .with_compression(compression_type)
-                    .with_compression_level(compression_level)
-                    .with_serialization(serialization_type)
-                    .build();
+        for compression_strategy in ALL_COMPRESSION_STRATEGIES.iter() {
+            let data_parser = DataParser::default()
+                .with_serialization_type(serialization_type.clone())
+                .with_compression_strategy(compression_strategy);
 
-                // Perform serialization asynchronously and collect the results
-                let serialized_and_compressed = runtime.block_on(async {
-                    data_parser
-                        .test_serialize_and_compress(&test_block)
-                        .await
-                        .expect("serialization failed")
-                });
+            let serialized_and_compressed = runtime.block_on(async {
+                data_parser
+                    .encode(&generate_test_block())
+                    .await
+                    .expect("serialization failed")
+            });
 
-                parametric_matrix.push((
-                    serialization_type,
-                    compression_type,
-                    compression_level,
-                    serialized_and_compressed,
-                ));
-            }
+            parametric_matrix.push((
+                serialization_type.clone(),
+                compression_strategy,
+                serialized_and_compressed,
+            ));
         }
     }
 
     let mut group = c.benchmark_group("decompress_deserialize");
 
     // benchmark each combination
-    for (
-        serialization_type,
-        compression_type,
-        compression_level,
-        serialized_compressed_data,
-    ) in parametric_matrix.iter()
+    for (serialization_type, compression_strategy, serialized_and_compressed) in
+        parametric_matrix.iter()
     {
         let bench_name = format!(
-            "[{:?}][{:?}][{:?}]",
-            serialization_type.to_string(),
-            compression_type.to_string(),
-            compression_level
+            "[{:?}][{:?}]",
+            serialization_type,
+            compression_strategy.name(),
         );
 
         group.bench_function(&bench_name, |b| {
-            let data_parser = DataParserBuilder::new()
-                .with_compression(*compression_type)
-                .with_compression_level(*compression_level)
-                .with_serialization(*serialization_type)
-                .build();
+            let data_parser = DataParser::default()
+                .with_compression_strategy(compression_strategy)
+                .with_serialization_type(serialization_type.clone());
 
             b.to_async(&runtime).iter(|| async {
-                let result = data_parser
-                    .test_decompress_and_deserialize::<Block<Transaction>>(
-                        serialized_compressed_data,
-                    )
+                let deserialized_and_decompressed = data_parser
+                    .decode::<Block<Transaction>>(&serialized_and_compressed)
                     .await
                     .expect("decompresison and deserialization");
+
                 // Use black_box to make sure 'result' is considered used by the compiler
-                black_box(result);
+                black_box(deserialized_and_decompressed);
             });
         });
     }

@@ -1,5 +1,6 @@
 use anyhow::Result;
 use fuel_core_types::blockchain::block::Block;
+use fuel_streams_core::prelude::StreamData;
 use futures::StreamExt;
 use nats_publisher::utils::nats::NatsHelper;
 
@@ -18,7 +19,7 @@ pub async fn run_watch_kv_blocks(
         let item = message?;
         match nats
             .data_parser()
-            .from_nats_message::<Block>(item.value.to_vec())
+            .decode::<StreamData<Block>>(&item.value)
             .await
         {
             Err(_) => result.increment_error_count(),

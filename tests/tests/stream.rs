@@ -16,10 +16,10 @@ async fn blocks_streams_subscribe() {
     while let Some((i, bytes)) = sub.next().await {
         let decoded_msg = Block::decode_raw(bytes).await;
         let (subject, block) = items[i].to_owned();
-        let height = *decoded_msg.data.header().consensus().height;
+        let height = *decoded_msg.payload.header().consensus().height;
 
         assert_eq!(decoded_msg.subject, subject.parse());
-        assert_eq!(decoded_msg.data, block);
+        assert_eq!(decoded_msg.payload, block);
         assert_eq!(height, i as u32);
         if i == 9 {
             break;
@@ -55,7 +55,7 @@ async fn blocks_streams_subscribe_with_config() {
         let message = message.unwrap();
         let decoded_msg =
             Block::decode_raw(message.payload.clone().into()).await;
-        let height = *decoded_msg.data.header().consensus().height;
+        let height = *decoded_msg.payload.header().consensus().height;
         assert_eq!(height, 5);
         if height == 5 {
             break;
@@ -77,7 +77,7 @@ async fn transactions_streams_subscribe() {
         let decoded_msg = Transaction::decode_raw(bytes.to_vec()).await;
 
         let (_, transaction) = items[i].to_owned();
-        assert_eq!(decoded_msg.data, transaction);
+        assert_eq!(decoded_msg.payload, transaction);
         if i == 9 {
             break;
         }
