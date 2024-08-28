@@ -3,7 +3,7 @@
 use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
-/// Password hashing error types.
+/// Compression error types
 #[derive(Debug, DisplayDoc, Error)]
 pub enum CompressionError {
     /// Compression/Decompression zlib error
@@ -22,7 +22,7 @@ pub enum CompressionError {
     Zstd(std::io::Error),
 }
 
-/// Password hashing error types.
+/// Serialization/Deserialization error types.
 #[derive(Debug, DisplayDoc, Error)]
 pub enum SerdeError {
     /// serde bincode error
@@ -33,7 +33,7 @@ pub enum SerdeError {
     Json(#[from] serde_json::Error),
 }
 
-/// Password hashing error types.
+/// Data parser error types.
 #[derive(Debug, DisplayDoc, Error)]
 pub enum Error {
     /// compression error: {0}
