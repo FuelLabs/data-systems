@@ -12,50 +12,15 @@ use async_nats::{
 };
 use async_trait::async_trait;
 pub use error::StreamError;
-use fuel_data_parser::{
-    DataParser,
-    DataParserDeserializable,
-    DataParserSerializable,
-    NatsFormattedMessage,
-};
 use fuel_streams_macros::subject::IntoSubject;
 use futures::StreamExt;
 use tokio::sync::OnceCell;
 
-use crate::{nats::types::*, prelude::NatsClient};
-
-#[async_trait]
-pub trait StreamEncoder:
-    Debug
-    + Clone
-    + Send
-    + Sync
-    + DataParserSerializable
-    + DataParserDeserializable
-    + 'static
-{
-    async fn encode(&self, subject: &str) -> Vec<u8> {
-        Self::data_parser()
-            .to_nats_payload(subject, self)
-            .await
-            .expect("Streamable must encode correctly")
-    }
-
-    async fn decode(encoded: Vec<u8>) -> Self {
-        Self::decode_raw(encoded).await.data
-    }
-
-    async fn decode_raw(encoded: Vec<u8>) -> NatsFormattedMessage<Self> {
-        Self::data_parser()
-            .from_nats_message(encoded)
-            .await
-            .expect("Streamable must decode correctly")
-    }
-
-    fn data_parser() -> DataParser {
-        DataParser::default()
-    }
-}
+use crate::{
+    nats::types::*,
+    prelude::NatsClient,
+    stream_encoding::StreamEncoder,
+};
 
 #[async_trait]
 pub trait Streamable: StreamEncoder {

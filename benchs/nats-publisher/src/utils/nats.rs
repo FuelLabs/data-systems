@@ -6,7 +6,7 @@ use async_nats::{
     },
     ConnectOptions,
 };
-use fuel_data_parser::{DataParser, DataParserBuilder};
+use fuel_data_parser::DataParser;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -31,7 +31,9 @@ impl NatsHelper {
             stream_blocks,
             stream_transactions,
         ) = create_resources(&client, use_nats_compression).await?;
-        let data_parser = DataParserBuilder::default().build();
+        // adjust as needed
+        let data_parser = DataParser::default();
+
         Ok(Self {
             client,
             context,

@@ -49,11 +49,7 @@ impl BlockHelper {
 impl BlockHelper {
     async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
         let subject: BlocksSubject = block.into();
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         self.nats
             .context
             .publish(subject.parse(), payload.into())
@@ -64,11 +60,7 @@ impl BlockHelper {
     async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
         let height = self.get_height(block);
         let subject: BlocksSubject = block.into();
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         let nats_payload = Publish::build()
             .message_id(subject.parse())
             .payload(payload.into());
@@ -90,11 +82,7 @@ impl BlockHelper {
         let height = self.get_height(block);
         let subject: BlocksSubject = block.into();
 
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         self.nats
             .kv_blocks
             .put(subject.parse(), payload.into())

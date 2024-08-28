@@ -64,11 +64,7 @@ impl TxHelper {
         index: usize,
     ) -> anyhow::Result<()> {
         let subject = &self.get_subject(tx, block, index);
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         self.nats
             .context
             .publish(subject.parse(), payload.into())
@@ -84,11 +80,7 @@ impl TxHelper {
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
         let subject = self.get_subject(tx, block, index);
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         let nats_payload = Publish::build()
             .message_id(subject.parse())
             .payload(payload.into());
@@ -114,11 +106,7 @@ impl TxHelper {
     ) -> anyhow::Result<()> {
         let tx_id = self.get_id(tx);
         let subject = self.get_subject(tx, block, index);
-        let payload = self
-            .nats
-            .data_parser()
-            .to_nats_payload(&subject.parse(), block)
-            .await?;
+        let payload = self.nats.data_parser().encode(block).await?;
         self.nats
             .kv_transactions
             .put(subject.parse(), payload.into())

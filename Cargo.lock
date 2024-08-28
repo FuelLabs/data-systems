@@ -646,7 +646,7 @@ dependencies = [
  "chrono",
  "criterion",
  "fuel-core-types",
- "fuel-data-parser",
+ "fuel-streams-core",
  "futures",
  "nats-publisher",
  "statrs",
@@ -1568,7 +1568,6 @@ dependencies = [
 name = "data-parser"
 version = "0.0.4"
 dependencies = [
- "async-compression",
  "criterion",
  "fuel-core-types",
  "fuel-data-parser",
@@ -2662,16 +2661,12 @@ name = "fuel-data-parser"
 version = "0.0.4"
 dependencies = [
  "async-compression",
+ "async-trait",
  "bincode",
- "bytes",
- "chrono",
  "displaydoc",
- "fuel-core",
- "fuel-core-types",
- "fuel-streams-macros",
+ "lazy_static",
  "paste",
  "postcard",
- "prost 0.13.1",
  "serde",
  "serde_json",
  "strum 0.26.3",
@@ -2741,6 +2736,7 @@ version = "0.0.4"
 dependencies = [
  "async-nats",
  "async-trait",
+ "chrono",
  "displaydoc",
  "dotenvy",
  "fuel-core",
@@ -3684,15 +3680,6 @@ name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -5632,17 +5619,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b82eaa1d779e9a4bc1c3217db8ffbeabaae1dca241bf70183242128d48681cd"
 dependencies = [
  "bytes",
- "prost-derive 0.11.9",
-]
-
-[[package]]
-name = "prost"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13db3d3fde688c61e2446b4d843bc27a7e8af269a69440c0308021dc92333cc"
-dependencies = [
- "bytes",
- "prost-derive 0.13.1",
+ "prost-derive",
 ]
 
 [[package]]
@@ -5656,19 +5633,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18bec9b0adc4eba778b33684b7ba3e7137789434769ee3ce3930463ef904cfca"
-dependencies = [
- "anyhow",
- "itertools 0.13.0",
- "proc-macro2",
- "quote",
- "syn 2.0.74",
 ]
 
 [[package]]
@@ -5691,7 +5655,7 @@ dependencies = [
  "libflate",
  "log",
  "names",
- "prost 0.11.9",
+ "prost",
  "reqwest",
  "thiserror",
  "url",
