@@ -16,7 +16,6 @@ clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
-fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }

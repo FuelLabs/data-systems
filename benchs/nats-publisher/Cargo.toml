@@ -15,7 +15,7 @@ async-nats = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
-fuel-core-services = { workspace = true }
+fuel-core-importer = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }

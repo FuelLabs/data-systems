@@ -14,7 +14,6 @@ async-nats = { workspace = true }
 async-trait = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
-fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
