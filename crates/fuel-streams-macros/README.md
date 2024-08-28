@@ -24,15 +24,12 @@ Macros for implementing traits and deriving functionality in the fuel-streams ec
         <img src="https://docs.rs/fuel-streams-macros/badge.svg" alt="docs">
     </a>
 </p>
+<p align="center">
 <a href="https://docs.rs/fuel-streams-macros/">📚 Documentation</a>
 <span>&nbsp;</span>
 <a href="https://github.com/fuellabs/data-systems/issues/new?labels=bug&template=bug-report---.md">🐛 Report Bug</a>
 <span>&nbsp;</span>
 <a href="https://github.com/fuellabs/data-systems/issues/new?labels=enhancement&template=feature-request---.md">✨ Request Feature</a>
-<span>&nbsp;</span>
-<a href="https://github.com/FuelLabs/data-systems/blob/main/CONTRIBUTING.md">🤝 Contributing</a>
-<span>&nbsp;</span>
-<a href="https://github.com/FuelLabs/data-systems/blob/main/LICENSE">📄 License</a>
 </p>
 </div>
 
@@ -44,8 +41,6 @@ Provides macros for implementing traits and deriving functionality in the fuel-s
 > This crate is specifically modeled for the Fuel Data Systems project, and is not intended for general use outside of the project.
 
 ## 🚀 Usage
-
-### `Subject` Derive Macro
 
 The `Subject` derive macro allows you to easily implement the `Subject` trait for your structs. It generates methods for parsing, building, and creating wildcards for your subject.
 
@@ -73,13 +68,20 @@ assert_eq!(subject.parse(), "test.foo.55");
 
 // Create a wildcard
 assert_eq!(TestSubject::wildcard(None, Some(10)), "test.*.10");
+
+// Create using the build method
+let subject = TestSubject::build(Some("foo".into()), Some(55));
+assert_eq!(subject.parse(), "test.foo.55");
+
+// Create a new TestSubject with the builder pattern
+let subject = TestSubject::new()
+    .with_field1(Some("foo".to_string()))
+    .with_field2(Some(55));
+assert_eq!(subject.parse(), "test.foo.55");
+
+// Convert to a string
+assert_eq!(&subject.to_string(), "test.foo.55");
 ```
-
-### `IntoSubject` Trait
-
-The `IntoSubject` trait is used internally by the `Subject` derive macro to convert a struct into a standard NATS subject.
-
-For more details on the `IntoSubject` trait, refer to the source code documentation.
 
 ## 🤝 Contributing
 

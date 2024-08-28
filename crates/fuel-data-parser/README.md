@@ -24,6 +24,13 @@ A utility library for encoding and decoding data in the Fuel Data Systems projec
         <img src="https://docs.rs/fuel-data-parser/badge.svg" alt="docs">
     </a>
 </p>
+<p align="center">
+    <a href="https://docs.rs/fuel-data-parser">📚 Documentation</a>
+    <span>&nbsp;</span>
+    <a href="https://github.com/fuellabs/data-systems/issues/new?labels=bug&template=bug-report---.md">🐛 Report Bug</a>
+    <span>&nbsp;</span>
+    <a href="https://github.com/fuellabs/data-systems/issues/new?labels=enhancement&template=feature-request---.md">✨ Request Feature</a>
+</p>
 </div>
 
 ## 📝 About

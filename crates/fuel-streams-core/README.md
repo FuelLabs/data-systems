@@ -24,15 +24,12 @@ The core library for data streaming in the Fuel Data Systems project.
         <img src="https://docs.rs/fuel-streams-core/badge.svg" alt="docs">
     </a>
 </p>
+<p align="center">
 <a href="https://docs.rs/fuel-streams-core">📚 Documentation</a>
 <span>&nbsp;</span>
 <a href="https://github.com/fuellabs/data-systems/issues/new?labels=bug&template=bug-report---.md">🐛 Report Bug</a>
 <span>&nbsp;</span>
 <a href="https://github.com/fuellabs/data-systems/issues/new?labels=enhancement&template=feature-request---.md">✨ Request Feature</a>
-<span>&nbsp;</span>
-<a href="https://github.com/fuellabs/data-systems/blob/main/CONTRIBUTING.md">🤝 Contributing</a>
-<span>&nbsp;</span>
-<a href="https://github.com/fuellabs/data-systems/blob/main/LICENSE">📄 License</a>
 </p>
 </div>
 
