@@ -1,6 +1,8 @@
+#![doc = include_str!("../README.md")]
+
 pub mod blocks;
 pub mod nats;
-mod stream;
+pub mod stream;
 pub mod transactions;
 pub mod types;
 

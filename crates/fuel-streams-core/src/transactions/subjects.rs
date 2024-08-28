@@ -3,6 +3,59 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::{blocks::types::BlockHeight, types::*};
 
+/// Represents a NATS subject for transactions in the Fuel network.
+///
+/// This subject format allows for efficient querying and filtering of transactions
+/// based on their height, index, ID, status, and kind.
+///
+/// # Examples
+///
+/// Creating a subject for a specific transaction:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = TransactionsSubject {
+///     height: Some(23.into()),
+///     tx_index: Some(1),
+///     tx_id: Some(Bytes32::zeroed()),
+///     status: Some(TransactionStatus::Success),
+///     kind: Some(TransactionKind::Script),
+/// };
+/// assert_eq!(
+///     subject.parse(),
+///     "transactions.23.1.0x0000000000000000000000000000000000000000000000000000000000000000.success.script"
+/// );
+/// ```
+///
+/// All transactions wildcard:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsSubject;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// assert_eq!(TransactionsSubject::WILDCARD, "transactions.>");
+/// ```
+///
+/// Creating a subject query using the `wildcard` method:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let wildcard = TransactionsSubject::wildcard(None, None, Some(Bytes32::zeroed()), None, None);
+/// assert_eq!(wildcard, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = TransactionsSubject::new().with_height(Some(23.into()));
+/// assert_eq!(subject.parse(), "transactions.23.*.*.*.*");
+/// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "transactions.>"]
 #[subject_format = "transactions.{height}.{tx_index}.{tx_id}.{status}.{kind}"]
@@ -23,6 +76,55 @@ impl From<&Transaction> for TransactionsSubject {
     }
 }
 
+/// Represents a NATS subject for querying transactions by their identifier in the Fuel network.
+///
+/// This subject format allows for efficient querying of transactions based on their identifier kind and value.
+///
+/// # Examples
+///
+/// Creating a subject for a specific transaction by ID:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = TransactionsByIdSubject {
+///     id_kind: Some(IdentifierKind::ContractID),
+///     id_value: Some(Address::zeroed()),
+/// };
+/// assert_eq!(
+///     subject.parse(),
+///     "by_id.transactions.contract_id.0x0000000000000000000000000000000000000000000000000000000000000000"
+/// );
+/// ```
+///
+/// All transactions by ID wildcard:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsByIdSubject;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// assert_eq!(TransactionsByIdSubject::WILDCARD, "by_id.transactions.>");
+/// ```
+///
+/// Creating a subject query using the `wildcard` method:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let wildcard = TransactionsByIdSubject::wildcard(Some(IdentifierKind::ContractID), None);
+/// assert_eq!(wildcard, "by_id.transactions.contract_id.*");
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::transactions::TransactionsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = TransactionsByIdSubject::new().with_id_kind(Some(IdentifierKind::ContractID));
+/// assert_eq!(subject.parse(), "by_id.transactions.contract_id.*");
+/// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "by_id.transactions.>"]
 #[subject_format = "by_id.transactions.{id_kind}.{id_value}"]
@@ -38,69 +140,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn transactions_subjects_all() {
-        assert_eq!(TransactionsSubject::WILDCARD, "transactions.>");
-        assert_eq!(TransactionsByIdSubject::WILDCARD, "by_id.transactions.>");
-    }
-
-    #[test]
-    fn transactions_subjects_parse() {
-        let transactions_subject = TransactionsSubject {
-            height: Some(23.into()),
-            tx_index: Some(1),
-            tx_id: Some(Bytes32::zeroed()),
-            status: Some(TransactionStatus::Success),
-            kind: Some(TransactionKind::Script),
-        };
-        assert_eq!(
-            transactions_subject.parse(),
-            "transactions.23.1.0x0000000000000000000000000000000000000000000000000000000000000000.success.script"
-        );
-
-        let transactions_by_id_subject = TransactionsByIdSubject {
-            id_kind: Some(IdentifierKind::ContractID),
-            id_value: Some(Address::zeroed()),
-        };
-        assert_eq!(
-            transactions_by_id_subject.parse(),
-            "by_id.transactions.contract_id.0x0000000000000000000000000000000000000000000000000000000000000000"
-        )
-    }
-
-    #[test]
-    fn transactions_subjects_wildcard() {
-        let wildcard1 = TransactionsSubject::wildcard(
-            None,
-            None,
-            Some(Bytes32::zeroed()),
-            None,
-            None,
-        );
-        assert_eq!(wildcard1, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
-
-        let wildcard2 = TransactionsByIdSubject::wildcard(
-            Some(IdentifierKind::ContractID),
-            None,
-        );
-        assert_eq!(wildcard2, "by_id.transactions.contract_id.*");
-    }
-
-    #[test]
-    fn transactions_subjects_builder() {
-        let transactions_subject =
-            TransactionsSubject::new().with_height(Some(23.into()));
-        assert_eq!(transactions_subject.parse(), "transactions.23.*.*.*.*");
-
-        let transactions_by_id_subject = TransactionsByIdSubject::new()
-            .with_id_kind(Some(IdentifierKind::ContractID));
-        assert_eq!(
-            transactions_by_id_subject.parse(),
-            "by_id.transactions.contract_id.*"
-        );
-    }
-
-    #[test]
-    fn transactions_subject_from_transaction() {
+    fn transactions_subjects_from_transaction() {
         let mock_tx = MockTransaction::build();
         let subject = TransactionsSubject::from(&mock_tx);
         assert!(subject.height.is_none());
