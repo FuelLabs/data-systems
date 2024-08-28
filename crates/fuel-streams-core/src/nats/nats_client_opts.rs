@@ -11,12 +11,44 @@ pub enum NatsUserRole {
     Public,
 }
 
+/// Represents options for configuring a NATS client.
+///
+/// # Examples
+///
+/// Creating a new `NatsClientOpts` instance:
+///
+/// ```
+/// use fuel_streams_core::nats::NatsClientOpts;
+///
+/// let opts = NatsClientOpts::new("nats://localhost:4222");
+/// ```
+///
+/// Creating a public `NatsClientOpts`:
+///
+/// ```
+/// use fuel_streams_core::nats::NatsClientOpts;
+///
+/// let opts = NatsClientOpts::public_opts("nats://localhost:4222");
+/// ```
+///
+/// Modifying `NatsClientOpts`:
+///
+/// ```
+/// use fuel_streams_core::nats::{NatsClientOpts, NatsUserRole};
+///
+/// let opts = NatsClientOpts::new("nats://localhost:4222")
+///     .with_role(NatsUserRole::Admin)
+///     .with_timeout(10);
+/// ```
 #[derive(Debug, Clone)]
 pub struct NatsClientOpts {
+    /// The URL of the NATS server to connect to.
     pub(crate) url: String,
+    /// The role of the user connecting to the NATS server (Admin or Public).
     pub(crate) role: NatsUserRole,
-    // This is being used as prefix for nats streams, consumers and subjects names
+    /// The namespace used as a prefix for NATS streams, consumers, and subject names.
     pub(crate) namespace: NatsNamespace,
+    /// The timeout in seconds for NATS operations.
     pub(crate) timeout_secs: u64,
 }
 

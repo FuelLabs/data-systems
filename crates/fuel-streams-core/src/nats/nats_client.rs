@@ -1,22 +1,55 @@
 use async_nats::{
     error,
-    jetstream::{
-        context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
-        kv,
-        stream,
-    },
+    jetstream::{context::CreateKeyValueErrorKind, kv},
 };
 use tracing::info;
 
 use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 
-#[derive(Debug, Clone)]
 /// NatsClient is a wrapper around the NATS client that provides additional functionality
 /// geared towards fuel-streaming use-cases
+///
+/// # Examples
+///
+/// Creating a new `NatsClient`:
+///
+/// ```no_run
+/// use fuel_streams_core::prelude::*;
+///
+/// async fn example() -> BoxedResult<()> {
+///     let opts = NatsClientOpts::new("nats://localhost:4222");
+///     let client = NatsClient::connect(&opts).await?;
+///     Ok(())
+/// }
+/// ```
+///
+/// Creating a key-value store:
+///
+/// ```no_run
+/// use fuel_streams_core::prelude::*;
+/// use async_nats::jetstream::kv;
+///
+/// async fn example() -> BoxedResult<()> {
+///     let opts = NatsClientOpts::new("nats://localhost:4222");
+///     let client = NatsClient::connect(&opts).await?;
+///     let kv_config = kv::Config {
+///         bucket: "my-bucket".into(),
+///         ..Default::default()
+///     };
+///
+///     let store = client.get_or_create_kv_store(kv_config).await?;
+///     Ok(())
+/// }
+/// ```
+#[derive(Debug, Clone)]
 pub struct NatsClient {
+    /// The underlying NATS client
     pub nats_client: async_nats::Client,
+    /// The JetStream context for this client
     pub jetstream: JetStreamContext,
+    /// The namespace used for this client
     pub namespace: NatsNamespace,
+    /// The options used to create this client
     pub opts: NatsClientOpts,
 }
 
@@ -55,13 +88,6 @@ impl NatsClient {
         };
 
         Ok(store)
-    }
-
-    pub async fn get_or_create_stream(
-        &self,
-        options: stream::Config,
-    ) -> Result<stream::Stream, error::Error<CreateStreamErrorKind>> {
-        self.jetstream.get_or_create_stream(options).await
     }
 
     pub fn is_connected(&self) -> bool {
