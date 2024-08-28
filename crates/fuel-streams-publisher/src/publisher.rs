@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use fuel_core::{
     combined_database::CombinedDatabase,
@@ -17,10 +17,12 @@ use fuel_streams_core::{
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
-use tokio::sync::broadcast::{self, Receiver};
+use tokio::sync::broadcast::Receiver;
 use tracing::warn;
 
-use crate::{blocks, shutdown::stop_signal, transactions};
+use crate::{blocks, shutdown::stop_signal, state::SharedState, transactions};
+
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Streams we currently support publishing to.
 pub struct Streams {
@@ -52,7 +54,7 @@ impl Streams {
 /// TODO: Remove right after using chain_id and base_asset_id to publish
 /// TransactionsById subject
 pub struct Publisher {
-    fuel_core: Arc<FuelService>,
+    fuel_service: Arc<FuelService>,
     chain_id: ChainId,
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
@@ -62,22 +64,31 @@ pub struct Publisher {
 
 impl Publisher {
     pub async fn new(
-        fuel_core: Arc<FuelService>,
+        fuel_service: Arc<FuelService>,
         nats_url: &str,
-        chain_id: ChainId,
-        base_asset_id: AssetId,
-        fuel_core_database: CombinedDatabase,
-        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     ) -> anyhow::Result<Self> {
         let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
+        let fuel_core_subscription = fuel_service
+            .shared
+            .block_importer
+            .block_importer
+            .subscribe();
+        let fuel_core_database = fuel_service.shared.database.clone();
+
+        let chain_config =
+            fuel_service.shared.config.snapshot_reader.chain_config();
+        let chain_id = chain_config.consensus_parameters.chain_id();
+        let base_asset_id =
+            chain_config.consensus_parameters.base_asset_id().clone();
+
         Ok(Publisher {
-            fuel_core,
+            fuel_service,
             chain_id,
             base_asset_id,
             fuel_core_database,
-            blocks_subscription,
+            blocks_subscription: fuel_core_subscription,
             streams: Streams::new(&nats_client).await,
         })
     }
@@ -93,12 +104,12 @@ impl Publisher {
 
     #[cfg(feature = "test-helpers")]
     pub async fn default_with_publisher(
-        fuel_core: Arc<FuelService>,
+        fuel_service: Arc<FuelService>,
         nats_client: &NatsClient,
         blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
-            fuel_core,
+            fuel_service,
             chain_id: ChainId::default(),
             base_asset_id: AssetId::default(),
             fuel_core_database: CombinedDatabase::default(),
@@ -122,13 +133,25 @@ impl Publisher {
         Ok(())
     }
 
-    async fn shutdown_internal_services(&self) -> anyhow::Result<()> {
-        tracing::info!("Flushing in-flight messages to nats ...");
-        self.flush_await_all_streams().await?;
-        tracing::info!("Flushed in-flight messages to nats");
-        tracing::info!("Stopping fuel core ...");
-        self.fuel_core.stop_and_await().await?;
-        tracing::info!("Stopped fuel core");
+    async fn shutdown_services_with_timeout(&self) -> anyhow::Result<()> {
+        tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
+            tracing::info!("Flushing in-flight messages to nats ...");
+            match self.flush_await_all_streams().await {
+                Ok(_) => tracing::info!("Flushed in-flight messages to nats"),
+                Err(e) => tracing::error!(
+                    "Flushing in-flight messages to nats failed: {:?}",
+                    e
+                ),
+            }
+
+            tracing::info!("Stopping fuel core ...");
+            match self.fuel_service.stop_and_await().await {
+                Ok(_) => tracing::info!("Stopped fuel core"),
+                Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
+            }
+        })
+        .await?;
+
         Ok(())
     }
 
@@ -164,7 +187,7 @@ impl Publisher {
                 tokio::select! {
                     _ = shutdown_recv.recv() => {
                         tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
-                        self.shutdown_internal_services().await?;
+                        self.shutdown_services_with_timeout().await?;
                         return Ok(self);
                     },
                     result = async {
@@ -198,7 +221,7 @@ impl Publisher {
                     }
                 }
                 _ = shutdown_recv.recv() => {
-                    self.shutdown_internal_services().await?;
+                    self.shutdown_services_with_timeout().await?;
                     break;
                 }
             }
