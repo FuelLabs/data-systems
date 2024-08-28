@@ -1,7 +1,7 @@
 mod utils;
 
 use clap::Parser;
-use fuel_core_services::Service;
+use fuel_core_importer::ports::ImporterDatabase;
 use utils::{blocks::BlockHelper, nats::NatsHelper, tx::TxHelper};
 
 #[derive(Parser)]
@@ -15,12 +15,17 @@ async fn main() -> anyhow::Result<()> {
     fuel_core_bin::cli::init_logging();
 
     let cli = Cli::parse();
-    let service = fuel_core_bin::cli::run::get_service(cli.fuel_core_config)?;
+    let service =
+        fuel_core_bin::cli::run::get_service(cli.fuel_core_config).await?;
     let chain_config = service.shared.config.snapshot_reader.chain_config();
     let chain_id = chain_config.consensus_parameters.chain_id();
     let block_importer = service.shared.block_importer.block_importer.clone();
     let database = service.shared.database.clone();
-    service.start()?;
+
+    service
+        .start_and_await()
+        .await
+        .expect("Fuel core service startup failed");
 
     // ------------------------------------------------------------------------
     // NATS
@@ -35,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::task::spawn({
         let block_helper = block_helper.clone();
         let _tx_helper = tx_helper.clone();
-        let last_height = database.on_chain().latest_height()?.unwrap();
+        let last_height = database.on_chain().latest_block_height()?.unwrap();
         async move {
             for height in 0..*last_height {
                 let height = height.into();
