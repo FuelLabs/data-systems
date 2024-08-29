@@ -35,15 +35,11 @@
 
 ## 📝 About
 
-The `DataParser` struct provides functionality for encoding and decoding data through compression
-and serialization. It offers flexibility in choosing compression strategies and serialization
-formats, allowing for optimization of memory usage and I/O bandwidth. This utility is particularly
-useful when dealing with large datasets or when efficient data transfer is crucial.
+The `DataParser` struct provides functionality for encoding and decoding data through compression and serialization. It offers flexibility in choosing compression strategies and serialization formats, allowing for optimization of memory usage and I/O bandwidth. This utility is particularly useful when dealing with large datasets or when efficient data transfer is crucial.
 
 ## 🛠️ Usage
 
-This library is intended for internal use within the Fuel Data Systems project. This is an example
-of usage outside of this crate within the project:
+This library is intended for internal use within the Fuel Data Systems project. This is an example of usage outside of this crate within the project:
 
 ```rust
 use fuel_data_parser::{DataParser, SerializationType, DataParseable};
@@ -77,16 +73,15 @@ To run the benchmarks and measure performance of different serialization and com
 cargo bench -p data-parser -p nats-publisher -p bench-consumers
 ```
 
-> [!INFO] The benchmarks are located in the `../../benches` folder.
+> [!INFO]
+> The benchmarks are located in the `../../benches` folder.
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file
-in the root of the repository.
+For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file in the root of the repository.
 
 ## 📜 License
 
-This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more
-information.
+This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more information.

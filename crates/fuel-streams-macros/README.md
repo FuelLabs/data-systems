@@ -37,13 +37,12 @@
 
 Provides macros for implementing traits and deriving functionality in the fuel-streams ecosystem.
 
-> [!NOTE] This crate is specifically modeled for the Fuel Data Systems project, and is not intended
-> for general use outside of the project.
+> [!NOTE]
+> This crate is specifically modeled for the Fuel Data Systems project, and is not intended for general use outside of the project.
 
 ## 🚀 Usage
 
-The `Subject` derive macro allows you to easily implement the `Subject` trait for your structs. It
-generates methods for parsing, building, and creating wildcards for your subject.
+The `Subject` derive macro allows you to easily implement the `Subject` trait for your structs. It generates methods for parsing, building, and creating wildcards for your subject.
 
 Example:
 
@@ -88,10 +87,8 @@ assert_eq!(&subject.to_string(), "test.foo.55");
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file
-in the root of the repository.
+For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file in the root of the repository.
 
 ## 📜 License
 
-This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more
-information.
+This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more information.

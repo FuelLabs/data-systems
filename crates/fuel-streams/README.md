@@ -34,12 +34,10 @@
 
 ## 📝 About The Project
 
-> [!WARNING] This project is currently under development and is not yet ready for production use.
+> [!WARNING]
+> This project is currently under development and is not yet ready for production use.
 
-Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It
-provides an efficient and user-friendly interface for developers to interact with real-time
-blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable
-streaming.
+Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It provides an efficient and user-friendly interface for developers to interact with real-time blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable streaming.
 
 ## 🚀 Features
 
@@ -121,10 +119,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 
 ### `DeliverPolicy`
 
-The `DeliverPolicy` provides fine-grained control over message delivery in your stream. This
-powerful feature allows you to customize how and when messages are received. Below is an
-illustrative example demonstrating how to subscribe to all blocks from the first block until the
-last block in the stream:
+The `DeliverPolicy` provides fine-grained control over message delivery in your stream. This powerful feature allows you to customize how and when messages are received. Below is an illustrative example demonstrating how to subscribe to all blocks from the first block until the last block in the stream:
 
 ```rust,no_run
 use fuel_streams::client::Client;
@@ -166,14 +161,11 @@ Available `DeliverPolicy` options:
 -   `ByStartSequence(u64)`: Delivers messages starting from a specific sequence number.
 -   `ByStartTime(DateTime<Utc>)`: Delivers messages starting from a specific time.
 
-Choose the appropriate `DeliverPolicy` based on your application's requirements for historical data
-processing or real-time updates.
+Choose the appropriate `DeliverPolicy` based on your application's requirements for historical data processing or real-time updates.
 
 ### Filters
 
-Filters allow you to narrow down the data you receive from a stream based on specific criteria. This
-is particularly useful when you're only interested in a subset of the data. The `Stream` struct
-provides a `with_filter` method that allows you to apply filters to your subscription.
+Filters allow you to narrow down the data you receive from a stream based on specific criteria. This is particularly useful when you're only interested in a subset of the data. The `Stream` struct provides a `with_filter` method that allows you to apply filters to your subscription.
 
 Here's an example of how to use filters with a stream of transactions:
 
@@ -209,31 +201,24 @@ async fn main() -> Result<(), fuel_streams::Error> {
 }
 ```
 
-In this example, we're creating a filter that will only return transactions from a specific kind
-(`TransactionKind::Script`) and from a specific block height (1000).
+In this example, we're creating a filter that will only return transactions from a specific kind (`TransactionKind::Script`) and from a specific block height (1000).
 
-Available filter methods depend on the subject type. The project currently supports subjects for the
-following data types:
+Available filter methods depend on the subject type. The project currently supports subjects for the following data types:
 
 -   [Blocks](../fuel-streams-core/src/blocks/subjects.rs)
 -   [Transactions](../fuel-streams-core/src/transactions/subjects.rs)
 
-Filters can be combined to create more specific queries. Each filter method narrows down the results
-further.
+Filters can be combined to create more specific queries. Each filter method narrows down the results further.
 
-> [!NOTE] Remember that the effectiveness of filters depends on how the data is structured in the
-> NATS streams. Filters are applied on the client side, so they can help reduce the amount of data
-> your application needs to process, but they don't reduce the amount of data transferred over the
-> network.
+> [!NOTE]
+> Remember that the effectiveness of filters depends on how the data is structured in the NATS streams. Filters are applied on the client side, so they can help reduce the amount of data your application needs to process, but they don't reduce the amount of data transferred over the network.
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file
-in the root of the repository.
+For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file in the root of the repository.
 
 ## 📜 License
 
-This project is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more
-information.
+This project is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more information.
