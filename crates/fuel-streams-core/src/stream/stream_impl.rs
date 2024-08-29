@@ -1,5 +1,3 @@
-mod error;
-
 use std::fmt::Debug;
 
 use async_nats::{
@@ -11,17 +9,34 @@ use async_nats::{
     Message,
 };
 use async_trait::async_trait;
-pub use error::StreamError;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::StreamExt;
 use tokio::sync::OnceCell;
 
-use crate::{
-    nats::types::*,
-    prelude::NatsClient,
-    stream_encoding::StreamEncoder,
-};
+use super::{error::StreamError, stream_encoding::StreamEncoder};
+use crate::{nats::types::*, prelude::NatsClient};
 
+/// Trait for types that can be streamed.
+///
+/// # Examples
+///
+/// ```no_run
+/// use async_trait::async_trait;
+/// use fuel_streams_core::prelude::*;
+///
+/// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// struct MyStreamable {
+///     data: String,
+/// }
+///
+/// impl StreamEncoder for MyStreamable {}
+///
+/// #[async_trait]
+/// impl Streamable for MyStreamable {
+///     const NAME: &'static str = "my_streamable";
+///     const WILDCARD_LIST: &'static [&'static str] = &["*"];
+/// }
+/// ```
 #[async_trait]
 pub trait Streamable: StreamEncoder {
     const NAME: &'static str;
@@ -29,6 +44,44 @@ pub trait Streamable: StreamEncoder {
 }
 
 /// Houses nats-agnostic APIs for publishing and consuming a streamable type
+///
+/// # Examples
+///
+/// ```no_run
+/// use fuel_streams_core::prelude::*;
+/// use fuel_streams_macros::subject::IntoSubject;
+/// use futures::StreamExt;
+///
+/// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// struct MyStreamable {
+///     data: String,
+/// }
+///
+/// impl StreamEncoder for MyStreamable {}
+///
+/// #[async_trait::async_trait]
+/// impl Streamable for MyStreamable {
+///     const NAME: &'static str = "my_streamable";
+///     const WILDCARD_LIST: &'static [&'static str] = &["*"];
+/// }
+///
+/// async fn example(client: &NatsClient) {
+///     let stream = Stream::<MyStreamable>::new(client).await;
+///
+///     // Publish
+///     let subject = BlocksSubject::new().with_height(Some(23.into()));
+///     let payload = MyStreamable { data: "foo".into() };
+///     stream.publish(&subject, &payload).await.unwrap();
+///
+///     // Subscribe
+///     let wildcard = BlocksSubject::WILDCARD;
+///     let mut subscription = stream.subscribe(wildcard).await.unwrap();
+///     while let Some(message) = subscription.next().await {
+///         // Process message
+///     }
+/// }
+/// ```
+///
 /// TODO: Split this into two traits StreamPublisher + StreamSubscriber
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
@@ -188,6 +241,19 @@ impl<S: Streamable> Stream<S> {
     }
 }
 
+/// Configuration for subscribing to a consumer.
+///
+/// # Examples
+///
+/// ```
+/// use fuel_streams_core::stream::SubscribeConsumerConfig;
+/// use async_nats::jetstream::consumer::DeliverPolicy;
+///
+/// let config = SubscribeConsumerConfig {
+///     filter_subjects: vec!["example.*".to_string()],
+///     deliver_policy: DeliverPolicy::All,
+/// };
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct SubscribeConsumerConfig {
     pub filter_subjects: Vec<String>,

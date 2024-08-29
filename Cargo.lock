@@ -2752,11 +2752,11 @@ checksum = "4c1b711f28553ddc5f3546711bd220e144ce4c1af7d9e9a1f70b2f20d9f5b791"
 name = "fuel-streams"
 version = "0.0.4"
 dependencies = [
- "async-trait",
  "displaydoc",
  "fuel-streams-core",
  "futures",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
-members = ["benchs/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
+members = ["benches/*", "crates/*", "crates/fuel-streams-macros/subject-derive", "tests"]
 resolver = "2"
 
 [workspace.package]
@@ -10,6 +10,7 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
+rust-version = "1.79.0"
 version = "0.0.4"
 
 [workspace.dependencies]
@@ -49,7 +50,7 @@ subject-derive = { version = "0.0.4", path = "crates/fuel-streams-macros/subject
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["fuel-core"]
+ignored = ["fuel-core", "tokio"]
 
 [profile.release]
 opt-level = 3

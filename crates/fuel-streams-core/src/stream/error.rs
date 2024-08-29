@@ -13,34 +13,34 @@ use thiserror::Error;
 
 #[derive(Error, DisplayDoc, Debug)]
 pub enum StreamError {
-    /// failed to publish stream
+    /// Failed to publish to stream: {subject_name}
     PublishFailed {
         subject_name: String,
         #[source]
         source: error::Error<PutErrorKind>,
     },
 
-    /// failed to subscribe to stream
+    /// Failed to retrieve last published message from stream
     GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
 
-    /// failed to create KV Store
+    /// Failed to create Key-Value Store
     StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),
 
-    /// failed to publish item
+    /// Failed to publish item to Key-Value Store
     StorePublish(#[from] PutError),
 
-    /// failed to subscribe to subject
+    /// Failed to subscribe to subject in Key-Value Store
     StoreSubscribe(#[from] error::Error<WatchErrorKind>),
 
-    /// failed to publish item
+    /// Failed to publish item to stream
     StreamPublish(#[from] PublishError),
 
-    /// failed to create stream
+    /// Failed to create stream
     StreamCreation(#[from] error::Error<CreateStreamErrorKind>),
 
-    /// failed to create consumer
+    /// Failed to create consumer for stream
     ConsumerCreate(#[from] error::Error<ConsumerErrorKind>),
 
-    /// failed to consume messages from stream
+    /// Failed to consume messages from stream
     ConsumerMessages(#[from] error::Error<StreamErrorKind>),
 }

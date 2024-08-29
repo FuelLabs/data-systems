@@ -2,6 +2,54 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
+/// Represents a NATS subject for blocks in the Fuel network.
+///
+/// This subject format allows for efficient querying and filtering of blocks
+/// based on their producer and height.
+///
+/// # Examples
+///
+/// Creating a subject for a specific block:
+///
+/// ```
+/// # use fuel_streams_core::blocks::BlocksSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = BlocksSubject {
+///     producer: Some(Address::zeroed()),
+///     height: Some(23.into()),
+/// };
+/// assert_eq!(subject.parse(), "blocks.0x0000000000000000000000000000000000000000000000000000000000000000.23");
+/// ```
+///
+/// All blocks wildcard:
+///
+/// ```
+/// # use fuel_streams_core::blocks::BlocksSubject;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// assert_eq!(BlocksSubject::WILDCARD, "blocks.>");
+/// ```
+///
+/// Creating a subject query using the `wildcard` method for flexible parameter-based filtering
+///
+/// ```
+/// # use fuel_streams_core::blocks::BlocksSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let wildcard = BlocksSubject::wildcard(None, Some(23.into()));
+/// assert_eq!(wildcard, "blocks.*.23");
+/// ```
+///
+/// Using the builder pattern for flexible subject construction:
+/// This approach allows for step-by-step creation of a `BlocksSubject`,
+///
+/// ```
+/// # use fuel_streams_core::blocks::BlocksSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::IntoSubject;
+/// let subject = BlocksSubject::new().with_height(Some(23.into()));
+/// assert_eq!(subject.parse(), "blocks.*.23");
+/// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "blocks.>"]
 #[subject_format = "blocks.{producer}.{height}"]
@@ -19,36 +67,9 @@ impl From<&Block> for BlocksSubject {
 
 #[cfg(test)]
 mod test {
-    use fuel_streams_macros::subject::IntoSubject;
     use pretty_assertions::assert_eq;
 
     use super::*;
-
-    #[test]
-    fn block_subjects_all() {
-        assert_eq!(BlocksSubject::WILDCARD, "blocks.>")
-    }
-
-    #[test]
-    fn block_subjects_parse() {
-        let subject = BlocksSubject {
-            producer: Some(Address::zeroed()),
-            height: Some(23.into()),
-        };
-        assert_eq!(subject.parse(), "blocks.0x0000000000000000000000000000000000000000000000000000000000000000.23");
-    }
-
-    #[test]
-    fn block_subjects_wildcard() {
-        let wildcard = BlocksSubject::wildcard(None, Some(23.into()));
-        assert_eq!(wildcard, "blocks.*.23")
-    }
-
-    #[test]
-    fn block_subjects_builder() {
-        let subject = BlocksSubject::new().with_height(Some(23.into()));
-        assert_eq!(subject.parse(), "blocks.*.23")
-    }
 
     #[test]
     fn block_subjects_from_block() {

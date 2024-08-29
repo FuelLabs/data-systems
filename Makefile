@@ -55,7 +55,7 @@ dev-watch:
 # Formatting
 # ------------------------------------------------------------
 
-fmt: fmt-cargo fmt-rust fmt-prettier
+fmt: fmt-cargo fmt-rust fmt-prettier fmt-markdown
 
 fmt-cargo:
 	cargo sort -w
@@ -66,6 +66,9 @@ fmt-rust:
 fmt-prettier:
 	pnpm prettier:fix
 
+fmt-markdown:
+	pnpm md:fix
+
 # ------------------------------------------------------------
 # Validate code
 # ------------------------------------------------------------
@@ -73,7 +76,7 @@ fmt-prettier:
 check:
 	cargo check --all-targets --all-features
 
-lint: check lint-cargo lint-rust lint-clippy lint-prettier
+lint: check lint-cargo lint-rust lint-clippy lint-prettier lint-markdown
 
 lint-cargo:
 	cargo sort -w --check
@@ -86,6 +89,9 @@ lint-clippy:
 
 lint-prettier:
 	pnpm prettier:validate
+
+lint-markdown:
+	pnpm md:lint
 
 # ------------------------------------------------------------
 # Coverage

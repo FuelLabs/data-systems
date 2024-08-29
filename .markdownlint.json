@@ -1,0 +1,13 @@
+{
+  "extends": "markdownlint/style/prettier",
+  "first-line-h1": false,
+  "no-inline-html": false,
+  "no-alt-text": false,
+  "MD013": false,
+  "line-length": {
+    "line_length": 100,
+    "code_blocks": false,
+    "tables": false,
+    "headings": false
+  }
+}
