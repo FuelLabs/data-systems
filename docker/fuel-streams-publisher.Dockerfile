@@ -68,7 +68,6 @@ ENV RELAYER=
 ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
-ENV NATS_NKEY_SEED=
 ENV RESERVED_NODE_DNS=
 
 WORKDIR /usr/src
@@ -108,4 +107,3 @@ CMD exec ./fuel-streams-publisher \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --sync-block-stream-buffer-size 30 \
     --nats-url "${NATS_URL}" \
-    --nats-nkey "${NATS_NKEY_SEED}"
