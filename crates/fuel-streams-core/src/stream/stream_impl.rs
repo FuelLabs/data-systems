@@ -70,7 +70,7 @@ pub trait Streamable: StreamEncoder {
 ///
 ///     // Publish
 ///     let subject = BlocksSubject::new().with_height(Some(23.into()));
-///     let payload = MyStreamable { data: "helo".into() };
+///     let payload = MyStreamable { data: "foo".into() };
 ///     stream.publish(&subject, &payload).await.unwrap();
 ///
 ///     // Subscribe
