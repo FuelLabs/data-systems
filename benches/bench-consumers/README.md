@@ -1,7 +1,7 @@
 # Running
 
-1. After running the [`nats-publisher`](../nats-publisher/README.md) locally, just execute the run on this
-   project:
+1. After running the [`nats-publisher`](../nats-publisher/README.md) locally, just execute the run
+   on this project:
 
     ```sh
     cargo run

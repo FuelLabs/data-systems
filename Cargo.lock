@@ -2759,6 +2759,7 @@ dependencies = [
  "fuel-streams-core",
  "futures",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

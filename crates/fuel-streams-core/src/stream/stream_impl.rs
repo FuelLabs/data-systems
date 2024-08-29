@@ -1,5 +1,3 @@
-mod error;
-
 use std::fmt::Debug;
 
 use async_nats::{
@@ -11,16 +9,12 @@ use async_nats::{
     Message,
 };
 use async_trait::async_trait;
-pub use error::StreamError;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::StreamExt;
 use tokio::sync::OnceCell;
 
-use crate::{
-    nats::types::*,
-    prelude::NatsClient,
-    stream_encoding::StreamEncoder,
-};
+use super::{error::StreamError, stream_encoding::StreamEncoder};
+use crate::{nats::types::*, prelude::NatsClient};
 
 /// Trait for types that can be streamed.
 ///

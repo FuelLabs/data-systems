@@ -15,6 +15,7 @@ displaydoc = { workspace = true }
 fuel-streams-core = { workspace = true }
 futures = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [features]
 default = []

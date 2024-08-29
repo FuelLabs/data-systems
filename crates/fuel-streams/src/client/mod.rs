@@ -1,6 +1,6 @@
 mod client_impl;
-mod error;
-mod types;
+pub mod error;
+pub mod types;
 
 pub use client_impl::*;
 pub use error::*;

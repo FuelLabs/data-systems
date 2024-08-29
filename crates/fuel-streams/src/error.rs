@@ -3,9 +3,12 @@ use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError, DisplayDoc)]
 pub enum Error {
-    /// client error
+    /// An error occurred in the client
     ClientError(#[from] crate::client::ClientError),
 
-    /// stream error
+    /// An error occurred in the stream
     StreamError(#[from] crate::stream::StreamError),
+
+    /// Consuming messages error
+    MessagesError(#[from] crate::core::nats::types::MessagesError),
 }

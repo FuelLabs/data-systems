@@ -6,7 +6,7 @@
   "scripts": {
     "prettier:fix": "prettier --write \"**/*.@(json|md|sh|toml)\"",
     "prettier:validate": "prettier --check \"**/*.@(json|md|sh|toml)\"",
-    "md:lint": "markdownlint \"**/*.md\" \".github/**/*.md\" -i \"target\" -i \"node_modules\"",
+    "md:lint": "markdownlint -c .markdownlint.json \"**/*.md\" \".github/**/*.md\" -i \"target\" -i \"node_modules\"",
     "md:fix": "pnpm md:lint --fix"
   },
   "devDependencies": {
