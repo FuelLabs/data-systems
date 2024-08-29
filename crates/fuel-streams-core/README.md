@@ -35,12 +35,10 @@
 
 ## 📝 About The Project
 
-Fuel Streams Core is a library for building data streaming applications on the Fuel blockchain. It
-provides tools for efficient handling of real-time blockchain data, using NATS for scalable
-streaming and offering support for Fuel-specific data types.
+Fuel Streams Core is a library for building data streaming applications on the Fuel blockchain. It provides tools for efficient handling of real-time blockchain data, using NATS for scalable streaming and offering support for Fuel-specific data types.
 
-> [!NOTE] This crate is specifically modeled for the Fuel Data Systems project, and is not intended
-> for general use outside of the project.
+> [!NOTE]
+> This crate is specifically modeled for the Fuel Data Systems project, and is not intended for general use outside of the project.
 
 ## 🛠️ Installing
 
@@ -86,10 +84,8 @@ async fn main() -> BoxedResult<()> {
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file
-in the root of the repository.
+For more information on contributing, please see the [CONTRIBUTING.md](../../CONTRIBUTING.md) file in the root of the repository.
 
 ## 📜 License
 
-This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more
-information.
+This repo is licensed under the `Apache-2.0` license. See [`LICENSE`](../../LICENSE) for more information.

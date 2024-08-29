@@ -25,16 +25,12 @@
 
 ## 📝 About The Project
 
-> [!WARNING] This project is currently under development and is not yet ready for production use.
+> [!WARNING]
+> This project is currently under development and is not yet ready for production use.
 
-Fuel Data Systems is a comprehensive suite of libraries and tools designed to enable real-time data
-streaming and processing from the Fuel Network. This repository houses the official data streaming
-ecosystem, offering developers a powerful and flexible API to interact with Fuel Network data in
-real-time.
+Fuel Data Systems is a comprehensive suite of libraries and tools designed to enable real-time data streaming and processing from the Fuel Network. This repository houses the official data streaming ecosystem, offering developers a powerful and flexible API to interact with Fuel Network data in real-time.
 
-With Fuel Data Systems, developers can build sophisticated applications that leverage the full
-potential of the Fuel Network's data, from simple block explorers to complex analytics engines and
-trading systems.
+With Fuel Data Systems, developers can build sophisticated applications that leverage the full potential of the Fuel Network's data, from simple block explorers to complex analytics engines and trading systems.
 
 ## 🚀 Features
 
@@ -81,18 +77,14 @@ trading systems.
     cargo run
     ```
 
-This example connects to the Fuel Network's NATS server and listens for new blocks. You can
-customize the data types or apply filters based on your specific requirements.
+This example connects to the Fuel Network's NATS server and listens for new blocks. You can customize the data types or apply filters based on your specific requirements.
 
-For advanced usage, including custom filters and delivery policies, refer to the
-[`fuel-streams` documentation](https://docs.rs/fuel-streams).
+For advanced usage, including custom filters and delivery policies, refer to the [`fuel-streams` documentation](https://docs.rs/fuel-streams).
 
 ## 💪 Contributing
 
-We welcome contributions to Fuel Streams! Please check our
-[contributing guidelines](CONTRIBUTING.md) for more information on how to get started.
+We welcome contributions to Fuel Streams! Please check our [contributing guidelines](CONTRIBUTING.md) for more information on how to get started.
 
 ## 📜 License
 
-This project is licensed under the `Apache-2.0` license. See [`LICENSE`](./LICENSE) for more
-information.
+This project is licensed under the `Apache-2.0` license. See [`LICENSE`](./LICENSE) for more information.
