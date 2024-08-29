@@ -50,7 +50,7 @@ subject-derive = { version = "0.0.4", path = "crates/fuel-streams-macros/subject
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["fuel-core"]
+ignored = ["fuel-core", "tokio"]
 
 [profile.release]
 opt-level = 3
