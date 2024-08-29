@@ -6660,6 +6660,7 @@ dependencies = [
  "fuel-streams-publisher",
  "futures",
  "pretty_assertions",
+ "rand",
  "tokio",
 ]
 

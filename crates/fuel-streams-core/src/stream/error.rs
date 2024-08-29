@@ -3,10 +3,9 @@ use async_nats::{
     jetstream::{
         consumer::StreamErrorKind,
         context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
-        kv::{PutError, PutErrorKind, WatchErrorKind},
+        kv::{CreateError, CreateErrorKind, PutError, WatchErrorKind},
         stream::{ConsumerErrorKind, LastRawMessageErrorKind},
     },
-    PublishError,
 };
 use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
@@ -17,7 +16,7 @@ pub enum StreamError {
     PublishFailed {
         subject_name: String,
         #[source]
-        source: error::Error<PutErrorKind>,
+        source: error::Error<CreateErrorKind>,
     },
 
     /// Failed to retrieve last published message from stream
@@ -33,7 +32,7 @@ pub enum StreamError {
     StoreSubscribe(#[from] error::Error<WatchErrorKind>),
 
     /// Failed to publish item to stream
-    StreamPublish(#[from] PublishError),
+    StreamPublish(#[from] CreateError),
 
     /// Failed to create stream
     StreamCreation(#[from] error::Error<CreateStreamErrorKind>),

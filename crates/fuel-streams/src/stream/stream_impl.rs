@@ -142,7 +142,7 @@ impl<S: Streamable> Stream<S> {
     /// ```
     pub async fn subscribe(
         &self,
-    ) -> Result<impl futures::Stream<Item = Vec<u8>>, StreamError> {
+    ) -> Result<impl futures::Stream<Item = Option<Vec<u8>>>, StreamError> {
         // TODO: Why implicitly select a stream for the user?
         // TODO: Should this be a combination of streams
         self.stream

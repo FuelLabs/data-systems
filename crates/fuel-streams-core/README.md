@@ -72,7 +72,7 @@ async fn main() -> BoxedResult<()> {
 
     // Process incoming blocks
     while let Some(bytes) = subscription.next().await {
-        let block = Block::decode_raw(bytes).await;
+        let block = Block::decode_raw(bytes.unwrap()).await;
         dbg!(block);
     }
 
