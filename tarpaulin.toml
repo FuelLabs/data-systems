@@ -2,7 +2,7 @@
 name = "Fuel Data Parser Coverage Analysis"
 packages = ["fuel-data-parser"]
 all-features = true
-run-types = ["Lib", "Tests"]
+run-types = ["Lib", "Tests", "Doctests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -18,7 +18,7 @@ engine = "Llvm"
 name = "Fuel Streams Coverage Analysis"
 packages = ["fuel-streams"]
 all-features = true
-run-types = ["Lib", "Tests"]
+run-types = ["Lib", "Tests", "Doctests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -34,7 +34,7 @@ engine = "Llvm"
 name = "Fuel Streams Core Coverage Analysis"
 packages = ["fuel-streams-core"]
 all-features = true
-run-types = ["Lib", "Tests"]
+run-types = ["Lib", "Tests", "Doctests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -50,7 +50,7 @@ engine = "Llvm"
 name = "Fuel Streams Macros Coverage Analysis"
 packages = ["fuel-streams-macros"]
 all-features = true
-run-types = ["Lib", "Tests"]
+run-types = ["Lib", "Tests", "Doctests"]
 timeout = "120s"
 color = "Always"
 locked = true
@@ -62,24 +62,19 @@ engine = "Llvm"
 #fail-under = 80
 
 # ==========================================
-# ignore due to wasm incompatibility
-# [cov_fuel_streams_publisher]
-# name = "Fuel Streams Publisher Coverage Analysis"
-# packages = [
-#     "fuel-streams-publisher"
-# ]
-# all-features = true
-# run-types = [
-#     "Tests"
-# ]
-# timeout = "120s"
-# color = "Always"
-# locked = true
-# count = true
-# no-dead-code = true
-# fail-immediately = true
-# skip-clean = true
-# engine = "Llvm"
+[cov_fuel_streams_publisher]
+name = "Fuel Streams Publisher Coverage Analysis"
+packages = ["fuel-streams-publisher"]
+all-features = true
+run-types = ["Tests"]
+timeout = "120s"
+color = "Always"
+locked = true
+count = true
+no-dead-code = true
+fail-immediately = true
+skip-clean = true
+engine = "Llvm"
 #fail-under = 80
 
 # ==========================================

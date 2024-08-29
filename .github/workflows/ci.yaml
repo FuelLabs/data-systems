@@ -16,6 +16,7 @@ env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
   RUST_NIGHTLY_VERSION: nightly-2024-07-28
+  RUST_NIGHTLY_COV: nightly-2024-06-05
   CI: true
 
 concurrency:
@@ -222,7 +223,7 @@ jobs:
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+          toolchain: ${{ env.RUST_NIGHTLY_COV }}
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
           cache: false
 

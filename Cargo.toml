@@ -23,13 +23,18 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2.5"
 futures = "0.3"
-fuel-core-bin = { version = "0.34", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.34", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.34" }
-fuel-core-importer = { version = "0.34" }
-fuel-core-storage = { version = "0.34" }
-fuel-core-types = { version = "0.34", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.34"
+fuel-core-bin = { version = "0.34", default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+] }
+fuel-core = { version = "0.34", default-features = false, features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-importer = { version = "0.34", default-features = false }
+fuel-core-storage = { version = "0.34", default-features = false }
+fuel-core-types = { version = "0.34", default-features = false, features = [
+    "test-helpers",
+    "serde",
+] }
 futures-util = "0.3.30"
 pretty_assertions = "1.4.0"
 rand = "0.8"
@@ -50,7 +55,7 @@ subject-derive = { version = "0.0.6", path = "crates/fuel-streams-macros/subject
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["fuel-core", "tokio"]
+ignored = ["tokio"]
 
 [profile.release]
 opt-level = 3
