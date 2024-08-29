@@ -7,7 +7,6 @@ use std::{
 
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
-use fuel_core_services::Service;
 use fuel_streams_publisher::state::SharedState;
 
 /// CLI structure for parsing command-line arguments.
@@ -43,16 +42,25 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // create the fuel core service
-    let fuel_core = fuel_core_bin::cli::run::get_service(cli.fuel_core_config)?;
+    let fuel_core =
+        fuel_core_bin::cli::run::get_service(cli.fuel_core_config).await?;
     let fuel_core = Arc::new(fuel_core);
 
     // start the fuel core in the background
-    fuel_core.start()?;
+    fuel_core
+        .start_and_await()
+        .await
+        .expect("Fuel core service startup failed");
 
     // create a common shared state between actix and publisher
     let state = SharedState {
         fuel_service: Arc::clone(&fuel_core),
     };
+
+    fuel_core
+        .start_and_await()
+        .await
+        .expect("Fuel core service startup failed");
 
     let publisher = fuel_streams_publisher::Publisher::new(
         state.fuel_service.clone(),
@@ -65,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let actix_server_addr = cli
         .server_addr
         .to_socket_addrs()?
-        .nth(0)
+        .next()
         .ok_or_else(|| anyhow::anyhow!("Missing server address"))?;
     let server = HttpServer::new(move || {
         App::new()

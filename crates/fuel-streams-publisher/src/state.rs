@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{HttpResponse, Responder};
 use fuel_core_bin::FuelService;
-use tokio::sync::Mutex;
-
-use crate::Publisher;
 
 #[derive(Clone)]
 pub struct SharedState {

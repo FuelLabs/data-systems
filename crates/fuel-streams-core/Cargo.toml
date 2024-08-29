@@ -8,20 +8,21 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
+rust-version = { workspace = true }
 
 [dependencies]
 async-nats = { workspace = true }
 async-trait = { workspace = true }
+chrono = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
-fuel-core = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
-serde = "1.0.204"
+serde = "1"
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
@@ -32,3 +33,4 @@ pretty_assertions = { workspace = true }
 [features]
 default = []
 test-helpers = ["dep:pretty_assertions"]
+bench-helpers = ["dep:pretty_assertions"]

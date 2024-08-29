@@ -8,6 +8,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
+rust-version = { workspace = true }
 publish = false
 
 [dependencies]
@@ -17,7 +18,6 @@ clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
-fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }

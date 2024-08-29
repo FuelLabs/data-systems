@@ -7,14 +7,15 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
+rust-version = "1.79.0"
 version = "0.0.4"
 
 [dependencies]
-async-trait = { workspace = true }
 displaydoc = { workspace = true }
 fuel-streams-core = { workspace = true }
 futures = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [features]
 default = []

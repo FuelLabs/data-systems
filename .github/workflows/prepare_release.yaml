@@ -61,6 +61,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run knope prepare release
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
           RELEASE_BRANCH: ${{ needs.setup.outputs.branch }}

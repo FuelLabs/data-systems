@@ -3,13 +3,13 @@ use thiserror::Error;
 
 #[derive(Debug, Error, DisplayDoc)]
 pub enum StreamError {
-    /// failed to subscribe
+    /// Failed to subscribe to the stream
     Subscribe {
         #[source]
         source: fuel_streams_core::StreamError,
     },
 
-    /// failed to subscribe with options
+    /// Failed to subscribe to the stream with custom options
     SubscribeWithOpts {
         #[source]
         source: fuel_streams_core::StreamError,

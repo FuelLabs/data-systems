@@ -5,8 +5,7 @@ use fuel_core::{
     database::database_description::DatabaseHeight,
 };
 use fuel_core_bin::FuelService;
-use fuel_core_importer::ImporterResult;
-use fuel_core_services::Service;
+use fuel_core_importer::{ports::ImporterDatabase, ImporterResult};
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::blockchain::consensus::Sealed;
 use fuel_streams_core::{
@@ -20,7 +19,7 @@ use futures_util::{future::try_join_all, FutureExt};
 use tokio::sync::broadcast::Receiver;
 use tracing::warn;
 
-use crate::{blocks, shutdown::stop_signal, state::SharedState, transactions};
+use crate::{blocks, shutdown::stop_signal, transactions};
 
 const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -80,8 +79,7 @@ impl Publisher {
         let chain_config =
             fuel_service.shared.config.snapshot_reader.chain_config();
         let chain_id = chain_config.consensus_parameters.chain_id();
-        let base_asset_id =
-            chain_config.consensus_parameters.base_asset_id().clone();
+        let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
 
         Ok(Publisher {
             fuel_service,
@@ -145,8 +143,14 @@ impl Publisher {
             }
 
             tracing::info!("Stopping fuel core ...");
-            match self.fuel_service.stop_and_await().await {
-                Ok(_) => tracing::info!("Stopped fuel core"),
+            match self
+                .fuel_service
+                .send_stop_signal_and_await_shutdown()
+                .await
+            {
+                Ok(state) => {
+                    tracing::info!("Stopped fuel core. Status = {:?}", state)
+                }
                 Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
             }
         })
@@ -174,7 +178,7 @@ impl Publisher {
         if let Some(latest_fuel_core_height) = self
             .fuel_core_database
             .on_chain()
-            .latest_height()?
+            .latest_block_height()?
             .map(|h| h.as_u64())
         {
             if latest_fuel_core_height > last_published_height + 1 {
