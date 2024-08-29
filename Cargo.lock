@@ -2693,8 +2693,6 @@ dependencies = [
  "async-trait",
  "bincode",
  "displaydoc",
- "fuel-core-types",
- "fuel-streams-macros",
  "lazy_static",
  "paste",
  "postcard",
