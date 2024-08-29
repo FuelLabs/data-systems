@@ -1,7 +1,6 @@
 //! This binary subscribes to events emitted from a Fuel client or node
 //! to publish streams that can consumed via the `fuel-streams` SDK.
 use clap::Parser;
-use fuel_core_services::Service;
 
 /// CLI structure for parsing command-line arguments.
 ///
@@ -27,8 +26,8 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    let fuel_core = fuel_core_bin::cli::run::get_service(cli.fuel_core_config)?;
-    fuel_core.start()?;
+    let fuel_core =
+        fuel_core_bin::cli::run::get_service(cli.fuel_core_config).await?;
 
     let fuel_core_subscription =
         fuel_core.shared.block_importer.block_importer.subscribe();
@@ -37,6 +36,11 @@ async fn main() -> anyhow::Result<()> {
     let chain_config = fuel_core.shared.config.snapshot_reader.chain_config();
     let chain_id = chain_config.consensus_parameters.chain_id();
     let base_asset_id = chain_config.consensus_parameters.base_asset_id();
+
+    fuel_core
+        .start_and_await()
+        .await
+        .expect("Fuel core service startup failed");
 
     let publisher = fuel_streams_publisher::Publisher::new(
         &cli.nats_url,

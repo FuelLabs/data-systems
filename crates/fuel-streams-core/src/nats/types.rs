@@ -4,6 +4,7 @@ pub use async_nats::{
         consumer::{
             pull::{
                 Config as PullConsumerConfig,
+                MessagesError,
                 Stream as PullConsumerStream,
             },
             AckPolicy,

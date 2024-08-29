@@ -99,6 +99,15 @@ template = "v$VERSION"
 variables = { "$VERSION" = "Version" }
 
 # ------------------------------------------------------------
+# Workflow to create a changeset
+# ------------------------------------------------------------
+[[workflows]]
+name = "document-change"
+
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+# ------------------------------------------------------------
 # Workflow to release a new version
 # ------------------------------------------------------------
 [[workflows]]

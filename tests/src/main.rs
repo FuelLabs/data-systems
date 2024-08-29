@@ -114,9 +114,9 @@ async fn main() -> BoxedResult<()> {
                     println!("Valid subscription");
                     let decoded_msg = Block::decode_raw(bytes).await;
                     let (subject, block) = items[index.unwrap()].to_owned();
-                    let height = *decoded_msg.data.header().consensus().height;
+                    let height = *decoded_msg.payload.header().consensus().height;
                     assert_eq!(decoded_msg.subject, subject.parse());
-                    assert_eq!(decoded_msg.data, block);
+                    assert_eq!(decoded_msg.payload, block);
                     assert_eq!(height, index.unwrap() as u32);
                     if index.unwrap() == 9 {
                         break;

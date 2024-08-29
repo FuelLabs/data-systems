@@ -3,45 +3,41 @@
 use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
-/// Password hashing error types.
+/// Compression error types
 #[derive(Debug, DisplayDoc, Error)]
 pub enum CompressionError {
-    /// Compression/Decompression zlib error
+    /// Failed to compress or decompress data using zlib: {0}
     Zlib(std::io::Error),
-    /// Compression/Decompression gzip error
+    /// Failed to compress or decompress data using gzip: {0}
     Gzip(std::io::Error),
-    /// Compression/Decompression brotli error
+    /// Failed to compress or decompress data using brotli: {0}
     Brotli(std::io::Error),
-    /// Compression/Decompression bz error
+    /// Failed to compress or decompress data using bzip2: {0}
     Bz(std::io::Error),
-    /// Compression/Decompression lzma error
+    /// Failed to compress or decompress data using lzma: {0}
     Lzma(std::io::Error),
-    /// Compression/Decompression deflate error
+    /// Failed to compress or decompress data using deflate: {0}
     Deflate(std::io::Error),
-    /// Compression/Decompression zstd error
+    /// Failed to compress or decompress data using zstd: {0}
     Zstd(std::io::Error),
 }
 
-/// Password hashing error types.
+/// Serialization/Deserialization error types.
 #[derive(Debug, DisplayDoc, Error)]
 pub enum SerdeError {
-    /// serde bincode error
+    /// Failed to serialize or deserialize data using bincode: {0}
     Bincode(#[from] bincode::ErrorKind),
-    /// serde postcard error
+    /// Failed to serialize or deserialize data using postcard: {0}
     Postcard(#[from] postcard::Error),
-    /// serde prost encode error
-    ProstEncode(#[from] prost::EncodeError),
-    /// serde prost decode error
-    ProstDecode(#[from] prost::DecodeError),
-    /// serde json error
+    /// Failed to serialize or deserialize data using JSON: {0}
     Json(#[from] serde_json::Error),
 }
 
-/// Password hashing error types.
+/// Data parser error types.
 #[derive(Debug, DisplayDoc, Error)]
 pub enum Error {
-    /// compression error: {0}
+    /// An error occurred during data compression or decompression: {0}
     Compression(#[from] CompressionError),
-    /// serde error: {0}
+    /// An error occurred during data serialization or deserialization: {0}
     Serde(#[from] SerdeError),
 }

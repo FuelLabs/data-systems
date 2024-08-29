@@ -2,6 +2,7 @@ use fuel_core::{
     combined_database::CombinedDatabase,
     database::database_description::DatabaseHeight,
 };
+use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::blockchain::consensus::Sealed;
 use fuel_streams_core::{
@@ -107,7 +108,7 @@ impl Publisher {
         if let Some(latest_fuel_core_height) = self
             .fuel_core_database
             .on_chain()
-            .latest_height()?
+            .latest_block_height()?
             .map(|h| h.as_u64())
         {
             if latest_fuel_core_height > last_published_height + 1 {

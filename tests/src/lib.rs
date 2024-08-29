@@ -37,7 +37,7 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
     Ok((client, streams))
 }
 
-pub fn publish_items<T: Streamable>(
+pub fn publish_items<T: Streamable + 'static>(
     stream: &Stream<T>,
     items: Vec<(impl IntoSubject + Sync + Send + 'static, T)>,
 ) -> JoinHandle<()> {

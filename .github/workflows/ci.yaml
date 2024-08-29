@@ -52,6 +52,7 @@ jobs:
             publisher
             data-parser
             fuel-streams
+            macros
 
   lockfile:
     name: Validate Lockfile

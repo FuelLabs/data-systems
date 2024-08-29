@@ -3,41 +3,43 @@ use async_nats::{
     jetstream::{
         consumer::StreamErrorKind,
         context::{CreateKeyValueErrorKind, CreateStreamErrorKind},
-        kv::{CreateErrorKind, WatchErrorKind},
-        stream::{ConsumerErrorKind, DirectGetErrorKind},
+        kv::{CreateError, CreateErrorKind, PutError, WatchErrorKind},
+        stream::{ConsumerErrorKind, LastRawMessageErrorKind},
     },
-    PublishError,
 };
 use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
 #[derive(Error, DisplayDoc, Debug)]
 pub enum StreamError {
-    /// failed to publish stream
+    /// Failed to publish to stream: {subject_name}
     PublishFailed {
         subject_name: String,
         #[source]
         source: error::Error<CreateErrorKind>,
     },
 
-    /// failed to subscribe to stream
-    GetLastPublishedFailed(#[from] error::Error<DirectGetErrorKind>),
+    /// Failed to retrieve last published message from stream
+    GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
 
-    /// failed to create KV Store
+    /// Failed to create Key-Value Store
     StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),
 
-    /// failed to subscribe to subject
+    /// Failed to publish item to Key-Value Store
+    StorePublish(#[from] PutError),
+
+    /// Failed to subscribe to subject in Key-Value Store
     StoreSubscribe(#[from] error::Error<WatchErrorKind>),
 
-    /// failed to publish item
-    StreamPublish(#[from] PublishError),
+    /// Failed to publish item to stream
+    StreamPublish(#[from] CreateError),
 
-    /// failed to create stream
+    /// Failed to create stream
     StreamCreation(#[from] error::Error<CreateStreamErrorKind>),
 
-    /// failed to create consumer
+    /// Failed to create consumer for stream
     ConsumerCreate(#[from] error::Error<ConsumerErrorKind>),
 
-    /// failed to consume messages from stream
+    /// Failed to consume messages from stream
     ConsumerMessages(#[from] error::Error<StreamErrorKind>),
 }

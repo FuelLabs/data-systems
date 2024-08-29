@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
 use fuel_streams::prelude::*;
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::prelude::{types, *};
 use futures::{
     future::{try_join_all, BoxFuture},
     FutureExt,
@@ -300,9 +300,9 @@ async fn ensure_deduplication_when_publishing() -> BoxedResult<()> {
                 assert!(entry.is_some());
                 let decoded_msg = Block::decode_raw(entry.unwrap()).await;
                 let (subject, block) = items[idx].to_owned();
-                let height = *decoded_msg.data.header().consensus().height;
+                let height = *decoded_msg.payload.header().consensus().height;
                 assert_eq!(decoded_msg.subject, subject.parse());
-                assert_eq!(decoded_msg.data, block);
+                assert_eq!(decoded_msg.payload, block);
                 assert_eq!(height, const_block_height);
                 assert!(idx < 1);
             }
