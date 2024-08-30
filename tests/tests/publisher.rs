@@ -13,7 +13,8 @@ use tokio::sync::broadcast;
 
 #[tokio::test]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
-    let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
+    let (blocks_subscriber, blocks_subscription) =
+        broadcast::channel::<ImporterResult>(1);
 
     let publisher = Publisher::default_with_publisher(
         &nats_client().await,
@@ -21,6 +22,8 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     )
     .await
     .unwrap();
+
+    drop(blocks_subscriber);
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher.get_streams().is_empty().await);

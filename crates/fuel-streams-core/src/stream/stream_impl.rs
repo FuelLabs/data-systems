@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use async_nats::{
     jetstream::{
         consumer::AckPolicy,
-        kv,
+        kv::{self, CreateErrorKind},
         stream::{self, LastRawMessageErrorKind},
     },
     Message,
@@ -110,6 +110,7 @@ impl<S: Streamable> Stream<S> {
             .get_or_create_kv_store(kv::Config {
                 bucket: bucket_name.to_owned(),
                 storage: stream::StorageType::File,
+                history: 1,
                 compression: true,
                 ..Default::default()
             })
@@ -127,27 +128,36 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &impl IntoSubject,
         payload: &S,
-    ) -> Result<u64, StreamError> {
+    ) -> Result<(), StreamError> {
         let subject_name = &subject.parse();
-        self.store
-            .put(subject_name, payload.encode(subject_name).await.into())
-            .await
-            .map_err(|s| StreamError::PublishFailed {
+        let result = self
+            .store
+            .create(subject_name, payload.encode(subject_name).await.into())
+            .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
+                // This is a workaround to avoid publish two times the same message
+                Ok(())
+            }
+            Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
-                source: s,
-            })
+                source: e,
+            }),
+        }
     }
 
     pub async fn subscribe(
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
         wildcard: &str,
-    ) -> Result<impl futures::Stream<Item = Vec<u8>>, StreamError> {
-        Ok(self
-            .store
-            .watch(&wildcard)
-            .await
-            .map(|stream| stream.map(|entry| entry.unwrap().value.to_vec()))?)
+    ) -> Result<impl futures::Stream<Item = Option<Vec<u8>>>, StreamError> {
+        Ok(self.store.watch(&wildcard).await.map(|stream| {
+            stream.map(|entry| {
+                entry.ok().map(|entry_item| entry_item.value.to_vec())
+            })
+        })?)
     }
 
     // TODO: Make this interface more Stream-like and Nats agnostic
@@ -186,7 +196,6 @@ impl<S: Streamable> Stream<S> {
             .is_ok_and(|result| result.is_none())
     }
 
-    /// TODO: investigate why this always returns None even after publishing (putting to the KV Store)
     pub async fn get_last_published(
         &self,
         wildcard: &str,
@@ -252,6 +261,11 @@ impl<S: Streamable> Stream<S> {
         // from the KV store's stream
         let subject = subject.into();
         format!("$KV.*.{subject}")
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn store(&self) -> &kv::Store {
+        &self.store
     }
 }
 

@@ -16,7 +16,7 @@ use fuel_streams_core::{
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
-use tokio::sync::broadcast::Receiver;
+use tokio::sync::broadcast::{error::RecvError, Receiver};
 use tracing::warn;
 
 use crate::{blocks, shutdown::stop_signal, transactions};
@@ -102,12 +102,15 @@ impl Publisher {
 
     #[cfg(feature = "test-helpers")]
     pub async fn default_with_publisher(
-        fuel_service: Arc<FuelService>,
         nats_client: &NatsClient,
         blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     ) -> anyhow::Result<Self> {
+        use fuel_core::service::Config;
+
+        let fuel_srv =
+            FuelService::new_node(Config::local_node()).await.unwrap();
         Ok(Publisher {
-            fuel_service,
+            fuel_service: Arc::new(fuel_srv),
             chain_id: ChainId::default(),
             base_asset_id: AssetId::default(),
             fuel_core_database: CombinedDatabase::default(),
@@ -220,8 +223,14 @@ impl Publisher {
         loop {
             tokio::select! {
                 result = self.blocks_subscription.recv() => {
-                    if let Ok(result) = result {
-                        self.publish_block_data(result).await?;
+                    match result {
+                        Ok(result) => {
+                            self.publish_block_data(result).await?;
+                        }
+                        Err(RecvError::Closed) | Err(RecvError::Lagged(_)) => {
+                            // The sender has been dropped or has lagged, exit the loop
+                            break;
+                        }
                     }
                 }
                 _ = shutdown_recv.recv() => {

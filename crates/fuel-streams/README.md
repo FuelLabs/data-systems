@@ -75,7 +75,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 
     let mut subscription = stream.subscribe().await?;
     while let Some(bytes) = subscription.next().await {
-        let block = Block::decode(bytes).await;
+        let block = Block::decode(bytes.unwrap()).await;
         println!("Received block: {:?}", block);
     }
 

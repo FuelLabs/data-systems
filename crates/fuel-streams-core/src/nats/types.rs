@@ -7,6 +7,7 @@ pub use async_nats::{
                 MessagesError,
                 Stream as PullConsumerStream,
             },
+            AckPolicy,
             Config as ConsumerConfig,
             Consumer as NatsConsumer,
             DeliverPolicy,

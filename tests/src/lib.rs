@@ -6,6 +6,12 @@ use fuel_streams_core::{
     types::{Block, Transaction},
     Stream,
 };
+use tokio::task::JoinHandle;
+
+type PublishedBlocksResult =
+    BoxedResult<(Vec<(BlocksSubject, Block)>, JoinHandle<()>)>;
+type PublishedTxsResult =
+    BoxedResult<(Vec<(TransactionsSubject, Transaction)>, JoinHandle<()>)>;
 
 #[derive(Debug, Clone)]
 pub struct Streams {
@@ -31,17 +37,10 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
     Ok((client, streams))
 }
 
-pub fn publish_blocks(
-    stream: &Stream<Block>,
-    producer: Option<Address>,
-) -> BoxedResult<Vec<(BlocksSubject, Block)>> {
-    let mut items = Vec::new();
-    for i in 0..10 {
-        let block_item = MockBlock::build(i);
-        let subject = BlocksSubject::build(producer.clone(), Some(i.into()));
-        items.push((subject, block_item));
-    }
-
+pub fn publish_items<T: Streamable + 'static>(
+    stream: &Stream<T>,
+    items: Vec<(impl IntoSubject + Sync + Send + 'static, T)>,
+) -> JoinHandle<()> {
     tokio::task::spawn({
         let stream = stream.clone();
         let items = items.clone();
@@ -49,39 +48,49 @@ pub fn publish_blocks(
             for item in items {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 let payload = item.1.clone();
-                stream.publish(&item.0, &payload).await.unwrap();
+                let subject = item.0;
+                stream.publish(&subject, &payload).await.unwrap();
             }
         }
-    });
+    })
+}
 
-    Ok(items)
+pub fn publish_blocks(
+    stream: &Stream<Block>,
+    producer: Option<Address>,
+    use_height: Option<u32>,
+) -> PublishedBlocksResult {
+    let mut items = Vec::new();
+    for i in 0..10 {
+        let block_item = MockBlock::build(use_height.unwrap_or(i));
+        let subject = BlocksSubject::build(
+            producer.clone(),
+            Some((use_height.unwrap_or(i)).into()),
+        );
+        items.push((subject, block_item));
+    }
+
+    let join_handle = publish_items::<Block>(stream, items.clone());
+
+    Ok((items, join_handle))
 }
 
 pub fn publish_transactions(
     stream: &Stream<Transaction>,
     mock_block: &Block,
-) -> BoxedResult<Vec<(TransactionsSubject, Transaction)>> {
+    use_tx_index: Option<u32>,
+) -> PublishedTxsResult {
     let mut items = Vec::new();
     for i in 0..10 {
         let tx = MockTransaction::build();
         let subject = TransactionsSubject::from(&tx)
             .with_height(Some(mock_block.clone().into()))
-            .with_tx_index(Some(i))
+            .with_tx_index(Some(use_tx_index.unwrap_or(i) as usize))
             .with_status(Some(TransactionStatus::Success));
         items.push((subject, tx));
     }
 
-    tokio::task::spawn({
-        let stream = stream.clone();
-        let items = items.clone();
-        async move {
-            for item in items {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-                let payload = item.1.clone();
-                stream.publish(&item.0, &payload).await.unwrap();
-            }
-        }
-    });
+    let join_handle = publish_items::<Transaction>(stream, items.clone());
 
-    Ok(items)
+    Ok((items, join_handle))
 }

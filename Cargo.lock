@@ -829,7 +829,7 @@ checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
 name = "bench-consumers"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -1790,7 +1790,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "criterion",
  "fuel-core-types",
@@ -2548,6 +2548,7 @@ dependencies = [
  "fuel-core-types",
  "itertools 0.12.1",
  "postcard",
+ "rand",
  "serde",
  "serde_json",
  "serde_with",
@@ -2809,6 +2810,7 @@ dependencies = [
  "fuel-core-services",
  "fuel-core-storage",
  "fuel-core-types",
+ "mockall",
  "num-rational",
  "parking_lot",
  "tokio",
@@ -2891,7 +2893,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "async-compression",
  "async-trait",
@@ -2954,7 +2956,7 @@ checksum = "4c1b711f28553ddc5f3546711bd220e144ce4c1af7d9e9a1f70b2f20d9f5b791"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "displaydoc",
  "fuel-streams-core",
@@ -2965,7 +2967,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2986,14 +2988,14 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "subject-derive",
 ]
 
 [[package]]
 name = "fuel-streams-publisher"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -4935,7 +4937,7 @@ dependencies = [
 
 [[package]]
 name = "nats-publisher"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -6893,8 +6895,10 @@ dependencies = [
 
 [[package]]
 name = "streams-tests"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
+ "fuel-core",
+ "fuel-core-bin",
  "fuel-core-importer",
  "fuel-core-types",
  "fuel-streams",
@@ -6902,6 +6906,7 @@ dependencies = [
  "fuel-streams-publisher",
  "futures",
  "pretty_assertions",
+ "rand",
  "tokio",
 ]
 
@@ -6985,7 +6990,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "proc-macro2",
  "quote",
