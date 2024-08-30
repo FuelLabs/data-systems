@@ -30,6 +30,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-cors"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9e772b3bcafe335042b5db010ab7c09013dad6eac4915c91d8d50902769f331"
+dependencies = [
+ "actix-utils",
+ "actix-web",
+ "derive_more",
+ "futures-util",
+ "log",
+ "once_cell",
+ "smallvec",
+]
+
+[[package]]
 name = "actix-http"
 version = "3.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -193,6 +208,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.76",
+]
+
+[[package]]
+name = "actix-web-prom"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76743e67d4e7efa9fc2ac7123de0dd7b2ca592668e19334f1d81a3b077afc6ac"
+dependencies = [
+ "actix-web",
+ "futures-core",
+ "log",
+ "pin-project-lite",
+ "prometheus",
+ "regex",
+ "strfmt",
 ]
 
 [[package]]
@@ -449,6 +479,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "155a5a185e42c6b77ac7b88a15143d930a9e9727a5b7b77eed417404ab15c247"
 
 [[package]]
+name = "aspect"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3927b415bba088539aaaf872d19752c7d00101a25ead1d123fcd7633f9c224d"
+dependencies = [
+ "aspect-weave",
+]
+
+[[package]]
+name = "aspect-weave"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea4f672ac5290272725e1453014af99a86d2c1712808d647f469bf9427519f41"
+dependencies = [
+ "indexmap 1.9.3",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "synattra",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -675,6 +727,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
+
+[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -703,6 +761,40 @@ dependencies = [
  "hermit-abi 0.1.19",
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "auto_enums"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe0dfe45d75158751e195799f47ea02e81f570aa24bc5ef999cdd9e888c4b5c3"
+dependencies = [
+ "auto_enums_core",
+ "auto_enums_derive",
+]
+
+[[package]]
+name = "auto_enums_core"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da47c46001293a2c4b744d731958be22cff408a2ab76e2279328f9713b1267b4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "auto_enums_derive"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41aed1da83ecdc799503b7cb94da1b45a34d72b49caf40a61d9cf5b88ec07cfd"
+dependencies = [
+ "autocfg",
+ "derive_utils",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1628,6 +1720,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f64009896348fc5af4222e9cf7d7d82a95a256c634ebcf61c53e4ea461422242"
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33480d6946193aa8033910124896ca395333cae7e2d1113d1fef6c3272217df2"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1872,6 +1973,17 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 2.0.76",
+]
+
+[[package]]
+name = "derive_utils"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "532b4c15dccee12c7044f1fcad956e98410860b22231e44a3b827464797ca7bf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2997,17 +3109,29 @@ dependencies = [
 name = "fuel-streams-publisher"
 version = "0.0.6"
 dependencies = [
+ "actix-cors",
+ "actix-server",
  "actix-web",
+ "actix-web-prom",
  "anyhow",
  "clap 4.5.16",
+ "displaydoc",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-importer",
  "fuel-core-storage",
  "fuel-core-types",
+ "fuel-streams",
  "fuel-streams-core",
  "fuel-streams-macros",
  "futures-util",
+ "metered",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
+ "thiserror",
  "tokio",
  "tracing",
 ]
@@ -3387,6 +3511,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2bca93b15ea5a746f220e56587f71e73c6165eab783df9e26590069953e3c30"
 dependencies = [
  "fxhash",
+]
+
+[[package]]
+name = "hdrhistogram"
+version = "7.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d"
+dependencies = [
+ "base64 0.21.7",
+ "byteorder",
+ "crossbeam-channel",
+ "flate2",
+ "nom",
+ "num-traits",
 ]
 
 [[package]]
@@ -4756,6 +4894,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "metered"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17491527d2ceff20d00d02166bdd18e23056e7ced22b9a8bb0efdfd293f0441a"
+dependencies = [
+ "aspect",
+ "atomic",
+ "cfg-if",
+ "hdrhistogram",
+ "metered-macro",
+ "parking_lot",
+ "serde",
+]
+
+[[package]]
+name = "metered-macro"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5ef9d33baa693e2d449d069f6ef6eb549762ed0c0179976c45bd98f3aa4a4e1"
+dependencies = [
+ "aspect-weave",
+ "heck 0.4.1",
+ "indexmap 1.9.3",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "synattra",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5697,6 +5865,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "prometheus"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d33c28a30771f7f96db69893f78b857f7450d7e0237e9c8fc6427a81bae7ed1"
+dependencies = [
+ "cfg-if",
+ "fnv",
+ "lazy_static",
+ "memchr",
+ "parking_lot",
+ "thiserror",
 ]
 
 [[package]]
@@ -6911,6 +7093,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strfmt"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a8348af2d9fc3258c8733b8d9d8db2e56f54b2363a4b5b81585c7875ed65e65"
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7046,6 +7234,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "synattra"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "378cd5695f9ef5a26668bb70e81a464e7de6144bac3f77f42d5fa596c690be63"
+dependencies = [
+ "auto_enums",
+ "proc-macro2",
+ "syn 1.0.109",
 ]
 
 [[package]]

@@ -12,19 +12,33 @@ rust-version = { workspace = true }
 publish = false
 
 [dependencies]
+actix-cors = "0.7.0"
+actix-server = "2.5.0"
 actix-web = "4.9.0"
+actix-web-prom = "0.8.0"
 anyhow = { workspace = true }
 clap = { workspace = true }
+displaydoc = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
+fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-macros = { workspace = true }
 futures-util = "0.3.30"
+metered = "0.9.0"
+num_cpus = "1.16.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = "0.26.3"
+strum_macros = "0.26.4"
+thiserror = "1.0"
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
 
 [features]
 default = []

@@ -5,9 +5,8 @@ use std::{
     sync::Arc,
 };
 
-use actix_web::{web, App, HttpServer};
 use clap::Parser;
-use fuel_streams_publisher::state::SharedState;
+use fuel_streams_publisher::{server::create_web_server, state::SharedState};
 
 /// CLI structure for parsing command-line arguments.
 ///
@@ -15,6 +14,7 @@ use fuel_streams_publisher::state::SharedState;
 /// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
 #[derive(Parser)]
 pub struct Cli {
+    /// Nats connection url
     #[arg(
         long,
         value_name = "URL",
@@ -25,6 +25,7 @@ pub struct Cli {
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     fuel_core_config: fuel_core_bin::cli::run::Command,
+    /// Http server address
     #[arg(
         long,
         value_name = "ADDR",
@@ -53,50 +54,25 @@ async fn main() -> anyhow::Result<()> {
         .expect("Fuel core service startup failed");
 
     // create a common shared state between actix and publisher
-    let state = SharedState {
-        fuel_service: Arc::clone(&fuel_core),
-    };
-
-    fuel_core
-        .start_and_await()
-        .await
-        .expect("Fuel core service startup failed");
+    let state = SharedState::new(Arc::clone(&fuel_core), &cli.nats_url).await?;
 
     let publisher = fuel_streams_publisher::Publisher::new(
         state.fuel_service.clone(),
         &cli.nats_url,
     )
     .await?;
-    tracing::info!("Publisher started, awaiting shutdown signal...");
+    tracing::info!("Publisher started.");
 
     // create the actix webserver
-    let actix_server_addr = cli
+    let server_addr = cli
         .server_addr
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| anyhow::anyhow!("Missing server address"))?;
-    let server = HttpServer::new(move || {
-        App::new()
-            .app_data(web::Data::new(state.clone()))
-            .route(
-                "/health",
-                web::get().to(|state: web::Data<SharedState>| async move {
-                    state.health_check().await
-                }),
-            )
-            .route(
-                "/metrics",
-                web::get().to(|state: web::Data<SharedState>| async move {
-                    state.metrics().await
-                }),
-            )
-    })
-    .bind(actix_server_addr)?
-    .workers(4)
-    .shutdown_timeout(20)
-    .run();
 
-    // get actix server handle
+    let server = create_web_server(state, server_addr)?;
+
+    // get server handle
     let server_handle = server.handle();
 
     // spawn the server in the background

@@ -46,4 +46,5 @@ cargo run -p nats-publisher -- \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30
+    --sync-block-stream-buffer-size 30 \
+    --server_addr 127.0.0.1:8080
