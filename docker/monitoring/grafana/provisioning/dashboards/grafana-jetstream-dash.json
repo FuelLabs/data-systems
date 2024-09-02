@@ -46,7 +46,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "DS__NATS-PROMETHEUS"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -118,6 +121,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_stats_storage{server_id=~\"$server\"})/sum(gnatsd_varz_jetstream_config_max_storage{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -173,6 +180,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_stats_storage{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -230,6 +241,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_stats_memory{server_id=~\"$server\"})/sum(gnatsd_varz_jetstream_config_max_memory{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -285,6 +300,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_stats_memory{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -338,6 +357,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_connections{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -387,6 +410,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_config_max_storage{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -436,6 +463,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(gnatsd_varz_jetstream_config_max_memory{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -488,6 +519,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_server_total_consumers{server_id=~\"$server\"})",
           "interval": "",
           "legendFormat": "",
@@ -582,6 +617,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_stream_total_bytes) by (stream_name)",
           "interval": "",
           "legendFormat": "{{stream_name}}",
@@ -663,6 +702,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_stream_total_messages) by (stream_name)",
           "interval": "",
           "legendFormat": "{{stream_name}}",
@@ -744,7 +787,11 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
-          "expr": "sum(rate(jetstream_stream_last_seq{server_id=~\"$server\",stream_name=~\"$stream\"}[$__rate_interval])) by (stream_name)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
+          "expr": "sum(rate(jetstream_stream_total_messages{server_id=~\"$server\",stream_name=~\"$stream\"}[$__rate_interval])) by (stream_name)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{stream_name}}",
@@ -840,6 +887,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(rate(jetstream_consumer_num_pending{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\"}[$__rate_interval])+rate(jetstream_consumer_delivered_consumer_seq{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\"}[$__rate_interval])) by (consumer_name)",
           "hide": false,
           "instant": false,
@@ -849,6 +900,10 @@
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "- sum(rate(jetstream_consumer_delivered_consumer_seq{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\",consumer_name=~\"$consumer\"}[$__rate_interval])) by (consumer_name)",
           "hide": false,
           "interval": "",
@@ -931,6 +986,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_consumer_delivered_consumer_seq{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\"}) by (consumer_name)",
           "hide": false,
           "interval": "",
@@ -1014,6 +1073,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_consumer_num_pending{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\"}) by (consumer_name)",
           "hide": false,
           "interval": "",
@@ -1097,6 +1160,10 @@
       "pluginVersion": "8.3.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "DS__NATS-PROMETHEUS"
+          },
           "expr": "sum(jetstream_consumer_num_ack_pending{server_id=~\"$server\",stream_name=~\"$stream\",consumer_name=~\"$consumer\"}) by (consumer_name)",
           "hide": false,
           "interval": "",
@@ -1135,7 +1202,7 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false,
-        "datasource": "${DS__NATS-PROMETHEUS}"
+        "datasource": "DS__NATS-PROMETHEUS"
       },
       {
         "current": {},
@@ -1158,7 +1225,7 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false,
-        "datasource": "${DS__NATS-PROMETHEUS}"
+        "datasource": "DS__NATS-PROMETHEUS"
       },
       {
         "current": {},
@@ -1181,7 +1248,7 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false,
-        "datasource": "${DS__NATS-PROMETHEUS}"
+        "datasource": "DS__NATS-PROMETHEUS"
       }
     ]
   },

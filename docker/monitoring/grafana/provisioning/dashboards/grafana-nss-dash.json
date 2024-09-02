@@ -1,7 +1,7 @@
 {
   "__inputs": [
     {
-      "name": "DS_PROMETHEUS",
+      "name": "DS__PROMETHEUS",
       "label": "prometheus",
       "description": "",
       "type": "datasource",
@@ -33,7 +33,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "DS__PROMETHEUS"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -66,7 +69,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "DS__PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -153,7 +156,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "DS__PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -237,7 +240,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "DS__PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -321,7 +324,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "DS__PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,

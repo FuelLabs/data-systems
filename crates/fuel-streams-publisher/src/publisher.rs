@@ -188,7 +188,7 @@ impl Publisher {
                 warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
-            // publish historical data i needed
+            // publish historical data if needed
             let mut height = next_height_to_publish;
             while height <= latest_fuel_core_height {
                 tokio::select! {

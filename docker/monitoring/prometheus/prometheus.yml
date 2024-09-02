@@ -41,7 +41,7 @@ scrape_configs:
     scrape_timeout: 2s
     static_configs:
       - targets:
-          - 'localhost:7777'
+          - 'prometheus-nats-exporter:7777'
 
   # - job_name: 'cadvisor'
   #  # Override the global default and scrape targets from this job every 5 seconds.

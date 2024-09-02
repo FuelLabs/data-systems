@@ -41,6 +41,15 @@ services:
       - fuel-streams-publisher-db:/mnt/db
     ports:
       - 4000:4000
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl"
+        - "-f"
+        - "http://fuel-streams-publisher:9000/health"
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   prometheus:
     profiles:
@@ -61,7 +70,6 @@ services:
       - '--web.enable-lifecycle'
     ports:
       - 9090:9090
-    network_mode: host
 
   grafana:
     profiles:
@@ -80,7 +88,6 @@ services:
       - ./monitoring/grafana/config.monitoring
     ports:
       - 3000:3000
-    network_mode: host
     depends_on:
       - prometheus
 
@@ -92,15 +99,32 @@ services:
     container_name: prometheus-nats-exporter
     restart: always
     command:
+      - "-D"
       - "-varz"
       - "-jsz=all"
       - "-channelz"
+      - "-connz_detailed"
       - "-serverz"
-      - "http://localhost:8222"
+      - "-healthz"
+      - "-subz"
+      - "-port"
+      - "7777"
+      - "http://nats:8222"
     ports:
       - 7777:7777
+    env_file:
+      - ./../.env
     depends_on:
       - nats
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-qO-"
+        - "http://nats:8222/healthz"
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   fuel-streams-publisher-db:
