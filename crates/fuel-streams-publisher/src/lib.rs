@@ -1,4 +1,5 @@
 mod blocks;
+pub mod metrics;
 mod publisher;
 pub mod server;
 pub mod shutdown;

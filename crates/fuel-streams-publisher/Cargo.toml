@@ -15,7 +15,7 @@ publish = false
 actix-cors = "0.7.0"
 actix-server = "2.5.0"
 actix-web = "4.9.0"
-actix-web-prom = "0.8.0"
+actix-web-prom = { version = "0.8.0", features = ["process"] }
 anyhow = { workspace = true }
 clap = { workspace = true }
 displaydoc = { workspace = true }
@@ -30,6 +30,7 @@ fuel-streams-macros = { workspace = true }
 futures-util = "0.3.30"
 metered = "0.9.0"
 num_cpus = "1.16.0"
+prometheus = "0.13.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
 strum = "0.26.3"
@@ -37,6 +38,7 @@ strum_macros = "0.26.4"
 thiserror = "1.0"
 tokio = { workspace = true }
 tracing = { workspace = true }
+tracing-actix-web = "0.7"
 
 [dev-dependencies]
 

@@ -2,11 +2,12 @@ use std::net::SocketAddr;
 
 use actix_cors::Cors;
 use actix_server::Server;
-use actix_web::{http, web, App, HttpServer};
+use actix_web::{http, web, App, HttpResponse, HttpServer};
+use tracing_actix_web::TracingLogger;
 
 use crate::state::SharedState;
 
-const RUNTIME_WORKER_MULTIPLIER: usize = 4;
+const RUNTIME_WORKER_MULTIPLIER: usize = 2;
 
 pub fn create_web_server(
     state: SharedState,
@@ -35,17 +36,22 @@ pub fn create_web_server(
 
         App::new()
             .app_data(web::Data::new(state.clone()))
+            .wrap(TracingLogger::default())
+            .wrap(cors)
             .service(web::resource("/health").route(web::get().to(
                 |state: web::Data<SharedState>| async move {
-                    state.health_check().await
+                    if !state.is_healthy() {
+                        return HttpResponse::ServiceUnavailable()
+                            .body("Service Unavailable");
+                    }
+                    HttpResponse::Ok().finish()
                 },
             )))
-            .service(web::resource("/metrics").route(
-                web::get().to(|state: web::Data<SharedState>| async move {
-                    state.metrics().await
-                }),
-            ))
-            .wrap(cors)
+            .service(web::resource("/metrics").route(web::get().to(
+                |state: web::Data<SharedState>| async move {
+                    HttpResponse::Ok().body(state.metrics())
+                },
+            )))
     })
     .bind(actix_server_addr)?
     .workers(worker_threads)

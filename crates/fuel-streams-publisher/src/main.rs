@@ -6,7 +6,11 @@ use std::{
 };
 
 use clap::Parser;
-use fuel_streams_publisher::{server::create_web_server, state::SharedState};
+use fuel_streams_publisher::{
+    metrics::PublisherMetrics,
+    server::create_web_server,
+    state::SharedState,
+};
 
 /// CLI structure for parsing command-line arguments.
 ///
@@ -54,7 +58,12 @@ async fn main() -> anyhow::Result<()> {
         .expect("Fuel core service startup failed");
 
     // create a common shared state between actix and publisher
-    let state = SharedState::new(Arc::clone(&fuel_core), &cli.nats_url).await?;
+    let state = SharedState::new(
+        Arc::clone(&fuel_core),
+        &cli.nats_url,
+        Arc::new(PublisherMetrics::new()?),
+    )
+    .await?;
 
     let publisher = fuel_streams_publisher::Publisher::new(
         state.fuel_service.clone(),
