@@ -2314,7 +2314,6 @@ dependencies = [
  "clap 4.5.16",
  "const_format",
  "dirs",
- "dotenvy",
  "fuel-core",
  "fuel-core-chain-config",
  "fuel-core-poa",

@@ -5,6 +5,7 @@
 PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
+RUST_NIGHTLY_COV ?= nightly-2024-06-05
 
 .PHONY: all build clean lint fmt help setup start stop restart clean/docker start/nats stop/nats restart/nats clean/nats start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core dev-watch fmt-cargo fmt-rust fmt-markdown fmt-yaml check lint-cargo lint-rust lint-clippy lint-markdown audit audit-fix-test audit-fix test doc bench
 
@@ -98,7 +99,9 @@ lint-markdown:
 # ------------------------------------------------------------
 
 coverage:
-	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
+	cargo +$(RUST_NIGHTLY_COV) tarpaulin \
+		--config ./tarpaulin.toml \
+		--rustflags="-Z threads=8"
 
 # ------------------------------------------------------------
 # Audit crates
