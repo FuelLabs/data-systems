@@ -40,8 +40,7 @@ pub async fn publish(
                 .with_height(Some(block_height.clone()))
                 .with_tx_index(Some(transaction_index));
 
-        let transaction_id = transaction.cached_id().unwrap();
-        info!("NATS Publisher: Publishing Transaction 0x#{transaction_id}");
+        info!("NATS Publisher: Publishing Transaction 0x#{tx_id}");
 
         transactions_stream
             .publish(&transactions_subject, transaction)
