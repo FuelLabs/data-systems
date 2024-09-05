@@ -62,9 +62,9 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
         let stream = fuel_streams::Stream::<Block>::new(&client).await;
 
         let mut subscription = stream.subscribe().await?;
-        while let Some(message) = subscription.next().await {
-            let payload = message?.payload.clone();
-            let block = Block::decode(payload.into()).await;
+        while let Some(entry) = subscription.next().await {
+            let entry = entry.unwrap().clone();
+            let block = Block::decode(entry).await;
             println!("Received block: {:?}", block);
         }
 
