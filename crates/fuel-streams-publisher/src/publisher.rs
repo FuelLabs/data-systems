@@ -1,4 +1,5 @@
 use fuel_core::database::database_description::DatabaseHeight;
+use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::NatsClient,
@@ -7,13 +8,14 @@ use fuel_streams_core::{
 };
 use tracing::warn;
 
-use crate::{blocks, inputs, receipts, transactions, FuelCoreLike};
+use crate::{blocks, inputs, outputs, receipts, transactions, FuelCoreLike};
 
 /// Streams we currently support publishing to.
 pub struct Streams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
     pub inputs: Stream<Input>,
+    pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
 }
 
@@ -23,6 +25,7 @@ impl Streams {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,
             inputs: Stream::<Input>::new(nats_client).await,
+            outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
         }
     }
@@ -133,6 +136,13 @@ impl Publisher {
 
         inputs::publish(
             &self.streams.inputs,
+            self.fuel_core.chain_id(),
+            transactions,
+        )
+        .await?;
+
+        outputs::publish(
+            &self.streams.outputs,
             self.fuel_core.chain_id(),
             transactions,
         )

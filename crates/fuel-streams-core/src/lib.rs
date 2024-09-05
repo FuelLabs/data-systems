@@ -3,6 +3,7 @@
 pub mod blocks;
 pub mod inputs;
 pub mod nats;
+pub mod outputs;
 pub mod receipts;
 pub mod stream;
 pub mod transactions;
@@ -17,6 +18,7 @@ pub mod prelude {
         blocks::subjects::*,
         inputs::subjects::*,
         nats::*,
+        outputs::subjects::*,
         stream::*,
         transactions::subjects::*,
         types::*,
