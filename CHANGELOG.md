@@ -1,3 +1,11 @@
+## 0.0.7 (2024-09-06)
+
+### 🐛 Fixes
+
+-   Update chain-config (#198)
+-   Avoid using cached tx id (#200)
+-   Inline public info (#201)
+
 ## 0.0.6 (2024-08-29)
 
 ### 🐛 Fixes
