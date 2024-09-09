@@ -1,3 +1,9 @@
+## 0.0.9 (2024-09-09)
+
+### 🐛 Fixes
+
+-   Adjust information for release
+
 ## 0.0.8 (2024-09-06)
 
 ### 🐛 Fixes

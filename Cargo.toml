@@ -11,7 +11,7 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.79.0"
-version = "0.0.8"
+version = "0.0.9"
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -42,11 +42,11 @@ tracing = "0.1.40"
 thiserror = "1.0"
 
 fuel-streams = { path = "crates/fuel-streams" }
-fuel-data-parser = { version = "0.0.8", path = "crates/fuel-data-parser" }
-fuel-streams-core = { version = "0.0.8", path = "crates/fuel-streams-core" }
-fuel-streams-publisher = { version = "0.0.8", path = "crates/fuel-streams-publisher" }
-fuel-streams-macros = { version = "0.0.8", path = "crates/fuel-streams-macros" }
-subject-derive = { version = "0.0.8", path = "crates/fuel-streams-macros/subject-derive" }
+fuel-data-parser = { version = "0.0.9", path = "crates/fuel-data-parser" }
+fuel-streams-core = { version = "0.0.9", path = "crates/fuel-streams-core" }
+fuel-streams-publisher = { version = "0.0.9", path = "crates/fuel-streams-publisher" }
+fuel-streams-macros = { version = "0.0.9", path = "crates/fuel-streams-macros" }
+subject-derive = { version = "0.0.9", path = "crates/fuel-streams-macros/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
