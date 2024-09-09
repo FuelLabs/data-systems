@@ -28,7 +28,7 @@ jobs:
           }
           set_env_var "NATS_URL" "nats://127.0.0.1:4222"
           set_env_var "NATS_ADMIN_PASS" "default_pass"
-          set_env_var "NATS_PUBLIC_PASS" "default_pass"
+          set_env_var "NATS_PUBLIC_PASS" "temp-public-pass"
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master

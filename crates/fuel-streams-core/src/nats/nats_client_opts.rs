@@ -101,9 +101,8 @@ impl NatsClientOpts {
                 dotenvy::var("NATS_ADMIN_PASS")
                     .expect("`NATS_ADMIN_PASS` env must be set"),
             ),
-            NatsUserRole::Public => {
-                ("public", env!("NATS_PUBLIC_PASS").to_string())
-            }
+            // TODO: remove this hardcoded value
+            NatsUserRole::Public => ("public", "temp-public-pass".to_string()),
         };
 
         ConnectOptions::with_user_and_password(user.into(), pass)

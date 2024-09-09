@@ -30,9 +30,6 @@ tracing = { workspace = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 
-[build-dependencies]
-dotenvy = { workspace = true }
-
 [features]
 default = []
 test-helpers = ["dep:pretty_assertions"]
