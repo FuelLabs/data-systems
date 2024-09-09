@@ -1,5 +1,5 @@
 use fuel_streams_core::{
-    prelude::IntoSubject,
+    prelude::{IntoSubject, SubjectBuildable},
     types::{DeliverPolicy, PullConsumerStream},
     Streamable,
     SubscribeConsumerConfig,
@@ -11,12 +11,12 @@ use crate::{client::Client, stream::StreamError};
 ///
 /// This struct is used to build and represent filters for stream subjects.
 #[derive(Debug, Clone)]
-pub struct Filter<S: IntoSubject> {
+pub struct Filter<S: SubjectBuildable> {
     /// The subject to filter on.
     pub subject: S,
 }
 
-impl<S: IntoSubject> Filter<S> {
+impl<S: SubjectBuildable> Filter<S> {
     /// Builds a new subject filter.
     ///
     /// # Returns

@@ -1,5 +1,5 @@
 use fuel_core_types::fuel_tx::UniqueIdentifier;
-use fuel_streams_macros::subject::{IntoSubject, Subject};
+use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
 
 use crate::{blocks::types::BlockHeight, types::*};
 
@@ -33,7 +33,6 @@ use crate::{blocks::types::BlockHeight, types::*};
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
 /// assert_eq!(TransactionsSubject::WILDCARD, "transactions.>");
 /// ```
 ///
@@ -42,7 +41,6 @@ use crate::{blocks::types::BlockHeight, types::*};
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
 /// let wildcard = TransactionsSubject::wildcard(None, None, Some(Bytes32::zeroed()), None, None);
 /// assert_eq!(wildcard, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
 /// ```

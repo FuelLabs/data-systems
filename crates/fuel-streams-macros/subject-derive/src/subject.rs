@@ -24,10 +24,15 @@ pub fn expanded<'a>(
     name: &'a Ident,
     field_names: &'a [&'a Ident],
     field_types: &'a [&'a syn::Type],
+    attrs: &'a [syn::Attribute],
 ) -> TokenStream {
     let with_methods = create_with_methods(field_names, field_types);
+    let wildcard = crate::attrs::subject_attr("wildcard", &attrs);
+
     quote! {
         impl #name {
+            pub const WILDCARD: &'static str = #wildcard;
+
             pub fn build(
                 #(#field_names: #field_types,)*
             ) -> Self {

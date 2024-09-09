@@ -1,4 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject};
+use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
 
 use crate::types::*;
 
@@ -26,7 +26,6 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
 /// assert_eq!(BlocksSubject::WILDCARD, "blocks.>");
 /// ```
 ///
@@ -35,7 +34,6 @@ use crate::types::*;
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
 /// let wildcard = BlocksSubject::wildcard(None, Some(23.into()));
 /// assert_eq!(wildcard, "blocks.*.23");
 /// ```
