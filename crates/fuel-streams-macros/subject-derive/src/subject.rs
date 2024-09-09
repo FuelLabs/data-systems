@@ -27,7 +27,7 @@ pub fn expanded<'a>(
     attrs: &'a [syn::Attribute],
 ) -> TokenStream {
     let with_methods = create_with_methods(field_names, field_types);
-    let wildcard = crate::attrs::subject_attr("wildcard", &attrs);
+    let wildcard = crate::attrs::subject_attr("wildcard", attrs);
 
     quote! {
         impl #name {

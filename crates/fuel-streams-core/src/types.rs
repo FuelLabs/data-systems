@@ -2,8 +2,7 @@ use std::error::Error;
 
 pub use fuel_core_types::{
     fuel_tx,
-    fuel_types,
-    fuel_types::ChainId,
+    fuel_types::{self, ChainId},
     services::block_importer::ImportResult,
 };
 
@@ -40,7 +39,6 @@ pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
 ///
 /// Where `WrapperType` is the name of the new wrapper struct to be created,
 /// and `InnerType` is the type being wrapped.
-#[macro_export]
 macro_rules! generate_byte_type_wrapper {
     ($wrapper_type:ident, $inner_type:ty) => {
         #[derive(Debug, Clone)]
@@ -55,6 +53,12 @@ macro_rules! generate_byte_type_wrapper {
         impl From<[u8; 32]> for $wrapper_type {
             fn from(value: [u8; 32]) -> Self {
                 $wrapper_type(<$inner_type>::from(value))
+            }
+        }
+
+        impl From<&$inner_type> for $wrapper_type {
+            fn from(value: &$inner_type) -> Self {
+                $wrapper_type(*value)
             }
         }
 
@@ -102,7 +106,27 @@ generate_byte_type_wrapper!(Bytes32, fuel_tx::Bytes32);
 generate_byte_type_wrapper!(ContractId, fuel_tx::ContractId);
 generate_byte_type_wrapper!(AssetId, fuel_types::AssetId);
 
-macro_rules! impl_from_for_bytes32 {
+/// Macro to implement conversion from a type to `Bytes32`.
+///
+/// This macro creates an implementation of the `From` trait, allowing for conversion
+/// from the specified type into a `Bytes32` type. It is useful when working with
+/// byte-based types, such as `ContractId`, in the Fuel ecosystem.
+///
+/// The generated implementation allows conversion by dereferencing the input value
+/// and creating a `Bytes32` type from it, making the conversion simple and efficient.
+///
+/// # Usage
+///
+/// impl_from_bytes32!(FromType);
+///
+///
+/// Where `FromType` is the type that you want to be able to convert into a `Bytes32`.
+//
+/// # Notes
+///
+/// The macro assumes that the type being converted can be dereferenced into a byte-based type
+/// compatible with the `Bytes32` structure.
+macro_rules! impl_from_bytes32 {
     ($from_type:ty) => {
         impl From<$from_type> for Bytes32 {
             fn from(value: $from_type) -> Self {
@@ -112,9 +136,10 @@ macro_rules! impl_from_for_bytes32 {
     };
 }
 
-impl_from_for_bytes32!(fuel_tx::ContractId);
-impl_from_for_bytes32!(fuel_types::AssetId);
-impl_from_for_bytes32!(fuel_tx::Address);
+
+impl_from_bytes32!(fuel_tx::ContractId);
+impl_from_bytes32!(fuel_types::AssetId);
+impl_from_bytes32!(fuel_tx::Address);
 
 // ------------------------------------------------------------------------
 // Identifier

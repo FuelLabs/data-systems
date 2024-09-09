@@ -3,6 +3,7 @@
 pub mod blocks;
 pub mod inputs;
 pub mod nats;
+pub mod receipts;
 pub mod stream;
 pub mod transactions;
 pub mod types;

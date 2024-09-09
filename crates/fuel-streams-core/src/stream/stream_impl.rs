@@ -121,9 +121,21 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
+    pub async fn publish_many(
+        &self,
+        subjects: &[&dyn IntoSubject],
+        payload: &S,
+    ) -> Result<(), StreamError> {
+        for subject in subjects {
+            self.publish(*subject, payload).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn publish(
         &self,
-        subject: &impl IntoSubject,
+        subject: &dyn IntoSubject,
         payload: &S,
     ) -> Result<(), StreamError> {
         let subject_name = &subject.parse();
