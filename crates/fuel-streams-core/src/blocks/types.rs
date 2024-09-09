@@ -3,10 +3,8 @@ use core::fmt;
 // ------------------------------------------------------------------------
 // Block
 // ------------------------------------------------------------------------
-pub use fuel_core_types::{
-    blockchain::block::{Block, BlockV1},
-    fuel_types,
-};
+pub use fuel_core_types::blockchain::block::{Block, BlockV1};
+use fuel_core_types::fuel_types;
 
 #[derive(Debug, Clone)]
 #[cfg(any(test, feature = "test-helpers"))]

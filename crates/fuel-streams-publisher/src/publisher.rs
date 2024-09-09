@@ -4,23 +4,24 @@ use fuel_core::{
 };
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::blockchain::consensus::Sealed;
+use fuel_core_types::{blockchain::consensus::Sealed, fuel_types};
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     prelude::IntoSubject,
-    types::{Address, AssetId, Block, BlockHeight, ChainId, Transaction},
+    types::{Address, Block, BlockHeight, ChainId, Input, Transaction},
     Stream,
 };
 use tokio::sync::broadcast::Receiver;
 use tracing::warn;
 
-use crate::{blocks, transactions};
+use crate::{blocks, inputs, transactions};
 
 /// Streams we currently support publishing to.
 pub struct Streams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
+    pub inputs: Stream<Input>,
 }
 
 impl Streams {
@@ -28,6 +29,7 @@ impl Streams {
         Self {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,
+            inputs: Stream::<Input>::new(nats_client).await,
         }
     }
 
@@ -48,7 +50,7 @@ impl Streams {
 /// TransactionsById subject
 pub struct Publisher {
     chain_id: ChainId,
-    base_asset_id: AssetId,
+    base_asset_id: fuel_types::AssetId,
     fuel_core_database: CombinedDatabase,
     blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     streams: Streams,
@@ -58,7 +60,7 @@ impl Publisher {
     pub async fn new(
         nats_url: &str,
         chain_id: ChainId,
-        base_asset_id: AssetId,
+        base_asset_id: fuel_types::AssetId,
         fuel_core_database: CombinedDatabase,
         blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     ) -> anyhow::Result<Self> {
@@ -81,7 +83,7 @@ impl Publisher {
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
             chain_id: ChainId::default(),
-            base_asset_id: AssetId::default(),
+            base_asset_id: fuel_types::AssetId::default(),
             fuel_core_database: CombinedDatabase::default(),
             blocks_subscription,
             streams: Streams::new(nats_client).await,
@@ -161,6 +163,8 @@ impl Publisher {
         let block_height: BlockHeight =
             block.header().consensus().height.into();
 
+        let transactions = block.transactions();
+
         blocks::publish(
             &block_height,
             &self.streams.blocks,
@@ -174,9 +178,12 @@ impl Publisher {
             &block_height,
             &self.fuel_core_database,
             &self.streams.transactions,
-            block.transactions(),
+            transactions,
         )
         .await?;
+
+        inputs::publish(&self.streams.inputs, &self.chain_id, transactions)
+            .await?;
 
         Ok(())
     }
