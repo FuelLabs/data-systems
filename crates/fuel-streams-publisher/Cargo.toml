@@ -13,6 +13,7 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
