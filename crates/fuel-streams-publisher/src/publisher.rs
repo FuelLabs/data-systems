@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::database_description::DatabaseHeight,
@@ -23,10 +24,11 @@ use tracing::warn;
 use crate::{
     blocks,
     metrics::PublisherMetrics,
-    shutdown::{stop_signal, GRACEFUL_SHUTDOWN_TIMEOUT},
+    shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
 };
 
+#[derive(Clone, Debug)]
 /// Streams we currently support publishing to.
 pub struct Streams {
     pub transactions: Stream<Transaction>,
@@ -43,6 +45,15 @@ impl Streams {
 
     pub fn subjects_wildcards(&self) -> &[&'static str] {
         &[TransactionsSubject::WILDCARD, BlocksSubject::WILDCARD]
+    }
+
+    pub async fn get_consumers_and_state(
+        &self,
+    ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind> {
+        Ok(vec![
+            self.transactions.get_consumers_and_state().await?,
+            self.blocks.get_consumers_and_state().await?,
+        ])
     }
 
     #[cfg(feature = "test-helpers")]
@@ -64,8 +75,9 @@ pub struct Publisher {
     base_asset_id: AssetId,
     fuel_core_database: CombinedDatabase,
     blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
-    streams: Streams,
     metrics: Arc<PublisherMetrics>,
+    nats_client: NatsClient,
+    streams: Arc<Streams>,
 }
 
 impl Publisher {
@@ -73,6 +85,7 @@ impl Publisher {
         fuel_service: Arc<FuelService>,
         nats_url: &str,
         metrics: Arc<PublisherMetrics>,
+        streams: Arc<Streams>,
     ) -> anyhow::Result<Self> {
         let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
@@ -88,7 +101,6 @@ impl Publisher {
             fuel_service.shared.config.snapshot_reader.chain_config();
         let chain_id = chain_config.consensus_parameters.chain_id();
         let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
-        let streams = Streams::new(&nats_client).await;
 
         metrics
             .total_subs
@@ -101,15 +113,19 @@ impl Publisher {
             base_asset_id,
             fuel_core_database,
             blocks_subscription: fuel_core_subscription,
-            streams: Streams::new(&nats_client).await,
+            streams,
             metrics,
+            nats_client,
         })
     }
 
     pub async fn flush_await_all_streams(&self) -> anyhow::Result<()> {
         let streams = [
-            self.streams.blocks.flush_await().boxed(),
-            self.streams.transactions.flush_await().boxed(),
+            self.streams.blocks.flush_await(&self.nats_client).boxed(),
+            self.streams
+                .transactions
+                .flush_await(&self.nats_client)
+                .boxed(),
         ];
         try_join_all(streams).await?;
         Ok(())
@@ -130,8 +146,9 @@ impl Publisher {
             base_asset_id: AssetId::default(),
             fuel_core_database: CombinedDatabase::default(),
             blocks_subscription,
-            streams: Streams::new(nats_client).await,
-            metrics: Arc::new(PublisherMetrics::default()),
+            streams: Arc::new(Streams::new(nats_client).await),
+            metrics: Arc::new(PublisherMetrics::random()),
+            nats_client: nats_client.clone(),
         })
     }
 
@@ -179,9 +196,8 @@ impl Publisher {
     }
 
     pub async fn run(mut self) -> anyhow::Result<Self> {
-        let (shutdown_send, mut shutdown_recv) =
-            tokio::sync::broadcast::channel::<()>(1);
-        tokio::spawn(stop_signal(shutdown_send));
+        let mut stop_handle = StopHandle::new();
+        stop_handle.spawn_signal_listener();
 
         let last_published_block = self
             .streams
@@ -208,10 +224,12 @@ impl Publisher {
             let mut height = next_height_to_publish;
             while height <= latest_fuel_core_height {
                 tokio::select! {
-                    _ = shutdown_recv.recv() => {
-                        tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
-                        self.shutdown_services_with_timeout().await?;
-                        return Ok(self);
+                    shutdown = stop_handle.wait_for_signal() => {
+                        if shutdown {
+                            tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
+                            self.shutdown_services_with_timeout().await?;
+                            return Ok(self);
+                        }
                     },
                     (result, block_producer) = async {
                         let sealed_block = self
@@ -252,9 +270,11 @@ impl Publisher {
                         }
                     }
                 }
-                _ = shutdown_recv.recv() => {
-                    self.shutdown_services_with_timeout().await?;
-                    break;
+                shutdown = stop_handle.wait_for_signal() => {
+                    if shutdown {
+                        self.shutdown_services_with_timeout().await?;
+                        break;
+                    }
                 }
             }
         }

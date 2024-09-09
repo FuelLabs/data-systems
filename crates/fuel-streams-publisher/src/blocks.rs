@@ -51,7 +51,7 @@ pub async fn publish(
         ])
         .observe(published_data_size as f64);
 
-    let latency = block.header().time().to_unix() - Utc::now().timestamp();
+    let latency = Utc::now().timestamp() - block.header().time().to_unix();
     metrics
         .publishing_latency_histogram
         .with_label_values(&[

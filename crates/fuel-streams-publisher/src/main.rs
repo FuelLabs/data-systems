@@ -3,6 +3,7 @@
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     sync::Arc,
+    time::Duration,
 };
 
 use clap::Parser;
@@ -10,7 +11,9 @@ use fuel_streams_publisher::{
     metrics::PublisherMetrics,
     server::create_web_server,
     state::SharedState,
+    system::System,
 };
+use parking_lot::RwLock;
 
 /// CLI structure for parsing command-line arguments.
 ///
@@ -57,11 +60,19 @@ async fn main() -> anyhow::Result<()> {
         .await
         .expect("Fuel core service startup failed");
 
+    // spawn a system monitoring service
+    let system = Arc::new(RwLock::new(System::new().await));
+    let monitoring_system = Arc::clone(&system);
+    tokio::spawn(async move {
+        System::monitor(&monitoring_system, Duration::from_secs(2)).await;
+    });
+
     // create a common shared state between actix and publisher
     let state = SharedState::new(
         Arc::clone(&fuel_core),
         &cli.nats_url,
-        Arc::new(PublisherMetrics::new()?),
+        Arc::new(PublisherMetrics::new(None)?),
+        system,
     )
     .await?;
 
@@ -69,9 +80,9 @@ async fn main() -> anyhow::Result<()> {
         state.fuel_service.clone(),
         &cli.nats_url,
         state.metrics.clone(),
+        state.streams.clone(),
     )
     .await?;
-    tracing::info!("Publisher started.");
 
     // create the actix webserver
     let server_addr = cli
@@ -91,6 +102,7 @@ async fn main() -> anyhow::Result<()> {
             tracing::error!("Actix Web server error: {:?}", err);
         }
     });
+    tracing::info!("Publisher started.");
 
     // run publisher until shutdown signal intercepted
     if let Err(err) = publisher.run().await {

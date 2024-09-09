@@ -4,6 +4,8 @@ services:
       - all
       - nats
     image: nats:latest
+    container_name: nats
+    restart: always
     ports:
       - 4222:4222
       - 8222:8222
@@ -15,7 +17,7 @@ services:
       - --name=fuel-streams-publisher-server
       - --js
       - --config=/etc/nats/nats.conf
-      - -DV
+      - -D
     env_file:
       - ./../.env
 
@@ -24,6 +26,8 @@ services:
       - all
       - fuel
     image: fuel-streams-publisher:latest
+    container_name: fuel-streams-publisher
+    restart: always
     depends_on:
       - nats
     env_file:
@@ -49,9 +53,10 @@ services:
         - "curl"
         - "-f"
         - "http://fuel-streams-publisher:9000/health"
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 10s  # How often to run the check
+      timeout: 5s  # Time to wait for the check to complete
+      retries: 5  # Number of retries before marking the container as unhealthy
+      start_period: 5s  # Start period before the first health check
 
   prometheus:
     profiles:
@@ -72,6 +77,65 @@ services:
       - '--web.enable-lifecycle'
     ports:
       - 9090:9090
+
+  node-exporter:
+    profiles:
+      - all
+      - monitoring
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  cadvisor:
+    profiles:
+      - all
+      - monitoring
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 8080:8080
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  alertmanager:
+    profiles:
+      - all
+      - monitoring
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: always
+    volumes:
+      - ./monitoring/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
+    ports:
+      - 9093:9093
 
   grafana:
     profiles:
@@ -96,16 +160,19 @@ services:
   prometheus-nats-exporter:
     profiles:
       - all
-      - nats
-    image: natsio/prometheus-nats-exporter:0.15.0
+      - monitoring
+    image: natsio/prometheus-nats-exporter:latest
     container_name: prometheus-nats-exporter
     restart: always
     command:
-      - "-DV"
+      - "-D"
       - "-varz"
-      - "-jsz=all"
+      - "-jsz"
+      - "all"
+      - "-accstatz"
       - "-channelz"
       - "-connz"
+      - "-leafz"
       - "-connz_detailed"
       - "-serverz"
       - "-healthz"
@@ -129,6 +196,25 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
+  nats-surveyor:
+    profiles:
+      - all
+      - monitoring
+    image: natsio/nats-surveyor:latest
+    container_name: nats-surveyor
+    restart: always
+    volumes:
+      - ./monitoring/surveyor/observations:/observations
+      - ./monitoring/surveyor/jetstream:/jetstream
+      - ./monitoring/surveyor:/surveyor
+    command: --config ./surveyor/nats-surveyor.yaml
+    env_file:
+      - ./../.env
+    depends_on:
+      - nats
+    ports:
+      - 8888:7777
 
 volumes:
   fuel-streams-publisher-db:

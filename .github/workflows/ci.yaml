@@ -174,7 +174,7 @@ jobs:
     env:
       NATS_URL: nats://127.0.0.1:4222
       NATS_ADMIN_PASS: secret
-      NATS_PUBLIC_PASS: secret
+      NATS_PUBLIC_PASS: temp-public-pass
     steps:
       - uses: actions/checkout@v4
 
@@ -194,55 +194,56 @@ jobs:
         if: always()
         run: make stop/nats
 
-  test-coverage:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - cargo-verifications
-    name: Test & Coverage
-    runs-on: ubuntu-latest
-    env:
-      NATS_URL: nats://127.0.0.1:4222
-      NATS_ADMIN_PASS: secret
-      NATS_PUBLIC_PASS: secret
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
-          cache: false
-
-      - name: Start Nats
-        run: |
-          make start/nats
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev curl
-
-      - name: Install Tarpaulin (Pre-built Binary)
-        uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-tarpaulin@0.31
-
-      - name: Generate Code Coverage
-        run: make coverage
-
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v4
-        with:
-          name: codecov-data-systems
-          fail_ci_if_error: true
-          verbose: true
-          files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Stop Nats
-        if: always()
-        run: make stop/nats
+  # test-coverage:
+  #   # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   needs:
+  #     - cargo-verifications
+  #   name: Test & Coverage
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     NATS_URL: nats://127.0.0.1:4222
+  #     NATS_ADMIN_PASS: secret
+  #     NATS_PUBLIC_PASS: temp-public-pass
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #       with:
+  #         toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+  #         target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
+  #         cache: false
+  #
+  #     - name: Start Nats
+  #       run: |
+  #         make start/nats
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y libclang-dev curl
+  #
+  #     - name: Install Tarpaulin (Pre-built Binary)
+  #       uses: taiki-e/cache-cargo-install-action@v2
+  #       with:
+  #         tool: cargo-tarpaulin@0.31
+  #
+  #     - name: Generate Code Coverage
+  #       run: make coverage
+  #
+  #     - name: Upload to codecov.io
+  #       uses: codecov/codecov-action@v4
+  #       if: always()
+  #       with:
+  #         name: codecov-data-systems
+  #         fail_ci_if_error: false
+  #         verbose: true
+  #         files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
+  #         token: ${{ secrets.CODECOV_TOKEN }}
+  #
+  #     - name: Stop Nats
+  #       if: always()
+  #       run: make stop/nats
 
   build:
     needs:

@@ -4,13 +4,14 @@ use async_nats::{
     jetstream::{
         consumer::AckPolicy,
         kv::{self, CreateErrorKind},
-        stream::{self, LastRawMessageErrorKind},
+        stream::{self, LastRawMessageErrorKind, State},
     },
     Message,
+    RequestErrorKind,
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
@@ -85,7 +86,6 @@ pub trait Streamable: StreamEncoder {
 /// TODO: Split this into two traits StreamPublisher + StreamSubscriber
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    client: NatsClient,
     store: kv::Store,
     _marker: std::marker::PhantomData<S>,
 }
@@ -102,7 +102,6 @@ impl<S: Streamable> Stream<S> {
     }
 
     pub async fn new(client: &NatsClient) -> Self {
-        let client = client.clone();
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
 
@@ -118,7 +117,6 @@ impl<S: Streamable> Stream<S> {
             .expect("Streams must be created");
 
         Self {
-            client,
             store,
             _marker: std::marker::PhantomData,
         }
@@ -145,6 +143,25 @@ impl<S: Streamable> Stream<S> {
                 source: e,
             }),
         }
+    }
+
+    pub async fn get_consumers_and_state(
+        &self,
+    ) -> Result<(String, Vec<String>, State), RequestErrorKind> {
+        let mut consumers = vec![];
+        while let Ok(Some(consumer)) =
+            self.store.stream.consumer_names().try_next().await
+        {
+            consumers.push(consumer);
+        }
+
+        let state = self.store.stream.cached_info().state;
+        let stream_name = self.get_stream_name().to_string();
+        Ok((stream_name, consumers, state))
+    }
+
+    pub fn get_stream_name(&self) -> &str {
+        self.store.stream_name.as_str()
     }
 
     pub async fn subscribe(
@@ -221,9 +238,12 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
-    pub async fn flush_await(&self) -> Result<(), StreamError> {
-        if self.client.is_connected() {
-            self.client
+    pub async fn flush_await(
+        &self,
+        client: &NatsClient,
+    ) -> Result<(), StreamError> {
+        if client.is_connected() {
+            client
                 .nats_client
                 .flush()
                 .await

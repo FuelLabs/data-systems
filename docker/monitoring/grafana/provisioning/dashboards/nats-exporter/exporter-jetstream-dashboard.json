@@ -57,7 +57,7 @@
         "target": {
           "limit": 100,
           "matchAny": false,
-          "tags": [],
+          "tags": ["nats-exporter"],
           "type": "dashboard"
         },
         "type": "dashboard"
@@ -1178,7 +1178,7 @@
   "refresh": "10s",
   "schemaVersion": 34,
   "style": "dark",
-  "tags": [],
+  "tags": ["nats-exporter"],
   "templating": {
     "list": [
       {
@@ -1261,7 +1261,7 @@
     "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
   },
   "timezone": "browser",
-  "title": "NATS JetStream",
+  "title": "Exporter - NATS JetStream",
   "uid": "yQUo5l17k",
   "version": 1,
   "weekStart": ""

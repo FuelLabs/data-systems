@@ -45,7 +45,7 @@
         "target": {
           "limit": 100,
           "matchAny": false,
-          "tags": [],
+          "tags": ["nats-exporter"],
           "type": "dashboard"
         },
         "type": "dashboard"
@@ -899,7 +899,7 @@
   "refresh": false,
   "schemaVersion": 34,
   "style": "dark",
-  "tags": [],
+  "tags": ["nats-exporter"],
   "templating": {
     "list": []
   },
@@ -912,7 +912,7 @@
     "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
   },
   "timezone": "browser",
-  "title": "NATS Servers",
+  "title": "Exporter - NATS Servers",
   "uid": "Usc6F_1nk",
   "version": 1,
   "weekStart": ""
