@@ -1,3 +1,16 @@
+## 0.0.9 (2024-09-09)
+
+### 🐛 Fixes
+
+-   Adjust information for release
+
+## 0.0.8 (2024-09-06)
+
+### 🐛 Fixes
+
+-   Avoid using cached tx id (#200)
+-   Inline public info (#201)
+
 ## 0.0.6 (2024-08-29)
 
 ### 🐛 Fixes

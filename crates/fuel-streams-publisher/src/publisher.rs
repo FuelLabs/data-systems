@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use fuel_core::{
     combined_database::CombinedDatabase,
@@ -12,6 +12,7 @@ use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     prelude::IntoSubject,
+    transactions::TransactionsSubject,
     types::{Address, AssetId, Block, BlockHeight, ChainId, Transaction},
     Stream,
 };
@@ -19,9 +20,12 @@ use futures_util::{future::try_join_all, FutureExt};
 use tokio::sync::broadcast::{error::RecvError, Receiver};
 use tracing::warn;
 
-use crate::{blocks, shutdown::stop_signal, transactions};
-
-const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
+use crate::{
+    blocks,
+    metrics::PublisherMetrics,
+    shutdown::{stop_signal, GRACEFUL_SHUTDOWN_TIMEOUT},
+    transactions,
+};
 
 /// Streams we currently support publishing to.
 pub struct Streams {
@@ -37,10 +41,12 @@ impl Streams {
         }
     }
 
+    pub fn subjects_wildcards(&self) -> &[&'static str] {
+        &[TransactionsSubject::WILDCARD, BlocksSubject::WILDCARD]
+    }
+
     #[cfg(feature = "test-helpers")]
     pub async fn is_empty(&self) -> bool {
-        use fuel_streams_core::transactions::TransactionsSubject;
-
         self.blocks.is_empty(BlocksSubject::WILDCARD).await
             && self
                 .transactions
@@ -59,12 +65,14 @@ pub struct Publisher {
     fuel_core_database: CombinedDatabase,
     blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
     streams: Streams,
+    metrics: Arc<PublisherMetrics>,
 }
 
 impl Publisher {
     pub async fn new(
         fuel_service: Arc<FuelService>,
         nats_url: &str,
+        metrics: Arc<PublisherMetrics>,
     ) -> anyhow::Result<Self> {
         let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
@@ -80,6 +88,12 @@ impl Publisher {
             fuel_service.shared.config.snapshot_reader.chain_config();
         let chain_id = chain_config.consensus_parameters.chain_id();
         let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
+        let streams = Streams::new(&nats_client).await;
+
+        metrics
+            .total_subs
+            .with_label_values(&[&chain_id.to_string()])
+            .set(streams.subjects_wildcards().len() as i64);
 
         Ok(Publisher {
             fuel_service,
@@ -88,6 +102,7 @@ impl Publisher {
             fuel_core_database,
             blocks_subscription: fuel_core_subscription,
             streams: Streams::new(&nats_client).await,
+            metrics,
         })
     }
 
@@ -116,6 +131,7 @@ impl Publisher {
             fuel_core_database: CombinedDatabase::default(),
             blocks_subscription,
             streams: Streams::new(nats_client).await,
+            metrics: Arc::new(PublisherMetrics::default()),
         })
     }
 
@@ -197,22 +213,25 @@ impl Publisher {
                         self.shutdown_services_with_timeout().await?;
                         return Ok(self);
                     },
-                    result = async {
+                    (result, block_producer) = async {
                         let sealed_block = self
                             .fuel_core_database
                             .on_chain()
-                            .latest_view()?
-                            .get_sealed_block_by_height(&(height as u32).into())?
+                            .latest_view()
+                            .expect("failed to get latest db view")
+                            .get_sealed_block_by_height(&(height as u32).into())
+                            .expect("Failed to get latest block height")
                             .expect("NATS Publisher: no block at height {height}");
 
                         let (block, block_producer) =
                             Self::get_block_and_producer(&sealed_block);
 
-                        self.publish(&block, &block_producer).await
+                        (self.publish(&block, &block_producer).await, block_producer.clone())
                     } => {
                         if let Err(err) = result {
                             tracing::warn!("Failed to publish block data: {}", err);
                         }
+                        self.metrics.total_failed_messages.with_label_values(&[&self.chain_id.to_string(), &block_producer.to_string()]).inc();
                         height += 1;
                     }
                 }
@@ -265,6 +284,8 @@ impl Publisher {
             block.header().consensus().height.into();
 
         blocks::publish(
+            &self.metrics,
+            &self.chain_id,
             &block_height,
             &self.streams.blocks,
             block,
@@ -273,11 +294,14 @@ impl Publisher {
         .await?;
 
         transactions::publish(
+            &self.metrics,
             &self.chain_id,
             &block_height,
             &self.fuel_core_database,
             &self.streams.transactions,
             block.transactions(),
+            block_producer,
+            block,
         )
         .await?;
 

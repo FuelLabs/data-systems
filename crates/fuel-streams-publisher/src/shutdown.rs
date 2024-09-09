@@ -1,8 +1,12 @@
+use std::time::Duration;
+
 use tokio::{
     signal::unix::{signal, SignalKind},
     sync::broadcast,
 };
 use tracing::info;
+
+pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub async fn stop_signal(stop_tx: broadcast::Sender<()>) {
     let mut sigint =

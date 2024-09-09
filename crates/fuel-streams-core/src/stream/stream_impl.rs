@@ -128,18 +128,17 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &impl IntoSubject,
         payload: &S,
-    ) -> Result<(), StreamError> {
+    ) -> Result<usize, StreamError> {
         let subject_name = &subject.parse();
-        let result = self
-            .store
-            .create(subject_name, payload.encode(subject_name).await.into())
-            .await;
+        let data = payload.encode(subject_name).await;
+        let data_size = data.len();
+        let result = self.store.create(subject_name, data.into()).await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(data_size),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
                 // This is a workaround to avoid publish two times the same message
-                Ok(())
+                Ok(data_size)
             }
             Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),

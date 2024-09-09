@@ -17,6 +17,7 @@ actix-server = "2.5.0"
 actix-web = "4.9.0"
 actix-web-prom = { version = "0.8.0", features = ["process"] }
 anyhow = { workspace = true }
+chrono = { version = "0.4.19" }
 clap = { workspace = true }
 displaydoc = { workspace = true }
 fuel-core = { workspace = true }

@@ -49,4 +49,4 @@ cargo run -p fuel-streams-publisher -- \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --reserved-nodes /dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf \
-    --server-addr 127.0.0.1:9000
+    --server-addr 0.0.0.0:9000

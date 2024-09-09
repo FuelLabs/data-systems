@@ -34,7 +34,7 @@ pub struct Cli {
         long,
         value_name = "ADDR",
         env = "SERVER_ADDR",
-        default_value = "127.0.0.1:8080",
+        default_value = "0.0.0.0:8080",
         help = "Address for the Actix Web server to bind to."
     )]
     server_addr: SocketAddr,
@@ -68,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
     let publisher = fuel_streams_publisher::Publisher::new(
         state.fuel_service.clone(),
         &cli.nats_url,
+        state.metrics.clone(),
     )
     .await?;
     tracing::info!("Publisher started.");

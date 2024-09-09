@@ -47,6 +47,7 @@ FROM ubuntu:22.04 as run
 
 ARG IP=0.0.0.0
 ARG PORT=4000
+ARG SERVER_ADDR=0.0.0.0:9000
 ARG P2P_PORT=30333
 ARG DB_PATH=/mnt/db/
 ARG POA_INSTANT=false
@@ -57,6 +58,7 @@ ARG RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoC
 
 ENV IP=$IP
 ENV PORT=$PORT
+ENV SERVER_ADDR=$SERVER_ADDR
 ENV DB_PATH=$DB_PATH
 ENV POA_INSTANT=false
 ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
@@ -107,3 +109,4 @@ CMD exec ./fuel-streams-publisher \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --sync-block-stream-buffer-size 30 \
     --nats-url "${NATS_URL}" \
+    --server-addr $SERVER_ADDR

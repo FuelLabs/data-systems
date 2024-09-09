@@ -15,7 +15,7 @@ services:
       - --name=fuel-streams-publisher-server
       - --js
       - --config=/etc/nats/nats.conf
-      - -V
+      - -DV
     env_file:
       - ./../.env
 
@@ -30,6 +30,7 @@ services:
       - ./../.env
     environment:
       - NATS_URL=nats://nats:4222
+      - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
       - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
       - RELAYER_V2_LISTENING_CONTRACTS=0x01855B78C1f8868DE70e84507ec735983bf262dA
@@ -41,6 +42,7 @@ services:
       - fuel-streams-publisher-db:/mnt/db
     ports:
       - 4000:4000
+      - 9000:9000
     healthcheck:
       test:
         - "CMD"
@@ -99,13 +101,15 @@ services:
     container_name: prometheus-nats-exporter
     restart: always
     command:
-      - "-D"
+      - "-DV"
       - "-varz"
       - "-jsz=all"
       - "-channelz"
+      - "-connz"
       - "-connz_detailed"
       - "-serverz"
       - "-healthz"
+      - "-routez"
       - "-subz"
       - "-port"
       - "7777"
@@ -121,7 +125,7 @@ services:
         - "CMD"
         - "wget"
         - "-qO-"
-        - "http://nats:8222/healthz"
+        - "http://prometheus-nats-exporter:7777/metrics"
       interval: 30s
       timeout: 10s
       retries: 5

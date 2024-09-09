@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
+use chrono::Utc;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
+use fuel_streams::types::{Address, Block};
 use fuel_streams_core::{
     prelude::IntoSubject,
     transactions::TransactionsSubject,
@@ -15,12 +19,18 @@ use fuel_streams_core::{
 };
 use tracing::info;
 
+use crate::metrics::PublisherMetrics;
+
+#[allow(clippy::too_many_arguments)]
 pub async fn publish(
+    metrics: &Arc<PublisherMetrics>,
     chain_id: &ChainId,
     block_height: &BlockHeight,
     fuel_core_database: &CombinedDatabase,
     transactions_stream: &Stream<Transaction>,
     transactions: &[Transaction],
+    block_producer: &Address,
+    block: &Block<Transaction>,
 ) -> anyhow::Result<()> {
     let off_chain_database = fuel_core_database.off_chain().latest_view()?;
 
@@ -40,13 +50,60 @@ pub async fn publish(
                 .with_height(Some(block_height.clone()))
                 .with_tx_index(Some(transaction_index));
 
-        if let Some(transaction_id) = transaction.cached_id() {
-            info!("NATS Publisher: Publishing Transaction 0x#{transaction_id}");
-        }
+        info!("NATS Publisher: Publishing Transaction 0x#{tx_id}");
 
-        transactions_stream
+        let published_data_size = match transactions_stream
             .publish(&transactions_subject, transaction)
-            .await?;
+            .await
+        {
+            Ok(published_data_size) => published_data_size,
+            Err(e) => {
+                metrics.error_rates.with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    TransactionsSubject::WILDCARD,
+                    &e.to_string(),
+                ]);
+                return Err(anyhow::anyhow!(e));
+            }
+        };
+
+        // update metric
+        metrics
+            .message_size_histogram
+            .with_label_values(&[
+                &chain_id.to_string(),
+                &block_producer.to_string(),
+                TransactionsSubject::WILDCARD,
+            ])
+            .observe(published_data_size as f64);
+
+        let latency = block.header().time().to_unix() - Utc::now().timestamp();
+        metrics
+            .publishing_latency_histogram
+            .with_label_values(&[
+                &chain_id.to_string(),
+                &block_producer.to_string(),
+                TransactionsSubject::WILDCARD,
+            ])
+            .observe(latency as f64);
+
+        metrics
+            .total_published_messages
+            .with_label_values(&[
+                &chain_id.to_string(),
+                &block_producer.to_string(),
+            ])
+            .inc();
+
+        metrics
+            .published_messages_throughput
+            .with_label_values(&[
+                &chain_id.to_string(),
+                &block_producer.to_string(),
+                TransactionsSubject::WILDCARD,
+            ])
+            .inc();
     }
 
     Ok(())

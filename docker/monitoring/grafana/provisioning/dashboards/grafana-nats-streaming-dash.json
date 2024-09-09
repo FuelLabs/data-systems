@@ -1,8 +1,8 @@
 {
   "__inputs": [
     {
-      "name": "DS__PROMETHEUS",
-      "label": "prometheus",
+      "name": "DS__NATS-PROMETHEUS",
+      "label": " NATS-Prometheus",
       "description": "",
       "type": "datasource",
       "pluginId": "prometheus",
@@ -35,7 +35,7 @@
         "builtIn": 1,
         "datasource": {
           "type": "prometheus",
-          "uid": "DS__PROMETHEUS"
+          "uid": "DS__NATS-PROMETHEUS"
         },
         "enable": true,
         "hide": true,
@@ -69,7 +69,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "DS__PROMETHEUS",
+      "datasource": "DS__NATS-PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -156,7 +156,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "DS__PROMETHEUS",
+      "datasource": "DS__NATS-PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -240,7 +240,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "DS__PROMETHEUS",
+      "datasource": "DS__NATS-PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
@@ -324,7 +324,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "DS__PROMETHEUS",
+      "datasource": "DS__NATS-PROMETHEUS",
       "fill": 1,
       "gridPos": {
         "h": 11,
