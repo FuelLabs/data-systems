@@ -53,8 +53,13 @@ use crate::{blocks::types::BlockHeight, types::*};
 /// # use fuel_streams_core::transactions::TransactionsSubject;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
-/// let subject = TransactionsSubject::new().with_height(Some(23.into()));
-/// assert_eq!(subject.parse(), "transactions.23.*.*.*.*");
+/// let subject = TransactionsSubject::new()
+///     .with_height(Some(23.into()))
+///     .with_tx_index(Some(1))
+///     .with_tx_id(Some(Bytes32::zeroed()))
+///     .with_status(Some(TransactionStatus::Success))
+///     .with_kind(Some(TransactionKind::Script));
+/// assert_eq!(subject.parse(), "transactions.23.1.0x0000000000000000000000000000000000000000000000000000000000000000.success.script");
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "transactions.>"]
@@ -122,8 +127,10 @@ impl From<&Transaction> for TransactionsSubject {
 /// # use fuel_streams_core::transactions::TransactionsByIdSubject;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
-/// let subject = TransactionsByIdSubject::new().with_id_kind(Some(IdentifierKind::ContractID));
-/// assert_eq!(subject.parse(), "by_id.transactions.contract_id.*");
+/// let subject = TransactionsByIdSubject::new()
+///     .with_id_kind(Some(IdentifierKind::ContractID))
+///     .with_id_value(Some(Address::zeroed()));
+/// assert_eq!(subject.parse(), "by_id.transactions.contract_id.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "by_id.transactions.>"]

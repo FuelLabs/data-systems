@@ -42,7 +42,7 @@ fn coin_subject<T: CoinSpecification>(
         .with_tx_id(Some(tx_id))
         .with_index(Some(index))
         .with_owner(Some(owner.into()))
-        .with_asset_id(Some(asset_id));
+        .with_asset_id(Some(asset_id.into()));
 
     let by_id = InputsByIdSubject::new()
         .with_id_kind(Some(IdentifierKind::AssetID))
