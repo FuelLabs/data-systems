@@ -178,12 +178,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create .env file with NATS environment variables
-        run: |
-          echo "NATS_URL=${{ env.NATS_URL }}" > .env
-          echo "NATS_ADMIN_PASS=${{ env.NATS_ADMIN_PASS }}" >> .env
-          echo "NATS_PUBLIC_PASS=${{ env.NATS_PUBLIC_PASS }}" >> .env
-
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
