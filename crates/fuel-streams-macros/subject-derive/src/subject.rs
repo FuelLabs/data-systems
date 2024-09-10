@@ -47,6 +47,10 @@ pub fn expanded<'a>(
                 Self::build(#(#field_names,)*).parse()
             }
 
+            pub fn boxed(self) -> Box<Self> {
+                Box::new(self)
+            }
+
             #(#with_methods)*
         }
 

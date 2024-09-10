@@ -123,11 +123,11 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn publish_many(
         &self,
-        subjects: &[&dyn IntoSubject],
+        subjects: &[Box<dyn IntoSubject>],
         payload: &S,
     ) -> Result<(), StreamError> {
-        for subject in subjects {
-            self.publish(*subject, payload).await?;
+        for subject in subjects.iter() {
+            self.publish(&**subject, payload).await?;
         }
 
         Ok(())
