@@ -32,7 +32,7 @@ pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
 ///
 /// # Usage
 ///
-/// ```no_run
+/// ```no_compile
 /// # use fuel_streams_core::generate_byte_type_wrapper;
 /// generate_byte_type_wrapper!(AddressWrapped, fuel_core_types::fuel_tx::Address);
 /// ```
@@ -135,7 +135,6 @@ macro_rules! impl_from_bytes32 {
         }
     };
 }
-
 
 impl_from_bytes32!(fuel_tx::ContractId);
 impl_from_bytes32!(fuel_types::AssetId);

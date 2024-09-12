@@ -44,7 +44,7 @@ use crate::types::*;
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = BlocksSubject::new()
 ///     .with_producer(Some(Address::zeroed()))
 ///     .with_height(Some(23.into()));

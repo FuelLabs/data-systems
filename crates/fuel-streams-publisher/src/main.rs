@@ -47,9 +47,6 @@ async fn main() -> anyhow::Result<()> {
         .chain_config();
     let chain_id = chain_config.consensus_parameters.chain_id();
 
-    // TODO: is this still useful?
-    let _base_asset_id = chain_config.consensus_parameters.base_asset_id();
-
     let fuel_core =
         FuelCore::new(fuel_core_database, blocks_subscription, chain_id).await;
 
