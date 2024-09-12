@@ -1,4 +1,5 @@
 mod blocks;
+mod inputs;
 mod publisher;
 mod transactions;
 
