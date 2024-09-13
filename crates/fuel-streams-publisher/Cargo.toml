@@ -13,6 +13,7 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
@@ -20,7 +21,6 @@ fuel-core-importer = { workspace = true, features = ["test-helpers"] }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-macros = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

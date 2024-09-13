@@ -1,8 +1,10 @@
 // ------------------------------------------------------------------------
 // Transaction
 // ------------------------------------------------------------------------
-pub use fuel_core_types::fuel_tx::{Receipt, Transaction, UniqueIdentifier};
-use fuel_core_types::services::txpool::TransactionStatus as TxPoolTransactionStatus;
+pub use fuel_core_types::{
+    fuel_tx::{Receipt, Transaction, UniqueIdentifier},
+    services::txpool::TransactionStatus as FuelCoreTransactionStatus,
+};
 
 #[cfg(any(test, feature = "test-helpers"))]
 use crate::blocks::types::Block;
@@ -78,17 +80,19 @@ impl std::fmt::Display for TransactionStatus {
     }
 }
 
-impl From<TxPoolTransactionStatus> for TransactionStatus {
-    fn from(value: TxPoolTransactionStatus) -> Self {
+impl From<FuelCoreTransactionStatus> for TransactionStatus {
+    fn from(value: FuelCoreTransactionStatus) -> Self {
         match value {
-            TxPoolTransactionStatus::Failed { .. } => TransactionStatus::Failed,
-            TxPoolTransactionStatus::Submitted { .. } => {
+            FuelCoreTransactionStatus::Failed { .. } => {
+                TransactionStatus::Failed
+            }
+            FuelCoreTransactionStatus::Submitted { .. } => {
                 TransactionStatus::Submitted
             }
-            TxPoolTransactionStatus::SqueezedOut { .. } => {
+            FuelCoreTransactionStatus::SqueezedOut { .. } => {
                 TransactionStatus::SqueezedOut
             }
-            TxPoolTransactionStatus::Success { .. } => {
+            FuelCoreTransactionStatus::Success { .. } => {
                 TransactionStatus::Success
             }
         }

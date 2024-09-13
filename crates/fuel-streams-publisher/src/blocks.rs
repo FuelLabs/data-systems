@@ -1,9 +1,9 @@
 use fuel_streams_core::{
     blocks::BlocksSubject,
+    prelude::*,
     types::{Address, Block, BlockHeight, Transaction},
     Stream,
 };
-use fuel_streams_macros::subject::IntoSubject;
 use tracing::info;
 
 pub async fn publish(

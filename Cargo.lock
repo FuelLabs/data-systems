@@ -2792,6 +2792,7 @@ name = "fuel-streams-publisher"
 version = "0.0.9"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap 4.5.16",
  "fuel-core",
  "fuel-core-bin",
@@ -2799,7 +2800,6 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-types",
  "fuel-streams-core",
- "fuel-streams-macros",
  "tokio",
  "tracing",
 ]
@@ -6653,6 +6653,9 @@ dependencies = [
 name = "streams-tests"
 version = "0.0.9"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "fuel-core",
  "fuel-core-importer",
  "fuel-core-types",
  "fuel-streams",

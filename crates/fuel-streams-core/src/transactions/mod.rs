@@ -1,7 +1,6 @@
 pub mod subjects;
 pub mod types;
 
-use fuel_streams_macros::subject::IntoSubject;
 pub use subjects::*;
 use types::*;
 

@@ -39,7 +39,7 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
 
 pub fn publish_items<T: Streamable + 'static>(
     stream: &Stream<T>,
-    items: Vec<(impl IntoSubject + Sync + Send + 'static, T)>,
+    items: Vec<(impl IntoSubject + Clone + 'static, T)>,
 ) -> JoinHandle<()> {
     tokio::task::spawn({
         let stream = stream.clone();

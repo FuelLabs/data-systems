@@ -15,7 +15,7 @@ use crate::prelude::Address;
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsCoinSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsCoinSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
 ///     index: Some(0),
@@ -32,7 +32,7 @@ use crate::prelude::Address;
 ///
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsCoinSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// assert_eq!(InputsCoinSubject::WILDCARD, "inputs.>");
 /// ```
 ///
@@ -41,7 +41,7 @@ use crate::prelude::Address;
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsCoinSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let wildcard = InputsCoinSubject::wildcard(None, Some(0), None, Some(AssetId::from([3u8; 32])));
 /// assert_eq!(wildcard, "inputs.*.0.coin.*.0x0303030303030303030303030303030303030303030303030303030303030303");
 /// ```
@@ -51,7 +51,7 @@ use crate::prelude::Address;
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsCoinSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsCoinSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
 ///     .with_index(Some(0))
@@ -81,7 +81,7 @@ pub struct InputsCoinSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsContractSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsContractSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
 ///     index: Some(0),
@@ -97,7 +97,7 @@ pub struct InputsCoinSubject {
 ///
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsContractSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// assert_eq!(InputsContractSubject::WILDCARD, "inputs.>");
 /// ```
 ///
@@ -106,7 +106,7 @@ pub struct InputsCoinSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsContractSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let wildcard = InputsContractSubject::wildcard(Some(Bytes32::from([1u8; 32])), None, None);
 /// assert_eq!(wildcard, "inputs.0x0101010101010101010101010101010101010101010101010101010101010101.*.contract.*");
 /// ```
@@ -116,7 +116,7 @@ pub struct InputsCoinSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsContractSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsContractSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
 ///     .with_index(Some(0))
@@ -144,7 +144,7 @@ pub struct InputsContractSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsMessageSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsMessageSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
 ///     index: Some(0),
@@ -161,7 +161,7 @@ pub struct InputsContractSubject {
 ///
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsMessageSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// assert_eq!(InputsMessageSubject::WILDCARD, "inputs.>");
 /// ```
 ///
@@ -170,7 +170,7 @@ pub struct InputsContractSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsMessageSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let wildcard = InputsMessageSubject::wildcard(Some(Bytes32::from([1u8; 32])), None, None, None);
 /// assert_eq!(wildcard, "inputs.0x0101010101010101010101010101010101010101010101010101010101010101.*.message.*.*");
 /// ```
@@ -180,7 +180,7 @@ pub struct InputsContractSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsMessageSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsMessageSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
 ///     .with_index(Some(0))
@@ -211,7 +211,7 @@ pub struct InputsMessageSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsByIdSubject {
 ///     id_kind: Some(IdentifierKind::AssetID),
 ///     id_value: Some([3u8; 32].into()),
@@ -226,7 +226,7 @@ pub struct InputsMessageSubject {
 ///
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// assert_eq!(InputsByIdSubject::WILDCARD, "by_id.inputs.>");
 /// ```
 ///
@@ -235,7 +235,7 @@ pub struct InputsMessageSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let wildcard = InputsByIdSubject::wildcard(Some(IdentifierKind::AssetID), None);
 /// assert_eq!(wildcard, "by_id.inputs.asset_id.*");
 /// ```
@@ -245,7 +245,7 @@ pub struct InputsMessageSubject {
 /// ```
 /// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = InputsByIdSubject::new()
 ///     .with_id_kind(Some(IdentifierKind::AssetID))
 ///     .with_id_value(Some([3u8; 32].into()));

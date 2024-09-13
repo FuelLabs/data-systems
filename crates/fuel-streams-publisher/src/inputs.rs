@@ -13,10 +13,10 @@ use fuel_streams_core::{
         InputsContractSubject,
         InputsMessageSubject,
     },
+    prelude::*,
     types::{Bytes32, ChainId, IdentifierKind, Input, Transaction},
     Stream,
 };
-use fuel_streams_macros::subject::IntoSubject;
 
 macro_rules! get_inputs {
     ($transaction:expr, $($variant:ident),+) => {

@@ -47,7 +47,7 @@ The `Subject` derive macro allows you to easily implement the `Subject` trait fo
 Example:
 
 ```rust
-use fuel_streams_macros::subject::{Subject, IntoSubject};
+use fuel_streams_macros::subject::{Subject, IntoSubject, SubjectBuildable};
 
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "test.>"]
