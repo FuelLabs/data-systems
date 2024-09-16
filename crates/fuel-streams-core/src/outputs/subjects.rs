@@ -3,10 +3,20 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
+pub const OUTPUTS_WILDCARD_LIST: &[&str] = &[
+    OutputsByIdSubject::WILDCARD,
+    OutputsAllSubject::WILDCARD,
+    OutputsCoinSubject::WILDCARD,
+    OutputsContractSubject::WILDCARD,
+    OutputsChangeSubject::WILDCARD,
+    OutputsVariableSubject::WILDCARD,
+    OutputsContractCreatedSubject::WILDCARD,
+];
+
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.{tx_id}.{index}.>"]
-pub struct OutputsSubject {
+pub struct OutputsAllSubject {
     pub tx_id: Option<TxId>,
     pub index: Option<u16>,
 }
@@ -16,11 +26,11 @@ pub struct OutputsSubject {
 #[subject_format = "by_id.outputs.{id_kind}.{id_value}"]
 pub struct OutputsByIdSubject {
     pub id_kind: Option<IdentifierKind>,
-    pub id_value: Option<Address>,
+    pub id_value: Option<Bytes32>,
 }
 
 #[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.coin.>"]
+#[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.coin.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsCoinSubject {
     pub tx_id: Option<TxId>,
@@ -30,7 +40,7 @@ pub struct OutputsCoinSubject {
 }
 
 #[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.contract.>"]
+#[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.contract.{tx_id}.{index}.{contract_id}"]
 pub struct OutputsContractSubject {
     pub tx_id: Option<TxId>,
@@ -39,7 +49,7 @@ pub struct OutputsContractSubject {
 }
 
 #[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.change.>"]
+#[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.change.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsChangeSubject {
     pub tx_id: Option<TxId>,
@@ -49,7 +59,7 @@ pub struct OutputsChangeSubject {
 }
 
 #[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.variable.>"]
+#[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.variable.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsVariableSubject {
     pub tx_id: Option<TxId>,
@@ -59,7 +69,7 @@ pub struct OutputsVariableSubject {
 }
 
 #[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.contract_created.>"]
+#[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.contract_created.{tx_id}.{index}.{contract_id}"]
 pub struct OutputsContractCreatedSubject {
     pub tx_id: Option<TxId>,
@@ -67,21 +77,22 @@ pub struct OutputsContractCreatedSubject {
     pub contract_id: Option<ContractId>,
 }
 
-pub const WILDCARD_LIST: &[&str] = &[
-    OutputsSubject::WILDCARD,
-    OutputsByIdSubject::WILDCARD,
-    OutputsCoinSubject::WILDCARD,
-    OutputsContractSubject::WILDCARD,
-    OutputsChangeSubject::WILDCARD,
-    OutputsVariableSubject::WILDCARD,
-    OutputsContractCreatedSubject::WILDCARD,
-];
-
 #[cfg(test)]
 mod tests {
     use fuel_streams_macros::subject::SubjectBuildable;
 
     use super::*;
+
+    #[test]
+    fn test_output_subject_wildcard() {
+        assert_eq!(OutputsAllSubject::WILDCARD, "outputs.>");
+        assert_eq!(OutputsByIdSubject::WILDCARD, "by_id.outputs.>");
+        assert_eq!(OutputsCoinSubject::WILDCARD, "outputs.>");
+        assert_eq!(OutputsContractSubject::WILDCARD, "outputs.>");
+        assert_eq!(OutputsChangeSubject::WILDCARD, "outputs.>");
+        assert_eq!(OutputsVariableSubject::WILDCARD, "outputs.>");
+        assert_eq!(OutputsContractCreatedSubject::WILDCARD, "outputs.>");
+    }
 
     #[test]
     fn test_outputs_coin_subject_creation() {
@@ -103,8 +114,11 @@ mod tests {
     }
 
     #[test]
-    fn test_output_subject_wildcard() {
-        assert_eq!(OutputsSubject::WILDCARD, "outputs.>");
+    fn test_output_all_subject_creation() {
+        let output_subject = OutputsAllSubject::new()
+            .with_tx_id(Some([0u8; 32].into()))
+            .with_index(Some(0));
+        assert_eq!(output_subject.to_string(), "outputs.0000000000000000000000000000000000000000000000000000000000000000.0.>");
     }
 
     #[test]
@@ -125,21 +139,5 @@ mod tests {
             .with_to(Some([0u8; 32].into()))
             .with_asset_id(Some([1u8; 32].into()));
         assert_eq!(output_subject.to_string(), "outputs.variable.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000.0101010101010101010101010101010101010101010101010101010101010101");
-    }
-
-    #[test]
-    fn test_wildcard_list() {
-        assert_eq!(
-            WILDCARD_LIST,
-            &[
-                "outputs.>",
-                "by_id.outputs.>",
-                "outputs.coin.>",
-                "outputs.contract.>",
-                "outputs.change.>",
-                "outputs.variable.>",
-                "outputs.contract_created.>"
-            ]
-        );
     }
 }

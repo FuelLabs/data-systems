@@ -1,20 +1,17 @@
-use fuel_core::schema::contract;
 use fuel_core_types::fuel_tx::{field::Outputs, Output, UniqueIdentifier};
 use fuel_streams_core::{
     outputs::{
+        OutputsByIdSubject,
         OutputsChangeSubject,
         OutputsCoinSubject,
         OutputsContractCreatedSubject,
         OutputsContractSubject,
         OutputsVariableSubject,
-        OutputsByIdSubject,
-        OutputsSubject,
     },
     prelude::*,
-    types::{Bytes32, ChainId, IdentifierKind, Transaction},
+    types::{ChainId, IdentifierKind, Transaction},
     Stream,
 };
-use fuel_streams_macros::subject::IntoSubject;
 
 macro_rules! get_outputs {
     ($transaction:expr, $($variant:ident),+) => {
@@ -51,50 +48,77 @@ pub async fn publish(
         let tx_id = transaction.id(chain_id);
         let outputs = outputs_from_transaction(transaction);
         for (index, output) in outputs.iter().enumerate() {
-            let subject: Box<dyn IntoSubject> = match output {
-                Output::Coin { to, amount, asset_id } => OutputsCoinSubject::new()
-                    .with_tx_id(Some(tx_id.into()))
-                    .with_index(Some(index as u16))
-                    .with_to(Some((*to).into()))
-                    .with_asset_id(Some(asset_id.into()))
-                    .boxed(),
-                Output::Contract(contract) => {
-                    let input_index = contract.input_index as usize;
-                    let contract_id =
-                        if let Some(Input::Contract(input_contract)) =
-                            inputs_from_transaction(transaction)
-                                .get(input_index)
-                        {
-                            Some(input_contract.contract_id)
-                        } else {
-                            None
-                        };
-                    OutputsContractSubject::new()
+            let (subject, by_id_subject): (
+                Box<dyn IntoSubject>,
+                OutputsByIdSubject,
+            ) = match output {
+                Output::Coin { to, asset_id, .. } => (
+                    OutputsCoinSubject::new()
                         .with_tx_id(Some(tx_id.into()))
                         .with_index(Some(index as u16))
-                        .with_contract_id(contract_id)
-                        .boxed()
+                        .with_to(Some((*to).into()))
+                        .with_asset_id(Some((*asset_id).into()))
+                        .boxed(),
+                    OutputsByIdSubject::new()
+                        .with_id_kind(Some(IdentifierKind::Address))
+                        .with_id_value(Some((*to).into())),
+                ),
+                Output::Contract(contract) => {
+                    let input_index = contract.input_index as usize;
+                    let contract_id = if let Input::Contract(input_contract) =
+                        &inputs_from_transaction(transaction)[input_index]
+                    {
+                        input_contract.contract_id
+                    } else {
+                        anyhow::bail!("Contract input not found");
+                    };
+                    (
+                        OutputsContractSubject::new()
+                            .with_tx_id(Some(tx_id.into()))
+                            .with_index(Some(index as u16))
+                            .with_contract_id(Some(contract_id))
+                            .boxed(),
+                        OutputsByIdSubject::new()
+                            .with_id_kind(Some(IdentifierKind::ContractID))
+                            .with_id_value(Some(contract_id.into())),
+                    )
                 }
-                Output::Change { to, asset_id, .. } => OutputsChangeSubject::new()
-                    .with_tx_id(Some(tx_id.into()))
-                    .with_index(Some(index as u16))
-                    .with_to(Some((*to).into()))
-                    .with_asset_id(Some(asset_id.into()))
-                    .boxed(),
-                Output::Variable { to, asset_id, .. } => OutputsVariableSubject::new()
-                    .with_tx_id(Some(tx_id.into()))
-                    .with_index(Some(index as u16))
-                    .with_to(Some((*to).into()))
-                    .with_asset_id(Some(asset_id.into()))
-                    .boxed(),
-                Output::ContractCreated { contract_id, .. } => OutputsContractCreatedSubject::new()
-                    .with_tx_id(Some(tx_id.into()))
-                    .with_index(Some(index as u16))
-                    .with_contract_id(Some(*contract_id))
-                    .boxed(),
+                Output::Change { to, asset_id, .. } => (
+                    OutputsChangeSubject::new()
+                        .with_tx_id(Some(tx_id.into()))
+                        .with_index(Some(index as u16))
+                        .with_to(Some((*to).into()))
+                        .with_asset_id(Some((*asset_id).into()))
+                        .boxed(),
+                    OutputsByIdSubject::new()
+                        .with_id_kind(Some(IdentifierKind::Address))
+                        .with_id_value(Some((*to).into())),
+                ),
+                Output::Variable { to, asset_id, .. } => (
+                    OutputsVariableSubject::new()
+                        .with_tx_id(Some(tx_id.into()))
+                        .with_index(Some(index as u16))
+                        .with_to(Some((*to).into()))
+                        .with_asset_id(Some((*asset_id).into()))
+                        .boxed(),
+                    OutputsByIdSubject::new()
+                        .with_id_kind(Some(IdentifierKind::Address))
+                        .with_id_value(Some((*to).into())),
+                ),
+                Output::ContractCreated { contract_id, .. } => (
+                    OutputsContractCreatedSubject::new()
+                        .with_tx_id(Some(tx_id.into()))
+                        .with_index(Some(index as u16))
+                        .with_contract_id(Some(*contract_id))
+                        .boxed(),
+                    OutputsByIdSubject::new()
+                        .with_id_kind(Some(IdentifierKind::ContractID))
+                        .with_id_value(Some((*contract_id).into())),
+                ),
             };
 
             stream.publish(&*subject, &output).await?;
+            stream.publish(&by_id_subject, &output).await?;
         }
     }
 

@@ -1,10 +1,5 @@
-use fuel_core::{
-    combined_database::CombinedDatabase,
-    database::database_description::DatabaseHeight,
-};
-use fuel_core_importer::ports::ImporterDatabase;
-use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::{blockchain::consensus::Sealed, fuel_tx::Output};
+use fuel_core::database::database_description::DatabaseHeight;
+use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::NatsClient,
@@ -38,7 +33,7 @@ impl Streams {
     #[cfg(feature = "test-helpers")]
     pub async fn is_empty(&self) -> bool {
         use fuel_streams_core::{
-            outputs::OutputsSubject,
+            outputs::OutputsAllSubject,
             transactions::TransactionsSubject,
         };
 
@@ -47,7 +42,7 @@ impl Streams {
                 .transactions
                 .is_empty(TransactionsSubject::WILDCARD)
                 .await
-            && self.outputs.is_empty(OutputsSubject::WILDCARD).await
+            && self.outputs.is_empty(OutputsAllSubject::WILDCARD).await
     }
 }
 
