@@ -14,23 +14,25 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let fields = fields::from_input(&input).unwrap();
     let field_names = fields::names_from_fields(fields);
     let field_types = fields::types_from_fields(fields);
-    let wildcard = attrs::subject_attr("wildcard", &input.attrs);
     let parse_fn = parse_fn::create(&input, &field_names);
-    let subject_expanded = subject::expanded(name, &field_names, &field_types);
+    let subject_expanded =
+        subject::expanded(name, &field_names, &field_types, &input.attrs);
 
     quote! {
         #subject_expanded
 
-        impl IntoSubject for #name {
-            const WILDCARD: &'static str = #wildcard;
-            #parse_fn
-
+        impl fuel_streams_macros::subject::SubjectBuildable for #name {
             fn new() -> Self {
                 Self {
                     #(#field_names: None,)*
                 }
             }
         }
+
+        impl IntoSubject for #name {
+            #parse_fn
+        }
+
     }
     .into()
 }

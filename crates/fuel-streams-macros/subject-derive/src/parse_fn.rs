@@ -6,7 +6,7 @@ pub fn create(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
     let format_str = super::attrs::subject_attr("format", &input.attrs);
     let parse_fields = field_names.iter().map(|name| {
         quote! {
-            let #name = Self::parse_param(&self.#name);
+            let #name = fuel_streams_macros::subject::parse_param(&self.#name);
         }
     });
 

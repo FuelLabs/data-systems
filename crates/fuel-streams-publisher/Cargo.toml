@@ -17,6 +17,7 @@ actix-server = "2.5.0"
 actix-web = "4.9.0"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
+async-trait = { workspace = true }
 chrono = { version = "0.4.19" }
 clap = { workspace = true }
 derive_more = { version = "1.0.0", features = ["full"] }
@@ -28,7 +29,6 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-macros = { workspace = true }
 futures-util = "0.3.30"
 num_cpus = "1.16.0"
 parking_lot = { version = "0.12", features = ["serde"] }
@@ -38,7 +38,7 @@ rust_decimal = { version = "1.13" }
 serde = { workspace = true }
 serde_prometheus = { version = "0.2.5" }
 sysinfo = { version = "0.29.2" }
-thiserror = "1.0"
+thiserror = "1.0.63"
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-actix-web = "0.7"

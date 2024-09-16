@@ -11,7 +11,7 @@ use async_nats::{
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{StreamExt, TryStreamExt};
+use futures::{future, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
@@ -122,9 +122,24 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
+    pub async fn publish_many(
+        &self,
+        subjects: &[Box<dyn IntoSubject>],
+        payload: &S,
+    ) -> Result<(), StreamError> {
+        future::try_join_all(
+            subjects
+                .iter()
+                .map(|subject| self.publish(&**subject, payload)),
+        )
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn publish(
         &self,
-        subject: &impl IntoSubject,
+        subject: &dyn IntoSubject,
         payload: &S,
     ) -> Result<usize, StreamError> {
         let subject_name = &subject.parse();

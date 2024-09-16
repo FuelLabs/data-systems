@@ -3120,6 +3120,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "async-nats",
+ "async-trait",
  "chrono",
  "clap 4.5.16",
  "derive_more 1.0.0",
@@ -3131,7 +3132,6 @@ dependencies = [
  "fuel-core-types",
  "fuel-streams",
  "fuel-streams-core",
- "fuel-streams-macros",
  "futures-util",
  "num_cpus",
  "parking_lot",
@@ -7234,6 +7234,8 @@ dependencies = [
 name = "streams-tests"
 version = "0.0.9"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "fuel-core",
  "fuel-core-importer",
  "fuel-core-types",

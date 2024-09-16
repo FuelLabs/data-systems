@@ -15,5 +15,3 @@ docker/db
 tmp
 /docker/db
 build_rs_cov.profraw
-docker/monitoring/surveyor/jetstream
-docker/monitoring/surveyor/observations

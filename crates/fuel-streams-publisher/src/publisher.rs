@@ -1,31 +1,29 @@
 use std::sync::Arc;
 
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
-use fuel_core::{
-    combined_database::CombinedDatabase,
-    database::database_description::DatabaseHeight,
-};
+use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
-use fuel_core_importer::{ports::ImporterDatabase, ImporterResult};
-use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::blockchain::consensus::Sealed;
+use fuel_core_importer::ImporterResult;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
-    prelude::IntoSubject,
     transactions::TransactionsSubject,
-    types::{Address, AssetId, Block, BlockHeight, ChainId, Transaction},
+    types::{Address, Block, Input, Receipt, Transaction},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
-use tokio::sync::broadcast::{error::RecvError, Receiver};
+use tokio::sync::broadcast::error::RecvError;
 use tracing::warn;
 
 use crate::{
     blocks,
+    inputs,
     metrics::PublisherMetrics,
+    receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
+    FuelCore,
+    FuelCoreLike,
 };
 
 #[derive(Clone, Debug)]
@@ -33,6 +31,8 @@ use crate::{
 pub struct Streams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
+    pub inputs: Stream<Input>,
+    pub receipts: Stream<Receipt>,
 }
 
 impl Streams {
@@ -40,6 +40,8 @@ impl Streams {
         Self {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,
+            inputs: Stream::<Input>::new(nats_client).await,
+            receipts: Stream::<Receipt>::new(nats_client).await,
         }
     }
 
@@ -71,10 +73,7 @@ impl Streams {
 /// TransactionsById subject
 pub struct Publisher {
     fuel_service: Arc<FuelService>,
-    chain_id: ChainId,
-    base_asset_id: AssetId,
-    fuel_core_database: CombinedDatabase,
-    blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+    fuel_core: Box<dyn FuelCoreLike>,
     metrics: Arc<PublisherMetrics>,
     nats_client: NatsClient,
     streams: Arc<Streams>,
@@ -90,7 +89,7 @@ impl Publisher {
         let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
-        let fuel_core_subscription = fuel_service
+        let blocks_subscription = fuel_service
             .shared
             .block_importer
             .block_importer
@@ -100,7 +99,10 @@ impl Publisher {
         let chain_config =
             fuel_service.shared.config.snapshot_reader.chain_config();
         let chain_id = chain_config.consensus_parameters.chain_id();
-        let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
+
+        let fuel_core =
+            FuelCore::new(fuel_core_database, blocks_subscription, chain_id)
+                .await;
 
         metrics
             .total_subs
@@ -109,10 +111,7 @@ impl Publisher {
 
         Ok(Publisher {
             fuel_service,
-            chain_id,
-            base_asset_id,
-            fuel_core_database,
-            blocks_subscription: fuel_core_subscription,
+            fuel_core,
             streams,
             metrics,
             nats_client,
@@ -134,7 +133,7 @@ impl Publisher {
     #[cfg(feature = "test-helpers")]
     pub async fn default_with_publisher(
         nats_client: &NatsClient,
-        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+        fuel_core: Box<dyn FuelCoreLike>,
     ) -> anyhow::Result<Self> {
         use fuel_core::service::Config;
 
@@ -142,10 +141,7 @@ impl Publisher {
             FuelService::new_node(Config::local_node()).await.unwrap();
         Ok(Publisher {
             fuel_service: Arc::new(fuel_srv),
-            chain_id: ChainId::default(),
-            base_asset_id: AssetId::default(),
-            fuel_core_database: CombinedDatabase::default(),
-            blocks_subscription,
+            fuel_core,
             streams: Arc::new(Streams::new(nats_client).await),
             metrics: Arc::new(PublisherMetrics::random()),
             nats_client: nats_client.clone(),
@@ -162,7 +158,7 @@ impl Publisher {
         result: ImporterResult,
     ) -> anyhow::Result<()> {
         let (block, block_producer) =
-            Self::get_block_and_producer(&result.sealed_block);
+            self.fuel_core.get_block_and_producer(&result.sealed_block);
         self.publish(&block, &block_producer).await?;
         Ok(())
     }
@@ -210,11 +206,8 @@ impl Publisher {
         let next_height_to_publish = last_published_height + 1;
 
         // Catch up the streams with the FuelCore
-        if let Some(latest_fuel_core_height) = self
-            .fuel_core_database
-            .on_chain()
-            .latest_block_height()?
-            .map(|h| h.as_u64())
+        if let Some(latest_fuel_core_height) =
+            self.fuel_core.get_latest_block_height()?
         {
             if latest_fuel_core_height > last_published_height + 1 {
                 warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
@@ -233,23 +226,18 @@ impl Publisher {
                     },
                     (result, block_producer) = async {
                         let sealed_block = self
-                            .fuel_core_database
-                            .on_chain()
-                            .latest_view()
-                            .expect("failed to get latest db view")
-                            .get_sealed_block_by_height(&(height as u32).into())
-                            .expect("Failed to get latest block height")
-                            .expect("NATS Publisher: no block at height {height}");
+                            .fuel_core
+                            .get_sealed_block_by_height(height as u32);
 
                         let (block, block_producer) =
-                            Self::get_block_and_producer(&sealed_block);
+                            self.fuel_core.get_block_and_producer(&sealed_block);
 
                         (self.publish(&block, &block_producer).await, block_producer.clone())
                     } => {
                         if let Err(err) = result {
                             tracing::warn!("Failed to publish block data: {}", err);
                         }
-                        self.metrics.total_failed_messages.with_label_values(&[&self.chain_id.to_string(), &block_producer.to_string()]).inc();
+                        self.metrics.total_failed_messages.with_label_values(&[&self.fuel_core.chain_id().to_string(), &block_producer.to_string()]).inc();
                         height += 1;
                     }
                 }
@@ -259,7 +247,7 @@ impl Publisher {
         // publish subscribed data
         loop {
             tokio::select! {
-                result = self.blocks_subscription.recv() => {
+                result = self.fuel_core.blocks_subscription().recv() => {
                     match result {
                         Ok(result) => {
                             self.publish_block_data(result).await?;
@@ -282,31 +270,14 @@ impl Publisher {
         Ok(self)
     }
 
-    #[cfg(not(feature = "test-helpers"))]
-    fn get_block_and_producer(
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
-        let block = sealed_block.entity.clone();
-        let block_producer = sealed_block
-            .consensus
-            .block_producer(&block.id())
-            .expect("Failed to get Block Producer");
-
-        (block, block_producer.into())
-    }
-
     async fn publish(
         &self,
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
-        let block_height: BlockHeight =
-            block.header().consensus().height.into();
-
         blocks::publish(
             &self.metrics,
-            &self.chain_id,
-            &block_height,
+            &*self.fuel_core,
             &self.streams.blocks,
             block,
             block_producer,
@@ -315,9 +286,7 @@ impl Publisher {
 
         transactions::publish(
             &self.metrics,
-            &self.chain_id,
-            &block_height,
-            &self.fuel_core_database,
+            &*self.fuel_core,
             &self.streams.transactions,
             block.transactions(),
             block_producer,
@@ -325,19 +294,24 @@ impl Publisher {
         )
         .await?;
 
+        receipts::publish(
+            &self.metrics,
+            &*self.fuel_core,
+            &self.streams.receipts,
+            block.transactions(),
+            block_producer,
+        )
+        .await?;
+
+        inputs::publish(
+            &self.metrics,
+            &self.streams.inputs,
+            &*self.fuel_core,
+            block.transactions(),
+            block_producer,
+        )
+        .await?;
+
         Ok(())
-    }
-
-    #[cfg(feature = "test-helpers")]
-    fn get_block_and_producer(
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
-        let block = sealed_block.entity.clone();
-        let block_producer = sealed_block
-            .consensus
-            .block_producer(&block.id())
-            .unwrap_or_default();
-
-        (block, block_producer.into())
     }
 }
