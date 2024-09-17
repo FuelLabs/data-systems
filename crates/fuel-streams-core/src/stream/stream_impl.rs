@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, pin::Pin};
 
 use async_nats::{
     jetstream::{
@@ -160,6 +160,7 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
+    // TODO: This should probably be `subscribe_raw` since it returns pure bytes
     pub async fn subscribe(
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
@@ -172,7 +173,40 @@ impl<S: Streamable> Stream<S> {
         })?)
     }
 
+    #[cfg(feature = "test-helpers")]
+    /// Fetch all old messages from this stream
+    pub async fn catchup(
+        &self,
+        number_of_messages: usize,
+    ) -> Result<
+        Pin<Box<dyn futures::Stream<Item = Option<S>> + Send>>,
+        StreamError,
+    > {
+        let config = PullConsumerConfig {
+            filter_subjects: self.all_filter_subjects(),
+            deliver_policy: DeliverPolicy::All,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        };
+        let config = self.prefix_filter_subjects(config);
+        let consumer = self.store.stream.create_consumer(config).await?;
+
+        let stream = consumer.messages().await?.take(number_of_messages).then(
+            |message| async {
+                if let Ok(message) = message {
+                    Some(S::decode(message.payload.to_vec()).await)
+                } else {
+                    None
+                }
+            },
+        );
+
+        // Use Box::pin to pin the stream on the heap
+        Ok(Box::pin(stream))
+    }
+
     // TODO: Make this interface more Stream-like and Nats agnostic
+    // TODO: This should probably be removed in favor of `subscribe`
     pub async fn subscribe_consumer(
         &self,
         config: SubscribeConsumerConfig,
@@ -196,6 +230,11 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<NatsConsumer<PullConsumerConfig>, StreamError> {
         let config = self.prefix_filter_subjects(config);
         Ok(self.store.stream.create_consumer(config).await?)
+    }
+
+    #[cfg(feature = "test-helpers")]
+    fn all_filter_subjects(&self) -> Vec<String> {
+        S::WILDCARD_LIST.iter().map(|s| s.to_string()).collect()
     }
 
     #[cfg(feature = "test-helpers")]
