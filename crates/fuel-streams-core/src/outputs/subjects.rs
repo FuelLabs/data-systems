@@ -1,4 +1,4 @@
-use fuel_core_types::{fuel_tx::TxId, fuel_types::ContractId};
+use fuel_core_types::fuel_types::{Address, Bytes32, ContractId};
 use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
@@ -18,22 +18,22 @@ use crate::types::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsAllSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.0000000000000000000000000000000000000000000000000000000000000000.0.>"
+///     "outputs.0x0000000000000000000000000000000000000000000000000000000000000000.0.>"
 /// );
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.{tx_id}.{index}.>"]
 pub struct OutputsAllSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
 }
 
-// Represents the NATS subject for outputs by ID.
+/// Represents the NATS subject for outputs by ID.
 ///
 /// This subject format allows for querying outputs based on their ID kind and value.
 ///
@@ -48,7 +48,7 @@ pub struct OutputsAllSubject {
 ///
 /// let subject = OutputsByIdSubject::new()
 ///     .with_id_kind(Some(IdentifierKind::Address))
-///     .with_id_value(Some([0u8; 32].into()));
+///     .with_id_value(Some(Bytes32::zeroed()));
 /// assert_eq!(
 ///     subject.to_string(),
 ///     "by_id.outputs.address.0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -77,20 +77,20 @@ pub struct OutputsByIdSubject {
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsCoinSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
 ///     .with_to(Some(Address::zeroed()))
 ///     .with_asset_id(Some(AssetId::zeroed()));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.coin.0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
+///     "outputs.coin.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.coin.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsCoinSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
     pub to: Option<Address>,
     pub asset_id: Option<AssetId>,
@@ -111,18 +111,19 @@ pub struct OutputsCoinSubject {
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsContractSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
-///     .with_contract_id(Some([0u8; 32].into()));
+///     .with_contract_id(Some(ContractId::zeroed()));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.contract.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000"
+///     "outputs.contract.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
+/// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.contract.{tx_id}.{index}.{contract_id}"]
 pub struct OutputsContractSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
     pub contract_id: Option<ContractId>,
 }
@@ -142,20 +143,20 @@ pub struct OutputsContractSubject {
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsChangeSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
 ///     .with_to(Some(Address::zeroed()))
 ///     .with_asset_id(Some(AssetId::zeroed()));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.change.0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
+///     "outputs.change.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.change.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsChangeSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
     pub to: Option<Address>,
     pub asset_id: Option<AssetId>,
@@ -176,20 +177,20 @@ pub struct OutputsChangeSubject {
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsVariableSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
-///     .with_to(Some([0u8; 32].into()))
-///     .with_asset_id(Some([1u8; 32].into()));
+///     .with_to(Some(Address::zeroed()))
+///     .with_asset_id(Some(Bytes32::from([1u8; 32])));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.variable.0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0101010101010101010101010101010101010101010101010101010101010101"
+///     "outputs.variable.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0101010101010101010101010101010101010101010101010101010101010101"
 /// );
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.variable.{tx_id}.{index}.{to}.{asset_id}"]
 pub struct OutputsVariableSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
     pub to: Option<Address>,
     pub asset_id: Option<AssetId>,
@@ -210,28 +211,29 @@ pub struct OutputsVariableSubject {
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsContractCreatedSubject::new()
-///     .with_tx_id(Some([0u8; 32].into()))
+///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
-///     .with_contract_id(Some([0u8; 32].into()));
+///     .with_contract_id(Some(ContractId::zeroed()));
 /// assert_eq!(
 ///     subject.to_string(),
-///     "outputs.contract_created.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000"
+///     "outputs.contract_created.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.contract_created.{tx_id}.{index}.{contract_id}"]
 pub struct OutputsContractCreatedSubject {
-    pub tx_id: Option<TxId>,
+    pub tx_id: Option<Bytes32>,
     pub index: Option<u16>,
     pub contract_id: Option<ContractId>,
 }
 
 #[cfg(test)]
 mod tests {
-    use fuel_streams_macros::subject::SubjectBuildable;
-
     use super::*;
+    use fuel_core_types::fuel_types::{Address, Bytes32};
+    use fuel_streams_core::types::*;
+    use fuel_streams_macros::subject::SubjectBuildable;
 
     #[test]
     fn test_output_subject_wildcard() {
@@ -247,47 +249,62 @@ mod tests {
     #[test]
     fn test_outputs_coin_subject_creation() {
         let coin_subject = OutputsCoinSubject::new()
-            .with_tx_id(Some([0u8; 32].into()))
+            .with_tx_id(Some(Bytes32::zeroed()))
             .with_index(Some(0))
-            .with_to(Some([0u8; 32].into()))
-            .with_asset_id(Some([0u8; 32].into()));
-        assert_eq!(coin_subject.to_string(), "outputs.coin.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000.0000000000000000000000000000000000000000000000000000000000000000");
+            .with_to(Some(Address::zeroed()))
+            .with_asset_id(Some(AssetId::zeroed()));
+        assert_eq!(
+            coin_subject.to_string(),
+            "outputs.coin.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
     }
 
     #[test]
     fn test_outputs_contract_created_subject_creation() {
         let contract_created_subject = OutputsContractCreatedSubject::new()
-            .with_tx_id(Some([0u8; 32].into()))
+            .with_tx_id(Some(Bytes32::zeroed()))
             .with_index(Some(0))
-            .with_contract_id(Some([0u8; 32].into()));
-        assert_eq!(contract_created_subject.to_string(), "outputs.contract_created.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000");
+            .with_contract_id(Some(ContractId::zeroed()));
+        assert_eq!(
+            contract_created_subject.to_string(),
+            "outputs.contract_created.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
     }
 
     #[test]
     fn test_output_all_subject_creation() {
         let output_subject = OutputsAllSubject::new()
-            .with_tx_id(Some([0u8; 32].into()))
+            .with_tx_id(Some(Bytes32::zeroed()))
             .with_index(Some(0));
-        assert_eq!(output_subject.to_string(), "outputs.0000000000000000000000000000000000000000000000000000000000000000.0.>");
+        assert_eq!(
+            output_subject.to_string(),
+            "outputs.0x0000000000000000000000000000000000000000000000000000000000000000.0.>"
+        );
     }
 
     #[test]
     fn test_output_subject_coin() {
         let output_subject = OutputsCoinSubject::new()
-            .with_tx_id(Some([0u8; 32].into()))
+            .with_tx_id(Some(Bytes32::zeroed()))
             .with_index(Some(0))
-            .with_to(Some([0u8; 32].into()))
-            .with_asset_id(Some([0u8; 32].into()));
-        assert_eq!(output_subject.to_string(), "outputs.coin.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000.0000000000000000000000000000000000000000000000000000000000000000");
+            .with_to(Some(Address::zeroed()))
+            .with_asset_id(Some(AssetId::zeroed()));
+        assert_eq!(
+            output_subject.to_string(),
+            "outputs.coin.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
     }
 
     #[test]
     fn test_output_subject_variable() {
         let output_subject = OutputsVariableSubject::new()
-            .with_tx_id(Some([0u8; 32].into()))
+            .with_tx_id(Some(Bytes32::zeroed()))
             .with_index(Some(0))
-            .with_to(Some([0u8; 32].into()))
-            .with_asset_id(Some([1u8; 32].into()));
-        assert_eq!(output_subject.to_string(), "outputs.variable.0000000000000000000000000000000000000000000000000000000000000000.0.0000000000000000000000000000000000000000000000000000000000000000.0101010101010101010101010101010101010101010101010101010101010101");
+            .with_to(Some(Address::zeroed()))
+            .with_asset_id(Some(Bytes32::from([1u8; 32])));
+        assert_eq!(
+            output_subject.to_string(),
+            "outputs.variable.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0101010101010101010101010101010101010101010101010101010101010101"
+        );
     }
 }
