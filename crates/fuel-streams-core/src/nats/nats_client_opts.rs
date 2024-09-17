@@ -8,7 +8,7 @@ use super::NatsNamespace;
 pub enum NatsUserRole {
     Admin,
     #[default]
-    Public,
+    Default,
 }
 
 /// Represents options for configuring a NATS client.
@@ -28,7 +28,7 @@ pub enum NatsUserRole {
 /// ```
 /// use fuel_streams_core::nats::NatsClientOpts;
 ///
-/// let opts = NatsClientOpts::public_opts("nats://localhost:4222");
+/// let opts = NatsClientOpts::default_opts("nats://localhost:4222");
 /// ```
 ///
 /// Modifying `NatsClientOpts`:
@@ -62,8 +62,8 @@ impl NatsClientOpts {
         }
     }
 
-    pub fn public_opts(url: impl ToString) -> Self {
-        Self::new(url).with_role(NatsUserRole::Public)
+    pub fn default_opts(url: impl ToString) -> Self {
+        Self::new(url).with_role(NatsUserRole::Default)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -97,18 +97,29 @@ impl NatsClientOpts {
     pub(super) fn connect_opts(&self) -> ConnectOptions {
         let (user, pass) = match self.role {
             NatsUserRole::Admin => (
-                "admin",
-                dotenvy::var("NATS_ADMIN_PASS")
-                    .expect("`NATS_ADMIN_PASS` env must be set"),
+                Some("admin".to_string()),
+                Some(
+                    dotenvy::var("NATS_ADMIN_PASS")
+                        .expect("`NATS_ADMIN_PASS` env must be set"),
+                ),
             ),
-            // TODO: remove this hardcoded value
-            NatsUserRole::Public => ("public", "temp-public-pass".to_string()),
+            NatsUserRole::Default => {
+                (Some("default_user".to_string()), Some("".to_string()))
+            }
         };
 
-        ConnectOptions::with_user_and_password(user.into(), pass)
-            .connection_timeout(Duration::from_secs(self.timeout_secs))
-            .max_reconnects(1)
-            .name(Self::conn_id())
+        match (user, pass) {
+            (Some(user), Some(pass)) => {
+                ConnectOptions::with_user_and_password(user, pass)
+                    .connection_timeout(Duration::from_secs(self.timeout_secs))
+                    .max_reconnects(1)
+                    .name(Self::conn_id())
+            }
+            _ => ConnectOptions::new()
+                .connection_timeout(Duration::from_secs(self.timeout_secs))
+                .max_reconnects(1)
+                .name(Self::conn_id()),
+        }
     }
 
     // This will be useful for debugging and monitoring connections

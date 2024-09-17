@@ -7,7 +7,7 @@ use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::{
     blockchain::SealedBlock,
-    fuel_tx::{Address, AssetId, Bytes32, ContractId},
+    fuel_tx::{Address, AssetId, Bytes32, ContractId}
 };
 use fuel_streams_core::{
     blocks::BlocksSubject,
@@ -16,7 +16,7 @@ use fuel_streams_core::{
     types::ImportResult,
 };
 use fuel_streams_publisher::{FuelCoreLike, Publisher};
-use futures::StreamExt;
+use fuel_tx::{StreamExt, ContractId};
 use tokio::sync::{broadcast, broadcast::Receiver};
 
 struct TestFuelCore {
@@ -75,7 +75,10 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
 
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher.get_streams().is_empty().await);
@@ -97,7 +100,10 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher
@@ -134,7 +140,10 @@ async fn publishes_transaction_for_each_published_block() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher
@@ -257,8 +266,11 @@ async fn publishes_receipts() {
     let fuel_core = TestFuelCore::default(blocks_subscription)
         .with_receipts(receipts.to_vec())
         .boxed();
-
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+  
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
 
     let publisher = publisher.run().await.unwrap();
 

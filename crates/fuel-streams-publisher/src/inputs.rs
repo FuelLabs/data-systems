@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use fuel_core_types::fuel_tx::{
     field::Inputs,
     input::{
@@ -14,9 +16,11 @@ use fuel_streams_core::{
         InputsMessageSubject,
     },
     prelude::*,
-    types::{Bytes32, ChainId, IdentifierKind, Input, Transaction},
+    types::{Bytes32, IdentifierKind, Input, Transaction},
     Stream,
 };
+
+use crate::{metrics::PublisherMetrics, publish_with_metrics, FuelCoreLike};
 
 macro_rules! get_inputs {
     ($transaction:expr, $($variant:ident),+) => {
@@ -105,14 +109,17 @@ enum InputSubject {
 }
 
 pub async fn publish(
+    metrics: &Arc<PublisherMetrics>,
     stream: &Stream<Input>,
-    chain_id: &ChainId,
+    fuel_core: &dyn FuelCoreLike,
     transactions: &[Transaction],
+    block_producer: &Address,
 ) -> anyhow::Result<()> {
+    let chain_id = fuel_core.chain_id();
     let subjects: Vec<InputSubject> = transactions
         .iter()
         .flat_map(|transaction| {
-            let tx_id = transaction.id(chain_id);
+            let tx_id = transaction.id(fuel_core.chain_id());
             let inputs = inputs_from_transaction(transaction);
             inputs
                 .iter()
@@ -184,12 +191,36 @@ pub async fn publish(
     for subject_item in subjects {
         match subject_item {
             InputSubject::Contract(by_id, subject, payload) => {
-                stream.publish(&subject, &payload).await?;
-                stream.publish(&by_id, &payload).await?;
+                publish_with_metrics!(
+                    stream.publish(&subject, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsContractSubject::WILDCARD
+                );
+                publish_with_metrics!(
+                    stream.publish(&by_id, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsByIdSubject::WILDCARD
+                );
             }
             InputSubject::Coin(by_id, subject, payload) => {
-                stream.publish(&subject, &payload).await?;
-                stream.publish(&by_id, &payload).await?;
+                publish_with_metrics!(
+                    stream.publish(&subject, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsCoinSubject::WILDCARD
+                );
+                publish_with_metrics!(
+                    stream.publish(&by_id, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsByIdSubject::WILDCARD
+                );
             }
             InputSubject::Message(
                 by_id_sender,
@@ -197,9 +228,27 @@ pub async fn publish(
                 subject,
                 payload,
             ) => {
-                stream.publish(&subject, &payload).await?;
-                stream.publish(&by_id_sender, &payload).await?;
-                stream.publish(&by_id_recipient, &payload).await?;
+                publish_with_metrics!(
+                    stream.publish(&subject, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsMessageSubject::WILDCARD
+                );
+                publish_with_metrics!(
+                    stream.publish(&by_id_sender, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsByIdSubject::WILDCARD
+                );
+                publish_with_metrics!(
+                    stream.publish(&by_id_recipient, &payload),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    InputsByIdSubject::WILDCARD
+                );
             }
         };
     }

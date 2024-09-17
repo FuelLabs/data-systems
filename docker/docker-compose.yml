@@ -4,6 +4,8 @@ services:
       - all
       - nats
     image: nats:latest
+    container_name: nats
+    restart: always
     ports:
       - 4222:4222
       - 8222:8222
@@ -15,20 +17,24 @@ services:
       - --name=fuel-streams-publisher-server
       - --js
       - --config=/etc/nats/nats.conf
-      - -V
+      - -D
     env_file:
       - ./../.env
+
   fuel-streams-publisher:
     profiles:
       - all
       - fuel
     image: fuel-streams-publisher:latest
+    container_name: fuel-streams-publisher
+    restart: always
     depends_on:
       - nats
     env_file:
       - ./../.env
     environment:
       - NATS_URL=nats://nats:4222
+      - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
       - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
       - RELAYER_V2_LISTENING_CONTRACTS=0x01855B78C1f8868DE70e84507ec735983bf262dA
@@ -40,6 +46,177 @@ services:
       - fuel-streams-publisher-db:/mnt/db
     ports:
       - 4000:4000
+      - 9000:9000
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl"
+        - "-f"
+        - "http://fuel-streams-publisher:9000/health"
+      interval: 10s  # How often to run the check
+      timeout: 5s  # Time to wait for the check to complete
+      retries: 5  # Number of retries before marking the container as unhealthy
+      start_period: 5s  # Start period before the first health check
+
+  prometheus:
+    profiles:
+      - all
+      - monitoring
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+
+  node-exporter:
+    profiles:
+      - all
+      - monitoring
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  cadvisor:
+    profiles:
+      - all
+      - monitoring
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 8080:8080
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  alertmanager:
+    profiles:
+      - all
+      - monitoring
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: always
+    volumes:
+      - ./monitoring/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
+    ports:
+      - 9093:9093
+
+  grafana:
+    profiles:
+      - all
+      - monitoring
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: '472'
+    restart: always
+    environment:
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./monitoring/grafana/config.monitoring
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+
+  prometheus-nats-exporter:
+    profiles:
+      - all
+      - monitoring
+    image: natsio/prometheus-nats-exporter:latest
+    container_name: prometheus-nats-exporter
+    restart: always
+    command:
+      - "-D"
+      - "-varz"
+      - "-jsz"
+      - "all"
+      - "-accstatz"
+      - "-channelz"
+      - "-connz"
+      - "-leafz"
+      - "-connz_detailed"
+      - "-serverz"
+      - "-healthz"
+      - "-routez"
+      - "-subz"
+      - "-port"
+      - "7777"
+      - "http://nats:8222"
+    ports:
+      - 7777:7777
+    env_file:
+      - ./../.env
+    depends_on:
+      - nats
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-qO-"
+        - "http://prometheus-nats-exporter:7777/metrics"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  nats-surveyor:
+    profiles:
+      - all
+      - monitoring
+    image: natsio/nats-surveyor:latest
+    container_name: nats-surveyor
+    restart: always
+    volumes:
+      - ./monitoring/surveyor/observations:/observations
+      - ./monitoring/surveyor/jetstream:/jetstream
+      - ./monitoring/surveyor:/surveyor
+    command: --config ./surveyor/nats-surveyor.yaml
+    env_file:
+      - ./../.env
+    depends_on:
+      - nats
+    ports:
+      - 8888:7777
 
 volumes:
   fuel-streams-publisher-db:
+  prometheus_data:
+  grafana_data:
