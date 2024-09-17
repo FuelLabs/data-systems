@@ -78,6 +78,16 @@ pub trait FuelCoreLike: Sync + Send {
 
         (block, block_producer.into())
     }
+
+    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<Block> {
+        self.database()
+            .on_chain()
+            .latest_view()
+            .expect("failed to get latest db view")
+            .get_sealed_block_by_height(&height.into())
+            .expect("Failed to get latest block height")
+            .expect("NATS Publisher: no block at height {height}")
+    }
 }
 
 pub struct FuelCore {

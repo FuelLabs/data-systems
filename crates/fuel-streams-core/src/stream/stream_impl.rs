@@ -4,13 +4,14 @@ use async_nats::{
     jetstream::{
         consumer::AckPolicy,
         kv::{self, CreateErrorKind},
-        stream::{self, LastRawMessageErrorKind},
+        stream::{self, LastRawMessageErrorKind, State},
     },
     Message,
+    RequestErrorKind,
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{future, StreamExt};
+use futures::{future, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
@@ -140,24 +141,42 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &dyn IntoSubject,
         payload: &S,
-    ) -> Result<(), StreamError> {
+    ) -> Result<usize, StreamError> {
         let subject_name = &subject.parse();
-        let result = self
-            .store
-            .create(subject_name, payload.encode(subject_name).await.into())
-            .await;
+        let data = payload.encode(subject_name).await;
+        let data_size = data.len();
+        let result = self.store.create(subject_name, data.into()).await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(data_size),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
                 // This is a workaround to avoid publish two times the same message
-                Ok(())
+                Ok(data_size)
             }
             Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
                 source: e,
             }),
         }
+    }
+
+    pub async fn get_consumers_and_state(
+        &self,
+    ) -> Result<(String, Vec<String>, State), RequestErrorKind> {
+        let mut consumers = vec![];
+        while let Ok(Some(consumer)) =
+            self.store.stream.consumer_names().try_next().await
+        {
+            consumers.push(consumer);
+        }
+
+        let state = self.store.stream.cached_info().state;
+        let stream_name = self.get_stream_name().to_string();
+        Ok((stream_name, consumers, state))
+    }
+
+    pub fn get_stream_name(&self) -> &str {
+        self.store.stream_name.as_str()
     }
 
     pub async fn subscribe(
@@ -232,6 +251,20 @@ impl<S: Streamable> Stream<S> {
                 _ => Err(error.into()),
             },
         }
+    }
+
+    pub async fn flush_await(
+        &self,
+        client: &NatsClient,
+    ) -> Result<(), StreamError> {
+        if client.is_connected() {
+            client
+                .nats_client
+                .flush()
+                .await
+                .map_err(StreamError::StreamFlush)?;
+        }
+        Ok(())
     }
 
     #[cfg(any(test, feature = "test-helpers"))]

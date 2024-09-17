@@ -1,6 +1,11 @@
 mod blocks;
 mod inputs;
+pub mod metrics;
 mod receipts;
+pub mod server;
+pub mod shutdown;
+pub mod state;
+pub mod system;
 mod transactions;
 
 mod fuel_core;
