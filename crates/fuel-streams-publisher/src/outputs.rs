@@ -54,7 +54,7 @@ pub async fn publish(
             ) = match output {
                 Output::Coin { to, asset_id, .. } => (
                     OutputsCoinSubject::new()
-                        .with_tx_id(Some(tx_id.into()))
+                        .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
                         .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
@@ -74,7 +74,7 @@ pub async fn publish(
                     };
                     (
                         OutputsContractSubject::new()
-                            .with_tx_id(Some(tx_id.into()))
+                            .with_tx_id(Some(tx_id))
                             .with_index(Some(index as u16))
                             .with_contract_id(Some(contract_id))
                             .boxed(),
@@ -85,7 +85,7 @@ pub async fn publish(
                 }
                 Output::Change { to, asset_id, .. } => (
                     OutputsChangeSubject::new()
-                        .with_tx_id(Some(tx_id.into()))
+                        .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
                         .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
@@ -96,7 +96,7 @@ pub async fn publish(
                 ),
                 Output::Variable { to, asset_id, .. } => (
                     OutputsVariableSubject::new()
-                        .with_tx_id(Some(tx_id.into()))
+                        .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
                         .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
@@ -107,7 +107,7 @@ pub async fn publish(
                 ),
                 Output::ContractCreated { contract_id, .. } => (
                     OutputsContractCreatedSubject::new()
-                        .with_tx_id(Some(tx_id.into()))
+                        .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
                         .with_contract_id(Some(*contract_id))
                         .boxed(),
@@ -117,8 +117,8 @@ pub async fn publish(
                 ),
             };
 
-            stream.publish(&*subject, &output).await?;
-            stream.publish(&by_id_subject, &output).await?;
+            stream.publish(&*subject, output).await?;
+            stream.publish(&by_id_subject, output).await?;
         }
     }
 

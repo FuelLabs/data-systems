@@ -3,16 +3,6 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
-pub const OUTPUTS_WILDCARD_LIST: &[&str] = &[
-    OutputsByIdSubject::WILDCARD,
-    OutputsAllSubject::WILDCARD,
-    OutputsCoinSubject::WILDCARD,
-    OutputsContractSubject::WILDCARD,
-    OutputsChangeSubject::WILDCARD,
-    OutputsVariableSubject::WILDCARD,
-    OutputsContractCreatedSubject::WILDCARD,
-];
-
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "outputs.>"]
 #[subject_format = "outputs.{tx_id}.{index}.>"]
