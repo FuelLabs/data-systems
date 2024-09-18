@@ -1,4 +1,9 @@
-use fuel_core_types::fuel_tx::{field::Outputs, Output, UniqueIdentifier};
+use fuel_core_types::fuel_tx::{
+    field::Outputs,
+    Bytes32,
+    Output,
+    UniqueIdentifier,
+};
 use fuel_streams_core::{
     outputs::{
         OutputsByIdSubject,
@@ -56,12 +61,12 @@ pub async fn publish(
                     OutputsCoinSubject::new()
                         .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
-                        .with_to(Some((*to).into()))
+                        .with_to(Some(*to))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some((*to).into())),
+                        .with_id_value(Some(Bytes32::new((*to).into()))),
                 ),
                 Output::Contract(contract) => {
                     let input_index = contract.input_index as usize;
@@ -80,30 +85,32 @@ pub async fn publish(
                             .boxed(),
                         OutputsByIdSubject::new()
                             .with_id_kind(Some(IdentifierKind::ContractID))
-                            .with_id_value(Some(contract_id.into())),
+                            .with_id_value(Some(Bytes32::new(
+                                contract_id.into(),
+                            ))),
                     )
                 }
                 Output::Change { to, asset_id, .. } => (
                     OutputsChangeSubject::new()
                         .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
-                        .with_to(Some((*to).into()))
+                        .with_to(Some(*to))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some((*to).into())),
+                        .with_id_value(Some(Bytes32::new((*to).into()))),
                 ),
                 Output::Variable { to, asset_id, .. } => (
                     OutputsVariableSubject::new()
                         .with_tx_id(Some(tx_id))
                         .with_index(Some(index as u16))
-                        .with_to(Some((*to).into()))
+                        .with_to(Some(*to))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some((*to).into())),
+                        .with_id_value(Some(Bytes32::new((*to).into()))),
                 ),
                 Output::ContractCreated { contract_id, .. } => (
                     OutputsContractCreatedSubject::new()
@@ -113,7 +120,9 @@ pub async fn publish(
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::ContractID))
-                        .with_id_value(Some((*contract_id).into())),
+                        .with_id_value(Some(Bytes32::new(
+                            (*contract_id).into(),
+                        ))),
                 ),
             };
 

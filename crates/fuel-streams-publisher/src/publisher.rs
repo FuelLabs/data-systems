@@ -8,6 +8,7 @@ use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
+    outputs::OutputsAllSubject,
     transactions::TransactionsSubject,
     types::{Address, Block, Input, Receipt, Transaction},
     Stream,
@@ -320,7 +321,7 @@ impl Publisher {
         outputs::publish(
             &self.streams.outputs,
             self.fuel_core.chain_id(),
-            transactions,
+            block.transactions(),
         )
         .await?;
 
