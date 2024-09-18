@@ -17,4 +17,5 @@ rustup toolchain install nightly-2024-07-28 -c rustfmt
 cargo install cargo-binstall
 cargo install cargo-tarpaulin
 cargo install cargo-audit --locked --features=fix
+cargo install cargo-nextest --locked --features=fix
 cargo binstall --no-confirm cargo-watch knope cargo-sort typos-cli

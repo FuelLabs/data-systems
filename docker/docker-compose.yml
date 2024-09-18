@@ -91,6 +91,7 @@ services:
       - /:/rootfs:ro
     command:
       - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
@@ -156,6 +157,16 @@ services:
       - 3000:3000
     depends_on:
       - prometheus
+
+  grafana-image-renderer:
+    profiles:
+      - all
+      - monitoring
+    image: grafana/grafana-image-renderer
+    container_name: grafana-image-renderer
+    restart: always
+    depends_on:
+      - grafana
 
   prometheus-nats-exporter:
     profiles:
