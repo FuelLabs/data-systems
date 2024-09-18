@@ -1,16 +1,16 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, pin::Pin};
 
 use async_nats::{
     jetstream::{
         consumer::AckPolicy,
         kv::{self, CreateErrorKind},
-        stream::{self, LastRawMessageErrorKind},
+        stream::{self, LastRawMessageErrorKind, State},
     },
-    Message,
+    RequestErrorKind,
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{future, StreamExt};
+use futures::{future, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
@@ -140,18 +140,17 @@ impl<S: Streamable> Stream<S> {
         &self,
         subject: &dyn IntoSubject,
         payload: &S,
-    ) -> Result<(), StreamError> {
+    ) -> Result<usize, StreamError> {
         let subject_name = &subject.parse();
-        let result = self
-            .store
-            .create(subject_name, payload.encode(subject_name).await.into())
-            .await;
+        let data = payload.encode(subject_name).await;
+        let data_size = data.len();
+        let result = self.store.create(subject_name, data.into()).await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(data_size),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
                 // This is a workaround to avoid publish two times the same message
-                Ok(())
+                Ok(data_size)
             }
             Err(e) => Err(StreamError::PublishFailed {
                 subject_name: subject_name.to_string(),
@@ -160,6 +159,26 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
+    pub async fn get_consumers_and_state(
+        &self,
+    ) -> Result<(String, Vec<String>, State), RequestErrorKind> {
+        let mut consumers = vec![];
+        while let Ok(Some(consumer)) =
+            self.store.stream.consumer_names().try_next().await
+        {
+            consumers.push(consumer);
+        }
+
+        let state = self.store.stream.cached_info().state;
+        let stream_name = self.get_stream_name().to_string();
+        Ok((stream_name, consumers, state))
+    }
+
+    pub fn get_stream_name(&self) -> &str {
+        self.store.stream_name.as_str()
+    }
+
+    // TODO: This should probably be `subscribe_raw` since it returns pure bytes
     pub async fn subscribe(
         &self,
         // TODO: Allow encapsulating Subject to return wildcard token type
@@ -172,7 +191,40 @@ impl<S: Streamable> Stream<S> {
         })?)
     }
 
+    #[cfg(feature = "test-helpers")]
+    /// Fetch all old messages from this stream
+    pub async fn catchup(
+        &self,
+        number_of_messages: usize,
+    ) -> Result<
+        Pin<Box<dyn futures::Stream<Item = Option<S>> + Send>>,
+        StreamError,
+    > {
+        let config = PullConsumerConfig {
+            filter_subjects: self.all_filter_subjects(),
+            deliver_policy: DeliverPolicy::All,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        };
+        let config = self.prefix_filter_subjects(config);
+        let consumer = self.store.stream.create_consumer(config).await?;
+
+        let stream = consumer.messages().await?.take(number_of_messages).then(
+            |message| async {
+                if let Ok(message) = message {
+                    Some(S::decode(message.payload.to_vec()).await)
+                } else {
+                    None
+                }
+            },
+        );
+
+        // Use Box::pin to pin the stream on the heap
+        Ok(Box::pin(stream))
+    }
+
     // TODO: Make this interface more Stream-like and Nats agnostic
+    // TODO: This should probably be removed in favor of `subscribe`
     pub async fn subscribe_consumer(
         &self,
         config: SubscribeConsumerConfig,
@@ -199,6 +251,11 @@ impl<S: Streamable> Stream<S> {
     }
 
     #[cfg(feature = "test-helpers")]
+    fn all_filter_subjects(&self) -> Vec<String> {
+        S::WILDCARD_LIST.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[cfg(feature = "test-helpers")]
     pub async fn is_empty(&self, wildcard: &str) -> bool
     where
         S: for<'de> serde::Deserialize<'de>,
@@ -222,7 +279,6 @@ impl<S: Streamable> Stream<S> {
 
         match message {
             Ok(message) => {
-                let message: Message = message.try_into().unwrap();
                 let payload = S::decode(message.payload.to_vec()).await;
 
                 Ok(Some(payload))
@@ -232,6 +288,20 @@ impl<S: Streamable> Stream<S> {
                 _ => Err(error.into()),
             },
         }
+    }
+
+    pub async fn flush_await(
+        &self,
+        client: &NatsClient,
+    ) -> Result<(), StreamError> {
+        if client.is_connected() {
+            client
+                .nats_client
+                .flush()
+                .await
+                .map_err(StreamError::StreamFlush)?;
+        }
+        Ok(())
     }
 
     #[cfg(any(test, feature = "test-helpers"))]

@@ -3,7 +3,7 @@ use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
 
 use crate::{blocks::types::BlockHeight, types::*};
 
-/// Represents a NATS subject for transactions in the Fuel network.
+/// Represents a subject for publishing transactions that happen in the Fuel network.
 ///
 /// This subject format allows for efficient querying and filtering of transactions
 /// based on their height, index, ID, status, and kind.

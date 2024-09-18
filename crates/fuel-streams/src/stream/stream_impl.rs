@@ -146,6 +146,7 @@ impl<S: Streamable> Stream<S> {
         // TODO: Why implicitly select a stream for the user?
         // TODO: Should this be a combination of streams
         self.stream
+        // TODO: Improve DX by ensuring the stream returns the streamable entity directly
             .subscribe(S::WILDCARD_LIST[0])
             .await
             .map_err(|source| StreamError::Subscribe { source })

@@ -64,7 +64,6 @@ impl NatsClient {
                     source: e,
                 }
             })?;
-
         let jetstream = async_nats::jetstream::new(nats_client.to_owned());
         info!("Connected to NATS server at {}", url);
 

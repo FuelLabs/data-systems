@@ -230,10 +230,11 @@ pub struct OutputsContractCreatedSubject {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use fuel_core_types::fuel_types::{Address, Bytes32};
     use fuel_streams_core::types::*;
     use fuel_streams_macros::subject::SubjectBuildable;
+
+    use super::*;
 
     #[test]
     fn test_output_subject_wildcard() {

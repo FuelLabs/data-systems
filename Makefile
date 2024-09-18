@@ -6,6 +6,10 @@ PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
 
+
+# Define the make command
+MAKE := make
+
 .PHONY: all build clean lint fmt help setup start stop restart clean/docker start/nats stop/nats restart/nats clean/nats start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core dev-watch fmt-cargo fmt-rust fmt-markdown fmt-yaml check lint-cargo lint-rust lint-clippy lint-markdown audit audit-fix-test audit-fix test doc bench
 
 all: build
@@ -42,11 +46,12 @@ clean/docker: stop
 
 start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
 start/publisher stop/publisher restart/publisher clean/publisher: DOCKER_PROFILE = fuel
+start/monitoring stop/monitoring restart/monitoring clean/monitoring: DOCKER_PROFILE = monitoring
 
-start/nats start/publisher: start
-stop/nats stop/publisher: stop
-restart/nats restart/publisher: restart
-clean/nats clean/publisher: clean/docker
+start/nats start/publisher start/monitoring: start
+stop/nats stop/publisher stop/monitoring: stop
+restart/nats restart/publisher restart/monitoring: restart
+clean/nats clean/publisher clean/monitoring: clean/docker
 
 dev-watch:
 	cargo watch -- cargo run
@@ -121,7 +126,7 @@ build:
 	cargo build --package $(PACKAGE)
 
 test:
-	cargo test --workspace
+	cargo nextest run --workspace --color always --locked
 
 doc:
 	cargo doc --no-deps

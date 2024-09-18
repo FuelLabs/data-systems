@@ -15,29 +15,29 @@ version = "0.0.9"
 
 [workspace.dependencies]
 anyhow = "1.0"
-async-nats = "0.35.1"
-async-trait = "0.1.81"
-bytes = "1.7.1"
+async-nats = "0.36.0"
+async-trait = "0.1.82"
+bytes = "1.7.2"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2.5"
 futures = "0.3"
-fuel-core-bin = { version = "0.35", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.35", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.35" }
-fuel-core-importer = { version = "0.35" }
-fuel-core-storage = { version = "0.35" }
-fuel-core-types = { version = "0.35", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.35"
+fuel-core-bin = { version = "0.36", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.36", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.36" }
+fuel-core-importer = { version = "0.36" }
+fuel-core-storage = { version = "0.36" }
+fuel-core-types = { version = "0.36", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.36"
 futures-util = "0.3.30"
-pretty_assertions = "1.4.0"
+pretty_assertions = "1.4.1"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.26"
 strum_macros = "0.26"
-tokio = { version = "1.39", features = ["full"] }
+tokio = { version = "1.40", features = ["full"] }
 tracing = "0.1.40"
 thiserror = "1.0"
 

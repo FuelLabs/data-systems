@@ -32,7 +32,7 @@ repos:
         name: format
         description: Format files using different tools
         entry: make fmt
-        language: system
+        language: rust
         pass_filenames: false
 
   - repo: https://github.com/lyz-code/yamlfix/

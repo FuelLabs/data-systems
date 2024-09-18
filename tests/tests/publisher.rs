@@ -1,19 +1,23 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::{
     blockchain::SealedBlock,
-    fuel_tx::{Bytes32, ContractId},
+    fuel_tx::{Address, AssetId, Bytes32},
 };
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     prelude::*,
-    receipts::ReceiptsCallSubject,
     types::ImportResult,
 };
 use fuel_streams_publisher::{FuelCoreLike, Publisher};
+use fuel_tx::ContractId;
+use futures::StreamExt;
 use tokio::sync::{broadcast, broadcast::Receiver};
 
 struct TestFuelCore {
@@ -72,7 +76,10 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
 
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher.get_streams().is_empty().await);
@@ -94,7 +101,10 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher
@@ -131,7 +141,10 @@ async fn publishes_transaction_for_each_published_block() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
     let publisher = publisher.run().await.unwrap();
 
     assert!(publisher
@@ -142,7 +155,6 @@ async fn publishes_transaction_for_each_published_block() {
         .is_ok_and(|result| result.is_some()));
 }
 
-// TODO: Make test more randomized for receipts
 #[tokio::test]
 async fn publishes_receipts() {
     let (blocks_subscriber, blocks_subscription) =
@@ -164,12 +176,11 @@ async fn publishes_receipts() {
     };
     let _ = blocks_subscriber.send(block);
 
-    // manually drop blocks to ensure `blocks_subscription` completes
     let _ = blocks_subscriber.clone();
     drop(blocks_subscriber);
 
-    let fuel_core = TestFuelCore::default(blocks_subscription)
-        .with_receipts(vec![Receipt::Call {
+    let receipts = [
+        Receipt::Call {
             id: ContractId::default(),
             to: Default::default(),
             amount: 0,
@@ -179,18 +190,98 @@ async fn publishes_receipts() {
             param2: 0,
             pc: 0,
             is: 0,
-        }])
+        },
+        Receipt::Return {
+            id: ContractId::default(),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+        Receipt::ReturnData {
+            id: ContractId::default(),
+            ptr: 0,
+            len: 0,
+            digest: Bytes32::default(),
+            pc: 0,
+            is: 0,
+            data: None,
+        },
+        Receipt::Revert {
+            id: ContractId::default(),
+            ra: 0,
+            pc: 0,
+            is: 0,
+        },
+        Receipt::Log {
+            id: ContractId::default(),
+            ra: 0,
+            rb: 0,
+            rc: 0,
+            rd: 0,
+            pc: 0,
+            is: 0,
+        },
+        Receipt::LogData {
+            id: ContractId::default(),
+            ra: 0,
+            rb: 0,
+            ptr: 0,
+            len: 0,
+            digest: Bytes32::default(),
+            pc: 0,
+            is: 0,
+            data: None,
+        },
+        Receipt::Transfer {
+            id: ContractId::default(),
+            to: ContractId::default(),
+            amount: 0,
+            asset_id: AssetId::default(),
+            pc: 0,
+            is: 0,
+        },
+        Receipt::TransferOut {
+            id: ContractId::default(),
+            to: Address::default(),
+            amount: 0,
+            asset_id: AssetId::default(),
+            pc: 0,
+            is: 0,
+        },
+        Receipt::Mint {
+            sub_id: Bytes32::default(),
+            contract_id: ContractId::default(),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+        Receipt::Burn {
+            sub_id: Bytes32::default(),
+            contract_id: ContractId::default(),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+    ];
+
+    let fuel_core = TestFuelCore::default(blocks_subscription)
+        .with_receipts(receipts.to_vec())
         .boxed();
-    let publisher = Publisher::new(&nats_client().await, fuel_core).await;
+
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
 
     let publisher = publisher.run().await.unwrap();
 
-    assert!(publisher
-        .get_streams()
-        .receipts
-        .get_last_published(ReceiptsCallSubject::WILDCARD)
-        .await
-        .is_ok_and(|result| result.is_some()));
+    let mut receipts_stream =
+        publisher.get_streams().receipts.catchup(10).await.unwrap();
+
+    let receipts: HashSet<Receipt> = receipts.into();
+    while let Some(Some(receipt)) = receipts_stream.next().await {
+        assert!(receipts.contains(&receipt));
+    }
 }
 
 async fn nats_client() -> NatsClient {
