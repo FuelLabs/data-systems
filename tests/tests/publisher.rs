@@ -7,7 +7,7 @@ use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::{
     blockchain::SealedBlock,
-    fuel_tx::{Address, AssetId, Bytes32, ContractId}
+    fuel_tx::{Address, AssetId, Bytes32},
 };
 use fuel_streams_core::{
     blocks::BlocksSubject,
@@ -16,7 +16,8 @@ use fuel_streams_core::{
     types::ImportResult,
 };
 use fuel_streams_publisher::{FuelCoreLike, Publisher};
-use fuel_tx::{StreamExt, ContractId};
+use fuel_tx::ContractId;
+use futures::StreamExt;
 use tokio::sync::{broadcast, broadcast::Receiver};
 
 struct TestFuelCore {
@@ -266,7 +267,7 @@ async fn publishes_receipts() {
     let fuel_core = TestFuelCore::default(blocks_subscription)
         .with_receipts(receipts.to_vec())
         .boxed();
-  
+
     let publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
