@@ -183,6 +183,9 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+
       - name: Start Nats
         run: |
           make start/nats

@@ -6,7 +6,6 @@ use async_nats::{
         kv::{self, CreateErrorKind},
         stream::{self, LastRawMessageErrorKind, State},
     },
-    Message,
     RequestErrorKind,
 };
 use async_trait::async_trait;
@@ -241,7 +240,6 @@ impl<S: Streamable> Stream<S> {
 
         match message {
             Ok(message) => {
-                let message: Message = message.try_into().unwrap();
                 let payload = S::decode(message.payload.to_vec()).await;
 
                 Ok(Some(payload))
