@@ -1,0 +1,21 @@
+[package]
+name = "fuel-streams-publisher-examples"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+publish = false
+repository = { workspace = true }
+description = "Fuel Data Systems streams publisher example."
+
+[dependencies]
+anyhow = { workspace = true }
+dotenvy = "0.15.7"
+fuel-core = { workspace = true, features = ["test-helpers"] }
+fuel-core-bin = { workspace = true }
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-publisher = { workspace = true, features = ["test-helpers"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[dev-dependencies]

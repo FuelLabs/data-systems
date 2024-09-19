@@ -3199,6 +3199,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-streams-examples"
+version = "0.0.9"
+dependencies = [
+ "anyhow",
+ "fuel-streams",
+ "futures",
+ "tokio",
+]
+
+[[package]]
 name = "fuel-streams-macros"
 version = "0.0.9"
 dependencies = [
@@ -3239,6 +3249,19 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-actix-web",
+]
+
+[[package]]
+name = "fuel-streams-publisher-examples"
+version = "0.0.9"
+dependencies = [
+ "anyhow",
+ "dotenvy",
+ "fuel-core",
+ "fuel-core-bin",
+ "fuel-streams",
+ "fuel-streams-publisher",
+ "tokio",
 ]
 
 [[package]]
@@ -3372,6 +3395,16 @@ dependencies = [
  "static_assertions",
  "strum 0.24.1",
  "tai64",
+]
+
+[[package]]
+name = "fuels-streams-client-examples"
+version = "0.0.9"
+dependencies = [
+ "anyhow",
+ "dotenvy",
+ "fuel-streams",
+ "tokio",
 ]
 
 [[package]]
