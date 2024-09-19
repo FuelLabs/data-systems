@@ -8,7 +8,6 @@ use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
-    outputs::OutputsAllSubject,
     transactions::TransactionsSubject,
     types::{Address, Block, Input, Receipt, Transaction},
     Stream,
@@ -70,7 +69,6 @@ impl Streams {
                 .transactions
                 .is_empty(TransactionsSubject::WILDCARD)
                 .await
-            && self.outputs.is_empty(OutputsAllSubject::WILDCARD).await
     }
 }
 

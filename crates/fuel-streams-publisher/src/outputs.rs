@@ -59,14 +59,14 @@ pub async fn publish(
             ) = match output {
                 Output::Coin { to, asset_id, .. } => (
                     OutputsCoinSubject::new()
-                        .with_tx_id(Some(tx_id))
+                        .with_tx_id(Some(tx_id.into()))
                         .with_index(Some(index as u16))
-                        .with_to(Some(*to))
+                        .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some(Bytes32::new((*to).into()))),
+                        .with_id_value(Some(Bytes32::new((*to).into()).into())),
                 ),
                 Output::Contract(contract) => {
                     let input_index = contract.input_index as usize;
@@ -79,50 +79,50 @@ pub async fn publish(
                     };
                     (
                         OutputsContractSubject::new()
-                            .with_tx_id(Some(tx_id))
+                            .with_tx_id(Some(tx_id.into()))
                             .with_index(Some(index as u16))
-                            .with_contract_id(Some(contract_id))
+                            .with_contract_id(Some(contract_id.into()))
                             .boxed(),
                         OutputsByIdSubject::new()
                             .with_id_kind(Some(IdentifierKind::ContractID))
-                            .with_id_value(Some(Bytes32::new(
-                                contract_id.into(),
-                            ))),
+                            .with_id_value(Some(
+                                Bytes32::new(contract_id.into()).into(),
+                            )),
                     )
                 }
                 Output::Change { to, asset_id, .. } => (
                     OutputsChangeSubject::new()
-                        .with_tx_id(Some(tx_id))
+                        .with_tx_id(Some(tx_id.into()))
                         .with_index(Some(index as u16))
-                        .with_to(Some(*to))
+                        .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some(Bytes32::new((*to).into()))),
+                        .with_id_value(Some(Bytes32::new((*to).into()).into())),
                 ),
                 Output::Variable { to, asset_id, .. } => (
                     OutputsVariableSubject::new()
-                        .with_tx_id(Some(tx_id))
+                        .with_tx_id(Some(tx_id.into()))
                         .with_index(Some(index as u16))
-                        .with_to(Some(*to))
+                        .with_to(Some((*to).into()))
                         .with_asset_id(Some((*asset_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some(Bytes32::new((*to).into()))),
+                        .with_id_value(Some(Bytes32::new((*to).into()).into())),
                 ),
                 Output::ContractCreated { contract_id, .. } => (
                     OutputsContractCreatedSubject::new()
-                        .with_tx_id(Some(tx_id))
+                        .with_tx_id(Some(tx_id.into()))
                         .with_index(Some(index as u16))
-                        .with_contract_id(Some(*contract_id))
+                        .with_contract_id(Some((*contract_id).into()))
                         .boxed(),
                     OutputsByIdSubject::new()
                         .with_id_kind(Some(IdentifierKind::ContractID))
-                        .with_id_value(Some(Bytes32::new(
-                            (*contract_id).into(),
-                        ))),
+                        .with_id_value(Some(
+                            Bytes32::new((*contract_id).into()).into(),
+                        )),
                 ),
             };
 

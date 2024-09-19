@@ -9,7 +9,6 @@ impl Streamable for fuel_tx::output::Output {
     const NAME: &'static str = "outputs";
     const WILDCARD_LIST: &'static [&'static str] = &[
         OutputsByIdSubject::WILDCARD,
-        OutputsAllSubject::WILDCARD,
         OutputsCoinSubject::WILDCARD,
         OutputsContractSubject::WILDCARD,
         OutputsChangeSubject::WILDCARD,

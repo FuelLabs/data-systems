@@ -1,37 +1,6 @@
-use fuel_core_types::fuel_types::{Address, Bytes32, ContractId};
 use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
-
-/// Represents the NATS subject for all outputs.
-///
-/// This subject format allows for querying all outputs, optionally filtered by
-/// transaction ID and index.
-///
-/// # Examples
-///
-/// **Creating a subject for all outputs of a specific transaction:**
-///
-/// ```
-/// use fuel_streams_core::outputs::subjects::OutputsAllSubject;
-/// use fuel_streams_core::types::*;
-/// use fuel_streams_macros::subject::SubjectBuildable;
-///
-/// let subject = OutputsAllSubject::new()
-///     .with_tx_id(Some(Bytes32::zeroed()))
-///     .with_index(Some(0));
-/// assert_eq!(
-///     subject.to_string(),
-///     "outputs.0x0000000000000000000000000000000000000000000000000000000000000000.0.>"
-/// );
-/// ```
-#[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "outputs.>"]
-#[subject_format = "outputs.{tx_id}.{index}.>"]
-pub struct OutputsAllSubject {
-    pub tx_id: Option<Bytes32>,
-    pub index: Option<u16>,
-}
 
 /// Represents the NATS subject for outputs by ID.
 ///
@@ -231,14 +200,12 @@ pub struct OutputsContractCreatedSubject {
 #[cfg(test)]
 mod tests {
     use fuel_core_types::fuel_types::{Address, Bytes32};
-    use fuel_streams_core::types::*;
     use fuel_streams_macros::subject::SubjectBuildable;
 
     use super::*;
 
     #[test]
     fn test_output_subject_wildcard() {
-        assert_eq!(OutputsAllSubject::WILDCARD, "outputs.>");
         assert_eq!(OutputsByIdSubject::WILDCARD, "by_id.outputs.>");
         assert_eq!(OutputsCoinSubject::WILDCARD, "outputs.>");
         assert_eq!(OutputsContractSubject::WILDCARD, "outputs.>");
@@ -250,9 +217,9 @@ mod tests {
     #[test]
     fn test_outputs_coin_subject_creation() {
         let coin_subject = OutputsCoinSubject::new()
-            .with_tx_id(Some(Bytes32::zeroed()))
+            .with_tx_id(Some(Bytes32::zeroed().into()))
             .with_index(Some(0))
-            .with_to(Some(Address::zeroed()))
+            .with_to(Some(Address::zeroed().into()))
             .with_asset_id(Some(AssetId::zeroed()));
         assert_eq!(
             coin_subject.to_string(),
@@ -263,7 +230,7 @@ mod tests {
     #[test]
     fn test_outputs_contract_created_subject_creation() {
         let contract_created_subject = OutputsContractCreatedSubject::new()
-            .with_tx_id(Some(Bytes32::zeroed()))
+            .with_tx_id(Some(Bytes32::zeroed().into()))
             .with_index(Some(0))
             .with_contract_id(Some(ContractId::zeroed()));
         assert_eq!(
@@ -273,22 +240,11 @@ mod tests {
     }
 
     #[test]
-    fn test_output_all_subject_creation() {
-        let output_subject = OutputsAllSubject::new()
-            .with_tx_id(Some(Bytes32::zeroed()))
-            .with_index(Some(0));
-        assert_eq!(
-            output_subject.to_string(),
-            "outputs.0x0000000000000000000000000000000000000000000000000000000000000000.0.>"
-        );
-    }
-
-    #[test]
     fn test_output_subject_coin() {
         let output_subject = OutputsCoinSubject::new()
-            .with_tx_id(Some(Bytes32::zeroed()))
+            .with_tx_id(Some(Bytes32::zeroed().into()))
             .with_index(Some(0))
-            .with_to(Some(Address::zeroed()))
+            .with_to(Some(Address::zeroed().into()))
             .with_asset_id(Some(AssetId::zeroed()));
         assert_eq!(
             output_subject.to_string(),
@@ -299,13 +255,13 @@ mod tests {
     #[test]
     fn test_output_subject_variable() {
         let output_subject = OutputsVariableSubject::new()
-            .with_tx_id(Some(Bytes32::zeroed()))
+            .with_tx_id(Some(Bytes32::zeroed().into()))
             .with_index(Some(0))
-            .with_to(Some(Address::zeroed()))
-            .with_asset_id(Some(Bytes32::from([1u8; 32])));
+            .with_to(Some(Address::zeroed().into()))
+            .with_asset_id(Some(AssetId::zeroed()));
         assert_eq!(
             output_subject.to_string(),
-            "outputs.variable.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0101010101010101010101010101010101010101010101010101010101010101"
+            "outputs.variable.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0000000000000000000000000000000000000000000000000000000000000000"
         );
     }
 }
