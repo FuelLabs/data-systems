@@ -1,5 +1,5 @@
 [package]
-name = "fuel-streams-examples"
+name = "fuels-example-streams"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -12,6 +12,7 @@ description = "Fuel Data Systems Rust SDK streams example."
 [dependencies]
 anyhow = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-core-types = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 

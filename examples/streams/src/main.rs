@@ -11,9 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use fuel_core_types::fuel_tx::ContractId;
 use fuel_streams::{
     blocks::BlocksSubject,
+    core::prelude::{IntoSubject, SubjectBuildable},
     prelude::*,
+    receipts::{
+        ReceiptsBurnSubject,
+        ReceiptsCallSubject,
+        ReceiptsLogDataSubject,
+        ReceiptsLogSubject,
+        ReceiptsMintSubject,
+        ReceiptsPanicSubject,
+        ReceiptsReturnDataSubject,
+        ReceiptsReturnSubject,
+        ReceiptsRevertSubject,
+        ReceiptsTransferOutSubject,
+        ReceiptsTransferSubject,
+    },
     transactions::TransactionsSubject,
 };
 use futures::{future::try_join_all, StreamExt};
@@ -55,6 +70,15 @@ async fn main() -> Result<(), anyhow::Error> {
             .with_height(Some(5.into()))
             .with_kind(Some(TransactionKind::Mint));
         stream_transactions(&txs_client, Some(filter))
+            .await
+            .unwrap();
+    }));
+
+    // stream contract receipts
+    let contract_client = client.clone();
+    let contract_id = ContractId::from([0u8; 32]); // Replace with an actual contract ID
+    handles.push(tokio::spawn(async move {
+        stream_contract(&contract_client, contract_id)
             .await
             .unwrap();
     }));
@@ -122,5 +146,85 @@ async fn stream_transactions(
             tx, tx_subject, tx_published_at
         )
     }
+    Ok(())
+}
+
+/// Subscribes to receipts related to a specific contract, effectively listening to contract events.
+///
+/// This function creates a stream that subscribes to various types of receipts (except ScriptResult
+/// and MessageOut) that are associated with the specified contract ID. It's a way to monitor
+/// contract-related events such as calls, returns, logs, transfers, mints, and burns.
+///
+/// The function filters the receipts to ensure they match the given contract ID before processing them.
+/// This approach allows for efficient monitoring of contract activities without the need to process
+/// irrelevant receipts.
+///
+/// # Arguments
+///
+/// * `client` - A reference to the NATS client used for streaming.
+/// * `contract_id` - The ID of the contract to monitor.
+///
+/// # Returns
+///
+/// Returns a Result which is Ok if the streaming completes successfully, or an Error if there are any issues.
+async fn stream_contract(
+    client: &Client,
+    contract_id: ContractId,
+) -> anyhow::Result<()> {
+    let mut receipt_stream = fuel_streams::Stream::<Receipt>::new(client).await;
+
+    receipt_stream.with_filter(
+        ReceiptsBurnSubject::new().with_contract_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsCallSubject::new().with_from(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsReturnSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsReturnDataSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsPanicSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsRevertSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsLogSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsLogDataSubject::new().with_id(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsTransferSubject::new().with_from(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsTransferOutSubject::new().with_from(Some(contract_id.into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsMintSubject::new().with_contract_id(Some(contract_id.into())),
+    );
+
+    let mut sub = receipt_stream.subscribe().await?;
+
+    while let Some(bytes) = sub.next().await {
+        let decoded_msg = Receipt::decode_raw(bytes.unwrap().to_vec()).await;
+        let receipt = decoded_msg.payload;
+
+        // Check if the receipt has a contract_id and if it matches our target
+        if let Some(receipt_contract_id) = receipt.contract_id() {
+            if *receipt_contract_id == contract_id {
+                let receipt_subject = decoded_msg.subject;
+                let receipt_published_at = decoded_msg.timestamp;
+                println!(
+                    "Received contract receipt: data={:?}, subject={}, published_at={}",
+                    receipt, receipt_subject, receipt_published_at
+                );
+            }
+        }
+    }
+
     Ok(())
 }
