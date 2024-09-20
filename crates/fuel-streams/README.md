@@ -98,7 +98,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 
     // Filter transactions from block height 5
     let filter = Filter::<TransactionsSubject>::build()
-      .with_height(Some(5.into()));
+      .with_block_height(Some(5.into()));
 
     let mut subscription = stream
         .with_filter(filter)
@@ -183,7 +183,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 
     // Create a filter for transactions from a specific block height and kind
     let filter = Filter::<TransactionsSubject>::build()
-        .with_height(Some(1000.into()))
+        .with_block_height(Some(1000.into()))
         .with_kind(Some(TransactionKind::Script));
 
     let mut subscription = stream
