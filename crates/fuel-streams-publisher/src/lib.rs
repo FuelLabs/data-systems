@@ -1,7 +1,6 @@
 mod blocks;
 mod inputs;
 mod logs;
-pub mod metrics;
 mod outputs;
 mod publisher;
 mod receipts;
