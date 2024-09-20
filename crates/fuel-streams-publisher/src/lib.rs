@@ -1,11 +1,13 @@
 mod blocks;
 mod inputs;
 mod logs;
+pub mod metrics;
+mod outputs;
+mod publisher;
 mod receipts;
 mod transactions;
 
 mod fuel_core;
-mod publisher;
 
 pub mod metrics;
 pub mod server;
