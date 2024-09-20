@@ -1,15 +1,17 @@
 mod blocks;
 mod inputs;
-pub mod metrics;
+mod logs;
 mod receipts;
-pub mod server;
-pub mod shutdown;
-pub mod state;
-pub mod system;
 mod transactions;
 
 mod fuel_core;
 mod publisher;
+
+pub mod metrics;
+pub mod server;
+pub mod shutdown;
+pub mod state;
+pub mod system;
 
 pub use fuel_core::{FuelCore, FuelCoreLike};
 pub use publisher::{Publisher, Streams};
