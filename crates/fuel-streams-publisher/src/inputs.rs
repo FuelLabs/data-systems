@@ -31,7 +31,7 @@ macro_rules! get_inputs {
     };
 }
 
-fn inputs_from_transaction(transaction: &Transaction) -> Vec<Input> {
+pub fn inputs_from_transaction(transaction: &Transaction) -> Vec<Input> {
     get_inputs!(transaction, Script, Blob, Create, Upload, Upgrade)
 }
 

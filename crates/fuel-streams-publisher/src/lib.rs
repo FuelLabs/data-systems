@@ -7,6 +7,7 @@ pub mod shutdown;
 pub mod state;
 pub mod system;
 mod transactions;
+mod utxos;
 
 mod fuel_core;
 mod publisher;

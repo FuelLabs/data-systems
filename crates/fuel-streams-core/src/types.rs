@@ -105,6 +105,8 @@ generate_byte_type_wrapper!(Address, fuel_tx::Address);
 generate_byte_type_wrapper!(Bytes32, fuel_tx::Bytes32);
 generate_byte_type_wrapper!(ContractId, fuel_tx::ContractId);
 generate_byte_type_wrapper!(AssetId, fuel_types::AssetId);
+generate_byte_type_wrapper!(Nonce, fuel_types::Nonce);
+generate_byte_type_wrapper!(MessageId, fuel_types::MessageId);
 
 /// Macro to implement conversion from a type to `Bytes32`.
 ///
