@@ -4,6 +4,7 @@ use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
+use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     inputs::{
@@ -31,12 +32,7 @@ use fuel_streams_core::{
     },
     transactions::TransactionsSubject,
     types::{Address, Block, Input, Receipt, Transaction},
-    utxos::{
-        Utxo,
-        UtxosCoinSubject,
-        UtxosContractSubject,
-        UtxosMessageSubject,
-    },
+    utxos::{Utxo, UtxosSubject},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -47,6 +43,7 @@ use crate::{
     blocks,
     inputs,
     metrics::PublisherMetrics,
+    outputs,
     receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
@@ -61,6 +58,7 @@ pub struct Streams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
     pub inputs: Stream<Input>,
+    pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
 }
@@ -71,6 +69,7 @@ impl Streams {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,
             inputs: Stream::<Input>::new(nats_client).await,
+            outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
             utxos: Stream::<Utxo>::new(nats_client).await,
         }
@@ -98,9 +97,7 @@ impl Streams {
             ReceiptsReturnDataSubject::WILDCARD,
             ReceiptsTransferOutSubject::WILDCARD,
             ReceiptsScriptResultSubject::WILDCARD,
-            UtxosMessageSubject::WILDCARD,
-            UtxosCoinSubject::WILDCARD,
-            UtxosContractSubject::WILDCARD,
+            UtxosSubject::WILDCARD,
         ]
     }
 
@@ -376,6 +373,13 @@ impl Publisher {
             &*self.fuel_core,
             block.transactions(),
             block_producer,
+        )
+        .await?;
+
+        outputs::publish(
+            &self.streams.outputs,
+            self.fuel_core.chain_id(),
+            block.transactions(),
         )
         .await?;
 

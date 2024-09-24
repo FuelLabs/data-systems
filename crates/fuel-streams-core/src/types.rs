@@ -97,6 +97,22 @@ macro_rules! generate_byte_type_wrapper {
             pub fn zeroed() -> Self {
                 $wrapper_type(<$inner_type>::zeroed())
             }
+
+            pub fn new(inner: $inner_type) -> Self {
+                $wrapper_type(inner)
+            }
+        }
+
+        impl AsRef<$inner_type> for $wrapper_type {
+            fn as_ref(&self) -> &$inner_type {
+                &self.0
+            }
+        }
+
+        impl $wrapper_type {
+            pub fn into_inner(self) -> $inner_type {
+                self.0
+            }
         }
     };
 }

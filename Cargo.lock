@@ -3190,6 +3190,7 @@ dependencies = [
  "fuel-data-parser",
  "fuel-streams-macros",
  "futures",
+ "hex",
  "pretty_assertions",
  "rand",
  "serde",

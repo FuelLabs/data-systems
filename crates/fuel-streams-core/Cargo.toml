@@ -20,6 +20,7 @@ fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
 futures = { workspace = true }
+hex = "0.4.3"
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
 serde = "1"

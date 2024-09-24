@@ -1,4 +1,5 @@
 pub mod subjects;
+pub mod types;
 
 use serde::{Deserialize, Serialize};
 pub use subjects::*;
@@ -11,9 +12,5 @@ pub struct Utxo(pub Option<Vec<u8>>);
 impl StreamEncoder for Utxo {}
 impl Streamable for Utxo {
     const NAME: &'static str = "utxos";
-    const WILDCARD_LIST: &'static [&'static str] = &[
-        UtxosCoinSubject::WILDCARD,
-        UtxosContractSubject::WILDCARD,
-        UtxosMessageSubject::WILDCARD,
-    ];
+    const WILDCARD_LIST: &'static [&'static str] = &[UtxosSubject::WILDCARD];
 }
