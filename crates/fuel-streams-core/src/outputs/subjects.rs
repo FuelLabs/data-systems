@@ -149,7 +149,7 @@ pub struct OutputsChangeSubject {
 ///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_index(Some(0))
 ///     .with_to(Some(Address::zeroed()))
-///     .with_asset_id(Some(Bytes32::from([1u8; 32])));
+///     .with_asset_id(Some(AssetId::from([1u8; 32])));
 /// assert_eq!(
 ///     subject.to_string(),
 ///     "outputs.variable.0x0000000000000000000000000000000000000000000000000000000000000000.0.0x0000000000000000000000000000000000000000000000000000000000000000.0x0101010101010101010101010101010101010101010101010101010101010101"

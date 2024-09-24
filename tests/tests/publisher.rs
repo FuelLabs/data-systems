@@ -11,6 +11,7 @@ use fuel_core_types::{
 };
 use fuel_streams_core::{
     blocks::BlocksSubject,
+    logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
     prelude::*,
     types::ImportResult,
@@ -282,6 +283,61 @@ async fn publishes_receipts() {
     while let Some(Some(receipt)) = receipts_stream.next().await {
         assert!(receipts.contains(&receipt));
     }
+}
+
+#[tokio::test]
+async fn publishes_logs() {
+    let (blocks_subscriber, blocks_subscription) =
+        broadcast::channel::<ImporterResult>(1);
+
+    let mut block_entity = Block::default();
+    *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
+
+    // publish block
+    let block = ImporterResult {
+        shared_result: Arc::new(ImportResult {
+            sealed_block: SealedBlock {
+                entity: block_entity,
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+        changes: Arc::new(HashMap::new()),
+    };
+    let _ = blocks_subscriber.send(block);
+
+    let _ = blocks_subscriber.clone();
+    drop(blocks_subscriber);
+
+    let receipt = Receipt::LogData {
+        id: ContractId::default(),
+        ra: 0,
+        rb: 0,
+        ptr: 0,
+        len: 0,
+        digest: Bytes32::default(),
+        pc: 0,
+        is: 0,
+        data: None,
+    };
+
+    let fuel_core = TestFuelCore::default(blocks_subscription)
+        .with_receipts(vec![receipt.clone()])
+        .boxed();
+
+    let publisher =
+        Publisher::default_with_publisher(&nats_client().await, fuel_core)
+            .await
+            .unwrap();
+
+    let publisher = publisher.run().await.unwrap();
+
+    assert!(publisher
+        .get_streams()
+        .logs
+        .get_last_published(LogsSubject::WILDCARD)
+        .await
+        .is_ok_and(|result| result.is_some_and(|log| log == receipt.into())));
 }
 
 async fn nats_client() -> NatsClient {

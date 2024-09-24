@@ -13,6 +13,7 @@ use fuel_streams_core::{
         InputsContractSubject,
         InputsMessageSubject,
     },
+    logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
     receipts::{
         ReceiptsBurnSubject,
@@ -31,8 +32,8 @@ use fuel_streams_core::{
         ReceiptsTransferSubject,
     },
     transactions::TransactionsSubject,
-    types::{Address, Block, Input, Receipt, Transaction},
-    utxos::{Utxo, UtxosSubject},
+    types::{Address, Block, Input, Log, Receipt, Transaction},
+    utxos::{types::Utxo, UtxosSubject},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -42,6 +43,7 @@ use tracing::warn;
 use crate::{
     blocks,
     inputs,
+    logs,
     metrics::PublisherMetrics,
     outputs,
     receipts,
@@ -61,6 +63,7 @@ pub struct Streams {
     pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
+    pub logs: Stream<Log>,
 }
 
 impl Streams {
@@ -72,6 +75,7 @@ impl Streams {
             outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
             utxos: Stream::<Utxo>::new(nats_client).await,
+            logs: Stream::<Log>::new(nats_client).await,
         }
     }
 
@@ -98,6 +102,7 @@ impl Streams {
             ReceiptsTransferOutSubject::WILDCARD,
             ReceiptsScriptResultSubject::WILDCARD,
             UtxosSubject::WILDCARD,
+            LogsSubject::WILDCARD,
         ]
     }
 
@@ -110,6 +115,7 @@ impl Streams {
             self.inputs.get_consumers_and_state().await?,
             self.receipts.get_consumers_and_state().await?,
             self.utxos.get_consumers_and_state().await?,
+            self.logs.get_consumers_and_state().await?,
         ])
     }
 
@@ -330,6 +336,8 @@ impl Publisher {
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
+        let block_height = block.header().consensus().height;
+
         blocks::publish(
             &self.metrics,
             &*self.fuel_core,
@@ -345,7 +353,7 @@ impl Publisher {
             &self.streams.transactions,
             block.transactions(),
             block_producer,
-            block,
+            block_height.into(),
         )
         .await?;
 
@@ -355,6 +363,16 @@ impl Publisher {
             &self.streams.receipts,
             block.transactions(),
             block_producer,
+        )
+        .await?;
+
+        logs::publish(
+            &self.metrics,
+            &*self.fuel_core,
+            &self.streams.logs,
+            block.transactions(),
+            block_producer,
+            block_height.into(),
         )
         .await?;
 

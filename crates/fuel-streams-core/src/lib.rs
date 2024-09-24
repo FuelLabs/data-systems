@@ -2,6 +2,7 @@
 
 pub mod blocks;
 pub mod inputs;
+pub mod logs;
 pub mod nats;
 pub mod outputs;
 pub mod receipts;

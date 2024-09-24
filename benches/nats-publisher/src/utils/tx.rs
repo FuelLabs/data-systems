@@ -132,7 +132,7 @@ impl TxHelper {
         let mut subject: TransactionsSubject = tx.into();
         subject = subject
             .with_tx_index(Some(index))
-            .with_height(Some(BlockHeight::from(self.get_height(block))))
+            .with_block_height(Some(BlockHeight::from(self.get_height(block))))
             .with_status(self.get_status(tx).map(Into::into));
         subject
     }

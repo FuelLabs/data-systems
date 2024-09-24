@@ -9,6 +9,7 @@ pub use fuel_core_types::{
 pub use crate::{
     blocks::types::*,
     inputs::types::*,
+    logs::types::*,
     nats::types::*,
     transactions::types::*,
 };

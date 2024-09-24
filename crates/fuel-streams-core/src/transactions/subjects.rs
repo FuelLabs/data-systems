@@ -17,7 +17,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = TransactionsSubject {
-///     height: Some(23.into()),
+///     block_height: Some(23.into()),
 ///     tx_index: Some(1),
 ///     tx_id: Some(Bytes32::zeroed()),
 ///     status: Some(TransactionStatus::Success),
@@ -52,7 +52,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsSubject::new()
-///     .with_height(Some(23.into()))
+///     .with_block_height(Some(23.into()))
 ///     .with_tx_index(Some(1))
 ///     .with_tx_id(Some(Bytes32::zeroed()))
 ///     .with_status(Some(TransactionStatus::Success))
@@ -61,9 +61,9 @@ use crate::{blocks::types::BlockHeight, types::*};
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "transactions.>"]
-#[subject_format = "transactions.{height}.{tx_index}.{tx_id}.{status}.{kind}"]
+#[subject_format = "transactions.{block_height}.{tx_index}.{tx_id}.{status}.{kind}"]
 pub struct TransactionsSubject {
-    pub height: Option<BlockHeight>,
+    pub block_height: Option<BlockHeight>,
     pub tx_index: Option<usize>,
     pub tx_id: Option<Bytes32>,
     pub status: Option<TransactionStatus>,
@@ -146,7 +146,7 @@ mod test {
     fn transactions_subjects_from_transaction() {
         let mock_tx = MockTransaction::build();
         let subject = TransactionsSubject::from(&mock_tx);
-        assert!(subject.height.is_none());
+        assert!(subject.block_height.is_none());
         assert!(subject.tx_index.is_none());
         assert!(subject.status.is_none());
         assert!(subject.kind.is_some());
