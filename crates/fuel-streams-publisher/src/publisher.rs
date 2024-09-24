@@ -9,7 +9,7 @@ use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     transactions::TransactionsSubject,
-    types::{Address, Block, Input, Receipt, Transaction},
+    types::{Address, Block, Input, Log, Receipt, Transaction},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -19,6 +19,7 @@ use tracing::warn;
 use crate::{
     blocks,
     inputs,
+    logs,
     metrics::PublisherMetrics,
     outputs,
     receipts,
@@ -36,6 +37,7 @@ pub struct Streams {
     pub inputs: Stream<Input>,
     pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
+    pub logs: Stream<Log>,
 }
 
 impl Streams {
@@ -46,6 +48,7 @@ impl Streams {
             inputs: Stream::<Input>::new(nats_client).await,
             outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
+            logs: Stream::<Log>::new(nats_client).await,
         }
     }
 
@@ -279,6 +282,8 @@ impl Publisher {
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
+        let block_height = block.header().consensus().height;
+
         blocks::publish(
             &self.metrics,
             &*self.fuel_core,
@@ -294,7 +299,7 @@ impl Publisher {
             &self.streams.transactions,
             block.transactions(),
             block_producer,
-            block,
+            block_height.into(),
         )
         .await?;
 
@@ -304,6 +309,16 @@ impl Publisher {
             &self.streams.receipts,
             block.transactions(),
             block_producer,
+        )
+        .await?;
+
+        logs::publish(
+            &self.metrics,
+            &*self.fuel_core,
+            &self.streams.logs,
+            block.transactions(),
+            block_producer,
+            block_height.into(),
         )
         .await?;
 
