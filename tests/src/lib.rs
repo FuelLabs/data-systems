@@ -84,7 +84,7 @@ pub fn publish_transactions(
     for i in 0..10 {
         let tx = MockTransaction::build();
         let subject = TransactionsSubject::from(&tx)
-            .with_height(Some(mock_block.clone().into()))
+            .with_block_height(Some(mock_block.clone().into()))
             .with_tx_index(Some(use_tx_index.unwrap_or(i) as usize))
             .with_status(Some(TransactionStatus::Success));
         items.push((subject, tx));

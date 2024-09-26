@@ -100,8 +100,8 @@ async fn transactions_streams_subscribe_with_filter() {
         .0;
 
     // filtering by transaction on block with height 5
-    let filter =
-        Filter::<TransactionsSubject>::build().with_height(Some(5.into()));
+    let filter = Filter::<TransactionsSubject>::build()
+        .with_block_height(Some(5.into()));
 
     // creating subscription
     let mut sub = stream

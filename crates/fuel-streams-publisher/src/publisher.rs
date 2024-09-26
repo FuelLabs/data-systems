@@ -4,11 +4,12 @@ use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
+use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
     transactions::TransactionsSubject,
-    types::{Address, Block, Input, Receipt, Transaction},
+    types::{Address, Block, Input, Log, Receipt, Transaction},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -18,7 +19,9 @@ use tracing::warn;
 use crate::{
     blocks,
     inputs,
+    logs,
     metrics::PublisherMetrics,
+    outputs,
     receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
@@ -32,7 +35,9 @@ pub struct Streams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
     pub inputs: Stream<Input>,
+    pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
+    pub logs: Stream<Log>,
 }
 
 impl Streams {
@@ -41,7 +46,9 @@ impl Streams {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,
             inputs: Stream::<Input>::new(nats_client).await,
+            outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
+            logs: Stream::<Log>::new(nats_client).await,
         }
     }
 
@@ -275,6 +282,8 @@ impl Publisher {
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
+        let block_height = block.header().consensus().height;
+
         blocks::publish(
             &self.metrics,
             &*self.fuel_core,
@@ -290,7 +299,7 @@ impl Publisher {
             &self.streams.transactions,
             block.transactions(),
             block_producer,
-            block,
+            block_height.into(),
         )
         .await?;
 
@@ -303,12 +312,29 @@ impl Publisher {
         )
         .await?;
 
+        logs::publish(
+            &self.metrics,
+            &*self.fuel_core,
+            &self.streams.logs,
+            block.transactions(),
+            block_producer,
+            block_height.into(),
+        )
+        .await?;
+
         inputs::publish(
             &self.metrics,
             &self.streams.inputs,
             &*self.fuel_core,
             block.transactions(),
             block_producer,
+        )
+        .await?;
+
+        outputs::publish(
+            &self.streams.outputs,
+            self.fuel_core.chain_id(),
+            block.transactions(),
         )
         .await?;
 
