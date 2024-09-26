@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use fuel_core_types::fuel_tx::ContractId;
+use fuel_core_types::fuel_tx::{ContractId, Receipt};
 use fuel_streams::{
     blocks::BlocksSubject,
-    core::prelude::{IntoSubject, SubjectBuildable},
+    core::prelude::SubjectBuildable,
     prelude::*,
     receipts::{
         ReceiptsBurnSubject,
@@ -75,12 +75,15 @@ async fn main() -> Result<(), anyhow::Error> {
     }));
 
     // stream contract receipts
-    let contract_client = client.clone();
-    let contract_id = ContractId::from([0u8; 32]); // Replace with an actual contract ID
-    handles.push(tokio::spawn(async move {
-        stream_contract(&contract_client, contract_id)
-            .await
-            .unwrap();
+    handles.push(tokio::spawn({
+        let contract_client = client.clone();
+        // Replace with an actual contract ID
+        let contract_id = ContractId::from([0u8; 32]);
+        async move {
+            stream_contract(&contract_client, contract_id)
+                .await
+                .unwrap();
+        }
     }));
 
     // await all handles
