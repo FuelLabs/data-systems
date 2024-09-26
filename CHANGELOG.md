@@ -1,3 +1,16 @@
+## 0.0.10 (2024-09-26)
+
+### 🚀 Features
+
+-   Add Inputs subjects and publisher logic (#202)
+-   Publish receipts (#208)
+-   Added prometheus and grafana & other implementations (#175)
+-   Added nextest and upgraded crates (#218)
+-   Publish outputs (#211)
+-   Publish logs (#220)
+-   Added examples folder with sample Rust projects (#219)
+-   Added streaming utxos (#223)
+
 ## 0.0.9 (2024-09-09)
 
 ### 🐛 Fixes
