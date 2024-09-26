@@ -7,9 +7,33 @@ use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
 use fuel_streams_core::{
     blocks::BlocksSubject,
+    inputs::{
+        InputsByIdSubject,
+        InputsCoinSubject,
+        InputsContractSubject,
+        InputsMessageSubject,
+    },
+    logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
+    receipts::{
+        ReceiptsBurnSubject,
+        ReceiptsByIdSubject,
+        ReceiptsCallSubject,
+        ReceiptsLogDataSubject,
+        ReceiptsLogSubject,
+        ReceiptsMessageOutSubject,
+        ReceiptsMintSubject,
+        ReceiptsPanicSubject,
+        ReceiptsReturnDataSubject,
+        ReceiptsReturnSubject,
+        ReceiptsRevertSubject,
+        ReceiptsScriptResultSubject,
+        ReceiptsTransferOutSubject,
+        ReceiptsTransferSubject,
+    },
     transactions::TransactionsSubject,
     types::{Address, Block, Input, Log, Receipt, Transaction},
+    utxos::{types::Utxo, UtxosSubject},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -25,6 +49,7 @@ use crate::{
     receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
+    utxos,
     FuelCore,
     FuelCoreLike,
 };
@@ -37,6 +62,7 @@ pub struct Streams {
     pub inputs: Stream<Input>,
     pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
+    pub utxos: Stream<Utxo>,
     pub logs: Stream<Log>,
 }
 
@@ -48,12 +74,36 @@ impl Streams {
             inputs: Stream::<Input>::new(nats_client).await,
             outputs: Stream::<Output>::new(nats_client).await,
             receipts: Stream::<Receipt>::new(nats_client).await,
+            utxos: Stream::<Utxo>::new(nats_client).await,
             logs: Stream::<Log>::new(nats_client).await,
         }
     }
 
     pub fn subjects_wildcards(&self) -> &[&'static str] {
-        &[TransactionsSubject::WILDCARD, BlocksSubject::WILDCARD]
+        &[
+            TransactionsSubject::WILDCARD,
+            BlocksSubject::WILDCARD,
+            InputsByIdSubject::WILDCARD,
+            InputsCoinSubject::WILDCARD,
+            InputsMessageSubject::WILDCARD,
+            InputsContractSubject::WILDCARD,
+            ReceiptsLogSubject::WILDCARD,
+            ReceiptsBurnSubject::WILDCARD,
+            ReceiptsByIdSubject::WILDCARD,
+            ReceiptsCallSubject::WILDCARD,
+            ReceiptsMintSubject::WILDCARD,
+            ReceiptsPanicSubject::WILDCARD,
+            ReceiptsReturnSubject::WILDCARD,
+            ReceiptsRevertSubject::WILDCARD,
+            ReceiptsLogDataSubject::WILDCARD,
+            ReceiptsTransferSubject::WILDCARD,
+            ReceiptsMessageOutSubject::WILDCARD,
+            ReceiptsReturnDataSubject::WILDCARD,
+            ReceiptsTransferOutSubject::WILDCARD,
+            ReceiptsScriptResultSubject::WILDCARD,
+            UtxosSubject::WILDCARD,
+            LogsSubject::WILDCARD,
+        ]
     }
 
     pub async fn get_consumers_and_state(
@@ -62,6 +112,10 @@ impl Streams {
         Ok(vec![
             self.transactions.get_consumers_and_state().await?,
             self.blocks.get_consumers_and_state().await?,
+            self.inputs.get_consumers_and_state().await?,
+            self.receipts.get_consumers_and_state().await?,
+            self.utxos.get_consumers_and_state().await?,
+            self.logs.get_consumers_and_state().await?,
         ])
     }
 
@@ -325,6 +379,15 @@ impl Publisher {
         inputs::publish(
             &self.metrics,
             &self.streams.inputs,
+            &*self.fuel_core,
+            block.transactions(),
+            block_producer,
+        )
+        .await?;
+
+        utxos::publish(
+            &self.metrics,
+            &self.streams.utxos,
             &*self.fuel_core,
             block.transactions(),
             block_producer,

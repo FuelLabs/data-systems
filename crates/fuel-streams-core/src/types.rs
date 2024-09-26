@@ -98,6 +98,22 @@ macro_rules! generate_byte_type_wrapper {
             pub fn zeroed() -> Self {
                 $wrapper_type(<$inner_type>::zeroed())
             }
+
+            pub fn new(inner: $inner_type) -> Self {
+                $wrapper_type(inner)
+            }
+        }
+
+        impl AsRef<$inner_type> for $wrapper_type {
+            fn as_ref(&self) -> &$inner_type {
+                &self.0
+            }
+        }
+
+        impl $wrapper_type {
+            pub fn into_inner(self) -> $inner_type {
+                self.0
+            }
         }
     };
 }
@@ -106,6 +122,8 @@ generate_byte_type_wrapper!(Address, fuel_tx::Address);
 generate_byte_type_wrapper!(Bytes32, fuel_tx::Bytes32);
 generate_byte_type_wrapper!(ContractId, fuel_tx::ContractId);
 generate_byte_type_wrapper!(AssetId, fuel_types::AssetId);
+generate_byte_type_wrapper!(Nonce, fuel_types::Nonce);
+generate_byte_type_wrapper!(MessageId, fuel_types::MessageId);
 
 /// Macro to implement conversion from a type to `Bytes32`.
 ///

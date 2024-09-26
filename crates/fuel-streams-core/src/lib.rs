@@ -9,6 +9,7 @@ pub mod receipts;
 pub mod stream;
 pub mod transactions;
 pub mod types;
+pub mod utxos;
 
 pub use stream::*;
 

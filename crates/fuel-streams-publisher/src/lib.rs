@@ -6,6 +6,7 @@ mod outputs;
 mod publisher;
 mod receipts;
 mod transactions;
+mod utxos;
 
 mod fuel_core;
 
