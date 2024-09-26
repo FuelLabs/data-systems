@@ -1,4 +1,5 @@
 mod blocks;
+pub mod cli;
 mod inputs;
 mod logs;
 mod outputs;

@@ -12,7 +12,7 @@ pub mod core {
 }
 
 pub mod types {
-    pub use fuel_streams_core::types::*;
+    pub use fuel_streams_core::{nats::NatsClientOpts, types::*};
 
     pub use crate::client::types::*;
 }
