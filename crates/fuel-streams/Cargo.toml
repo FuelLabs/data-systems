@@ -8,7 +8,7 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.79.0"
-version = "0.0.9"
+version = "0.0.10"
 
 [dependencies]
 displaydoc = { workspace = true }
