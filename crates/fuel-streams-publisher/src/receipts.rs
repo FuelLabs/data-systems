@@ -18,11 +18,11 @@ use crate::{
 pub async fn publish(
     receipts_stream: &Stream<Receipt>,
     receipts: Option<Vec<Receipt>>,
-    tx_id: &Bytes32,
+    tx_id: Bytes32,
     chain_id: ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: &Option<Bytes32>,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
     if let Some(receipts) = receipts {
         info!("NATS Publisher: Publishing Receipts for 0x#{tx_id}");
@@ -33,7 +33,7 @@ pub async fn publish(
             for (index, subject) in subjects.iter().enumerate() {
                 publish_with_metrics!(
                     receipts_stream.publish_raw(
-                        &build_subject_name(predicate_tag, &**subject),
+                        &build_subject_name(&predicate_tag, &**subject),
                         receipt
                     ),
                     metrics,

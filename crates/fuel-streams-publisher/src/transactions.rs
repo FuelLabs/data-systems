@@ -26,7 +26,7 @@ pub async fn publish(
     block_height: BlockHeight,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: &Option<Bytes32>,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
     let chain_id = fuel_core.chain_id();
     let off_chain_database = fuel_core.database().off_chain().latest_view()?;
@@ -49,7 +49,7 @@ pub async fn publish(
 
     publish_with_metrics!(
         transactions_stream.publish_raw(
-            &build_subject_name(predicate_tag, &transactions_subject),
+            &build_subject_name(&predicate_tag, &transactions_subject),
             transaction,
         ),
         metrics,

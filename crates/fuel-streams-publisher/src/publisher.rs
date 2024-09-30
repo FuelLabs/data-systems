@@ -316,59 +316,67 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let transactions = block.transactions();
 
-        blocks::publish(
+        let mut publishing_tasks = vec![blocks::publish(
             &self.metrics,
             &*self.fuel_core,
             &self.streams.blocks,
             block,
             block_producer,
         )
-        .await?;
+        .boxed()];
 
         for (transaction_index, transaction) in transactions.iter().enumerate()
         {
             let chain_id = self.fuel_core.chain_id();
             let tx_id = transaction.id(chain_id);
 
-            transactions::publish(
-                &self.streams.transactions,
-                (transaction_index, transaction),
-                &*self.fuel_core,
-                block.header().consensus().height.into(),
-                &self.metrics,
-                block_producer,
-                &None,
-            )
-            .await?;
+            publishing_tasks.push(
+                transactions::publish(
+                    &self.streams.transactions,
+                    (transaction_index, transaction),
+                    &*self.fuel_core,
+                    block.header().consensus().height.into(),
+                    &self.metrics,
+                    block_producer,
+                    None,
+                )
+                .boxed(),
+            );
 
-            receipts::publish(
-                &self.streams.receipts,
-                self.fuel_core.get_receipts(&tx_id)?,
-                &tx_id.into(),
-                *chain_id,
-                &self.metrics,
-                block_producer,
-                &None,
-            )
-            .await?;
+            publishing_tasks.push(
+                receipts::publish(
+                    &self.streams.receipts,
+                    self.fuel_core.get_receipts(&tx_id)?,
+                    tx_id.into(),
+                    *chain_id,
+                    &self.metrics,
+                    block_producer,
+                    None,
+                )
+                .boxed(),
+            );
 
-            inputs::publish(
-                &self.streams.inputs,
-                transaction,
-                chain_id,
-                &self.metrics,
-                block_producer,
-                &None,
-            )
-            .await?;
+            publishing_tasks.push(
+                inputs::publish(
+                    &self.streams.inputs,
+                    transaction,
+                    chain_id,
+                    &self.metrics,
+                    block_producer,
+                    None,
+                )
+                .boxed(),
+            );
 
-            outputs::publish(
-                &self.streams.outputs,
-                self.fuel_core.chain_id(),
-                transaction,
-                &None,
-            )
-            .await?;
+            publishing_tasks.push(
+                outputs::publish(
+                    &self.streams.outputs,
+                    self.fuel_core.chain_id(),
+                    transaction,
+                    None,
+                )
+                .boxed(),
+            );
 
             for input in transaction.inputs() {
                 if let Some((
@@ -378,50 +386,60 @@ impl Publisher {
                 )) = input.predicate()
                 {
                     let predicate_tag =
-                        &Some(predicates::tag(predicate_bytecode));
+                        Some(predicates::tag(predicate_bytecode));
 
-                    transactions::publish(
-                        &self.streams.transactions,
-                        (transaction_index, transaction),
-                        &*self.fuel_core,
-                        block.header().consensus().height.into(),
-                        &self.metrics,
-                        block_producer,
-                        predicate_tag,
-                    )
-                    .await?;
+                    publishing_tasks.push(
+                        transactions::publish(
+                            &self.streams.transactions,
+                            (transaction_index, transaction),
+                            &*self.fuel_core,
+                            block.header().consensus().height.into(),
+                            &self.metrics,
+                            block_producer,
+                            predicate_tag.clone(),
+                        )
+                        .boxed(),
+                    );
 
-                    receipts::publish(
-                        &self.streams.receipts,
-                        self.fuel_core.get_receipts(&tx_id)?,
-                        &tx_id.into(),
-                        *chain_id,
-                        &self.metrics,
-                        block_producer,
-                        predicate_tag,
-                    )
-                    .await?;
+                    publishing_tasks.push(
+                        receipts::publish(
+                            &self.streams.receipts,
+                            self.fuel_core.get_receipts(&tx_id)?,
+                            tx_id.into(),
+                            *chain_id,
+                            &self.metrics,
+                            block_producer,
+                            predicate_tag.clone(),
+                        )
+                        .boxed(),
+                    );
 
-                    inputs::publish(
-                        &self.streams.inputs,
-                        transaction,
-                        chain_id,
-                        &self.metrics,
-                        block_producer,
-                        predicate_tag,
-                    )
-                    .await?;
+                    publishing_tasks.push(
+                        inputs::publish(
+                            &self.streams.inputs,
+                            transaction,
+                            chain_id,
+                            &self.metrics,
+                            block_producer,
+                            predicate_tag.clone(),
+                        )
+                        .boxed(),
+                    );
 
-                    outputs::publish(
-                        &self.streams.outputs,
-                        self.fuel_core.chain_id(),
-                        transaction,
-                        predicate_tag,
-                    )
-                    .await?;
+                    publishing_tasks.push(
+                        outputs::publish(
+                            &self.streams.outputs,
+                            self.fuel_core.chain_id(),
+                            transaction,
+                            predicate_tag,
+                        )
+                        .boxed(),
+                    );
                 }
             }
         }
+
+        try_join_all(publishing_tasks).await?;
 
         Ok(())
     }

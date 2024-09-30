@@ -20,7 +20,7 @@ pub async fn publish(
     stream: &Stream<fuel_core_types::fuel_tx::Output>,
     chain_id: &ChainId,
     transaction: &Transaction,
-    predicate_tag: &Option<Bytes32>,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
     let tx_id = transaction.id(chain_id);
     let outputs = transaction.outputs();
@@ -94,9 +94,9 @@ pub async fn publish(
             ),
         };
 
-        let subject_name = build_subject_name(predicate_tag, &*subject);
+        let subject_name = build_subject_name(&predicate_tag, &*subject);
         let by_id_subject_name =
-            build_subject_name(predicate_tag, &by_id_subject);
+            build_subject_name(&predicate_tag, &by_id_subject);
 
         stream.publish_raw(&subject_name, output).await?;
         stream.publish_raw(&by_id_subject_name, output).await?;

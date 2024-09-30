@@ -101,7 +101,7 @@ pub async fn publish(
     chain_id: &ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: &Option<Bytes32>,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
     let tx_id = transaction.id(chain_id);
 
@@ -171,7 +171,7 @@ pub async fn publish(
             InputSubject::Contract(by_id_subject, subject, payload) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(predicate_tag, &subject),
+                        &build_subject_name(&predicate_tag, &subject),
                         &payload
                     ),
                     metrics,
@@ -181,7 +181,7 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(predicate_tag, &by_id_subject),
+                        &build_subject_name(&predicate_tag, &by_id_subject),
                         &payload
                     ),
                     metrics,
@@ -193,7 +193,7 @@ pub async fn publish(
             InputSubject::Coin(by_id_subject, subject, payload) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(predicate_tag, &subject),
+                        &build_subject_name(&predicate_tag, &subject),
                         &payload
                     ),
                     metrics,
@@ -203,7 +203,7 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(predicate_tag, &by_id_subject),
+                        &build_subject_name(&predicate_tag, &by_id_subject),
                         &payload
                     ),
                     metrics,
@@ -220,7 +220,7 @@ pub async fn publish(
             ) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(predicate_tag, &subject),
+                        &build_subject_name(&predicate_tag, &subject),
                         &payload
                     ),
                     metrics,
@@ -231,7 +231,7 @@ pub async fn publish(
                 publish_with_metrics!(
                     stream.publish_raw(
                         &build_subject_name(
-                            predicate_tag,
+                            &predicate_tag,
                             &by_id_sender_subject
                         ),
                         &payload
@@ -244,7 +244,7 @@ pub async fn publish(
                 publish_with_metrics!(
                     stream.publish_raw(
                         &build_subject_name(
-                            predicate_tag,
+                            &predicate_tag,
                             &by_id_recipient_subject
                         ),
                         &payload
