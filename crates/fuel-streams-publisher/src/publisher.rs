@@ -5,7 +5,7 @@ use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
-use fuel_streams::types::UniqueIdentifier;
+use fuel_streams::types::{Log, UniqueIdentifier};
 use fuel_streams_core::{
     blocks::BlocksSubject,
     inputs::{
@@ -14,8 +14,10 @@ use fuel_streams_core::{
     },
     logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
+    receipts::*,
     transactions::{TransactionsSubject, WithTxInputs},
-    types::{Address, Block, Bytes32, Input, Receipt, Transaction},
+    types::{Address, Block, Input, Receipt, Transaction},
+    utxos::{types::Utxo, UtxosSubject},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -25,7 +27,7 @@ use tracing::warn;
 use crate::{
     blocks, inputs, logs,
     metrics::PublisherMetrics,
-    outputs, receipts,
+    outputs, predicates, receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions, utxos, FuelCore, FuelCoreLike,
 };
@@ -376,7 +378,7 @@ impl Publisher {
                 )) = input.predicate()
                 {
                     let predicate_tag =
-                        &Some(predicate_tag(predicate_bytecode));
+                        &Some(predicates::tag(predicate_bytecode));
 
                     transactions::publish(
                         &self.streams.transactions,
@@ -423,18 +425,4 @@ impl Publisher {
 
         Ok(())
     }
-}
-
-use sha2::{Digest, Sha256};
-
-fn predicate_tag(bytecode: &[u8]) -> Bytes32 {
-    let mut sha256 = Sha256::new();
-    sha256.update(bytecode);
-    let bytes: [u8; 32] = sha256
-        .finalize()
-        .as_slice()
-        .try_into()
-        .expect("Must be 32 bytes");
-
-    bytes.into()
 }

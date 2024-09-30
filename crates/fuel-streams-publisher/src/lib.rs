@@ -3,6 +3,7 @@ pub mod cli;
 mod inputs;
 mod logs;
 mod outputs;
+pub mod predicates;
 mod publisher;
 mod receipts;
 mod transactions;
