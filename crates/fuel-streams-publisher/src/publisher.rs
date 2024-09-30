@@ -5,35 +5,17 @@ use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
+use fuel_streams::types::UniqueIdentifier;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     inputs::{
-        InputsByIdSubject,
-        InputsCoinSubject,
-        InputsContractSubject,
+        InputsByIdSubject, InputsCoinSubject, InputsContractSubject,
         InputsMessageSubject,
     },
     logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
-    receipts::{
-        ReceiptsBurnSubject,
-        ReceiptsByIdSubject,
-        ReceiptsCallSubject,
-        ReceiptsLogDataSubject,
-        ReceiptsLogSubject,
-        ReceiptsMessageOutSubject,
-        ReceiptsMintSubject,
-        ReceiptsPanicSubject,
-        ReceiptsReturnDataSubject,
-        ReceiptsReturnSubject,
-        ReceiptsRevertSubject,
-        ReceiptsScriptResultSubject,
-        ReceiptsTransferOutSubject,
-        ReceiptsTransferSubject,
-    },
-    transactions::TransactionsSubject,
-    types::{Address, Block, Input, Log, Receipt, Transaction},
-    utxos::{types::Utxo, UtxosSubject},
+    transactions::{TransactionsSubject, WithTxInputs},
+    types::{Address, Block, Bytes32, Input, Receipt, Transaction},
     Stream,
 };
 use futures_util::{future::try_join_all, FutureExt};
@@ -41,17 +23,11 @@ use tokio::sync::broadcast::error::RecvError;
 use tracing::warn;
 
 use crate::{
-    blocks,
-    inputs,
-    logs,
+    blocks, inputs, logs,
     metrics::PublisherMetrics,
-    outputs,
-    receipts,
+    outputs, receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
-    transactions,
-    utxos,
-    FuelCore,
-    FuelCoreLike,
+    transactions, utxos, FuelCore, FuelCoreLike,
 };
 
 #[derive(Clone, Debug)]
@@ -336,71 +312,129 @@ impl Publisher {
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
-        let block_height = block.header().consensus().height;
+        let transactions = block.transactions();
 
-        let publish_streams = vec![
-            blocks::publish(
-                &self.metrics,
-                &*self.fuel_core,
-                &self.streams.blocks,
-                block,
-                block_producer,
-            )
-            .boxed(),
+        blocks::publish(
+            &self.metrics,
+            &*self.fuel_core,
+            &self.streams.blocks,
+            block,
+            block_producer,
+        )
+        .await?;
+
+        for (transaction_index, transaction) in transactions.iter().enumerate()
+        {
+            let chain_id = self.fuel_core.chain_id();
+            let tx_id = transaction.id(chain_id);
+
             transactions::publish(
-                &self.metrics,
-                &*self.fuel_core,
                 &self.streams.transactions,
-                block.transactions(),
+                (transaction_index, transaction),
+                &*self.fuel_core,
+                block.header().consensus().height.into(),
+                &self.metrics,
                 block_producer,
-                block_height.into(),
+                &None,
             )
-            .boxed(),
+            .await?;
+
             receipts::publish(
-                &self.metrics,
-                &*self.fuel_core,
                 &self.streams.receipts,
-                block.transactions(),
-                block_producer,
-            )
-            .boxed(),
-            logs::publish(
+                self.fuel_core.get_receipts(&tx_id)?,
+                &tx_id.into(),
+                *chain_id,
                 &self.metrics,
-                &*self.fuel_core,
-                &self.streams.logs,
-                block.transactions(),
                 block_producer,
-                block_height.into(),
+                &None,
             )
-            .boxed(),
+            .await?;
+
             inputs::publish(
-                &self.metrics,
                 &self.streams.inputs,
-                &*self.fuel_core,
-                block.transactions(),
-                block_producer,
-            )
-            .boxed(),
-            utxos::publish(
+                transaction,
+                chain_id,
                 &self.metrics,
-                &self.streams.utxos,
-                &*self.fuel_core,
-                block.transactions(),
                 block_producer,
+                &None,
             )
-            .boxed(),
+            .await?;
+
             outputs::publish(
                 &self.streams.outputs,
                 self.fuel_core.chain_id(),
-                block.transactions(),
+                transaction,
+                &None,
             )
-            .boxed(),
-        ];
+            .await?;
 
-        let time_start = Instant::now();
-        try_join_all(publish_streams).await?;
-        tracing::info!("Published all data streams for block height {block_height} in {:?} ms", time_start.elapsed().as_millis());
+            for input in transaction.inputs() {
+                if let Some((
+                    predicate_bytecode,
+                    _predicate_data,
+                    _predicate_gas_used,
+                )) = input.predicate()
+                {
+                    let predicate_tag =
+                        &Some(predicate_tag(predicate_bytecode));
+
+                    transactions::publish(
+                        &self.streams.transactions,
+                        (transaction_index, transaction),
+                        &*self.fuel_core,
+                        block.header().consensus().height.into(),
+                        &self.metrics,
+                        block_producer,
+                        predicate_tag,
+                    )
+                    .await?;
+
+                    receipts::publish(
+                        &self.streams.receipts,
+                        self.fuel_core.get_receipts(&tx_id)?,
+                        &tx_id.into(),
+                        *chain_id,
+                        &self.metrics,
+                        block_producer,
+                        predicate_tag,
+                    )
+                    .await?;
+
+                    inputs::publish(
+                        &self.streams.inputs,
+                        transaction,
+                        chain_id,
+                        &self.metrics,
+                        block_producer,
+                        predicate_tag,
+                    )
+                    .await?;
+
+                    outputs::publish(
+                        &self.streams.outputs,
+                        self.fuel_core.chain_id(),
+                        transaction,
+                        predicate_tag,
+                    )
+                    .await?;
+                }
+            }
+        }
 
         Ok(())
     }
+}
+
+use sha2::{Digest, Sha256};
+
+fn predicate_tag(bytecode: &[u8]) -> Bytes32 {
+    let mut sha256 = Sha256::new();
+    sha256.update(bytecode);
+    let bytes: [u8; 32] = sha256
+        .finalize()
+        .as_slice()
+        .try_into()
+        .expect("Must be 32 bytes");
+
+    bytes.into()
 }
