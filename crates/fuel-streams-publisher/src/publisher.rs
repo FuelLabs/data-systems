@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
@@ -9,7 +9,9 @@ use fuel_streams::types::{Log, UniqueIdentifier};
 use fuel_streams_core::{
     blocks::BlocksSubject,
     inputs::{
-        InputsByIdSubject, InputsCoinSubject, InputsContractSubject,
+        InputsByIdSubject,
+        InputsCoinSubject,
+        InputsContractSubject,
         InputsMessageSubject,
     },
     logs::LogsSubject,
@@ -25,11 +27,18 @@ use tokio::sync::broadcast::error::RecvError;
 use tracing::warn;
 
 use crate::{
-    blocks, inputs, logs,
+    blocks,
+    inputs,
+    logs,
     metrics::PublisherMetrics,
-    outputs, predicates, receipts,
+    outputs,
+    predicates,
+    receipts,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
-    transactions, utxos, FuelCore, FuelCoreLike,
+    transactions,
+    utxos,
+    FuelCore,
+    FuelCoreLike,
 };
 
 #[derive(Clone, Debug)]
@@ -315,6 +324,7 @@ impl Publisher {
         block_producer: &Address,
     ) -> anyhow::Result<()> {
         let transactions = block.transactions();
+        let block_height = block.header().consensus().height;
 
         let mut publishing_tasks = vec![blocks::publish(
             &self.metrics,
@@ -329,13 +339,14 @@ impl Publisher {
         {
             let chain_id = self.fuel_core.chain_id();
             let tx_id = transaction.id(chain_id);
+            let receipts = self.fuel_core.get_receipts(&tx_id)?;
 
             publishing_tasks.push(
                 transactions::publish(
                     &self.streams.transactions,
                     (transaction_index, transaction),
                     &*self.fuel_core,
-                    block.header().consensus().height.into(),
+                    block_height.into(),
                     &self.metrics,
                     block_producer,
                     None,
@@ -346,9 +357,23 @@ impl Publisher {
             publishing_tasks.push(
                 receipts::publish(
                     &self.streams.receipts,
-                    self.fuel_core.get_receipts(&tx_id)?,
+                    receipts.clone(),
                     tx_id.into(),
                     *chain_id,
+                    &self.metrics,
+                    block_producer,
+                    None,
+                )
+                .boxed(),
+            );
+
+            publishing_tasks.push(
+                logs::publish(
+                    &self.streams.logs,
+                    receipts.clone(),
+                    tx_id.into(),
+                    chain_id,
+                    block_height.into(),
                     &self.metrics,
                     block_producer,
                     None,
@@ -373,6 +398,20 @@ impl Publisher {
                     &self.streams.outputs,
                     self.fuel_core.chain_id(),
                     transaction,
+                    None,
+                )
+                .boxed(),
+            );
+
+            publishing_tasks.push(
+                utxos::publish(
+                    &self.metrics,
+                    &self.streams.utxos,
+                    &*self.fuel_core,
+                    transaction,
+                    tx_id.into(),
+                    chain_id,
+                    block_producer,
                     None,
                 )
                 .boxed(),
@@ -404,9 +443,23 @@ impl Publisher {
                     publishing_tasks.push(
                         receipts::publish(
                             &self.streams.receipts,
-                            self.fuel_core.get_receipts(&tx_id)?,
+                            receipts.clone(),
                             tx_id.into(),
                             *chain_id,
+                            &self.metrics,
+                            block_producer,
+                            predicate_tag.clone(),
+                        )
+                        .boxed(),
+                    );
+
+                    publishing_tasks.push(
+                        logs::publish(
+                            &self.streams.logs,
+                            receipts.clone(),
+                            tx_id.into(),
+                            chain_id,
+                            block_height.into(),
                             &self.metrics,
                             block_producer,
                             predicate_tag.clone(),
@@ -431,6 +484,20 @@ impl Publisher {
                             &self.streams.outputs,
                             self.fuel_core.chain_id(),
                             transaction,
+                            predicate_tag.clone(),
+                        )
+                        .boxed(),
+                    );
+
+                    publishing_tasks.push(
+                        utxos::publish(
+                            &self.metrics,
+                            &self.streams.utxos,
+                            &*self.fuel_core,
+                            transaction,
+                            tx_id.into(),
+                            chain_id,
+                            block_producer,
                             predicate_tag,
                         )
                         .boxed(),

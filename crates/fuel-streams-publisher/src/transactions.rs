@@ -6,7 +6,10 @@ use fuel_streams_core::{
     prelude::*,
     transactions::TransactionsSubject,
     types::{
-        BlockHeight, Transaction, TransactionKind, TransactionStatus,
+        BlockHeight,
+        Transaction,
+        TransactionKind,
+        TransactionStatus,
         UniqueIdentifier,
     },
     Stream,
@@ -14,7 +17,9 @@ use fuel_streams_core::{
 use tracing::info;
 
 use crate::{
-    build_subject_name, metrics::PublisherMetrics, publish_with_metrics,
+    build_subject_name,
+    metrics::PublisherMetrics,
+    publish_with_metrics,
     FuelCoreLike,
 };
 
@@ -42,7 +47,7 @@ pub async fn publish(
         .with_tx_id(Some(tx_id.into()))
         .with_kind(Some(kind))
         .with_status(Some(status))
-        .with_height(Some(block_height))
+        .with_block_height(Some(block_height))
         .with_tx_index(Some(transaction_index));
 
     info!("NATS Publisher: Publishing Transaction 0x#{tx_id}");

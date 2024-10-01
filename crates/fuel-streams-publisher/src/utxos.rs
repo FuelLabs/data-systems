@@ -3,7 +3,8 @@ use std::sync::Arc;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
     prelude::*,
-    types::{Transaction, UniqueIdentifier},
+    transactions::WithTxInputs,
+    types::Transaction,
     utxos::{
         types::{Utxo, UtxoType},
         UtxosSubject,
@@ -13,7 +14,7 @@ use fuel_streams_core::{
 use fuel_tx::{input::AsField, UtxoId};
 
 use crate::{
-    inputs::inputs_from_transaction,
+    build_subject_name,
     metrics::PublisherMetrics,
     publish_with_metrics,
     FuelCoreLike,
@@ -144,33 +145,32 @@ fn get_utxo_data(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn publish(
     metrics: &Arc<PublisherMetrics>,
     stream: &Stream<Utxo>,
     fuel_core: &dyn FuelCoreLike,
-    transactions: &[Transaction],
+    transaction: &Transaction,
+    tx_id: Bytes32,
+    chain_id: &ChainId,
     block_producer: &fuel_streams_core::types::Address,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
-    let chain_id = fuel_core.chain_id();
-    let subjects: Vec<(UtxosSubject, Utxo)> = transactions
+    let subjects = transaction
+        .inputs()
         .iter()
-        .flat_map(|transaction| {
-            let tx_id = transaction.id(fuel_core.chain_id());
-            let inputs = inputs_from_transaction(transaction);
-
-            inputs
-                .iter()
-                .filter_map(|input| {
-                    let utxo_id = input.utxo_id().cloned();
-                    get_utxo_data(input, tx_id.into(), utxo_id, fuel_core)
-                })
-                .collect::<Vec<(UtxosSubject, Utxo)>>()
+        .filter_map(|input| {
+            let utxo_id = input.utxo_id().cloned();
+            get_utxo_data(input, tx_id.clone(), utxo_id, fuel_core)
         })
-        .collect();
+        .collect::<Vec<(UtxosSubject, Utxo)>>();
 
     for (subject, utxo) in subjects {
         publish_with_metrics!(
-            stream.publish(&subject, &utxo),
+            stream.publish_raw(
+                &build_subject_name(&predicate_tag, &subject),
+                &utxo
+            ),
             metrics,
             chain_id,
             block_producer,

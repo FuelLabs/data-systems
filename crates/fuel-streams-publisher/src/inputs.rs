@@ -9,7 +9,9 @@ use fuel_core_types::fuel_tx::{
 };
 use fuel_streams_core::{
     inputs::{
-        InputsByIdSubject, InputsCoinSubject, InputsContractSubject,
+        InputsByIdSubject,
+        InputsCoinSubject,
+        InputsContractSubject,
         InputsMessageSubject,
     },
     prelude::*,
@@ -19,7 +21,9 @@ use fuel_streams_core::{
 };
 
 use crate::{
-    build_subject_name, metrics::PublisherMetrics, publish_with_metrics,
+    build_subject_name,
+    metrics::PublisherMetrics,
+    publish_with_metrics,
 };
 
 fn coin_subject<T: CoinSpecification>(
