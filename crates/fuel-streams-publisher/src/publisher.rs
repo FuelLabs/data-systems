@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
@@ -506,7 +506,12 @@ impl Publisher {
             }
         }
 
+        let start_time = Instant::now();
         try_join_all(publishing_tasks).await?;
+        tracing::info!(
+            "Published streams for BlockHeight: {block_height} in {:?} ms",
+            start_time.elapsed().as_millis()
+        );
 
         Ok(())
     }
