@@ -67,7 +67,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let txs_client = client.clone();
     handles.push(tokio::spawn(async move {
         let filter = Filter::<TransactionsSubject>::build()
-            .with_height(Some(5.into()))
+            .with_block_height(Some(5.into()))
             .with_kind(Some(TransactionKind::Mint));
         stream_transactions(&txs_client, Some(filter))
             .await

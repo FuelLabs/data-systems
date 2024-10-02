@@ -1,5 +1,5 @@
 [package]
-name = "fuels-example-streams"
+name = "fuel-streams-examples"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
