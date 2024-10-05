@@ -13,7 +13,7 @@ services:
       - ./nats.conf:/etc/nats/nats.conf
     command:
       - -m
-      - '8222'
+      - "8222"
       - --name=fuel-streams-publisher-server
       - --js
       - --config=/etc/nats/nats.conf
@@ -69,12 +69,12 @@ services:
       - ./monitoring/prometheus/:/etc/prometheus/
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
     ports:
       - 9090:9090
 
@@ -90,9 +90,9 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
     ports:
@@ -131,8 +131,8 @@ services:
     volumes:
       - ./monitoring/alertmanager/:/etc/alertmanager/
     command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
+      - "--config.file=/etc/alertmanager/config.yml"
+      - "--storage.path=/alertmanager"
     depends_on:
       - prometheus
     ports:
@@ -144,7 +144,7 @@ services:
       - monitoring
     image: grafana/grafana:latest
     container_name: grafana
-    user: '472'
+    user: "472"
     restart: always
     environment:
       GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"
@@ -226,6 +226,20 @@ services:
       - nats
     ports:
       - 8888:7777
+
+  surrealdb:
+    profiles:
+      - all
+      - indexer
+    image: surrealdb/surrealdb:latest
+    ports:
+      - "8002:8000"
+    command:
+      - start  # start the SurrealDB server
+      - --log=trace  # no idea what this does :(
+      - --user=root  # default user
+      - --pass=root  # default password
+    restart: always
 
 volumes:
   fuel-streams-publisher-db:

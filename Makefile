@@ -6,7 +6,6 @@ PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
 
-
 # Define the make command
 MAKE := make
 
@@ -47,11 +46,12 @@ clean/docker: stop
 start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
 start/publisher stop/publisher restart/publisher clean/publisher: DOCKER_PROFILE = fuel
 start/monitoring stop/monitoring restart/monitoring clean/monitoring: DOCKER_PROFILE = monitoring
+start/surrealdb stop/surrealdb restart/surrealdb clean/surrealdb: DOCKER_PROFILE = indexer
 
-start/nats start/publisher start/monitoring: start
-stop/nats stop/publisher stop/monitoring: stop
-restart/nats restart/publisher restart/monitoring: restart
-clean/nats clean/publisher clean/monitoring: clean/docker
+start/nats start/publisher start/monitoring start/surrealdb: start
+stop/nats stop/publisher stop/monitoring stop/surrealdb: stop
+restart/nats restart/publisher restart/monitoring restart/surrealdb: restart
+clean/nats clean/publisher clean/monitoring clean/surrealdb: clean/docker
 
 dev-watch:
 	cargo watch -- cargo run
@@ -144,17 +144,35 @@ bench:
 
 help:
 	@echo "Available commands:"
-	@echo "  install     - Install project dependencies"
-	@echo "  setup       - Run the setup script"
-	@echo "  start       - Start Docker containers"
-	@echo "  stop        - Stop Docker containers"
-	@echo "  restart     - Restart Docker containers"
-	@echo "  dev-watch   - Run the project in development mode with auto-reload"
-	@echo "  build       - Build the project"
-	@echo "  clean       - Clean Docker containers and images"
-	@echo "  fmt         - Format the code, Markdown, and YAML files"
-	@echo "  lint        - Perform linting checks on the code and Markdown files"
-	@echo "  audit       - Perform audit checks on Rust crates"
-	@echo "  test        - Run tests"
-	@echo "  doc         - Generate documentation"
-	@echo "  bench       - Run benchmarks"
+	@echo "  install           - Install project dependencies"
+	@echo "  setup             - Run the setup script"
+	@echo "  start             - Start Docker containers"
+	@echo "  stop              - Stop Docker containers"
+	@echo "  restart           - Restart Docker containers"
+	@echo "  dev-watch         - Run the project in development mode with auto-reload"
+	@echo "  build             - Build the project"
+	@echo "  clean             - Clean Docker containers and images"
+	@echo "  fmt               - Format the code, Markdown, and YAML files"
+	@echo "  lint              - Perform linting checks on the code and Markdown files"
+	@echo "  audit             - Perform audit checks on Rust crates"
+	@echo "  test              - Run tests"
+	@echo "  doc               - Generate documentation"
+	@echo "  bench             - Run benchmarks"
+	@echo ""
+	@echo "Docker service commands:"
+	@echo "  start/nats        - Start NATS Docker container"
+	@echo "  stop/nats         - Stop NATS Docker container"
+	@echo "  restart/nats      - Restart NATS Docker container"
+	@echo "  clean/nats        - Remove NATS Docker container and images"
+	@echo "  start/publisher   - Start Publisher Docker container"
+	@echo "  stop/publisher    - Stop Publisher Docker container"
+	@echo "  restart/publisher - Restart Publisher Docker container"
+	@echo "  clean/publisher   - Remove Publisher Docker container and images"
+	@echo "  start/monitoring  - Start Monitoring Docker containers"
+	@echo "  stop/monitoring   - Stop Monitoring Docker containers"
+	@echo "  restart/monitoring - Restart Monitoring Docker containers"
+	@echo "  clean/monitoring  - Remove Monitoring Docker containers and images"
+	@echo "  start/surrealdb   - Start SurrealDB Docker container"
+	@echo "  stop/surrealdb    - Stop SurrealDB Docker container"
+	@echo "  restart/surrealdb - Restart SurrealDB Docker container"
+	@echo "  clean/surrealdb   - Remove SurrealDB Docker container and images"
