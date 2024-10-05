@@ -16,12 +16,12 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.79.0"
+rust-version = "1.80.1"
 version = "0.0.10"
 
 [workspace.dependencies]
 anyhow = "1.0"
-async-nats = "0.36.0"
+async-nats = "0.37.0"
 async-trait = "0.1.82"
 bytes = "1.7.2"
 chrono = { version = "0.4.38", features = ["serde"] }
