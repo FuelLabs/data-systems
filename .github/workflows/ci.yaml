@@ -159,6 +159,11 @@ jobs:
         with:
           config: ./.typos.toml
 
+      - uses: codespell-project/actions-codespell@v2
+        with:
+          skip: "*.json"
+          check_filenames: true
+
       - uses: taiki-e/install-action@cargo-machete
       - name: Check unused dependencies
         run: cargo machete --skip-target-dir

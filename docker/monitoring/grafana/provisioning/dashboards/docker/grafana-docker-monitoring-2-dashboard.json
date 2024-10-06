@@ -781,7 +781,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Node Mermory",
+      "title": "Node Memory",
       "tooltip": {
         "shared": true,
         "sort": 0,

@@ -81,7 +81,7 @@ fmt-markdown:
 check:
 	cargo check --all-targets --all-features
 
-lint: check lint-cargo lint-rust lint-clippy lint-prettier lint-markdown
+lint: check lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-codespell
 
 lint-cargo:
 	cargo sort -w --check
@@ -97,6 +97,15 @@ lint-prettier:
 
 lint-markdown:
 	pnpm md:lint
+
+lint-codespell: ensure-codespell
+	codespell --skip "*.json"
+
+ensure-codespell:
+	@if ! command -v codespell &> /dev/null; then \
+		echo "codespell not found. Please install it by running the command `pip install codespell` or refer to the following link for more information: https://github.com/codespell-project/codespell" \
+		exit 1; \
+    fi
 
 # ------------------------------------------------------------
 # Coverage

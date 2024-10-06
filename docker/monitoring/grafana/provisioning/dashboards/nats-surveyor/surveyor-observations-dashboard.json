@@ -527,7 +527,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Requestor RTT Times Percentiles",
+      "title": "Requester RTT Times Percentiles",
       "tooltip": {
         "shared": true,
         "sort": 2,
