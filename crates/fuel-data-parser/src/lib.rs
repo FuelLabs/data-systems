@@ -2,9 +2,9 @@
 
 mod compression_strategies;
 mod error;
-
 use std::{fmt::Debug, sync::Arc};
 
+use bytes::Bytes;
 pub use compression_strategies::*;
 
 pub use crate::error::{CompressionError, Error, SerdeError};
@@ -21,6 +21,34 @@ pub enum SerializationType {
     /// json serialization
     #[strum(serialize = "json")]
     Json,
+    // #[strum(serialize = "protobuf")]
+    // Protobuf,
+}
+
+/// Prost Message Wrapper allowing serialization/deserialization
+#[allow(dead_code)]
+pub(crate) struct ProstMessageSerdelizer<T: prost::Message>(pub(crate) T);
+
+impl<T> ProstMessageSerdelizer<T>
+where
+    T: prost::Message + std::default::Default,
+{
+    /// Method to serialize
+    #[allow(dead_code)]
+    pub(crate) fn serialize(&self) -> Result<Vec<u8>, Error> {
+        let mut buf = Vec::new();
+        self.0
+            .encode(&mut buf)
+            .map_err(|e| Error::Serde(SerdeError::ProstEncode(e)))?;
+        Ok(buf)
+    }
+
+    /// Method to deserialize
+    #[allow(dead_code)]
+    pub(crate) fn deserialize(buf: Vec<u8>) -> Result<T, Error> {
+        T::decode(Bytes::from(buf))
+            .map_err(|e| Error::Serde(SerdeError::ProstDecode(e)))
+    }
 }
 
 /// Traits required for a data type to be parseable
@@ -217,6 +245,10 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
             SerializationType::Json => serde_json::to_vec(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Json(e))),
+            // SerializationType::Protobuf => {
+            //     let serdelizer = ProstMessageSerdelizer(raw_data.clone());
+            //     serdelizer.serialize()
+            // }
         }
     }
 
@@ -283,6 +315,10 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
             SerializationType::Json => serde_json::from_slice(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Json(e))),
+            // SerializationType::Protobuf => {
+            //     let deserialized_data = ProstMessageSerdelizer::deserialize(raw_data.to_vec())?;
+            //     Ok(deserialized_data.0)
+            // }
         }
     }
 }

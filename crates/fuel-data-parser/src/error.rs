@@ -31,6 +31,10 @@ pub enum SerdeError {
     Postcard(#[from] postcard::Error),
     /// Failed to serialize or deserialize data using JSON: {0}
     Json(#[from] serde_json::Error),
+    /// Failed to serialize data using protobuf: {0}
+    ProstEncode(#[from] prost::EncodeError),
+    /// Failed to deserialize data using protobuf: {0}
+    ProstDecode(#[from] prost::DecodeError),
 }
 
 /// Data parser error types.
