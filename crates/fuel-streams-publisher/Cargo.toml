@@ -29,7 +29,7 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-futures-util = "0.3.30"
+futures-util = "0.3.31"
 num_cpus = "1.16.0"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13.4", features = ["process"] }
@@ -39,7 +39,7 @@ serde = { workspace = true }
 serde_prometheus = { version = "0.2.5" }
 sha2 = { workspace = true }
 sysinfo = { version = "0.29.2" }
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-actix-web = "0.7"
