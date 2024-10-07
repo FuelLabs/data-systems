@@ -48,10 +48,10 @@ fn bench_deserialize(c: &mut Criterion) {
     for (serialization_type, compression_strategy, serialized) in
         serialized_data
     {
-        let bench_name = format!("[{}]", serialization_type.to_string());
+        let bench_name = format!("[{}]", serialization_type);
         group.bench_function(&bench_name, |b| {
             let data_parser = DataParser::default()
-                .with_compression_strategy(&compression_strategy)
+                .with_compression_strategy(compression_strategy)
                 .with_serialization_type(serialization_type.clone());
 
             b.iter(|| {

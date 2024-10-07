@@ -31,6 +31,10 @@ pub enum SerdeError {
     Postcard(#[from] postcard::Error),
     /// Failed to serialize or deserialize data using JSON: {0}
     Json(#[from] serde_json::Error),
+    /// Failed to serialize data using MessagePack: {0}
+    MessagePackEncode(#[from] rmp_serde::encode::Error),
+    /// Failed to deserialize data using MessagePack: {0}
+    MessagePackDecode(#[from] rmp_serde::decode::Error),
 }
 
 /// Data parser error types.

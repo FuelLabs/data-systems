@@ -21,6 +21,9 @@ pub enum SerializationType {
     /// json serialization
     #[strum(serialize = "json")]
     Json,
+    /// MessagePack serialization
+    #[strum(serialize = "messagepack")]
+    MessagePack,
 }
 
 /// Traits required for a data type to be parseable
@@ -91,12 +94,12 @@ impl Default for DataParser {
     /// use fuel_data_parser::{DataParser, SerializationType};
     ///
     /// let parser = DataParser::default();
-    /// assert!(matches!(parser.serialization_type, SerializationType::Postcard));
+    /// assert!(matches!(parser.serialization_type, SerializationType::MessagePack));
     /// ```
     fn default() -> Self {
         Self {
             compression_strategy: DEFAULT_COMPRESSION_STRATEGY.clone(),
-            serialization_type: SerializationType::Postcard,
+            serialization_type: SerializationType::MessagePack,
         }
     }
 }
@@ -217,6 +220,8 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
             SerializationType::Json => serde_json::to_vec(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Json(e))),
+            SerializationType::MessagePack => rmp_serde::to_vec(&raw_data)
+                .map_err(|e| Error::Serde(SerdeError::MessagePackEncode(e))),
         }
     }
 
@@ -283,6 +288,8 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
             SerializationType::Json => serde_json::from_slice(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Json(e))),
+            SerializationType::MessagePack => rmp_serde::from_slice(raw_data)
+                .map_err(|e| Error::Serde(SerdeError::MessagePackDecode(e))),
         }
     }
 }
@@ -316,6 +323,7 @@ mod tests {
         for serialization_type in [
             SerializationType::Bincode,
             SerializationType::Postcard,
+            SerializationType::MessagePack,
             SerializationType::Json,
         ] {
             let parser = DataParser::default()
