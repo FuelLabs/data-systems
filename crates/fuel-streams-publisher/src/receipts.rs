@@ -4,43 +4,45 @@ use fuel_core_types::fuel_tx::Receipt;
 use fuel_streams_core::{
     prelude::*,
     receipts::*,
-    types::{IdentifierKind, Transaction, UniqueIdentifier},
+    types::IdentifierKind,
     Stream,
 };
 use tracing::info;
 
-use crate::{metrics::PublisherMetrics, publish_with_metrics, FuelCoreLike};
+use crate::{
+    build_subject_name,
+    metrics::PublisherMetrics,
+    publish_with_metrics,
+};
 
 pub async fn publish(
-    metrics: &Arc<PublisherMetrics>,
-    fuel_core: &dyn FuelCoreLike,
     receipts_stream: &Stream<Receipt>,
-    transactions: &[Transaction],
+    receipts: Option<Vec<Receipt>>,
+    tx_id: Bytes32,
+    chain_id: ChainId,
+    metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
+    predicate_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
-    let chain_id = fuel_core.chain_id();
+    if let Some(receipts) = receipts {
+        info!("NATS Publisher: Publishing Receipts for 0x#{tx_id}");
 
-    for transaction in transactions.iter() {
-        let tx_id = transaction.id(chain_id);
-        let receipts = fuel_core.get_receipts(&tx_id)?;
-
-        if let Some(receipts) = receipts {
-            info!("NATS Publisher: Publishing Receipts for 0x#{tx_id}");
-
-            for (index, receipt) in receipts.iter().enumerate() {
-                let (subjects, subjects_wildcard) =
-                    receipt_subjects(receipt, tx_id.into(), index);
-                for (index, subject) in subjects.iter().enumerate() {
-                    publish_with_metrics!(
-                        receipts_stream.publish(&**subject, receipt),
-                        metrics,
-                        chain_id,
-                        block_producer,
-                        subjects_wildcard
-                            .get(index)
-                            .expect("Wildcard must be provided")
-                    );
-                }
+        for (index, receipt) in receipts.iter().enumerate() {
+            let (subjects, subjects_wildcard) =
+                receipt_subjects(receipt, tx_id.clone(), index);
+            for (index, subject) in subjects.iter().enumerate() {
+                publish_with_metrics!(
+                    receipts_stream.publish_raw(
+                        &build_subject_name(&predicate_tag, &**subject),
+                        receipt
+                    ),
+                    metrics,
+                    chain_id,
+                    block_producer,
+                    subjects_wildcard
+                        .get(index)
+                        .expect("Wildcard must be provided")
+                );
             }
         }
     }
