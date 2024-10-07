@@ -3,6 +3,7 @@ pub mod cli;
 mod inputs;
 mod logs;
 mod outputs;
+pub mod predicates;
 mod publisher;
 mod receipts;
 mod transactions;
@@ -17,4 +18,16 @@ pub mod state;
 pub mod system;
 
 pub use fuel_core::{FuelCore, FuelCoreLike};
+use fuel_streams_core::prelude::*;
 pub use publisher::{Publisher, Streams};
+
+fn build_subject_name(
+    predicate_tag: &Option<Bytes32>,
+    subject: &dyn IntoSubject,
+) -> String {
+    let subject_name = subject.parse();
+    match predicate_tag {
+        Some(tag) => format!("predicates.{tag}.{subject_name}"),
+        None => subject_name,
+    }
+}
