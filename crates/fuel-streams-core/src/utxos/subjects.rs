@@ -16,7 +16,7 @@ use super::{types::UtxoType, MessageId};
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject {
-///     tx_id: Some(Bytes32::from([1u8; 32]).into()),
+///     hash: Some(MessageId::from([1u8; 32])),
 ///     utxo_type: Some(UtxoType::Message),
 /// };
 /// assert_eq!(
@@ -40,11 +40,10 @@ use super::{types::UtxoType, MessageId};
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = UtxosSubject::wildcard(
+///     Some(MessageId::from([1u8; 32])),
 ///     None,
-///     Some(Bytes32::from([1u8; 32]).into()),
-///     Some(UtxoType::Message),
 /// );
-/// assert_eq!(wildcard, "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101");
+/// assert_eq!(wildcard, "utxos.*.0x0101010101010101010101010101010101010101010101010101010101010101");
 /// ```
 ///
 /// Using the builder pattern:
@@ -54,7 +53,7 @@ use super::{types::UtxoType, MessageId};
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject::new()
-///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
+///     .with_hash(Some(MessageId::from([1u8; 32])))
 ///     .with_utxo_type(Some(UtxoType::Message));
 /// assert_eq!(subject.parse(), "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101");
 /// ```
@@ -62,7 +61,6 @@ use super::{types::UtxoType, MessageId};
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "utxos.>"]
 #[subject_format = "utxos.{utxo_type}.{hash}"]
-#[allow(clippy::too_many_arguments)]
 pub struct UtxosSubject {
     pub hash: Option<MessageId>,
     pub utxo_type: Option<UtxoType>,

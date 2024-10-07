@@ -3276,6 +3276,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_prometheus",
+ "sha2 0.10.8",
  "sysinfo",
  "thiserror",
  "tokio",

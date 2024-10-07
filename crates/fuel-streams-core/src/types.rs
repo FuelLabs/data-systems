@@ -12,6 +12,7 @@ pub use crate::{
     logs::types::*,
     nats::types::*,
     transactions::types::*,
+    utxos::types::*,
 };
 
 // ------------------------------------------------------------------------
