@@ -25,6 +25,10 @@ pub mod blocks {
     pub use fuel_streams_core::blocks::{subjects::*, types::*};
 }
 
+pub mod receipts {
+    pub use fuel_streams_core::receipts::subjects::*;
+}
+
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod prelude {
     pub use crate::{client::*, error::*, stream::*, types::*};
