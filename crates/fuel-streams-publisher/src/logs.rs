@@ -4,11 +4,7 @@ use fuel_core_types::fuel_tx::Receipt;
 use fuel_streams_core::{logs::LogsSubject, prelude::*, Stream};
 use tracing::info;
 
-use crate::{
-    build_subject_name,
-    metrics::PublisherMetrics,
-    publish_with_metrics,
-};
+use crate::{metrics::PublisherMetrics, prefix_subject, publish_with_metrics};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn publish(
@@ -19,7 +15,7 @@ pub async fn publish(
     block_height: BlockHeight,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     if let Some(receipts) = receipts {
         for (index, receipt) in receipts.iter().enumerate() {
@@ -35,7 +31,7 @@ pub async fn publish(
                     info!("NATS Publisher: Publishing Logs for 0x#{tx_id}");
                     publish_with_metrics!(
                         logs_stream.publish_raw(
-                            &build_subject_name(&predicate_tag, &subject),
+                            &prefix_subject(&subject_prefix, &subject),
                             &(receipt.clone()).into(),
                         ),
                         metrics,

@@ -4,8 +4,8 @@ use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
-use fuel_core_types::fuel_tx::Output;
-use fuel_streams::types::{Log, UniqueIdentifier};
+use fuel_core_types::fuel_tx::{field::ScriptData, Output};
+use fuel_streams::types::{ChainId, Log, UniqueIdentifier};
 use fuel_streams_core::{
     blocks::BlocksSubject,
     inputs::{
@@ -16,13 +16,17 @@ use fuel_streams_core::{
     },
     logs::LogsSubject,
     nats::{NatsClient, NatsClientOpts},
+    prelude::*,
     receipts::*,
-    transactions::{TransactionsSubject, WithTxInputs},
+    transactions::{TransactionExt, TransactionsSubject},
     types::{Address, Block, Input, Receipt, Transaction},
     utxos::{types::Utxo, UtxosSubject},
     Stream,
 };
-use futures_util::{future::try_join_all, FutureExt};
+use futures_util::{
+    future::{try_join_all, BoxFuture},
+    FutureExt,
+};
 use tokio::sync::broadcast::error::RecvError;
 use tracing::warn;
 
@@ -32,8 +36,8 @@ use crate::{
     logs,
     metrics::PublisherMetrics,
     outputs,
-    predicates,
     receipts,
+    sha256,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
     utxos,
@@ -341,82 +345,20 @@ impl Publisher {
             let tx_id = transaction.id(chain_id);
             let receipts = self.fuel_core.get_receipts(&tx_id)?;
 
-            publishing_tasks.push(
-                transactions::publish(
-                    &self.streams.transactions,
-                    (transaction_index, transaction),
-                    &*self.fuel_core,
-                    block_height.into(),
-                    &self.metrics,
-                    block_producer,
-                    None,
-                )
-                .boxed(),
-            );
-
-            publishing_tasks.push(
-                receipts::publish(
-                    &self.streams.receipts,
+            publishing_tasks.extend(
+                self.build_transaction_related_publishing_tasks(
+                    transaction_index,
+                    transaction,
+                    &(tx_id.into()),
                     receipts.clone(),
-                    tx_id.into(),
-                    *chain_id,
-                    &self.metrics,
-                    block_producer,
-                    None,
-                )
-                .boxed(),
-            );
-
-            publishing_tasks.push(
-                logs::publish(
-                    &self.streams.logs,
-                    receipts.clone(),
-                    tx_id.into(),
-                    chain_id,
                     block_height.into(),
-                    &self.metrics,
                     block_producer,
-                    None,
-                )
-                .boxed(),
-            );
-
-            publishing_tasks.push(
-                inputs::publish(
-                    &self.streams.inputs,
-                    transaction,
                     chain_id,
-                    &self.metrics,
-                    block_producer,
                     None,
-                )
-                .boxed(),
+                ),
             );
 
-            publishing_tasks.push(
-                outputs::publish(
-                    &self.streams.outputs,
-                    self.fuel_core.chain_id(),
-                    transaction,
-                    None,
-                )
-                .boxed(),
-            );
-
-            publishing_tasks.push(
-                utxos::publish(
-                    &self.metrics,
-                    &self.streams.utxos,
-                    &*self.fuel_core,
-                    transaction,
-                    tx_id.into(),
-                    chain_id,
-                    block_producer,
-                    None,
-                )
-                .boxed(),
-            );
-
+            // Publish predicates
             for input in transaction.inputs() {
                 if let Some((
                     predicate_bytecode,
@@ -424,85 +366,39 @@ impl Publisher {
                     _predicate_gas_used,
                 )) = input.predicate()
                 {
-                    let predicate_tag =
-                        Some(predicates::tag(predicate_bytecode));
-
-                    publishing_tasks.push(
-                        transactions::publish(
-                            &self.streams.transactions,
-                            (transaction_index, transaction),
-                            &*self.fuel_core,
-                            block.header().consensus().height.into(),
-                            &self.metrics,
-                            block_producer,
-                            predicate_tag.clone(),
-                        )
-                        .boxed(),
-                    );
-
-                    publishing_tasks.push(
-                        receipts::publish(
-                            &self.streams.receipts,
+                    let predicate_tag = sha256(predicate_bytecode);
+                    let predicate_publishing_tasks = self
+                        .build_transaction_related_publishing_tasks(
+                            transaction_index,
+                            transaction,
+                            &(tx_id.into()),
                             receipts.clone(),
-                            tx_id.into(),
-                            *chain_id,
-                            &self.metrics,
-                            block_producer,
-                            predicate_tag.clone(),
-                        )
-                        .boxed(),
-                    );
-
-                    publishing_tasks.push(
-                        logs::publish(
-                            &self.streams.logs,
-                            receipts.clone(),
-                            tx_id.into(),
-                            chain_id,
                             block_height.into(),
-                            &self.metrics,
                             block_producer,
-                            predicate_tag.clone(),
-                        )
-                        .boxed(),
-                    );
-
-                    publishing_tasks.push(
-                        inputs::publish(
-                            &self.streams.inputs,
-                            transaction,
                             chain_id,
-                            &self.metrics,
-                            block_producer,
-                            predicate_tag.clone(),
-                        )
-                        .boxed(),
-                    );
+                            Some(format!("predicates.{predicate_tag}")),
+                        );
 
-                    publishing_tasks.push(
-                        outputs::publish(
-                            &self.streams.outputs,
-                            self.fuel_core.chain_id(),
-                            transaction,
-                            predicate_tag.clone(),
-                        )
-                        .boxed(),
-                    );
-
-                    publishing_tasks.push(
-                        utxos::publish(
-                            &self.metrics,
-                            &self.streams.utxos,
-                            &*self.fuel_core,
-                            transaction,
-                            tx_id.into(),
-                            chain_id,
-                            block_producer,
-                            predicate_tag,
-                        )
-                        .boxed(),
-                    );
+                    publishing_tasks.extend(predicate_publishing_tasks);
                 }
+            }
+
+            // Publish scripts
+            if let Some(script) = transaction.as_script() {
+                let script_tag = sha256(script.script_data());
+                let script_publishing_tasks = self
+                    .build_transaction_related_publishing_tasks(
+                        transaction_index,
+                        transaction,
+                        &(tx_id.into()),
+                        receipts.clone(),
+                        block_height.into(),
+                        block_producer,
+                        chain_id,
+                        Some(format!("scripts.{script_tag}")),
+                    );
+
+                publishing_tasks.extend(script_publishing_tasks);
             }
         }
 
@@ -514,5 +410,79 @@ impl Publisher {
         );
 
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_transaction_related_publishing_tasks<'a>(
+        &'a self,
+        transaction_index: usize,
+        transaction: &'a Transaction,
+        tx_id: &Bytes32,
+        receipts: Option<Vec<Receipt>>,
+        block_height: BlockHeight,
+        block_producer: &'a Address,
+        chain_id: &'a ChainId,
+        subject_prefix: Option<String>,
+    ) -> Vec<BoxFuture<'a, anyhow::Result<()>>> {
+        vec![
+            transactions::publish(
+                &self.streams.transactions,
+                (transaction_index, transaction),
+                &*self.fuel_core,
+                block_height.clone(),
+                &self.metrics,
+                block_producer,
+                subject_prefix.clone(),
+            )
+            .boxed(),
+            receipts::publish(
+                &self.streams.receipts,
+                receipts.clone(),
+                tx_id.clone(),
+                *chain_id,
+                &self.metrics,
+                block_producer,
+                subject_prefix.clone(),
+            )
+            .boxed(),
+            logs::publish(
+                &self.streams.logs,
+                receipts.clone(),
+                tx_id.clone(),
+                chain_id,
+                block_height.clone(),
+                &self.metrics,
+                block_producer,
+                subject_prefix.clone(),
+            )
+            .boxed(),
+            inputs::publish(
+                &self.streams.inputs,
+                transaction,
+                chain_id,
+                &self.metrics,
+                block_producer,
+                subject_prefix.clone(),
+            )
+            .boxed(),
+            outputs::publish(
+                &self.streams.outputs,
+                chain_id,
+                transaction,
+                subject_prefix.clone(),
+            )
+            .boxed(),
+            utxos::publish(
+                &self.metrics,
+                &self.streams.utxos,
+                &*self.fuel_core,
+                transaction,
+                tx_id.clone(),
+                chain_id,
+                block_producer,
+                subject_prefix,
+            )
+            .boxed(),
+        ]
     }
 }
