@@ -3,6 +3,7 @@ services:
     profiles:
       - all
       - nats
+      - dev
     image: nats:latest
     container_name: nats
     restart: always
@@ -13,7 +14,7 @@ services:
       - ./nats.conf:/etc/nats/nats.conf
     command:
       - -m
-      - '8222'
+      - "8222"
       - --name=fuel-streams-publisher-server
       - --js
       - --config=/etc/nats/nats.conf
@@ -25,6 +26,7 @@ services:
     profiles:
       - all
       - fuel
+      - dev
     image: fuel-streams-publisher:latest
     container_name: fuel-streams-publisher
     restart: always
@@ -36,7 +38,7 @@ services:
       - NATS_URL=nats://nats:4222
       - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
-      - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
+      - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX
       - RELAYER_V2_LISTENING_CONTRACTS=0x01855B78C1f8868DE70e84507ec735983bf262dA
       - RELAYER_DA_DEPLOY_HEIGHT=5827607
     build:
@@ -69,12 +71,12 @@ services:
       - ./monitoring/prometheus/:/etc/prometheus/
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
     ports:
       - 9090:9090
 
@@ -90,9 +92,9 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
     ports:
@@ -131,8 +133,8 @@ services:
     volumes:
       - ./monitoring/alertmanager/:/etc/alertmanager/
     command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
+      - "--config.file=/etc/alertmanager/config.yml"
+      - "--storage.path=/alertmanager"
     depends_on:
       - prometheus
     ports:
@@ -144,7 +146,7 @@ services:
       - monitoring
     image: grafana/grafana:latest
     container_name: grafana
-    user: '472'
+    user: "472"
     restart: always
     environment:
       GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"

@@ -20,30 +20,41 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 
-FROM chef as planner
+FROM chef AS planner
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 
-FROM chef as builder
+FROM chef AS builder
 ARG DEBUG_SYMBOLS=false
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV CARGO_PROFILE_RELEASE_DEBUG=$DEBUG_SYMBOLS
 COPY --from=planner /build/recipe.json recipe.json
 RUN echo $CARGO_PROFILE_RELEASE_DEBUG
 # Build our project dependencies, not our application!
-RUN xx-cargo chef cook --release --no-default-features -p fuel-streams-publisher --recipe-path recipe.json
+RUN \
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/usr/local/cargo/registry/cache \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/build/target \
+    xx-cargo chef cook --release --no-default-features -p fuel-streams-publisher --recipe-path recipe.json
 # Up to this point, if our dependency tree stays the same,
 # all layers should be cached.
 COPY . .
-RUN xx-cargo build --release --no-default-features -p fuel-streams-publisher \
+# build application
+RUN \
+    --mount=type=cache,target=/usr/local/cargo/registry/index \
+    --mount=type=cache,target=/usr/local/cargo/registry/cache \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/build/target \
+    xx-cargo build --release --no-default-features -p fuel-streams-publisher \
     && xx-verify ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher \
-    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher ./target/release/fuel-streams-publisher \
-    && mv ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher.d ./target/release/fuel-streams-publisher.d
+    && cp ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher /root/fuel-streams-publisher \
+    && cp ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-publisher.d /root/fuel-streams-publisher.d
 
 # Stage 2: Run
-FROM ubuntu:22.04 as run
+FROM ubuntu:22.04 AS run
 
 ARG IP=0.0.0.0
 ARG PORT=4000
@@ -55,6 +66,7 @@ ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
 ARG SYNC_HEADER_BATCH_SIZE=100
 ARG RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
+ARG CHAIN_CONFIG_FOLDER=testnet
 
 ENV IP=$IP
 ENV PORT=$PORT
@@ -64,6 +76,7 @@ ENV POA_INSTANT=false
 ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
 ENV SERVICE_NAME=$SERVICE_NAME
 ENV SYNC_HEADER_BATCH_SIZE=$SYNC_HEADER_BATCH_SIZE
+ENV CHAIN_CONFIG_FOLDER=$CHAIN_CONFIG_FOLDER
 
 ENV KEYPAIR=
 ENV RELAYER=
@@ -81,10 +94,12 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/target/release/fuel-streams-publisher .
-COPY --from=builder /build/target/release/fuel-streams-publisher.d .
+COPY --from=builder /root/fuel-streams-publisher .
+COPY --from=builder /root/fuel-streams-publisher.d .
 
-COPY /docker/chain-config ./chain-config
+COPY /docker/chain-config/${CHAIN_CONFIG_FOLDER} ./chain-config
+EXPOSE ${PORT}
+EXPOSE ${P2P_PORT}
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758

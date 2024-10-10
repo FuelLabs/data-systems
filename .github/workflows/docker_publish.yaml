@@ -25,6 +25,11 @@ jobs:
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        network:
+          - testnet
+          - mainnet
     steps:
       - uses: actions/checkout@v4
 
@@ -34,5 +39,7 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-streams-publisher
+          image: ghcr.io/fuellabs/fuel-streams-publisher-${{ matrix.network }}
           dockerfile: docker/fuel-streams-publisher.Dockerfile
+          build-args: |-
+            CHAIN_CONFIG_FOLDER=${{ matrix.network }}
