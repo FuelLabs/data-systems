@@ -3,7 +3,6 @@ pub mod cli;
 mod inputs;
 mod logs;
 mod outputs;
-pub mod predicates;
 mod publisher;
 mod receipts;
 mod transactions;
@@ -20,14 +19,27 @@ pub mod system;
 pub use fuel_core::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
 pub use publisher::{Publisher, Streams};
+use sha2::{Digest, Sha256};
 
-fn build_subject_name(
-    predicate_tag: &Option<Bytes32>,
+fn prefix_subject(
+    prefix: &Option<String>,
     subject: &dyn IntoSubject,
 ) -> String {
-    let subject_name = subject.parse();
-    match predicate_tag {
-        Some(tag) => format!("predicates.{tag}.{subject_name}"),
-        None => subject_name,
+    let subject = subject.parse();
+    match prefix {
+        Some(prefix) => format!("{prefix}.{subject}"),
+        None => subject,
     }
+}
+
+pub fn sha256(bytes: &[u8]) -> Bytes32 {
+    let mut sha256 = Sha256::new();
+    sha256.update(bytes);
+    let bytes: [u8; 32] = sha256
+        .finalize()
+        .as_slice()
+        .try_into()
+        .expect("Must be 32 bytes");
+
+    bytes.into()
 }

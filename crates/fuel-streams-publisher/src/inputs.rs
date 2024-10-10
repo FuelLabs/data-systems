@@ -15,16 +15,12 @@ use fuel_streams_core::{
         InputsMessageSubject,
     },
     prelude::*,
-    transactions::WithTxInputs,
+    transactions::TransactionExt,
     types::{Bytes32, IdentifierKind, Input, Transaction},
     Stream,
 };
 
-use crate::{
-    build_subject_name,
-    metrics::PublisherMetrics,
-    publish_with_metrics,
-};
+use crate::{metrics::PublisherMetrics, prefix_subject, publish_with_metrics};
 
 fn coin_subject<T: CoinSpecification>(
     coin: &Coin<T>,
@@ -105,7 +101,7 @@ pub async fn publish(
     chain_id: &ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     let tx_id = transaction.id(chain_id);
 
@@ -175,7 +171,7 @@ pub async fn publish(
             InputSubject::Contract(by_id_subject, subject, payload) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &subject),
+                        &prefix_subject(&subject_prefix, &subject),
                         &payload
                     ),
                     metrics,
@@ -185,7 +181,7 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &by_id_subject),
+                        &prefix_subject(&subject_prefix, &by_id_subject),
                         &payload
                     ),
                     metrics,
@@ -197,7 +193,7 @@ pub async fn publish(
             InputSubject::Coin(by_id_subject, subject, payload) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &subject),
+                        &prefix_subject(&subject_prefix, &subject),
                         &payload
                     ),
                     metrics,
@@ -207,7 +203,7 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &by_id_subject),
+                        &prefix_subject(&subject_prefix, &by_id_subject),
                         &payload
                     ),
                     metrics,
@@ -224,7 +220,7 @@ pub async fn publish(
             ) => {
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &subject),
+                        &prefix_subject(&subject_prefix, &subject),
                         &payload
                     ),
                     metrics,
@@ -234,10 +230,7 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(
-                            &predicate_tag,
-                            &by_id_sender_subject
-                        ),
+                        &prefix_subject(&subject_prefix, &by_id_sender_subject),
                         &payload
                     ),
                     metrics,
@@ -247,8 +240,8 @@ pub async fn publish(
                 );
                 publish_with_metrics!(
                     stream.publish_raw(
-                        &build_subject_name(
-                            &predicate_tag,
+                        &prefix_subject(
+                            &subject_prefix,
                             &by_id_recipient_subject
                         ),
                         &payload

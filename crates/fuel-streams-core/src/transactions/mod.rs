@@ -16,15 +16,12 @@ impl Streamable for Transaction {
     ];
 }
 
-pub trait WithTxInputs {
+pub trait TransactionExt {
     fn inputs(&self) -> &[Input];
-}
-
-pub trait WithTxOutputs {
     fn outputs(&self) -> &Vec<Output>;
 }
 
-impl WithTxInputs for Transaction {
+impl TransactionExt for Transaction {
     fn inputs(&self) -> &[Input] {
         match self {
             Transaction::Mint(_) => &[],
@@ -35,9 +32,7 @@ impl WithTxInputs for Transaction {
             Transaction::Upgrade(tx) => tx.inputs(),
         }
     }
-}
 
-impl WithTxOutputs for Transaction {
     fn outputs(&self) -> &Vec<Output> {
         match self {
             Transaction::Mint(_) => {

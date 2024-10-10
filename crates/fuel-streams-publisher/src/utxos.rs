@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_streams_core::{
     prelude::*,
-    transactions::WithTxInputs,
+    transactions::TransactionExt,
     types::Transaction,
     utxos::{
         types::{Utxo, UtxoType},
@@ -14,8 +14,8 @@ use fuel_streams_core::{
 use fuel_tx::{input::AsField, UtxoId};
 
 use crate::{
-    build_subject_name,
     metrics::PublisherMetrics,
+    prefix_subject,
     publish_with_metrics,
     FuelCoreLike,
 };
@@ -154,7 +154,7 @@ pub async fn publish(
     tx_id: Bytes32,
     chain_id: &ChainId,
     block_producer: &fuel_streams_core::types::Address,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     let subjects = transaction
         .inputs()
@@ -167,10 +167,8 @@ pub async fn publish(
 
     for (subject, utxo) in subjects {
         publish_with_metrics!(
-            stream.publish_raw(
-                &build_subject_name(&predicate_tag, &subject),
-                &utxo
-            ),
+            stream
+                .publish_raw(&prefix_subject(&subject_prefix, &subject), &utxo),
             metrics,
             chain_id,
             block_producer,

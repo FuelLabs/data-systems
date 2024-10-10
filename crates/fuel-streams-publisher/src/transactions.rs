@@ -17,8 +17,8 @@ use fuel_streams_core::{
 use tracing::info;
 
 use crate::{
-    build_subject_name,
     metrics::PublisherMetrics,
+    prefix_subject,
     publish_with_metrics,
     FuelCoreLike,
 };
@@ -31,7 +31,7 @@ pub async fn publish(
     block_height: BlockHeight,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     let chain_id = fuel_core.chain_id();
     let off_chain_database = fuel_core.database().off_chain().latest_view()?;
@@ -54,7 +54,7 @@ pub async fn publish(
 
     publish_with_metrics!(
         transactions_stream.publish_raw(
-            &build_subject_name(&predicate_tag, &transactions_subject),
+            &prefix_subject(&subject_prefix, &transactions_subject),
             transaction,
         ),
         metrics,
