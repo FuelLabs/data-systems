@@ -25,21 +25,13 @@ jobs:
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request'
-    strategy:
-      matrix:
-        network:
-          - testnet
-          - mainnet
     steps:
       - uses: actions/checkout@v4
-
       - name: Build and push Fuel Core NATS image
         uses: ./.github/actions/docker-publish
         id: publish
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-streams-publisher-${{ matrix.network }}
+          image: ghcr.io/fuellabs/fuel-streams-publisher
           dockerfile: docker/fuel-streams-publisher.Dockerfile
-          build-args: |-
-            CHAIN_CONFIG_FOLDER=${{ matrix.network }}

@@ -66,7 +66,6 @@ ARG RELAYER_LOG_PAGE_SIZE=2000
 ARG SERVICE_NAME="NATS Publisher Node"
 ARG SYNC_HEADER_BATCH_SIZE=100
 ARG RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
-ARG CHAIN_CONFIG_FOLDER=testnet
 
 ENV IP=$IP
 ENV PORT=$PORT
@@ -76,7 +75,6 @@ ENV POA_INSTANT=false
 ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
 ENV SERVICE_NAME=$SERVICE_NAME
 ENV SYNC_HEADER_BATCH_SIZE=$SYNC_HEADER_BATCH_SIZE
-ENV CHAIN_CONFIG_FOLDER=$CHAIN_CONFIG_FOLDER
 
 ENV KEYPAIR=
 ENV RELAYER=
@@ -84,6 +82,7 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV NATS_URL=
 ENV RESERVED_NODE_DNS=
+ENV CHAIN_CONFIG=
 
 WORKDIR /usr/src
 
@@ -97,7 +96,7 @@ RUN apt-get update -y \
 COPY --from=builder /root/fuel-streams-publisher .
 COPY --from=builder /root/fuel-streams-publisher.d .
 
-COPY /docker/chain-config/${CHAIN_CONFIG_FOLDER} ./chain-config
+COPY /docker/chain-config ./chain-config
 EXPOSE ${PORT}
 EXPOSE ${P2P_PORT}
 
@@ -114,7 +113,7 @@ CMD exec ./fuel-streams-publisher \
     --db-path "${DB_PATH}" \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
-    --snapshot ./chain-config \
+    --snapshot ./chain-config/${CHAIN_CONFIG} \
     --enable-p2p \
     --reserved-nodes $RESERVED_NODE_DNS \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
