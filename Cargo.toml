@@ -25,17 +25,17 @@ async-nats = "0.37.0"
 async-trait = "0.1.83"
 bytes = "1.7.2"
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.19", features = ["derive", "env"] }
+clap = { version = "4.5.20", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2.5"
 futures = "0.3.31"
-fuel-core-bin = { version = "0.37", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.37", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.37" }
-fuel-core-importer = { version = "0.37" }
-fuel-core-storage = { version = "0.37" }
-fuel-core-types = { version = "0.37", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.37"
+fuel-core-bin = { version = "0.38", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.38", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.38" }
+fuel-core-importer = { version = "0.38" }
+fuel-core-storage = { version = "0.38" }
+fuel-core-types = { version = "0.38", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.38"
 futures-util = "0.3.31"
 pretty_assertions = "1.4.1"
 rand = "0.8"
