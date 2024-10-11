@@ -9,11 +9,7 @@ use fuel_streams_core::{
 };
 use tracing::info;
 
-use crate::{
-    build_subject_name,
-    metrics::PublisherMetrics,
-    publish_with_metrics,
-};
+use crate::{metrics::PublisherMetrics, prefix_subject, publish_with_metrics};
 
 pub async fn publish(
     receipts_stream: &Stream<Receipt>,
@@ -22,7 +18,7 @@ pub async fn publish(
     chain_id: ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     if let Some(receipts) = receipts {
         info!("NATS Publisher: Publishing Receipts for 0x#{tx_id}");
@@ -33,7 +29,7 @@ pub async fn publish(
             for (index, subject) in subjects.iter().enumerate() {
                 publish_with_metrics!(
                     receipts_stream.publish_raw(
-                        &build_subject_name(&predicate_tag, &**subject),
+                        &prefix_subject(&subject_prefix, &**subject),
                         receipt
                     ),
                     metrics,

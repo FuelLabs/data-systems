@@ -9,18 +9,18 @@ use fuel_streams_core::{
         OutputsVariableSubject,
     },
     prelude::*,
-    transactions::{WithTxInputs, WithTxOutputs},
+    transactions::TransactionExt,
     types::{ChainId, IdentifierKind, Transaction},
     Stream,
 };
 
-use crate::build_subject_name;
+use crate::prefix_subject;
 
 pub async fn publish(
     stream: &Stream<fuel_core_types::fuel_tx::Output>,
     chain_id: &ChainId,
     transaction: &Transaction,
-    predicate_tag: Option<Bytes32>,
+    subject_prefix: Option<String>,
 ) -> anyhow::Result<()> {
     let tx_id = transaction.id(chain_id);
     let outputs = transaction.outputs();
@@ -94,12 +94,11 @@ pub async fn publish(
             ),
         };
 
-        let subject_name = build_subject_name(&predicate_tag, &*subject);
-        let by_id_subject_name =
-            build_subject_name(&predicate_tag, &by_id_subject);
+        let subject = prefix_subject(&subject_prefix, &*subject);
+        let by_id_subject = prefix_subject(&subject_prefix, &by_id_subject);
 
-        stream.publish_raw(&subject_name, output).await?;
-        stream.publish_raw(&by_id_subject_name, output).await?;
+        stream.publish_raw(&subject, output).await?;
+        stream.publish_raw(&by_id_subject, output).await?;
     }
 
     Ok(())
