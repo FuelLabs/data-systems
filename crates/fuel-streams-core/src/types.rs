@@ -169,6 +169,7 @@ pub enum IdentifierKind {
     Address,
     ContractID,
     AssetID,
+    TransactionID,
 }
 
 impl std::fmt::Display for IdentifierKind {
@@ -177,6 +178,7 @@ impl std::fmt::Display for IdentifierKind {
             IdentifierKind::Address => "address",
             IdentifierKind::ContractID => "contract_id",
             IdentifierKind::AssetID => "asset_id",
+            IdentifierKind::TransactionID => "transaction_id",
         };
         write!(f, "{value}")
     }

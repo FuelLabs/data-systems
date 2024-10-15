@@ -50,6 +50,10 @@ pub async fn publish(
         .with_block_height(Some(block_height))
         .with_tx_index(Some(transaction_index));
 
+    let transactions_by_id_subject = TransactionsByIdSubject::new()
+        .with_id_kind(Some(IdentifierKind::TransactionID))
+        .with_id_value(Some((*tx_id).into()));
+
     info!("NATS Publisher: Publishing Transaction 0x#{tx_id}");
 
     publish_with_metrics!(
@@ -61,6 +65,17 @@ pub async fn publish(
         chain_id,
         block_producer,
         TransactionsSubject::WILDCARD
+    );
+
+    publish_with_metrics!(
+        transactions_stream.publish_raw(
+            &prefix_subject(&subject_prefix, &transactions_by_id_subject),
+            transaction,
+        ),
+        metrics,
+        chain_id,
+        block_producer,
+        TransactionsByIdSubject::WILDCARD
     );
 
     Ok(())
