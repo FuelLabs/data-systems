@@ -10,5 +10,5 @@ pub enum Error {
     StreamError(#[from] crate::stream::StreamError),
 
     /// Consuming messages error
-    MessagesError(#[from] crate::core::nats::types::MessagesError),
+    MessagesError(#[from] fuel_streams_core::types::MessagesError),
 }

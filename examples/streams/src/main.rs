@@ -13,24 +13,12 @@
 
 use fuel_core_types::fuel_tx::{ContractId, Receipt};
 use fuel_streams::{
-    blocks::BlocksSubject,
-    core::{inputs::InputsByIdSubject, prelude::SubjectBuildable},
-    prelude::*,
-    receipts::{
-        ReceiptsBurnSubject,
-        ReceiptsByIdSubject,
-        ReceiptsCallSubject,
-        ReceiptsLogDataSubject,
-        ReceiptsLogSubject,
-        ReceiptsMintSubject,
-        ReceiptsPanicSubject,
-        ReceiptsReturnDataSubject,
-        ReceiptsReturnSubject,
-        ReceiptsRevertSubject,
-        ReceiptsTransferOutSubject,
-        ReceiptsTransferSubject,
-    },
-    transactions::{TransactionsByIdSubject, TransactionsSubject},
+    client::Client,
+    subjects::*,
+    types::*,
+    Filter,
+    StreamConfig,
+    StreamEncoder,
 };
 use futures::{future::try_join_all, StreamExt};
 

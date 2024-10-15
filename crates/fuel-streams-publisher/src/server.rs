@@ -95,7 +95,7 @@ mod tests {
         .unwrap();
         assert!(state.nats_client.is_connected());
 
-        let mut app = test::init_service(
+        let app = test::init_service(
             App::new().app_data(web::Data::new(state.clone())).route(
                 "/health",
                 web::get().to(|state: web::Data<SharedState>| async move {
@@ -113,13 +113,12 @@ mod tests {
         tokio::time::sleep(uptime).await;
 
         let req = test::TestRequest::get().uri("/health").to_request();
-
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
 
         assert_eq!(resp.status(), http::StatusCode::OK);
 
         let result: HealthResponse = test::read_body_json(resp).await;
         assert!(result.uptime >= uptime.as_secs());
-        assert!(result.streams_info.len() > 0);
+        assert!(!result.streams_info.is_empty());
     }
 }

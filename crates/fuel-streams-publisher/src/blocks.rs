@@ -2,12 +2,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use fuel_core::database::database_description::DatabaseHeight;
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    prelude::*,
-    types::{Address, Block, BlockHeight, Transaction},
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{metrics::PublisherMetrics, publish_with_metrics, FuelCoreLike};

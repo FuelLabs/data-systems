@@ -1,4 +1,6 @@
-use std::{fmt::Debug, pin::Pin};
+use std::fmt::Debug;
+#[cfg(any(test, feature = "test-helpers"))]
+use std::pin::Pin;
 
 use async_nats::{
     jetstream::{

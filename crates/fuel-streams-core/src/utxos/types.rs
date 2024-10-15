@@ -8,13 +8,6 @@ use fuel_core_types::{
     },
     fuel_types::Nonce,
 };
-// ------------------------------------------------------------------------
-// Utxos
-// ------------------------------------------------------------------------
-pub use fuel_core_types::{
-    fuel_tx::{Receipt, Transaction, UniqueIdentifier},
-    services::txpool::TransactionStatus as FuelCoreTransactionStatus,
-};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

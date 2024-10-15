@@ -7,17 +7,10 @@ use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::{
     blockchain::SealedBlock,
-    fuel_tx::{Address, AssetId, Bytes32},
+    fuel_tx::{Address, AssetId, Bytes32, ContractId},
 };
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    logs::LogsSubject,
-    nats::{NatsClient, NatsClientOpts},
-    prelude::*,
-    types::ImportResult,
-};
+use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{FuelCoreLike, Publisher};
-use fuel_tx::ContractId;
 use futures::StreamExt;
 use tokio::sync::{broadcast, broadcast::Receiver};
 

@@ -1,22 +1,13 @@
 use std::sync::Arc;
 
 use fuel_core_storage::transactional::AtomicView;
-use fuel_streams_core::{
-    prelude::*,
-    transactions::TransactionExt,
-    types::Transaction,
-    utxos::{
-        types::{Utxo, UtxoType},
-        UtxosSubject,
-    },
-    Stream,
-};
-use fuel_tx::{input::AsField, UtxoId};
+use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
+    maybe_include_predicate_and_script_subjects,
     metrics::PublisherMetrics,
-    prefix_subject,
-    publish_with_metrics,
+    publish_all,
     FuelCoreLike,
 };
 
@@ -154,9 +145,10 @@ pub async fn publish(
     tx_id: Bytes32,
     chain_id: &ChainId,
     block_producer: &fuel_streams_core::types::Address,
-    subject_prefix: Option<String>,
+    predicate_tag: Option<Bytes32>,
+    script_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
-    let subjects = transaction
+    let subjects_and_payloads = transaction
         .inputs()
         .iter()
         .filter_map(|input| {
@@ -165,15 +157,18 @@ pub async fn publish(
         })
         .collect::<Vec<(UtxosSubject, Utxo)>>();
 
-    for (subject, utxo) in subjects {
-        publish_with_metrics!(
-            stream
-                .publish_raw(&prefix_subject(&subject_prefix, &subject), &utxo),
-            metrics,
-            chain_id,
-            block_producer,
-            UtxosSubject::WILDCARD
+    for (subject, utxo) in subjects_and_payloads {
+        let mut subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
+            vec![(subject.boxed(), UtxosSubject::WILDCARD)];
+
+        maybe_include_predicate_and_script_subjects(
+            &mut subjects,
+            &predicate_tag,
+            &script_tag,
         );
+
+        publish_all(stream, subjects, &utxo, metrics, chain_id, block_producer)
+            .await;
     }
 
     Ok(())

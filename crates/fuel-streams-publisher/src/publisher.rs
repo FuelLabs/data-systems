@@ -6,23 +6,7 @@ use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::{field::ScriptData, Output};
 use fuel_streams::types::{ChainId, Log, UniqueIdentifier};
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    inputs::{
-        InputsByIdSubject,
-        InputsCoinSubject,
-        InputsContractSubject,
-        InputsMessageSubject,
-    },
-    logs::LogsSubject,
-    nats::{NatsClient, NatsClientOpts},
-    prelude::*,
-    receipts::*,
-    transactions::{TransactionExt, TransactionsSubject},
-    types::{Address, Block, Input, Receipt, Transaction},
-    utxos::{types::Utxo, UtxosSubject},
-    Stream,
-};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use futures_util::{
     future::{try_join_all, BoxFuture},
     FutureExt,
@@ -355,6 +339,7 @@ impl Publisher {
                     block_producer,
                     chain_id,
                     None,
+                    None,
                 ),
             );
 
@@ -376,7 +361,8 @@ impl Publisher {
                             block_height.into(),
                             block_producer,
                             chain_id,
-                            Some(format!("predicates.{predicate_tag}")),
+                            Some(predicate_tag),
+                            None,
                         );
 
                     publishing_tasks.extend(predicate_publishing_tasks);
@@ -395,7 +381,8 @@ impl Publisher {
                         block_height.into(),
                         block_producer,
                         chain_id,
-                        Some(format!("scripts.{script_tag}")),
+                        None,
+                        Some(script_tag),
                     );
 
                 publishing_tasks.extend(script_publishing_tasks);
@@ -422,7 +409,8 @@ impl Publisher {
         block_height: BlockHeight,
         block_producer: &'a Address,
         chain_id: &'a ChainId,
-        subject_prefix: Option<String>,
+        predicate_tag: Option<Bytes32>,
+        script_tag: Option<Bytes32>,
     ) -> Vec<BoxFuture<'a, anyhow::Result<()>>> {
         vec![
             transactions::publish(
@@ -432,7 +420,8 @@ impl Publisher {
                 block_height.clone(),
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             receipts::publish(
@@ -442,7 +431,8 @@ impl Publisher {
                 *chain_id,
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             logs::publish(
@@ -453,7 +443,8 @@ impl Publisher {
                 block_height.clone(),
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             inputs::publish(
@@ -462,14 +453,18 @@ impl Publisher {
                 chain_id,
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             outputs::publish(
                 &self.streams.outputs,
                 chain_id,
                 transaction,
-                subject_prefix.clone(),
+                &self.metrics,
+                block_producer,
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             utxos::publish(
@@ -480,7 +475,8 @@ impl Publisher {
                 tx_id.clone(),
                 chain_id,
                 block_producer,
-                subject_prefix,
+                predicate_tag,
+                script_tag,
             )
             .boxed(),
         ]

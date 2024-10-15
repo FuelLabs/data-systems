@@ -1,8 +1,9 @@
 use std::error::Error;
 
+use fuel_core_types::{fuel_tx, fuel_types};
 pub use fuel_core_types::{
-    fuel_tx,
-    fuel_types::{self, ChainId},
+    fuel_tx::UniqueIdentifier,
+    fuel_types::ChainId,
     services::block_importer::ImportResult,
 };
 
@@ -11,6 +12,8 @@ pub use crate::{
     inputs::types::*,
     logs::types::*,
     nats::types::*,
+    outputs::types::*,
+    receipts::types::*,
     transactions::types::*,
     utxos::types::*,
 };
@@ -169,6 +172,8 @@ pub enum IdentifierKind {
     Address,
     ContractID,
     AssetID,
+    PredicateID,
+    ScriptID,
 }
 
 impl std::fmt::Display for IdentifierKind {
@@ -177,6 +182,8 @@ impl std::fmt::Display for IdentifierKind {
             IdentifierKind::Address => "address",
             IdentifierKind::ContractID => "contract_id",
             IdentifierKind::AssetID => "asset_id",
+            IdentifierKind::PredicateID => "predicate_id",
+            IdentifierKind::ScriptID => "script_id",
         };
         write!(f, "{value}")
     }
