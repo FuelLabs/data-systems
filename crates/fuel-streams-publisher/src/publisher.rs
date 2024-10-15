@@ -355,6 +355,7 @@ impl Publisher {
                     block_producer,
                     chain_id,
                     None,
+                    None,
                 ),
             );
 
@@ -376,7 +377,8 @@ impl Publisher {
                             block_height.into(),
                             block_producer,
                             chain_id,
-                            Some(format!("predicates.{predicate_tag}")),
+                            Some(predicate_tag),
+                            None,
                         );
 
                     publishing_tasks.extend(predicate_publishing_tasks);
@@ -395,7 +397,8 @@ impl Publisher {
                         block_height.into(),
                         block_producer,
                         chain_id,
-                        Some(format!("scripts.{script_tag}")),
+                        None,
+                        Some(script_tag),
                     );
 
                 publishing_tasks.extend(script_publishing_tasks);
@@ -422,7 +425,8 @@ impl Publisher {
         block_height: BlockHeight,
         block_producer: &'a Address,
         chain_id: &'a ChainId,
-        subject_prefix: Option<String>,
+        predicate_tag: Option<Bytes32>,
+        script_tag: Option<Bytes32>,
     ) -> Vec<BoxFuture<'a, anyhow::Result<()>>> {
         vec![
             transactions::publish(
@@ -432,7 +436,8 @@ impl Publisher {
                 block_height.clone(),
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             receipts::publish(
@@ -442,7 +447,8 @@ impl Publisher {
                 *chain_id,
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             logs::publish(
@@ -453,7 +459,8 @@ impl Publisher {
                 block_height.clone(),
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             inputs::publish(
@@ -462,14 +469,18 @@ impl Publisher {
                 chain_id,
                 &self.metrics,
                 block_producer,
-                subject_prefix.clone(),
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             outputs::publish(
                 &self.streams.outputs,
                 chain_id,
                 transaction,
-                subject_prefix.clone(),
+                &self.metrics,
+                block_producer,
+                predicate_tag.clone(),
+                script_tag.clone(),
             )
             .boxed(),
             utxos::publish(
@@ -480,7 +491,8 @@ impl Publisher {
                 tx_id.clone(),
                 chain_id,
                 block_producer,
-                subject_prefix,
+                predicate_tag,
+                script_tag,
             )
             .boxed(),
         ]

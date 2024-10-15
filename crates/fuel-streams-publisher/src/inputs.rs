@@ -2,8 +2,13 @@ use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::{
     input::{
-        coin::{Coin, CoinSpecification},
-        message::{Message, MessageSpecification},
+        coin::{CoinPredicate, CoinSigned},
+        message::{
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
+            MessageDataSigned,
+        },
     },
     UniqueIdentifier,
 };
@@ -20,239 +25,129 @@ use fuel_streams_core::{
     Stream,
 };
 
-use crate::{metrics::PublisherMetrics, prefix_subject, publish_with_metrics};
+use crate::{
+    maybe_include_predicate_and_script_subjects,
+    metrics::PublisherMetrics,
+    publish_all,
+};
 
-fn coin_subject<T: CoinSpecification>(
-    coin: &Coin<T>,
-    tx_id: Bytes32,
-    index: usize,
-) -> (InputsByIdSubject, InputsCoinSubject) {
-    let owner = coin.owner;
-    let asset_id = coin.asset_id;
-    let subject = InputsCoinSubject::new()
-        .with_tx_id(Some(tx_id))
-        .with_index(Some(index))
-        .with_owner(Some(owner.into()))
-        .with_asset_id(Some(asset_id.into()));
-
-    let by_id = InputsByIdSubject::new()
-        .with_id_kind(Some(IdentifierKind::AssetID))
-        .with_id_value(Some(asset_id.into()));
-
-    (by_id, subject)
-}
-
-fn message_subject<T: MessageSpecification>(
-    message: &Message<T>,
-    tx_id: Bytes32,
-    index: usize,
-) -> (InputsByIdSubject, InputsByIdSubject, InputsMessageSubject) {
-    let sender = message.sender;
-    let recipient = message.recipient;
-    let subject = InputsMessageSubject::new()
-        .with_tx_id(Some(tx_id))
-        .with_index(Some(index))
-        .with_sender(Some(sender.into()))
-        .with_recipient(Some(recipient.into()));
-
-    let by_id_sender = InputsByIdSubject::new()
-        .with_id_kind(Some(IdentifierKind::Address))
-        .with_id_value(Some(message.sender.into()));
-
-    let by_id_recipient = InputsByIdSubject::new()
-        .with_id_kind(Some(IdentifierKind::Address))
-        .with_id_value(Some(message.recipient.into()));
-
-    (by_id_sender, by_id_recipient, subject)
-}
-
-fn contract_subject(
-    contract_id: fuel_core_types::fuel_tx::ContractId,
-    tx_id: Bytes32,
-    index: usize,
-) -> (InputsByIdSubject, InputsContractSubject) {
-    let subject = InputsContractSubject::new()
-        .with_tx_id(Some(tx_id))
-        .with_index(Some(index))
-        .with_contract_id(Some(contract_id.into()));
-
-    let by_id = InputsByIdSubject::new()
-        .with_id_kind(Some(IdentifierKind::ContractID))
-        .with_id_value(Some(contract_id.into()));
-
-    (by_id, subject)
-}
-
-#[derive(Debug, Clone)]
-enum InputSubject {
-    Contract(InputsByIdSubject, InputsContractSubject, Input),
-    Coin(InputsByIdSubject, InputsCoinSubject, Input),
-    Message(
-        InputsByIdSubject, // by sender
-        InputsByIdSubject, // by recipient
-        InputsMessageSubject,
-        Input,
-    ),
-}
-
+#[allow(clippy::too_many_arguments)]
 pub async fn publish(
     stream: &Stream<Input>,
     transaction: &Transaction,
     chain_id: &ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
-    subject_prefix: Option<String>,
+    predicate_tag: Option<Bytes32>,
+    script_tag: Option<Bytes32>,
 ) -> anyhow::Result<()> {
     let tx_id = transaction.id(chain_id);
 
-    let subjects = transaction
-        .inputs()
-        .iter()
-        .enumerate()
-        .map(|(index, input)| match input {
-            Input::Contract(contract) => {
-                let (by_id, subject) =
-                    contract_subject(contract.contract_id, tx_id.into(), index);
-                InputSubject::Contract(by_id, subject, input.to_owned())
-            }
-            Input::CoinSigned(coin) => {
-                let (by_id, subject) = coin_subject(coin, tx_id.into(), index);
-                InputSubject::Coin(by_id, subject, input.to_owned())
-            }
-            Input::CoinPredicate(coin) => {
-                let (by_id, subject) = coin_subject(coin, tx_id.into(), index);
-                InputSubject::Coin(by_id, subject, input.to_owned())
-            }
-            Input::MessageCoinSigned(message) => {
-                let (by_id_sender, by_id_recipient, subject) =
-                    message_subject(message, tx_id.into(), index);
-                InputSubject::Message(
-                    by_id_sender,
-                    by_id_recipient,
-                    subject,
-                    input.to_owned(),
-                )
-            }
-            Input::MessageCoinPredicate(message) => {
-                let (by_id_sender, by_id_recipient, subject) =
-                    message_subject(message, tx_id.into(), index);
-                InputSubject::Message(
-                    by_id_sender,
-                    by_id_recipient,
-                    subject,
-                    input.to_owned(),
-                )
-            }
-            Input::MessageDataSigned(message) => {
-                let (by_id_sender, by_id_recipient, subject) =
-                    message_subject(message, tx_id.into(), index);
-                InputSubject::Message(
-                    by_id_sender,
-                    by_id_recipient,
-                    subject,
-                    input.to_owned(),
-                )
-            }
-            Input::MessageDataPredicate(message) => {
-                let (by_id_sender, by_id_recipient, subject) =
-                    message_subject(message, tx_id.into(), index);
-                InputSubject::Message(
-                    by_id_sender,
-                    by_id_recipient,
-                    subject,
-                    input.to_owned(),
-                )
-            }
-        })
-        .collect::<Vec<InputSubject>>();
+    for (index, input) in transaction.inputs().iter().enumerate() {
+        let mut subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
+            match input {
+                Input::Contract(contract) => {
+                    let contract_id = contract.contract_id;
 
-    for subject_item in subjects {
-        match subject_item {
-            InputSubject::Contract(by_id_subject, subject, payload) => {
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsContractSubject::WILDCARD
-                );
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &by_id_subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsByIdSubject::WILDCARD
-                );
-            }
-            InputSubject::Coin(by_id_subject, subject, payload) => {
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsCoinSubject::WILDCARD
-                );
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &by_id_subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsByIdSubject::WILDCARD
-                );
-            }
-            InputSubject::Message(
-                by_id_sender_subject,
-                by_id_recipient_subject,
-                subject,
-                payload,
-            ) => {
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsMessageSubject::WILDCARD
-                );
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(&subject_prefix, &by_id_sender_subject),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsByIdSubject::WILDCARD
-                );
-                publish_with_metrics!(
-                    stream.publish_raw(
-                        &prefix_subject(
-                            &subject_prefix,
-                            &by_id_recipient_subject
+                    vec![
+                        (
+                            InputsContractSubject::new()
+                                .with_tx_id(Some(tx_id.into()))
+                                .with_index(Some(index))
+                                .with_contract_id(Some(contract_id.into()))
+                                .boxed(),
+                            InputsContractSubject::WILDCARD,
                         ),
-                        &payload
-                    ),
-                    metrics,
-                    chain_id,
-                    block_producer,
-                    InputsByIdSubject::WILDCARD
-                );
-            }
-        };
+                        (
+                            InputsByIdSubject::new()
+                                .with_id_kind(Some(IdentifierKind::ContractID))
+                                .with_id_value(Some(contract_id.into()))
+                                .boxed(),
+                            InputsByIdSubject::WILDCARD,
+                        ),
+                    ]
+                }
+                Input::CoinSigned(CoinSigned {
+                    owner, asset_id, ..
+                })
+                | Input::CoinPredicate(CoinPredicate {
+                    owner, asset_id, ..
+                }) => {
+                    vec![
+                        (
+                            InputsCoinSubject::new()
+                                .with_tx_id(Some(tx_id.into()))
+                                .with_index(Some(index))
+                                .with_owner(Some(owner.into()))
+                                .with_asset_id(Some(asset_id.into()))
+                                .boxed(),
+                            InputsCoinSubject::WILDCARD,
+                        ),
+                        (
+                            InputsByIdSubject::new()
+                                .with_id_kind(Some(IdentifierKind::AssetID))
+                                .with_id_value(Some((*asset_id).into()))
+                                .boxed(),
+                            InputsByIdSubject::WILDCARD,
+                        ),
+                    ]
+                }
+                Input::MessageCoinSigned(MessageCoinSigned {
+                    sender,
+                    recipient,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    sender,
+                    recipient,
+                    ..
+                })
+                | Input::MessageDataSigned(MessageDataSigned {
+                    sender,
+                    recipient,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    sender,
+                    recipient,
+                    ..
+                }) => {
+                    vec![
+                        (
+                            InputsMessageSubject::new()
+                                .with_tx_id(Some(tx_id.into()))
+                                .with_index(Some(index))
+                                .with_sender(Some(sender.into()))
+                                .with_recipient(Some(recipient.into()))
+                                .boxed(),
+                            InputsMessageSubject::WILDCARD,
+                        ),
+                        (
+                            InputsByIdSubject::new()
+                                .with_id_kind(Some(IdentifierKind::Address))
+                                .with_id_value(Some((*sender).into()))
+                                .boxed(),
+                            InputsByIdSubject::WILDCARD,
+                        ),
+                        (
+                            InputsByIdSubject::new()
+                                .with_id_kind(Some(IdentifierKind::Address))
+                                .with_id_value(Some((*recipient).into()))
+                                .boxed(),
+                            InputsByIdSubject::WILDCARD,
+                        ),
+                    ]
+                }
+            };
+
+        maybe_include_predicate_and_script_subjects(
+            &mut subjects,
+            &predicate_tag,
+            &script_tag,
+        );
+
+        publish_all(stream, subjects, input, metrics, chain_id, block_producer)
+            .await;
     }
 
     Ok(())
