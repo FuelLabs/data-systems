@@ -1,3 +1,15 @@
+## 0.0.11 (2024-10-15)
+
+### 🚀 Features
+
+-   Parallel publishing of multiple streams (optimization) (#240)
+-   Publish predicates (#243)
+-   Updated fuel-core and other deps (#247)
+-   Add an example of streaming contract events. DS-64 (#224)
+-   Publish scripts (#255)
+-   Upgraded fuel-core to v0.38 (#258)
+-   Upgraded fuel-core version to 0.40.0 (#262)
+
 ## 0.0.10 (2024-09-26)
 
 ### 🚀 Features

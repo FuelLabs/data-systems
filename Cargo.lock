@@ -860,7 +860,7 @@ checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
 name = "bench-consumers"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "criterion",
  "fuel-core-types 0.40.0",
@@ -3128,7 +3128,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "async-compression",
  "async-trait",
@@ -3223,7 +3223,7 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "displaydoc",
  "fuel-streams-core",
@@ -3234,7 +3234,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -3255,7 +3255,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-examples"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "fuel-core-types 0.40.0",
@@ -3266,14 +3266,14 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "subject-derive",
 ]
 
 [[package]]
 name = "fuel-streams-publisher"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "actix-cors",
  "actix-server",
@@ -3310,7 +3310,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-publisher-examples"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "dotenvy",
@@ -3457,7 +3457,7 @@ dependencies = [
 
 [[package]]
 name = "fuels-streams-client-examples"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "dotenvy",
@@ -5362,7 +5362,7 @@ dependencies = [
 
 [[package]]
 name = "nats-publisher"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -7504,7 +7504,7 @@ dependencies = [
 
 [[package]]
 name = "streams-tests"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7600,7 +7600,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "proc-macro2",
  "quote",
