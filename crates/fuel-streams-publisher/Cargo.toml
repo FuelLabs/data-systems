@@ -21,12 +21,12 @@ async-trait = { workspace = true }
 chrono = { version = "0.4.19" }
 clap = { workspace = true }
 derive_more = { version = "1.0.0", features = ["full"] }
-fuel-core = { workspace = true, features = ["test-helpers"] }
-fuel-core-bin = { workspace = true }
-fuel-core-importer = { workspace = true, features = ["test-helpers"] }
-fuel-core-services = { workspace = true }
-fuel-core-storage = { workspace = true }
-fuel-core-types = { workspace = true }
+fuel-core = { version = "0.38", features = ["test-helpers"] }
+fuel-core-bin = { version = "0.38" }
+fuel-core-importer = { version = "0.38", features = ["test-helpers"] }
+fuel-core-services = { version = "0.38" }
+fuel-core-storage = { version = "0.38" }
+fuel-core-types = { version = "0.38" }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures-util = "0.3.31"
