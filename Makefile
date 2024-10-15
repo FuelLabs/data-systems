@@ -127,7 +127,7 @@ build:
 	cargo build --package $(PACKAGE)
 
 test:
-	cargo nextest run --workspace --color always --locked
+	cargo test --workspace --color always --locked
 
 doc:
 	cargo doc --no-deps
