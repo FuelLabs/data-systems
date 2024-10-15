@@ -1,7 +1,6 @@
 use fuel_streams_macros::subject::{IntoSubject, Subject};
 
-use super::{AssetId, Bytes32, ContractId, IdentifierKind};
-use crate::prelude::Address;
+use crate::types::*;
 
 /// Represents a subject for input coins in the Fuel network.
 ///

@@ -1,17 +1,8 @@
 use std::sync::Arc;
 
 use fuel_core_storage::transactional::AtomicView;
-use fuel_streams_core::{
-    prelude::*,
-    transactions::TransactionExt,
-    types::Transaction,
-    utxos::{
-        types::{Utxo, UtxoType},
-        UtxosSubject,
-    },
-    Stream,
-};
-use fuel_tx::{input::AsField, UtxoId};
+use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
     maybe_include_predicate_and_script_subjects,

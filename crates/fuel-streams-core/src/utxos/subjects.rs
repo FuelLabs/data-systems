@@ -1,6 +1,6 @@
 use fuel_streams_macros::subject::{IntoSubject, Subject};
 
-use super::{types::UtxoType, MessageId};
+use crate::types::*;
 
 /// Represents a subject for utxos messages in the Fuel ecosystem.
 ///

@@ -12,18 +12,7 @@ use fuel_core_types::fuel_tx::{
     },
     UniqueIdentifier,
 };
-use fuel_streams_core::{
-    inputs::{
-        InputsByIdSubject,
-        InputsCoinSubject,
-        InputsContractSubject,
-        InputsMessageSubject,
-    },
-    prelude::*,
-    transactions::TransactionExt,
-    types::{Bytes32, IdentifierKind, Input, Transaction},
-    Stream,
-};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
     maybe_include_predicate_and_script_subjects,

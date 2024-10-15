@@ -1,20 +1,7 @@
 use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::{Output, UniqueIdentifier};
-use fuel_streams_core::{
-    outputs::{
-        OutputsByIdSubject,
-        OutputsChangeSubject,
-        OutputsCoinSubject,
-        OutputsContractCreatedSubject,
-        OutputsContractSubject,
-        OutputsVariableSubject,
-    },
-    prelude::*,
-    transactions::TransactionExt,
-    types::{ChainId, IdentifierKind, Transaction},
-    Stream,
-};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
     maybe_include_predicate_and_script_subjects,

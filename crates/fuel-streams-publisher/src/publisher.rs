@@ -6,23 +6,7 @@ use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::{field::ScriptData, Output};
 use fuel_streams::types::{ChainId, Log, UniqueIdentifier};
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    inputs::{
-        InputsByIdSubject,
-        InputsCoinSubject,
-        InputsContractSubject,
-        InputsMessageSubject,
-    },
-    logs::LogsSubject,
-    nats::{NatsClient, NatsClientOpts},
-    prelude::*,
-    receipts::*,
-    transactions::{TransactionExt, TransactionsSubject},
-    types::{Address, Block, Input, Receipt, Transaction},
-    utxos::{types::Utxo, UtxosSubject},
-    Stream,
-};
+use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use futures_util::{
     future::{try_join_all, BoxFuture},
     FutureExt,

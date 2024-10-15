@@ -1,12 +1,7 @@
 use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::Receipt;
-use fuel_streams_core::{
-    prelude::*,
-    receipts::*,
-    types::IdentifierKind,
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{

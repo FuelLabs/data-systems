@@ -2,18 +2,7 @@ use std::sync::Arc;
 
 use fuel_core_storage::transactional::AtomicView;
 use fuel_streams::types::Address;
-use fuel_streams_core::{
-    prelude::*,
-    transactions::TransactionsSubject,
-    types::{
-        BlockHeight,
-        Transaction,
-        TransactionKind,
-        TransactionStatus,
-        UniqueIdentifier,
-    },
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{

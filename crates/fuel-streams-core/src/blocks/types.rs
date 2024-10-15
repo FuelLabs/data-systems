@@ -1,9 +1,8 @@
 use core::fmt;
 
-// ------------------------------------------------------------------------
-// Block
-// ------------------------------------------------------------------------
-pub use fuel_core_types::blockchain::block::{Block, BlockV1};
+pub use fuel_core_types::blockchain::block::Block;
+#[cfg(any(test, feature = "test-helpers"))]
+use fuel_core_types::blockchain::block::BlockV1;
 use fuel_core_types::fuel_types;
 
 #[derive(Debug, Clone)]

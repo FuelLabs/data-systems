@@ -1,15 +1,15 @@
 mod blocks;
-pub mod cli;
 mod inputs;
 mod logs;
 mod outputs;
-mod publisher;
 mod receipts;
 mod transactions;
 mod utxos;
 
 mod fuel_core;
+mod publisher;
 
+pub mod cli;
 pub mod metrics;
 pub mod server;
 pub mod shutdown;
