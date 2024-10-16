@@ -29,13 +29,13 @@ clap = { version = "4.5.20", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2.5"
 futures = "0.3.31"
-fuel-core-bin = { version = "0.40.0", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.40.0", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.40.0" }
-fuel-core-importer = { version = "0.40.0" }
-fuel-core-storage = { version = "0.40.0" }
-fuel-core-types = { version = "0.40.0", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.40.0"
+fuel-core-bin = { version = "0.38.0", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.38.0", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.38.0" }
+fuel-core-importer = { version = "0.38.0" }
+fuel-core-storage = { version = "0.38.0" }
+fuel-core-types = { version = "0.38.0", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.38.0"
 futures-util = "0.3.31"
 pretty_assertions = "1.4.1"
 rand = "0.8"
