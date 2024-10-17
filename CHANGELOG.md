@@ -1,3 +1,13 @@
+## 0.0.12 (2024-10-17)
+
+### 🚀 Features
+
+-   Add initial indexer project with SurrealDB (#244)
+
+### 🐛 Fixes
+
+-   Rollback fuel-core version to 0.38
+
 ## 0.0.11 (2024-10-15)
 
 ### 🚀 Features
