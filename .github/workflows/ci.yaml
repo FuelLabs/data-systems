@@ -342,6 +342,7 @@ jobs:
           name: ${{ steps.artifact-name.outputs.value }}
           path: ${{ matrix.package }}-*
           if-no-files-found: error
+          retention-days: 30
 
   release:
     name: Create Release with Knope
