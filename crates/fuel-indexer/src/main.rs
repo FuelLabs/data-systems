@@ -75,11 +75,11 @@ async fn sync_blocks(
         let block = Block::decode(msg.payload.clone().into()).await;
         let height = *block.header().consensus().height;
         let id = height.to_string();
-        let thing_id = ("block".to_string(), id.clone());
+        let key = ("block".to_string(), id.clone());
         let record: Option<BlockRecord> = db
-            .upsert(thing_id.clone())
+            .upsert(key.clone())
             .content(BlockRecord {
-                id: thing_id.into(),
+                id: key.into(),
                 data: block,
             })
             .await?;
@@ -108,11 +108,11 @@ async fn sync_transactions(
         let transaction = Transaction::decode(msg.payload.clone().into()).await;
         let tx_id = transaction.id(&ChainId::default());
         let id = format!("0x{}", tx_id);
-        let thing_id = ("transaction".to_string(), id.clone());
+        let key = ("transaction".to_string(), id.clone());
         let record: Option<TransactionRecord> = db
-            .upsert(thing_id.clone())
+            .upsert(key.clone())
             .content(TransactionRecord {
-                id: thing_id.into(),
+                id: key.into(),
                 data: transaction,
             })
             .await?;
