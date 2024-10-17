@@ -22,10 +22,14 @@ jobs:
         run: |-
           get_date() {
             local days="$1"
-            if ! CUTOFF_DATE=$(date --date="${days} days ago" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null); then
-              CUTOFF_DATE=$(date -v-"${days}"d +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)
+            if CUTOFF_DATE=$(date --date="${days} days ago" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null); then
+              echo "$CUTOFF_DATE"
+            elif CUTOFF_DATE=$(date -v-"${days}"d +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null); then
+              echo "$CUTOFF_DATE"
+            else
+              echo "Error: Unable to calculate cutoff date" >&2
+              return 1
             fi
-            echo "$CUTOFF_DATE"
           }
 
           CUTOFF_DATE=$(get_date "$DAYS_TO_KEEP")
@@ -35,8 +39,7 @@ jobs:
           while true; do
             echo "Processing page $PAGE"
 
-            RESPONSE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts?per_page=100&page=$PAGE" 2>&1)
-            if [[ $? -ne 0 ]]; then
+            if ! RESPONSE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts?per_page=100&page=$PAGE" 2>&1); then
               echo "Error fetching artifacts: $RESPONSE"
               exit 1
             fi
@@ -49,16 +52,14 @@ jobs:
 
             ARTIFACTS=$(echo "$RESPONSE" | jq -r ".artifacts[] | select(.created_at < \"$CUTOFF_DATE\") | .id")
             for ARTIFACT_ID in $ARTIFACTS; do
-              ARTIFACT_INFO=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" 2>&1)
-              if [[ $? -ne 0 ]]; then
+              if ! ARTIFACT_INFO=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" 2>&1); then
                 echo "Error fetching artifact info for ID $ARTIFACT_ID: $ARTIFACT_INFO"
                 continue
               fi
 
               ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | jq -r '.name')
               echo "Deleting artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID)..."
-              DELETE_RESULT=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" -X DELETE 2>&1)
-              if [[ $? -ne 0 ]]; then
+              if ! DELETE_RESULT=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" -X DELETE 2>&1); then
                 echo "Error deleting artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID): $DELETE_RESULT"
               else
                 echo "Successfully deleted artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
