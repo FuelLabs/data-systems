@@ -25,7 +25,7 @@ fn bench_serialize(c: &mut Criterion) {
         .collect::<Vec<_>>();
 
     for (serialization_type, compression_strategy) in parametric_matrix {
-        let bench_name = format!("[{}]", serialization_type.to_string());
+        let bench_name = format!("[{}]", serialization_type);
 
         group.bench_function(bench_name, |b| {
             let data_parser = DataParser::default()

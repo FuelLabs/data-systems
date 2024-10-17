@@ -56,7 +56,7 @@ fn bench_decompress_deserialize(c: &mut Criterion) {
 
             b.to_async(&runtime).iter(|| async {
                 let deserialized_and_decompressed = data_parser
-                    .decode::<Block<Transaction>>(&serialized_and_compressed)
+                    .decode::<Block<Transaction>>(serialized_and_compressed)
                     .await
                     .expect("decompresison and deserialization");
 

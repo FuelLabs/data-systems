@@ -40,15 +40,15 @@ impl<
 {
 }
 
-/// `DataParser` is a utility struct for encoding (compressing & serializing)
-/// and decoding (decompressing & deserializing) data. It is useful for
+/// `DataParser` is a utility struct for encoding (serializing and optionally compressing)
+/// and decoding (deserializing and optionally decompressing) data. It is useful for
 /// optimizing memory usage and I/O bandwidth by applying different
-/// compression strategies and serialization formats.
+/// serialization formats and optional compression strategies.
 ///
 /// # Fields
 ///
-/// * `compression_strategy` - An `Arc` to a `CompressionStrategy` trait object
-///   that defines the method of data compression.
+/// * `compression_strategy` - An `Option<Arc<dyn CompressionStrategy>>` that defines
+///   the method of data compression. If `None`, no compression is applied.
 /// * `serialization_type` - An enum that specifies the serialization format
 ///   (e.g., Bincode, Postcard, JSON).
 ///
@@ -77,12 +77,12 @@ impl<
 /// ```
 #[derive(Clone)]
 pub struct DataParser {
-    compression_strategy: Arc<dyn CompressionStrategy>,
+    compression_strategy: Option<Arc<dyn CompressionStrategy>>,
     pub serialization_type: SerializationType,
 }
 
 impl Default for DataParser {
-    /// Provides a default instance of `DataParser` with default compression strategy
+    /// Provides a default instance of `DataParser` with no compression strategy
     /// and `SerializationType::Postcard`.
     ///
     /// # Examples
@@ -95,7 +95,7 @@ impl Default for DataParser {
     /// ```
     fn default() -> Self {
         Self {
-            compression_strategy: DEFAULT_COMPRESSION_STRATEGY.clone(),
+            compression_strategy: None,
             serialization_type: SerializationType::Postcard,
         }
     }
@@ -125,7 +125,7 @@ impl DataParser {
         mut self,
         compression_strategy: &Arc<dyn CompressionStrategy>,
     ) -> Self {
-        self.compression_strategy = compression_strategy.clone();
+        self.compression_strategy = Some(compression_strategy.clone());
         self
     }
 
@@ -155,7 +155,7 @@ impl DataParser {
         self
     }
 
-    /// Encodes the provided data by serializing and then compressing it.
+    /// Encodes the provided data by serializing and optionally compressing it.
     ///
     /// # Arguments
     ///
@@ -163,7 +163,7 @@ impl DataParser {
     ///
     /// # Returns
     ///
-    /// A `Result` containing either a `Vec<u8>` of the compressed, serialized data,
+    /// A `Result` containing either a `Vec<u8>` of the serialized (and optionally compressed) data,
     /// or an `Error` if encoding fails.
     ///
     /// # Examples
@@ -190,10 +190,10 @@ impl DataParser {
         data: &T,
     ) -> Result<Vec<u8>, Error> {
         let serialized_data = self.serialize(data).await?;
-        Ok(self
-            .compression_strategy
-            .compress(&serialized_data[..])
-            .await?)
+        Ok(match &self.compression_strategy {
+            Some(strategy) => strategy.compress(&serialized_data[..]).await?,
+            None => serialized_data,
+        })
     }
 
     /// Serializes the provided data according to the selected `SerializationType`.
@@ -220,11 +220,11 @@ impl DataParser {
         }
     }
 
-    /// Decodes the provided data by decompressing and then deserializing it.
+    /// Decodes the provided data by deserializing and optionally decompressing it.
     ///
     /// # Arguments
     ///
-    /// * `data` - A byte slice (`&[u8]`) representing the compressed, serialized data.
+    /// * `data` - A byte slice (`&[u8]`) representing the serialized (and optionally compressed) data.
     ///
     /// # Returns
     ///
@@ -255,11 +255,12 @@ impl DataParser {
         &self,
         data: &[u8],
     ) -> Result<T, Error> {
-        let decompressed_data =
-            self.compression_strategy.decompress(data).await?;
-        let deserialized_data =
-            self.deserialize(&decompressed_data[..]).await?;
-        Ok(deserialized_data)
+        let data = match &self.compression_strategy {
+            Some(strategy) => strategy.decompress(data).await?,
+            None => data.to_vec(),
+        };
+        let decoded_data = self.deserialize(&data[..]).await?;
+        Ok(decoded_data)
     }
 
     /// Deserializes the provided data according to the selected `SerializationType`.
