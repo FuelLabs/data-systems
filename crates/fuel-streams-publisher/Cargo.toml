@@ -12,15 +12,15 @@ rust-version = { workspace = true }
 publish = false
 
 [dependencies]
-actix-cors = "0.7.0"
-actix-server = "2.5.0"
-actix-web = "4.9.0"
+actix-cors = { workspace = true }
+actix-server = { workspace = true }
+actix-web = { workspace = true }
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-chrono = { version = "0.4.19" }
+chrono = { workspace = true }
 clap = { workspace = true }
-derive_more = { version = "1.0.0", features = ["full"] }
+derive_more = { version = "1.0", features = ["full"] }
 fuel-core = { workspace = true, features = ["test-helpers"] }
 fuel-core-bin = { workspace = true }
 fuel-core-importer = { workspace = true, features = ["test-helpers"] }
@@ -29,20 +29,20 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-futures-util = "0.3.31"
-num_cpus = "1.16.0"
+futures-util = { workspace = true }
+num_cpus = "1.16"
 parking_lot = { version = "0.12", features = ["serde"] }
-prometheus = { version = "0.13.4", features = ["process"] }
+prometheus = { version = "0.13", features = ["process"] }
 rand = { workspace = true }
 rust_decimal = { version = "1.13" }
 serde = { workspace = true }
-serde_prometheus = { version = "0.2.5" }
+serde_prometheus = { version = "0.2" }
 sha2 = { workspace = true }
-sysinfo = { version = "0.29.2" }
-thiserror = "1.0.64"
+sysinfo = { version = "0.29" }
+thiserror = "1.0"
 tokio = { workspace = true }
 tracing = { workspace = true }
-tracing-actix-web = "0.7"
+tracing-actix-web = { workspace = true }
 
 [dev-dependencies]
 

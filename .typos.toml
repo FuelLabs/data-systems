@@ -1,6 +1,7 @@
 [files]
 extend-exclude = [
     "crates/fuel-streams-publisher/README.md",
+    "crates/fuel-indexer/*",
     "docker/chain-config",
     "docker/monitoring",
     "helm",

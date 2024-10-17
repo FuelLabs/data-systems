@@ -11,7 +11,7 @@ description = "Fuel Data Systems Rust SDK client example."
 
 [dependencies]
 anyhow = { workspace = true }
-dotenvy = "0.15.7"
+dotenvy = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 

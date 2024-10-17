@@ -230,6 +230,20 @@ services:
     ports:
       - 8888:7777
 
+  surrealdb:
+    profiles:
+      - all
+      - indexer
+    image: surrealdb/surrealdb:latest
+    ports:
+      - "8002:8000"
+    command:
+      - start  # start the SurrealDB server
+      - --log=trace  # no idea what this does :(
+      - --user=root  # default user
+      - --pass=root  # default password
+    restart: always
+
 volumes:
   fuel-streams-publisher-db:
   prometheus_data:

@@ -5,13 +5,15 @@
 PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
+DOCKER_COMPOSE = docker compose -f docker/docker-compose.yml
+PROFILES = dev nats publisher monitoring indexer
 
+# Phony targets
+.PHONY: all install setup build clean lint fmt help test doc bench coverage audit \
+        $(foreach p,$(PROFILES),start/$(p) stop/$(p) restart/$(p) clean/$(p)) \
+        start stop restart clean/docker
 
-# Define the make command
-MAKE := make
-
-.PHONY: all build clean lint fmt help setup start stop restart clean/docker start/nats stop/nats restart/nats clean/nats start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core dev-watch fmt-cargo fmt-rust fmt-markdown fmt-yaml check lint-cargo lint-rust lint-clippy lint-markdown audit audit-fix-test audit-fix test doc bench
-
+# Default target
 all: build
 
 install:
@@ -34,25 +36,25 @@ setup: check-commands
 # ------------------------------------------------------------
 
 start: check-commands
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml up -d
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) up -d
 
 stop: check-commands
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) down
 
 restart: stop start
 
 clean/docker: stop
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down -v --rmi all --remove-orphans
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) down -v --rmi all --remove-orphans
 
-start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
-start/publisher stop/publisher restart/publisher clean/publisher: DOCKER_PROFILE = fuel
-start/monitoring stop/monitoring restart/monitoring clean/monitoring: DOCKER_PROFILE = monitoring
-start/dev stop/dev restart/dev clean/dev: DOCKER_PROFILE = dev
+define profile_rules
+start/$(1) stop/$(1) restart/$(1) clean/$(1): DOCKER_PROFILE = $(1)
+start/$(1): start
+stop/$(1): stop
+restart/$(1): restart
+clean/$(1): clean/docker
+endef
 
-start/nats start/publisher start/monitoring start/dev: start
-stop/nats stop/publisher stop/monitoring stop/dev: stop
-restart/nats restart/publisher restart/monitoring restart/dev: restart
-clean/nats clean/publisher clean/monitoring clean/dev: clean/docker
+$(foreach p,$(PROFILES),$(eval $(call profile_rules,$(p))))
 
 dev-watch:
 	cargo watch -- cargo run
@@ -127,7 +129,7 @@ build:
 	cargo build --package $(PACKAGE)
 
 test:
-	cargo test --workspace --color always --locked
+	cargo nextest run --workspace --color always --locked
 
 doc:
 	cargo doc --no-deps
@@ -145,17 +147,35 @@ bench:
 
 help:
 	@echo "Available commands:"
-	@echo "  install     - Install project dependencies"
-	@echo "  setup       - Run the setup script"
-	@echo "  start       - Start Docker containers"
-	@echo "  stop        - Stop Docker containers"
-	@echo "  restart     - Restart Docker containers"
-	@echo "  dev-watch   - Run the project in development mode with auto-reload"
-	@echo "  build       - Build the project"
-	@echo "  clean       - Clean Docker containers and images"
-	@echo "  fmt         - Format the code, Markdown, and YAML files"
-	@echo "  lint        - Perform linting checks on the code and Markdown files"
-	@echo "  audit       - Perform audit checks on Rust crates"
-	@echo "  test        - Run tests"
-	@echo "  doc         - Generate documentation"
-	@echo "  bench       - Run benchmarks"
+	@echo "  install           - Install project dependencies"
+	@echo "  setup             - Run the setup script"
+	@echo "  start             - Start Docker containers"
+	@echo "  stop              - Stop Docker containers"
+	@echo "  restart           - Restart Docker containers"
+	@echo "  dev-watch         - Run the project in development mode with auto-reload"
+	@echo "  build             - Build the project"
+	@echo "  clean             - Clean Docker containers and images"
+	@echo "  fmt               - Format the code, Markdown, and YAML files"
+	@echo "  lint              - Perform linting checks on the code and Markdown files"
+	@echo "  audit             - Perform audit checks on Rust crates"
+	@echo "  test              - Run tests"
+	@echo "  doc               - Generate documentation"
+	@echo "  bench             - Run benchmarks"
+	@echo ""
+	@echo "Docker service commands:"
+	@echo "  start/nats        - Start NATS Docker container"
+	@echo "  stop/nats         - Stop NATS Docker container"
+	@echo "  restart/nats      - Restart NATS Docker container"
+	@echo "  clean/nats        - Remove NATS Docker container and images"
+	@echo "  start/publisher   - Start Publisher Docker container"
+	@echo "  stop/publisher    - Stop Publisher Docker container"
+	@echo "  restart/publisher - Restart Publisher Docker container"
+	@echo "  clean/publisher   - Remove Publisher Docker container and images"
+	@echo "  start/monitoring  - Start Monitoring Docker containers"
+	@echo "  stop/monitoring   - Stop Monitoring Docker containers"
+	@echo "  restart/monitoring - Restart Monitoring Docker containers"
+	@echo "  clean/monitoring  - Remove Monitoring Docker containers and images"
+	@echo "  start/surrealdb   - Start SurrealDB Docker container"
+	@echo "  stop/surrealdb    - Stop SurrealDB Docker container"
+	@echo "  restart/surrealdb - Restart SurrealDB Docker container"
+	@echo "  clean/surrealdb   - Remove SurrealDB Docker container and images"
