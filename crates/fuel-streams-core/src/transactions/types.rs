@@ -2,12 +2,12 @@
 // Transaction
 // ------------------------------------------------------------------------
 pub use fuel_core_types::{
-    fuel_tx::{Receipt, Transaction, UniqueIdentifier},
+    fuel_tx::Transaction,
     services::txpool::TransactionStatus as FuelCoreTransactionStatus,
 };
 
 #[cfg(any(test, feature = "test-helpers"))]
-use crate::blocks::types::Block;
+use crate::types::*;
 
 #[derive(Debug, Clone)]
 #[cfg(any(test, feature = "test-helpers"))]

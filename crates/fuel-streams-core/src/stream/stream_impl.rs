@@ -1,4 +1,6 @@
-use std::{fmt::Debug, pin::Pin};
+use std::fmt::Debug;
+#[cfg(any(test, feature = "test-helpers"))]
+use std::pin::Pin;
 
 use async_nats::{
     jetstream::{
@@ -142,6 +144,15 @@ impl<S: Streamable> Stream<S> {
         payload: &S,
     ) -> Result<usize, StreamError> {
         let subject_name = &subject.parse();
+        self.publish_raw(subject_name, payload).await
+    }
+
+    /// Publish with subject name with no static guarantees of the subject
+    pub async fn publish_raw(
+        &self,
+        subject_name: &str,
+        payload: &S,
+    ) -> Result<usize, StreamError> {
         let data = payload.encode(subject_name).await;
         let data_size = data.len();
         let result = self.store.create(subject_name, data.into()).await;

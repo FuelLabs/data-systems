@@ -4,7 +4,7 @@ pub mod types;
 pub use subjects::*;
 use types::*;
 
-use crate::prelude::*;
+use crate::{StreamEncoder, Streamable};
 
 impl StreamEncoder for Log {}
 impl Streamable for Log {

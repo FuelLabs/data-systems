@@ -1,10 +1,12 @@
 pub mod subjects;
+mod transaction_ext;
 pub mod types;
 
 pub use subjects::*;
+pub use transaction_ext::*;
 use types::*;
 
-use crate::prelude::*;
+use crate::{StreamEncoder, Streamable};
 
 impl StreamEncoder for Transaction {}
 impl Streamable for Transaction {

@@ -5,12 +5,15 @@
 PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-07-28
+DOCKER_COMPOSE = docker compose -f docker/docker-compose.yml
+PROFILES = dev nats publisher monitoring indexer
 
-# Define the make command
-MAKE := make
+# Phony targets
+.PHONY: all install setup build clean lint fmt help test doc bench coverage audit \
+        $(foreach p,$(PROFILES),start/$(p) stop/$(p) restart/$(p) clean/$(p)) \
+        start stop restart clean/docker
 
-.PHONY: all build clean lint fmt help setup start stop restart clean/docker start/nats stop/nats restart/nats clean/nats start/fuel-core stop/fuel-core restart/fuel-core clean/fuel-core dev-watch fmt-cargo fmt-rust fmt-markdown fmt-yaml check lint-cargo lint-rust lint-clippy lint-markdown audit audit-fix-test audit-fix test doc bench
-
+# Default target
 all: build
 
 install:
@@ -33,25 +36,25 @@ setup: check-commands
 # ------------------------------------------------------------
 
 start: check-commands
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml up -d
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) up -d
 
 stop: check-commands
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) down
 
 restart: stop start
 
 clean/docker: stop
-	docker compose --profile $(DOCKER_PROFILE) -f docker/docker-compose.yml down -v --rmi all --remove-orphans
+	$(DOCKER_COMPOSE) --profile $(DOCKER_PROFILE) down -v --rmi all --remove-orphans
 
-start/nats stop/nats restart/nats clean/nats: DOCKER_PROFILE = nats
-start/publisher stop/publisher restart/publisher clean/publisher: DOCKER_PROFILE = fuel
-start/monitoring stop/monitoring restart/monitoring clean/monitoring: DOCKER_PROFILE = monitoring
-start/surrealdb stop/surrealdb restart/surrealdb clean/surrealdb: DOCKER_PROFILE = indexer
+define profile_rules
+start/$(1) stop/$(1) restart/$(1) clean/$(1): DOCKER_PROFILE = $(1)
+start/$(1): start
+stop/$(1): stop
+restart/$(1): restart
+clean/$(1): clean/docker
+endef
 
-start/nats start/publisher start/monitoring start/surrealdb: start
-stop/nats stop/publisher stop/monitoring stop/surrealdb: stop
-restart/nats restart/publisher restart/monitoring restart/surrealdb: restart
-clean/nats clean/publisher clean/monitoring clean/surrealdb: clean/docker
+$(foreach p,$(PROFILES),$(eval $(call profile_rules,$(p))))
 
 dev-watch:
 	cargo watch -- cargo run

@@ -3,28 +3,35 @@
 pub mod blocks;
 pub mod inputs;
 pub mod logs;
-pub mod nats;
 pub mod outputs;
 pub mod receipts;
-pub mod stream;
 pub mod transactions;
-pub mod types;
 pub mod utxos;
+
+pub mod nats;
+pub mod stream;
+pub mod types;
 
 pub use stream::*;
 
-pub mod prelude {
+pub mod subjects {
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{
         blocks::subjects::*,
         inputs::subjects::*,
-        nats::*,
+        logs::subjects::*,
         outputs::subjects::*,
-        stream::*,
+        receipts::subjects::*,
         transactions::subjects::*,
-        types::*,
+        utxos::subjects::*,
     };
+}
+
+pub mod prelude {
+    pub use fuel_streams_macros::subject::*;
+
+    pub use crate::{nats::*, stream::*, subjects::*, types::*};
 
     #[cfg(feature = "test-helpers")]
     pub static NATS_URL: &str = "localhost:4222";

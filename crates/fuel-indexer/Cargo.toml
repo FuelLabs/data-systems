@@ -15,5 +15,5 @@ dotenvy = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-surrealdb = "2.0.2"
+surrealdb = "2.0"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

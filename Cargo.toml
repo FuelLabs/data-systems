@@ -1,5 +1,6 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
+resolver = "2"
 members = [
     "benches/*",
     "crates/*",
@@ -7,7 +8,6 @@ members = [
     "examples/*",
     "tests",
 ]
-resolver = "2"
 
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]
@@ -16,43 +16,48 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.80.1"
-version = "0.0.10"
+rust-version = "1.81.0"
+version = "0.0.11"
 
 [workspace.dependencies]
+actix-cors = "0.7"
+actix-server = "2.5"
+actix-web = "4.9"
 anyhow = "1.0"
-async-nats = "0.37.0"
-async-trait = "0.1.82"
-bytes = "1.7.2"
-chrono = { version = "0.4.38", features = ["serde"] }
+async-nats = "0.37"
+async-trait = "0.1"
+bytes = "1.7"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
-displaydoc = "0.2.5"
+displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { version = "0.36", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.36", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.36" }
-fuel-core-importer = { version = "0.36" }
-fuel-core-storage = { version = "0.36" }
-fuel-core-types = { version = "0.36", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.36"
-futures-util = "0.3.30"
-pretty_assertions = "1.4.1"
+fuel-core-bin = { version = "0.38", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.38", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.38" }
+fuel-core-importer = { version = "0.38" }
+fuel-core-storage = { version = "0.38" }
+fuel-core-types = { version = "0.38", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.38"
+futures-util = "0.3"
+pretty_assertions = "1.4"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sha2 = "0.10"
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1.40", features = ["full"] }
-tracing = "0.1.40"
+tracing = "0.1"
+tracing-actix-web = "0.7"
 thiserror = "1.0"
 
 fuel-streams = { path = "crates/fuel-streams" }
-fuel-data-parser = { version = "0.0.10", path = "crates/fuel-data-parser" }
-fuel-streams-core = { version = "0.0.10", path = "crates/fuel-streams-core" }
-fuel-streams-publisher = { version = "0.0.10", path = "crates/fuel-streams-publisher" }
-fuel-streams-macros = { version = "0.0.10", path = "crates/fuel-streams-macros" }
-subject-derive = { version = "0.0.10", path = "crates/fuel-streams-macros/subject-derive" }
+fuel-data-parser = { version = "0.0.11", path = "crates/fuel-data-parser" }
+fuel-streams-core = { version = "0.0.11", path = "crates/fuel-streams-core" }
+fuel-streams-publisher = { version = "0.0.11", path = "crates/fuel-streams-publisher" }
+fuel-streams-macros = { version = "0.0.11", path = "crates/fuel-streams-macros" }
+subject-derive = { version = "0.0.11", path = "crates/fuel-streams-macros/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

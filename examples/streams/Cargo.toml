@@ -11,6 +11,7 @@ description = "Fuel Data Systems Rust SDK streams example."
 
 [dependencies]
 anyhow = { workspace = true }
+fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

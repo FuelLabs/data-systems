@@ -7,23 +7,36 @@ pub mod stream;
 pub use error::*;
 pub use stream::*;
 
-pub mod core {
-    pub use fuel_streams_core::*;
+pub mod subjects {
+    pub use fuel_streams_core::subjects::*;
 }
 
 pub mod types {
-    pub use fuel_streams_core::{nats::NatsClientOpts, types::*};
+    pub use fuel_streams_core::{
+        nats::{types::*, NatsClientOpts},
+        types::*,
+    };
 
     pub use crate::client::types::*;
 }
 
-pub mod transactions {
-    pub use fuel_streams_core::transactions::{subjects::*, types::*};
+macro_rules! export_module {
+    ($module:ident, $($submodule:ident),+) => {
+        pub mod $module {
+            $(
+                pub use fuel_streams_core::$module::$submodule::*;
+            )+
+        }
+    };
 }
 
-pub mod blocks {
-    pub use fuel_streams_core::blocks::{subjects::*, types::*};
-}
+export_module!(blocks, subjects, types);
+export_module!(inputs, subjects, types);
+export_module!(logs, subjects, types);
+export_module!(outputs, subjects, types);
+export_module!(receipts, subjects);
+export_module!(transactions, subjects, types);
+export_module!(utxos, subjects, types);
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod prelude {

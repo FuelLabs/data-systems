@@ -25,4 +25,4 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }

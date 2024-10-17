@@ -3,6 +3,7 @@ services:
     profiles:
       - all
       - nats
+      - dev
     image: nats:latest
     container_name: nats
     restart: always
@@ -25,6 +26,7 @@ services:
     profiles:
       - all
       - fuel
+      - dev
     image: fuel-streams-publisher:latest
     container_name: fuel-streams-publisher
     restart: always
@@ -36,9 +38,10 @@ services:
       - NATS_URL=nats://nats:4222
       - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
-      - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
+      - RESERVED_NODE_DNS=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX
       - RELAYER_V2_LISTENING_CONTRACTS=0x01855B78C1f8868DE70e84507ec735983bf262dA
       - RELAYER_DA_DEPLOY_HEIGHT=5827607
+      - CHAIN_CONFIG=testnet
     build:
       context: ..
       dockerfile: docker/fuel-streams-publisher.Dockerfile
