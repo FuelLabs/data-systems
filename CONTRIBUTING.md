@@ -7,7 +7,7 @@ This guide will show you how to run this project locally if you want to test or 
 Most projects under the umbrella of data systems are written in Rust, so we prefer using Rust tooling and community standards. Ensure you have the following tools installed:
 
 -   [Rust](https://www.rust-lang.org/tools/install) (latest stable version recommended)
--   [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-07-28)
+-   [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-10-18)
 -   [Make](https://www.gnu.org/software/make/)
 -   [Pre-commit](https://pre-commit.com/#install)
 -   [NodeJS](https://nodejs.org/en/download/)
@@ -129,7 +129,7 @@ If you encounter any issues while setting up or contributing to the project, her
 
 1. **Pre-commit hooks failing**: Ensure you've installed all the required dependencies and run `make setup`. If issues persist, try running `pre-commit run --all-files` to see detailed error messages.
 
-2. **Build failures**: Make sure you're using the latest stable Rust version and the correct nightly version. You can update Rust using `rustup update stable` and `rustup update nightly-2024-07-28`.
+2. **Build failures**: Make sure you're using the latest stable Rust version and the correct nightly version. You can update Rust using `rustup update stable` and `rustup update nightly-2024-10-18`.
 
 3. **Test failures**: If specific tests are failing, try running them in isolation to see if it's a concurrency issue. Use `RUST_BACKTRACE=1` to get more detailed error information.
 
