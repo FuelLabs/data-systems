@@ -1,13 +1,8 @@
 [package]
 name = "fuel-streams-examples"
-version = { workspace = true }
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
+version = "0.0.1"
 publish = false
-repository = { workspace = true }
-description = "Fuel Data Systems Rust SDK streams example."
+edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
@@ -16,4 +11,14 @@ fuel-streams = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
-[dev-dependencies]
+[[example]]
+name = "transactions"
+path = "transactions.rs"
+
+[[example]]
+name = "multiple-streams"
+path = "multiple-streams.rs"
+
+[[example]]
+name = "receipts"
+path = "receipts.rs"
