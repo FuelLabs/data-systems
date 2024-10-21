@@ -22,3 +22,7 @@ path = "multiple-streams.rs"
 [[example]]
 name = "receipts"
 path = "receipts.rs"
+
+[[example]]
+name = "outputs"
+path = "outputs.rs"
