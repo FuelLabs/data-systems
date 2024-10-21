@@ -26,3 +26,15 @@ path = "receipts.rs"
 [[example]]
 name = "outputs"
 path = "outputs.rs"
+
+[[example]]
+name = "utxos"
+path = "utxos.rs"
+
+[[example]]
+name = "inputs"
+path = "inputs.rs"
+
+[[example]]
+name = "logs"
+path = "logs.rs"
