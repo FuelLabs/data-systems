@@ -16,7 +16,8 @@ use fuel_streams::{prelude::*, receipts::*};
 use futures::StreamExt;
 
 /// The URL of the Fuel streaming service.
-const FUEL_STREAMING_SERVICE_URL: &str = "nats://fuel-streaming.testnet:4222";
+const FUEL_STREAMING_SERVICE_URL: &str =
+    "nats://fuel-streaming-service.fuel.sh:4222";
 
 /// The contract ID to stream the receipts for. For this example, we're using the contract ID of the https://thundernft.market/
 const CONTRACT_ID: &str =
@@ -49,19 +50,6 @@ async fn main() -> Result<()> {
 
     let contract_id: ContractId = CONTRACT_ID.into();
 
-    let fuel_contract_id: fuel_types::ContractId = contract_id.clone().into_inner();
-
-    println!("Contract ID: {}", contract_id);
-    println!("Fuel Contract ID: {:#x}", fuel_contract_id);
-
-    assert_eq!(contract_id.to_string(), format!("{:#x}", fuel_contract_id));
-
-    use std::str::FromStr;
-    let contract_id = ContractId::from("0x243ef4c2301f44eecbeaf1c39fee9379664b59a2e5b75317e8c7e7f26a25ed4d");
-    let fuel_contract_id = fuel_types::ContractId::from_str("0x243ef4c2301f44eecbeaf1c39fee9379664b59a2e5b75317e8c7e7f26a25ed4d").unwrap();
-
-    assert_eq!(contract_id.to_string(), format!("{:#x}", fuel_contract_id));
-
     // Create a new stream for receipts
     let mut receipt_stream =
         fuel_streams::Stream::<Receipt>::new(&client).await;
@@ -70,49 +58,49 @@ async fn main() -> Result<()> {
     // `ScriptResult` and `MessageOut`) that are associated with the specified contract ID.
     // It's a way to monitor all contract-related events such as calls, returns, logs, transfers,
     // mints, and burns.
-    // receipt_stream.with_filter(
-    //     ReceiptsBurnSubject::default()
-    //         .with_contract_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsCallSubject::default()
-    //         .with_from(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsReturnSubject::default()
-    //         .with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsReturnDataSubject::default()
-    //         .with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsPanicSubject::default()
-    //         .with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsRevertSubject::default()
-    //         .with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsLogSubject::default().with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsLogDataSubject::default()
-    //         .with_id(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsTransferSubject::default()
-    //         .with_from(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsTransferOutSubject::default()
-    //         .with_from(Some(contract_id.clone().into())),
-    // );
-    // receipt_stream.with_filter(
-    //     ReceiptsMintSubject::default()
-    //         .with_contract_id(Some(contract_id.clone().into())),
-    // );
+    receipt_stream.with_filter(
+        ReceiptsBurnSubject::default()
+            .with_contract_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsCallSubject::default()
+            .with_from(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsReturnSubject::default()
+            .with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsReturnDataSubject::default()
+            .with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsPanicSubject::default()
+            .with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsRevertSubject::default()
+            .with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsLogSubject::default().with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsLogDataSubject::default()
+            .with_id(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsTransferSubject::default()
+            .with_from(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsTransferOutSubject::default()
+            .with_from(Some(contract_id.clone().into())),
+    );
+    receipt_stream.with_filter(
+        ReceiptsMintSubject::default()
+            .with_contract_id(Some(contract_id.clone().into())),
+    );
 
     // Configure the stream to start from the first published receipt
     let config = StreamConfig {
@@ -120,14 +108,14 @@ async fn main() -> Result<()> {
     };
 
     // Subscribe to the receipt stream
-    let mut sub = receipt_stream.subscribe().await?;
+    let mut sub = receipt_stream.subscribe_with_config(config).await?;
 
     println!("Listening for receipts...");
 
     // Process incoming receipts
     while let Some(bytes) = sub.next().await {
         let message = bytes.unwrap();
-        let decoded_msg = Receipt::decode_raw(message).await;
+        let decoded_msg = Receipt::decode_raw(message.payload.to_vec()).await;
         let receipt = decoded_msg.payload;
         let receipt_subject = decoded_msg.subject;
         let receipt_published_at = decoded_msg.timestamp;
