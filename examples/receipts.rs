@@ -16,8 +16,7 @@ use fuel_streams::{prelude::*, receipts::*};
 use futures::StreamExt;
 
 /// The URL of the Fuel streaming service.
-const FUEL_STREAMING_SERVICE_URL: &str =
-    "nats://k8s-mainnet-natstcp-35fd892a43-eb55141aaea6c003.elb.us-east-1.amazonaws.com:4222";
+const FUEL_STREAMING_SERVICE_URL: &str = "nats://fuel-streaming.testnet:4222";
 
 /// The contract ID to stream the receipts for. For this example, we're using the contract ID of the https://thundernft.market/
 const CONTRACT_ID: &str =
