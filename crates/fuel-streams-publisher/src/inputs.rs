@@ -15,9 +15,10 @@ use fuel_core_types::fuel_tx::{
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
-    maybe_include_predicate_and_script_subjects,
+    identifiers::{add_predicate_subjects, add_script_subjects},
     metrics::PublisherMetrics,
     publish_all,
+    PublishPayload,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -129,14 +130,20 @@ pub async fn publish(
                 }
             };
 
-        maybe_include_predicate_and_script_subjects(
-            &mut subjects,
-            &predicate_tag,
-            &script_tag,
-        );
+        let predicate_tag = predicate_tag.clone();
+        let script_tag = script_tag.clone();
+        add_predicate_subjects::<Input>(&mut subjects, predicate_tag);
+        add_script_subjects::<Input>(&mut subjects, script_tag);
 
-        publish_all(stream, subjects, input, metrics, chain_id, block_producer)
-            .await;
+        publish_all(PublishPayload {
+            stream,
+            subjects,
+            payload: input,
+            metrics,
+            chain_id,
+            block_producer,
+        })
+        .await;
     }
 
     Ok(())

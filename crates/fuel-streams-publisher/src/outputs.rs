@@ -4,9 +4,10 @@ use fuel_core_types::fuel_tx::{Output, UniqueIdentifier};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 
 use crate::{
-    maybe_include_predicate_and_script_subjects,
+    identifiers::{add_predicate_subjects, add_script_subjects},
     metrics::PublisherMetrics,
     publish_all,
+    PublishPayload,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -127,20 +128,19 @@ pub async fn publish(
                 ],
             };
 
-        maybe_include_predicate_and_script_subjects(
-            &mut subjects,
-            &predicate_tag,
-            &script_tag,
-        );
+        let predicate_tag = predicate_tag.clone();
+        let script_tag = script_tag.clone();
+        add_predicate_subjects::<Output>(&mut subjects, predicate_tag);
+        add_script_subjects::<Output>(&mut subjects, script_tag);
 
-        publish_all(
+        publish_all(PublishPayload {
             stream,
             subjects,
-            output,
+            payload: output,
             metrics,
             chain_id,
             block_producer,
-        )
+        })
         .await;
     }
 

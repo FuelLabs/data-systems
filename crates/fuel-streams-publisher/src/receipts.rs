@@ -5,17 +5,18 @@ use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{
-    maybe_include_predicate_and_script_subjects,
+    identifiers::{add_predicate_subjects, add_script_subjects},
     metrics::PublisherMetrics,
     publish_all,
+    PublishPayload,
 };
 
 #[allow(clippy::too_many_arguments)]
 pub async fn publish(
-    receipts_stream: &Stream<Receipt>,
+    stream: &Stream<Receipt>,
     receipts: Option<Vec<Receipt>>,
     tx_id: Bytes32,
-    chain_id: ChainId,
+    chain_id: &ChainId,
     metrics: &Arc<PublisherMetrics>,
     block_producer: &Address,
     predicate_tag: Option<Bytes32>,
@@ -27,20 +28,19 @@ pub async fn publish(
         for (index, receipt) in receipts.iter().enumerate() {
             let mut subjects = receipt_subjects(receipt, tx_id.clone(), index);
 
-            maybe_include_predicate_and_script_subjects(
-                &mut subjects,
-                &predicate_tag,
-                &script_tag,
-            );
+            let predicate_tag = predicate_tag.clone();
+            let script_tag = script_tag.clone();
+            add_predicate_subjects::<Receipt>(&mut subjects, predicate_tag);
+            add_script_subjects::<Receipt>(&mut subjects, script_tag);
 
-            publish_all(
-                receipts_stream,
+            publish_all(PublishPayload {
+                stream,
                 subjects,
-                receipt,
+                payload: receipt,
                 metrics,
-                &chain_id,
+                chain_id,
                 block_producer,
-            )
+            })
             .await;
         }
     }

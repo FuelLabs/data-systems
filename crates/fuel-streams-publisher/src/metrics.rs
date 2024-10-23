@@ -155,6 +155,56 @@ impl PublisherMetrics {
     }
 }
 
+#[macro_export]
+macro_rules! publish_with_metrics {
+    ($async_func:expr, $metrics:expr, $chain_id:expr, $block_producer:expr, $wildcard:expr) => {{
+        match $async_func.await {
+            Ok(published_data_size) => {
+                // Update message size histogram
+                $metrics
+                    .message_size_histogram
+                    .with_label_values(&[
+                        &$chain_id.to_string(),
+                        &$block_producer.to_string(),
+                        $wildcard,
+                    ])
+                    .observe(published_data_size as f64);
+
+                // Increment total published messages
+                $metrics
+                    .total_published_messages
+                    .with_label_values(&[
+                        &$chain_id.to_string(),
+                        &$block_producer.to_string(),
+                    ])
+                    .inc();
+
+                // Increment throughput for the published messages
+                $metrics
+                    .published_messages_throughput
+                    .with_label_values(&[
+                        &$chain_id.to_string(),
+                        &$block_producer.to_string(),
+                        $wildcard,
+                    ])
+                    .inc();
+            }
+            Err(e) => {
+                // Collect error metrics
+                $metrics
+                    .error_rates
+                    .with_label_values(&[
+                        &$chain_id.to_string(),
+                        &$block_producer.to_string(),
+                        $wildcard,
+                        &e.to_string(),
+                    ])
+                    .inc();
+            }
+        }
+    }};
+}
+
 #[cfg(test)]
 #[cfg(feature = "test-helpers")]
 mod tests {
@@ -377,54 +427,4 @@ mod tests {
         assert!(output.contains("timeout"));
         assert!(output.contains("1"));
     }
-}
-
-#[macro_export]
-macro_rules! publish_with_metrics {
-    ($async_func:expr, $metrics:expr, $chain_id:expr, $block_producer:expr, $wildcard:expr) => {{
-        match $async_func.await {
-            Ok(published_data_size) => {
-                // Update message size histogram
-                $metrics
-                    .message_size_histogram
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                    ])
-                    .observe(published_data_size as f64);
-
-                // Increment total published messages
-                $metrics
-                    .total_published_messages
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                    ])
-                    .inc();
-
-                // Increment throughput for the published messages
-                $metrics
-                    .published_messages_throughput
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                    ])
-                    .inc();
-            }
-            Err(e) => {
-                // Collect error metrics
-                $metrics
-                    .error_rates
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                        &e.to_string(),
-                    ])
-                    .inc();
-            }
-        }
-    }};
 }

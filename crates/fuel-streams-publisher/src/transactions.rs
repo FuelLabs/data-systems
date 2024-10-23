@@ -6,15 +6,20 @@ use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{
-    maybe_include_predicate_and_script_subjects,
+    identifiers::{
+        add_predicate_subjects,
+        add_script_subjects,
+        IdSubjectsMutator,
+    },
     metrics::PublisherMetrics,
     publish_all,
     FuelCoreLike,
+    PublishPayload,
 };
 
 #[allow(clippy::too_many_arguments)]
 pub async fn publish(
-    transactions_stream: &Stream<Transaction>,
+    stream: &Stream<Transaction>,
     (transaction_index, transaction): (usize, &Transaction),
     fuel_core: &dyn FuelCoreLike,
     block_height: BlockHeight,
@@ -25,7 +30,6 @@ pub async fn publish(
 ) -> anyhow::Result<()> {
     let chain_id = fuel_core.chain_id();
     let off_chain_database = fuel_core.database().off_chain().latest_view()?;
-
     let tx_id = transaction.id(chain_id);
     let kind = TransactionKind::from(transaction.to_owned());
     let status: TransactionStatus = off_chain_database
@@ -44,22 +48,19 @@ pub async fn publish(
         TransactionsSubject::WILDCARD,
     )];
 
-    maybe_include_predicate_and_script_subjects(
-        &mut subjects,
-        &predicate_tag,
-        &script_tag,
-    );
+    add_predicate_subjects::<Transaction>(&mut subjects, predicate_tag);
+    add_script_subjects::<Transaction>(&mut subjects, script_tag);
 
     info!("NATS Publisher: Publishing Transaction 0x#{tx_id}");
 
-    publish_all(
-        transactions_stream,
+    publish_all(PublishPayload {
+        stream,
         subjects,
-        transaction,
+        payload: transaction,
         metrics,
         chain_id,
         block_producer,
-    )
+    })
     .await;
 
     Ok(())

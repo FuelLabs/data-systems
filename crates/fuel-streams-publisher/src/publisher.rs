@@ -428,7 +428,7 @@ impl Publisher {
                 &self.streams.receipts,
                 receipts.clone(),
                 tx_id.clone(),
-                *chain_id,
+                &*chain_id,
                 &self.metrics,
                 block_producer,
                 predicate_tag.clone(),
@@ -443,8 +443,6 @@ impl Publisher {
                 block_height.clone(),
                 &self.metrics,
                 block_producer,
-                predicate_tag.clone(),
-                script_tag.clone(),
             )
             .boxed(),
             inputs::publish(
@@ -475,8 +473,6 @@ impl Publisher {
                 tx_id.clone(),
                 chain_id,
                 block_producer,
-                predicate_tag,
-                script_tag,
             )
             .boxed(),
         ]
