@@ -1,0 +1,44 @@
+[package]
+name = "fuel-streams-examples"
+version = "0.0.1"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+fuel-core-types = { workspace = true }
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[[example]]
+name = "blocks"
+path = "blocks.rs"
+
+[[example]]
+name = "transactions"
+path = "transactions.rs"
+
+[[example]]
+name = "receipts"
+path = "receipts.rs"
+
+[[example]]
+name = "inputs"
+path = "inputs.rs"
+
+[[example]]
+name = "outputs"
+path = "outputs.rs"
+
+[[example]]
+name = "utxos"
+path = "utxos.rs"
+
+[[example]]
+name = "logs"
+path = "logs.rs"
+
+[[example]]
+name = "multiple-streams"
+path = "multiple-streams.rs"
