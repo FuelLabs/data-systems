@@ -10,6 +10,7 @@ mod fuel_core;
 mod publisher;
 
 pub mod cli;
+pub mod elastic;
 pub mod metrics;
 pub mod server;
 pub mod shutdown;

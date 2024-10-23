@@ -244,7 +244,48 @@ services:
       - --pass=root  # default password
     restart: always
 
+  elasticsearch:
+    profiles:
+      - all
+      - logging
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    env_file:
+      - ./../.env
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  kibana:
+    profiles:
+      - all
+      - logging
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: kibana
+    restart: always
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    env_file:
+      - ./../.env
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
 volumes:
   fuel-streams-publisher-db:
   prometheus_data:
   grafana_data:
+  es_data:
