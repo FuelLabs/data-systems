@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-examples"
-version = "0.0.11"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "fuel-core-types 0.38.0",
@@ -3611,19 +3611,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-actix-web",
-]
-
-[[package]]
-name = "fuel-streams-publisher-examples"
-version = "0.0.11"
-dependencies = [
- "anyhow",
- "dotenvy",
- "fuel-core",
- "fuel-core-bin",
- "fuel-streams",
- "fuel-streams-publisher",
- "tokio",
 ]
 
 [[package]]
@@ -3758,16 +3745,6 @@ dependencies = [
  "static_assertions",
  "strum 0.24.1",
  "tai64",
-]
-
-[[package]]
-name = "fuels-streams-client-examples"
-version = "0.0.11"
-dependencies = [
- "anyhow",
- "dotenvy",
- "fuel-streams",
- "tokio",
 ]
 
 [[package]]
@@ -8174,9 +8151,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.128"
+version = "1.0.129"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ff5456707a1de34e7e37f2a6fd3d3f808c318259cbd01ab6377795054b483d8"
+checksum = "6dbcf9b78a125ee667ae19388837dd12294b858d101fdd393cb9d5501ef09eb2"
 dependencies = [
  "indexmap 2.6.0",
  "itoa",
