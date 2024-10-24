@@ -5,7 +5,7 @@ members = [
     "benches/*",
     "crates/*",
     "crates/fuel-streams-macros/subject-derive",
-    "examples/*",
+    "examples",
     "tests",
 ]
 
