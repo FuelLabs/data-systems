@@ -70,11 +70,11 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
 
-    let publisher =
+    let mut publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
             .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    publisher.run().await.unwrap();
 
     assert!(publisher.get_streams().is_empty().await);
 }
@@ -95,11 +95,11 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher =
+    let mut publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
             .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    publisher.run().await.unwrap();
 
     assert!(publisher
         .get_streams()
@@ -135,11 +135,11 @@ async fn publishes_transaction_for_each_published_block() {
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher =
+    let mut publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
             .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    publisher.run().await.unwrap();
 
     assert!(publisher
         .get_streams()
@@ -262,12 +262,12 @@ async fn publishes_receipts() {
         .with_receipts(receipts.to_vec())
         .boxed();
 
-    let publisher =
+    let mut publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
             .unwrap();
 
-    let publisher = publisher.run().await.unwrap();
+    publisher.run().await.unwrap();
 
     let mut receipts_stream =
         publisher.get_streams().receipts.catchup(10).await.unwrap();
@@ -318,12 +318,12 @@ async fn publishes_logs() {
         .with_receipts(vec![receipt.clone()])
         .boxed();
 
-    let publisher =
+    let mut publisher =
         Publisher::default_with_publisher(&nats_client().await, fuel_core)
             .await
             .unwrap();
 
-    let publisher = publisher.run().await.unwrap();
+    publisher.run().await.unwrap();
 
     assert!(publisher
         .get_streams()
