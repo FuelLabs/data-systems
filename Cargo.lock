@@ -3633,6 +3633,7 @@ dependencies = [
  "clap 4.5.20",
  "derive_more 1.0.0",
  "displaydoc",
+ "dotenvy",
  "elasticsearch",
  "fuel-core",
  "fuel-core-bin",

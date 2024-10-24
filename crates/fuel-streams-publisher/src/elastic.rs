@@ -1,5 +1,6 @@
 use std::{fs, io, path::PathBuf, time::Duration};
 
+use anyhow::Context;
 use displaydoc::Display;
 pub use elasticsearch::params::Refresh;
 use elasticsearch::{
@@ -24,6 +25,28 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use thiserror::Error;
 use url::{self, Url};
+
+pub async fn create_elasticsearch_instance() -> anyhow::Result<ElasticSearch> {
+    let elasticsearch_url = dotenvy::var("ELASTICSEARCH_URL")
+        .expect("`ELASTICSEARCH_URL` env must be set");
+    let elsaticsearch_username = dotenvy::var("ELASTICSEARCH_USERNAME")
+        .expect("`ELASTICSEARCH_USERNAME` env must be set");
+    let elsaticsearch_password = dotenvy::var("ELASTICSEARCH_PASSWORD")
+        .expect("`ELASTICSEARCH_PASSWORD` env must be set");
+
+    let config = Config {
+        url: elasticsearch_url,
+        enabled: true,
+        pool_max_size: Some(2),
+        username: Some(elsaticsearch_username),
+        password: Some(elsaticsearch_password),
+        ..Default::default()
+    };
+    let client = ElasticSearch::new(&config)
+        .await
+        .context("Failed to configure Elasticsearch connection")?;
+    Ok(client)
+}
 
 /// Elasticsearch errors
 #[derive(Debug, Display, Error)]
@@ -75,7 +98,7 @@ pub struct TlsConfig {
 }
 
 // #[derive(Clone)]
-pub struct ElasticSearch(Connection);
+pub struct ElasticSearch(ElasticConnection);
 
 impl ElasticSearch {
     pub async fn new(config: &Config) -> Result<Self, Error> {
@@ -83,11 +106,13 @@ impl ElasticSearch {
             return Err(Error::ElasticSearchDisabled);
         }
         let conn_info = ConnectionInfo::new(config)?;
-        let conn = conn_info.get_connection().unwrap();
+        let conn = conn_info
+            .get_connection()
+            .expect("connection must be created");
         Ok(Self(conn))
     }
 
-    pub fn get_conn(&self) -> &Connection {
+    pub fn get_conn(&self) -> &ElasticConnection {
         &self.0
     }
 
@@ -349,24 +374,26 @@ impl ConnectionInfo {
         Ok(Self(inner))
     }
 
-    pub fn get_connection(&self) -> Result<Connection, Error> {
+    pub fn get_connection(&self) -> Result<ElasticConnection, Error> {
         let conn = Elasticsearch::new(self.0.clone());
-        Ok(Connection(Some(conn)))
+        Ok(ElasticConnection(Some(conn)))
     }
 }
 
-pub struct Connection(Option<Elasticsearch>);
+pub struct ElasticConnection(Option<Elasticsearch>);
 
-impl Connection {
-    async fn connect(address: &ConnectionInfo) -> Result<Connection, Error> {
+impl ElasticConnection {
+    pub async fn connect(
+        address: &ConnectionInfo,
+    ) -> Result<ElasticConnection, Error> {
         address.get_connection()
     }
 
-    fn check_alive(&self) -> Option<bool> {
+    pub fn check_alive(&self) -> Option<bool> {
         Some(self.0.is_some())
     }
 
-    async fn ping(&self) -> Result<(), Error> {
+    pub async fn ping(&self) -> Result<(), Error> {
         let conn = self.0.as_ref().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::ConnectionAborted,
@@ -380,7 +407,7 @@ impl Connection {
     }
 }
 
-impl Connection {
+impl ElasticConnection {
     pub async fn index<B>(
         &self,
         path: &str,
@@ -715,25 +742,6 @@ mod tests {
             ElasticSearch::new(&config).await,
             Err(Error::CertificateError(_, _))
         ));
-    }
-
-    #[ignore]
-    #[tokio::test]
-    async fn test_multiple_connections() {
-        let config = Config {
-            url: "http://localhost:9200".into(),
-            enabled: true,
-            pool_max_size: Some(2),
-            ..Default::default()
-        };
-        let client = ElasticSearch::new(&config)
-            .await
-            .expect("Failed to configure Elasticsearch connection");
-        let conn1 = client.get_conn();
-        conn1.ping().await.expect("Failed to ping Elasticsearch");
-        let conn2 = client.get_conn();
-        conn2.ping().await.expect("Failed to ping Elasticsearch");
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
     }
 
     #[ignore]
