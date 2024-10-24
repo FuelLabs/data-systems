@@ -3,38 +3,42 @@ use std::sync::Arc;
 use chrono::Utc;
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_streams_core::prelude::*;
-use tracing::info;
 
-use crate::{metrics::PublisherMetrics, publish_with_metrics, FuelCoreLike};
+use crate::{metrics::PublisherMetrics, PublishPayload, SubjectPayload};
 
-pub async fn publish(
-    metrics: &Arc<PublisherMetrics>,
-    fuel_core: &dyn FuelCoreLike,
-    blocks_stream: &Stream<Block>,
+pub fn create_publish_payloads(
+    stream: &Stream<Block>,
+    block: &Block<Transaction>,
+    block_height: BlockHeight,
+    block_producer: &Address,
+) -> Vec<PublishPayload<Block>> {
+    let subjects: Vec<SubjectPayload> = vec![(
+        BlocksSubject::new()
+            .with_height(Some(block_height.clone()))
+            .with_producer(Some(block_producer.clone()))
+            .boxed(),
+        BlocksSubject::WILDCARD,
+    )];
+
+    vec![PublishPayload {
+        subjects,
+        stream: stream.to_owned(),
+        payload: block.to_owned(),
+    }]
+}
+
+pub fn add_metrics(
+    chain_id: &ChainId,
     block: &Block<Transaction>,
     block_producer: &Address,
-) -> anyhow::Result<()> {
-    let chain_id = fuel_core.chain_id();
-    let block_height: BlockHeight = block.header().consensus().height.into();
-    let block_subject: BlocksSubject = BlocksSubject::new()
-        .with_height(Some(block_height.clone()))
-        .with_producer(Some(block_producer.clone()));
-
-    info!("NATS Publisher: Publishing Block #{block_height}");
-
-    publish_with_metrics!(
-        blocks_stream.publish(&block_subject, block),
-        metrics,
-        chain_id,
-        block_producer,
-        BlocksSubject::WILDCARD
-    );
-
+    metrics: &Arc<PublisherMetrics>,
+) -> Arc<PublisherMetrics> {
     let latency = Utc::now().timestamp() - block.header().time().to_unix();
+
     metrics
         .publishing_latency_histogram
         .with_label_values(&[
-            &fuel_core.chain_id().to_string(),
+            &chain_id.to_string(),
             &block_producer.to_string(),
             BlocksSubject::WILDCARD,
         ])
@@ -43,7 +47,7 @@ pub async fn publish(
     metrics
         .last_published_block_timestamp
         .with_label_values(&[
-            &fuel_core.chain_id().to_string(),
+            &chain_id.to_string(),
             &block_producer.to_string(),
         ])
         .set(block.header().time().to_unix());
@@ -51,10 +55,10 @@ pub async fn publish(
     metrics
         .last_published_block_height
         .with_label_values(&[
-            &fuel_core.chain_id().to_string(),
+            &chain_id.to_string(),
             &block_producer.to_string(),
         ])
         .set(block.header().consensus().height.as_u64() as i64);
 
-    Ok(())
+    metrics.to_owned()
 }

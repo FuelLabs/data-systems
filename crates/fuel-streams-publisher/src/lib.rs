@@ -1,4 +1,5 @@
 mod blocks;
+mod identifiers;
 mod inputs;
 mod logs;
 mod outputs;
@@ -62,21 +63,29 @@ pub fn maybe_include_predicate_and_script_subjects(
     }
 }
 
-pub async fn publish_all<S: Streamable>(
-    stream: &Stream<S>,
-    subjects: Vec<(Box<dyn IntoSubject>, &'static str)>,
-    payload: &S,
-    metrics: &Arc<PublisherMetrics>,
-    chain_id: &ChainId,
-    block_producer: &Address,
-) {
-    for (subject, wildcard) in subjects {
-        publish_with_metrics!(
-            stream.publish(&*subject, payload),
-            metrics,
-            chain_id,
-            block_producer,
-            wildcard
-        );
+pub type SubjectPayload = (Box<dyn IntoSubject>, &'static str);
+
+pub struct PublishPayload<S: Streamable> {
+    pub stream: Stream<S>,
+    pub subjects: Vec<SubjectPayload>,
+    pub payload: S,
+}
+
+impl<T: Streamable> PublishPayload<T> {
+    pub async fn publish(
+        &self,
+        metrics: &Arc<PublisherMetrics>,
+        chain_id: &ChainId,
+        block_producer: &Address,
+    ) {
+        for (subject, wildcard) in &self.subjects {
+            publish_with_metrics!(
+                self.stream.publish(&**subject, &self.payload),
+                metrics,
+                chain_id,
+                block_producer,
+                wildcard
+            );
+        }
     }
 }

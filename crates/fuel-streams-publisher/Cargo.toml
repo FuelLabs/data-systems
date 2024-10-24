@@ -29,11 +29,13 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
 futures-util = { workspace = true }
 num_cpus = "1.16"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand = { workspace = true }
+rayon = "1.10.0"
 rust_decimal = { version = "1.13" }
 serde = { workspace = true }
 serde_prometheus = { version = "0.2" }

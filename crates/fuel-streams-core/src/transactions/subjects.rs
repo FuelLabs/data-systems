@@ -133,7 +133,7 @@ impl From<&Transaction> for TransactionsSubject {
 #[subject_format = "by_id.transactions.{id_kind}.{id_value}"]
 pub struct TransactionsByIdSubject {
     pub id_kind: Option<IdentifierKind>,
-    pub id_value: Option<Address>,
+    pub id_value: Option<Bytes32>,
 }
 
 #[cfg(test)]
