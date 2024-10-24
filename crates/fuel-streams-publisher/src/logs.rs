@@ -50,18 +50,18 @@ pub async fn publish(
 
                     info!("NATS Publisher: Publishing Logs for 0x#{tx_id}");
 
-                    log_all(elastic_logger, &subjects, &(receipt.clone()))
-                        .await;
-
                     publish_all(
                         stream,
-                        subjects,
+                        &subjects,
                         &(receipt.clone()).into(),
                         metrics,
                         chain_id,
                         block_producer,
                     )
                     .await;
+
+                    log_all(elastic_logger, &subjects, &(receipt.clone()))
+                        .await;
                 }
                 _non_log_receipt => {}
             }
