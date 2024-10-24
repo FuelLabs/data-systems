@@ -69,7 +69,7 @@ pub fn maybe_include_predicate_and_script_subjects(
 
 pub async fn publish_all<S: Streamable>(
     stream: &Stream<S>,
-    subjects: Vec<(Box<dyn IntoSubject>, &'static str)>,
+    subjects: &[(Box<dyn IntoSubject>, &'static str)],
     payload: &S,
     metrics: &Arc<PublisherMetrics>,
     chain_id: &ChainId,
@@ -77,7 +77,7 @@ pub async fn publish_all<S: Streamable>(
 ) {
     for (subject, wildcard) in subjects {
         publish_with_metrics!(
-            stream.publish(&*subject, payload),
+            stream.publish(&**subject, payload),
             metrics,
             chain_id,
             block_producer,
@@ -93,7 +93,7 @@ pub async fn log_all<S: Streamable>(
 ) {
     if let Some(elastic_logger) = elastic_logger.as_ref() {
         for (subject, _wildcard) in subjects {
-            let id = &(&*subject).parse();
+            let id = &subject.parse();
             if let Err(e) = elastic_logger
                 .get_conn()
                 .index(

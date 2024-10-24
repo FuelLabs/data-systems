@@ -36,17 +36,17 @@ pub async fn publish(
                 &script_tag,
             );
 
-            log_all(elastic_logger, &subjects, receipt).await;
-
             publish_all(
                 receipts_stream,
-                subjects,
+                &subjects,
                 receipt,
                 metrics,
                 &chain_id,
                 block_producer,
             )
             .await;
+
+            log_all(elastic_logger, &subjects, receipt).await;
         }
     }
 

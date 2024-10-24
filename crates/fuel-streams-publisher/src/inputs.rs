@@ -138,10 +138,17 @@ pub async fn publish(
             &script_tag,
         );
 
-        log_all(elastic_logger, &subjects, input).await;
+        publish_all(
+            stream,
+            &subjects,
+            input,
+            metrics,
+            chain_id,
+            block_producer,
+        )
+        .await;
 
-        publish_all(stream, subjects, input, metrics, chain_id, block_producer)
-            .await;
+        log_all(elastic_logger, &subjects, input).await;
     }
 
     Ok(())

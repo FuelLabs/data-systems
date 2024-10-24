@@ -424,9 +424,10 @@ impl ElasticConnection {
                 "Connection to Elasticsearch is already closed",
             )
         })?;
-        let index_parts = id.map_or(IndexParts::Index(path), |id| {
-            IndexParts::IndexId(path, id)
-        });
+        let index_parts = id
+            .map(|id| IndexParts::IndexId(path, id))
+            .unwrap_or(IndexParts::Index(path));
+
         let response = conn
             .index(index_parts)
             .body(doc)
@@ -456,7 +457,7 @@ impl ElasticConnection {
             )
         })?;
         let body = build_bulk_request_body(iter)?;
-        let bulk_parts = path.map_or(BulkParts::None, BulkParts::Index);
+        let bulk_parts = path.map(BulkParts::Index).unwrap_or(BulkParts::None);
         let response = conn
             .bulk(bulk_parts)
             .body(body)
