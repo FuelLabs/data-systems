@@ -244,7 +244,49 @@ services:
       - --pass=root  # default password
     restart: always
 
+  elasticsearch:
+    profiles:
+      - all
+      - logging
+    image: elasticsearch:7.9.2
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=secret
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    profiles:
+      - all
+      - logging
+    image: kibana:7.9.2
+    container_name: kibana
+    restart: always
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=secret
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'"
+      interval: 30s  # Increase the interval between checks
+      timeout: 30s  # Increase the timeout for each check
+      retries: 60  # Increase retries to allow more time for Elasticsearch to be ready
+
 volumes:
   fuel-streams-publisher-db:
   prometheus_data:
   grafana_data:
+  es_data:

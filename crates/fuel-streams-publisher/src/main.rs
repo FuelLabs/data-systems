@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
     let publisher = fuel_streams_publisher::Publisher::new(
         state.fuel_service.clone(),
         &cli.nats_url,
+        cli.use_elastic_logging,
         state.metrics.clone(),
         state.streams.clone(),
     )

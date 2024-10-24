@@ -6,7 +6,7 @@ PACKAGE ?= fuel-streams-publisher
 DOCKER_PROFILE ?= all
 RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
 DOCKER_COMPOSE = docker compose -f docker/docker-compose.yml
-PROFILES = dev nats publisher monitoring indexer
+PROFILES = dev nats publisher monitoring indexer logging
 
 # Phony targets
 .PHONY: all install setup build clean lint fmt help test doc bench coverage audit \
