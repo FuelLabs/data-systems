@@ -5,6 +5,7 @@ use std::pin::Pin;
 use async_nats::{
     jetstream::{
         consumer::AckPolicy,
+        context::CreateKeyValueErrorKind,
         kv::{self, CreateErrorKind},
         stream::{self, LastRawMessageErrorKind, State},
     },
@@ -14,6 +15,7 @@ use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::{future, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
+use tokio_retry::{strategy::FixedInterval, Retry};
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
 use crate::{nats::types::*, prelude::NatsClient};
@@ -106,16 +108,33 @@ impl<S: Streamable> Stream<S> {
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
 
-        let store = client
-            .get_or_create_kv_store(kv::Config {
-                bucket: bucket_name.to_owned(),
-                storage: stream::StorageType::File,
-                history: 1,
-                compression: true,
-                ..Default::default()
-            })
-            .await
-            .expect("Streams must be created");
+        let retry_strategy = FixedInterval::from_millis(5000).take(3); // 3 retries, 5s apart
+
+        let store = Retry::spawn(retry_strategy, || async {
+            match client
+                .get_or_create_kv_store(kv::Config {
+                    bucket: bucket_name.to_owned(),
+                    storage: stream::StorageType::File,
+                    history: 1,
+                    compression: true,
+                    ..Default::default()
+                })
+                .await
+            {
+                Ok(store) => Ok(store),
+                Err(err) => {
+                    if let CreateKeyValueErrorKind::TimedOut = err.kind() {
+                        tracing::error!("Retrying due to timeout: {:?}", err);
+                        Err(err) // Retry on timeout
+                    } else {
+                        tracing::error!("Failed to create kv store: {:?}", err);
+                        panic!("Failed to create kv store");
+                    }
+                }
+            }
+        })
+        .await
+        .expect("Failed to create kv store after retries");
 
         Self {
             store,
