@@ -156,6 +156,11 @@ macro_rules! impl_from_bytes32 {
                 Bytes32(fuel_core_types::fuel_tx::Bytes32::from(*value))
             }
         }
+        impl From<&$from_type> for Bytes32 {
+            fn from(value: &$from_type) -> Self {
+                (*value).into()
+            }
+        }
     };
 }
 

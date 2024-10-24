@@ -1,15 +1,42 @@
-use std::sync::Arc;
-
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use rayon::prelude::*;
 
-use crate::{
-    metrics::PublisherMetrics,
-    publish_all,
-    FuelCoreLike,
-    PublishPayload,
-};
+use crate::{FuelCoreLike, PublishPayload, SubjectPayload};
+
+pub fn create_publish_payloads(
+    stream: &Stream<Utxo>,
+    tx: &Transaction,
+    chain_id: &ChainId,
+    fuel_core: &dyn FuelCoreLike,
+) -> Vec<PublishPayload<Utxo>> {
+    let tx_id = tx.id(chain_id);
+    let subjects_and_payloads = tx
+        .inputs()
+        .par_iter()
+        .filter_map(|input| {
+            let utxo_id = input.utxo_id().cloned();
+            get_utxo_data(input, tx_id.into(), utxo_id, fuel_core)
+        })
+        .collect::<Vec<(UtxosSubject, Utxo)>>();
+
+    subjects_and_payloads
+        .into_par_iter()
+        .map(|item| {
+            let (subject, utxo) = item.clone();
+            let utxo = utxo.clone();
+            let subjects: Vec<SubjectPayload> =
+                vec![(subject.boxed(), UtxosSubject::WILDCARD)];
+
+            PublishPayload {
+                subjects,
+                stream: stream.to_owned(),
+                payload: utxo.to_owned(),
+            }
+        })
+        .collect()
+}
 
 fn get_utxo_data(
     input: &Input,
@@ -134,41 +161,4 @@ fn get_utxo_data(
             Some((subject, utxo_payload))
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn publish(
-    metrics: &Arc<PublisherMetrics>,
-    stream: &Stream<Utxo>,
-    fuel_core: &dyn FuelCoreLike,
-    transaction: &Transaction,
-    tx_id: Bytes32,
-    chain_id: &ChainId,
-    block_producer: &fuel_streams_core::types::Address,
-) -> anyhow::Result<()> {
-    let subjects_and_payloads = transaction
-        .inputs()
-        .iter()
-        .filter_map(|input| {
-            let utxo_id = input.utxo_id().cloned();
-            get_utxo_data(input, tx_id.clone(), utxo_id, fuel_core)
-        })
-        .collect::<Vec<(UtxosSubject, Utxo)>>();
-
-    for (subject, utxo) in subjects_and_payloads {
-        let subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
-            vec![(subject.boxed(), UtxosSubject::WILDCARD)];
-
-        publish_all(PublishPayload {
-            stream,
-            subjects,
-            payload: &utxo,
-            metrics,
-            chain_id,
-            block_producer,
-        })
-        .await;
-    }
-
-    Ok(())
 }

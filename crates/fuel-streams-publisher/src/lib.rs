@@ -63,23 +63,29 @@ pub fn maybe_include_predicate_and_script_subjects(
     }
 }
 
-pub struct PublishPayload<'a, S: Streamable> {
-    stream: &'a Stream<S>,
-    subjects: Vec<(Box<dyn IntoSubject>, &'static str)>,
-    payload: &'a S,
-    metrics: &'a Arc<PublisherMetrics>,
-    chain_id: &'a ChainId,
-    block_producer: &'a Address,
+pub type SubjectPayload = (Box<dyn IntoSubject>, &'static str);
+
+pub struct PublishPayload<S: Streamable> {
+    pub stream: Stream<S>,
+    pub subjects: Vec<SubjectPayload>,
+    pub payload: S,
 }
 
-pub async fn publish_all<S: Streamable>(opts: PublishPayload<'_, S>) {
-    for (subject, wildcard) in opts.subjects {
-        publish_with_metrics!(
-            opts.stream.publish(&*subject, opts.payload),
-            opts.metrics,
-            opts.chain_id,
-            opts.block_producer,
-            wildcard
-        );
+impl<T: Streamable> PublishPayload<T> {
+    pub async fn publish(
+        &self,
+        metrics: &Arc<PublisherMetrics>,
+        chain_id: &ChainId,
+        block_producer: &Address,
+    ) {
+        for (subject, wildcard) in &self.subjects {
+            publish_with_metrics!(
+                self.stream.publish(&**subject, &self.payload),
+                metrics,
+                chain_id,
+                block_producer,
+                wildcard
+            );
+        }
     }
 }

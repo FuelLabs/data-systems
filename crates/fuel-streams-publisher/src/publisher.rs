@@ -1,32 +1,30 @@
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
-use fuel_core_types::fuel_tx::{field::ScriptData, Output};
-use fuel_streams::types::{ChainId, Log, UniqueIdentifier};
-use fuel_streams_core::{prelude::*, transactions::TransactionExt};
-use futures_util::{
-    future::{try_join_all, BoxFuture},
-    FutureExt,
-};
-use tokio::sync::broadcast::error::RecvError;
+use fuel_core_types::fuel_tx::Output;
+use fuel_streams::types::{Log, UniqueIdentifier};
+use fuel_streams_core::prelude::*;
+use futures_util::{future::try_join_all, FutureExt};
+use rayon::prelude::*;
+use tokio::{sync::broadcast::error::RecvError, try_join};
 use tracing::warn;
 
 use crate::{
-    blocks,
+    blocks::{self, add_metrics},
     inputs,
     logs,
     metrics::PublisherMetrics,
     outputs,
     receipts,
-    sha256,
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
     utxos,
     FuelCore,
     FuelCoreLike,
+    PublishPayload,
 };
 
 #[derive(Clone, Debug)]
@@ -313,168 +311,151 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let transactions = block.transactions();
         let block_height = block.header().consensus().height;
+        let chain_id = self.fuel_core.chain_id();
+        let start_time = std::time::Instant::now();
 
-        let mut publishing_tasks = vec![blocks::publish(
-            &self.metrics,
-            &*self.fuel_core,
+        let block_payloads = blocks::create_publish_payloads(
             &self.streams.blocks,
             block,
+            block_height.into(),
             block_producer,
-        )
-        .boxed()];
+        );
+        add_metrics(chain_id, block, block_producer, &self.metrics);
 
-        for (transaction_index, transaction) in transactions.iter().enumerate()
-        {
-            let chain_id = self.fuel_core.chain_id();
-            let tx_id = transaction.id(chain_id);
-            let receipts = self.fuel_core.get_receipts(&tx_id)?;
-
-            publishing_tasks.extend(
-                self.build_transaction_related_publishing_tasks(
-                    transaction_index,
-                    transaction,
-                    &(tx_id.into()),
-                    receipts.clone(),
-                    block_height.into(),
-                    block_producer,
+        let tx_payloads: Vec<PublishPayload<Transaction>> = transactions
+            .par_iter()
+            .enumerate()
+            .flat_map(|(tx_index, tx)| {
+                let tx_id = tx.id(chain_id);
+                let receipts =
+                    self.fuel_core.get_receipts(&tx_id).unwrap_or_default();
+                transactions::create_publish_payloads(
+                    &self.streams.transactions,
+                    tx,
+                    tx_index,
+                    &*self.fuel_core,
                     chain_id,
-                    None,
-                    None,
-                ),
-            );
+                    block_height.into(),
+                    receipts,
+                )
+            })
+            .collect();
 
-            // Publish predicates
-            for input in transaction.inputs() {
-                if let Some((
-                    predicate_bytecode,
-                    _predicate_data,
-                    _predicate_gas_used,
-                )) = input.predicate()
-                {
-                    let predicate_tag = sha256(predicate_bytecode);
-                    let predicate_publishing_tasks = self
-                        .build_transaction_related_publishing_tasks(
-                            transaction_index,
-                            transaction,
-                            &(tx_id.into()),
-                            receipts.clone(),
-                            block_height.into(),
-                            block_producer,
-                            chain_id,
-                            Some(predicate_tag),
-                            None,
-                        );
+        let input_payload: Vec<PublishPayload<Input>> = transactions
+            .par_iter()
+            .flat_map(|tx| {
+                inputs::create_publish_payloads(
+                    &self.streams.inputs,
+                    tx,
+                    chain_id,
+                )
+            })
+            .collect();
 
-                    publishing_tasks.extend(predicate_publishing_tasks);
-                }
+        let output_payload: Vec<PublishPayload<Output>> = transactions
+            .par_iter()
+            .flat_map(|tx| {
+                outputs::create_publish_payloads(
+                    &self.streams.outputs,
+                    tx,
+                    chain_id,
+                )
+            })
+            .collect();
+
+        let receipt_payloads: Vec<PublishPayload<Receipt>> = transactions
+            .par_iter()
+            .flat_map(|tx| {
+                let tx_id = tx.id(chain_id);
+                let receipts =
+                    self.fuel_core.get_receipts(&tx_id).unwrap_or_default();
+                receipts::create_publish_payloads(
+                    &self.streams.receipts,
+                    tx,
+                    receipts,
+                    chain_id,
+                )
+            })
+            .collect();
+
+        let log_payload: Vec<PublishPayload<Log>> = transactions
+            .par_iter()
+            .flat_map(|tx| {
+                let tx_id = tx.id(chain_id);
+                let receipts =
+                    self.fuel_core.get_receipts(&tx_id).unwrap_or_default();
+                logs::create_publish_payloads(
+                    &self.streams.logs,
+                    tx,
+                    receipts,
+                    chain_id,
+                    block_height.into(),
+                )
+            })
+            .collect();
+
+        let utxo_payload: Vec<PublishPayload<Utxo>> = transactions
+            .par_iter()
+            .flat_map(|tx| {
+                utxos::create_publish_payloads(
+                    &self.streams.utxos,
+                    tx,
+                    chain_id,
+                    &*self.fuel_core,
+                )
+            })
+            .collect();
+
+        // Publish all payloads in parallel
+        let results = try_join!(
+            self.publish_payloads(block_payloads, chain_id, block_producer),
+            self.publish_payloads(tx_payloads, chain_id, block_producer),
+            self.publish_payloads(input_payload, chain_id, block_producer),
+            self.publish_payloads(output_payload, chain_id, block_producer),
+            self.publish_payloads(receipt_payloads, chain_id, block_producer),
+            self.publish_payloads(log_payload, chain_id, block_producer),
+            self.publish_payloads(utxo_payload, chain_id, block_producer)
+        );
+
+        match results {
+            Ok(_) => {
+                let elapsed = start_time.elapsed();
+                tracing::info!(
+                    "Published streams for BlockHeight: {} in {:?}",
+                    block_height,
+                    elapsed
+                );
             }
-
-            // Publish scripts
-            if let Some(script) = transaction.as_script() {
-                let script_tag = sha256(script.script_data());
-                let script_publishing_tasks = self
-                    .build_transaction_related_publishing_tasks(
-                        transaction_index,
-                        transaction,
-                        &(tx_id.into()),
-                        receipts.clone(),
-                        block_height.into(),
-                        block_producer,
-                        chain_id,
-                        None,
-                        Some(script_tag),
-                    );
-
-                publishing_tasks.extend(script_publishing_tasks);
+            Err(e) => {
+                tracing::error!(
+                    "Error publishing streams for BlockHeight {}: {:?}",
+                    block_height,
+                    e
+                );
             }
         }
-
-        let start_time = Instant::now();
-        try_join_all(publishing_tasks).await?;
-        tracing::info!(
-            "Published streams for BlockHeight: {block_height} in {:?} ms",
-            start_time.elapsed().as_millis()
-        );
 
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn build_transaction_related_publishing_tasks<'a>(
-        &'a self,
-        transaction_index: usize,
-        transaction: &'a Transaction,
-        tx_id: &Bytes32,
-        receipts: Option<Vec<Receipt>>,
-        block_height: BlockHeight,
-        block_producer: &'a Address,
-        chain_id: &'a ChainId,
-        predicate_tag: Option<Bytes32>,
-        script_tag: Option<Bytes32>,
-    ) -> Vec<BoxFuture<'a, anyhow::Result<()>>> {
-        vec![
-            transactions::publish(
-                &self.streams.transactions,
-                (transaction_index, transaction),
-                &*self.fuel_core,
-                block_height.clone(),
-                &self.metrics,
-                block_producer,
-                predicate_tag.clone(),
-                script_tag.clone(),
-            )
-            .boxed(),
-            receipts::publish(
-                &self.streams.receipts,
-                receipts.clone(),
-                tx_id.clone(),
-                &*chain_id,
-                &self.metrics,
-                block_producer,
-                predicate_tag.clone(),
-                script_tag.clone(),
-            )
-            .boxed(),
-            logs::publish(
-                &self.streams.logs,
-                receipts.clone(),
-                tx_id.clone(),
-                chain_id,
-                block_height.clone(),
-                &self.metrics,
-                block_producer,
-            )
-            .boxed(),
-            inputs::publish(
-                &self.streams.inputs,
-                transaction,
-                chain_id,
-                &self.metrics,
-                block_producer,
-                predicate_tag.clone(),
-                script_tag.clone(),
-            )
-            .boxed(),
-            outputs::publish(
-                &self.streams.outputs,
-                chain_id,
-                transaction,
-                &self.metrics,
-                block_producer,
-                predicate_tag.clone(),
-                script_tag.clone(),
-            )
-            .boxed(),
-            utxos::publish(
-                &self.metrics,
-                &self.streams.utxos,
-                &*self.fuel_core,
-                transaction,
-                tx_id.clone(),
-                chain_id,
-                block_producer,
-            )
-            .boxed(),
-        ]
+    async fn publish_payloads<T: Streamable + 'static>(
+        &self,
+        payloads: Vec<PublishPayload<T>>,
+        chain_id: &ChainId,
+        block_producer: &Address,
+    ) -> anyhow::Result<()> {
+        let results =
+            futures::future::join_all(payloads.into_iter().map(|payload| {
+                let metrics = self.metrics.clone();
+                let chain_id = chain_id.to_owned();
+                let block_producer = block_producer.clone();
+                tokio::spawn(async move {
+                    payload.publish(&metrics, &chain_id, &block_producer).await
+                })
+            }))
+            .await;
+
+        results.into_iter().collect::<Result<Vec<_>, _>>()?;
+        Ok(())
     }
 }

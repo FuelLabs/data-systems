@@ -1,148 +1,133 @@
-use std::sync::Arc;
-
-use fuel_core_types::fuel_tx::{Output, UniqueIdentifier};
+use fuel_core_types::fuel_tx::{output::contract::Contract, Output};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use rayon::prelude::*;
 
 use crate::{
-    identifiers::{add_predicate_subjects, add_script_subjects},
-    metrics::PublisherMetrics,
-    publish_all,
+    identifiers::{Identifier, IdsExtractable, SubjectPayloadBuilder},
     PublishPayload,
+    SubjectPayload,
 };
 
-#[allow(clippy::too_many_arguments)]
-pub async fn publish(
-    stream: &Stream<fuel_core_types::fuel_tx::Output>,
+pub fn create_publish_payloads(
+    stream: &Stream<Output>,
+    tx: &Transaction,
     chain_id: &ChainId,
-    transaction: &Transaction,
-    metrics: &Arc<PublisherMetrics>,
-    block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
-    script_tag: Option<Bytes32>,
-) -> anyhow::Result<()> {
-    let tx_id = transaction.id(chain_id);
-    let outputs = transaction.outputs();
-    for (index, output) in outputs.iter().enumerate() {
-        let mut subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
-            match output {
-                Output::Coin { to, asset_id, .. } => vec![
-                    (
-                        OutputsCoinSubject::new()
-                            .with_tx_id(Some(tx_id.into()))
-                            .with_index(Some(index as u16))
-                            .with_to(Some((*to).into()))
-                            .with_asset_id(Some((*asset_id).into()))
-                            .boxed(),
-                        OutputsCoinSubject::WILDCARD,
-                    ),
-                    (
-                        OutputsByIdSubject::new()
-                            .with_id_kind(Some(IdentifierKind::Address))
-                            .with_id_value(Some(Bytes32::from(*to)))
-                            .boxed(),
-                        OutputsByIdSubject::WILDCARD,
-                    ),
-                ],
-                Output::Contract(contract) => {
-                    let input_index = contract.input_index as usize;
-                    let contract_id = if let Input::Contract(input_contract) =
-                        &transaction.inputs()[input_index]
-                    {
-                        input_contract.contract_id
-                    } else {
-                        anyhow::bail!("Contract input not found");
-                    };
-                    vec![
-                        (
-                            OutputsContractSubject::new()
-                                .with_tx_id(Some(tx_id.into()))
-                                .with_index(Some(index as u16))
-                                .with_contract_id(Some(contract_id.into()))
-                                .boxed(),
-                            OutputsContractSubject::WILDCARD,
-                        ),
-                        (
-                            OutputsByIdSubject::new()
-                                .with_id_kind(Some(IdentifierKind::ContractID))
-                                .with_id_value(Some(Bytes32::from(
-                                    *contract_id,
-                                )))
-                                .boxed(),
-                            OutputsByIdSubject::WILDCARD,
-                        ),
-                    ]
-                }
-                Output::Change { to, asset_id, .. } => vec![
-                    (
-                        OutputsChangeSubject::new()
-                            .with_tx_id(Some(tx_id.into()))
-                            .with_index(Some(index as u16))
-                            .with_to(Some((*to).into()))
-                            .with_asset_id(Some((*asset_id).into()))
-                            .boxed(),
-                        OutputsChangeSubject::WILDCARD,
-                    ),
-                    (
-                        OutputsByIdSubject::new()
-                            .with_id_kind(Some(IdentifierKind::Address))
-                            .with_id_value(Some(Bytes32::from(*to)))
-                            .boxed(),
-                        OutputsByIdSubject::WILDCARD,
-                    ),
-                ],
-                Output::Variable { to, asset_id, .. } => vec![
-                    (
-                        OutputsVariableSubject::new()
-                            .with_tx_id(Some(tx_id.into()))
-                            .with_index(Some(index as u16))
-                            .with_to(Some((*to).into()))
-                            .with_asset_id(Some((*asset_id).into()))
-                            .boxed(),
-                        OutputsVariableSubject::WILDCARD,
-                    ),
-                    (
-                        OutputsByIdSubject::new()
-                            .with_id_kind(Some(IdentifierKind::Address))
-                            .with_id_value(Some(Bytes32::from(*to)))
-                            .boxed(),
-                        OutputsByIdSubject::WILDCARD,
-                    ),
-                ],
+) -> Vec<PublishPayload<Output>> {
+    let tx_id = tx.id(chain_id);
 
-                Output::ContractCreated { contract_id, .. } => vec![
-                    (
-                        OutputsContractCreatedSubject::new()
-                            .with_tx_id(Some(tx_id.into()))
-                            .with_index(Some(index as u16))
-                            .with_contract_id(Some((*contract_id).into()))
-                            .boxed(),
-                        OutputsContractCreatedSubject::WILDCARD,
-                    ),
-                    (
-                        OutputsByIdSubject::new()
-                            .with_id_kind(Some(IdentifierKind::ContractID))
-                            .with_id_value(Some(Bytes32::from(*contract_id)))
-                            .boxed(),
-                        OutputsByIdSubject::WILDCARD,
-                    ),
-                ],
-            };
+    tx.outputs()
+        .par_iter()
+        .enumerate()
+        .map(|(index, output)| {
+            let subjects = main_subjects(output, tx_id.into(), index, tx)
+                .into_iter()
+                .chain(OutputsByIdSubject::build_subjects_payload(
+                    tx,
+                    &[output.to_owned()],
+                ))
+                .collect();
 
-        let predicate_tag = predicate_tag.clone();
-        let script_tag = script_tag.clone();
-        add_predicate_subjects::<Output>(&mut subjects, predicate_tag);
-        add_script_subjects::<Output>(&mut subjects, script_tag);
-
-        publish_all(PublishPayload {
-            stream,
-            subjects,
-            payload: output,
-            metrics,
-            chain_id,
-            block_producer,
+            PublishPayload {
+                subjects,
+                stream: stream.to_owned(),
+                payload: output.to_owned(),
+            }
         })
-        .await;
-    }
+        .collect()
+}
 
-    Ok(())
+fn main_subjects(
+    output: &Output,
+    tx_id: Bytes32,
+    index: usize,
+    transaction: &Transaction,
+) -> Vec<SubjectPayload> {
+    match output {
+        Output::Coin { to, asset_id, .. } => vec![(
+            OutputsCoinSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index as u16))
+                .with_to(Some((*to).into()))
+                .with_asset_id(Some((*asset_id).into()))
+                .boxed(),
+            OutputsCoinSubject::WILDCARD,
+        )],
+        Output::Contract(contract) => {
+            let contract_id = find_output_contract_id(transaction, contract)
+                .ok_or_else(|| anyhow::anyhow!("Contract input not found"))
+                .unwrap_or_default();
+
+            vec![(
+                OutputsContractSubject::new()
+                    .with_tx_id(Some(tx_id))
+                    .with_index(Some(index as u16))
+                    .with_contract_id(Some(contract_id.into()))
+                    .boxed(),
+                OutputsContractSubject::WILDCARD,
+            )]
+        }
+        Output::Change { to, asset_id, .. } => vec![(
+            OutputsChangeSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index as u16))
+                .with_to(Some((*to).into()))
+                .with_asset_id(Some((*asset_id).into()))
+                .boxed(),
+            OutputsChangeSubject::WILDCARD,
+        )],
+        Output::Variable { to, asset_id, .. } => vec![(
+            OutputsVariableSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index as u16))
+                .with_to(Some((*to).into()))
+                .with_asset_id(Some((*asset_id).into()))
+                .boxed(),
+            OutputsVariableSubject::WILDCARD,
+        )],
+        Output::ContractCreated { contract_id, .. } => vec![(
+            OutputsContractCreatedSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index as u16))
+                .with_contract_id(Some((*contract_id).into()))
+                .boxed(),
+            OutputsContractCreatedSubject::WILDCARD,
+        )],
+    }
+}
+
+pub fn find_output_contract_id(
+    transaction: &Transaction,
+    contract: &Contract,
+) -> Option<fuel_core_types::fuel_tx::ContractId> {
+    let input_index = contract.input_index as usize;
+    transaction.inputs().get(input_index).and_then(|input| {
+        if let Input::Contract(input_contract) = input {
+            Some(input_contract.contract_id)
+        } else {
+            None
+        }
+    })
+}
+
+impl IdsExtractable for Output {
+    fn extract_identifiers(&self, tx: &Transaction) -> Vec<Identifier> {
+        match self {
+            Output::Change { to, asset_id, .. }
+            | Output::Variable { to, asset_id, .. }
+            | Output::Coin { to, asset_id, .. } => {
+                vec![
+                    Identifier::Address(to.into()),
+                    Identifier::AssetId(asset_id.into()),
+                ]
+            }
+            Output::Contract(contract) => find_output_contract_id(tx, contract)
+                .map(|contract_id| {
+                    vec![Identifier::ContractId(contract_id.into())]
+                })
+                .unwrap_or_default(),
+            Output::ContractCreated { contract_id, .. } => {
+                vec![Identifier::ContractId(contract_id.into())]
+            }
+        }
+    }
 }

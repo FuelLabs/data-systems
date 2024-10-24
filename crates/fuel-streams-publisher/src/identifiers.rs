@@ -1,51 +1,73 @@
 use fuel_streams_core::prelude::*;
 
-pub trait IdSubjectsMutator: Streamable {
-    fn push_id_subjects(
-        kind: IdentifierKind,
-        subjects: &mut Vec<(Box<dyn IntoSubject>, &'static str)>,
-        tag: Option<Bytes32>,
-    );
+use crate::SubjectPayload;
+
+#[derive(Debug, Clone)]
+pub enum Identifier {
+    Address(Bytes32),
+    ContractId(Bytes32),
+    AssetId(Bytes32),
+    PredicateId(Bytes32),
+    ScriptId(Bytes32),
 }
 
-#[macro_export]
-macro_rules! impl_subjects_mutator {
-    ($t:ty, $s: ty) => {
-        impl IdSubjectsMutator for $t {
-            fn push_id_subjects(
-                kind: IdentifierKind,
-                subjects: &mut Vec<(Box<dyn IntoSubject>, &'static str)>,
-                tag: Option<Bytes32>,
-            ) {
-                if let Some(tag) = tag.clone() {
-                    subjects.push((
-                        <$s>::new()
-                            .with_id_kind(Some(kind))
-                            .with_id_value(Some(tag))
-                            .boxed(),
-                        <$s>::WILDCARD,
-                    ));
+pub trait IdsExtractable: Streamable {
+    fn extract_identifiers(&self, tx: &Transaction) -> Vec<Identifier>;
+}
+
+pub trait SubjectPayloadBuilder: IntoSubject {
+    fn build_subjects_payload<T: IdsExtractable>(
+        tx: &Transaction,
+        item: &[T],
+    ) -> Vec<SubjectPayload>;
+}
+
+macro_rules! impl_subject_payload {
+    ($entity: ty, $subject:ident) => {
+        impl From<Identifier> for $subject {
+            fn from(identifier: Identifier) -> Self {
+                match identifier {
+                    Identifier::Address(value) => $subject::new()
+                        .with_id_kind(Some(IdentifierKind::Address))
+                        .with_id_value(Some(value)),
+                    Identifier::ContractId(value) => $subject::new()
+                        .with_id_kind(Some(IdentifierKind::ContractID))
+                        .with_id_value(Some(value)),
+                    Identifier::AssetId(value) => $subject::new()
+                        .with_id_kind(Some(IdentifierKind::AssetID))
+                        .with_id_value(Some(value)),
+                    Identifier::PredicateId(predicate_tag) => $subject::new()
+                        .with_id_kind(Some(IdentifierKind::PredicateID))
+                        .with_id_value(Some(predicate_tag)),
+                    Identifier::ScriptId(script_tag) => $subject::new()
+                        .with_id_kind(Some(IdentifierKind::ScriptID))
+                        .with_id_value(Some(script_tag)),
                 }
+            }
+        }
+
+        impl SubjectPayloadBuilder for $subject {
+            fn build_subjects_payload<T: IdsExtractable>(
+                tx: &Transaction,
+                items: &[T],
+            ) -> Vec<SubjectPayload> {
+                items
+                    .into_iter()
+                    .flat_map(|item| item.extract_identifiers(tx))
+                    .map(|identifier| {
+                        let subject: $subject = identifier.into();
+                        (
+                            subject.boxed() as Box<dyn IntoSubject>,
+                            $subject::WILDCARD,
+                        )
+                    })
+                    .collect()
             }
         }
     };
 }
 
-impl_subjects_mutator!(Transaction, TransactionsByIdSubject);
-impl_subjects_mutator!(Input, InputsByIdSubject);
-impl_subjects_mutator!(Output, OutputsByIdSubject);
-impl_subjects_mutator!(Receipt, ReceiptsByIdSubject);
-
-pub fn add_predicate_subjects<T: Streamable + IdSubjectsMutator>(
-    subjects: &mut Vec<(Box<dyn IntoSubject>, &'static str)>,
-    predicate_tag: Option<Bytes32>,
-) {
-    T::push_id_subjects(IdentifierKind::PredicateID, subjects, predicate_tag);
-}
-
-pub fn add_script_subjects<T: Streamable + IdSubjectsMutator>(
-    subjects: &mut Vec<(Box<dyn IntoSubject>, &'static str)>,
-    script_tag: Option<Bytes32>,
-) {
-    T::push_id_subjects(IdentifierKind::ScriptID, subjects, script_tag);
-}
+impl_subject_payload!(Transaction, TransactionsByIdSubject);
+impl_subject_payload!(Input, InputsByIdSubject);
+impl_subject_payload!(Output, OutputsByIdSubject);
+impl_subject_payload!(Receipt, ReceiptsByIdSubject);
