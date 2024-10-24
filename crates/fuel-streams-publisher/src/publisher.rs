@@ -227,7 +227,7 @@ impl Publisher {
         Ok(())
     }
 
-    pub async fn run(mut self) -> anyhow::Result<Self> {
+    pub async fn run(&mut self) -> anyhow::Result<()> {
         let mut stop_handle = StopHandle::new();
         stop_handle.spawn_signal_listener();
 
@@ -257,7 +257,7 @@ impl Publisher {
                         if shutdown {
                             tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
                             self.shutdown_services_with_timeout().await?;
-                            return Ok(self);
+                            return Ok(());
                         }
                     },
                     (result, block_producer) = async {
@@ -303,7 +303,7 @@ impl Publisher {
             }
         }
 
-        Ok(self)
+        Ok(())
     }
 
     async fn publish(
