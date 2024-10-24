@@ -301,6 +301,20 @@ impl<S: Streamable> Stream<S> {
         }
     }
 
+    pub async fn flush_await(
+        &self,
+        client: &NatsClient,
+    ) -> Result<(), StreamError> {
+        if client.is_connected() {
+            client
+                .nats_client
+                .flush()
+                .await
+                .map_err(StreamError::StreamFlush)?;
+        }
+        Ok(())
+    }
+
     #[cfg(any(test, feature = "test-helpers"))]
     pub async fn assert_has_stream(
         &self,
