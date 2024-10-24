@@ -105,8 +105,6 @@ impl Streams {
 }
 
 #[allow(dead_code)]
-/// TODO: Remove right after using chain_id and base_asset_id to publish
-/// TransactionsById subject
 pub struct Publisher {
     fuel_service: Arc<FuelService>,
     fuel_core: Box<dyn FuelCoreLike>,

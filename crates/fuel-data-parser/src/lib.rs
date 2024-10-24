@@ -83,7 +83,7 @@ pub struct DataParser {
 
 impl Default for DataParser {
     /// Provides a default instance of `DataParser` with no compression strategy
-    /// and `SerializationType::Postcard`.
+    /// and `SerializationType::Json`.
     ///
     /// # Examples
     ///
@@ -91,12 +91,12 @@ impl Default for DataParser {
     /// use fuel_data_parser::{DataParser, SerializationType};
     ///
     /// let parser = DataParser::default();
-    /// assert!(matches!(parser.serialization_type, SerializationType::Postcard));
+    /// assert!(matches!(parser.serialization_type, SerializationType::Json));
     /// ```
     fn default() -> Self {
         Self {
             compression_strategy: None,
-            serialization_type: SerializationType::Postcard,
+            serialization_type: SerializationType::Json,
         }
     }
 }
