@@ -7,7 +7,6 @@ use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
 use fuel_streams::types::{Log, UniqueIdentifier};
 use fuel_streams_core::prelude::*;
-use futures_util::{future::try_join_all, FutureExt};
 use rayon::prelude::*;
 use tokio::{sync::broadcast::error::RecvError, try_join};
 use tracing::warn;

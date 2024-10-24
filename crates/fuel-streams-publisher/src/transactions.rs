@@ -25,6 +25,7 @@ pub fn create_publish_payloads(
     let kind = TransactionKind::from(tx.to_owned());
     let inputs = tx.inputs().to_vec();
     let outputs = tx.outputs().to_vec();
+    let receipts = receipts.unwrap_or_default();
     let status: TransactionStatus = off_chain_database
         .get_tx_status(&tx_id)
         .unwrap()
@@ -52,9 +53,9 @@ pub fn create_publish_payloads(
         .chain(TransactionsByIdSubject::build_subjects_payload(
             tx, &outputs,
         ))
-        .chain(receipts.map_or(Vec::new(), |receipts| {
-            TransactionsByIdSubject::build_subjects_payload(tx, &receipts)
-        }))
+        .chain(TransactionsByIdSubject::build_subjects_payload(
+            tx, &receipts,
+        ))
         .collect();
 
     vec![PublishPayload {
