@@ -83,7 +83,7 @@ fn build_log_payloads(
             vec![(
                 LogsSubject::new()
                     .with_block_height(Some(block_height.clone()))
-                    .with_tx_id(Some(tx_id.into()))
+                    .with_tx_id(Some(tx_id))
                     .with_receipt_index(Some(index))
                     .with_log_id(Some((*id).into()))
                     .boxed(),

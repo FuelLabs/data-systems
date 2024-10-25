@@ -53,12 +53,9 @@ pub type SubjectPayload = (Box<dyn IntoSubject>, &'static str);
 #[derive(Error, Debug)]
 pub enum PublishError {
     #[error("Failed to publish to stream: {0}")]
-    StreamPublishError(String), // Customize the error message as needed
-
+    StreamPublishError(String),
     #[error("Semaphore acquisition failed: {0}")]
     SemaphoreError(#[from] tokio::sync::AcquireError),
-
-    // Add other error variants as needed
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
