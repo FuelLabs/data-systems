@@ -154,18 +154,6 @@ impl Publisher {
         })
     }
 
-    pub async fn flush_await_all_streams(&self) -> anyhow::Result<()> {
-        let streams = [
-            self.streams.blocks.flush_await(&self.nats_client).boxed(),
-            self.streams
-                .transactions
-                .flush_await(&self.nats_client)
-                .boxed(),
-        ];
-        try_join_all(streams).await?;
-        Ok(())
-    }
-
     #[cfg(feature = "test-helpers")]
     pub async fn default_with_publisher(
         nats_client: &NatsClient,
@@ -201,30 +189,44 @@ impl Publisher {
 
     async fn shutdown_services_with_timeout(&self) -> anyhow::Result<()> {
         tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
-            tracing::info!("Flushing in-flight messages to nats ...");
-            match self.flush_await_all_streams().await {
-                Ok(_) => tracing::info!("Flushed in-flight messages to nats"),
-                Err(e) => tracing::error!(
-                    "Flushing in-flight messages to nats failed: {:?}",
-                    e
-                ),
-            }
-
-            tracing::info!("Stopping fuel core ...");
-            match self
-                .fuel_service
-                .send_stop_signal_and_await_shutdown()
-                .await
-            {
-                Ok(state) => {
-                    tracing::info!("Stopped fuel core. Status = {:?}", state)
-                }
-                Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
-            }
+            Publisher::flush_await_all_streams(&self.nats_client).await;
+            Publisher::stop_fuel_service(&self.fuel_service).await;
         })
         .await?;
 
         Ok(())
+    }
+
+    async fn flush_await_all_streams(nats_client: &NatsClient) {
+        tracing::info!("Flushing in-flight messages to nats ...");
+        match nats_client.nats_client.flush().await {
+            Ok(_) => {
+                tracing::info!("Flushed all streams successfully!");
+            }
+            Err(e) => {
+                tracing::error!("Failed to flush all streams: {:?}", e);
+            }
+        }
+    }
+
+    async fn stop_fuel_service(fuel_service: &Arc<FuelService>) {
+        if matches!(
+            fuel_service.state(),
+            fuel_core_services::State::Stopped
+                | fuel_core_services::State::Stopping
+                | fuel_core_services::State::StoppedWithError(_)
+                | fuel_core_services::State::NotStarted
+        ) {
+            return;
+        }
+
+        tracing::info!("Stopping fuel core ...");
+        match fuel_service.send_stop_signal_and_await_shutdown().await {
+            Ok(state) => {
+                tracing::info!("Stopped fuel core. Status = {:?}", state)
+            }
+            Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
+        }
     }
 
     pub async fn run(mut self) -> anyhow::Result<Self> {
