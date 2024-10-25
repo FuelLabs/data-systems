@@ -166,7 +166,7 @@ macro_rules! publish_with_metrics {
                     .with_label_values(&[
                         &$chain_id.to_string(),
                         &$block_producer.to_string(),
-                        $wildcard,
+                        &$wildcard.to_string(),
                     ])
                     .observe(published_data_size as f64);
 
@@ -185,9 +185,11 @@ macro_rules! publish_with_metrics {
                     .with_label_values(&[
                         &$chain_id.to_string(),
                         &$block_producer.to_string(),
-                        $wildcard,
+                        &$wildcard.to_string(),
                     ])
                     .inc();
+
+                Ok(())
             }
             Err(e) => {
                 // Collect error metrics
@@ -196,10 +198,12 @@ macro_rules! publish_with_metrics {
                     .with_label_values(&[
                         &$chain_id.to_string(),
                         &$block_producer.to_string(),
-                        $wildcard,
+                        &$wildcard.to_string(),
                         &e.to_string(),
                     ])
                     .inc();
+
+                Err(PublishError::StreamPublishError(e.to_string()))
             }
         }
     }};

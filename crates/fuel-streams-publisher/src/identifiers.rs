@@ -1,4 +1,5 @@
 use fuel_streams_core::prelude::*;
+use rayon::prelude::*;
 
 use crate::SubjectPayload;
 
@@ -18,7 +19,7 @@ pub trait IdsExtractable: Streamable {
 pub trait SubjectPayloadBuilder: IntoSubject {
     fn build_subjects_payload<T: IdsExtractable>(
         tx: &Transaction,
-        item: &[T],
+        item: &[&T],
     ) -> Vec<SubjectPayload>;
 }
 
@@ -49,10 +50,10 @@ macro_rules! impl_subject_payload {
         impl SubjectPayloadBuilder for $subject {
             fn build_subjects_payload<T: IdsExtractable>(
                 tx: &Transaction,
-                items: &[T],
+                items: &[&T],
             ) -> Vec<SubjectPayload> {
                 items
-                    .into_iter()
+                    .into_par_iter()
                     .flat_map(|item| item.extract_identifiers(tx))
                     .map(|identifier| {
                         let subject: $subject = identifier.into();

@@ -1,44 +1,65 @@
+use std::sync::Arc;
+
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
 
-use crate::{FuelCoreLike, PublishPayload, SubjectPayload};
+use crate::{
+    metrics::PublisherMetrics,
+    FuelCoreLike,
+    PublishError,
+    PublishPayload,
+    CONCURRENCY_LIMIT,
+};
 
-pub fn create_publish_payloads(
+pub async fn publish_tasks(
+    stream: &Stream<Utxo>,
+    transactions: &[Transaction],
+    chain_id: &ChainId,
+    block_producer: &Address,
+    metrics: &Arc<PublisherMetrics>,
+    fuel_core: &dyn FuelCoreLike,
+) -> Result<(), PublishError> {
+    futures::stream::iter(
+        transactions
+            .iter()
+            .flat_map(|tx| create_publish_payloads(stream, tx, chain_id,fuel_core)),
+    )
+    .map(Ok)
+    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
+        let metrics = metrics.clone();
+        let chain_id = chain_id.to_owned();
+        let block_producer = block_producer.clone();
+        async move {
+            payload.publish(&metrics, &chain_id, &block_producer).await
+        }
+    })
+    .await
+}
+
+fn create_publish_payloads(
     stream: &Stream<Utxo>,
     tx: &Transaction,
     chain_id: &ChainId,
     fuel_core: &dyn FuelCoreLike,
 ) -> Vec<PublishPayload<Utxo>> {
     let tx_id = tx.id(chain_id);
-    let subjects_and_payloads = tx
-        .inputs()
+    tx.inputs()
         .par_iter()
         .filter_map(|input| {
-            let utxo_id = input.utxo_id().cloned();
-            get_utxo_data(input, tx_id.into(), utxo_id, fuel_core)
+            find_utxo(input, tx_id.into(), input.utxo_id().cloned(), fuel_core)
         })
-        .collect::<Vec<(UtxosSubject, Utxo)>>();
-
-    subjects_and_payloads
-        .into_par_iter()
-        .map(|item| {
-            let (subject, utxo) = item.clone();
-            let utxo = utxo.clone();
-            let subjects: Vec<SubjectPayload> =
-                vec![(subject.boxed(), UtxosSubject::WILDCARD)];
-
-            PublishPayload {
-                subjects,
-                stream: stream.to_owned(),
-                payload: utxo.to_owned(),
-            }
+        .map(|(subject, utxo)| PublishPayload {
+            subject: (subject.boxed(), UtxosSubject::WILDCARD),
+            stream: stream.to_owned(),
+            payload: utxo.to_owned(),
         })
-        .collect()
+        .collect::<Vec<PublishPayload<Utxo>>>()
 }
 
-fn get_utxo_data(
+fn find_utxo(
     input: &Input,
     tx_id: Bytes32,
     utxo_id: Option<UtxoId>,

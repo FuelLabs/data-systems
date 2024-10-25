@@ -93,7 +93,7 @@ impl From<&Transaction> for TransactionsSubject {
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = TransactionsByIdSubject {
 ///     id_kind: Some(IdentifierKind::ContractID),
-///     id_value: Some(Address::zeroed()),
+///     id_value: Some(Bytes32::zeroed()),
 /// };
 /// assert_eq!(
 ///     subject.parse(),
@@ -125,7 +125,7 @@ impl From<&Transaction> for TransactionsSubject {
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsByIdSubject::new()
 ///     .with_id_kind(Some(IdentifierKind::ContractID))
-///     .with_id_value(Some(Address::zeroed()));
+///     .with_id_value(Some(Bytes32::zeroed()));
 /// assert_eq!(subject.parse(), "by_id.transactions.contract_id.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 #[derive(Subject, Debug, Clone, Default)]

@@ -1,37 +1,72 @@
+use std::sync::Arc;
+
 use fuel_core_types::fuel_tx::{output::contract::Contract, Output};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
 
 use crate::{
     identifiers::{Identifier, IdsExtractable, SubjectPayloadBuilder},
+    metrics::PublisherMetrics,
+    PublishError,
     PublishPayload,
     SubjectPayload,
+    CONCURRENCY_LIMIT,
 };
 
-pub fn create_publish_payloads(
+pub async fn publish_tasks(
+    stream: &Stream<Output>,
+    transactions: &[Transaction],
+    chain_id: &ChainId,
+    block_producer: &Address,
+    metrics: &Arc<PublisherMetrics>,
+) -> Result<(), PublishError> {
+    futures::stream::iter(
+        transactions
+            .iter()
+            .flat_map(|tx| create_publish_payloads(stream, tx, chain_id)),
+    )
+    .map(Ok)
+    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
+        let metrics = metrics.clone();
+        let chain_id = chain_id.to_owned();
+        let block_producer = block_producer.clone();
+        async move {
+            payload.publish(&metrics, &chain_id, &block_producer).await
+        }
+    })
+    .await
+}
+
+fn create_publish_payloads(
     stream: &Stream<Output>,
     tx: &Transaction,
     chain_id: &ChainId,
 ) -> Vec<PublishPayload<Output>> {
     let tx_id = tx.id(chain_id);
-
     tx.outputs()
         .par_iter()
         .enumerate()
-        .map(|(index, output)| {
-            let subjects = main_subjects(output, tx_id.into(), index, tx)
-                .into_iter()
-                .chain(OutputsByIdSubject::build_subjects_payload(
-                    tx,
-                    &[output.to_owned()],
-                ))
-                .collect();
+        .flat_map_iter(|(index, output)| {
+            build_output_payloads(stream, tx, tx_id.into(), output, index)
+        })
+        .collect()
+}
 
-            PublishPayload {
-                subjects,
-                stream: stream.to_owned(),
-                payload: output.to_owned(),
-            }
+fn build_output_payloads(
+    stream: &Stream<Output>,
+    tx: &Transaction,
+    tx_id: Bytes32,
+    output: &Output,
+    index: usize,
+) -> Vec<PublishPayload<Output>> {
+    main_subjects(output, tx_id, index, tx)
+        .into_par_iter()
+        .chain(OutputsByIdSubject::build_subjects_payload(tx, &[output]))
+        .map(|subject| PublishPayload {
+            subject,
+            stream: stream.to_owned(),
+            payload: output.to_owned(),
         })
         .collect()
 }

@@ -21,6 +21,7 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 derive_more = { version = "1.0", features = ["full"] }
+dotenvy = { workspace = true }
 fuel-core = { workspace = true }
 fuel-core-bin = { workspace = true }
 fuel-core-importer = { workspace = true }

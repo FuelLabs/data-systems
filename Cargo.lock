@@ -3589,6 +3589,7 @@ dependencies = [
  "chrono",
  "clap 4.5.20",
  "derive_more 1.0.0",
+ "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-importer",
