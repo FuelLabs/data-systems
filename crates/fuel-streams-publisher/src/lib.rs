@@ -48,32 +48,6 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
     bytes.into()
 }
 
-pub fn maybe_include_predicate_and_script_subjects(
-    subjects: &mut Vec<(Box<dyn IntoSubject>, &'static str)>,
-    predicate_tag: &Option<Bytes32>,
-    script_tag: &Option<Bytes32>,
-) {
-    if let Some(predicate_tag) = predicate_tag.clone() {
-        subjects.push((
-            InputsByIdSubject::new()
-                .with_id_kind(Some(IdentifierKind::PredicateID))
-                .with_id_value(Some(predicate_tag))
-                .boxed(),
-            InputsByIdSubject::WILDCARD,
-        ));
-    }
-
-    if let Some(script_tag) = script_tag.clone() {
-        subjects.push((
-            InputsByIdSubject::new()
-                .with_id_kind(Some(IdentifierKind::ScriptID))
-                .with_id_value(Some(script_tag))
-                .boxed(),
-            InputsByIdSubject::WILDCARD,
-        ));
-    }
-}
-
 pub type SubjectPayload = (Box<dyn IntoSubject>, &'static str);
 
 #[derive(Error, Debug)]
