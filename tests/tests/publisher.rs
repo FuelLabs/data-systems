@@ -65,16 +65,55 @@ impl FuelCoreLike for TestFuelCore {
     }
 }
 
+async fn nats_client() -> NatsClient {
+    const NATS_URL: &str = "nats://localhost:4222";
+    let nats_client_opts =
+        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+    NatsClient::connect(&nats_client_opts)
+        .await
+        .expect("NATS connection failed")
+}
+
+fn create_test_fuel_core(receipts: Option<Vec<Receipt>>) -> Box<TestFuelCore> {
+    let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
+    let mut fuel_core = TestFuelCore::default(blocks_subscription);
+    if let Some(receipts) = receipts {
+        fuel_core = fuel_core.with_receipts(receipts);
+    }
+    fuel_core.boxed()
+}
+
+async fn create_publisher(fuel_core: Box<TestFuelCore>) -> Publisher {
+    Publisher::default_with_publisher(&nats_client().await, fuel_core)
+        .await
+        .unwrap()
+        .run()
+        .await
+        .unwrap()
+}
+
+fn create_test_block() -> ImporterResult {
+    let mut block_entity = Block::default();
+    let tx = Transaction::default_test_tx();
+
+    *block_entity.transactions_mut() = vec![tx];
+
+    ImporterResult {
+        shared_result: Arc::new(ImportResult {
+            sealed_block: SealedBlock {
+                entity: block_entity,
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+        changes: Arc::new(HashMap::new()),
+    }
+}
+
 #[tokio::test]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
-    let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
-    let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-
-    let publisher =
-        Publisher::default_with_publisher(&nats_client().await, fuel_core)
-            .await
-            .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    let fuel_core = create_test_fuel_core(None);
+    let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher.get_streams().is_empty().await);
 }
@@ -83,23 +122,14 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
 async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
-
-    let block = ImporterResult {
-        shared_result: Arc::new(ImportResult::default()),
-        changes: Arc::new(HashMap::new()),
-    };
+    let block = create_test_block();
     let _ = blocks_subscriber.send(block);
 
     // manually drop blocks to ensure `blocks_subscription` completes
-    let _ = blocks_subscriber.clone();
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher =
-        Publisher::default_with_publisher(&nats_client().await, fuel_core)
-            .await
-            .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
         .get_streams()
@@ -114,32 +144,14 @@ async fn publishes_transaction_for_each_published_block() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
 
-    let mut block_entity = Block::default();
-    *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
-
-    // publish block
-    let block = ImporterResult {
-        shared_result: Arc::new(ImportResult {
-            sealed_block: SealedBlock {
-                entity: block_entity,
-                ..Default::default()
-            },
-            ..Default::default()
-        }),
-        changes: Arc::new(HashMap::new()),
-    };
+    let block = create_test_block();
     let _ = blocks_subscriber.send(block);
 
     // manually drop blocks to ensure `blocks_subscription` completes
-    let _ = blocks_subscriber.clone();
     drop(blocks_subscriber);
 
     let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
-    let publisher =
-        Publisher::default_with_publisher(&nats_client().await, fuel_core)
-            .await
-            .unwrap();
-    let publisher = publisher.run().await.unwrap();
+    let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
         .get_streams()
@@ -154,20 +166,7 @@ async fn publishes_receipts() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
 
-    let mut block_entity = Block::default();
-    *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
-
-    // publish block
-    let block = ImporterResult {
-        shared_result: Arc::new(ImportResult {
-            sealed_block: SealedBlock {
-                entity: block_entity,
-                ..Default::default()
-            },
-            ..Default::default()
-        }),
-        changes: Arc::new(HashMap::new()),
-    };
+    let block = create_test_block();
     let _ = blocks_subscriber.send(block);
 
     let _ = blocks_subscriber.clone();
@@ -262,12 +261,7 @@ async fn publishes_receipts() {
         .with_receipts(receipts.to_vec())
         .boxed();
 
-    let publisher =
-        Publisher::default_with_publisher(&nats_client().await, fuel_core)
-            .await
-            .unwrap();
-
-    let publisher = publisher.run().await.unwrap();
+    let publisher = create_publisher(fuel_core).await;
 
     let mut receipts_stream =
         publisher.get_streams().receipts.catchup(10).await.unwrap();
@@ -279,65 +273,23 @@ async fn publishes_receipts() {
 }
 
 #[tokio::test]
-async fn publishes_logs() {
+async fn publishes_inputs() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
 
-    let mut block_entity = Block::default();
-    *block_entity.transactions_mut() = vec![Transaction::default_test_tx()];
-
-    // publish block
-    let block = ImporterResult {
-        shared_result: Arc::new(ImportResult {
-            sealed_block: SealedBlock {
-                entity: block_entity,
-                ..Default::default()
-            },
-            ..Default::default()
-        }),
-        changes: Arc::new(HashMap::new()),
-    };
+    let block = create_test_block();
     let _ = blocks_subscriber.send(block);
 
     let _ = blocks_subscriber.clone();
     drop(blocks_subscriber);
 
-    let receipt = Receipt::LogData {
-        id: ContractId::default(),
-        ra: 0,
-        rb: 0,
-        ptr: 0,
-        len: 0,
-        digest: Bytes32::default(),
-        pc: 0,
-        is: 0,
-        data: None,
-    };
-
-    let fuel_core = TestFuelCore::default(blocks_subscription)
-        .with_receipts(vec![receipt.clone()])
-        .boxed();
-
-    let publisher =
-        Publisher::default_with_publisher(&nats_client().await, fuel_core)
-            .await
-            .unwrap();
-
-    let publisher = publisher.run().await.unwrap();
+    let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
+    let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
         .get_streams()
-        .logs
-        .get_last_published(LogsSubject::WILDCARD)
+        .inputs
+        .get_last_published(InputsByIdSubject::WILDCARD)
         .await
-        .is_ok_and(|result| result.is_some_and(|log| log == receipt.into())));
-}
-
-async fn nats_client() -> NatsClient {
-    const NATS_URL: &str = "nats://localhost:4222";
-    let nats_client_opts =
-        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
-    NatsClient::connect(&nats_client_opts)
-        .await
-        .expect("NATS connection failed")
+        .is_ok_and(|result| result.is_some()));
 }
