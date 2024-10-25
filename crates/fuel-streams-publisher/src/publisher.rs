@@ -262,7 +262,6 @@ impl Publisher {
         let last_published_height = last_published_block
             .map(|block| block.header().height().as_u64())
             .unwrap_or(0);
-        let next_height_to_publish = last_published_height + 1;
 
         // Catch up the streams with the FuelCore
         if let Some(latest_fuel_core_height) =
@@ -272,8 +271,14 @@ impl Publisher {
                 warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
-            // publish historical data if needed
-            let mut height = next_height_to_publish;
+            // Republish the last block. Why? We publish multiple data from the same
+            // block and it is not atomic. If the publisher is abruptly stopped, the
+            // block itself might be published, but the transactions and receipts
+            // might not be. Publishing is idempotent, so republishing the last block
+            // is safe and it's a simple way to ensure we don't miss any data. Thus,
+            // this loop will run at least once, to republish the last block, and
+            // then it will also republish any missing blocks.
+            let mut height = last_published_height;
             while height <= latest_fuel_core_height {
                 tokio::select! {
                     shutdown = stop_handle.wait_for_signal() => {
