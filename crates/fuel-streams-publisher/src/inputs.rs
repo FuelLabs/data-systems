@@ -36,7 +36,7 @@ pub async fn publish_tasks(
     futures::stream::iter(
         transactions
             .iter()
-            .flat_map(|tx| create_publish_payloads(stream, tx, chain_id)),
+            .flat_map(|tx| create_publish_payloads(tx, chain_id)),
     )
     .map(Ok)
     .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
@@ -44,14 +44,15 @@ pub async fn publish_tasks(
         let chain_id = chain_id.to_owned();
         let block_producer = block_producer.clone();
         async move {
-            payload.publish(&metrics, &chain_id, &block_producer).await
+            payload
+                .publish(stream, &metrics, &chain_id, &block_producer)
+                .await
         }
     })
     .await
 }
 
 fn create_publish_payloads(
-    stream: &Stream<Input>,
     tx: &Transaction,
     chain_id: &ChainId,
 ) -> Vec<PublishPayload<Input>> {
@@ -61,13 +62,12 @@ fn create_publish_payloads(
         .par_iter()
         .enumerate()
         .flat_map_iter(|(index, input)| {
-            build_input_payloads(stream, tx, tx_id.into(), input, index)
+            build_input_payloads(tx, tx_id.into(), input, index)
         })
         .collect()
 }
 
 fn build_input_payloads(
-    stream: &Stream<Input>,
     tx: &Transaction,
     tx_id: Bytes32,
     input: &Input,
@@ -78,7 +78,6 @@ fn build_input_payloads(
         .chain(InputsByIdSubject::build_subjects_payload(tx, &[input]))
         .map(|subject| PublishPayload {
             subject,
-            stream: stream.to_owned(),
             payload: input.to_owned(),
         })
         .collect()

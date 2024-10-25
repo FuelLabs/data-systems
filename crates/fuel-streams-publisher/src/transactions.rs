@@ -26,30 +26,35 @@ pub async fn publish_tasks(
     metrics: &Arc<PublisherMetrics>,
     fuel_core: &dyn FuelCoreLike,
 ) -> Result<(), PublishError> {
-    futures::stream::iter(
-        transactions
-            .iter()
-            .enumerate()
-            .flat_map(|(tx_index, tx)| {
-                let tx_id = tx.id(chain_id);
-                let receipts= fuel_core.get_receipts(&tx_id).unwrap_or_default();
-                create_publish_payloads(stream, tx, tx_index, fuel_core, chain_id, block_height, receipts)
-            }),
-    )
+    futures::stream::iter(transactions.iter().enumerate().flat_map(
+        |(tx_index, tx)| {
+            let tx_id = tx.id(chain_id);
+            let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
+            create_publish_payloads(
+                tx,
+                tx_index,
+                fuel_core,
+                chain_id,
+                block_height,
+                receipts,
+            )
+        },
+    ))
     .map(Ok)
     .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
         let metrics = metrics.clone();
         let chain_id = chain_id.to_owned();
         let block_producer = block_producer.clone();
         async move {
-            payload.publish(&metrics, &chain_id, &block_producer).await
+            payload
+                .publish(stream, &metrics, &chain_id, &block_producer)
+                .await
         }
     })
     .await
 }
 
 fn create_publish_payloads(
-    stream: &Stream<Transaction>,
     tx: &Transaction,
     tx_index: usize,
     fuel_core: &dyn FuelCoreLike,
@@ -100,7 +105,6 @@ fn create_publish_payloads(
         .map(|subject| PublishPayload {
             subject,
             payload: tx.to_owned(),
-            stream: stream.to_owned(),
         })
         .collect()
 }

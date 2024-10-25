@@ -23,29 +23,26 @@ pub async fn publish_tasks(
     metrics: &Arc<PublisherMetrics>,
     fuel_core: &dyn FuelCoreLike,
 ) -> Result<(), PublishError> {
-    futures::stream::iter(
-        transactions
-            .iter()
-            .flat_map(|tx| {
-                let tx_id = tx.id(chain_id);
-                let receipts= fuel_core.get_receipts(&tx_id).unwrap_or_default();
-                create_publish_payloads(stream, tx, &receipts, chain_id, block_height)
-            }),
-    )
+    futures::stream::iter(transactions.iter().flat_map(|tx| {
+        let tx_id = tx.id(chain_id);
+        let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
+        create_publish_payloads(tx, &receipts, chain_id, block_height)
+    }))
     .map(Ok)
     .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
         let metrics = metrics.clone();
         let chain_id = chain_id.to_owned();
         let block_producer = block_producer.clone();
         async move {
-            payload.publish(&metrics, &chain_id, &block_producer).await
+            payload
+                .publish(stream, &metrics, &chain_id, &block_producer)
+                .await
         }
     })
     .await
 }
 
 fn create_publish_payloads(
-    stream: &Stream<Log>,
     tx: &Transaction,
     receipts: &Option<Vec<Receipt>>,
     chain_id: &ChainId,
@@ -57,13 +54,7 @@ fn create_publish_payloads(
             .par_iter()
             .enumerate()
             .flat_map_iter(|(index, receipt)| {
-                build_log_payloads(
-                    stream,
-                    block_height,
-                    tx_id.into(),
-                    receipt,
-                    index,
-                )
+                build_log_payloads(block_height, tx_id.into(), receipt, index)
             })
             .collect()
     } else {
@@ -72,7 +63,6 @@ fn create_publish_payloads(
 }
 
 fn build_log_payloads(
-    stream: &Stream<Log>,
     block_height: &BlockHeight,
     tx_id: Bytes32,
     receipt: &Receipt,
@@ -97,7 +87,6 @@ fn build_log_payloads(
         .into_par_iter()
         .map(|subject| PublishPayload {
             subject,
-            stream: stream.to_owned(),
             payload: receipt.clone().into(),
         })
         .collect()

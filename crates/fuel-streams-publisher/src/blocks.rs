@@ -21,8 +21,7 @@ pub async fn publish_tasks(
     block_height: &BlockHeight,
     metrics: &Arc<PublisherMetrics>,
 ) -> Result<(), PublishError> {
-    let payloads =
-        create_publish_payloads(stream, block, block_height, block_producer);
+    let payloads = create_publish_payloads(block, block_height, block_producer);
 
     add_metrics(chain_id, block, block_producer, metrics);
     futures::stream::iter(payloads)
@@ -32,14 +31,15 @@ pub async fn publish_tasks(
             let chain_id = chain_id.to_owned();
             let block_producer = block_producer.clone();
             async move {
-                payload.publish(&metrics, &chain_id, &block_producer).await
+                payload
+                    .publish(stream, &metrics, &chain_id, &block_producer)
+                    .await
             }
         })
         .await
 }
 
 fn create_publish_payloads(
-    stream: &Stream<Block>,
     block: &Block<Transaction>,
     block_height: &BlockHeight,
     block_producer: &Address,
@@ -54,7 +54,6 @@ fn create_publish_payloads(
 
     vec![PublishPayload {
         subject,
-        stream: stream.to_owned(),
         payload: block.to_owned(),
     }]
 }

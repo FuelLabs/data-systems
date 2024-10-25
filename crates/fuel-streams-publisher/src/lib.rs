@@ -1,5 +1,4 @@
 mod blocks;
-mod identifiers;
 mod inputs;
 mod logs;
 mod outputs;
@@ -11,6 +10,7 @@ mod fuel_core;
 mod publisher;
 
 pub mod cli;
+pub mod identifiers;
 pub mod metrics;
 pub mod server;
 pub mod shutdown;
@@ -61,14 +61,14 @@ pub enum PublishError {
 }
 
 pub struct PublishPayload<S: Streamable> {
-    pub stream: Stream<S>,
     pub subject: SubjectPayload,
     pub payload: S,
 }
 
-impl<T: Streamable + Clone + Send + Sync + 'static> PublishPayload<T> {
+impl<T: Streamable> PublishPayload<T> {
     pub async fn publish(
         &self,
+        stream: &Stream<T>,
         metrics: &Arc<PublisherMetrics>,
         chain_id: &ChainId,
         block_producer: &Address,
@@ -76,7 +76,7 @@ impl<T: Streamable + Clone + Send + Sync + 'static> PublishPayload<T> {
         let (subject, wildcard) = &self.subject;
         let wildcard = *wildcard;
         publish_with_metrics!(
-            self.stream.publish(&**subject, &self.payload),
+            stream.publish(&**subject, &self.payload),
             metrics,
             chain_id,
             block_producer,

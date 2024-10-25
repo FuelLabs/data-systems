@@ -25,7 +25,7 @@ pub async fn publish_tasks(
     futures::stream::iter(
         transactions
             .iter()
-            .flat_map(|tx| create_publish_payloads(stream, tx, chain_id,fuel_core)),
+            .flat_map(|tx| create_publish_payloads(tx, chain_id, fuel_core)),
     )
     .map(Ok)
     .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
@@ -33,14 +33,15 @@ pub async fn publish_tasks(
         let chain_id = chain_id.to_owned();
         let block_producer = block_producer.clone();
         async move {
-            payload.publish(&metrics, &chain_id, &block_producer).await
+            payload
+                .publish(stream, &metrics, &chain_id, &block_producer)
+                .await
         }
     })
     .await
 }
 
 fn create_publish_payloads(
-    stream: &Stream<Utxo>,
     tx: &Transaction,
     chain_id: &ChainId,
     fuel_core: &dyn FuelCoreLike,
@@ -53,7 +54,6 @@ fn create_publish_payloads(
         })
         .map(|(subject, utxo)| PublishPayload {
             subject: (subject.boxed(), UtxosSubject::WILDCARD),
-            stream: stream.to_owned(),
             payload: utxo.to_owned(),
         })
         .collect::<Vec<PublishPayload<Utxo>>>()
