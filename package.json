@@ -10,10 +10,10 @@
     "md:fix": "pnpm md:lint --fix"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "^19.2.2",
-    "commitlint": "^19.4.0",
-    "markdownlint": "^0.34.0",
-    "markdownlint-cli": "^0.41.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "commitlint": "^19.5.0",
+    "markdownlint": "^0.35.0",
+    "markdownlint-cli": "^0.42.0",
     "prettier": "^3.3.3",
     "prettier-plugin-sh": "^0.14.0",
     "prettier-plugin-toml": "^2.0.1"
