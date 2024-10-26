@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{iter::once, sync::Arc};
 
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::field::ScriptData;
@@ -30,15 +30,22 @@ pub fn publish_all_tasks(
         .enumerate()
         .flat_map_iter(|tx_item| {
             let (_, tx) = tx_item;
-            vec![
-                publish_tasks(tx_item, &streams.transactions, opts, fuel_core),
-                publish_inputs(tx, &streams.inputs, opts),
-                publish_outputs(tx, &streams.outputs, opts),
-                publish_receipts(tx, &streams.receipts, opts, fuel_core),
-                publish_logs(tx, &streams.logs, opts, fuel_core),
-                publish_utxos(tx, &streams.utxos, opts, fuel_core),
-            ]
-            .into_iter()
+            once(publish_tasks(
+                tx_item,
+                &streams.transactions,
+                opts,
+                fuel_core,
+            ))
+            .chain(once(publish_inputs(tx, &streams.inputs, opts)))
+            .chain(once(publish_outputs(tx, &streams.outputs, opts)))
+            .chain(once(publish_receipts(
+                tx,
+                &streams.receipts,
+                opts,
+                fuel_core,
+            )))
+            .chain(once(publish_logs(tx, &streams.logs, opts, fuel_core)))
+            .chain(once(publish_utxos(tx, &streams.utxos, opts, fuel_core)))
             .flatten()
         })
         .collect()

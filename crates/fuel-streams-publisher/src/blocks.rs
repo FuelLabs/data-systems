@@ -3,7 +3,6 @@ use std::sync::Arc;
 use fuel_streams_core::prelude::*;
 use tokio::task::JoinHandle;
 
-
 use crate::packets::{PublishError, PublishOpts, PublishPacket};
 
 pub fn publish_task(

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
@@ -8,10 +9,13 @@ use fuel_core_types::fuel_tx::Output;
 use fuel_streams::types::Log;
 use fuel_streams_core::prelude::*;
 use futures::{stream::FuturesUnordered, StreamExt};
+use rayon::prelude::*;
+use thiserror::Error;
 use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
 use crate::{
     blocks,
+    elastic::{create_elasticsearch_instance, ElasticSearch},
     metrics::PublisherMetrics,
     packets::{PublishError, PublishOpts},
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
@@ -96,6 +100,14 @@ impl Streams {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum PublishBlockError {
+    #[error("Task execution error: {0}")]
+    TaskExecution(String),
+    #[error("Publish error: {0}")]
+    Publish(#[from] PublishError),
+}
+
 #[allow(dead_code)]
 /// TODO: Remove right after using chain_id and base_asset_id to publish
 /// TransactionsById subject
@@ -103,6 +115,7 @@ pub struct Publisher {
     fuel_service: Arc<FuelService>,
     fuel_core: Box<dyn FuelCoreLike>,
     metrics: Arc<PublisherMetrics>,
+    elastic_logger: Option<Arc<ElasticSearch>>,
     nats_client: NatsClient,
     streams: Arc<Streams>,
 }
@@ -111,6 +124,7 @@ impl Publisher {
     pub async fn new(
         fuel_service: Arc<FuelService>,
         nats_url: &str,
+        use_elastic_logging: bool,
         metrics: Arc<PublisherMetrics>,
         streams: Arc<Streams>,
     ) -> anyhow::Result<Self> {
@@ -143,6 +157,11 @@ impl Publisher {
             streams,
             metrics,
             nats_client,
+            elastic_logger: if use_elastic_logging {
+                Some(Arc::new(create_elasticsearch_instance().await?))
+            } else {
+                None
+            },
         })
     }
 
@@ -155,12 +174,14 @@ impl Publisher {
 
         let fuel_srv =
             FuelService::new_node(Config::local_node()).await.unwrap();
+
         Ok(Publisher {
             fuel_service: Arc::new(fuel_srv),
             fuel_core,
             streams: Arc::new(Streams::new(nats_client).await),
             metrics: Arc::new(PublisherMetrics::random()),
             nats_client: nats_client.clone(),
+            elastic_logger: None,
         })
     }
 
@@ -242,6 +263,19 @@ impl Publisher {
     }
 
     pub async fn run(mut self) -> anyhow::Result<Self> {
+        if let Some(elastic_logger) = self.elastic_logger.as_ref() {
+            tracing::info!(
+                "Elastic logger connection live? {:?}",
+                elastic_logger.get_conn().check_alive().unwrap_or_default()
+            );
+            elastic_logger
+                .get_conn()
+                .ping()
+                .await
+                .context("Error pinging elastisearch connection")?;
+            tracing::info!("Elastic logger pinged successfully!");
+        }
+
         let mut stop_handle = StopHandle::new();
         stop_handle.spawn_signal_listener();
         self.set_panic_hook();
@@ -332,11 +366,11 @@ impl Publisher {
         block_producer: &Address,
     ) -> anyhow::Result<()> {
         let start_time = std::time::Instant::now();
+        let fuel_core = &*self.fuel_core;
         let semaphore = Arc::new(Semaphore::new(*CONCURRENCY_LIMIT));
         let chain_id = Arc::new(*self.fuel_core.chain_id());
-        let block_height = block.header().consensus().height;
         let block_producer = Arc::new(block_producer.clone());
-        let fuel_core = &*self.fuel_core;
+        let block_height = block.header().consensus().height;
         let txs = block.transactions();
 
         let streams = (*self.streams).clone();
@@ -347,9 +381,10 @@ impl Publisher {
             metrics: Arc::clone(&self.metrics),
             block_producer: Arc::clone(&block_producer),
             block_height: Arc::new(block_height.into()),
+            elastic_logger: self.elastic_logger.to_owned(),
         });
 
-        let mut tasks =
+        let tasks =
             transactions::publish_all_tasks(txs, streams, opts, fuel_core)
                 .into_iter()
                 .chain(std::iter::once(blocks::publish_task(
@@ -359,35 +394,48 @@ impl Publisher {
                 )))
                 .collect::<FuturesUnordered<_>>();
 
-        let mut errors = Vec::new();
-        while let Some(result) = tasks.next().await {
-            match result {
-                Ok(Ok(())) => { /* Successfully published */ }
-                Ok(Err(publish_error)) => {
-                    tracing::error!("Publish error: {:?}", publish_error);
-                    errors.push(publish_error);
-                }
-                Err(join_error) => {
-                    tracing::error!("Task join error: {:?}", join_error);
-                    errors.push(PublishError::Unknown(join_error.to_string()));
-                }
-            }
-        }
+        let errors: Vec<PublishBlockError> = tasks
+            .filter_map(|res| self.handle_task_result(res))
+            .collect()
+            .await;
 
         if !errors.is_empty() {
-            return Err(anyhow::anyhow!(
-                "Encountered {} errors during publishing",
-                errors.len()
-            ));
+            let error_message = errors
+                .par_iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            Err(anyhow::anyhow!(
+                "Errors occurred during block publishing: {}",
+                error_message
+            ))
+        } else {
+            let elapsed = start_time.elapsed();
+            tracing::info!(
+                "Published streams for BlockHeight: {} in {:?}",
+                *block_height,
+                elapsed
+            );
+
+            Ok(())
         }
+    }
 
-        let elapsed = start_time.elapsed();
-        tracing::info!(
-            "Published streams for BlockHeight: {} in {:?}",
-            block_height,
-            elapsed
-        );
-
-        Ok(())
+    async fn handle_task_result(
+        &self,
+        result: Result<Result<(), PublishError>, tokio::task::JoinError>,
+    ) -> Option<PublishBlockError> {
+        match result {
+            Ok(Ok(())) => None,
+            Ok(Err(publish_error)) => {
+                tracing::error!("Publish error: {:?}", publish_error);
+                Some(PublishBlockError::Publish(publish_error))
+            }
+            Err(join_error) => {
+                tracing::error!("Task join error: {:?}", join_error);
+                Some(PublishBlockError::TaskExecution(join_error.to_string()))
+            }
+        }
     }
 }

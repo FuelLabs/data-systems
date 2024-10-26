@@ -50,23 +50,21 @@ pub async fn create_elasticsearch_instance() -> anyhow::Result<ElasticSearch> {
 
 /// Elasticsearch errors
 #[derive(Debug, Display, Error)]
-pub enum Error {
+pub enum ElasticSearchError {
     /// ElasticSearchConfigError: `{0}`
-    ElasticSearchConfigError(
-        #[from] elasticsearch::http::transport::BuildError,
-    ),
+    Config(#[from] elasticsearch::http::transport::BuildError),
     /// ElasticSearchDisabled
-    ElasticSearchDisabled,
+    Disabled,
     /// ElasticSearchError: `{0}`
-    ElasticSearchError(#[from] elasticsearch::Error),
+    Generic(#[from] elasticsearch::Error),
     /// IoError: `{0}`
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
     /// UrlParseError: `{0}`
-    UrlParseError(#[from] url::ParseError),
+    UrlParse(#[from] url::ParseError),
     /// CertificateError: `{0}`: `{0}`
-    CertificateError(PathBuf, io::Error),
+    Certificate(PathBuf, io::Error),
     /// SerdeJsonError: `{0}`
-    SerdeJsonError(#[from] serde_json::Error),
+    SerdeJson(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -101,9 +99,9 @@ pub struct TlsConfig {
 pub struct ElasticSearch(ElasticConnection);
 
 impl ElasticSearch {
-    pub async fn new(config: &Config) -> Result<Self, Error> {
+    pub async fn new(config: &Config) -> Result<Self, ElasticSearchError> {
         if !config.enabled {
-            return Err(Error::ElasticSearchDisabled);
+            return Err(ElasticSearchError::Disabled);
         }
         let conn_info = ConnectionInfo::new(config)?;
         let conn = conn_info
@@ -122,7 +120,7 @@ impl ElasticSearch {
         id: Option<&str>,
         doc: B,
         refresh: Option<Refresh>,
-    ) -> Result<(), Error>
+    ) -> Result<(), ElasticSearchError>
     where
         B: Serialize,
     {
@@ -134,7 +132,7 @@ impl ElasticSearch {
         path: Option<&str>,
         iter: I,
         refresh: Option<Refresh>,
-    ) -> Result<BulkResults, Error>
+    ) -> Result<BulkResults, ElasticSearchError>
     where
         B: Serialize,
         I: IntoIterator<Item = BulkItem<B>>,
@@ -147,7 +145,7 @@ impl ElasticSearch {
         path: Option<&[&str]>,
         query_string: Option<&Q>,
         body: Option<B>,
-    ) -> Result<SearchHits, Error>
+    ) -> Result<SearchHits, ElasticSearchError>
     where
         B: Serialize,
         Q: Serialize + ?Sized,
@@ -159,7 +157,7 @@ impl ElasticSearch {
         &self,
         indices: &[&str],
         body: B,
-    ) -> Result<u64, Error>
+    ) -> Result<u64, ElasticSearchError>
     where
         B: Serialize,
     {
@@ -321,7 +319,7 @@ impl OperationResult {
 pub struct ConnectionInfo(Transport);
 
 impl ConnectionInfo {
-    pub fn new(config: &Config) -> Result<Self, Error> {
+    pub fn new(config: &Config) -> Result<Self, ElasticSearchError> {
         let url = Url::parse(&config.url)?;
         let pool = SingleNodeConnectionPool::new(url);
         let transport = TransportBuilder::new(pool);
@@ -337,7 +335,7 @@ impl ConnectionInfo {
             (_, _, Some(certificate)) => {
                 Some(Credentials::Certificate(ClientCertificate::Pkcs12(
                     fs::read(&certificate).map_err(|err| {
-                        Error::CertificateError(certificate, err)
+                        ElasticSearchError::Certificate(certificate, err)
                     })?,
                     tls.key_passphrase,
                 )))
@@ -349,22 +347,21 @@ impl ConnectionInfo {
                 )
             }),
         };
-        let transport =
-            if let Some(ca) = tls.ca {
-                transport.cert_validation(CertificateValidation::Full(
-                    Certificate::from_pem(&fs::read(&ca).map_err(|err| {
-                        Error::CertificateError(ca.clone(), err)
-                    })?)
-                    .map_err(|err| {
-                        Error::CertificateError(
-                            ca,
-                            io::Error::new(io::ErrorKind::Other, err),
-                        )
-                    })?,
-                ))
-            } else {
-                transport
-            };
+        let transport = if let Some(ca) = tls.ca {
+            transport.cert_validation(CertificateValidation::Full(
+                Certificate::from_pem(&fs::read(&ca).map_err(|err| {
+                    ElasticSearchError::Certificate(ca.clone(), err)
+                })?)
+                .map_err(|err| {
+                    ElasticSearchError::Certificate(
+                        ca,
+                        io::Error::new(io::ErrorKind::Other, err),
+                    )
+                })?,
+            ))
+        } else {
+            transport
+        };
         let transport = if let Some(credentials) = credentials {
             transport.auth(credentials)
         } else {
@@ -374,7 +371,9 @@ impl ConnectionInfo {
         Ok(Self(inner))
     }
 
-    pub fn get_connection(&self) -> Result<ElasticConnection, Error> {
+    pub fn get_connection(
+        &self,
+    ) -> Result<ElasticConnection, ElasticSearchError> {
         let conn = Elasticsearch::new(self.0.clone());
         Ok(ElasticConnection(Some(conn)))
     }
@@ -385,7 +384,7 @@ pub struct ElasticConnection(Option<Elasticsearch>);
 impl ElasticConnection {
     pub async fn connect(
         address: &ConnectionInfo,
-    ) -> Result<ElasticConnection, Error> {
+    ) -> Result<ElasticConnection, ElasticSearchError> {
         address.get_connection()
     }
 
@@ -393,7 +392,7 @@ impl ElasticConnection {
         Some(self.0.is_some())
     }
 
-    pub async fn ping(&self) -> Result<(), Error> {
+    pub async fn ping(&self) -> Result<(), ElasticSearchError> {
         let conn = self.0.as_ref().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::ConnectionAborted,
@@ -414,7 +413,7 @@ impl ElasticConnection {
         id: Option<&str>,
         doc: B,
         refresh: Option<Refresh>,
-    ) -> Result<(), Error>
+    ) -> Result<(), ElasticSearchError>
     where
         B: Serialize,
     {
@@ -445,7 +444,7 @@ impl ElasticConnection {
         path: Option<&str>,
         iter: I,
         refresh: Option<Refresh>,
-    ) -> Result<BulkResults, Error>
+    ) -> Result<BulkResults, ElasticSearchError>
     where
         B: Serialize,
         I: IntoIterator<Item = BulkItem<B>>,
@@ -473,7 +472,7 @@ impl ElasticConnection {
         path: Option<&[&str]>,
         query_string: Option<&Q>,
         body: Option<B>,
-    ) -> Result<SearchHits, Error>
+    ) -> Result<SearchHits, ElasticSearchError>
     where
         B: Serialize,
         Q: Serialize + ?Sized,
@@ -500,7 +499,7 @@ impl ElasticConnection {
         query_string: Option<&Q>,
         body: Option<B>,
         timeout: Option<Duration>,
-    ) -> Result<Response, Error>
+    ) -> Result<Response, ElasticSearchError>
     where
         B: Body,
         Q: Serialize + ?Sized,
@@ -532,7 +531,7 @@ impl ElasticConnection {
         &self,
         indices: &[&str],
         body: B,
-    ) -> Result<u64, Error>
+    ) -> Result<u64, ElasticSearchError>
     where
         B: Serialize,
     {
@@ -559,7 +558,7 @@ impl ElasticConnection {
 
 fn build_bulk_request_body<B, I>(
     iter: I,
-) -> Result<Vec<JsonBody<JsonValue>>, Error>
+) -> Result<Vec<JsonBody<JsonValue>>, ElasticSearchError>
 where
     B: Serialize,
     I: IntoIterator<Item = BulkItem<B>>,
@@ -724,7 +723,7 @@ mod tests {
         };
         assert!(matches!(
             ElasticSearch::new(&config).await,
-            Err(Error::ElasticSearchDisabled)
+            Err(ElasticSearchError::Disabled)
         ),);
     }
 
@@ -741,7 +740,7 @@ mod tests {
         };
         assert!(matches!(
             ElasticSearch::new(&config).await,
-            Err(Error::CertificateError(_, _))
+            Err(ElasticSearchError::Certificate(_, _))
         ));
     }
 
