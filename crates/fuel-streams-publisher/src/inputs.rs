@@ -27,7 +27,8 @@ pub fn publish_tasks(
     opts: &Arc<PublishOpts>,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
     let tx_id = tx.id(&opts.chain_id);
-    tx.inputs()
+    let packets: Vec<PublishPacket<Input>> = tx
+        .inputs()
         .par_iter()
         .enumerate()
         .flat_map(move |(index, input)| {
@@ -37,6 +38,10 @@ pub fn publish_tasks(
             packets.push(packet);
             packets
         })
+        .collect();
+
+    packets
+        .iter()
         .map(|packet| {
             let stream = stream.clone();
             let opts = Arc::clone(opts);

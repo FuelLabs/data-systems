@@ -18,11 +18,16 @@ pub fn publish_tasks(
     fuel_core: &dyn FuelCoreLike,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
     let tx_id = tx.id(&opts.chain_id);
-    tx.inputs()
+    let packets: Vec<(UtxosSubject, Utxo)> = tx
+        .inputs()
         .par_iter()
         .filter_map(|input| {
             find_utxo(input, tx_id.into(), input.utxo_id().cloned(), fuel_core)
         })
+        .collect();
+
+    packets
+        .into_iter()
         .map(|(subject, utxo)| {
             let packet = PublishPacket::new(
                 &utxo,

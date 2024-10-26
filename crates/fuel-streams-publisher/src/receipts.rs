@@ -19,7 +19,7 @@ pub fn publish_tasks(
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
     let tx_id = tx.id(&opts.chain_id);
     let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
-    receipts
+    let packets: Vec<PublishPacket<Receipt>> = receipts
         .unwrap_or_default()
         .par_iter()
         .enumerate()
@@ -30,6 +30,10 @@ pub fn publish_tasks(
             packets.push(packet);
             packets
         })
+        .collect();
+
+    packets
+        .iter()
         .map(|packet| {
             packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
         })

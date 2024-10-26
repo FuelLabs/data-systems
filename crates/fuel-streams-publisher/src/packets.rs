@@ -86,7 +86,7 @@ impl<T: Streamable + 'static> PublishPacket<T> {
             // Log to ElasticSearch after successful publish
             if let Some(elastic_logger) = elastic_logger {
                 Self::log_to_elasticsearch(elastic_logger, payload, subject)
-                    .await;
+                    .await?;
             }
 
             Ok(())
@@ -97,9 +97,9 @@ impl<T: Streamable + 'static> PublishPacket<T> {
         elastic_logger: Arc<ElasticSearch>,
         payload: Arc<T>,
         subject: Arc<dyn IntoSubject>,
-    ) {
+    ) -> Result<(), PublishError> {
         let id = subject.parse();
-        if let Err(e) = elastic_logger
+        elastic_logger
             .get_conn()
             .index(
                 FUEL_ELASTICSEARCH_PATH,
@@ -108,8 +108,10 @@ impl<T: Streamable + 'static> PublishPacket<T> {
                 Some(Refresh::WaitFor),
             )
             .await
-        {
-            tracing::error!("Failed to log to ElasticSearch: {:?}", e);
-        }
+            .map_err(|e| {
+                tracing::error!("Failed to log to ElasticSearch: {:?}", e);
+                e
+            })?;
+        Ok(())
     }
 }

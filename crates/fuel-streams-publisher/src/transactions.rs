@@ -26,9 +26,9 @@ pub fn publish_all_tasks(
     fuel_core: &dyn FuelCoreLike,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
     transactions
-        .par_iter()
+        .iter()
         .enumerate()
-        .flat_map_iter(|tx_item| {
+        .flat_map(|tx_item| {
             let (_, tx) = tx_item;
             once(publish_tasks(
                 tx_item,
@@ -61,7 +61,7 @@ fn publish_tasks(
     let tx_id = tx.id(&opts.chain_id);
     let block_height = &opts.block_height;
     packets_from_tx(tx_item, tx_id, fuel_core, block_height)
-        .par_iter()
+        .iter()
         .map(|packet| {
             packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
         })

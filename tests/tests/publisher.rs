@@ -110,7 +110,7 @@ fn create_test_block() -> ImporterResult {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let fuel_core = create_test_fuel_core(None);
     let publisher = create_publisher(fuel_core).await;
@@ -118,7 +118,7 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     assert!(publisher.get_streams().is_empty().await);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
@@ -139,7 +139,7 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
         .is_ok_and(|result| result.is_some()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn publishes_transaction_for_each_published_block() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
@@ -161,7 +161,7 @@ async fn publishes_transaction_for_each_published_block() {
         .is_ok_and(|result| result.is_some()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn publishes_receipts() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
@@ -272,7 +272,7 @@ async fn publishes_receipts() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn publishes_inputs() {
     let (blocks_subscriber, blocks_subscription) =
         broadcast::channel::<ImporterResult>(1);
