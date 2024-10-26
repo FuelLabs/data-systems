@@ -6,6 +6,8 @@ use fuel_streams_core::prelude::*;
 use tracing::info;
 
 use crate::{
+    elastic::ElasticSearch,
+    log_all,
     maybe_include_predicate_and_script_subjects,
     metrics::PublisherMetrics,
     publish_all,
@@ -14,6 +16,7 @@ use crate::{
 
 #[allow(clippy::too_many_arguments)]
 pub async fn publish(
+    elastic_logger: &Option<Arc<ElasticSearch>>,
     transactions_stream: &Stream<Transaction>,
     (transaction_index, transaction): (usize, &Transaction),
     fuel_core: &dyn FuelCoreLike,
@@ -54,13 +57,15 @@ pub async fn publish(
 
     publish_all(
         transactions_stream,
-        subjects,
+        &subjects,
         transaction,
         metrics,
         chain_id,
         block_producer,
     )
     .await;
+
+    log_all(elastic_logger, &subjects, transaction).await;
 
     Ok(())
 }

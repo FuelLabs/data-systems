@@ -5,9 +5,16 @@ use fuel_core::database::database_description::DatabaseHeight;
 use fuel_streams_core::prelude::*;
 use tracing::info;
 
-use crate::{metrics::PublisherMetrics, publish_with_metrics, FuelCoreLike};
+use crate::{
+    elastic::ElasticSearch,
+    log_all,
+    metrics::PublisherMetrics,
+    publish_with_metrics,
+    FuelCoreLike,
+};
 
 pub async fn publish(
+    elastic_logger: &Option<Arc<ElasticSearch>>,
     metrics: &Arc<PublisherMetrics>,
     fuel_core: &dyn FuelCoreLike,
     blocks_stream: &Stream<Block>,
@@ -21,6 +28,13 @@ pub async fn publish(
         .with_producer(Some(block_producer.clone()));
 
     info!("NATS Publisher: Publishing Block #{block_height}");
+
+    log_all(
+        elastic_logger,
+        &[(block_subject.clone().boxed(), BlocksSubject::WILDCARD)],
+        block,
+    )
+    .await;
 
     publish_with_metrics!(
         blocks_stream.publish(&block_subject, block),

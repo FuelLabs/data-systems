@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Instant};
 
+use anyhow::Context;
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_bin::FuelService;
@@ -16,6 +17,7 @@ use tracing::warn;
 
 use crate::{
     blocks,
+    elastic::{create_elasticsearch_instance, ElasticSearch},
     inputs,
     logs,
     metrics::PublisherMetrics,
@@ -111,12 +113,14 @@ pub struct Publisher {
     metrics: Arc<PublisherMetrics>,
     nats_client: NatsClient,
     streams: Arc<Streams>,
+    elastic_logger: Option<Arc<ElasticSearch>>,
 }
 
 impl Publisher {
     pub async fn new(
         fuel_service: Arc<FuelService>,
         nats_url: &str,
+        use_elastic_logging: bool,
         metrics: Arc<PublisherMetrics>,
         streams: Arc<Streams>,
     ) -> anyhow::Result<Self> {
@@ -149,6 +153,11 @@ impl Publisher {
             streams,
             metrics,
             nats_client,
+            elastic_logger: if use_elastic_logging {
+                Some(Arc::new(create_elasticsearch_instance().await?))
+            } else {
+                None
+            },
         })
     }
 
@@ -167,6 +176,7 @@ impl Publisher {
             streams: Arc::new(Streams::new(nats_client).await),
             metrics: Arc::new(PublisherMetrics::random()),
             nats_client: nats_client.clone(),
+            elastic_logger: None,
         })
     }
 
@@ -248,6 +258,19 @@ impl Publisher {
     }
 
     pub async fn run(mut self) -> anyhow::Result<Self> {
+        if let Some(elastic_logger) = self.elastic_logger.as_ref() {
+            tracing::info!(
+                "Elastic logger connection live? {:?}",
+                elastic_logger.get_conn().check_alive().unwrap_or_default()
+            );
+            elastic_logger
+                .get_conn()
+                .ping()
+                .await
+                .context("Error pinging elastisearch connection")?;
+            tracing::info!("Elastic logger pinged successfully!");
+        }
+
         let mut stop_handle = StopHandle::new();
         stop_handle.spawn_signal_listener();
         self.set_panic_hook();
@@ -341,6 +364,7 @@ impl Publisher {
         let block_height = block.header().consensus().height;
 
         let mut publishing_tasks = vec![blocks::publish(
+            &self.elastic_logger,
             &self.metrics,
             &*self.fuel_core,
             &self.streams.blocks,
@@ -440,6 +464,7 @@ impl Publisher {
     ) -> Vec<BoxFuture<'a, anyhow::Result<()>>> {
         vec![
             transactions::publish(
+                &self.elastic_logger,
                 &self.streams.transactions,
                 (transaction_index, transaction),
                 &*self.fuel_core,
@@ -451,6 +476,7 @@ impl Publisher {
             )
             .boxed(),
             receipts::publish(
+                &self.elastic_logger,
                 &self.streams.receipts,
                 receipts.clone(),
                 tx_id.clone(),
@@ -462,6 +488,7 @@ impl Publisher {
             )
             .boxed(),
             logs::publish(
+                &self.elastic_logger,
                 &self.streams.logs,
                 receipts.clone(),
                 tx_id.clone(),
@@ -474,6 +501,7 @@ impl Publisher {
             )
             .boxed(),
             inputs::publish(
+                &self.elastic_logger,
                 &self.streams.inputs,
                 transaction,
                 chain_id,
@@ -484,6 +512,7 @@ impl Publisher {
             )
             .boxed(),
             outputs::publish(
+                &self.elastic_logger,
                 &self.streams.outputs,
                 chain_id,
                 transaction,
@@ -494,6 +523,7 @@ impl Publisher {
             )
             .boxed(),
             utxos::publish(
+                &self.elastic_logger,
                 &self.metrics,
                 &self.streams.utxos,
                 &*self.fuel_core,
