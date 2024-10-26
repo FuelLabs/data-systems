@@ -2,139 +2,106 @@ use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::{output::contract::Contract, Output};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
-use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    identifiers::{Identifier, IdsExtractable, SubjectPayloadBuilder},
-    metrics::PublisherMetrics,
-    PublishError,
-    PublishPayload,
-    SubjectPayload,
-    CONCURRENCY_LIMIT,
+    identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
+    packets::{PublishError, PublishOpts, PublishPacket},
 };
 
-pub async fn publish_tasks(
-    stream: &Stream<Output>,
-    transactions: &[Transaction],
-    chain_id: &ChainId,
-    block_producer: &Address,
-    metrics: &Arc<PublisherMetrics>,
-) -> Result<(), PublishError> {
-    futures::stream::iter(
-        transactions
-            .iter()
-            .flat_map(|tx| create_publish_payloads(tx, chain_id)),
-    )
-    .map(Ok)
-    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
-        let metrics = metrics.clone();
-        let chain_id = chain_id.to_owned();
-        let block_producer = block_producer.clone();
-        async move {
-            payload
-                .publish(stream, &metrics, &chain_id, &block_producer)
-                .await
-        }
-    })
-    .await
-}
-
-fn create_publish_payloads(
+pub fn publish_tasks(
     tx: &Transaction,
-    chain_id: &ChainId,
-) -> Vec<PublishPayload<Output>> {
-    let tx_id = tx.id(chain_id);
+    stream: &Stream<Output>,
+    opts: &Arc<PublishOpts>,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
     tx.outputs()
         .par_iter()
         .enumerate()
-        .flat_map_iter(|(index, output)| {
-            build_output_payloads(tx, tx_id.into(), output, index)
+        .flat_map(|(index, output)| {
+            let ids = output.extract_ids(Some(tx));
+            let mut packets = output.packets_from_ids(ids);
+            let packet = packet_from_output(output, tx_id.into(), index, tx);
+            packets.push(packet);
+            packets
+        })
+        .map(|packet| {
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
         })
         .collect()
 }
 
-fn build_output_payloads(
-    tx: &Transaction,
-    tx_id: Bytes32,
-    output: &Output,
-    index: usize,
-) -> Vec<PublishPayload<Output>> {
-    main_subjects(output, tx_id, index, tx)
-        .into_par_iter()
-        .chain(OutputsByIdSubject::build_subjects_payload(tx, &[output]))
-        .map(|subject| PublishPayload {
-            subject,
-            payload: output.to_owned(),
-        })
-        .collect()
-}
-
-fn main_subjects(
+fn packet_from_output(
     output: &Output,
     tx_id: Bytes32,
     index: usize,
     transaction: &Transaction,
-) -> Vec<SubjectPayload> {
+) -> PublishPacket<Output> {
     match output {
-        Output::Coin { to, asset_id, .. } => vec![(
+        Output::Coin { to, asset_id, .. } => PublishPacket::new(
+            output,
             OutputsCoinSubject::new()
                 .with_tx_id(Some(tx_id))
                 .with_index(Some(index as u16))
                 .with_to(Some((*to).into()))
                 .with_asset_id(Some((*asset_id).into()))
-                .boxed(),
+                .arc(),
             OutputsCoinSubject::WILDCARD,
-        )],
+        ),
         Output::Contract(contract) => {
             let contract_id = find_output_contract_id(transaction, contract)
                 .ok_or_else(|| anyhow::anyhow!("Contract input not found"))
                 .unwrap_or_default();
 
-            vec![(
+            PublishPacket::new(
+                output,
                 OutputsContractSubject::new()
                     .with_tx_id(Some(tx_id))
                     .with_index(Some(index as u16))
                     .with_contract_id(Some(contract_id.into()))
-                    .boxed(),
+                    .arc(),
                 OutputsContractSubject::WILDCARD,
-            )]
+            )
         }
-        Output::Change { to, asset_id, .. } => vec![(
+        Output::Change { to, asset_id, .. } => PublishPacket::new(
+            output,
             OutputsChangeSubject::new()
                 .with_tx_id(Some(tx_id))
                 .with_index(Some(index as u16))
                 .with_to(Some((*to).into()))
                 .with_asset_id(Some((*asset_id).into()))
-                .boxed(),
+                .arc(),
             OutputsChangeSubject::WILDCARD,
-        )],
-        Output::Variable { to, asset_id, .. } => vec![(
+        ),
+        Output::Variable { to, asset_id, .. } => PublishPacket::new(
+            output,
             OutputsVariableSubject::new()
                 .with_tx_id(Some(tx_id))
                 .with_index(Some(index as u16))
                 .with_to(Some((*to).into()))
                 .with_asset_id(Some((*asset_id).into()))
-                .boxed(),
+                .arc(),
             OutputsVariableSubject::WILDCARD,
-        )],
-        Output::ContractCreated { contract_id, .. } => vec![(
+        ),
+        Output::ContractCreated { contract_id, .. } => PublishPacket::new(
+            output,
             OutputsContractCreatedSubject::new()
                 .with_tx_id(Some(tx_id))
                 .with_index(Some(index as u16))
                 .with_contract_id(Some((*contract_id).into()))
-                .boxed(),
+                .arc(),
             OutputsContractCreatedSubject::WILDCARD,
-        )],
+        ),
     }
 }
 
 pub fn find_output_contract_id(
-    transaction: &Transaction,
+    tx: &Transaction,
     contract: &Contract,
 ) -> Option<fuel_core_types::fuel_tx::ContractId> {
     let input_index = contract.input_index as usize;
-    transaction.inputs().get(input_index).and_then(|input| {
+    tx.inputs().get(input_index).and_then(|input| {
         if let Input::Contract(input_contract) = input {
             Some(input_contract.contract_id)
         } else {
@@ -144,7 +111,7 @@ pub fn find_output_contract_id(
 }
 
 impl IdsExtractable for Output {
-    fn extract_identifiers(&self, tx: &Transaction) -> Vec<Identifier> {
+    fn extract_ids(&self, tx: Option<&Transaction>) -> Vec<Identifier> {
         match self {
             Output::Change { to, asset_id, .. }
             | Output::Variable { to, asset_id, .. }
@@ -154,11 +121,17 @@ impl IdsExtractable for Output {
                     Identifier::AssetId(asset_id.into()),
                 ]
             }
-            Output::Contract(contract) => find_output_contract_id(tx, contract)
-                .map(|contract_id| {
-                    vec![Identifier::ContractId(contract_id.into())]
-                })
-                .unwrap_or_default(),
+            Output::Contract(contract) => {
+                if let Some(tx) = tx {
+                    find_output_contract_id(tx, contract)
+                        .map(|contract_id| {
+                            vec![Identifier::ContractId(contract_id.into())]
+                        })
+                        .unwrap_or_default()
+                } else {
+                    vec![]
+                }
+            }
             Output::ContractCreated { contract_id, .. } => {
                 vec![Identifier::ContractId(contract_id.into())]
             }

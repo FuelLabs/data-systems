@@ -3,114 +3,132 @@ use std::sync::Arc;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::field::ScriptData;
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
-use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
     identifiers::*,
-    metrics::PublisherMetrics,
+    inputs::publish_tasks as publish_inputs,
+    logs::publish_tasks as publish_logs,
+    outputs::publish_tasks as publish_outputs,
+    packets::{PublishError, PublishOpts, PublishPacket},
+    receipts::publish_tasks as publish_receipts,
     sha256,
+    utxos::publish_tasks as publish_utxos,
     FuelCoreLike,
-    PublishError,
-    PublishPayload,
-    SubjectPayload,
-    CONCURRENCY_LIMIT,
+    Streams,
 };
 
-pub async fn publish_tasks(
-    stream: &Stream<Transaction>,
+pub fn publish_all_tasks(
     transactions: &[Transaction],
-    chain_id: &ChainId,
-    block_height: &BlockHeight,
-    block_producer: &Address,
-    metrics: &Arc<PublisherMetrics>,
+    streams: Streams,
+    opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-) -> Result<(), PublishError> {
-    futures::stream::iter(transactions.iter().enumerate().flat_map(
-        |(tx_index, tx)| {
-            let tx_id = tx.id(chain_id);
-            let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
-            create_publish_payloads(
-                tx,
-                tx_index,
-                fuel_core,
-                chain_id,
-                block_height,
-                receipts,
-            )
-        },
-    ))
-    .map(Ok)
-    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
-        let metrics = metrics.clone();
-        let chain_id = chain_id.to_owned();
-        let block_producer = block_producer.clone();
-        async move {
-            payload
-                .publish(stream, &metrics, &chain_id, &block_producer)
-                .await
-        }
-    })
-    .await
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    transactions
+        .par_iter()
+        .enumerate()
+        .flat_map_iter(|tx_item| {
+            let (_, tx) = tx_item;
+            vec![
+                publish_tasks(tx_item, &streams.transactions, opts, fuel_core),
+                publish_inputs(tx, &streams.inputs, opts),
+                publish_outputs(tx, &streams.outputs, opts),
+                publish_receipts(tx, &streams.receipts, opts, fuel_core),
+                publish_logs(tx, &streams.logs, opts, fuel_core),
+                publish_utxos(tx, &streams.utxos, opts, fuel_core),
+            ]
+            .into_iter()
+            .flatten()
+        })
+        .collect()
 }
 
-fn create_publish_payloads(
-    tx: &Transaction,
-    tx_index: usize,
+fn publish_tasks(
+    tx_item: (usize, &Transaction),
+    stream: &Stream<Transaction>,
+    opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-    chain_id: &ChainId,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let (_, tx) = tx_item;
+    let tx_id = tx.id(&opts.chain_id);
+    let block_height = &opts.block_height;
+    packets_from_tx(tx_item, tx_id, fuel_core, block_height)
+        .par_iter()
+        .map(|packet| {
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
+        })
+        .collect()
+}
+
+fn packets_from_tx(
+    (tx_index, tx): (usize, &Transaction),
+    tx_id: fuel_core_types::fuel_tx::Bytes32,
+    fuel_core: &dyn FuelCoreLike,
     block_height: &BlockHeight,
-    receipts: Option<Vec<Receipt>>,
-) -> Vec<PublishPayload<Transaction>> {
-    let off_chain_database =
-        fuel_core.database().off_chain().latest_view().unwrap();
-    let tx_id = tx.id(chain_id);
+) -> Vec<PublishPacket<Transaction>> {
     let kind = TransactionKind::from(tx.to_owned());
-    let inputs: Vec<&Input> = tx.inputs().iter().collect();
-    let outputs: Vec<&Output> = tx.outputs().iter().collect();
-    let receipts = receipts.unwrap_or_default();
-    let receipts: Vec<&Receipt> = receipts.iter().collect();
-    let status: TransactionStatus = off_chain_database
+    let status: TransactionStatus = fuel_core
+        .database()
+        .off_chain()
+        .latest_view()
+        .unwrap()
         .get_tx_status(&tx_id)
         .unwrap()
         .map(|status| status.into())
         .unwrap_or_default();
 
-    let subjects: Vec<SubjectPayload> = vec![(
+    let receipts = fuel_core
+        .get_receipts(&tx_id)
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let packets_from_inputs: Vec<PublishPacket<Transaction>> = tx
+        .inputs()
+        .par_iter()
+        .flat_map(|item| {
+            let ids = item.extract_ids(Some(tx));
+            tx.packets_from_ids(ids)
+        })
+        .collect();
+
+    let packets_from_outputs: Vec<PublishPacket<Transaction>> = tx
+        .outputs()
+        .par_iter()
+        .flat_map(|item| {
+            let ids = item.extract_ids(Some(tx));
+            tx.packets_from_ids(ids)
+        })
+        .collect();
+
+    let packets_from_receipts: Vec<PublishPacket<Transaction>> = receipts
+        .par_iter()
+        .flat_map(|item| {
+            let ids = item.extract_ids(Some(tx));
+            tx.packets_from_ids(ids)
+        })
+        .collect();
+
+    vec![PublishPacket::new(
+        tx,
         TransactionsSubject::new()
             .with_tx_id(Some(tx_id.into()))
             .with_kind(Some(kind))
             .with_status(Some(status))
             .with_block_height(Some(block_height.to_owned()))
             .with_tx_index(Some(tx_index))
-            .boxed(),
+            .arc(),
         TransactionsSubject::WILDCARD,
-    )];
-
-    let tx_subjects =
-        TransactionsByIdSubject::build_subjects_payload(tx, &[tx]);
-    let tx_inputs_subjects =
-        TransactionsByIdSubject::build_subjects_payload(tx, &inputs);
-    let tx_outputs_subjects =
-        TransactionsByIdSubject::build_subjects_payload(tx, &outputs);
-    let tx_receipts_subjects =
-        TransactionsByIdSubject::build_subjects_payload(tx, &receipts);
-
-    subjects
-        .into_par_iter()
-        .chain(tx_subjects)
-        .chain(tx_inputs_subjects)
-        .chain(tx_outputs_subjects)
-        .chain(tx_receipts_subjects)
-        .map(|subject| PublishPayload {
-            subject,
-            payload: tx.to_owned(),
-        })
-        .collect()
+    )]
+    .into_iter()
+    .chain(packets_from_inputs)
+    .chain(packets_from_outputs)
+    .chain(packets_from_receipts)
+    .collect()
 }
 
 impl IdsExtractable for Transaction {
-    fn extract_identifiers(&self, _tx: &Transaction) -> Vec<Identifier> {
+    fn extract_ids(&self, _tx: Option<&Transaction>) -> Vec<Identifier> {
         match self {
             Transaction::Script(tx) => {
                 let script_tag = sha256(tx.script_data());

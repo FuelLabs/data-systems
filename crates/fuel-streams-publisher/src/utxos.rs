@@ -3,60 +3,35 @@ use std::sync::Arc;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
-use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    metrics::PublisherMetrics,
+    packets::{PublishError, PublishOpts, PublishPacket},
     FuelCoreLike,
-    PublishError,
-    PublishPayload,
-    CONCURRENCY_LIMIT,
 };
 
-pub async fn publish_tasks(
-    stream: &Stream<Utxo>,
-    transactions: &[Transaction],
-    chain_id: &ChainId,
-    block_producer: &Address,
-    metrics: &Arc<PublisherMetrics>,
-    fuel_core: &dyn FuelCoreLike,
-) -> Result<(), PublishError> {
-    futures::stream::iter(
-        transactions
-            .iter()
-            .flat_map(|tx| create_publish_payloads(tx, chain_id, fuel_core)),
-    )
-    .map(Ok)
-    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
-        let metrics = metrics.clone();
-        let chain_id = chain_id.to_owned();
-        let block_producer = block_producer.clone();
-        async move {
-            payload
-                .publish(stream, &metrics, &chain_id, &block_producer)
-                .await
-        }
-    })
-    .await
-}
-
-fn create_publish_payloads(
+pub fn publish_tasks(
     tx: &Transaction,
-    chain_id: &ChainId,
+    stream: &Stream<Utxo>,
+    opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-) -> Vec<PublishPayload<Utxo>> {
-    let tx_id = tx.id(chain_id);
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
     tx.inputs()
         .par_iter()
         .filter_map(|input| {
             find_utxo(input, tx_id.into(), input.utxo_id().cloned(), fuel_core)
         })
-        .map(|(subject, utxo)| PublishPayload {
-            subject: (subject.boxed(), UtxosSubject::WILDCARD),
-            payload: utxo.to_owned(),
+        .map(|(subject, utxo)| {
+            let packet = PublishPacket::new(
+                &utxo,
+                subject.arc(),
+                UtxosSubject::WILDCARD,
+            );
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
         })
-        .collect::<Vec<PublishPayload<Utxo>>>()
+        .collect()
 }
 
 fn find_utxo(

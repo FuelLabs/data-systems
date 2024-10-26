@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 
-use crate::SubjectPayload;
+use crate::packets::PublishPacket;
 
 /// Represents various types of identifiers used across different entities in the system.
 ///
@@ -23,65 +25,18 @@ pub enum Identifier {
     ScriptId(Bytes32),
 }
 
-/// Trait for extracting identifiers from a streamable entity.
-///
-/// This trait should be implemented by any entity that can have identifiers
-/// extracted from it, facilitating the creation of subjects for publishing.
-///
-/// # Examples
-///
-/// ```rust
-/// use fuel_streams_publisher::identifiers::{Identifier, IdsExtractable};
-/// use fuel_streams_core::prelude::*;
-///
-/// struct ExampleEntity;
-///
-/// impl IdsExtractable for ExampleEntity {
-///     fn extract_identifiers(&self, _tx: &Transaction) -> Vec<Identifier> {
-///         vec![Identifier::Address(Bytes32::zeroed())]
-///     }
-/// }
-/// ```
 pub trait IdsExtractable: Streamable {
-    fn extract_identifiers(&self, tx: &Transaction) -> Vec<Identifier>;
+    fn extract_ids(&self, tx: Option<&Transaction>) -> Vec<Identifier>;
 }
 
-/// Trait for building subject payloads based on extracted identifiers.
-///
-/// This trait leverages the identifiers extracted from entities to build
-/// subjects that are used for publishing to streams.
-///
-/// # Examples
-///
-/// ```rust
-/// use fuel_streams_publisher::identifiers::*;
-/// use fuel_streams_core::prelude::*;
-/// use rayon::prelude::*;
-///
-/// impl SubjectPayloadBuilder for OutputsByIdSubject {
-///     fn build_subjects_payload<T: IdsExtractable>(
-///         tx: &Transaction,
-///         items: &[&T],
-///     ) -> Vec<SubjectPayload> {
-///         items
-///             .par_iter()
-///             .flat_map(|item| item.extract_identifiers(tx))
-///             .map(|identifier| {
-///                 // Example conversion from identifier to subject
-///                 (identifier.into(), OutputsByIdSubject::WILDCARD)
-///             })
-///             .collect()
-///     }
-/// }
-/// ```
-pub trait SubjectPayloadBuilder: IntoSubject {
-    fn build_subjects_payload<T: IdsExtractable>(
-        tx: &Transaction,
-        items: &[&T],
-    ) -> Vec<SubjectPayload>;
+pub trait PacketIdBuilder: Streamable {
+    fn packets_from_ids(
+        &self,
+        ids: Vec<Identifier>,
+    ) -> Vec<PublishPacket<Self>>;
 }
 
-/// Macro to implement `From<Identifier>` and `SubjectPayloadBuilder` for a given subject.
+/// Macro to implement `From<Identifier>` and `PacketBuilder` for a given subject.
 ///
 /// This macro reduces boilerplate by automatically implementing the necessary
 /// conversions and payload builders based on the provided entity type and subject.
@@ -96,7 +51,7 @@ pub trait SubjectPayloadBuilder: IntoSubject {
 ///     - ReceiptsByIdSubject
 ///
 /// By using this macro, we ensure consistent and efficient implementation of the
-/// From<Identifier> trait and the SubjectPayloadBuilder trait for various subjects,
+/// From<Identifier> trait and the PacketBuilder trait for various subjects,
 /// centralizing the logic of identity with data has inside the entity.
 #[macro_export]
 macro_rules! impl_subject_payload {
@@ -123,18 +78,17 @@ macro_rules! impl_subject_payload {
             }
         }
 
-        impl SubjectPayloadBuilder for $subject {
-            fn build_subjects_payload<T: IdsExtractable>(
-                tx: &Transaction,
-                items: &[&T],
-            ) -> Vec<SubjectPayload> {
-                items
-                    .into_par_iter()
-                    .flat_map(|item| item.extract_identifiers(tx))
+        impl PacketIdBuilder for $entity {
+            fn packets_from_ids(
+                &self,
+                ids: Vec<Identifier>,
+            ) -> Vec<PublishPacket<Self>> {
+                ids.into_par_iter()
                     .map(|identifier| {
                         let subject: $subject = identifier.into();
-                        (
-                            subject.boxed() as Box<dyn IntoSubject>,
+                        PublishPacket::new(
+                            self,
+                            subject.arc() as Arc<dyn IntoSubject>,
                             $subject::WILDCARD,
                         )
                     })

@@ -51,6 +51,10 @@ pub fn expanded<'a>(
                 Box::new(self)
             }
 
+            pub fn arc(self) -> std::sync::Arc<Self> {
+                std::sync::Arc::new(self)
+            }
+
             #(#with_methods)*
         }
 

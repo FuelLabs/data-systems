@@ -7,21 +7,18 @@ use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
 use fuel_streams::types::Log;
 use fuel_streams_core::prelude::*;
-use tokio::{sync::broadcast::error::RecvError, try_join};
-use tracing::warn;
+use futures::{stream::FuturesUnordered, StreamExt};
+use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
 use crate::{
     blocks,
-    inputs,
-    logs,
     metrics::PublisherMetrics,
-    outputs,
-    receipts,
+    packets::{PublishError, PublishOpts},
     shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
     transactions,
-    utxos,
     FuelCore,
     FuelCoreLike,
+    CONCURRENCY_LIMIT,
 };
 
 #[derive(Clone, Debug)]
@@ -263,7 +260,7 @@ impl Publisher {
             self.fuel_core.get_latest_block_height()?
         {
             if latest_fuel_core_height > last_published_height + 1 {
-                warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
+                tracing::warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
             // Republish the last block. Why? We publish multiple data from the same
@@ -334,87 +331,62 @@ impl Publisher {
         block: &Block<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
-        let transactions = block.transactions();
-        let block_height = block.header().consensus().height.into();
-        let chain_id = self.fuel_core.chain_id();
         let start_time = std::time::Instant::now();
+        let semaphore = Arc::new(Semaphore::new(*CONCURRENCY_LIMIT));
+        let chain_id = Arc::new(*self.fuel_core.chain_id());
+        let block_height = block.header().consensus().height;
+        let block_producer = Arc::new(block_producer.clone());
+        let fuel_core = &*self.fuel_core;
+        let txs = block.transactions();
 
-        let results = try_join!(
-            blocks::publish_tasks(
-                &self.streams.blocks,
-                block,
-                chain_id,
-                block_producer,
-                &block_height,
-                &self.metrics
-            ),
-            transactions::publish_tasks(
-                &self.streams.transactions,
-                transactions,
-                chain_id,
-                &block_height,
-                block_producer,
-                &self.metrics,
-                &*self.fuel_core
-            ),
-            inputs::publish_tasks(
-                &self.streams.inputs,
-                transactions,
-                chain_id,
-                block_producer,
-                &self.metrics
-            ),
-            outputs::publish_tasks(
-                &self.streams.outputs,
-                transactions,
-                chain_id,
-                block_producer,
-                &self.metrics
-            ),
-            receipts::publish_tasks(
-                &self.streams.receipts,
-                transactions,
-                chain_id,
-                block_producer,
-                &self.metrics,
-                &*self.fuel_core
-            ),
-            logs::publish_tasks(
-                &self.streams.logs,
-                transactions,
-                chain_id,
-                block_producer,
-                &block_height,
-                &self.metrics,
-                &*self.fuel_core
-            ),
-            utxos::publish_tasks(
-                &self.streams.utxos,
-                transactions,
-                chain_id,
-                block_producer,
-                &self.metrics,
-                &*self.fuel_core
-            )
-        );
+        let streams = (*self.streams).clone();
+        let block_stream = Arc::new(streams.blocks.to_owned());
+        let opts = &Arc::new(PublishOpts {
+            semaphore,
+            chain_id,
+            metrics: Arc::clone(&self.metrics),
+            block_producer: Arc::clone(&block_producer),
+            block_height: Arc::new(block_height.into()),
+        });
 
-        match results {
-            Ok(_) => {
-                let elapsed = start_time.elapsed();
-                tracing::info!(
-                    "Published streams for BlockHeight: {} in {:?}",
-                    block_height,
-                    elapsed
-                );
-            }
-            Err(e) => {
-                tracing::error!(
-                    "Error publishing streams for BlockHeight {}: {:?}",
-                    block_height,
-                    e
-                );
+        let mut tasks =
+            transactions::publish_all_tasks(txs, streams, opts, fuel_core)
+                .into_iter()
+                .chain(std::iter::once(blocks::publish_task(
+                    block,
+                    block_stream,
+                    opts,
+                )))
+                .collect::<FuturesUnordered<_>>();
+
+        let mut errors = Vec::new();
+        while let Some(result) = tasks.next().await {
+            match result {
+                Ok(Ok(())) => { /* Successfully published */ }
+                Ok(Err(publish_error)) => {
+                    tracing::error!("Publish error: {:?}", publish_error);
+                    errors.push(publish_error);
+                }
+                Err(join_error) => {
+                    tracing::error!("Task join error: {:?}", join_error);
+                    errors.push(PublishError::Unknown(join_error.to_string()));
+                }
             }
         }
+
+        if !errors.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Encountered {} errors during publishing",
+                errors.len()
+            ));
+        }
+
+        let elapsed = start_time.elapsed();
+        tracing::info!(
+            "Published streams for BlockHeight: {} in {:?}",
+            block_height,
+            elapsed
+        );
 
         Ok(())
     }

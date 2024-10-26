@@ -7,6 +7,7 @@ mod transactions;
 mod utxos;
 
 mod fuel_core;
+mod packets;
 mod publisher;
 
 pub mod cli;
@@ -17,17 +18,12 @@ pub mod shutdown;
 pub mod state;
 pub mod system;
 
-use std::{
-    env,
-    sync::{Arc, LazyLock},
-};
+use std::{env, sync::LazyLock};
 
 pub use fuel_core::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
-use metrics::PublisherMetrics;
 pub use publisher::{Publisher, Streams};
 use sha2::{Digest, Sha256};
-use thiserror::Error;
 
 pub static CONCURRENCY_LIMIT: LazyLock<usize> = LazyLock::new(|| {
     env::var("CONCURRENCY_LIMIT")
@@ -46,41 +42,4 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
         .expect("Must be 32 bytes");
 
     bytes.into()
-}
-
-pub type SubjectPayload = (Box<dyn IntoSubject>, &'static str);
-
-#[derive(Error, Debug)]
-pub enum PublishError {
-    #[error("Failed to publish to stream: {0}")]
-    StreamPublishError(String),
-    #[error("Semaphore acquisition failed: {0}")]
-    SemaphoreError(#[from] tokio::sync::AcquireError),
-    #[error("Unknown error: {0}")]
-    Unknown(String),
-}
-
-pub struct PublishPayload<S: Streamable> {
-    pub subject: SubjectPayload,
-    pub payload: S,
-}
-
-impl<T: Streamable> PublishPayload<T> {
-    pub async fn publish(
-        &self,
-        stream: &Stream<T>,
-        metrics: &Arc<PublisherMetrics>,
-        chain_id: &ChainId,
-        block_producer: &Address,
-    ) -> Result<(), PublishError> {
-        let (subject, wildcard) = &self.subject;
-        let wildcard = *wildcard;
-        publish_with_metrics!(
-            stream.publish(&**subject, &self.payload),
-            metrics,
-            chain_id,
-            block_producer,
-            wildcard
-        )
-    }
 }

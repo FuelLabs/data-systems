@@ -2,92 +2,44 @@ use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::Receipt;
 use fuel_streams_core::prelude::*;
-use futures::{StreamExt, TryStreamExt};
 use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    metrics::PublisherMetrics,
+    packets::{PublishError, PublishOpts, PublishPacket},
     FuelCoreLike,
-    PublishError,
-    PublishPayload,
-    SubjectPayload,
-    CONCURRENCY_LIMIT,
 };
 
-pub async fn publish_tasks(
-    stream: &Stream<Log>,
-    transactions: &[Transaction],
-    chain_id: &ChainId,
-    block_producer: &Address,
-    block_height: &BlockHeight,
-    metrics: &Arc<PublisherMetrics>,
-    fuel_core: &dyn FuelCoreLike,
-) -> Result<(), PublishError> {
-    futures::stream::iter(transactions.iter().flat_map(|tx| {
-        let tx_id = tx.id(chain_id);
-        let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
-        create_publish_payloads(tx, &receipts, chain_id, block_height)
-    }))
-    .map(Ok)
-    .try_for_each_concurrent(*CONCURRENCY_LIMIT, |payload| {
-        let metrics = metrics.clone();
-        let chain_id = chain_id.to_owned();
-        let block_producer = block_producer.clone();
-        async move {
-            payload
-                .publish(stream, &metrics, &chain_id, &block_producer)
-                .await
-        }
-    })
-    .await
-}
-
-fn create_publish_payloads(
+pub fn publish_tasks(
     tx: &Transaction,
-    receipts: &Option<Vec<Receipt>>,
-    chain_id: &ChainId,
-    block_height: &BlockHeight,
-) -> Vec<PublishPayload<Log>> {
-    let tx_id = tx.id(chain_id);
-    if let Some(receipts) = receipts {
-        receipts
-            .par_iter()
-            .enumerate()
-            .flat_map_iter(|(index, receipt)| {
-                build_log_payloads(block_height, tx_id.into(), receipt, index)
-            })
-            .collect()
-    } else {
-        Vec::new()
-    }
-}
-
-fn build_log_payloads(
-    block_height: &BlockHeight,
-    tx_id: Bytes32,
-    receipt: &Receipt,
-    index: usize,
-) -> Vec<PublishPayload<Log>> {
-    let subjects: Vec<SubjectPayload> = match receipt {
-        Receipt::Log { id, .. } | Receipt::LogData { id, .. } => {
-            vec![(
-                LogsSubject::new()
-                    .with_block_height(Some(block_height.clone()))
-                    .with_tx_id(Some(tx_id))
-                    .with_receipt_index(Some(index))
-                    .with_log_id(Some((*id).into()))
-                    .boxed(),
-                LogsSubject::WILDCARD,
-            )]
-        }
-        _ => vec![],
-    };
-
-    subjects
-        .into_par_iter()
-        .map(|subject| PublishPayload {
-            subject,
-            payload: receipt.clone().into(),
+    stream: &Stream<Log>,
+    opts: &Arc<PublishOpts>,
+    fuel_core: &dyn FuelCoreLike,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
+    let block_height = (*opts.block_height).clone();
+    let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
+    receipts
+        .unwrap_or_default()
+        .par_iter()
+        .enumerate()
+        .filter_map(|(index, receipt)| match receipt {
+            Receipt::Log { id, .. } | Receipt::LogData { id, .. } => {
+                Some(PublishPacket::new(
+                    &receipt.to_owned().into(),
+                    LogsSubject::new()
+                        .with_block_height(Some(block_height.clone()))
+                        .with_tx_id(Some(tx_id.into()))
+                        .with_receipt_index(Some(index))
+                        .with_log_id(Some((*id).into()))
+                        .arc(),
+                    LogsSubject::WILDCARD,
+                ))
+            }
+            _ => None,
+        })
+        .map(|packet| {
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
         })
         .collect()
 }
