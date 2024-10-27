@@ -21,7 +21,7 @@ pub fn publish_tasks(
         .par_iter()
         .enumerate()
         .flat_map(|(index, output)| {
-            let ids = output.extract_ids(Some(tx));
+            let ids = output.extract_ids(&opts.chain_id, tx, index as u8);
             let mut packets = output.packets_from_ids(ids);
             let packet = packet_from_output(output, tx_id.into(), index, tx);
             packets.push(packet);
@@ -116,29 +116,37 @@ pub fn find_output_contract_id(
 }
 
 impl IdsExtractable for Output {
-    fn extract_ids(&self, tx: Option<&Transaction>) -> Vec<Identifier> {
+    fn extract_ids(
+        &self,
+        chain_id: &ChainId,
+        tx: &Transaction,
+        index: u8,
+    ) -> Vec<Identifier> {
+        let tx_id = tx.id(chain_id);
         match self {
             Output::Change { to, asset_id, .. }
             | Output::Variable { to, asset_id, .. }
             | Output::Coin { to, asset_id, .. } => {
                 vec![
-                    Identifier::Address(to.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::Address(tx_id.into(), index, to.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
-            Output::Contract(contract) => {
-                if let Some(tx) = tx {
-                    find_output_contract_id(tx, contract)
-                        .map(|contract_id| {
-                            vec![Identifier::ContractId(contract_id.into())]
-                        })
-                        .unwrap_or_default()
-                } else {
-                    vec![]
-                }
-            }
+            Output::Contract(contract) => find_output_contract_id(tx, contract)
+                .map(|contract_id| {
+                    vec![Identifier::ContractID(
+                        tx_id.into(),
+                        index,
+                        contract_id.into(),
+                    )]
+                })
+                .unwrap_or_default(),
             Output::ContractCreated { contract_id, .. } => {
-                vec![Identifier::ContractId(contract_id.into())]
+                vec![Identifier::ContractID(
+                    tx_id.into(),
+                    index,
+                    contract_id.into(),
+                )]
             }
         }
     }

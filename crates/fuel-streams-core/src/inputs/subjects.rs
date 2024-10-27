@@ -2,6 +2,73 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
+/// Represents a subject for querying inputs by their identifier in the Fuel ecosystem.
+///
+/// This struct is used to create and parse subjects related to inputs identified by
+/// various types of IDs, which can be used for subscribing to or publishing events
+/// about specific inputs.
+///
+/// # Examples
+///
+/// Creating and parsing a subject:
+///
+/// ```
+/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = InputsByIdSubject {
+///     tx_id: Some([1u8; 32].into()),
+///     index: Some(0),
+///     id_kind: Some(IdentifierKind::AssetID),
+///     id_value: Some([3u8; 32].into()),
+/// };
+/// assert_eq!(
+///     subject.parse(),
+///     "by_id.inputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303"
+/// );
+/// ```
+///
+/// All inputs by ID wildcard:
+///
+/// ```
+/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
+/// # use fuel_streams_macros::subject::*;
+/// assert_eq!(InputsByIdSubject::WILDCARD, "by_id.inputs.>");
+/// ```
+///
+/// Creating a subject query using the `wildcard` method:
+///
+/// ```
+/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let wildcard = InputsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::AssetID), None);
+/// assert_eq!(wildcard, "by_id.inputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.*");
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = InputsByIdSubject::new()
+///     .with_tx_id(Some([1u8; 32].into()))
+///     .with_index(Some(0))
+///     .with_id_kind(Some(IdentifierKind::AssetID))
+///     .with_id_value(Some([3u8; 32].into()));
+/// assert_eq!(subject.parse(), "by_id.inputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303");
+/// ```
+#[derive(Subject, Debug, Clone, Default)]
+#[subject_wildcard = "by_id.inputs.>"]
+#[subject_format = "by_id.inputs.{tx_id}.{index}.{id_kind}.{id_value}"]
+pub struct InputsByIdSubject {
+    pub tx_id: Option<Bytes32>,
+    pub index: Option<u8>,
+    pub id_kind: Option<IdentifierKind>,
+    pub id_value: Option<Bytes32>,
+}
+
 /// Represents a subject for input coins in the Fuel network.
 ///
 /// This subject format allows for efficient querying and filtering of input coins
@@ -195,65 +262,4 @@ pub struct InputsMessageSubject {
     pub index: Option<usize>,
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
-}
-
-/// Represents a subject for querying inputs by their identifier in the Fuel ecosystem.
-///
-/// This struct is used to create and parse subjects related to inputs identified by
-/// various types of IDs, which can be used for subscribing to or publishing events
-/// about specific inputs.
-///
-/// # Examples
-///
-/// Creating and parsing a subject:
-///
-/// ```
-/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
-/// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::*;
-/// let subject = InputsByIdSubject {
-///     id_kind: Some(IdentifierKind::AssetID),
-///     id_value: Some([3u8; 32].into()),
-/// };
-/// assert_eq!(
-///     subject.parse(),
-///     "by_id.inputs.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303"
-/// );
-/// ```
-///
-/// All inputs by ID wildcard:
-///
-/// ```
-/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
-/// # use fuel_streams_macros::subject::*;
-/// assert_eq!(InputsByIdSubject::WILDCARD, "by_id.inputs.>");
-/// ```
-///
-/// Creating a subject query using the `wildcard` method:
-///
-/// ```
-/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
-/// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::*;
-/// let wildcard = InputsByIdSubject::wildcard(Some(IdentifierKind::AssetID), None);
-/// assert_eq!(wildcard, "by_id.inputs.asset_id.*");
-/// ```
-///
-/// Using the builder pattern:
-///
-/// ```
-/// # use fuel_streams_core::inputs::subjects::InputsByIdSubject;
-/// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::*;
-/// let subject = InputsByIdSubject::new()
-///     .with_id_kind(Some(IdentifierKind::AssetID))
-///     .with_id_value(Some([3u8; 32].into()));
-/// assert_eq!(subject.parse(), "by_id.inputs.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303");
-/// ```
-#[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "by_id.inputs.>"]
-#[subject_format = "by_id.inputs.{id_kind}.{id_value}"]
-pub struct InputsByIdSubject {
-    pub id_kind: Option<IdentifierKind>,
-    pub id_value: Option<Bytes32>,
 }

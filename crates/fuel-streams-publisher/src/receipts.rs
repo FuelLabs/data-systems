@@ -24,7 +24,7 @@ pub fn publish_tasks(
         .par_iter()
         .enumerate()
         .flat_map(|(index, receipt)| {
-            let ids = receipt.extract_ids(Some(tx));
+            let ids = receipt.extract_ids(&opts.chain_id, tx, index as u8);
             let mut packets = receipt.packets_from_ids(ids);
             let packet = packet_from_receipt(tx_id.into(), receipt, index);
             packets.push(packet);
@@ -200,7 +200,13 @@ fn packet_from_receipt(
 }
 
 impl IdsExtractable for Receipt {
-    fn extract_ids(&self, _tx: Option<&Transaction>) -> Vec<Identifier> {
+    fn extract_ids(
+        &self,
+        chain_id: &ChainId,
+        tx: &Transaction,
+        index: u8,
+    ) -> Vec<Identifier> {
+        let tx_id = tx.id(chain_id);
         match self {
             Receipt::Call {
                 id: from,
@@ -209,9 +215,9 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractId(from.into()),
-                    Identifier::ContractId(to.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::ContractID(tx_id.into(), index, from.into()),
+                    Identifier::ContractID(tx_id.into(), index, to.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
             Receipt::Return { id, .. }
@@ -220,7 +226,7 @@ impl IdsExtractable for Receipt {
             | Receipt::Revert { id, .. }
             | Receipt::Log { id, .. }
             | Receipt::LogData { id, .. } => {
-                vec![Identifier::ContractId(id.into())]
+                vec![Identifier::ContractID(tx_id.into(), index, id.into())]
             }
             Receipt::Transfer {
                 id: from,
@@ -229,9 +235,9 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractId(from.into()),
-                    Identifier::ContractId(to.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::ContractID(tx_id.into(), index, from.into()),
+                    Identifier::ContractID(tx_id.into(), index, to.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
             Receipt::TransferOut {
@@ -241,22 +247,26 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractId(from.into()),
-                    Identifier::ContractId(to.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::ContractID(tx_id.into(), index, from.into()),
+                    Identifier::ContractID(tx_id.into(), index, to.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
             Receipt::MessageOut {
                 sender, recipient, ..
             } => {
                 vec![
-                    Identifier::Address(sender.into()),
-                    Identifier::Address(recipient.into()),
+                    Identifier::Address(tx_id.into(), index, sender.into()),
+                    Identifier::Address(tx_id.into(), index, recipient.into()),
                 ]
             }
             Receipt::Mint { contract_id, .. }
             | Receipt::Burn { contract_id, .. } => {
-                vec![Identifier::ContractId(contract_id.into())]
+                vec![Identifier::ContractID(
+                    tx_id.into(),
+                    index,
+                    contract_id.into(),
+                )]
             }
             _ => Vec::new(),
         }
