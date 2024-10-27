@@ -1,3 +1,8 @@
+use std::sync::Arc;
+
+use chrono::Utc;
+use fuel_core::database::database_description::DatabaseHeight;
+use fuel_streams_core::prelude::*;
 use prometheus::{
     register_histogram_vec,
     register_int_counter_vec,
@@ -7,6 +12,8 @@ use prometheus::{
     IntGaugeVec,
     Registry,
 };
+
+use crate::packets::PublishError;
 
 #[derive(Clone, Debug)]
 pub struct PublisherMetrics {
@@ -153,6 +160,104 @@ impl PublisherMetrics {
             error_rates,
         })
     }
+}
+
+pub async fn publish_with_metrics<F, E>(
+    async_func: F,
+    metrics: &PublisherMetrics,
+    chain_id: &ChainId,
+    block_producer: &Address,
+    wildcard: &str,
+) -> Result<(), PublishError>
+where
+    F: std::future::Future<Output = Result<usize, E>>,
+    E: std::fmt::Display,
+{
+    match async_func.await {
+        Ok(published_data_size) => {
+            // Update message size histogram
+            metrics
+                .message_size_histogram
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    wildcard,
+                ])
+                .observe(published_data_size as f64);
+
+            // Increment total published messages
+            metrics
+                .total_published_messages
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                ])
+                .inc();
+
+            // Increment throughput for the published messages
+            metrics
+                .published_messages_throughput
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    wildcard,
+                ])
+                .inc();
+
+            Ok(())
+        }
+        Err(e) => {
+            // Collect error metrics
+            metrics
+                .error_rates
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    wildcard,
+                    &e.to_string(),
+                ])
+                .inc();
+
+            // Map to PublishError::StreamPublish
+            Err(PublishError::StreamPublish(e.to_string()))
+        }
+    }
+}
+
+pub fn add_block_metrics(
+    chain_id: &ChainId,
+    block: &Block<Transaction>,
+    block_producer: &Address,
+    metrics: &Arc<PublisherMetrics>,
+) -> anyhow::Result<Arc<PublisherMetrics>> {
+    let latency = Utc::now().timestamp() - block.header().time().to_unix();
+
+    metrics
+        .publishing_latency_histogram
+        .with_label_values(&[
+            &chain_id.to_string(),
+            &block_producer.to_string(),
+            BlocksSubject::WILDCARD,
+        ])
+        .observe(latency as f64);
+
+    metrics
+        .last_published_block_timestamp
+        .with_label_values(&[
+            &chain_id.to_string(),
+            &block_producer.to_string(),
+        ])
+        .set(block.header().time().to_unix());
+
+    metrics
+        .last_published_block_height
+        .with_label_values(&[
+            &chain_id.to_string(),
+            &block_producer.to_string(),
+        ])
+        .set(block.header().consensus().height.as_u64() as i64);
+
+    Ok(metrics.to_owned())
 }
 
 #[cfg(test)]
@@ -377,54 +482,4 @@ mod tests {
         assert!(output.contains("timeout"));
         assert!(output.contains("1"));
     }
-}
-
-#[macro_export]
-macro_rules! publish_with_metrics {
-    ($async_func:expr, $metrics:expr, $chain_id:expr, $block_producer:expr, $wildcard:expr) => {{
-        match $async_func.await {
-            Ok(published_data_size) => {
-                // Update message size histogram
-                $metrics
-                    .message_size_histogram
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                    ])
-                    .observe(published_data_size as f64);
-
-                // Increment total published messages
-                $metrics
-                    .total_published_messages
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                    ])
-                    .inc();
-
-                // Increment throughput for the published messages
-                $metrics
-                    .published_messages_throughput
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                    ])
-                    .inc();
-            }
-            Err(e) => {
-                // Collect error metrics
-                $metrics
-                    .error_rates
-                    .with_label_values(&[
-                        &$chain_id.to_string(),
-                        &$block_producer.to_string(),
-                        $wildcard,
-                        &e.to_string(),
-                    ])
-                    .inc();
-            }
-        }
-    }};
 }

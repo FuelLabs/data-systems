@@ -60,46 +60,39 @@ async fn main() -> Result<()> {
     // mints, and burns.
     receipt_stream.with_filter(
         ReceiptsBurnSubject::default()
-            .with_contract_id(Some(contract_id.clone().into())),
+            .with_contract_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsCallSubject::default()
-            .with_from(Some(contract_id.clone().into())),
+        ReceiptsCallSubject::default().with_from(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsReturnSubject::default()
-            .with_id(Some(contract_id.clone().into())),
+        ReceiptsReturnSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsReturnDataSubject::default()
-            .with_id(Some(contract_id.clone().into())),
+        ReceiptsReturnDataSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsPanicSubject::default()
-            .with_id(Some(contract_id.clone().into())),
+        ReceiptsPanicSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsRevertSubject::default()
-            .with_id(Some(contract_id.clone().into())),
+        ReceiptsRevertSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsLogSubject::default().with_id(Some(contract_id.clone().into())),
+        ReceiptsLogSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsLogDataSubject::default()
-            .with_id(Some(contract_id.clone().into())),
+        ReceiptsLogDataSubject::default().with_id(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
-        ReceiptsTransferSubject::default()
-            .with_from(Some(contract_id.clone().into())),
+        ReceiptsTransferSubject::default().with_from(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
         ReceiptsTransferOutSubject::default()
-            .with_from(Some(contract_id.clone().into())),
+            .with_from(Some(contract_id.clone())),
     );
     receipt_stream.with_filter(
         ReceiptsMintSubject::default()
-            .with_contract_id(Some(contract_id.clone().into())),
+            .with_contract_id(Some(contract_id.clone())),
     );
 
     // Configure the stream to start from the first published receipt

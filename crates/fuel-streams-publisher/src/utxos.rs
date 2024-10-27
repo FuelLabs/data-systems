@@ -3,17 +3,43 @@ use std::sync::Arc;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    elastic::ElasticSearch,
-    log_all,
-    maybe_include_predicate_and_script_subjects,
-    metrics::PublisherMetrics,
-    publish_all,
+    packets::{PublishError, PublishOpts, PublishPacket},
     FuelCoreLike,
 };
 
-fn get_utxo_data(
+pub fn publish_tasks(
+    tx: &Transaction,
+    stream: &Stream<Utxo>,
+    opts: &Arc<PublishOpts>,
+    fuel_core: &dyn FuelCoreLike,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
+    let packets: Vec<(UtxosSubject, Utxo)> = tx
+        .inputs()
+        .par_iter()
+        .filter_map(|input| {
+            find_utxo(input, tx_id.into(), input.utxo_id().cloned(), fuel_core)
+        })
+        .collect();
+
+    packets
+        .into_iter()
+        .map(|(subject, utxo)| {
+            let packet = PublishPacket::new(
+                &utxo,
+                subject.arc(),
+                UtxosSubject::WILDCARD,
+            );
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
+        })
+        .collect()
+}
+
+fn find_utxo(
     input: &Input,
     tx_id: Bytes32,
     utxo_id: Option<UtxoId>,
@@ -136,52 +162,4 @@ fn get_utxo_data(
             Some((subject, utxo_payload))
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn publish(
-    elastic_logger: &Option<Arc<ElasticSearch>>,
-    metrics: &Arc<PublisherMetrics>,
-    stream: &Stream<Utxo>,
-    fuel_core: &dyn FuelCoreLike,
-    transaction: &Transaction,
-    tx_id: Bytes32,
-    chain_id: &ChainId,
-    block_producer: &fuel_streams_core::types::Address,
-    predicate_tag: Option<Bytes32>,
-    script_tag: Option<Bytes32>,
-) -> anyhow::Result<()> {
-    let subjects_and_payloads = transaction
-        .inputs()
-        .iter()
-        .filter_map(|input| {
-            let utxo_id = input.utxo_id().cloned();
-            get_utxo_data(input, tx_id.clone(), utxo_id, fuel_core)
-        })
-        .collect::<Vec<(UtxosSubject, Utxo)>>();
-
-    for (subject, utxo) in subjects_and_payloads {
-        let mut subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
-            vec![(subject.boxed(), UtxosSubject::WILDCARD)];
-
-        maybe_include_predicate_and_script_subjects(
-            &mut subjects,
-            &predicate_tag,
-            &script_tag,
-        );
-
-        publish_all(
-            stream,
-            &subjects,
-            &utxo,
-            metrics,
-            chain_id,
-            block_producer,
-        )
-        .await;
-
-        log_all(elastic_logger, &subjects, &utxo).await;
-    }
-
-    Ok(())
 }

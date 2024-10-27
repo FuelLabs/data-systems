@@ -2,71 +2,48 @@ use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::Receipt;
 use fuel_streams_core::prelude::*;
-use tracing::info;
+use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    elastic::ElasticSearch,
-    log_all,
-    maybe_include_predicate_and_script_subjects,
-    metrics::PublisherMetrics,
-    publish_all,
+    packets::{PublishError, PublishOpts, PublishPacket},
+    FuelCoreLike,
 };
 
-#[allow(clippy::too_many_arguments)]
-pub async fn publish(
-    elastic_logger: &Option<Arc<ElasticSearch>>,
+pub fn publish_tasks(
+    tx: &Transaction,
     stream: &Stream<Log>,
-    receipts: Option<Vec<Receipt>>,
-    tx_id: Bytes32,
-    chain_id: &ChainId,
-    block_height: BlockHeight,
-    metrics: &Arc<PublisherMetrics>,
-    block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
-    script_tag: Option<Bytes32>,
-) -> anyhow::Result<()> {
-    if let Some(receipts) = receipts {
-        for (index, receipt) in receipts.iter().enumerate() {
-            match receipt {
-                Receipt::Log { id, .. } | Receipt::LogData { id, .. } => {
-                    let mut subjects: Vec<(
-                        Box<dyn IntoSubject>,
-                        &'static str,
-                    )> = vec![(
-                        LogsSubject::new()
-                            .with_block_height(Some(block_height.clone()))
-                            .with_tx_id(Some(tx_id.clone()))
-                            .with_receipt_index(Some(index))
-                            .with_log_id(Some((*id).into()))
-                            .boxed(),
-                        LogsSubject::WILDCARD,
-                    )];
-
-                    maybe_include_predicate_and_script_subjects(
-                        &mut subjects,
-                        &predicate_tag,
-                        &script_tag,
-                    );
-
-                    info!("NATS Publisher: Publishing Logs for 0x#{tx_id}");
-
-                    publish_all(
-                        stream,
-                        &subjects,
-                        &(receipt.clone()).into(),
-                        metrics,
-                        chain_id,
-                        block_producer,
-                    )
-                    .await;
-
-                    log_all(elastic_logger, &subjects, &(receipt.clone()))
-                        .await;
-                }
-                _non_log_receipt => {}
+    opts: &Arc<PublishOpts>,
+    fuel_core: &dyn FuelCoreLike,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
+    let block_height = (*opts.block_height).clone();
+    let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
+    let packets: Vec<PublishPacket<Log>> = receipts
+        .unwrap_or_default()
+        .par_iter()
+        .enumerate()
+        .filter_map(|(index, receipt)| match receipt {
+            Receipt::Log { id, .. } | Receipt::LogData { id, .. } => {
+                Some(PublishPacket::new(
+                    &receipt.to_owned().into(),
+                    LogsSubject::new()
+                        .with_block_height(Some(block_height.clone()))
+                        .with_tx_id(Some(tx_id.into()))
+                        .with_receipt_index(Some(index))
+                        .with_log_id(Some((*id).into()))
+                        .arc(),
+                    LogsSubject::WILDCARD,
+                ))
             }
-        }
-    }
+            _ => None,
+        })
+        .collect();
 
-    Ok(())
+    packets
+        .iter()
+        .map(|packet| {
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
+        })
+        .collect()
 }

@@ -13,143 +13,162 @@ use fuel_core_types::fuel_tx::{
     UniqueIdentifier,
 };
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use rayon::prelude::*;
+use tokio::task::JoinHandle;
 
 use crate::{
-    elastic::ElasticSearch,
-    log_all,
-    maybe_include_predicate_and_script_subjects,
-    metrics::PublisherMetrics,
-    publish_all,
+    identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
+    packets::{PublishError, PublishOpts, PublishPacket},
 };
 
-#[allow(clippy::too_many_arguments)]
-pub async fn publish(
-    elastic_logger: &Option<Arc<ElasticSearch>>,
+pub fn publish_tasks(
+    tx: &Transaction,
     stream: &Stream<Input>,
-    transaction: &Transaction,
-    chain_id: &ChainId,
-    metrics: &Arc<PublisherMetrics>,
-    block_producer: &Address,
-    predicate_tag: Option<Bytes32>,
-    script_tag: Option<Bytes32>,
-) -> anyhow::Result<()> {
-    let tx_id = transaction.id(chain_id);
+    opts: &Arc<PublishOpts>,
+) -> Vec<JoinHandle<Result<(), PublishError>>> {
+    let tx_id = tx.id(&opts.chain_id);
+    let packets: Vec<PublishPacket<Input>> = tx
+        .inputs()
+        .par_iter()
+        .enumerate()
+        .flat_map(move |(index, input)| {
+            let ids = input.extract_ids(Some(tx));
+            let mut packets = input.packets_from_ids(ids);
+            let packet = packet_from_input(input, tx_id.into(), index);
+            packets.push(packet);
+            packets
+        })
+        .collect();
 
-    for (index, input) in transaction.inputs().iter().enumerate() {
-        let mut subjects: Vec<(Box<dyn IntoSubject>, &'static str)> =
-            match input {
-                Input::Contract(contract) => {
-                    let contract_id = contract.contract_id;
+    packets
+        .iter()
+        .map(|packet| {
+            let stream = stream.clone();
+            let opts = Arc::clone(opts);
+            packet.publish(Arc::new(stream.to_owned()), Arc::clone(&opts))
+        })
+        .collect()
+}
 
-                    vec![
-                        (
-                            InputsContractSubject::new()
-                                .with_tx_id(Some(tx_id.into()))
-                                .with_index(Some(index))
-                                .with_contract_id(Some(contract_id.into()))
-                                .boxed(),
-                            InputsContractSubject::WILDCARD,
-                        ),
-                        (
-                            InputsByIdSubject::new()
-                                .with_id_kind(Some(IdentifierKind::ContractID))
-                                .with_id_value(Some(contract_id.into()))
-                                .boxed(),
-                            InputsByIdSubject::WILDCARD,
-                        ),
-                    ]
-                }
-                Input::CoinSigned(CoinSigned {
-                    owner, asset_id, ..
-                })
-                | Input::CoinPredicate(CoinPredicate {
-                    owner, asset_id, ..
-                }) => {
-                    vec![
-                        (
-                            InputsCoinSubject::new()
-                                .with_tx_id(Some(tx_id.into()))
-                                .with_index(Some(index))
-                                .with_owner(Some(owner.into()))
-                                .with_asset_id(Some(asset_id.into()))
-                                .boxed(),
-                            InputsCoinSubject::WILDCARD,
-                        ),
-                        (
-                            InputsByIdSubject::new()
-                                .with_id_kind(Some(IdentifierKind::AssetID))
-                                .with_id_value(Some((*asset_id).into()))
-                                .boxed(),
-                            InputsByIdSubject::WILDCARD,
-                        ),
-                    ]
-                }
-                Input::MessageCoinSigned(MessageCoinSigned {
-                    sender,
-                    recipient,
-                    ..
-                })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    sender,
-                    recipient,
-                    ..
-                })
-                | Input::MessageDataSigned(MessageDataSigned {
-                    sender,
-                    recipient,
-                    ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
-                    sender,
-                    recipient,
-                    ..
-                }) => {
-                    vec![
-                        (
-                            InputsMessageSubject::new()
-                                .with_tx_id(Some(tx_id.into()))
-                                .with_index(Some(index))
-                                .with_sender(Some(sender.into()))
-                                .with_recipient(Some(recipient.into()))
-                                .boxed(),
-                            InputsMessageSubject::WILDCARD,
-                        ),
-                        (
-                            InputsByIdSubject::new()
-                                .with_id_kind(Some(IdentifierKind::Address))
-                                .with_id_value(Some((*sender).into()))
-                                .boxed(),
-                            InputsByIdSubject::WILDCARD,
-                        ),
-                        (
-                            InputsByIdSubject::new()
-                                .with_id_kind(Some(IdentifierKind::Address))
-                                .with_id_value(Some((*recipient).into()))
-                                .boxed(),
-                            InputsByIdSubject::WILDCARD,
-                        ),
-                    ]
-                }
-            };
-
-        maybe_include_predicate_and_script_subjects(
-            &mut subjects,
-            &predicate_tag,
-            &script_tag,
-        );
-
-        publish_all(
-            stream,
-            &subjects,
+fn packet_from_input(
+    input: &Input,
+    tx_id: Bytes32,
+    index: usize,
+) -> PublishPacket<Input> {
+    match input {
+        Input::Contract(contract) => {
+            let contract_id = contract.contract_id;
+            PublishPacket::new(
+                input,
+                InputsContractSubject::new()
+                    .with_tx_id(Some(tx_id))
+                    .with_index(Some(index))
+                    .with_contract_id(Some(contract_id.into()))
+                    .arc(),
+                InputsContractSubject::WILDCARD,
+            )
+        }
+        Input::CoinSigned(CoinSigned {
+            owner, asset_id, ..
+        })
+        | Input::CoinPredicate(CoinPredicate {
+            owner, asset_id, ..
+        }) => PublishPacket::new(
             input,
-            metrics,
-            chain_id,
-            block_producer,
-        )
-        .await;
-
-        log_all(elastic_logger, &subjects, input).await;
+            InputsCoinSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index))
+                .with_owner(Some(owner.into()))
+                .with_asset_id(Some(asset_id.into()))
+                .arc(),
+            InputsCoinSubject::WILDCARD,
+        ),
+        Input::MessageCoinSigned(MessageCoinSigned {
+            sender,
+            recipient,
+            ..
+        })
+        | Input::MessageCoinPredicate(MessageCoinPredicate {
+            sender,
+            recipient,
+            ..
+        })
+        | Input::MessageDataSigned(MessageDataSigned {
+            sender,
+            recipient,
+            ..
+        })
+        | Input::MessageDataPredicate(MessageDataPredicate {
+            sender,
+            recipient,
+            ..
+        }) => PublishPacket::new(
+            input,
+            InputsMessageSubject::new()
+                .with_tx_id(Some(tx_id))
+                .with_index(Some(index))
+                .with_sender(Some(sender.into()))
+                .with_recipient(Some(recipient.into()))
+                .arc(),
+            InputsMessageSubject::WILDCARD,
+        ),
     }
+}
 
-    Ok(())
+impl IdsExtractable for Input {
+    fn extract_ids(&self, _tx: Option<&Transaction>) -> Vec<Identifier> {
+        let mut ids = match self {
+            Input::CoinSigned(CoinSigned {
+                owner, asset_id, ..
+            }) => {
+                vec![
+                    Identifier::Address(owner.into()),
+                    Identifier::AssetId(asset_id.into()),
+                ]
+            }
+            Input::CoinPredicate(CoinPredicate {
+                owner, asset_id, ..
+            }) => {
+                vec![
+                    Identifier::Address(owner.into()),
+                    Identifier::AssetId(asset_id.into()),
+                ]
+            }
+            Input::MessageCoinSigned(MessageCoinSigned {
+                sender,
+                recipient,
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                sender,
+                recipient,
+                ..
+            })
+            | Input::MessageDataSigned(MessageDataSigned {
+                sender,
+                recipient,
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                sender,
+                recipient,
+                ..
+            }) => {
+                vec![
+                    Identifier::Address(sender.into()),
+                    Identifier::Address(recipient.into()),
+                ]
+            }
+            Input::Contract(contract) => {
+                vec![Identifier::ContractId(contract.contract_id.into())]
+            }
+        };
+
+        if let Some((predicate_bytecode, _, _)) = self.predicate() {
+            let predicate_tag = crate::sha256(predicate_bytecode);
+            ids.push(Identifier::PredicateId(predicate_tag))
+        }
+
+        ids
+    }
 }
