@@ -11,8 +11,8 @@ image:
   tag: 7e14a2a
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -23,13 +23,12 @@ serviceAccount:
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  name: ''
 
 podAnnotations: {}
 podLabels: {}
 
-podSecurityContext:
-  {}
+podSecurityContext: {}
   # fsGroup: 2000
 
 securityContext:
@@ -45,9 +44,8 @@ service:
 
 ingress:
   enabled: false
-  className: ""
-  annotations:
-    {}
+  className: ''
+  annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
@@ -60,13 +58,17 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources:
-  requests:
-    memory: "4Gi"
-    cpu: "2"
-  limits:
-    memory: "8Gi"
-    cpu: "4"
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
 
 livenessProbe:
   httpGet:
@@ -74,7 +76,7 @@ livenessProbe:
     port: http
   initialDelaySeconds: 10
   periodSeconds: 5
-  failureThreshold: 3
+  failureThreshold: 3 
 
 readinessProbe:
   httpGet:
@@ -82,13 +84,13 @@ readinessProbe:
     port: http
   initialDelaySeconds: 5
   periodSeconds: 5
-  failureThreshold: 3
+  failureThreshold: 3 
 
 autoscaling:
-  enabled: true
+  enabled: false
   minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 75
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
 # Additional volumes on the output Deployment definition.
@@ -109,4 +111,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
