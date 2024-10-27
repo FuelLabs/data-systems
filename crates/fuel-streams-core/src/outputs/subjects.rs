@@ -2,31 +2,69 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
-/// Represents the NATS subject for outputs by ID.
+/// Represents a subject for querying outputs by their identifier in the Fuel ecosystem.
 ///
-/// This subject format allows for querying outputs based on their ID kind and value.
+/// This struct is used to create and parse subjects related to outputs identified by
+/// various types of IDs, which can be used for subscribing to or publishing events
+/// about specific outputs.
 ///
 /// # Examples
 ///
-/// **Creating a subject for outputs by ID:**
+/// Creating and parsing a subject:
 ///
 /// ```
-/// use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
-/// use fuel_streams_core::types::*;
-/// use fuel_streams_macros::subject::SubjectBuildable;
-///
-/// let subject = OutputsByIdSubject::new()
-///     .with_id_kind(Some(IdentifierKind::Address))
-///     .with_id_value(Some(Bytes32::zeroed()));
+/// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = OutputsByIdSubject {
+///     tx_id: Some([1u8; 32].into()),
+///     index: Some(0),
+///     id_kind: Some(IdentifierKind::AssetID),
+///     id_value: Some([3u8; 32].into()),
+/// };
 /// assert_eq!(
-///     subject.to_string(),
-///     "by_id.outputs.address.0x0000000000000000000000000000000000000000000000000000000000000000"
+///     subject.parse(),
+///     "by_id.outputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303"
 /// );
+/// ```
+///
+/// All outputs by ID wildcard:
+///
+/// ```
+/// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
+/// # use fuel_streams_macros::subject::*;
+/// assert_eq!(OutputsByIdSubject::WILDCARD, "by_id.outputs.>");
+/// ```
+///
+/// Creating a subject query using the `wildcard` method:
+///
+/// ```
+/// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let wildcard = OutputsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::AssetID), None);
+/// assert_eq!(wildcard, "by_id.outputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.*");
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = OutputsByIdSubject::new()
+///     .with_tx_id(Some([1u8; 32].into()))
+///     .with_index(Some(0))
+///     .with_id_kind(Some(IdentifierKind::AssetID))
+///     .with_id_value(Some([3u8; 32].into()));
+/// assert_eq!(subject.parse(), "by_id.outputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.0x0303030303030303030303030303030303030303030303030303030303030303");
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "by_id.outputs.>"]
-#[subject_format = "by_id.outputs.{id_kind}.{id_value}"]
+#[subject_format = "by_id.outputs.{tx_id}.{index}.{id_kind}.{id_value}"]
 pub struct OutputsByIdSubject {
+    pub tx_id: Option<Bytes32>,
+    pub index: Option<u8>,
     pub id_kind: Option<IdentifierKind>,
     pub id_value: Option<Bytes32>,
 }

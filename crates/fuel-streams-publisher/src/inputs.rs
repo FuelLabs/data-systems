@@ -32,7 +32,7 @@ pub fn publish_tasks(
         .par_iter()
         .enumerate()
         .flat_map(move |(index, input)| {
-            let ids = input.extract_ids(Some(tx));
+            let ids = input.extract_ids(&opts.chain_id, tx, index as u8);
             let mut packets = input.packets_from_ids(ids);
             let packet = packet_from_input(input, tx_id.into(), index);
             packets.push(packet);
@@ -116,22 +116,28 @@ fn packet_from_input(
 }
 
 impl IdsExtractable for Input {
-    fn extract_ids(&self, _tx: Option<&Transaction>) -> Vec<Identifier> {
+    fn extract_ids(
+        &self,
+        chain_id: &ChainId,
+        tx: &Transaction,
+        index: u8,
+    ) -> Vec<Identifier> {
+        let tx_id = tx.id(chain_id);
         let mut ids = match self {
             Input::CoinSigned(CoinSigned {
                 owner, asset_id, ..
             }) => {
                 vec![
-                    Identifier::Address(owner.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::Address(tx_id.into(), index, owner.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
             Input::CoinPredicate(CoinPredicate {
                 owner, asset_id, ..
             }) => {
                 vec![
-                    Identifier::Address(owner.into()),
-                    Identifier::AssetId(asset_id.into()),
+                    Identifier::Address(tx_id.into(), index, owner.into()),
+                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
                 ]
             }
             Input::MessageCoinSigned(MessageCoinSigned {
@@ -155,18 +161,26 @@ impl IdsExtractable for Input {
                 ..
             }) => {
                 vec![
-                    Identifier::Address(sender.into()),
-                    Identifier::Address(recipient.into()),
+                    Identifier::Address(tx_id.into(), index, sender.into()),
+                    Identifier::Address(tx_id.into(), index, recipient.into()),
                 ]
             }
             Input::Contract(contract) => {
-                vec![Identifier::ContractId(contract.contract_id.into())]
+                vec![Identifier::ContractID(
+                    tx_id.into(),
+                    index,
+                    contract.contract_id.into(),
+                )]
             }
         };
 
         if let Some((predicate_bytecode, _, _)) = self.predicate() {
             let predicate_tag = crate::sha256(predicate_bytecode);
-            ids.push(Identifier::PredicateId(predicate_tag))
+            ids.push(Identifier::PredicateID(
+                tx_id.into(),
+                index,
+                predicate_tag,
+            ))
         }
 
         ids

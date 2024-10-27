@@ -5,28 +5,22 @@ use rayon::prelude::*;
 
 use crate::packets::PublishPacket;
 
-/// Represents various types of identifiers used across different entities in the system.
-///
-/// # Examples
-///
-/// ```rust
-/// use fuel_streams_publisher::identifiers::Identifier;
-/// use fuel_streams_core::prelude::*;
-///
-/// let address = Identifier::Address(Bytes32::zeroed());
-/// let contract_id = Identifier::ContractId(Bytes32::zeroed());
-/// ```
 #[derive(Debug, Clone)]
 pub enum Identifier {
-    Address(Bytes32),
-    ContractId(Bytes32),
-    AssetId(Bytes32),
-    PredicateId(Bytes32),
-    ScriptId(Bytes32),
+    Address(Bytes32, u8, Bytes32),
+    ContractID(Bytes32, u8, Bytes32),
+    AssetID(Bytes32, u8, Bytes32),
+    PredicateID(Bytes32, u8, Bytes32),
+    ScriptID(Bytes32, u8, Bytes32),
 }
 
 pub trait IdsExtractable: Streamable {
-    fn extract_ids(&self, tx: Option<&Transaction>) -> Vec<Identifier>;
+    fn extract_ids(
+        &self,
+        chain_id: &ChainId,
+        tx: &Transaction,
+        index: u8,
+    ) -> Vec<Identifier>;
 }
 
 pub trait PacketIdBuilder: Streamable {
@@ -59,21 +53,40 @@ macro_rules! impl_subject_payload {
         impl From<Identifier> for $subject {
             fn from(identifier: Identifier) -> Self {
                 match identifier {
-                    Identifier::Address(value) => $subject::new()
-                        .with_id_kind(Some(IdentifierKind::Address))
-                        .with_id_value(Some(value)),
-                    Identifier::ContractId(value) => $subject::new()
-                        .with_id_kind(Some(IdentifierKind::ContractID))
-                        .with_id_value(Some(value)),
-                    Identifier::AssetId(value) => $subject::new()
-                        .with_id_kind(Some(IdentifierKind::AssetID))
-                        .with_id_value(Some(value)),
-                    Identifier::PredicateId(predicate_tag) => $subject::new()
-                        .with_id_kind(Some(IdentifierKind::PredicateID))
-                        .with_id_value(Some(predicate_tag)),
-                    Identifier::ScriptId(script_tag) => $subject::new()
-                        .with_id_kind(Some(IdentifierKind::ScriptID))
-                        .with_id_value(Some(script_tag)),
+                    Identifier::Address(tx_id, index, id) => $subject::build(
+                        Some(tx_id),
+                        Some(index),
+                        Some(IdentifierKind::Address),
+                        Some(id),
+                    ),
+                    Identifier::ContractID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some(IdentifierKind::ContractID),
+                            Some(id),
+                        )
+                    }
+                    Identifier::AssetID(tx_id, index, id) => $subject::build(
+                        Some(tx_id),
+                        Some(index),
+                        Some(IdentifierKind::AssetID),
+                        Some(id),
+                    ),
+                    Identifier::PredicateID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some(IdentifierKind::PredicateID),
+                            Some(id),
+                        )
+                    }
+                    Identifier::ScriptID(tx_id, index, id) => $subject::build(
+                        Some(tx_id),
+                        Some(index),
+                        Some(IdentifierKind::ScriptID),
+                        Some(id),
+                    ),
                 }
             }
         }

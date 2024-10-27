@@ -2,34 +2,37 @@ use fuel_streams_macros::subject::{IntoSubject, Subject};
 
 use crate::types::*;
 
-/// Represents a subject for querying receipts by an identifier in the Fuel network.
+/// Represents a subject for querying receipts by their identifier in the Fuel ecosystem.
 ///
-/// This subject format allows efficient querying and filtering of receipts based
-/// on the identifier kind and its associated value, such as an address, contract ID, or asset ID.
+/// This struct is used to create and parse subjects related to receipts identified by
+/// various types of IDs, which can be used for subscribing to or publishing events
+/// about specific receipts.
 ///
 /// # Examples
 ///
-/// Creating a subject for a specific receipt by ID:
+/// Creating and parsing a subject:
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
 /// # use fuel_streams_core::types::*;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsByIdSubject {
+///     tx_id: Some([1u8; 32].into()),
+///     index: Some(0),
 ///     id_kind: Some(IdentifierKind::ContractID),
-///     id_value: Some(Bytes32::from([1u8; 32])),
+///     id_value: Some([2u8; 32].into()),
 /// };
 /// assert_eq!(
 ///     subject.parse(),
-///     "by_id.receipts.contract_id.0x0101010101010101010101010101010101010101010101010101010101010101"
+///     "by_id.receipts.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.0x0202020202020202020202020202020202020202020202020202020202020202"
 /// );
 /// ```
 ///
-/// Wildcard for querying all receipts by ID:
+/// All receipts by ID wildcard:
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
-/// # use fuel_streams_macros::subject::IntoSubject;
+/// # use fuel_streams_macros::subject::*;
 /// assert_eq!(ReceiptsByIdSubject::WILDCARD, "by_id.receipts.>");
 /// ```
 ///
@@ -38,16 +41,30 @@ use crate::types::*;
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
 /// # use fuel_streams_core::types::*;
-/// let wildcard = ReceiptsByIdSubject::wildcard(Some(IdentifierKind::Address), Some(Bytes32::from([1u8; 32])));
-/// assert_eq!(
-///     wildcard,
-///     "by_id.receipts.address.0x0101010101010101010101010101010101010101010101010101010101010101"
-/// );
+/// # use fuel_streams_macros::subject::*;
+/// let wildcard = ReceiptsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::ContractID), None);
+/// assert_eq!(wildcard, "by_id.receipts.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.*");
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = ReceiptsByIdSubject::new()
+///     .with_tx_id(Some([1u8; 32].into()))
+///     .with_index(Some(0))
+///     .with_id_kind(Some(IdentifierKind::ContractID))
+///     .with_id_value(Some([2u8; 32].into()));
+/// assert_eq!(subject.parse(), "by_id.receipts.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.0x0202020202020202020202020202020202020202020202020202020202020202");
 /// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "by_id.receipts.>"]
-#[subject_format = "by_id.receipts.{id_kind}.{id_value}"]
+#[subject_format = "by_id.receipts.{tx_id}.{index}.{id_kind}.{id_value}"]
 pub struct ReceiptsByIdSubject {
+    pub tx_id: Option<Bytes32>,
+    pub index: Option<u8>,
     pub id_kind: Option<IdentifierKind>,
     pub id_value: Option<Bytes32>,
 }
@@ -693,7 +710,37 @@ pub struct ReceiptsTransferSubject {
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferOutSubject;
 /// # use fuel_streams_core::types::*;
-/// #
+/// # use fuel_streams_macros::subject::*;
+/// let wildcard = ReceiptsTransferOutSubject::wildcard(
+///     Some(Bytes32::from([1u8; 32])),
+///     None,
+///     Some(ContractId::from([2u8; 32])),
+///     Some(Address::from([3u8; 32])),
+///     Some(AssetId::from([4u8; 32]))
+/// );
+/// assert_eq!(
+///     wildcard,
+///     "receipts.0x0101010101010101010101010101010101010101010101010101010101010101.*.transfer_out.0x0202020202020202020202020202020202020202020202020202020202020202.0x0303030303030303030303030303030303030303030303030303030303030303.0x0404040404040404040404040404040404040404040404040404040404040404"
+/// );
+/// ```
+///
+/// Using the builder pattern:
+///
+/// ```
+/// # use fuel_streams_core::receipts::subjects::ReceiptsTransferOutSubject;
+/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_macros::subject::*;
+/// let subject = ReceiptsTransferOutSubject::new()
+///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
+///     .with_index(Some(0))
+///     .with_from(Some(ContractId::from([2u8; 32])))
+///     .with_to(Some(Address::from([3u8; 32])))
+///     .with_asset_id(Some(AssetId::from([4u8; 32])));
+/// assert_eq!(
+///     subject.parse(),
+///     "receipts.0x0101010101010101010101010101010101010101010101010101010101010101.0.transfer_out.0x0202020202020202020202020202020202020202020202020202020202020202.0x0303030303030303030303030303030303030303030303030303030303030303.0x0404040404040404040404040404040404040404040404040404040404040404"
+/// );
+/// ```
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "receipts.>"]
 #[subject_format = "receipts.{tx_id}.{index}.transfer_out.{from}.{to}.{asset_id}"]

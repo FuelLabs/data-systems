@@ -60,7 +60,7 @@ fn publish_tasks(
     let (_, tx) = tx_item;
     let tx_id = tx.id(&opts.chain_id);
     let block_height = &opts.block_height;
-    packets_from_tx(tx_item, tx_id, fuel_core, block_height)
+    packets_from_tx(tx_item, tx_id, &opts.chain_id, fuel_core, block_height)
         .iter()
         .map(|packet| {
             packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
@@ -69,8 +69,9 @@ fn publish_tasks(
 }
 
 fn packets_from_tx(
-    (tx_index, tx): (usize, &Transaction),
+    (index, tx): (usize, &Transaction),
     tx_id: fuel_core_types::fuel_tx::Bytes32,
+    chain_id: &ChainId,
     fuel_core: &dyn FuelCoreLike,
     block_height: &BlockHeight,
 ) -> Vec<PublishPacket<Transaction>> {
@@ -94,7 +95,7 @@ fn packets_from_tx(
         .inputs()
         .par_iter()
         .flat_map(|item| {
-            let ids = item.extract_ids(Some(tx));
+            let ids = item.extract_ids(chain_id, tx, index as u8);
             tx.packets_from_ids(ids)
         })
         .collect();
@@ -103,7 +104,7 @@ fn packets_from_tx(
         .outputs()
         .par_iter()
         .flat_map(|item| {
-            let ids = item.extract_ids(Some(tx));
+            let ids = item.extract_ids(chain_id, tx, index as u8);
             tx.packets_from_ids(ids)
         })
         .collect();
@@ -111,7 +112,7 @@ fn packets_from_tx(
     let packets_from_receipts: Vec<PublishPacket<Transaction>> = receipts
         .par_iter()
         .flat_map(|item| {
-            let ids = item.extract_ids(Some(tx));
+            let ids = item.extract_ids(chain_id, tx, index as u8);
             tx.packets_from_ids(ids)
         })
         .collect();
@@ -123,7 +124,7 @@ fn packets_from_tx(
             .with_kind(Some(kind))
             .with_status(Some(status))
             .with_block_height(Some(block_height.to_owned()))
-            .with_tx_index(Some(tx_index))
+            .with_index(Some(index))
             .arc(),
         TransactionsSubject::WILDCARD,
     )]
@@ -135,11 +136,17 @@ fn packets_from_tx(
 }
 
 impl IdsExtractable for Transaction {
-    fn extract_ids(&self, _tx: Option<&Transaction>) -> Vec<Identifier> {
+    fn extract_ids(
+        &self,
+        chain_id: &ChainId,
+        tx: &Transaction,
+        index: u8,
+    ) -> Vec<Identifier> {
+        let tx_id = tx.id(chain_id);
         match self {
             Transaction::Script(tx) => {
                 let script_tag = sha256(tx.script_data());
-                vec![Identifier::ScriptId(script_tag)]
+                vec![Identifier::ScriptID(tx_id.into(), index, script_tag)]
             }
             _ => Vec::new(),
         }
