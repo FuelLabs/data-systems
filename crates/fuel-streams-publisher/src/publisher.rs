@@ -190,25 +190,25 @@ impl Publisher {
         &self.streams
     }
 
-    fn set_panic_hook(&mut self) {
-        let nats_client = self.nats_client.clone();
-        let fuel_service = Arc::clone(&self.fuel_service);
-        std::panic::set_hook(Box::new(move |panic_info| {
-            let payload = panic_info
-                .payload()
-                .downcast_ref::<&str>()
-                .unwrap_or(&"Unknown panic");
-            tracing::error!("Publisher panicked with a message: {:?}", payload);
-            let handle = tokio::runtime::Handle::current();
-            let nats_client = nats_client.clone();
-            let fuel_service = Arc::clone(&fuel_service);
-            handle.spawn(async move {
-                Publisher::flush_await_all_streams(&nats_client).await;
-                Publisher::stop_fuel_service(&fuel_service).await;
-                std::process::exit(1);
-            });
-        }));
-    }
+    // fn set_panic_hook(&mut self) {
+    //     let nats_client = self.nats_client.clone();
+    //     let fuel_service = Arc::clone(&self.fuel_service);
+    //     std::panic::set_hook(Box::new(move |panic_info| {
+    //         let payload = panic_info
+    //             .payload()
+    //             .downcast_ref::<&str>()
+    //             .unwrap_or(&"Unknown panic");
+    //         tracing::error!("Publisher panicked with a message: {:?}", payload);
+    //         let handle = tokio::runtime::Handle::current();
+    //         let nats_client = nats_client.clone();
+    //         let fuel_service = Arc::clone(&fuel_service);
+    //         handle.spawn(async move {
+    //             Publisher::flush_await_all_streams(&nats_client).await;
+    //             Publisher::stop_fuel_service(&fuel_service).await;
+    //             std::process::exit(1);
+    //         });
+    //     }));
+    // }
 
     async fn publish_block_data(
         &self,
@@ -278,7 +278,7 @@ impl Publisher {
 
         let mut stop_handle = StopHandle::new();
         stop_handle.spawn_signal_listener();
-        self.set_panic_hook();
+        // self.set_panic_hook();
 
         let last_published_block = self
             .streams
