@@ -156,10 +156,10 @@ define docker_cmd
 	NETWORK=$(1) PORT=$(2) $(DOCKER_COMPOSE) --profile $(3) $(4)
 endef
 
-start: check-commands check-network
+start:
 	$(call docker_cmd,$(NETWORK),$(PORT),$(PROFILE),up -d)
 
-stop: check-commands
+stop:
 	$(call docker_cmd,$(NETWORK),$(PORT),$(PROFILE),down)
 
 restart: stop start
