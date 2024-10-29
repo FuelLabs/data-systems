@@ -13,16 +13,21 @@ use crate::{
 
 pub fn publish_tasks(
     tx: &Transaction,
+    tx_id: &Bytes32,
     stream: &Stream<Utxo>,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
-    let tx_id = tx.id(&opts.chain_id);
     let packets: Vec<(UtxosSubject, Utxo)> = tx
         .inputs()
         .par_iter()
         .filter_map(|input| {
-            find_utxo(input, tx_id.into(), input.utxo_id().cloned(), fuel_core)
+            find_utxo(
+                input,
+                tx_id.to_owned(),
+                input.utxo_id().cloned(),
+                fuel_core,
+            )
         })
         .collect();
 
@@ -34,7 +39,7 @@ pub fn publish_tasks(
                 subject.arc(),
                 UtxosSubject::WILDCARD,
             );
-            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
+            packet.publish(Arc::new(stream.to_owned()), opts)
         })
         .collect()
 }

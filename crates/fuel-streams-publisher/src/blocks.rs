@@ -21,5 +21,5 @@ pub fn publish_task(
         BlocksSubject::WILDCARD,
     );
 
-    packet.publish(Arc::clone(&stream), Arc::clone(opts))
+    packet.publish(Arc::clone(&stream), opts)
 }

@@ -56,10 +56,10 @@ impl<T: Streamable + 'static> PublishPacket<T> {
     pub fn publish(
         &self,
         stream: Arc<Stream<T>>,
-        opts: Arc<PublishOpts>,
+        opts: &Arc<PublishOpts>,
     ) -> JoinHandle<Result<(), PublishError>> {
         let stream = Arc::clone(&stream);
-        let opts = Arc::clone(&opts);
+        let opts = Arc::clone(opts);
         let payload = Arc::clone(&self.payload);
         let subject = Arc::clone(&self.subject);
         let wildcard = self.wildcard;
