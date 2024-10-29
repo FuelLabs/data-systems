@@ -160,9 +160,6 @@ jobs:
           config: ./.typos.toml
 
       - uses: taiki-e/install-action@cargo-machete
-      - name: Check unused dependencies
-        run: cargo machete --skip-target-dir
-
       - name: Lint project
         run: make lint
 

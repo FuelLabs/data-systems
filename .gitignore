@@ -15,3 +15,7 @@ docker/db
 tmp
 /docker/db
 build_rs_cov.profraw
+profile.json
+.rust-version
+coverage/
+docs/
