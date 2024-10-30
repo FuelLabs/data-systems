@@ -14,10 +14,11 @@ pub fn publish_task(
     let block_producer = (*opts.block_producer).clone();
     let packet = PublishPacket::new(
         block,
-        BlocksSubject::new()
-            .with_height(Some(block_height))
-            .with_producer(Some(block_producer))
-            .arc(),
+        BlocksSubject {
+            height: Some(block_height),
+            producer: Some(block_producer),
+        }
+        .arc(),
         BlocksSubject::WILDCARD,
     );
 

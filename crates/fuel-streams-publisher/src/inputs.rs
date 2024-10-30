@@ -56,11 +56,11 @@ fn packet_from_input(
             let contract_id = contract.contract_id;
             PublishPacket::new(
                 input,
-                InputsContractSubject::build(
-                    Some(tx_id),
-                    Some(index),
-                    Some(contract_id.into()),
-                )
+                InputsContractSubject {
+                    tx_id: Some(tx_id),
+                    index: Some(index),
+                    contract_id: Some(contract_id.into()),
+                }
                 .arc(),
                 InputsContractSubject::WILDCARD,
             )
@@ -72,12 +72,12 @@ fn packet_from_input(
             owner, asset_id, ..
         }) => PublishPacket::new(
             input,
-            InputsCoinSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(owner.into()),
-                Some(asset_id.into()),
-            )
+            InputsCoinSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                owner: Some(owner.into()),
+                asset_id: Some(asset_id.into()),
+            }
             .arc(),
             InputsCoinSubject::WILDCARD,
         ),
@@ -102,12 +102,12 @@ fn packet_from_input(
             ..
         }) => PublishPacket::new(
             input,
-            InputsMessageSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(sender.into()),
-                Some(recipient.into()),
-            )
+            InputsMessageSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                sender: Some(sender.into()),
+                recipient: Some(recipient.into()),
+            }
             .arc(),
             InputsMessageSubject::WILDCARD,
         ),

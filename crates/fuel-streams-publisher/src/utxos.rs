@@ -69,9 +69,10 @@ fn find_utxo(
                 None,
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Contract))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Contract),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::CoinSigned(c) => {
@@ -85,9 +86,10 @@ fn find_utxo(
                 Some(c.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Coin))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Coin),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::CoinPredicate(c) => {
@@ -101,9 +103,10 @@ fn find_utxo(
                 Some(c.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Coin))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Coin),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::MessageCoinSigned(message) => {
@@ -116,9 +119,10 @@ fn find_utxo(
                 Some(message.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Message))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Message),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::MessageCoinPredicate(message) => {
@@ -131,9 +135,10 @@ fn find_utxo(
                 Some(message.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Message))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Message),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::MessageDataSigned(message) => {
@@ -146,9 +151,10 @@ fn find_utxo(
                 Some(message.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Message))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Message),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
         Input::MessageDataPredicate(message) => {
@@ -161,9 +167,10 @@ fn find_utxo(
                 Some(message.amount),
                 tx_id.into_inner(),
             );
-            let subject = UtxosSubject::new()
-                .with_utxo_type(Some(UtxoType::Message))
-                .with_hash(Some(utxo_payload.compute_hash().into()));
+            let subject = UtxosSubject {
+                utxo_type: Some(UtxoType::Message),
+                hash: Some(utxo_payload.compute_hash().into()),
+            };
             Some((subject, utxo_payload))
         }
     }

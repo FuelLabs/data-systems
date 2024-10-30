@@ -48,73 +48,73 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsCallSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(from.into()),
-                Some(to.into()),
-                Some(asset_id.into()),
-            )
+            ReceiptsCallSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
             .arc(),
             ReceiptsCallSubject::WILDCARD,
         ),
         Receipt::Return { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsReturnSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsReturnSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsReturnSubject::WILDCARD,
         ),
         Receipt::ReturnData { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsReturnDataSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsReturnDataSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsReturnDataSubject::WILDCARD,
         ),
         Receipt::Panic { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsPanicSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsPanicSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsPanicSubject::WILDCARD,
         ),
         Receipt::Revert { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsRevertSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsRevertSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsRevertSubject::WILDCARD,
         ),
         Receipt::Log { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsLogSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsLogSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsLogSubject::WILDCARD,
         ),
         Receipt::LogData { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsLogDataSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(id.into()),
-            )
+            ReceiptsLogDataSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
             .arc(),
             ReceiptsLogDataSubject::WILDCARD,
         ),
@@ -125,13 +125,13 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsTransferSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(from.into()),
-                Some(to.into()),
-                Some(asset_id.into()),
-            )
+            ReceiptsTransferSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
             .arc(),
             ReceiptsTransferSubject::WILDCARD,
         ),
@@ -142,31 +142,35 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsTransferOutSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(from.into()),
-                Some(to.into()),
-                Some(asset_id.into()),
-            )
+            ReceiptsTransferOutSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
             .arc(),
             ReceiptsTransferOutSubject::WILDCARD,
         ),
         Receipt::ScriptResult { .. } => PublishPacket::new(
             receipt,
-            ReceiptsScriptResultSubject::build(Some(tx_id), Some(index)).arc(),
+            ReceiptsScriptResultSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+            }
+            .arc(),
             ReceiptsScriptResultSubject::WILDCARD,
         ),
         Receipt::MessageOut {
             sender, recipient, ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsMessageOutSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(sender.into()),
-                Some(recipient.into()),
-            )
+            ReceiptsMessageOutSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                sender: Some(sender.into()),
+                recipient: Some(recipient.into()),
+            }
             .arc(),
             ReceiptsMessageOutSubject::WILDCARD,
         ),
@@ -176,12 +180,12 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsMintSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(contract_id.into()),
-                Some((*sub_id).into()),
-            )
+            ReceiptsMintSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                contract_id: Some(contract_id.into()),
+                sub_id: Some((*sub_id).into()),
+            }
             .arc(),
             ReceiptsMintSubject::WILDCARD,
         ),
@@ -191,12 +195,12 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsBurnSubject::build(
-                Some(tx_id),
-                Some(index),
-                Some(contract_id.into()),
-                Some((*sub_id).into()),
-            )
+            ReceiptsBurnSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                contract_id: Some(contract_id.into()),
+                sub_id: Some((*sub_id).into()),
+            }
             .arc(),
             ReceiptsBurnSubject::WILDCARD,
         ),

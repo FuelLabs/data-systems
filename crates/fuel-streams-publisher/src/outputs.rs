@@ -45,12 +45,12 @@ fn packet_from_output(
     match output {
         Output::Coin { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsCoinSubject::build(
-                Some(tx_id),
-                Some(index as u16),
-                Some((*to).into()),
-                Some((*asset_id).into()),
-            )
+            OutputsCoinSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
             .arc(),
             OutputsCoinSubject::WILDCARD,
         ),
@@ -61,44 +61,44 @@ fn packet_from_output(
 
             PublishPacket::new(
                 output,
-                OutputsContractSubject::build(
-                    Some(tx_id),
-                    Some(index as u16),
-                    Some(contract_id.into()),
-                )
+                OutputsContractSubject {
+                    tx_id: Some(tx_id),
+                    index: Some(index as u16),
+                    contract_id: Some(contract_id.into()),
+                }
                 .arc(),
                 OutputsContractSubject::WILDCARD,
             )
         }
         Output::Change { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsChangeSubject::build(
-                Some(tx_id),
-                Some(index as u16),
-                Some((*to).into()),
-                Some((*asset_id).into()),
-            )
+            OutputsChangeSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
             .arc(),
             OutputsChangeSubject::WILDCARD,
         ),
         Output::Variable { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsVariableSubject::build(
-                Some(tx_id),
-                Some(index as u16),
-                Some((*to).into()),
-                Some((*asset_id).into()),
-            )
+            OutputsVariableSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
             .arc(),
             OutputsVariableSubject::WILDCARD,
         ),
         Output::ContractCreated { contract_id, .. } => PublishPacket::new(
             output,
-            OutputsContractCreatedSubject::build(
-                Some(tx_id),
-                Some(index as u16),
-                Some((*contract_id).into()),
-            )
+            OutputsContractCreatedSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                contract_id: Some((*contract_id).into()),
+            }
             .arc(),
             OutputsContractCreatedSubject::WILDCARD,
         ),

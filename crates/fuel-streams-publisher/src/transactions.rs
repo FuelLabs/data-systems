@@ -128,13 +128,13 @@ fn packets_from_tx(
 
     iter::once(PublishPacket::new(
         tx,
-        TransactionsSubject::build(
-            Some(block_height.to_owned()),
-            Some(index),
-            Some(tx_id.to_owned()),
-            Some(tx_status.to_owned()),
-            Some(kind),
-        )
+        TransactionsSubject {
+            block_height: Some(block_height.to_owned()),
+            index: Some(index),
+            tx_id: Some(tx_id.to_owned()),
+            status: Some(tx_status.to_owned()),
+            kind: Some(kind),
+        }
         .arc(),
         TransactionsSubject::WILDCARD,
     ))

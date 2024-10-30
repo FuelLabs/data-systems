@@ -21,12 +21,12 @@ pub fn publish_tasks(
             Receipt::Log { id, .. } | Receipt::LogData { id, .. } => {
                 Some(PublishPacket::new(
                     &receipt.to_owned().into(),
-                    LogsSubject::build(
-                        Some(block_height.clone()),
-                        Some(tx_id.to_owned()),
-                        Some(index),
-                        Some((*id).into()),
-                    )
+                    LogsSubject {
+                        block_height: Some(block_height.clone()),
+                        tx_id: Some(tx_id.to_owned()),
+                        receipt_index: Some(index),
+                        log_id: Some((*id).into()),
+                    }
                     .arc(),
                     LogsSubject::WILDCARD,
                 ))
