@@ -126,7 +126,6 @@ fn packets_from_tx(
             .with_block_height(Some(block_height.to_owned()))
             .with_index(Some(index))
             .arc(),
-        TransactionsSubject::WILDCARD,
     )]
     .into_iter()
     .chain(packets_from_inputs)

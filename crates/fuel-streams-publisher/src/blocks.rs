@@ -18,7 +18,6 @@ pub fn publish_task(
             .with_height(Some(block_height))
             .with_producer(Some(block_producer))
             .arc(),
-        BlocksSubject::WILDCARD,
     );
 
     packet.publish(Arc::clone(&stream), Arc::clone(opts))

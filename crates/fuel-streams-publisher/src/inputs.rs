@@ -65,7 +65,6 @@ fn packet_from_input(
                     .with_index(Some(index))
                     .with_contract_id(Some(contract_id.into()))
                     .arc(),
-                InputsContractSubject::WILDCARD,
             )
         }
         Input::CoinSigned(CoinSigned {
@@ -81,7 +80,6 @@ fn packet_from_input(
                 .with_owner(Some(owner.into()))
                 .with_asset_id(Some(asset_id.into()))
                 .arc(),
-            InputsCoinSubject::WILDCARD,
         ),
         Input::MessageCoinSigned(MessageCoinSigned {
             sender,
@@ -110,7 +108,6 @@ fn packet_from_input(
                 .with_sender(Some(sender.into()))
                 .with_recipient(Some(recipient.into()))
                 .arc(),
-            InputsMessageSubject::WILDCARD,
         ),
     }
 }

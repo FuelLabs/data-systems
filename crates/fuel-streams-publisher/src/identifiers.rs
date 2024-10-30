@@ -102,7 +102,6 @@ macro_rules! impl_subject_payload {
                         PublishPacket::new(
                             self,
                             subject.arc() as Arc<dyn IntoSubject>,
-                            $subject::WILDCARD,
                         )
                     })
                     .collect()

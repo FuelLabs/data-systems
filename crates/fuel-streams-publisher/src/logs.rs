@@ -33,7 +33,6 @@ pub fn publish_tasks(
                         .with_receipt_index(Some(index))
                         .with_log_id(Some((*id).into()))
                         .arc(),
-                    LogsSubject::WILDCARD,
                 ))
             }
             _ => None,
