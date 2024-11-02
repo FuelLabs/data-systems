@@ -12,23 +12,23 @@ use fuel_core_types::{
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{FuelCoreLike, Publisher};
 use futures::StreamExt;
-use tokio::sync::{broadcast, broadcast::Receiver};
+use tokio::sync::broadcast::{self, Receiver, Sender};
 
 struct TestFuelCore {
     chain_id: ChainId,
     database: CombinedDatabase,
-    blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+    blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     receipts: Option<Vec<Receipt>>,
 }
 
 impl TestFuelCore {
     fn default(
-        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+        blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     ) -> Self {
         Self {
             chain_id: ChainId::default(),
             database: CombinedDatabase::default(),
-            blocks_subscription,
+            blocks_broadcaster,
             receipts: None,
         }
     }
@@ -36,13 +36,19 @@ impl TestFuelCore {
         self.receipts = Some(receipts);
         self
     }
-    fn boxed(self) -> Box<Self> {
-        Box::new(self)
+    fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }
 
 #[async_trait::async_trait]
 impl FuelCoreLike for TestFuelCore {
+    async fn start(&self) {}
+    fn is_started(&self) -> bool {
+        true
+    }
+    async fn stop(&self) {}
+
     fn chain_id(&self) -> &ChainId {
         &self.chain_id
     }
@@ -52,9 +58,9 @@ impl FuelCoreLike for TestFuelCore {
     }
 
     fn blocks_subscription(
-        &mut self,
-    ) -> &mut Receiver<fuel_core_importer::ImporterResult> {
-        &mut self.blocks_subscription
+        &self,
+    ) -> Receiver<fuel_core_importer::ImporterResult> {
+        self.blocks_broadcaster.subscribe()
     }
 
     fn get_receipts(
@@ -74,16 +80,16 @@ async fn nats_client() -> NatsClient {
         .expect("NATS connection failed")
 }
 
-fn create_test_fuel_core(receipts: Option<Vec<Receipt>>) -> Box<TestFuelCore> {
-    let (_, blocks_subscription) = broadcast::channel::<ImporterResult>(1);
-    let mut fuel_core = TestFuelCore::default(blocks_subscription);
+fn create_test_fuel_core(receipts: Option<Vec<Receipt>>) -> Arc<TestFuelCore> {
+    let (blocks_broadcaster, __) = broadcast::channel::<ImporterResult>(1);
+    let mut fuel_core = TestFuelCore::default(blocks_broadcaster);
     if let Some(receipts) = receipts {
         fuel_core = fuel_core.with_receipts(receipts);
     }
-    fuel_core.boxed()
+    fuel_core.arc()
 }
 
-async fn create_publisher(fuel_core: Box<TestFuelCore>) -> Publisher {
+async fn create_publisher(fuel_core: Arc<TestFuelCore>) -> Publisher {
     Publisher::default_with_publisher(&nats_client().await, fuel_core)
         .await
         .unwrap()
@@ -120,15 +126,14 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
-    let (blocks_subscriber, blocks_subscription) =
-        broadcast::channel::<ImporterResult>(1);
+    let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
     let block = create_test_block();
-    let _ = blocks_subscriber.send(block);
+    let _ = blocks_broadcaster.send(block);
 
     // manually drop blocks to ensure `blocks_subscription` completes
-    drop(blocks_subscriber);
+    drop(blocks_broadcaster.clone());
 
-    let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
+    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
     let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
@@ -141,16 +146,15 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_transaction_for_each_published_block() {
-    let (blocks_subscriber, blocks_subscription) =
-        broadcast::channel::<ImporterResult>(1);
+    let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
 
     let block = create_test_block();
-    let _ = blocks_subscriber.send(block);
+    let _ = blocks_broadcaster.send(block);
 
     // manually drop blocks to ensure `blocks_subscription` completes
-    drop(blocks_subscriber);
+    drop(blocks_broadcaster.clone());
 
-    let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
+    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
     let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
@@ -163,14 +167,12 @@ async fn publishes_transaction_for_each_published_block() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_receipts() {
-    let (blocks_subscriber, blocks_subscription) =
-        broadcast::channel::<ImporterResult>(1);
+    let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
 
     let block = create_test_block();
-    let _ = blocks_subscriber.send(block);
+    let _ = blocks_broadcaster.send(block);
 
-    let _ = blocks_subscriber.clone();
-    drop(blocks_subscriber);
+    drop(blocks_broadcaster.clone());
 
     let receipts = [
         Receipt::Call {
@@ -257,9 +259,9 @@ async fn publishes_receipts() {
         },
     ];
 
-    let fuel_core = TestFuelCore::default(blocks_subscription)
+    let fuel_core = TestFuelCore::default(blocks_broadcaster)
         .with_receipts(receipts.to_vec())
-        .boxed();
+        .arc();
 
     let publisher = create_publisher(fuel_core).await;
 
@@ -274,16 +276,14 @@ async fn publishes_receipts() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_inputs() {
-    let (blocks_subscriber, blocks_subscription) =
-        broadcast::channel::<ImporterResult>(1);
+    let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
 
     let block = create_test_block();
-    let _ = blocks_subscriber.send(block);
+    let _ = blocks_broadcaster.send(block);
 
-    let _ = blocks_subscriber.clone();
-    drop(blocks_subscriber);
+    drop(blocks_broadcaster.clone());
 
-    let fuel_core = TestFuelCore::default(blocks_subscription).boxed();
+    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
     let publisher = create_publisher(fuel_core).await;
 
     assert!(publisher
