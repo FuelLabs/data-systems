@@ -17,8 +17,8 @@ pub enum Identifier {
 pub trait IdsExtractable: Streamable {
     fn extract_ids(
         &self,
-        chain_id: &ChainId,
         tx: &Transaction,
+        tx_id: &Bytes32,
         index: u8,
     ) -> Vec<Identifier>;
 }
