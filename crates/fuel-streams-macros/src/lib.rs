@@ -7,6 +7,7 @@ pub mod subject {
     /// standard NATS subject.
     pub trait IntoSubject: std::fmt::Debug + Send + Sync {
         fn parse(&self) -> String;
+        fn wildcard(&self) -> &'static str;
     }
 
     pub trait SubjectBuildable: std::fmt::Debug {

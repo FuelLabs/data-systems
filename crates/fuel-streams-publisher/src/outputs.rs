@@ -52,7 +52,6 @@ fn packet_from_output(
                 asset_id: Some((*asset_id).into()),
             }
             .arc(),
-            OutputsCoinSubject::WILDCARD,
         ),
         Output::Contract(contract) => {
             let contract_id = find_output_contract_id(transaction, contract)
@@ -67,7 +66,6 @@ fn packet_from_output(
                     contract_id: Some(contract_id.into()),
                 }
                 .arc(),
-                OutputsContractSubject::WILDCARD,
             )
         }
         Output::Change { to, asset_id, .. } => PublishPacket::new(
@@ -79,7 +77,6 @@ fn packet_from_output(
                 asset_id: Some((*asset_id).into()),
             }
             .arc(),
-            OutputsChangeSubject::WILDCARD,
         ),
         Output::Variable { to, asset_id, .. } => PublishPacket::new(
             output,
@@ -90,7 +87,6 @@ fn packet_from_output(
                 asset_id: Some((*asset_id).into()),
             }
             .arc(),
-            OutputsVariableSubject::WILDCARD,
         ),
         Output::ContractCreated { contract_id, .. } => PublishPacket::new(
             output,
@@ -100,7 +96,6 @@ fn packet_from_output(
                 contract_id: Some((*contract_id).into()),
             }
             .arc(),
-            OutputsContractCreatedSubject::WILDCARD,
         ),
     }
 }

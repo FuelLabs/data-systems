@@ -28,7 +28,6 @@ pub fn publish_tasks(
                         log_id: Some((*id).into()),
                     }
                     .arc(),
-                    LogsSubject::WILDCARD,
                 ))
             }
             _ => None,

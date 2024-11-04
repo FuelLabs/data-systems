@@ -136,7 +136,6 @@ fn packets_from_tx(
             kind: Some(kind),
         }
         .arc(),
-        TransactionsSubject::WILDCARD,
     ))
     .par_bridge()
     .chain(packets_from_inputs)

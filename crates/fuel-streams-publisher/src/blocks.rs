@@ -19,7 +19,6 @@ pub fn publish_task(
             producer: Some(block_producer),
         }
         .arc(),
-        BlocksSubject::WILDCARD,
     );
 
     packet.publish(Arc::clone(&stream), opts)

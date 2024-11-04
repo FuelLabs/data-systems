@@ -56,7 +56,6 @@ fn packet_from_receipt(
                 asset_id: Some(asset_id.into()),
             }
             .arc(),
-            ReceiptsCallSubject::WILDCARD,
         ),
         Receipt::Return { id, .. } => PublishPacket::new(
             receipt,
@@ -66,7 +65,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsReturnSubject::WILDCARD,
         ),
         Receipt::ReturnData { id, .. } => PublishPacket::new(
             receipt,
@@ -76,7 +74,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsReturnDataSubject::WILDCARD,
         ),
         Receipt::Panic { id, .. } => PublishPacket::new(
             receipt,
@@ -86,7 +83,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsPanicSubject::WILDCARD,
         ),
         Receipt::Revert { id, .. } => PublishPacket::new(
             receipt,
@@ -96,7 +92,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsRevertSubject::WILDCARD,
         ),
         Receipt::Log { id, .. } => PublishPacket::new(
             receipt,
@@ -106,7 +101,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsLogSubject::WILDCARD,
         ),
         Receipt::LogData { id, .. } => PublishPacket::new(
             receipt,
@@ -116,7 +110,6 @@ fn packet_from_receipt(
                 id: Some(id.into()),
             }
             .arc(),
-            ReceiptsLogDataSubject::WILDCARD,
         ),
         Receipt::Transfer {
             id: from,
@@ -133,7 +126,6 @@ fn packet_from_receipt(
                 asset_id: Some(asset_id.into()),
             }
             .arc(),
-            ReceiptsTransferSubject::WILDCARD,
         ),
         Receipt::TransferOut {
             id: from,
@@ -150,7 +142,6 @@ fn packet_from_receipt(
                 asset_id: Some(asset_id.into()),
             }
             .arc(),
-            ReceiptsTransferOutSubject::WILDCARD,
         ),
         Receipt::ScriptResult { .. } => PublishPacket::new(
             receipt,
@@ -159,7 +150,6 @@ fn packet_from_receipt(
                 index: Some(index),
             }
             .arc(),
-            ReceiptsScriptResultSubject::WILDCARD,
         ),
         Receipt::MessageOut {
             sender, recipient, ..
@@ -172,7 +162,6 @@ fn packet_from_receipt(
                 recipient: Some(recipient.into()),
             }
             .arc(),
-            ReceiptsMessageOutSubject::WILDCARD,
         ),
         Receipt::Mint {
             contract_id,
@@ -187,7 +176,6 @@ fn packet_from_receipt(
                 sub_id: Some((*sub_id).into()),
             }
             .arc(),
-            ReceiptsMintSubject::WILDCARD,
         ),
         Receipt::Burn {
             contract_id,
@@ -202,7 +190,6 @@ fn packet_from_receipt(
                 sub_id: Some((*sub_id).into()),
             }
             .arc(),
-            ReceiptsBurnSubject::WILDCARD,
         ),
     }
 }

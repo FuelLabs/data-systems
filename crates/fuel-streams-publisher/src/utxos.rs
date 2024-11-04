@@ -34,11 +34,7 @@ pub fn publish_tasks(
     packets
         .into_iter()
         .map(|(subject, utxo)| {
-            let packet = PublishPacket::new(
-                &utxo,
-                subject.arc(),
-                UtxosSubject::WILDCARD,
-            );
+            let packet = PublishPacket::new(&utxo, subject.arc());
             packet.publish(Arc::new(stream.to_owned()), opts)
         })
         .collect()
