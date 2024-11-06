@@ -6,6 +6,7 @@ members = [
     "crates/*",
     "crates/fuel-streams-macros/subject-derive",
     "examples",
+    "messaging",
     "tests",
 ]
 

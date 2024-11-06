@@ -1,0 +1,33 @@
+[package]
+name = "messaging"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+autobenches = false
+autotests = false
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+borsh = { version = "1.5.1", features = ["std", "derive", "unstable__schema", "rc", "bytes"] }
+bytes = { workspace = true }
+clap = { version = "4.1.1", features = ["derive"] }
+displaydoc = "0.2"
+fuel-core-types = { workspace = true }
+futures-util = "0.3.31"
+prost = "0.13.3"
+thiserror = "1.0"
+tokio = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
+[build-dependencies]
+prost-build = "0.13.3"
+tonic-build = "0.12.3"

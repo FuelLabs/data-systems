@@ -1,0 +1,16 @@
+.direnv
+.DS_Store
+.envrc
+.idea
+.vscode
+.fleet
+*.swp*
+**/Cargo.lock
+**/target
+lcov.info
+shell.nix
+docs/_build
+ledger
+docs/venv
+# tools
+node_modules
