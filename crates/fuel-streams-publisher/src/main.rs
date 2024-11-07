@@ -3,6 +3,7 @@
 use std::{net::ToSocketAddrs, sync::Arc, time::Duration};
 
 use clap::Parser;
+use fuel_core_bin::{cli::run as fuel_core_cli, FuelService};
 use fuel_streams_publisher::{
     cli::Cli,
     metrics::PublisherMetrics,
@@ -11,32 +12,63 @@ use fuel_streams_publisher::{
     system::System,
 };
 use parking_lot::RwLock;
+use tokio::sync::mpsc;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    fuel_core_bin::cli::init_logging();
+#[derive(Debug)]
+enum RuntimeMessage {
+    FuelCoreStarted,
+    FuelCoreError(String),
+    PublisherStopped,
+}
 
-    let cli = Cli::parse();
+async fn setup_fuel_core(
+    config: &fuel_core_cli::Command,
+) -> anyhow::Result<Arc<FuelService>> {
+    let (tx, mut rx) = mpsc::channel::<RuntimeMessage>(100);
+    let service = fuel_core_cli::get_service(config.to_owned()).await?;
+    let fuel_core = Arc::new(service);
+    let fuel_core_clone = Arc::clone(&fuel_core);
 
-    // create the fuel core service
-    let fuel_core =
-        fuel_core_bin::cli::run::get_service(cli.fuel_core_config).await?;
-    let fuel_core = Arc::new(fuel_core);
+    tokio::spawn(async move {
+        let result = fuel_core_clone.start_and_await().await;
+        let message = match result {
+            Ok(_) => RuntimeMessage::FuelCoreStarted,
+            Err(e) => RuntimeMessage::FuelCoreError(e.to_string()),
+        };
 
-    // start the fuel core in the background
-    fuel_core
-        .start_and_await()
-        .await
-        .expect("Fuel core service startup failed");
+        if let Err(e) = tx.send(message).await {
+            tracing::error!("Failed to send runtime message: {}", e);
+        }
+    });
 
-    // spawn a system monitoring service
+    // Wait for fuel core to start
+    match rx.recv().await.ok_or_else(|| {
+        anyhow::anyhow!("Fuel core communication channel closed")
+    })? {
+        RuntimeMessage::FuelCoreStarted => {
+            tracing::info!("Fuel core started successfully");
+            Ok(fuel_core)
+        }
+        RuntimeMessage::FuelCoreError(err) => {
+            Err(anyhow::anyhow!("Fuel core failed to start: {}", err))
+        }
+        msg => Err(anyhow::anyhow!(
+            "Unexpected message from fuel core: {:?}",
+            msg
+        )),
+    }
+}
+
+async fn setup_publisher(
+    cli: &Cli,
+    fuel_core: Arc<FuelService>,
+) -> anyhow::Result<(SharedState, mpsc::Receiver<RuntimeMessage>)> {
     let system = Arc::new(RwLock::new(System::new().await));
     let monitoring_system = Arc::clone(&system);
     tokio::spawn(async move {
         System::monitor(&monitoring_system, Duration::from_secs(2)).await;
     });
 
-    // create a common shared state between actix and publisher
     let state = SharedState::new(
         Arc::clone(&fuel_core),
         &cli.nats_url,
@@ -45,16 +77,41 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
-    let publisher = fuel_streams_publisher::Publisher::new(
-        state.fuel_service.clone(),
-        &cli.nats_url,
-        cli.use_elastic_logging,
-        state.metrics.clone(),
-        state.streams.clone(),
-    )
-    .await?;
+    let (tx, rx) = mpsc::channel::<RuntimeMessage>(100);
+    let cli = cli.clone();
 
-    // create the actix webserver
+    tokio::spawn({
+        let state = state.clone();
+        async move {
+            let publisher = fuel_streams_publisher::Publisher::new(
+                state.fuel_service.clone(),
+                &cli.nats_url,
+                cli.use_elastic_logging,
+                state.metrics.clone(),
+                state.streams.clone(),
+            )
+            .await?;
+
+            match publisher.run().await {
+                Ok(_) => tracing::info!("Publisher completed successfully"),
+                Err(err) => tracing::error!("Publisher error: {:?}", err),
+            }
+
+            if let Err(e) = tx.send(RuntimeMessage::PublisherStopped).await {
+                tracing::error!("Failed to send shutdown signal: {}", e);
+            }
+
+            Ok::<(), anyhow::Error>(())
+        }
+    });
+
+    Ok((state, rx))
+}
+
+async fn setup_server(
+    cli: &Cli,
+    state: SharedState,
+) -> anyhow::Result<actix_web::dev::ServerHandle> {
     let server_addr = cli
         .server_addr
         .to_socket_addrs()?
@@ -62,28 +119,46 @@ async fn main() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Missing server address"))?;
 
     let server = create_web_server(state, server_addr)?;
-
-    // get server handle
     let server_handle = server.handle();
-
-    // spawn the server in the background
     tokio::spawn(async move {
         if let Err(err) = server.await {
             tracing::error!("Actix Web server error: {:?}", err);
         }
     });
+
+    Ok(server_handle)
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    fuel_core_bin::cli::init_logging();
+    let cli = Cli::parse();
+    let fuel_core_config = &cli.fuel_core_config;
+    let fuel_core = setup_fuel_core(fuel_core_config).await?;
+    let (state, mut publisher_rx) = setup_publisher(&cli, fuel_core).await?;
+    let server_handle = setup_server(&cli, state).await?;
+
     tracing::info!("Publisher started.");
 
-    // run publisher until shutdown signal intercepted
-    if let Err(err) = publisher.run().await {
-        tracing::error!("Publisher encountered an error: {:?}", err);
+    // Wait for shutdown
+    match publisher_rx.recv().await.ok_or_else(|| {
+        anyhow::anyhow!("Publisher channel closed unexpectedly")
+    })? {
+        RuntimeMessage::PublisherStopped => {
+            tracing::info!("Publisher stopped");
+        }
+        msg => {
+            tracing::error!("Unexpected message during shutdown: {:?}", msg);
+            return Err(anyhow::anyhow!(
+                "Unexpected shutdown message: {:?}",
+                msg
+            ));
+        }
     }
-    tracing::info!("Publisher stopped");
 
-    // Await the Actix server shutdown
+    // Cleanup
     tracing::info!("Stopping actix server ...");
     server_handle.stop(true).await;
-
     tracing::info!("Actix server stopped. Goodbye!");
 
     Ok(())
