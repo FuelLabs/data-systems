@@ -10,6 +10,8 @@ use fuel_streams_publisher::{
     server::create_web_server,
     state::SharedState,
     system::System,
+    FUEL_CORE_CONCURRENCY_LIMIT,
+    PUBLISHER_CONCURRENCY_LIMIT,
 };
 use parking_lot::RwLock;
 use tokio::sync::mpsc;
@@ -129,37 +131,67 @@ async fn setup_server(
     Ok(server_handle)
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     fuel_core_bin::cli::init_logging();
     let cli = Cli::parse();
-    let fuel_core_config = &cli.fuel_core_config;
-    let fuel_core = setup_fuel_core(fuel_core_config).await?;
-    let (state, mut publisher_rx) = setup_publisher(&cli, fuel_core).await?;
-    let server_handle = setup_server(&cli, state).await?;
 
-    tracing::info!("Publisher started.");
+    let fuel_core_threads = *FUEL_CORE_CONCURRENCY_LIMIT;
+    let publisher_threads = *PUBLISHER_CONCURRENCY_LIMIT;
 
-    // Wait for shutdown
-    match publisher_rx.recv().await.ok_or_else(|| {
-        anyhow::anyhow!("Publisher channel closed unexpectedly")
-    })? {
-        RuntimeMessage::PublisherStopped => {
-            tracing::info!("Publisher stopped");
+    println!("Fuel core threads: {}", fuel_core_threads);
+    println!("Publisher threads: {}", publisher_threads);
+
+    let fuel_core_runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(fuel_core_threads)
+        .max_blocking_threads(fuel_core_threads * 2)
+        .enable_all()
+        .build()?;
+
+    let fuel_core = fuel_core_runtime
+        .block_on(async { setup_fuel_core(&cli.fuel_core_config).await })?;
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(publisher_threads)
+        .max_blocking_threads(publisher_threads * 2)
+        .enable_all()
+        .build()?;
+
+    runtime.block_on(async {
+        let (state, mut publisher_rx) =
+            setup_publisher(&cli, fuel_core).await?;
+        let server_handle = setup_server(&cli, state).await?;
+
+        tracing::info!("Publisher started.");
+
+        // Wait for shutdown
+        match publisher_rx.recv().await.ok_or_else(|| {
+            anyhow::anyhow!("Publisher channel closed unexpectedly")
+        })? {
+            RuntimeMessage::PublisherStopped => {
+                tracing::info!("Publisher stopped");
+            }
+            msg => {
+                tracing::error!(
+                    "Unexpected message during shutdown: {:?}",
+                    msg
+                );
+                return Err(anyhow::anyhow!(
+                    "Unexpected shutdown message: {:?}",
+                    msg
+                ));
+            }
         }
-        msg => {
-            tracing::error!("Unexpected message during shutdown: {:?}", msg);
-            return Err(anyhow::anyhow!(
-                "Unexpected shutdown message: {:?}",
-                msg
-            ));
-        }
-    }
 
-    // Cleanup
-    tracing::info!("Stopping actix server ...");
-    server_handle.stop(true).await;
-    tracing::info!("Actix server stopped. Goodbye!");
+        // Cleanup
+        tracing::info!("Stopping actix server ...");
+        server_handle.stop(true).await;
+        tracing::info!("Actix server stopped. Goodbye!");
+
+        Ok(())
+    })?;
+
+    drop(runtime);
+    drop(fuel_core_runtime);
 
     Ok(())
 }

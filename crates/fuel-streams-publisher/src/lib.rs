@@ -26,11 +26,24 @@ use fuel_streams_core::prelude::*;
 pub use publisher::{Publisher, Streams};
 use sha2::{Digest, Sha256};
 
-pub static CONCURRENCY_LIMIT: LazyLock<usize> = LazyLock::new(|| {
-    env::var("CONCURRENCY_LIMIT")
+pub static FUEL_CORE_CONCURRENCY_LIMIT: LazyLock<usize> = LazyLock::new(|| {
+    let available_cpus = num_cpus::get();
+    let default_threads = (available_cpus * 2 / 3).max(2); // Use 2/3 of CPUs, minimum 2
+
+    env::var("FUEL_CORE_CONCURRENCY_LIMIT")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(32)
+        .unwrap_or(default_threads)
+});
+
+pub static PUBLISHER_CONCURRENCY_LIMIT: LazyLock<usize> = LazyLock::new(|| {
+    let available_cpus = num_cpus::get();
+    let default_threads = (available_cpus / 3).max(1); // Use 1/3 of CPUs, minimum 1
+
+    env::var("PUBLISHER_CONCURRENCY_LIMIT")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(default_threads)
 });
 
 pub const FUEL_ELASTICSEARCH_PATH: &str = "fuel-data-systems";

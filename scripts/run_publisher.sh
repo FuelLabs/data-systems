@@ -11,9 +11,7 @@ usage() {
     echo "Options:"
     echo "  --network     : Specify the network (mainnet|testnet)"
     echo "                  Default: testnet"
-    echo "  --mode        : Specify the run mode:"
-    echo "                  dev  - Run using 'cargo run -p'"
-    echo "                  profiling - Build with profiling and execute binary"
+    echo "  --mode        : Specify the run mode (dev|profiling)"
     echo "                  Default: profiling"
     echo "  --port        : Specify the port number"
     echo "                  Default: 4000"
@@ -27,14 +25,6 @@ usage() {
     echo "  $0 --network mainnet --extra-args \"--use-elastic-log\" # With extra arguments"
     exit 1
 }
-
-# ------------------------------
-# Parse Arguments
-# ------------------------------
-NETWORK="testnet"
-MODE="profiling"
-PORT="4000"
-EXTRA_ARGS=""
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -64,115 +54,41 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Validate port number
-if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-    echo "Error: Invalid port number specified. Must be between 1 and 65535."
-    usage
-fi
+# ------------------------------
+# Load Environment
+# ------------------------------
+source ./scripts/set_envs.sh
 
 # Print the configuration being used
-echo "Configuration:"
-echo "  Network: $NETWORK"
-echo "  Mode: $MODE"
-echo "  Port: $PORT"
+echo -e "\n=========================================="
+echo "⚙️ Configuration"
+echo -e "=========================================="
+
+# Runtime Configuration
+echo "Runtime Settings:"
+echo "  → Network: $NETWORK"
+echo "  → Mode: $MODE"
+echo "  → Port: $PORT"
 if [ -n "$EXTRA_ARGS" ]; then
-    echo "  Extra Arguments: $EXTRA_ARGS"
+    echo "→ Extra Arguments: $EXTRA_ARGS"
 fi
-echo ""
 
-# ------------------------------
-# Function to Load Environment Variables
-# ------------------------------
-load_env() {
-    if [ -f .env ]; then
-        # Read the .env file line by line, ignoring comments and empty lines
-        while IFS= read -r line || [ -n "$line" ]; do
-            # Skip comments and empty lines
-            [[ $line =~ ^[[:space:]]*# ]] && continue
-            [[ -z "$line" ]] && continue
+# Environment Variables
+echo -e "\nEnvironment Variables:"
+echo "  → Keypair: ${KEYPAIR:0:15}...${KEYPAIR: -15}"
+echo "  → Relayer: $RELAYER"
+echo "  → Reserved Nodes: ${RESERVED_NODES:0:50}..."
+echo "  → Header Batch Size: $SYNC_HEADER_BATCH_SIZE"
+echo "  → Relayer Log Page: $RELAYER_LOG_PAGE_SIZE"
+echo "  → V2 Contracts: $RELAYER_V2_LISTENING_CONTRACTS"
+echo "  → DA Deploy Height: $RELAYER_DA_DEPLOY_HEIGHT"
+echo -e "==========================================\n"
 
-            # Export each variable
-            export "$line"
-        done < .env
-    else
-        echo "Error: .env file not found. Please create a .env file with the necessary variables."
-        exit 1
-    fi
-}
-
-# ------------------------------
-# Function to Validate Network Argument
-# ------------------------------
-validate_network() {
-    if [[ "$NETWORK" != "mainnet" && "$NETWORK" != "testnet" ]]; then
-        echo "Error: Invalid network specified. Choose either 'mainnet' or 'testnet'."
-        usage
-    fi
-}
-
-# ------------------------------
-# Function to Validate Mode Argument
-# ------------------------------
-validate_mode() {
-    if [[ "$MODE" != "dev" && "$MODE" != "profiling" ]]; then
-        echo "Error: Invalid mode specified. Choose either 'dev' or 'profiling'."
-        usage
-    fi
-}
-
-# ------------------------------
-# Function to Validate Required Variables
-# ------------------------------
-validate_vars() {
-    local network_upper
-    network_upper=$(echo "$NETWORK" | tr '[:lower:]' '[:upper:]')
-
-    local REQUIRED_VARS=(
-        "KEYPAIR"
-        "${network_upper}_RELAYER"
-        "${network_upper}_RELAYER_V2_LISTENING_CONTRACTS"
-        "${network_upper}_RELAYER_DA_DEPLOY_HEIGHT"
-        "${network_upper}_RESERVED_NODES"
-        "${network_upper}_SYNC_HEADER_BATCH_SIZE"
-        "${network_upper}_RELAYER_LOG_PAGE_SIZE"
-    )
-
-    # Check if required variables exist
-    for VAR in "${REQUIRED_VARS[@]}"; do
-        if [ -z "${!VAR}" ]; then
-            echo "Error: ${VAR} is not set in the .env file."
-            exit 1
-        fi
-    done
-}
-
-# ------------------------------
-# Main Script Execution
-# ------------------------------
-
-# Validations
-load_env
-validate_network
-validate_mode
-validate_vars
-
-# Function to get network-specific environment variable
-get_network_var() {
-    local base_var
-    local network_upper
-    local var_name
-
-    base_var=$1
-    network_upper=$(echo "$NETWORK" | tr '[:lower:]' '[:upper:]')
-    var_name="${network_upper}_${base_var}"
-    echo "${!var_name}"
-}
-
-# Define common arguments (changed to array)
+# Define common arguments
 COMMON_ARGS=(
     "--enable-relayer"
     "--keypair" "${KEYPAIR}"
-    "--relayer" "$(get_network_var "RELAYER")"
+    "--relayer" "${RELAYER}"
     "--ip=0.0.0.0"
     "--service-name" "fuel-${NETWORK}-node"
     "--db-path" "./docker/db-${NETWORK}"
@@ -182,29 +98,19 @@ COMMON_ARGS=(
     "--utxo-validation"
     "--poa-instant" "false"
     "--enable-p2p"
-    "--sync-header-batch-size" "$(get_network_var "SYNC_HEADER_BATCH_SIZE")"
-    "--relayer-log-page-size=$(get_network_var "RELAYER_LOG_PAGE_SIZE")"
+    "--sync-header-batch-size" "${SYNC_HEADER_BATCH_SIZE}"
+    "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
     "--sync-block-stream-buffer-size" "30"
-    "--bootstrap-nodes" "$(get_network_var "RESERVED_NODES")"
-    "--relayer-v2-listening-contracts=$(get_network_var "RELAYER_V2_LISTENING_CONTRACTS")"
-    "--relayer-da-deploy-height=$(get_network_var "RELAYER_DA_DEPLOY_HEIGHT")"
+    "--bootstrap-nodes" "${RESERVED_NODES}"
+    "--relayer-v2-listening-contracts=${RELAYER_V2_LISTENING_CONTRACTS}"
+    "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
     "--nats-url=nats://localhost:4222"
 )
 
-# Execute based on mode (updated to use arrays)
+# Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    echo "Running in development mode for $NETWORK"
-    if [ -n "$EXTRA_ARGS" ]; then
-        cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" $EXTRA_ARGS
-    else
-        cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}"
-    fi
+    cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    echo "Building with --profile=profiling to use samply and running for $NETWORK"
     cargo build --profile profiling --package fuel-streams-publisher
-    if [ -n "$EXTRA_ARGS" ]; then
-        samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}" $EXTRA_ARGS
-    else
-        samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}"
-    fi
+    samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

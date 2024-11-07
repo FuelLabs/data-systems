@@ -136,7 +136,7 @@ NETWORK ?= testnet
 NETWORKS = mainnet testnet
 PROFILE ?= all
 PROFILES = all dev nats fuel monitoring indexer logging
-DOCKER_COMPOSE = docker compose -f docker/docker-compose.yml
+DOCKER_COMPOSE = set -a && source ./scripts/set_envs.sh && set +a && docker compose -f docker/docker-compose.yml
 
 # Helper functions to validate Docker environment and execute commands
 define check_docker_env
@@ -208,18 +208,21 @@ EXTRA_ARGS ?=
 
 # This defines how to run the publisher script with network and mode parameters
 define run_publisher
-	@$(PUBLISHER_SCRIPT) --network $(1) --mode $(2) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
+	NETWORK=$(1) $(PUBLISHER_SCRIPT) --network $(1) --mode $(2) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 endef
 
-# This generates rules for each network-mode combination
-define run_mode_rules
-run-$(1)-$(2): check-network
-	$$(call run_publisher,$(1),$(2))
-endef
+run-mainnet-dev: check-network
+	$(call run_publisher,mainnet,dev)
 
-$(foreach n,$(NETWORKS),$(foreach m,$(MODES),$(eval $(call run_mode_rules,$(n),$(m)))))
+run-mainnet-profiling: check-network
+	$(call run_publisher,mainnet,profiling)
 
-# This creates a generic run command that uses the current NETWORK and MODE variables
+run-testnet-dev: check-network
+	$(call run_publisher,testnet,dev)
+
+run-testnet-profiling: check-network
+	$(call run_publisher,testnet,profiling)
+
 run-publisher: check-network
 	$(call run_publisher,$(NETWORK),$(MODE))
 
