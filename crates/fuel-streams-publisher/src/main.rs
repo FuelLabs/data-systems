@@ -1,65 +1,43 @@
 //! This binary subscribes to events emitted from a Fuel client or node
 //! to publish streams that can consumed via the `fuel-streams` SDK.
-use std::{net::ToSocketAddrs, sync::Arc, time::Duration};
+use std::{net::ToSocketAddrs, sync::Arc};
 
 use clap::Parser;
 use fuel_streams_publisher::{
     cli::Cli,
-    metrics::PublisherMetrics,
     server::create_web_server,
-    state::SharedState,
-    system::System,
+    server_state::ServerState,
+    telemetry::Telemetry,
+    FuelCore,
+    FuelCoreLike,
 };
-use parking_lot::RwLock;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    fuel_core_bin::cli::init_logging();
-
     let cli = Cli::parse();
 
-    // create the fuel core service
-    let fuel_core =
-        fuel_core_bin::cli::run::get_service(cli.fuel_core_config).await?;
-    let fuel_core = Arc::new(fuel_core);
+    let fuel_core: Arc<dyn FuelCoreLike> =
+        FuelCore::new(cli.fuel_core_config).await?;
+    fuel_core.start().await;
 
-    // start the fuel core in the background
-    fuel_core
-        .start_and_await()
-        .await
-        .expect("Fuel core service startup failed");
-
-    // spawn a system monitoring service
-    let system = Arc::new(RwLock::new(System::new().await));
-    let monitoring_system = Arc::clone(&system);
-    tokio::spawn(async move {
-        System::monitor(&monitoring_system, Duration::from_secs(2)).await;
-    });
-
-    // create a common shared state between actix and publisher
-    let state = SharedState::new(
-        Arc::clone(&fuel_core),
-        &cli.nats_url,
-        Arc::new(PublisherMetrics::new(None)?),
-        system,
-    )
-    .await?;
+    let telemetry = Telemetry::new().await?;
+    telemetry.start().await?;
 
     let publisher = fuel_streams_publisher::Publisher::new(
-        state.fuel_service.clone(),
+        Arc::clone(&fuel_core),
         &cli.nats_url,
-        cli.use_elastic_logging,
-        state.metrics.clone(),
-        state.streams.clone(),
+        telemetry.clone(),
     )
     .await?;
+
+    let state = ServerState::new(publisher.clone()).await;
 
     // create the actix webserver
     let server_addr = cli
         .server_addr
         .to_socket_addrs()?
         .next()
-        .ok_or_else(|| anyhow::anyhow!("Missing server address"))?;
+        .expect("Must be valid server address");
 
     let server = create_web_server(state, server_addr)?;
 

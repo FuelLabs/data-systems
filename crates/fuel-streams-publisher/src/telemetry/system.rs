@@ -1,15 +1,12 @@
 use std::{
     collections::HashMap,
     convert::TryFrom,
-    future::Future,
     hash::Hash,
     path::PathBuf,
-    sync::Arc,
     time::Duration,
 };
 
 use derive_more::Deref;
-use parking_lot::RwLock;
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
@@ -28,21 +25,22 @@ use sysinfo::{
 use thiserror::Error;
 use tokio::time;
 
+// TODO: move this to web interface as `SystemsMetricsResponse` ?
+#[derive(Serialize)]
+pub struct SystemMetricsWrapper {
+    system: SystemMetrics,
+}
+
+impl From<SystemMetrics> for SystemMetricsWrapper {
+    fn from(system: SystemMetrics) -> Self {
+        Self { system }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("The process {0} could not be found")]
     ProcessNotFound(Pid),
-}
-
-#[derive(Serialize)]
-pub struct PromSystemMetrics {
-    system: SystemMetrics,
-}
-
-impl From<SystemMetrics> for PromSystemMetrics {
-    fn from(system: SystemMetrics) -> Self {
-        Self { system }
-    }
 }
 
 #[derive(Debug, Deref)]
@@ -85,41 +83,6 @@ impl System {
             specifics,
             cpu_physical_core_count,
             pid,
-        }
-    }
-
-    pub fn monitor(
-        system: &Arc<RwLock<Self>>,
-        interval: Duration,
-    ) -> impl Future<Output = ()> {
-        let system = system.clone();
-
-        async move {
-            let mut interval = time::interval(interval);
-
-            // The first ticket is returning immediately.
-            interval.tick().await;
-
-            loop {
-                interval.tick().await;
-
-                // sysinfo is sync and taking ~8 to ~160ms on a 4-core
-                // machine (with cpu_usage enabled) so there's the
-                // risk that it takes >1s on an 32 core machine.  On
-                // Linux, sysinfo accesses the /proc filesystem which
-                // is supposed to be always ready so async I/O
-                // wouldn't help much unless the processing itself is
-                // also async.  We could eventually switch the backend
-                // crate once there is an async version that is better
-                // than the heim crate.
-                let _ = tokio::task::spawn_blocking({
-                    let system = system.clone();
-                    move || {
-                        system.write().refresh();
-                    }
-                })
-                .await;
-            }
         }
     }
 
@@ -555,17 +518,7 @@ mod tests {
     use rust_decimal::Decimal;
     use serde::Serialize;
 
-    use super::{
-        Cpu,
-        Disk,
-        Host,
-        LoadAverage,
-        Memory,
-        Pid,
-        Process,
-        System,
-        SystemMemory,
-    };
+    use super::*;
 
     #[derive(Serialize)]
     pub struct Metrics {
@@ -602,7 +555,7 @@ mod tests {
         };
 
         let metrics = Metrics {
-            system: super::SystemMetrics {
+            system: SystemMetrics {
                 application: Process {
                     pid: Pid::from(0),
                     name: "process".to_string(),

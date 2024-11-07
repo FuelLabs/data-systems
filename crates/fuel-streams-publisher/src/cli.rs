@@ -30,13 +30,4 @@ pub struct Cli {
         help = "Address for the Actix Web server to bind to."
     )]
     pub server_addr: SocketAddr,
-    /// Nats connection url
-    #[arg(
-        long,
-        value_name = "ELOG",
-        env = "USE_ELASTIC_LOGGING",
-        default_value = "false",
-        help = "Use elasticsearch logging."
-    )]
-    pub use_elastic_logging: bool,
 }

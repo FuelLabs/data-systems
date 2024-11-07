@@ -13,8 +13,6 @@ use prometheus::{
     Registry,
 };
 
-use crate::packets::PublishError;
-
 #[derive(Clone, Debug)]
 pub struct PublisherMetrics {
     pub registry: Registry,
@@ -37,21 +35,6 @@ impl Default for PublisherMetrics {
 }
 
 impl PublisherMetrics {
-    #[cfg(feature = "test-helpers")]
-    pub fn random() -> Self {
-        use rand::{distributions::Alphanumeric, Rng};
-
-        let prefix = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .filter(|c| c.is_ascii_alphabetic())
-            .take(6)
-            .map(char::from)
-            .collect();
-
-        PublisherMetrics::new(Some(prefix))
-            .expect("Failed to create random PublisherMetrics")
-    }
-
     pub fn new(prefix: Option<String>) -> anyhow::Result<Self> {
         let metric_prefix = prefix
             .clone()
@@ -162,68 +145,8 @@ impl PublisherMetrics {
     }
 }
 
-pub async fn publish_with_metrics<F, E>(
-    async_func: F,
-    metrics: &PublisherMetrics,
-    chain_id: &ChainId,
-    block_producer: &Address,
-    wildcard: &str,
-) -> Result<(), PublishError>
-where
-    F: std::future::Future<Output = Result<usize, E>>,
-    E: std::fmt::Display,
-{
-    match async_func.await {
-        Ok(published_data_size) => {
-            // Update message size histogram
-            metrics
-                .message_size_histogram
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                ])
-                .observe(published_data_size as f64);
-
-            // Increment total published messages
-            metrics
-                .total_published_messages
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                ])
-                .inc();
-
-            // Increment throughput for the published messages
-            metrics
-                .published_messages_throughput
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                ])
-                .inc();
-
-            Ok(())
-        }
-        Err(e) => {
-            // Collect error metrics
-            metrics
-                .error_rates
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                    &e.to_string(),
-                ])
-                .inc();
-
-            // Map to PublishError::StreamPublish
-            Err(PublishError::StreamPublish(e.to_string()))
-        }
-    }
-}
-
+#[allow(dead_code)]
+// TODO: Will this be useful in the future?
 pub fn add_block_metrics(
     chain_id: &ChainId,
     block: &Block<Transaction>,
@@ -261,11 +184,26 @@ pub fn add_block_metrics(
 }
 
 #[cfg(test)]
-#[cfg(feature = "test-helpers")]
 mod tests {
     use prometheus::{gather, Encoder, TextEncoder};
 
     use super::*;
+
+    impl PublisherMetrics {
+        pub fn random() -> Self {
+            use rand::{distributions::Alphanumeric, Rng};
+
+            let prefix = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .filter(|c| c.is_ascii_alphabetic())
+                .take(6)
+                .map(char::from)
+                .collect();
+
+            PublisherMetrics::new(Some(prefix))
+                .expect("Failed to create random PublisherMetrics")
+        }
+    }
 
     #[test]
     fn test_total_published_messages_metric() {

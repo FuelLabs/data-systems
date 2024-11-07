@@ -139,6 +139,8 @@ impl FuelCore {
 #[async_trait::async_trait]
 impl FuelCoreLike for FuelCore {
     async fn start(&self) {
+        fuel_core_bin::cli::init_logging();
+
         self.fuel_service
             .start_and_await()
             .await

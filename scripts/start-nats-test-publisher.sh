@@ -47,5 +47,4 @@ cargo run -p nats-publisher -- \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --sync-block-stream-buffer-size 30 \
-    --server-addr 0.0.0.0:9000 \
-    --use-elastic-logging
+    --server-addr 0.0.0.0:9000
