@@ -14,3 +14,4 @@ ledger
 docs/venv
 # tools
 node_modules
+person_schema*

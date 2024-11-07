@@ -1,5 +1,5 @@
-import * as dotenv from 'dotenv';
-import {serialize, deserialize, Schema} from "borsh";
+import * as dotenv from "dotenv";
+import * as borsh from "borsh";
 
 class Test {
     public x: number;
@@ -7,10 +7,11 @@ class Test {
     public z: string;
     public q: number[];
 
-    constructor(properties: object) {
-        Object.keys(properties).map((key) => {
-            this[key] = properties[key];
-        });
+    constructor() {
+        this.x = 11;
+        this.y = 22;
+        this.z = "xxx";
+        this.q = [1, 2, 3];
     }
 }
 
@@ -24,21 +25,22 @@ dotenv.config();
     console.log(header);
 
     try {
-        const value = new Test({x: 255, y: 20, z: '123', q: [1, 2, 3]});
-        const borshSchema = {
-            kind: 'struct',
-            fields: [
-                ['x', 'u8'],
-                ['y', 'u64'],
-                ['z', 'string'],
-                ['q', [3]]
-            ]
-        };
-        const schema = new Map([[Test, borshSchema]]) as Schema;
-        const buf: Uint8Array = serialize(schema, value);
-        console.log(`Borsh serialized buffer ${buf}`);
-        const newValue: Test = deserialize<Test>(schema, Test, Buffer.from(buf));
-        console.log(`Borsh deserialized buffer (${newValue.x}, ${newValue.y}, ${newValue.z}, ${newValue.q})`);
+        // ============== js object ==============
+        const value1 = {x: 255, y: BigInt(20), z: "123", arr: [1, 2, 3]};
+        const schema1 = { struct: { x: "u8", y: "u64", "z": "string", "arr": { array: { type: "u8" }}}};
+        const encoded1 = borsh.serialize(schema1, value1);
+        console.log("Encoded 1", encoded1);
+        const decoded1 = borsh.deserialize(schema1, encoded1);
+        console.log("Decoded 1", decoded1);
+
+
+        // ============== class with constructor ==============
+        const value2 = new Test();
+        const schema2 = { struct: { x: "u8", y: "u64", "z": "string", "q": { array: { type: "u8" }}}};
+        const encoded2 = borsh.serialize(schema2, value2);
+        console.log("Encoded2", encoded2);
+        const decoded2 = borsh.deserialize(schema2, encoded2);
+        console.log("Decoded2", decoded2);
 
         process.exit(0);
     } catch (ex) {

@@ -15,14 +15,19 @@ autotests = false
 
 [dependencies]
 anyhow = "1.0"
-borsh = { version = "1.5.1", features = ["std", "derive", "unstable__schema", "rc", "bytes"] }
+borsh = { version = "1.5.1", features = ["unstable__schema", "std"] }
+borsh-derive = "1.5.1"
+borsh-schema-writer = "1.0.2"
+borsh-serde-adapter = "1.0.2"
 bytes = { workspace = true }
 clap = { version = "4.1.1", features = ["derive"] }
 displaydoc = "0.2"
 fuel-core-types = { workspace = true }
 futures-util = "0.3.31"
 prost = "0.13.3"
-thiserror = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = "2.0"
 tokio = { workspace = true }
 
 [dev-dependencies]
