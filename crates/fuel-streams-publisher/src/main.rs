@@ -10,8 +10,7 @@ use fuel_streams_publisher::{
     server::create_web_server,
     state::SharedState,
     system::System,
-    FUEL_CORE_CONCURRENCY_LIMIT,
-    PUBLISHER_CONCURRENCY_LIMIT,
+    PUBLISHER_MAX_THREADS,
 };
 use parking_lot::RwLock;
 use tokio::sync::mpsc;
@@ -134,19 +133,11 @@ async fn setup_server(
 fn main() -> anyhow::Result<()> {
     fuel_core_bin::cli::init_logging();
     let cli = Cli::parse();
+    let publisher_threads = *PUBLISHER_MAX_THREADS;
 
-    let fuel_core_threads = *FUEL_CORE_CONCURRENCY_LIMIT;
-    let publisher_threads = *PUBLISHER_CONCURRENCY_LIMIT;
-
-    println!("Fuel core threads: {}", fuel_core_threads);
     println!("Publisher threads: {}", publisher_threads);
 
-    let fuel_core_runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(fuel_core_threads)
-        .max_blocking_threads(fuel_core_threads * 2)
-        .enable_all()
-        .build()?;
-
+    let fuel_core_runtime = tokio::runtime::Runtime::new()?;
     let fuel_core = fuel_core_runtime
         .block_on(async { setup_fuel_core(&cli.fuel_core_config).await })?;
 
