@@ -82,7 +82,7 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Install Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
 
       - name: Setup Node && PNPM
         uses: ./.github/actions/setup-node
