@@ -11,9 +11,9 @@
 lcov.info
 .env
 node_modules/
-docker/db
+docker/db*
 tmp
-/docker/db
+/docker/db*
 build_rs_cov.profraw
 profile.json
 .rust-version

@@ -85,8 +85,15 @@ echo ""
 # ------------------------------
 load_env() {
     if [ -f .env ]; then
-        # Export all variables from .env, ignoring comments and empty lines
-        export "$(grep -v '^#' .env | xargs)"
+        # Read the .env file line by line, ignoring comments and empty lines
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comments and empty lines
+            [[ $line =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+
+            # Export each variable
+            export "$line"
+        done < .env
     else
         echo "Error: .env file not found. Please create a .env file with the necessary variables."
         exit 1
@@ -163,11 +170,13 @@ get_network_var() {
 
 # Define common arguments (changed to array)
 COMMON_ARGS=(
-    "fuel-core" "run"
     "--enable-relayer"
     "--keypair" "${KEYPAIR}"
     "--relayer" "$(get_network_var "RELAYER")"
     "--ip=0.0.0.0"
+    "--service-name" "fuel-${NETWORK}-node"
+    "--db-path" "./docker/db-${NETWORK}"
+    "--snapshot" "./docker/chain-config/${NETWORK}"
     "--port" "${PORT}"
     "--peering-port" "30333"
     "--utxo-validation"
@@ -176,35 +185,26 @@ COMMON_ARGS=(
     "--sync-header-batch-size" "$(get_network_var "SYNC_HEADER_BATCH_SIZE")"
     "--relayer-log-page-size=$(get_network_var "RELAYER_LOG_PAGE_SIZE")"
     "--sync-block-stream-buffer-size" "30"
+    "--bootstrap-nodes" "$(get_network_var "RESERVED_NODES")"
+    "--relayer-v2-listening-contracts=$(get_network_var "RELAYER_V2_LISTENING_CONTRACTS")"
+    "--relayer-da-deploy-height=$(get_network_var "RELAYER_DA_DEPLOY_HEIGHT")"
+    "--nats-url=nats://localhost:4222"
 )
-
-# Network specific arguments (changed to array)
-if [ "$NETWORK" == "mainnet" ]; then
-    NETWORK_ARGS=(
-        "--service-name" "fuel-mainnet-node"
-        "--db-path" "./mnt/db-mainnet"
-        "--snapshot" "./chain"
-        "--bootstrap-nodes" "$(get_network_var "RESERVED_NODES")"
-        "--relayer-v2-listening-contracts=$(get_network_var "RELAYER_V2_LISTENING_CONTRACTS")"
-        "--relayer-da-deploy-height=$(get_network_var "RELAYER_DA_DEPLOY_HEIGHT")"
-    )
-else
-    NETWORK_ARGS=(
-        "--service-name" "fuel-testnet-node"
-        "--db-path" "./mnt/db-testnet"
-        "--snapshot" "./chain"
-        "--bootstrap-nodes" "$(get_network_var "RESERVED_NODES")"
-        "--relayer-v2-listening-contracts=$(get_network_var "RELAYER_V2_LISTENING_CONTRACTS")"
-        "--relayer-da-deploy-height=$(get_network_var "RELAYER_DA_DEPLOY_HEIGHT")"
-    )
-fi
 
 # Execute based on mode (updated to use arrays)
 if [ "$MODE" == "dev" ]; then
     echo "Running in development mode for $NETWORK"
-    cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" "${NETWORK_ARGS[@]}" "${EXTRA_ARGS}"
+    if [ -n "$EXTRA_ARGS" ]; then
+        cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" $EXTRA_ARGS
+    else
+        cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}"
+    fi
 else
     echo "Building with --profile=profiling to use samply and running for $NETWORK"
     cargo build --profile profiling --package fuel-streams-publisher
-    samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}" "${NETWORK_ARGS[@]}" "${EXTRA_ARGS}"
+    if [ -n "$EXTRA_ARGS" ]; then
+        samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}" $EXTRA_ARGS
+    else
+        samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}"
+    fi
 fi
