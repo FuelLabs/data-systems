@@ -4,7 +4,7 @@
 
 PACKAGE ?= fuel-streams
 COMMANDS ?= rustup npm pre-commit docker python3
-RUST_NIGHTLY_VERSION ?= nightly-2024-11-06
+RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
 RUST_VERSION ?= 1.81.0
 VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
 
@@ -136,7 +136,7 @@ NETWORK ?= testnet
 NETWORKS = mainnet testnet
 PROFILE ?= all
 PROFILES = all dev nats fuel monitoring indexer logging
-DOCKER_COMPOSE = set -a && source ./scripts/set_envs.sh && set +a && docker compose -f docker/docker-compose.yml
+DOCKER_COMPOSE = set -a && bash -c 'source ./scripts/set_envs.sh' && set +a && docker compose -f docker/docker-compose.yml
 
 # Helper functions to validate Docker environment and execute commands
 define check_docker_env
