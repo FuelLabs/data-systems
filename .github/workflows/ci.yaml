@@ -15,7 +15,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_NIGHTLY_VERSION: nightly-2024-10-18
+  RUST_NIGHTLY_VERSION: nightly-2024-11-06
   CI: true
 
 concurrency:
@@ -171,11 +171,11 @@ jobs:
     env:
       NATS_URL: nats://127.0.0.1:4222
       NATS_ADMIN_PASS: secret
-      NATS_PUBLIC_PASS: temp-public-pass
-      KEYPAIR: f3a1fcab7606837a1ac8b9c9e39f907f8ea72c8e2a694b18ca2c440470fb603d
-      RELAYER: https://mainnet.infura.io/v3/xxxxx
-      RESERVED_NODES: /dnsaddr/mainnet.fuel.network
-      RELAYER_V2_LISTENING_CONTRACTS: 0xAEB0C00D0125A8A788956ADE4F4F12EAD9F65DDF
+      NATS_PUBLIC_PASS: secret
+      KEYPAIR: "f3a1fcab7606837a1ac8b9c9e39f907f8ea72c8e2a694b18ca2c440470fb603d"
+      RELAYER: "https://mainnet.infura.io/v3/xxxxx"
+      RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
+      RELAYER_V2_LISTENING_CONTRACTS: "0xAEB0C00D0125A8A788956ADE4F4F12EAD9F65DDF"
       RELAYER_DA_DEPLOY_HEIGHT: 20620434
       SYNC_HEADER_BATCH_SIZE: 2000
       RELAYER_LOG_PAGE_SIZE: 100

@@ -4,7 +4,7 @@
 
 PACKAGE ?= fuel-streams
 COMMANDS ?= rustup npm pre-commit docker python3
-RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
+RUST_NIGHTLY_VERSION ?= nightly-2024-11-06
 RUST_VERSION ?= 1.81.0
 VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
 
