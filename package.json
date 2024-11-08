@@ -12,7 +12,7 @@
   "devDependencies": {
     "@commitlint/config-conventional": "^19.5.0",
     "commitlint": "^19.5.0",
-    "markdownlint": "^0.36.1",
+    "markdownlint": "^0.35.0",
     "markdownlint-cli": "^0.42.0",
     "prettier": "^3.3.3",
     "prettier-plugin-sh": "^0.14.0",

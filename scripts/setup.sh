@@ -11,7 +11,7 @@ fi
 pnpm install
 
 # Install fixed nightly toolchain
-rustup toolchain install nightly-2024-11-06 -c rustfmt
+rustup toolchain install nightly-2024-10-18 -c rustfmt
 
 # Install cargo global crates
 cargo install cargo-binstall
