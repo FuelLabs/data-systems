@@ -13,6 +13,11 @@ autobenches = false
 autotests = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[test]]
+harness = true
+name = "tests"
+path = "tests/lib.rs"
+
 [dependencies]
 anyhow = "1.0"
 borsh = { version = "1.5.1", features = ["unstable__schema", "std"] }
@@ -25,6 +30,8 @@ displaydoc = "0.2"
 fuel-core-types = { workspace = true }
 futures-util = "0.3.31"
 prost = "0.13.3"
+prost-types = "0.13.3"
+rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "2.0"

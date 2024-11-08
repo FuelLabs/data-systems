@@ -5853,6 +5853,8 @@ dependencies = [
  "pretty_assertions",
  "prost 0.13.3",
  "prost-build",
+ "prost-types",
+ "rand",
  "serde",
  "serde_json",
  "thiserror 2.0.0",

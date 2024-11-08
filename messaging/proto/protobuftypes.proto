@@ -1,0 +1,88 @@
+syntax = "proto3";
+package protobuftypes;
+import "google/protobuf/any.proto";
+
+
+message TestBlock {
+    oneof block {
+        BlockV1 v1 = 1;
+    }
+}
+
+message BlockV1 {
+    BlockHeader header = 1;
+    repeated Transaction transactions = 2;
+}
+
+message Transaction {
+    oneof transaction {
+        Script script = 1;
+    }
+}
+
+message Script {
+    ScriptBody body = 1;
+    Policies policies = 2;
+    repeated bytes inputs = 3;
+    repeated bytes outputs = 4;
+    repeated bytes witnesses = 5;
+}
+
+message Policies {
+    repeated uint64 values = 1;  // No fixed-length enforcement
+    google.protobuf.Any data = 2;
+}
+
+message ScriptBody {
+    uint64 script_gas_limit = 1;
+    bytes receipts_root = 2;
+    ScriptCode script = 3;
+    bytes script_data = 4;
+}
+
+message ScriptCode {
+    bytes bytes = 1;
+}
+
+message BlockHeader {
+    oneof block_header {
+        BlockHeaderV1 v1 = 1;
+        BlockHeaderV1 v2 = 2;
+    }
+}
+
+message BlockHeaderV1 {
+    ApplicationHeader application = 1;
+    ConsensusHeader consensus = 2;
+    BlockHeaderMetadata metadata = 3;
+}
+
+message BlockHeaderMetadata {
+    uint64 id = 1;
+}
+
+message ApplicationHeader {
+    uint32 da_height = 1;
+    uint32 consensus_parameters_version = 2;
+    uint32 state_transition_bytecode_version = 3;
+    GeneratedApplicationFields generated = 4;
+}
+
+message GeneratedApplicationFields {
+    uint32 transactions_count = 1;
+    uint32 message_receipt_count = 2;
+    bytes transactions_root = 3;
+    bytes message_outbox_root = 4;
+    bytes event_inbox_root = 5;
+}
+
+message ConsensusHeader {
+    bytes prev_root = 1;
+    uint64 height = 2;
+    uint64 time = 3;
+    GeneratedConsensusFields generated = 4;
+}
+
+message GeneratedConsensusFields {
+    bytes application_hash = 1;
+}

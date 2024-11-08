@@ -1,5 +1,5 @@
 fn main() {
-    let protos = &["proto/fuel_types.proto"];
+    let protos = &["proto/protobuftypes.proto"];
 
     let prost_config_server = prost_build::Config::default();
     tonic_build::configure()

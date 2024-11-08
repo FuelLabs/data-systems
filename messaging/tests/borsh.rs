@@ -1,24 +1,16 @@
-use anyhow::{Context, Result};
-use borsh::{
-    from_slice,
-    schema::{BorshSchemaContainer, Definition, Fields},
-    to_vec, to_writer, try_from_slice_with_schema, try_to_vec_with_schema, BorshDeserialize,
-    BorshSchema, BorshSerialize,
-};
+use borsh::{schema::BorshSchemaContainer, BorshDeserialize, BorshSchema, BorshSerialize};
 use borsh_schema_writer::schema_writer::write_schema;
 use borsh_serde_adapter::{
     deserialize_adapter::deserialize_from_schema, serialize_adapter::serialize_serde_json_to_borsh,
 };
 use std::{fs::File, io::BufReader};
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
+    use std::io::Write;
+
     use borsh_serde_adapter::borsh_schema_util::write_schema_as_json;
+    use messaging::generate_test_block;
 
     use super::*;
 
@@ -40,6 +32,22 @@ mod test {
         let deserialized = borsh::from_slice::<MyExampleStruct>(&serialized).unwrap();
         // assert
         assert_eq!(deserialized, my_example_struct);
+    }
+
+    #[test]
+    fn test_generate_schema() {
+        #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+        struct MyExampleStruct {
+            name: String,
+            age: u8,
+        }
+
+        MyExampleStruct::add_definitions_recursively(&mut Default::default());
+        let container: BorshSchemaContainer = BorshSchemaContainer::for_type::<MyExampleStruct>();
+        let schema = borsh::to_vec(&container).unwrap();
+        println!("Generated Schema: {:?}", schema);
+        let mut file = File::create("schema.dat").expect("Failed to create borsh schema file");
+        file.write_all(&schema).expect("Failed to write file");
     }
 
     #[test]
@@ -108,7 +116,7 @@ mod test {
     }
 
     #[test]
-    fn xxxx() {
+    fn deserialize_to_json_from_borsh_schema() {
         #[derive(Debug, Default, BorshSerialize, BorshDeserialize, BorshSchema)]
         pub struct Person {
             first_name: String,
@@ -126,5 +134,13 @@ mod test {
         let result = deserialize_from_schema(&mut person_ser.as_slice(), &person_schema)
             .expect("Deserializing from schema failed.");
         println!("Deserialized json 2: {:?}", serde_json::to_string_pretty(&result));
+    }
+
+    #[test]
+    fn test_fuel_block() {
+        let fuel_block = generate_test_block();
+        let fuel_block_json = serde_json::to_string_pretty(&fuel_block).unwrap();
+        let mut file = File::create("fuel_block.json").expect("Failed to write fuel block to json");
+        file.write_all(fuel_block_json.as_bytes()).expect("Failed to write fuel block");
     }
 }

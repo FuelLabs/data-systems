@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import * as borsh from "borsh";
-
+import fs from "fs";
+import { convertRustSchemaToTS } from "./conversions";
 class Test {
     public x: number;
     public y: number;
@@ -12,6 +13,16 @@ class Test {
         this.y = 22;
         this.z = "xxx";
         this.q = [1, 2, 3];
+    }
+}
+
+class Person {
+    public first_name: string;
+    public last_name: string;
+
+    constructor() {
+        this.first_name = "jon";
+        this.last_name = "doe";
     }
 }
 
@@ -42,9 +53,28 @@ dotenv.config();
         const decoded2 = borsh.deserialize(schema2, encoded2);
         console.log("Decoded2", decoded2);
 
+        // ============== class with reading schema ==============
+        const value3 = new Person();
+        const schema3 = { struct: { first_name: "string", last_name: "string" }};
+        const encoded3 = borsh.serialize(schema3, value3);
+        console.log("Encoded3", encoded3);
+        const schemaBuffer = fs.readFileSync("./person_schema0.dat");
+        console.log("JSON Schema (Rust)", schemaBuffer);
+
+        // get the ts schema
+        // const tsSchema = convertRustSchemaToTS(JSON.parse(schemaBuffer.toString()));
+        // console.log("TypeScript schema:", tsSchema);
+
+        // const decoded3 = borsh.deserialize(tsSchema, encoded3);
+        // console.log("Decoded3", decoded3);
+
+        // ==========================================
+
         process.exit(0);
     } catch (ex) {
         console.error(`Error = ${ex}`);
         process.exit(-1);
     }
 })();
+
+

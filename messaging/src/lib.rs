@@ -1,46 +1,58 @@
-use bytes::Bytes;
-#[allow(clippy::disallowed_methods)]
-pub mod fueltypes;
+pub mod mocktypes;
+pub mod protobuftypes;
 
-pub use fuel_core_types::blockchain::block::{Block, BlockV1};
+use fuel_core_types::{
+    blockchain::{
+        block::{Block, BlockV1},
+        header::{ApplicationHeader, ConsensusHeader},
+        primitives::DaBlockHeight,
+    },
+    fuel_tx::{Bytes32, Transaction},
+    fuel_types::BlockHeight,
+    tai64::Tai64,
+};
+use rand::Rng;
 
-impl From<Block> for fueltypes::Block {
-    fn from(value: Block) -> Self {
-        let height = *value.header().consensus().height;
-        fueltypes::Block {
-            header: Some(fueltypes::BlockHeader {
-                da_height: height,
-                consensus_parameters_version: value
-                    .header()
-                    .application()
-                    .consensus_parameters_version,
-                state_transition_bytecode_version: value
-                    .header()
-                    .application()
-                    .state_transition_bytecode_version,
-            }),
-            transactions: vec![],
-        }
-    }
+// impl From<Block> for protobuftypes::Block {
+//     fn from(value: Block) -> Self {
+//         let height = *value.header().consensus().height;
+//         protobuftypes::Block {
+//             header: Some(protobuftypes::BlockHeader {
+//                 da_height: height,
+//                 consensus_parameters_version: value
+//                     .header()
+//                     .application()
+//                     .consensus_parameters_version,
+//                 state_transition_bytecode_version: value
+//                     .header()
+//                     .application()
+//                     .state_transition_bytecode_version,
+//             }),
+//             transactions: vec![],
+//         }
+//     }
+// }
+
+pub fn generate_test_block() -> Block<Transaction> {
+    let mut rng = rand::thread_rng();
+    let block_height: u32 = rng.gen_range(1..100);
+    let block_txs: u32 = rng.gen_range(1..100);
+    let previous_root: [u8; 32] = rng.gen();
+    let tx_root: [u8; 32] = rng.gen();
+    let mut block: Block<Transaction> = Block::V1(BlockV1::default());
+    let txs = (0..block_txs).map(|_| Transaction::default_test_tx()).collect::<Vec<_>>();
+    *block.transactions_mut() = txs;
+    block.header_mut().set_application_header(ApplicationHeader::default());
+    block.header_mut().set_block_height(BlockHeight::new(block_height));
+    block.header_mut().set_consensus_header(ConsensusHeader::default());
+    block.header_mut().set_da_height(DaBlockHeight::from(block_height as u64));
+    block.header_mut().set_previous_root(Bytes32::new(previous_root));
+    block.header_mut().set_time(Tai64::now());
+    block.header_mut().set_transaction_root(Bytes32::new(tx_root));
+
+    block
 }
 
-/// Prost Message Wrapper allowing serialization/deserialization
-pub(crate) struct ProstMessageSerdelizer<T: prost::Message>(pub(crate) T);
-
-impl<T> ProstMessageSerdelizer<T>
-where
-    T: prost::Message + std::default::Default,
-{
-    /// Method to serialize
-    pub(crate) fn serialize(&self) -> anyhow::Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        self.0.encode(&mut buf).map_err(|e| anyhow::anyhow!("prost encoding error {:?}", e))?;
-        Ok(buf)
-    }
-
-    /// Method to deserialize
-    #[allow(dead_code)]
-    pub(crate) fn deserialize(buf: Vec<u8>) -> anyhow::Result<T> {
-        T::decode(Bytes::from(buf)).map_err(|e| anyhow::anyhow!("prost decoding error {:?}", e))
-    }
+pub fn generate_test_tx() -> Transaction {
+    Transaction::default_test_tx()
 }
