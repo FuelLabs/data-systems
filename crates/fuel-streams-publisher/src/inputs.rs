@@ -1,16 +1,13 @@
 use std::sync::Arc;
 
-use fuel_core_types::fuel_tx::{
-    input::{
-        coin::{CoinPredicate, CoinSigned},
-        message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
-            MessageDataSigned,
-        },
+use fuel_core_types::fuel_tx::input::{
+    coin::{CoinPredicate, CoinSigned},
+    message::{
+        MessageCoinPredicate,
+        MessageCoinSigned,
+        MessageDataPredicate,
+        MessageDataSigned,
     },
-    UniqueIdentifier,
 };
 use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use rayon::prelude::*;
@@ -23,18 +20,18 @@ use crate::{
 
 pub fn publish_tasks(
     tx: &Transaction,
+    tx_id: &Bytes32,
     stream: &Stream<Input>,
     opts: &Arc<PublishOpts>,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
-    let tx_id = tx.id(&opts.chain_id);
     let packets: Vec<PublishPacket<Input>> = tx
         .inputs()
         .par_iter()
         .enumerate()
         .flat_map(move |(index, input)| {
-            let ids = input.extract_ids(&opts.chain_id, tx, index as u8);
+            let ids = input.extract_ids(tx, tx_id, index as u8);
             let mut packets = input.packets_from_ids(ids);
-            let packet = packet_from_input(input, tx_id.into(), index);
+            let packet = packet_from_input(input, tx_id.to_owned(), index);
             packets.push(packet);
             packets
         })
@@ -44,8 +41,7 @@ pub fn publish_tasks(
         .iter()
         .map(|packet| {
             let stream = stream.clone();
-            let opts = Arc::clone(opts);
-            packet.publish(Arc::new(stream.to_owned()), Arc::clone(&opts))
+            packet.publish(Arc::new(stream.to_owned()), opts)
         })
         .collect()
 }
@@ -60,12 +56,12 @@ fn packet_from_input(
             let contract_id = contract.contract_id;
             PublishPacket::new(
                 input,
-                InputsContractSubject::new()
-                    .with_tx_id(Some(tx_id))
-                    .with_index(Some(index))
-                    .with_contract_id(Some(contract_id.into()))
-                    .arc(),
-                InputsContractSubject::WILDCARD,
+                InputsContractSubject {
+                    tx_id: Some(tx_id),
+                    index: Some(index),
+                    contract_id: Some(contract_id.into()),
+                }
+                .arc(),
             )
         }
         Input::CoinSigned(CoinSigned {
@@ -75,13 +71,13 @@ fn packet_from_input(
             owner, asset_id, ..
         }) => PublishPacket::new(
             input,
-            InputsCoinSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_owner(Some(owner.into()))
-                .with_asset_id(Some(asset_id.into()))
-                .arc(),
-            InputsCoinSubject::WILDCARD,
+            InputsCoinSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                owner: Some(owner.into()),
+                asset_id: Some(asset_id.into()),
+            }
+            .arc(),
         ),
         Input::MessageCoinSigned(MessageCoinSigned {
             sender,
@@ -104,13 +100,13 @@ fn packet_from_input(
             ..
         }) => PublishPacket::new(
             input,
-            InputsMessageSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_sender(Some(sender.into()))
-                .with_recipient(Some(recipient.into()))
-                .arc(),
-            InputsMessageSubject::WILDCARD,
+            InputsMessageSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                sender: Some(sender.into()),
+                recipient: Some(recipient.into()),
+            }
+            .arc(),
         ),
     }
 }
@@ -118,28 +114,29 @@ fn packet_from_input(
 impl IdsExtractable for Input {
     fn extract_ids(
         &self,
-        chain_id: &ChainId,
-        tx: &Transaction,
+        _tx: &Transaction,
+        tx_id: &Bytes32,
         index: u8,
     ) -> Vec<Identifier> {
-        let tx_id = tx.id(chain_id);
         let mut ids = match self {
             Input::CoinSigned(CoinSigned {
                 owner, asset_id, ..
             }) => {
                 vec![
-                    Identifier::Address(tx_id.into(), index, owner.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
+                    Identifier::Address(tx_id.to_owned(), index, owner.into()),
+                    Identifier::AssetID(
+                        tx_id.to_owned(),
+                        index,
+                        asset_id.into(),
+                    ),
                 ]
             }
             Input::CoinPredicate(CoinPredicate {
                 owner, asset_id, ..
-            }) => {
-                vec![
-                    Identifier::Address(tx_id.into(), index, owner.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
-                ]
-            }
+            }) => vec![
+                Identifier::Address(tx_id.to_owned(), index, owner.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+            ],
             Input::MessageCoinSigned(MessageCoinSigned {
                 sender,
                 recipient,
@@ -159,15 +156,13 @@ impl IdsExtractable for Input {
                 sender,
                 recipient,
                 ..
-            }) => {
-                vec![
-                    Identifier::Address(tx_id.into(), index, sender.into()),
-                    Identifier::Address(tx_id.into(), index, recipient.into()),
-                ]
-            }
+            }) => vec![
+                Identifier::Address(tx_id.to_owned(), index, sender.into()),
+                Identifier::Address(tx_id.to_owned(), index, recipient.into()),
+            ],
             Input::Contract(contract) => {
                 vec![Identifier::ContractID(
-                    tx_id.into(),
+                    tx_id.to_owned(),
                     index,
                     contract.contract_id.into(),
                 )]
@@ -177,7 +172,7 @@ impl IdsExtractable for Input {
         if let Some((predicate_bytecode, _, _)) = self.predicate() {
             let predicate_tag = crate::sha256(predicate_bytecode);
             ids.push(Identifier::PredicateID(
-                tx_id.into(),
+                tx_id.to_owned(),
                 index,
                 predicate_tag,
             ))

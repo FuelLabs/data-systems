@@ -16,6 +16,9 @@ spec:
     metadata:
       {{- with .Values.podAnnotations }}
       annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.metrics_port }}"
+        prometheus.io/path: "/metrics"
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
@@ -44,6 +47,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.service.metrics_port }}
               protocol: TCP
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}

@@ -7,15 +7,13 @@ use tracing_actix_web::TracingLogger;
 
 use crate::state::SharedState;
 
-const RUNTIME_WORKER_MULTIPLIER: usize = 2;
-
 pub fn create_web_server(
     state: SharedState,
     actix_server_addr: SocketAddr,
 ) -> anyhow::Result<Server> {
     // compute worker threads
     let num_cpus = num_cpus::get();
-    let worker_threads = (num_cpus * RUNTIME_WORKER_MULTIPLIER).max(16);
+    let worker_threads = 2;
     tracing::info!(
         "Starting runtime: num_cpus={}, worker_threads={}",
         num_cpus,

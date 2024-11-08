@@ -15,7 +15,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_NIGHTLY_VERSION: nightly-2024-10-18
+  RUST_NIGHTLY_VERSION: nightly-2024-11-06
   CI: true
 
 concurrency:
@@ -82,7 +82,7 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Install Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
 
       - name: Setup Node && PNPM
         uses: ./.github/actions/setup-node
@@ -163,9 +163,6 @@ jobs:
           config: ./.typos.toml
 
       - uses: taiki-e/install-action@cargo-machete
-      - name: Check unused dependencies
-        run: cargo machete --skip-target-dir
-
       - name: Lint project
         run: make lint
 

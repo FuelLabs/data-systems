@@ -36,19 +36,13 @@ pub struct PublishOpts {
 // PublishPacket Struct
 pub struct PublishPacket<S: Streamable + 'static> {
     subject: Arc<dyn IntoSubject>,
-    wildcard: &'static str,
     payload: Arc<S>,
 }
 
 impl<T: Streamable + 'static> PublishPacket<T> {
-    pub fn new(
-        payload: &T,
-        subject: Arc<dyn IntoSubject>,
-        wildcard: &'static str,
-    ) -> Self {
+    pub fn new(payload: &T, subject: Arc<dyn IntoSubject>) -> Self {
         Self {
             subject,
-            wildcard,
             payload: Arc::new(payload.clone()), // Assuming T: Clone
         }
     }
@@ -56,13 +50,13 @@ impl<T: Streamable + 'static> PublishPacket<T> {
     pub fn publish(
         &self,
         stream: Arc<Stream<T>>,
-        opts: Arc<PublishOpts>,
+        opts: &Arc<PublishOpts>,
     ) -> JoinHandle<Result<(), PublishError>> {
         let stream = Arc::clone(&stream);
-        let opts = Arc::clone(&opts);
+        let opts = Arc::clone(opts);
         let payload = Arc::clone(&self.payload);
         let subject = Arc::clone(&self.subject);
-        let wildcard = self.wildcard;
+        let wildcard = self.subject.wildcard();
         let elastic_logger = opts.elastic_logger.clone();
 
         tokio::spawn(async move {

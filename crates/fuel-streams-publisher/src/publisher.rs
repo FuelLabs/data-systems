@@ -22,7 +22,7 @@ use crate::{
     transactions,
     FuelCore,
     FuelCoreLike,
-    CONCURRENCY_LIMIT,
+    PUBLISHER_MAX_THREADS,
 };
 
 #[derive(Clone, Debug)]
@@ -367,7 +367,7 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         let start_time = std::time::Instant::now();
         let fuel_core = &*self.fuel_core;
-        let semaphore = Arc::new(Semaphore::new(*CONCURRENCY_LIMIT));
+        let semaphore = Arc::new(Semaphore::new(*PUBLISHER_MAX_THREADS));
         let chain_id = Arc::new(*self.fuel_core.chain_id());
         let block_producer = Arc::new(block_producer.clone());
         let block_height = block.header().consensus().height;
