@@ -29,7 +29,7 @@ message Script {
 }
 
 message Policies {
-    repeated uint64 values = 1;  // No fixed-length enforcement
+    repeated uint64 values = 1;
     google.protobuf.Any data = 2;
 }
 
@@ -85,4 +85,27 @@ message ConsensusHeader {
 
 message GeneratedConsensusFields {
     bytes application_hash = 1;
+}
+
+message MyDemoType {
+    string name = 1;
+    int32 age = 2;
+    bool is_active = 3;
+}
+
+message Request {
+    oneof req_type {
+      PubKeyRequest   pub_key_request  = 1;
+      PubKeyResponse  pub_key_response = 2;
+    }
+}
+
+message PubKeyRequest {
+    string id = 1;
+    bytes data = 2;
+}
+
+message PubKeyResponse {
+    string id = 1;
+    bytes data = 2;
 }

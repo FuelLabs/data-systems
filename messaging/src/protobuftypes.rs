@@ -47,7 +47,6 @@ pub struct Script {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Policies {
-    /// No fixed-length enforcement
     #[prost(uint64, repeated, tag = "1")]
     pub values: ::prost::alloc::vec::Vec<u64>,
     #[prost(message, optional, tag = "2")]
@@ -137,4 +136,43 @@ pub struct ConsensusHeader {
 pub struct GeneratedConsensusFields {
     #[prost(bytes = "vec", tag = "1")]
     pub application_hash: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MyDemoType {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(int32, tag = "2")]
+    pub age: i32,
+    #[prost(bool, tag = "3")]
+    pub is_active: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Request {
+    #[prost(oneof = "request::ReqType", tags = "1, 2")]
+    pub req_type: ::core::option::Option<request::ReqType>,
+}
+/// Nested message and enum types in `Request`.
+pub mod request {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum ReqType {
+        #[prost(message, tag = "1")]
+        PubKeyRequest(super::PubKeyRequest),
+        #[prost(message, tag = "2")]
+        PubKeyResponse(super::PubKeyResponse),
+    }
+}
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PubKeyRequest {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PubKeyResponse {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
 }

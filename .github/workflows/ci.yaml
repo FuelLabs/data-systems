@@ -15,7 +15,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_NIGHTLY_VERSION: nightly-2024-11-06
+  RUST_NIGHTLY_VERSION: nightly-2024-10-18
   CI: true
 
 concurrency:
