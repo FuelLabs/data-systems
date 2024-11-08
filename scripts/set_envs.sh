@@ -33,23 +33,5 @@ RELAYER="$(eval echo "\$${NETWORK_UPPER}_RELAYER")"
 SYNC_HEADER_BATCH_SIZE="$(eval echo "\$${NETWORK_UPPER}_SYNC_HEADER_BATCH_SIZE")"
 RELAYER_LOG_PAGE_SIZE="$(eval echo "\$${NETWORK_UPPER}_RELAYER_LOG_PAGE_SIZE")"
 
-# Validate required variables
-REQUIRED_VARS=(
-    "KEYPAIR"
-    "RELAYER"
-    "RESERVED_NODES"
-    "RELAYER_V2_LISTENING_CONTRACTS"
-    "RELAYER_DA_DEPLOY_HEIGHT"
-    "SYNC_HEADER_BATCH_SIZE"
-    "RELAYER_LOG_PAGE_SIZE"
-)
-
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "Error: ${var} is not set"
-        exit 1
-    fi
-done
-
 # Export chain config
 export CHAIN_CONFIG="$NETWORK"
