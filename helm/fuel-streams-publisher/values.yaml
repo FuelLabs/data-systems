@@ -41,6 +41,7 @@ securityContext:
 service:
   type: ClusterIP
   port: 3000
+  metrics_port: 9000
 
 ingress:
   enabled: false
