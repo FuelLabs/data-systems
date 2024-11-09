@@ -136,7 +136,7 @@ NETWORK ?= testnet
 NETWORKS = mainnet testnet
 PROFILE ?= all
 PROFILES = all dev nats fuel monitoring indexer logging
-DOCKER_COMPOSE = set -a && source ./scripts/set_envs.sh && set +a && docker compose -f docker/docker-compose.yml
+DOCKER_COMPOSE = docker compose -f docker/docker-compose.yml
 
 # Helper functions to validate Docker environment and execute commands
 define check_docker_env
@@ -153,6 +153,7 @@ endef
 # Helper function to execute docker commands with consistent parameters
 define docker_cmd
 	$(call check_docker_env)
+	./scripts/set_envs.sh
 	NETWORK=$(1) PORT=$(2) $(DOCKER_COMPOSE) --profile $(3) $(4)
 endef
 
