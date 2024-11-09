@@ -15,7 +15,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLICOLOR: 1
-  RUST_NIGHTLY_VERSION: nightly-2024-10-18
+  RUST_NIGHTLY_VERSION: nightly-2024-11-06
   CI: true
 
 concurrency:
@@ -171,7 +171,8 @@ jobs:
     env:
       NATS_URL: nats://127.0.0.1:4222
       NATS_ADMIN_PASS: secret
-      NATS_PUBLIC_PASS: temp-public-pass
+      NATS_PUBLIC_PASS: secret
+
     steps:
       - uses: actions/checkout@v4
 
