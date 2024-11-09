@@ -57,7 +57,7 @@ done
 # ------------------------------
 # Load Environment
 # ------------------------------
-bash -c 'source ./scripts/set_envs.sh'
+source ./scripts/set_envs.sh
 
 # Print the configuration being used
 echo -e "\n=========================================="
