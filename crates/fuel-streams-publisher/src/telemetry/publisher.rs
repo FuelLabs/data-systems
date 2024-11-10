@@ -46,7 +46,7 @@ impl PublisherMetrics {
             "A metric counting the number of active subscriptions",
             &["chain_id"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let total_published_messages = register_int_counter_vec!(
             format!(
@@ -56,14 +56,14 @@ impl PublisherMetrics {
             "A metric counting the number of published messages",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let total_failed_messages = register_int_counter_vec!(
             format!("{}publisher_metrics_total_failed_messages", metric_prefix),
             "A metric counting the number of unpublished and failed messages",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let last_published_block_height = register_int_gauge_vec!(
             format!(
@@ -73,7 +73,7 @@ impl PublisherMetrics {
             "A metric that represents the last published block height",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let last_published_block_timestamp = register_int_gauge_vec!(
             format!(
@@ -83,14 +83,14 @@ impl PublisherMetrics {
             "A metric that represents the last published transaction timestamp",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let published_messages_throughput = register_int_counter_vec!(
             format!("{}publisher_metrics_published_messages_throughput", metric_prefix),
             "A metric counting the number of published messages per subject wildcard",
             &["chain_id", "block_producer", "subject_wildcard"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         // New histogram metric for block latency
         let publishing_latency_histogram = register_histogram_vec!(
@@ -100,7 +100,7 @@ impl PublisherMetrics {
             // buckets for latency measurement (e.g., 0.1s, 0.5s, 1s, 5s, 10s)
             vec![0.1, 0.5, 1.0, 5.0, 10.0],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let message_size_histogram = register_histogram_vec!(
             format!("{}publisher_metrics_message_size_bytes", metric_prefix),
@@ -108,7 +108,7 @@ impl PublisherMetrics {
             &["chain_id", "block_producer", "subject_wildcard"],
             vec![100.0, 500.0, 1000.0, 5000.0, 10000.0, 100000.0, 1000000.0]
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let error_rates =
             register_int_counter_vec!(
@@ -116,7 +116,7 @@ impl PublisherMetrics {
             "A metric counting errors or failures during message processing",
             &["chain_id", "block_producer", "subject_wildcard", "error_type"],
         )
-            .expect("metric can be created");
+            .expect("metric must be created");
 
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");

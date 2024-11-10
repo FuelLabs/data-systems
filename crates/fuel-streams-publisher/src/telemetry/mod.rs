@@ -23,7 +23,7 @@ use system::{System, SystemMetricsWrapper};
 pub struct Telemetry {
     runtime: Arc<Runtime>,
     system: Arc<RwLock<System>>,
-    publisher_metrics: Arc<PublisherMetrics>,
+    publisher_metrics: Option<Arc<PublisherMetrics>>,
     elastic_search: Option<Arc<ElasticSearch>>,
 }
 
@@ -34,8 +34,12 @@ impl Telemetry {
         let runtime =
             Runtime::new(Self::DEDICATED_THREADS, Duration::from_secs(20));
         let system = Arc::new(RwLock::new(System::new().await));
-        let publisher_metrics = PublisherMetrics::new(None)
-            .expect("Publisher metrics must be created");
+
+        let publisher_metrics = if should_use_publisher_metrics() {
+            Some(Arc::new(PublisherMetrics::default()))
+        } else {
+            None
+        };
 
         let elastic_search = if should_use_elasticsearch() {
             Some(Arc::new(new_elastic_search().await?))
@@ -46,7 +50,7 @@ impl Telemetry {
         Ok(Arc::new(Self {
             runtime: Arc::new(runtime),
             system,
-            publisher_metrics: Arc::new(publisher_metrics),
+            publisher_metrics,
             elastic_search,
         }))
     }
@@ -102,36 +106,36 @@ impl Telemetry {
         chain_id: &ChainId,
         block_producer: &Address,
     ) {
-        let metrics = Arc::clone(&self.publisher_metrics);
+        self.maybe_use_metrics(|metrics| {
+            // Update message size histogram
+            metrics
+                .message_size_histogram
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    subject,
+                ])
+                .observe(published_data_size as f64);
 
-        // Update message size histogram
-        metrics
-            .message_size_histogram
-            .with_label_values(&[
-                &chain_id.to_string(),
-                &block_producer.to_string(),
-                subject,
-            ])
-            .observe(published_data_size as f64);
+            // Increment total published messages
+            metrics
+                .total_published_messages
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                ])
+                .inc();
 
-        // Increment total published messages
-        metrics
-            .total_published_messages
-            .with_label_values(&[
-                &chain_id.to_string(),
-                &block_producer.to_string(),
-            ])
-            .inc();
-
-        // Increment throughput for the published messages
-        metrics
-            .published_messages_throughput
-            .with_label_values(&[
-                &chain_id.to_string(),
-                &block_producer.to_string(),
-                subject,
-            ])
-            .inc();
+            // Increment throughput for the published messages
+            metrics
+                .published_messages_throughput
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    subject,
+                ])
+                .inc();
+        });
     }
 
     pub fn update_publisher_error_metrics(
@@ -141,22 +145,26 @@ impl Telemetry {
         block_producer: &Address,
         error: &str,
     ) {
-        self.publisher_metrics
-            .error_rates
-            .with_label_values(&[
-                &chain_id.to_string(),
-                &block_producer.to_string(),
-                subject,
-                error,
-            ])
-            .inc();
+        self.maybe_use_metrics(|metrics| {
+            metrics
+                .error_rates
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                    subject,
+                    error,
+                ])
+                .inc();
+        });
     }
 
     pub fn record_streams_count(&self, chain_id: &ChainId, count: usize) {
-        self.publisher_metrics
-            .total_subs
-            .with_label_values(&[&chain_id.to_string()])
-            .set(count as i64);
+        self.maybe_use_metrics(|metrics| {
+            metrics
+                .total_subs
+                .with_label_values(&[&chain_id.to_string()])
+                .set(count as i64);
+        });
     }
 
     pub fn record_failed_publishing(
@@ -164,13 +172,24 @@ impl Telemetry {
         chain_id: &ChainId,
         block_producer: &Address,
     ) {
-        self.publisher_metrics
-            .total_failed_messages
-            .with_label_values(&[
-                &chain_id.to_string(),
-                &block_producer.to_string(),
-            ])
-            .inc()
+        self.maybe_use_metrics(|metrics| {
+            metrics
+                .total_failed_messages
+                .with_label_values(&[
+                    &chain_id.to_string(),
+                    &block_producer.to_string(),
+                ])
+                .inc();
+        });
+    }
+
+    pub fn maybe_use_metrics<F>(&self, f: F)
+    where
+        F: Fn(&PublisherMetrics),
+    {
+        if let Some(metrics) = &self.publisher_metrics {
+            f(metrics);
+        }
     }
 
     // TODO: Break into smaller functions
@@ -178,11 +197,16 @@ impl Telemetry {
         use prometheus::Encoder;
         let encoder = prometheus::TextEncoder::new();
 
+        if self.publisher_metrics.is_none() {
+            return "".to_string();
+        }
+
         // fetch all measured metrics
         let mut buffer = Vec::new();
-        if let Err(e) = encoder
-            .encode(&self.publisher_metrics.registry.gather(), &mut buffer)
-        {
+        if let Err(e) = encoder.encode(
+            &self.publisher_metrics.as_ref().unwrap().registry.gather(),
+            &mut buffer,
+        ) {
             tracing::error!("could not encode custom metrics: {}", e);
         };
         let mut res = match String::from_utf8(buffer.clone()) {
@@ -243,4 +267,8 @@ impl Telemetry {
 
         res
     }
+}
+
+pub fn should_use_publisher_metrics() -> bool {
+    dotenvy::var("USE_PUBLISHER_METRICS").is_ok_and(|val| val == "true")
 }
