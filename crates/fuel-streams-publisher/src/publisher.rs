@@ -14,7 +14,7 @@ use tokio::sync::{broadcast::error::RecvError, Semaphore};
 use crate::{
     blocks,
     packets::{PublishError, PublishOpts},
-    shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
+    publisher_shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
     telemetry::Telemetry,
     transactions,
     FuelCoreLike,
@@ -137,7 +137,7 @@ impl Publisher {
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn default_with_publisher(
+    pub async fn default(
         nats_client: &NatsClient,
         fuel_core: Arc<dyn FuelCoreLike>,
     ) -> anyhow::Result<Self> {
@@ -186,12 +186,10 @@ impl Publisher {
         }
     }
 
-    pub async fn run(self) -> anyhow::Result<Self> {
-        let mut stop_handle = StopHandle::new();
-        stop_handle.spawn_signal_listener();
-        // TODO: Re-implement graceful shutdown when there is a panic
-        // self.set_panic_hook();
-
+    pub async fn run(
+        &self,
+        shutdown_token: ShutdownToken,
+    ) -> anyhow::Result<()> {
         let last_published_block = self
             .streams
             .blocks
@@ -213,11 +211,11 @@ impl Publisher {
             let mut height = last_published_height;
             while height <= latest_fuel_core_height {
                 tokio::select! {
-                    shutdown = stop_handle.wait_for_signal() => {
+                    shutdown =  shutdown_token.wait_for_shutdown() => {
                         if shutdown {
                             tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
                             self.shutdown_services_with_timeout().await?;
-                            return Ok(self);
+                            return Ok(());
                         }
                     },
                     (result, block_producer) = async {
@@ -257,7 +255,7 @@ impl Publisher {
                         }
                     }
                 }
-                shutdown = stop_handle.wait_for_signal() => {
+                shutdown = shutdown_token.wait_for_shutdown()  => {
                     if shutdown {
                         self.shutdown_services_with_timeout().await?;
                         break;
@@ -266,7 +264,7 @@ impl Publisher {
             }
         }
 
-        Ok(self)
+        Ok(())
     }
 
     async fn publish(

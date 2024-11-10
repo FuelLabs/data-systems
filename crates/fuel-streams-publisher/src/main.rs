@@ -5,6 +5,7 @@ use std::{net::ToSocketAddrs, sync::Arc};
 use clap::Parser;
 use fuel_streams_publisher::{
     cli::Cli,
+    publisher_shutdown::ShutdownController,
     server::create_web_server,
     server_state::ServerState,
     telemetry::Telemetry,
@@ -52,8 +53,12 @@ async fn main() -> anyhow::Result<()> {
     });
     tracing::info!("Publisher started.");
 
+    let shutdown_controller = ShutdownController::new().arc();
+    let shutdown_token = shutdown_controller.get_token();
+    ShutdownController::spawn_signal_listener(shutdown_controller);
+
     // run publisher until shutdown signal intercepted
-    if let Err(err) = publisher.run().await {
+    if let Err(err) = publisher.run(shutdown_token).await {
         tracing::error!("Publisher encountered an error: {:?}", err);
     }
     tracing::info!("Publisher stopped");

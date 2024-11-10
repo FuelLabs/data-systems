@@ -9,12 +9,12 @@ mod utxos;
 mod fuel_core;
 mod packets;
 mod publisher;
+pub mod publisher_shutdown;
 
 pub mod cli;
 pub mod identifiers;
 pub mod server;
 pub mod server_state;
-pub mod shutdown;
 
 pub mod telemetry;
 

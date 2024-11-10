@@ -10,7 +10,11 @@ use fuel_core_types::{
     fuel_tx::{Address, AssetId, Bytes32, ContractId},
 };
 use fuel_streams_core::prelude::*;
-use fuel_streams_publisher::{FuelCoreLike, Publisher};
+use fuel_streams_publisher::{
+    publisher_shutdown::ShutdownController,
+    FuelCoreLike,
+    Publisher,
+};
 use futures::StreamExt;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
@@ -71,55 +75,13 @@ impl FuelCoreLike for TestFuelCore {
     }
 }
 
-async fn nats_client() -> NatsClient {
-    const NATS_URL: &str = "nats://localhost:4222";
-    let nats_client_opts =
-        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
-    NatsClient::connect(&nats_client_opts)
-        .await
-        .expect("NATS connection failed")
-}
-
-fn create_test_fuel_core(receipts: Option<Vec<Receipt>>) -> Arc<TestFuelCore> {
-    let (blocks_broadcaster, __) = broadcast::channel::<ImporterResult>(1);
-    let mut fuel_core = TestFuelCore::default(blocks_broadcaster);
-    if let Some(receipts) = receipts {
-        fuel_core = fuel_core.with_receipts(receipts);
-    }
-    fuel_core.arc()
-}
-
-async fn create_publisher(fuel_core: Arc<TestFuelCore>) -> Publisher {
-    Publisher::default_with_publisher(&nats_client().await, fuel_core)
-        .await
-        .unwrap()
-        .run()
-        .await
-        .unwrap()
-}
-
-fn create_test_block() -> ImporterResult {
-    let mut block_entity = Block::default();
-    let tx = Transaction::default_test_tx();
-
-    *block_entity.transactions_mut() = vec![tx];
-
-    ImporterResult {
-        shared_result: Arc::new(ImportResult {
-            sealed_block: SealedBlock {
-                entity: block_entity,
-                ..Default::default()
-            },
-            ..Default::default()
-        }),
-        changes: Arc::new(HashMap::new()),
-    }
-}
-
 #[tokio::test(flavor = "multi_thread")]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
-    let fuel_core = create_test_fuel_core(None);
-    let publisher = create_publisher(fuel_core).await;
+    let (blocks_broadcaster, __) = broadcast::channel::<ImporterResult>(1);
+    let publisher = new_publisher(blocks_broadcaster.clone()).await;
+
+    let shutdown_controller = start_publisher(&publisher).await;
+    stop_publisher(shutdown_controller).await;
 
     assert!(publisher.get_streams().is_empty().await);
 }
@@ -127,14 +89,9 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-    let block = create_test_block();
-    let _ = blocks_broadcaster.send(block);
+    let publisher = new_publisher(blocks_broadcaster.clone()).await;
 
-    // manually drop blocks to ensure `blocks_subscription` completes
-    drop(blocks_broadcaster.clone());
-
-    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
-    let publisher = create_publisher(fuel_core).await;
+    publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
         .get_streams()
@@ -147,15 +104,9 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_transaction_for_each_published_block() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
+    let publisher = new_publisher(blocks_broadcaster.clone()).await;
 
-    let block = create_test_block();
-    let _ = blocks_broadcaster.send(block);
-
-    // manually drop blocks to ensure `blocks_subscription` completes
-    drop(blocks_broadcaster.clone());
-
-    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
-    let publisher = create_publisher(fuel_core).await;
+    publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
         .get_streams()
@@ -168,11 +119,6 @@ async fn publishes_transaction_for_each_published_block() {
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_receipts() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-
-    let block = create_test_block();
-    let _ = blocks_broadcaster.send(block);
-
-    drop(blocks_broadcaster.clone());
 
     let receipts = [
         Receipt::Call {
@@ -259,11 +205,15 @@ async fn publishes_receipts() {
         },
     ];
 
-    let fuel_core = TestFuelCore::default(blocks_broadcaster)
+    let fuel_core = TestFuelCore::default(blocks_broadcaster.clone())
         .with_receipts(receipts.to_vec())
         .arc();
 
-    let publisher = create_publisher(fuel_core).await;
+    let publisher = Publisher::default(&nats_client().await, fuel_core)
+        .await
+        .unwrap();
+
+    publish_block(&publisher, &blocks_broadcaster).await;
 
     let mut receipts_stream =
         publisher.get_streams().receipts.catchup(10).await.unwrap();
@@ -277,14 +227,9 @@ async fn publishes_receipts() {
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_inputs() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
+    let publisher = new_publisher(blocks_broadcaster.clone()).await;
 
-    let block = create_test_block();
-    let _ = blocks_broadcaster.send(block);
-
-    drop(blocks_broadcaster.clone());
-
-    let fuel_core = TestFuelCore::default(blocks_broadcaster).arc();
-    let publisher = create_publisher(fuel_core).await;
+    publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
         .get_streams()
@@ -292,4 +237,76 @@ async fn publishes_inputs() {
         .get_last_published(InputsByIdSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
+}
+
+async fn new_publisher(broadcaster: Sender<ImporterResult>) -> Publisher {
+    let fuel_core = TestFuelCore::default(broadcaster).arc();
+    Publisher::default(&nats_client().await, fuel_core)
+        .await
+        .unwrap()
+}
+
+async fn publish_block(
+    publisher: &Publisher,
+    blocks_broadcaster: &Sender<ImporterResult>,
+) {
+    let shutdown_controller = start_publisher(&publisher).await;
+    send_block(&blocks_broadcaster);
+    stop_publisher(shutdown_controller).await;
+}
+
+async fn start_publisher(publisher: &Publisher) -> Arc<ShutdownController> {
+    let shutdown_controller = ShutdownController::new().arc();
+    let shutdown_token = shutdown_controller.get_token();
+    tokio::spawn({
+        let publisher = publisher.clone();
+        async move {
+            publisher.run(shutdown_token).await.unwrap();
+        }
+    });
+    wait_for_publisher_to_start().await;
+    shutdown_controller
+}
+async fn stop_publisher(shutdown_controller: Arc<ShutdownController>) {
+    wait_for_publisher_to_process_block().await;
+
+    assert!(shutdown_controller.initiate_shutdown().is_ok());
+}
+
+async fn wait_for_publisher_to_start() {
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+}
+async fn wait_for_publisher_to_process_block() {
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+}
+
+fn send_block(broadcaster: &Sender<ImporterResult>) {
+    let block = create_test_block();
+    assert!(broadcaster.send(block).is_ok());
+}
+fn create_test_block() -> ImporterResult {
+    let mut block_entity = Block::default();
+    let tx = Transaction::default_test_tx();
+
+    *block_entity.transactions_mut() = vec![tx];
+
+    ImporterResult {
+        shared_result: Arc::new(ImportResult {
+            sealed_block: SealedBlock {
+                entity: block_entity,
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+        changes: Arc::new(HashMap::new()),
+    }
+}
+
+async fn nats_client() -> NatsClient {
+    const NATS_URL: &str = "nats://localhost:4222";
+    let nats_client_opts =
+        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+    NatsClient::connect(&nats_client_opts)
+        .await
+        .expect("NATS connection failed")
 }
