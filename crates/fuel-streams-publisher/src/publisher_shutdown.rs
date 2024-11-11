@@ -1,6 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use tokio::sync::{broadcast, OnceCell};
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    sync::{broadcast, OnceCell},
+};
 
 // TODO: move into publisher module along with subjects
 
@@ -55,9 +58,22 @@ impl ShutdownController {
     }
 
     pub fn spawn_signal_listener(self: Arc<Self>) {
+        let sender = self.sender.clone();
         tokio::spawn(async move {
-            if let Ok(()) = tokio::signal::ctrl_c().await {
-                let _ = self.initiate_shutdown();
+            let mut sigint =
+                signal(SignalKind::interrupt()).expect("shutdown_listener");
+            let mut sigterm =
+                signal(SignalKind::terminate()).expect("shutdown_listener");
+
+            tokio::select! {
+                _ = sigint.recv() => {
+                    tracing::info!("Received SIGINT ...");
+                    let _ = sender.send(());
+                }
+                _ = sigterm.recv() => {
+                    tracing::info!("Received SIGTERM ...");
+                    let _ = sender.send(());
+                }
             }
         });
     }
