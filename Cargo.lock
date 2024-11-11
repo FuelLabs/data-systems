@@ -3649,6 +3649,7 @@ dependencies = [
  "fuel-streams",
  "fuel-streams-core",
  "futures",
+ "num_cpus",
  "openssl",
  "parking_lot",
  "prometheus",
