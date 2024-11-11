@@ -136,7 +136,7 @@ NETWORK ?= testnet
 NETWORKS = mainnet testnet
 PROFILE ?= all
 PROFILES = all dev nats fuel monitoring indexer logging
-DOCKER_COMPOSE = set -a && source ./scripts/set_envs.sh && set +a && docker compose -f docker/docker-compose.yml
+DOCKER_COMPOSE = ./scripts/set_envs.sh && docker compose -f docker/docker-compose.yml --env-file .env
 
 # Helper functions to validate Docker environment and execute commands
 define check_docker_env
@@ -208,7 +208,7 @@ EXTRA_ARGS ?=
 
 # This defines how to run the publisher script with network and mode parameters
 define run_publisher
-	NETWORK=$(1) $(PUBLISHER_SCRIPT) --network $(1) --mode $(2) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
+	@$(PUBLISHER_SCRIPT) --network $(1) --mode $(2) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 endef
 
 run-mainnet-dev: check-network
