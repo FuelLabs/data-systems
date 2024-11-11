@@ -12,18 +12,19 @@ use crate::{
 
 pub fn publish_tasks(
     tx: &Transaction,
+    tx_id: &Bytes32,
     stream: &Stream<Output>,
     opts: &Arc<PublishOpts>,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
-    let tx_id = tx.id(&opts.chain_id);
     let packets: Vec<PublishPacket<Output>> = tx
         .outputs()
         .par_iter()
         .enumerate()
         .flat_map(|(index, output)| {
-            let ids = output.extract_ids(&opts.chain_id, tx, index as u8);
+            let ids = output.extract_ids(tx, tx_id, index as u8);
             let mut packets = output.packets_from_ids(ids);
-            let packet = packet_from_output(output, tx_id.into(), index, tx);
+            let packet =
+                packet_from_output(output, tx_id.to_owned(), index, tx);
             packets.push(packet);
             packets
         })
@@ -31,9 +32,7 @@ pub fn publish_tasks(
 
     packets
         .iter()
-        .map(|packet| {
-            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
-        })
+        .map(|packet| packet.publish(Arc::new(stream.to_owned()), opts))
         .collect()
 }
 
@@ -46,13 +45,13 @@ fn packet_from_output(
     match output {
         Output::Coin { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsCoinSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index as u16))
-                .with_to(Some((*to).into()))
-                .with_asset_id(Some((*asset_id).into()))
-                .arc(),
-            OutputsCoinSubject::WILDCARD,
+            OutputsCoinSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
+            .arc(),
         ),
         Output::Contract(contract) => {
             let contract_id = find_output_contract_id(transaction, contract)
@@ -61,42 +60,42 @@ fn packet_from_output(
 
             PublishPacket::new(
                 output,
-                OutputsContractSubject::new()
-                    .with_tx_id(Some(tx_id))
-                    .with_index(Some(index as u16))
-                    .with_contract_id(Some(contract_id.into()))
-                    .arc(),
-                OutputsContractSubject::WILDCARD,
+                OutputsContractSubject {
+                    tx_id: Some(tx_id),
+                    index: Some(index as u16),
+                    contract_id: Some(contract_id.into()),
+                }
+                .arc(),
             )
         }
         Output::Change { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsChangeSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index as u16))
-                .with_to(Some((*to).into()))
-                .with_asset_id(Some((*asset_id).into()))
-                .arc(),
-            OutputsChangeSubject::WILDCARD,
+            OutputsChangeSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
+            .arc(),
         ),
         Output::Variable { to, asset_id, .. } => PublishPacket::new(
             output,
-            OutputsVariableSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index as u16))
-                .with_to(Some((*to).into()))
-                .with_asset_id(Some((*asset_id).into()))
-                .arc(),
-            OutputsVariableSubject::WILDCARD,
+            OutputsVariableSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                to: Some((*to).into()),
+                asset_id: Some((*asset_id).into()),
+            }
+            .arc(),
         ),
         Output::ContractCreated { contract_id, .. } => PublishPacket::new(
             output,
-            OutputsContractCreatedSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index as u16))
-                .with_contract_id(Some((*contract_id).into()))
-                .arc(),
-            OutputsContractCreatedSubject::WILDCARD,
+            OutputsContractCreatedSubject {
+                tx_id: Some(tx_id),
+                index: Some(index as u16),
+                contract_id: Some((*contract_id).into()),
+            }
+            .arc(),
         ),
     }
 }
@@ -118,24 +117,27 @@ pub fn find_output_contract_id(
 impl IdsExtractable for Output {
     fn extract_ids(
         &self,
-        chain_id: &ChainId,
         tx: &Transaction,
+        tx_id: &Bytes32,
         index: u8,
     ) -> Vec<Identifier> {
-        let tx_id = tx.id(chain_id);
         match self {
             Output::Change { to, asset_id, .. }
             | Output::Variable { to, asset_id, .. }
             | Output::Coin { to, asset_id, .. } => {
                 vec![
-                    Identifier::Address(tx_id.into(), index, to.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
+                    Identifier::Address(tx_id.to_owned(), index, to.into()),
+                    Identifier::AssetID(
+                        tx_id.to_owned(),
+                        index,
+                        asset_id.into(),
+                    ),
                 ]
             }
             Output::Contract(contract) => find_output_contract_id(tx, contract)
                 .map(|contract_id| {
                     vec![Identifier::ContractID(
-                        tx_id.into(),
+                        tx_id.to_owned(),
                         index,
                         contract_id.into(),
                     )]
@@ -143,7 +145,7 @@ impl IdsExtractable for Output {
                 .unwrap_or_default(),
             Output::ContractCreated { contract_id, .. } => {
                 vec![Identifier::ContractID(
-                    tx_id.into(),
+                    tx_id.to_owned(),
                     index,
                     contract_id.into(),
                 )]

@@ -1,7 +1,3 @@
-//! This binary subscribes to events emitted from a Fuel client or node
-//! to publish streams that can consumed via the `fuel-streams` SDK.
-use std::{net::ToSocketAddrs, sync::Arc};
-
 use clap::Parser;
 use fuel_streams_publisher::{
     cli::Cli,
@@ -32,19 +28,15 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     let state = ServerState::new(publisher.clone()).await;
-
     // create the actix webserver
     let server_addr = cli
         .server_addr
         .to_socket_addrs()?
         .next()
         .expect("Must be valid server address");
-
     let server = create_web_server(state, server_addr)?;
-
     // get server handle
     let server_handle = server.handle();
-
     // spawn the server in the background
     tokio::spawn(async move {
         if let Err(err) = server.await {
@@ -66,7 +58,6 @@ async fn main() -> anyhow::Result<()> {
     // Await the Actix server shutdown
     tracing::info!("Stopping actix server ...");
     server_handle.stop(true).await;
-
     tracing::info!("Actix server stopped. Goodbye!");
 
     Ok(())

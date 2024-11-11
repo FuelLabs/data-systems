@@ -1,6 +1,6 @@
 mod attrs;
 mod fields;
-mod parse_fn;
+mod into_subject;
 mod subject;
 
 use proc_macro::TokenStream;
@@ -11,10 +11,14 @@ use syn::{parse_macro_input, DeriveInput};
 pub fn subject_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+
     let fields = fields::from_input(&input).unwrap();
     let field_names = fields::names_from_fields(fields);
     let field_types = fields::types_from_fields(fields);
-    let parse_fn = parse_fn::create(&input, &field_names);
+
+    let parse_fn = into_subject::parse_fn(&input, &field_names);
+    let wildcard_fn = into_subject::wildcard_fn();
+
     let subject_expanded =
         subject::expanded(name, &field_names, &field_types, &input.attrs);
 
@@ -31,6 +35,8 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
 
         impl IntoSubject for #name {
             #parse_fn
+
+            #wildcard_fn
         }
 
     }

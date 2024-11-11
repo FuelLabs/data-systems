@@ -13,5 +13,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.service.metrics_port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
   selector:
     {{- include "fuel-streams-publisher.selectorLabels" . | nindent 4 }}

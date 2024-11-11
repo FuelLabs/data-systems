@@ -8,7 +8,7 @@ use clap::Parser;
 ///
 /// - `nats_url`: The URL of the NATS server to connect to.
 /// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
-#[derive(Parser)]
+#[derive(Clone, Parser)]
 pub struct Cli {
     /// Nats connection url
     #[arg(

@@ -8,25 +8,22 @@ use tokio::task::JoinHandle;
 use crate::{
     identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
     packets::{PublishError, PublishOpts, PublishPacket},
-    FuelCoreLike,
 };
 
 pub fn publish_tasks(
     tx: &Transaction,
+    tx_id: &Bytes32,
     stream: &Stream<Receipt>,
     opts: &Arc<PublishOpts>,
-    fuel_core: &dyn FuelCoreLike,
+    receipts: &Vec<Receipt>,
 ) -> Vec<JoinHandle<Result<(), PublishError>>> {
-    let tx_id = tx.id(&opts.chain_id);
-    let receipts = fuel_core.get_receipts(&tx_id).unwrap_or_default();
     let packets: Vec<PublishPacket<Receipt>> = receipts
-        .unwrap_or_default()
         .par_iter()
         .enumerate()
         .flat_map(|(index, receipt)| {
-            let ids = receipt.extract_ids(&opts.chain_id, tx, index as u8);
+            let ids = receipt.extract_ids(tx, tx_id, index as u8);
             let mut packets = receipt.packets_from_ids(ids);
-            let packet = packet_from_receipt(tx_id.into(), receipt, index);
+            let packet = packet_from_receipt(tx_id.to_owned(), receipt, index);
             packets.push(packet);
             packets
         })
@@ -34,9 +31,7 @@ pub fn publish_tasks(
 
     packets
         .iter()
-        .map(|packet| {
-            packet.publish(Arc::new(stream.to_owned()), Arc::clone(opts))
-        })
+        .map(|packet| packet.publish(Arc::new(stream.to_owned()), opts))
         .collect()
 }
 
@@ -53,68 +48,68 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsCallSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_from(Some(from.into()))
-                .with_to(Some(to.into()))
-                .with_asset_id(Some(asset_id.into()))
-                .arc(),
-            ReceiptsCallSubject::WILDCARD,
+            ReceiptsCallSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
+            .arc(),
         ),
         Receipt::Return { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsReturnSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsReturnSubject::WILDCARD,
+            ReceiptsReturnSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::ReturnData { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsReturnDataSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsReturnDataSubject::WILDCARD,
+            ReceiptsReturnDataSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::Panic { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsPanicSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsPanicSubject::WILDCARD,
+            ReceiptsPanicSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::Revert { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsRevertSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsRevertSubject::WILDCARD,
+            ReceiptsRevertSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::Log { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsLogSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsLogSubject::WILDCARD,
+            ReceiptsLogSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::LogData { id, .. } => PublishPacket::new(
             receipt,
-            ReceiptsLogDataSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_id(Some(id.into()))
-                .arc(),
-            ReceiptsLogDataSubject::WILDCARD,
+            ReceiptsLogDataSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                id: Some(id.into()),
+            }
+            .arc(),
         ),
         Receipt::Transfer {
             id: from,
@@ -123,14 +118,14 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsTransferSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_from(Some(from.into()))
-                .with_to(Some(to.into()))
-                .with_asset_id(Some(asset_id.into()))
-                .arc(),
-            ReceiptsTransferSubject::WILDCARD,
+            ReceiptsTransferSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
+            .arc(),
         ),
         Receipt::TransferOut {
             id: from,
@@ -139,34 +134,34 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsTransferOutSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_from(Some(from.into()))
-                .with_to(Some(to.into()))
-                .with_asset_id(Some(asset_id.into()))
-                .arc(),
-            ReceiptsTransferOutSubject::WILDCARD,
+            ReceiptsTransferOutSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                from: Some(from.into()),
+                to: Some(to.into()),
+                asset_id: Some(asset_id.into()),
+            }
+            .arc(),
         ),
         Receipt::ScriptResult { .. } => PublishPacket::new(
             receipt,
-            ReceiptsScriptResultSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .arc(),
-            ReceiptsScriptResultSubject::WILDCARD,
+            ReceiptsScriptResultSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+            }
+            .arc(),
         ),
         Receipt::MessageOut {
             sender, recipient, ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsMessageOutSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_sender(Some(sender.into()))
-                .with_recipient(Some(recipient.into()))
-                .arc(),
-            ReceiptsMessageOutSubject::WILDCARD,
+            ReceiptsMessageOutSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                sender: Some(sender.into()),
+                recipient: Some(recipient.into()),
+            }
+            .arc(),
         ),
         Receipt::Mint {
             contract_id,
@@ -174,13 +169,13 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsMintSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_contract_id(Some(contract_id.into()))
-                .with_sub_id(Some((*sub_id).into()))
-                .arc(),
-            ReceiptsMintSubject::WILDCARD,
+            ReceiptsMintSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                contract_id: Some(contract_id.into()),
+                sub_id: Some((*sub_id).into()),
+            }
+            .arc(),
         ),
         Receipt::Burn {
             contract_id,
@@ -188,13 +183,13 @@ fn packet_from_receipt(
             ..
         } => PublishPacket::new(
             receipt,
-            ReceiptsBurnSubject::new()
-                .with_tx_id(Some(tx_id))
-                .with_index(Some(index))
-                .with_contract_id(Some(contract_id.into()))
-                .with_sub_id(Some((*sub_id).into()))
-                .arc(),
-            ReceiptsBurnSubject::WILDCARD,
+            ReceiptsBurnSubject {
+                tx_id: Some(tx_id),
+                index: Some(index),
+                contract_id: Some(contract_id.into()),
+                sub_id: Some((*sub_id).into()),
+            }
+            .arc(),
         ),
     }
 }
@@ -202,11 +197,10 @@ fn packet_from_receipt(
 impl IdsExtractable for Receipt {
     fn extract_ids(
         &self,
-        chain_id: &ChainId,
-        tx: &Transaction,
+        _tx: &Transaction,
+        tx_id: &Bytes32,
         index: u8,
     ) -> Vec<Identifier> {
-        let tx_id = tx.id(chain_id);
         match self {
             Receipt::Call {
                 id: from,
@@ -215,9 +209,17 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractID(tx_id.into(), index, from.into()),
-                    Identifier::ContractID(tx_id.into(), index, to.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
+                    Identifier::ContractID(
+                        tx_id.to_owned(),
+                        index,
+                        from.into(),
+                    ),
+                    Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                    Identifier::AssetID(
+                        tx_id.to_owned(),
+                        index,
+                        asset_id.into(),
+                    ),
                 ]
             }
             Receipt::Return { id, .. }
@@ -226,7 +228,7 @@ impl IdsExtractable for Receipt {
             | Receipt::Revert { id, .. }
             | Receipt::Log { id, .. }
             | Receipt::LogData { id, .. } => {
-                vec![Identifier::ContractID(tx_id.into(), index, id.into())]
+                vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())]
             }
             Receipt::Transfer {
                 id: from,
@@ -235,9 +237,17 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractID(tx_id.into(), index, from.into()),
-                    Identifier::ContractID(tx_id.into(), index, to.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
+                    Identifier::ContractID(
+                        tx_id.to_owned(),
+                        index,
+                        from.into(),
+                    ),
+                    Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                    Identifier::AssetID(
+                        tx_id.to_owned(),
+                        index,
+                        asset_id.into(),
+                    ),
                 ]
             }
             Receipt::TransferOut {
@@ -247,23 +257,35 @@ impl IdsExtractable for Receipt {
                 ..
             } => {
                 vec![
-                    Identifier::ContractID(tx_id.into(), index, from.into()),
-                    Identifier::ContractID(tx_id.into(), index, to.into()),
-                    Identifier::AssetID(tx_id.into(), index, asset_id.into()),
+                    Identifier::ContractID(
+                        tx_id.to_owned(),
+                        index,
+                        from.into(),
+                    ),
+                    Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                    Identifier::AssetID(
+                        tx_id.to_owned(),
+                        index,
+                        asset_id.into(),
+                    ),
                 ]
             }
             Receipt::MessageOut {
                 sender, recipient, ..
             } => {
                 vec![
-                    Identifier::Address(tx_id.into(), index, sender.into()),
-                    Identifier::Address(tx_id.into(), index, recipient.into()),
+                    Identifier::Address(tx_id.to_owned(), index, sender.into()),
+                    Identifier::Address(
+                        tx_id.to_owned(),
+                        index,
+                        recipient.into(),
+                    ),
                 ]
             }
             Receipt::Mint { contract_id, .. }
             | Receipt::Burn { contract_id, .. } => {
                 vec![Identifier::ContractID(
-                    tx_id.into(),
+                    tx_id.to_owned(),
                     index,
                     contract_id.into(),
                 )]
