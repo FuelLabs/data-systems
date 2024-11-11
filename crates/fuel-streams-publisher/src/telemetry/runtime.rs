@@ -40,7 +40,10 @@ impl Runtime {
         queue.push_back(Box::pin(task));
     }
 
-    pub fn start(&self) {
+    pub fn start<F>(&self, blocking_task_executor: F)
+    where
+        F: FnOnce() + Send + 'static + Clone,
+    {
         let interval = self.interval;
         let task_queue = Arc::clone(&self.task_queue);
 
@@ -50,6 +53,8 @@ impl Runtime {
             loop {
                 // Wait for the interval
                 ticker.tick().await;
+
+                tokio::task::spawn_blocking(blocking_task_executor.clone());
 
                 // Lock the queue, drain tasks, and run them sequentially
                 let tasks: Vec<_> = {

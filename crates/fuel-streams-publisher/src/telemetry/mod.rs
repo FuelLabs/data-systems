@@ -71,9 +71,7 @@ impl Telemetry {
             tracing::info!("Elastic logger pinged successfully!");
         };
 
-        self.runtime.start();
-
-        self.runtime.spawn(async move {
+        self.runtime.start(move || {
             system.write().refresh();
         });
 
