@@ -161,7 +161,6 @@ pub mod request {
         PubKeyResponse(super::PubKeyResponse),
     }
 }
-
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PubKeyRequest {
     #[prost(string, tag = "1")]
