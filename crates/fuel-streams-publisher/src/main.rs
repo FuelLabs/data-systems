@@ -1,3 +1,5 @@
+use std::{net::ToSocketAddrs, sync::Arc};
+
 use clap::Parser;
 use fuel_streams_publisher::{
     cli::Cli,
