@@ -5,21 +5,18 @@ use actix_server::Server;
 use actix_web::{http, web, App, HttpResponse, HttpServer};
 use tracing_actix_web::TracingLogger;
 
-use crate::state::SharedState;
+use crate::server_state::ServerState;
+
+// We are keeping this low to give room for more
+// Publishing processing power. This is fine since the
+// the latency tolerance when fetching /health and /metrics
+// is trivial
+const MAX_WORKERS: usize = 2;
 
 pub fn create_web_server(
-    state: SharedState,
+    state: ServerState,
     actix_server_addr: SocketAddr,
 ) -> anyhow::Result<Server> {
-    // compute worker threads
-    let num_cpus = num_cpus::get();
-    let worker_threads = 2;
-    tracing::info!(
-        "Starting runtime: num_cpus={}, worker_threads={}",
-        num_cpus,
-        worker_threads
-    );
-
     let server = HttpServer::new(move || {
         // create cors
         let cors = Cors::default()
@@ -37,7 +34,7 @@ pub fn create_web_server(
             .wrap(TracingLogger::default())
             .wrap(cors)
             .service(web::resource("/health").route(web::get().to(
-                |state: web::Data<SharedState>| async move {
+                |state: web::Data<ServerState>| async move {
                     if !state.is_healthy() {
                         return HttpResponse::ServiceUnavailable()
                             .body("Service Unavailable");
@@ -46,13 +43,14 @@ pub fn create_web_server(
                 },
             )))
             .service(web::resource("/metrics").route(web::get().to(
-                |state: web::Data<SharedState>| async move {
-                    HttpResponse::Ok().body(state.metrics())
+                |state: web::Data<ServerState>| async move {
+                    HttpResponse::Ok()
+                        .body(state.publisher.telemetry.get_metrics().await)
                 },
             )))
     })
     .bind(actix_server_addr)?
-    .workers(worker_threads)
+    .workers(MAX_WORKERS)
     .shutdown_timeout(20)
     .run();
 
@@ -62,41 +60,40 @@ pub fn create_web_server(
 #[cfg(test)]
 #[cfg(feature = "test-helpers")]
 mod tests {
-    use std::{sync::Arc, time::Duration};
+    use std::time::Duration;
 
     use actix_web::{http, test, web, App, HttpResponse};
     use fuel_core::service::Config;
     use fuel_core_bin::FuelService;
     use fuel_core_services::State;
     use fuel_streams_core::prelude::NATS_URL;
-    use parking_lot::RwLock;
 
     use crate::{
-        metrics::PublisherMetrics,
-        state::{HealthResponse, SharedState},
-        system::System,
+        server_state::{HealthResponse, ServerState},
+        telemetry::Telemetry,
+        FuelCore,
+        Publisher,
     };
 
     #[actix_web::test]
     async fn test_health_check() {
-        let fuel_svc = Arc::new(
-            FuelService::new_node(Config::local_node()).await.unwrap(),
-        );
-        assert_eq!(fuel_svc.state(), State::Started);
-        let state = SharedState::new(
-            fuel_svc,
-            NATS_URL,
-            Arc::new(PublisherMetrics::random()),
-            Arc::new(RwLock::new(System::new().await)),
-        )
-        .await
-        .unwrap();
-        assert!(state.nats_client.is_connected());
+        let fuel_service =
+            FuelService::new_node(Config::local_node()).await.unwrap();
+        assert_eq!(fuel_service.state(), State::Started);
+
+        let telemetry = Telemetry::new().await.unwrap();
+
+        let fuel_core = FuelCore::from(fuel_service);
+        let publisher = Publisher::new(fuel_core.arc(), NATS_URL, telemetry)
+            .await
+            .unwrap();
+        let state = ServerState::new(publisher).await;
+        assert!(state.publisher.nats_client.is_connected());
 
         let app = test::init_service(
             App::new().app_data(web::Data::new(state.clone())).route(
                 "/health",
-                web::get().to(|state: web::Data<SharedState>| async move {
+                web::get().to(|state: web::Data<ServerState>| async move {
                     if !state.is_healthy() {
                         return HttpResponse::ServiceUnavailable()
                             .body("Service Unavailable");

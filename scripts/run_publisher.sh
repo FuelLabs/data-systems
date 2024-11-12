@@ -22,7 +22,6 @@ usage() {
     echo "  $0 --network mainnet                            # Runs mainnet with default settings"
     echo "  $0 --port 4001                                  # Runs on port 4001"
     echo "  $0 --network mainnet --port 4001 --mode dev     # Custom network, port, and mode"
-    echo "  $0 --network mainnet --extra-args \"--use-elastic-log\" # With extra arguments"
     exit 1
 }
 

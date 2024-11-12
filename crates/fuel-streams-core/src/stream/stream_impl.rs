@@ -108,15 +108,14 @@ impl<S: Streamable> Stream<S> {
     pub async fn new(client: &NatsClient) -> Self {
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
-
         let store = client
             .get_or_create_kv_store(kv::Config {
                 bucket: bucket_name.to_owned(),
                 storage: stream::StorageType::File,
                 history: 1,
                 compression: true,
-                max_age: Duration::from_nanos(
-                    FUEL_BLOCK_TIME_SECS * 1000 * MAX_RETENTION_BLOCKS,
+                max_age: Duration::from_secs(
+                    FUEL_BLOCK_TIME_SECS * MAX_RETENTION_BLOCKS,
                 ),
                 ..Default::default()
             })

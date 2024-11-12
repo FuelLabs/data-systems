@@ -13,8 +13,6 @@ use prometheus::{
     Registry,
 };
 
-use crate::packets::PublishError;
-
 #[derive(Clone, Debug)]
 pub struct PublisherMetrics {
     pub registry: Registry,
@@ -37,21 +35,6 @@ impl Default for PublisherMetrics {
 }
 
 impl PublisherMetrics {
-    #[cfg(feature = "test-helpers")]
-    pub fn random() -> Self {
-        use rand::{distributions::Alphanumeric, Rng};
-
-        let prefix = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .filter(|c| c.is_ascii_alphabetic())
-            .take(6)
-            .map(char::from)
-            .collect();
-
-        PublisherMetrics::new(Some(prefix))
-            .expect("Failed to create random PublisherMetrics")
-    }
-
     pub fn new(prefix: Option<String>) -> anyhow::Result<Self> {
         let metric_prefix = prefix
             .clone()
@@ -63,7 +46,7 @@ impl PublisherMetrics {
             "A metric counting the number of active subscriptions",
             &["chain_id"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let total_published_messages = register_int_counter_vec!(
             format!(
@@ -73,14 +56,14 @@ impl PublisherMetrics {
             "A metric counting the number of published messages",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let total_failed_messages = register_int_counter_vec!(
             format!("{}publisher_metrics_total_failed_messages", metric_prefix),
             "A metric counting the number of unpublished and failed messages",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let last_published_block_height = register_int_gauge_vec!(
             format!(
@@ -90,7 +73,7 @@ impl PublisherMetrics {
             "A metric that represents the last published block height",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let last_published_block_timestamp = register_int_gauge_vec!(
             format!(
@@ -100,14 +83,14 @@ impl PublisherMetrics {
             "A metric that represents the last published transaction timestamp",
             &["chain_id", "block_producer"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let published_messages_throughput = register_int_counter_vec!(
             format!("{}publisher_metrics_published_messages_throughput", metric_prefix),
             "A metric counting the number of published messages per subject wildcard",
             &["chain_id", "block_producer", "subject_wildcard"],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         // New histogram metric for block latency
         let publishing_latency_histogram = register_histogram_vec!(
@@ -117,7 +100,7 @@ impl PublisherMetrics {
             // buckets for latency measurement (e.g., 0.1s, 0.5s, 1s, 5s, 10s)
             vec![0.1, 0.5, 1.0, 5.0, 10.0],
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let message_size_histogram = register_histogram_vec!(
             format!("{}publisher_metrics_message_size_bytes", metric_prefix),
@@ -125,7 +108,7 @@ impl PublisherMetrics {
             &["chain_id", "block_producer", "subject_wildcard"],
             vec![100.0, 500.0, 1000.0, 5000.0, 10000.0, 100000.0, 1000000.0]
         )
-        .expect("metric can be created");
+        .expect("metric must be created");
 
         let error_rates =
             register_int_counter_vec!(
@@ -133,7 +116,7 @@ impl PublisherMetrics {
             "A metric counting errors or failures during message processing",
             &["chain_id", "block_producer", "subject_wildcard", "error_type"],
         )
-            .expect("metric can be created");
+            .expect("metric must be created");
 
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");
@@ -162,68 +145,8 @@ impl PublisherMetrics {
     }
 }
 
-pub async fn publish_with_metrics<F, E>(
-    async_func: F,
-    metrics: &PublisherMetrics,
-    chain_id: &ChainId,
-    block_producer: &Address,
-    wildcard: &str,
-) -> Result<(), PublishError>
-where
-    F: std::future::Future<Output = Result<usize, E>>,
-    E: std::fmt::Display,
-{
-    match async_func.await {
-        Ok(published_data_size) => {
-            // Update message size histogram
-            metrics
-                .message_size_histogram
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                ])
-                .observe(published_data_size as f64);
-
-            // Increment total published messages
-            metrics
-                .total_published_messages
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                ])
-                .inc();
-
-            // Increment throughput for the published messages
-            metrics
-                .published_messages_throughput
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                ])
-                .inc();
-
-            Ok(())
-        }
-        Err(e) => {
-            // Collect error metrics
-            metrics
-                .error_rates
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    wildcard,
-                    &e.to_string(),
-                ])
-                .inc();
-
-            // Map to PublishError::StreamPublish
-            Err(PublishError::StreamPublish(e.to_string()))
-        }
-    }
-}
-
+#[allow(dead_code)]
+// TODO: Will this be useful in the future?
 pub fn add_block_metrics(
     chain_id: &ChainId,
     block: &Block<Transaction>,
@@ -261,11 +184,26 @@ pub fn add_block_metrics(
 }
 
 #[cfg(test)]
-#[cfg(feature = "test-helpers")]
 mod tests {
     use prometheus::{gather, Encoder, TextEncoder};
 
     use super::*;
+
+    impl PublisherMetrics {
+        pub fn random() -> Self {
+            use rand::{distributions::Alphanumeric, Rng};
+
+            let prefix = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .filter(|c| c.is_ascii_alphabetic())
+                .take(6)
+                .map(char::from)
+                .collect();
+
+            PublisherMetrics::new(Some(prefix))
+                .expect("Failed to create random PublisherMetrics")
+        }
+    }
 
     #[test]
     fn test_total_published_messages_metric() {

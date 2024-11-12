@@ -9,15 +9,14 @@ mod utxos;
 mod fuel_core;
 mod packets;
 mod publisher;
+pub mod publisher_shutdown;
 
 pub mod cli;
-pub mod elastic;
 pub mod identifiers;
-pub mod metrics;
 pub mod server;
-pub mod shutdown;
-pub mod state;
-pub mod system;
+pub mod server_state;
+
+pub mod telemetry;
 
 use std::{env, sync::LazyLock};
 
@@ -35,8 +34,6 @@ pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
         .and_then(|val| val.parse().ok())
         .unwrap_or(default_threads)
 });
-
-pub const FUEL_ELASTICSEARCH_PATH: &str = "fuel-data-systems";
 
 pub fn sha256(bytes: &[u8]) -> Bytes32 {
     let mut sha256 = Sha256::new();

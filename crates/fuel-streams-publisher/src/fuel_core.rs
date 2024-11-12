@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::database_description::DatabaseHeight,
 };
+use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
@@ -22,11 +25,15 @@ use tokio::sync::broadcast::Receiver;
 /// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
 #[async_trait::async_trait]
 pub trait FuelCoreLike: Sync + Send {
+    async fn start(&self);
+    fn is_started(&self) -> bool;
+    async fn stop(&self);
+
     fn chain_id(&self) -> &ChainId;
     fn database(&self) -> &CombinedDatabase;
     fn blocks_subscription(
-        &mut self,
-    ) -> &mut Receiver<fuel_core_importer::ImporterResult>;
+        &self,
+    ) -> Receiver<fuel_core_importer::ImporterResult>;
 
     fn get_latest_block_height(&self) -> anyhow::Result<Option<u64>> {
         Ok(self
@@ -106,39 +113,84 @@ pub trait FuelCoreLike: Sync + Send {
     }
 }
 
+#[derive(Clone)]
 pub struct FuelCore {
-    database: CombinedDatabase,
-    blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
+    pub fuel_service: Arc<FuelService>,
     chain_id: ChainId,
+    database: CombinedDatabase,
+}
+
+impl From<FuelService> for FuelCore {
+    fn from(fuel_service: FuelService) -> Self {
+        let chain_config =
+            fuel_service.shared.config.snapshot_reader.chain_config();
+        let chain_id = chain_config.consensus_parameters.chain_id();
+
+        let database = fuel_service.shared.database.clone();
+
+        Self {
+            fuel_service: Arc::new(fuel_service),
+            chain_id,
+            database,
+        }
+    }
 }
 
 impl FuelCore {
     pub async fn new(
-        database: CombinedDatabase,
-        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
-        chain_id: ChainId,
-    ) -> Box<Self> {
-        Box::new(Self {
-            database,
-            blocks_subscription,
-            chain_id,
-        })
-    }
+        command: fuel_core_bin::cli::run::Command,
+    ) -> anyhow::Result<Arc<Self>> {
+        let fuel_service =
+            fuel_core_bin::cli::run::get_service(command).await?;
 
-    #[cfg(feature = "test-helpers")]
-    pub async fn from_blocks_subscription(
-        blocks_subscription: Receiver<fuel_core_importer::ImporterResult>,
-    ) -> Box<Self> {
-        Box::new(Self {
-            chain_id: ChainId::default(),
-            database: CombinedDatabase::default(),
-            blocks_subscription,
-        })
+        let fuel_core: Self = fuel_service.into();
+
+        Ok(fuel_core.arc())
+    }
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }
 
 #[async_trait::async_trait]
 impl FuelCoreLike for FuelCore {
+    async fn start(&self) {
+        fuel_core_bin::cli::init_logging();
+
+        self.fuel_service
+            .start_and_await()
+            .await
+            .expect("Fuel core service startup failed");
+    }
+
+    fn is_started(&self) -> bool {
+        self.fuel_service.state().started()
+    }
+
+    async fn stop(&self) {
+        if matches!(
+            self.fuel_service.state(),
+            fuel_core_services::State::Stopped
+                | fuel_core_services::State::Stopping
+                | fuel_core_services::State::StoppedWithError(_)
+                | fuel_core_services::State::NotStarted
+        ) {
+            return;
+        }
+
+        tracing::info!("Stopping fuel core ...");
+        match self
+            .fuel_service
+            .send_stop_signal_and_await_shutdown()
+            .await
+        {
+            Ok(state) => {
+                tracing::info!("Stopped fuel core. Status = {:?}", state)
+            }
+            Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
+        }
+    }
+
     fn chain_id(&self) -> &ChainId {
         &self.chain_id
     }
@@ -148,9 +200,13 @@ impl FuelCoreLike for FuelCore {
     }
 
     fn blocks_subscription(
-        &mut self,
-    ) -> &mut Receiver<fuel_core_importer::ImporterResult> {
-        &mut self.blocks_subscription
+        &self,
+    ) -> Receiver<fuel_core_importer::ImporterResult> {
+        self.fuel_service
+            .shared
+            .block_importer
+            .block_importer
+            .subscribe()
     }
 
     fn get_receipts(
