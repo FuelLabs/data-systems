@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
-use fuel_core_bin::FuelService;
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::fuel_tx::Output;
 use fuel_streams::types::Log;
@@ -15,12 +13,10 @@ use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
 use crate::{
     blocks,
-    elastic::{create_elasticsearch_instance, ElasticSearch},
-    metrics::PublisherMetrics,
     packets::{PublishError, PublishOpts},
-    shutdown::{StopHandle, GRACEFUL_SHUTDOWN_TIMEOUT},
+    publisher_shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
+    telemetry::Telemetry,
     transactions,
-    FuelCore,
     FuelCoreLike,
     PUBLISHER_MAX_THREADS,
 };
@@ -109,79 +105,47 @@ pub enum PublishBlockError {
 }
 
 #[allow(dead_code)]
-/// TODO: Remove right after using chain_id and base_asset_id to publish
-/// TransactionsById subject
+#[derive(Clone)]
 pub struct Publisher {
-    fuel_service: Arc<FuelService>,
-    fuel_core: Box<dyn FuelCoreLike>,
-    metrics: Arc<PublisherMetrics>,
-    elastic_logger: Option<Arc<ElasticSearch>>,
-    nats_client: NatsClient,
-    streams: Arc<Streams>,
+    pub fuel_core: Arc<dyn FuelCoreLike>,
+    pub nats_client: NatsClient,
+    pub streams: Arc<Streams>,
+    pub telemetry: Arc<Telemetry>,
 }
 
 impl Publisher {
     pub async fn new(
-        fuel_service: Arc<FuelService>,
+        fuel_core: Arc<dyn FuelCoreLike>,
         nats_url: &str,
-        use_elastic_logging: bool,
-        metrics: Arc<PublisherMetrics>,
-        streams: Arc<Streams>,
+        telemetry: Arc<Telemetry>,
     ) -> anyhow::Result<Self> {
         let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
+        let streams = Arc::new(Streams::new(&nats_client).await);
 
-        let blocks_subscription = fuel_service
-            .shared
-            .block_importer
-            .block_importer
-            .subscribe();
-        let fuel_core_database = fuel_service.shared.database.clone();
-
-        let chain_config =
-            fuel_service.shared.config.snapshot_reader.chain_config();
-        let chain_id = chain_config.consensus_parameters.chain_id();
-
-        let fuel_core =
-            FuelCore::new(fuel_core_database, blocks_subscription, chain_id)
-                .await;
-
-        metrics
-            .total_subs
-            .with_label_values(&[&chain_id.to_string()])
-            .set(streams.subjects_wildcards().len() as i64);
+        telemetry.record_streams_count(
+            fuel_core.chain_id(),
+            streams.subjects_wildcards().len(),
+        );
 
         Ok(Publisher {
-            fuel_service,
             fuel_core,
             streams,
-            metrics,
             nats_client,
-            elastic_logger: if use_elastic_logging {
-                Some(Arc::new(create_elasticsearch_instance().await?))
-            } else {
-                None
-            },
+            telemetry,
         })
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn default_with_publisher(
+    pub async fn default(
         nats_client: &NatsClient,
-        fuel_core: Box<dyn FuelCoreLike>,
+        fuel_core: Arc<dyn FuelCoreLike>,
     ) -> anyhow::Result<Self> {
-        use fuel_core::service::Config;
-
-        let fuel_srv =
-            FuelService::new_node(Config::local_node()).await.unwrap();
-
         Ok(Publisher {
-            fuel_service: Arc::new(fuel_srv),
             fuel_core,
             streams: Arc::new(Streams::new(nats_client).await),
-            metrics: Arc::new(PublisherMetrics::random()),
             nats_client: nats_client.clone(),
-            elastic_logger: None,
+            telemetry: Telemetry::new().await?,
         })
     }
 
@@ -189,26 +153,6 @@ impl Publisher {
     pub fn get_streams(&self) -> &Streams {
         &self.streams
     }
-
-    // fn set_panic_hook(&mut self) {
-    //     let nats_client = self.nats_client.clone();
-    //     let fuel_service = Arc::clone(&self.fuel_service);
-    //     std::panic::set_hook(Box::new(move |panic_info| {
-    //         let payload = panic_info
-    //             .payload()
-    //             .downcast_ref::<&str>()
-    //             .unwrap_or(&"Unknown panic");
-    //         tracing::error!("Publisher panicked with a message: {:?}", payload);
-    //         let handle = tokio::runtime::Handle::current();
-    //         let nats_client = nats_client.clone();
-    //         let fuel_service = Arc::clone(&fuel_service);
-    //         handle.spawn(async move {
-    //             Publisher::flush_await_all_streams(&nats_client).await;
-    //             Publisher::stop_fuel_service(&fuel_service).await;
-    //             std::process::exit(1);
-    //         });
-    //     }));
-    // }
 
     async fn publish_block_data(
         &self,
@@ -223,7 +167,7 @@ impl Publisher {
     async fn shutdown_services_with_timeout(&self) -> anyhow::Result<()> {
         tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
             Publisher::flush_await_all_streams(&self.nats_client).await;
-            Publisher::stop_fuel_service(&self.fuel_service).await;
+            self.fuel_core.stop().await;
         })
         .await?;
 
@@ -242,44 +186,10 @@ impl Publisher {
         }
     }
 
-    async fn stop_fuel_service(fuel_service: &Arc<FuelService>) {
-        if matches!(
-            fuel_service.state(),
-            fuel_core_services::State::Stopped
-                | fuel_core_services::State::Stopping
-                | fuel_core_services::State::StoppedWithError(_)
-                | fuel_core_services::State::NotStarted
-        ) {
-            return;
-        }
-
-        tracing::info!("Stopping fuel core ...");
-        match fuel_service.send_stop_signal_and_await_shutdown().await {
-            Ok(state) => {
-                tracing::info!("Stopped fuel core. Status = {:?}", state)
-            }
-            Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
-        }
-    }
-
-    pub async fn run(mut self) -> anyhow::Result<Self> {
-        if let Some(elastic_logger) = self.elastic_logger.as_ref() {
-            tracing::info!(
-                "Elastic logger connection live? {:?}",
-                elastic_logger.get_conn().check_alive().unwrap_or_default()
-            );
-            elastic_logger
-                .get_conn()
-                .ping()
-                .await
-                .context("Error pinging elastisearch connection")?;
-            tracing::info!("Elastic logger pinged successfully!");
-        }
-
-        let mut stop_handle = StopHandle::new();
-        stop_handle.spawn_signal_listener();
-        // self.set_panic_hook();
-
+    pub async fn run(
+        &self,
+        shutdown_token: ShutdownToken,
+    ) -> anyhow::Result<()> {
         let last_published_block = self
             .streams
             .blocks
@@ -297,21 +207,15 @@ impl Publisher {
                 tracing::warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
-            // Republish the last block. Why? We publish multiple data from the same
-            // block and it is not atomic. If the publisher is abruptly stopped, the
-            // block itself might be published, but the transactions and receipts
-            // might not be. Publishing is idempotent, so republishing the last block
-            // is safe and it's a simple way to ensure we don't miss any data. Thus,
-            // this loop will run at least once, to republish the last block, and
-            // then it will also republish any missing blocks.
+            // Republish the last block for idempotency
             let mut height = last_published_height;
             while height <= latest_fuel_core_height {
                 tokio::select! {
-                    shutdown = stop_handle.wait_for_signal() => {
+                    shutdown =  shutdown_token.wait_for_shutdown() => {
                         if shutdown {
                             tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
                             self.shutdown_services_with_timeout().await?;
-                            return Ok(self);
+                            return Ok(());
                         }
                     },
                     (result, block_producer) = async {
@@ -327,7 +231,7 @@ impl Publisher {
                         if let Err(err) = result {
                             tracing::warn!("Failed to publish block data: {}", err);
                         }
-                        self.metrics.total_failed_messages.with_label_values(&[&self.fuel_core.chain_id().to_string(), &block_producer.to_string()]).inc();
+                        self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
                         height += 1;
                     }
                 }
@@ -336,8 +240,11 @@ impl Publisher {
 
         // publish subscribed data
         loop {
+            let fuel_core = self.fuel_core.clone();
+            let mut blocks_subscription = fuel_core.blocks_subscription();
+
             tokio::select! {
-                result = self.fuel_core.blocks_subscription().recv() => {
+                result = blocks_subscription.recv() => {
                     match result {
                         Ok(result) => {
                             self.publish_block_data(result).await?;
@@ -348,7 +255,7 @@ impl Publisher {
                         }
                     }
                 }
-                shutdown = stop_handle.wait_for_signal() => {
+                shutdown = shutdown_token.wait_for_shutdown()  => {
                     if shutdown {
                         self.shutdown_services_with_timeout().await?;
                         break;
@@ -357,7 +264,7 @@ impl Publisher {
             }
         }
 
-        Ok(self)
+        Ok(())
     }
 
     async fn publish(
@@ -378,10 +285,9 @@ impl Publisher {
         let opts = &Arc::new(PublishOpts {
             semaphore,
             chain_id,
-            metrics: Arc::clone(&self.metrics),
             block_producer: Arc::clone(&block_producer),
             block_height: Arc::new(block_height.into()),
-            elastic_logger: self.elastic_logger.to_owned(),
+            telemetry: self.telemetry.clone(),
         });
 
         let tasks =
