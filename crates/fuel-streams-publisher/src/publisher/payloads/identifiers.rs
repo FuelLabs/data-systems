@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 
-use crate::packets::PublishPacket;
+use crate::publisher::packets::PublishPacket;
 
 #[derive(Debug, Clone)]
 pub enum Identifier {

@@ -5,9 +5,9 @@ use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::{
-    identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
+use crate::publisher::{
     packets::{PublishError, PublishOpts, PublishPacket},
+    payloads::identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
 };
 
 pub fn publish_tasks(
