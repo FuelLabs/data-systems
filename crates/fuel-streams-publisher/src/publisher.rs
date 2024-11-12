@@ -329,6 +329,7 @@ impl Publisher {
 
                         if fuel_block_time_unix < latest_fuel_block_time_unix - (FUEL_BLOCK_TIME_SECS  * MAX_RETENTION_BLOCKS) as i64 {
                             // Skip publishing for this block and move to the next height
+                            tracing::warn!("Block {} with time: {} is more than 100 blocks behind chain tip, skipped publishing", height, fuel_block_time_unix);
                             return (Ok(()), None);
                         }
 
