@@ -84,6 +84,7 @@ impl Streams {
             self.transactions.get_consumers_and_state().await?,
             self.blocks.get_consumers_and_state().await?,
             self.inputs.get_consumers_and_state().await?,
+            self.outputs.get_consumers_and_state().await?,
             self.receipts.get_consumers_and_state().await?,
             self.utxos.get_consumers_and_state().await?,
             self.logs.get_consumers_and_state().await?,
@@ -297,6 +298,11 @@ impl Publisher {
                 tracing::warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
+            let latest_fuel_block_time_unix = self
+                .fuel_core
+                .get_sealed_block_time_by_height(latest_fuel_core_height as u32)
+                .to_unix();
+
             // Republish the last block. Why? We publish multiple data from the same
             // block and it is not atomic. If the publisher is abruptly stopped, the
             // block itself might be published, but the transactions and receipts
@@ -315,6 +321,17 @@ impl Publisher {
                         }
                     },
                     (result, block_producer) = async {
+
+                        let fuel_block_time_unix = self
+                        .fuel_core
+                        .get_sealed_block_time_by_height(height as u32)
+                        .to_unix();
+
+                        if fuel_block_time_unix < latest_fuel_block_time_unix - (FUEL_BLOCK_TIME_SECS  * MAX_RETENTION_BLOCKS) as i64 {
+                            // Skip publishing for this block and move to the next height
+                            return (Ok(()), None);
+                        }
+
                         let sealed_block = self
                             .fuel_core
                             .get_sealed_block_by_height(height as u32);
@@ -322,12 +339,16 @@ impl Publisher {
                         let (block, block_producer) =
                             self.fuel_core.get_block_and_producer(&sealed_block);
 
-                        (self.publish(&block, &block_producer).await, block_producer.clone())
+                        (self.publish(&block, &block_producer).await, Some(block_producer.clone()))
                     } => {
-                        if let Err(err) = result {
+                        if let (Err(err), Some(block_producer)) = (result, block_producer) {
                             tracing::warn!("Failed to publish block data: {}", err);
+                            self.metrics.total_failed_messages.with_label_values(&[
+                                &self.fuel_core.chain_id().to_string(),
+                                &block_producer.to_string()
+                            ]).inc();
                         }
-                        self.metrics.total_failed_messages.with_label_values(&[&self.fuel_core.chain_id().to_string(), &block_producer.to_string()]).inc();
+                        // Increment the height after processing
                         height += 1;
                     }
                 }
