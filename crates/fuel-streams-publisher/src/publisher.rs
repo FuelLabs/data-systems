@@ -80,6 +80,7 @@ impl Streams {
             self.transactions.get_consumers_and_state().await?,
             self.blocks.get_consumers_and_state().await?,
             self.inputs.get_consumers_and_state().await?,
+            self.outputs.get_consumers_and_state().await?,
             self.receipts.get_consumers_and_state().await?,
             self.utxos.get_consumers_and_state().await?,
             self.logs.get_consumers_and_state().await?,
@@ -207,7 +208,11 @@ impl Publisher {
                 tracing::warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
             }
 
-            // Republish the last block for idempotency
+            let latest_fuel_block_time_unix = self
+                .fuel_core
+                .get_sealed_block_time_by_height(latest_fuel_core_height as u32)
+                .to_unix();
+
             let mut height = last_published_height;
             while height <= latest_fuel_core_height {
                 tokio::select! {
@@ -219,6 +224,18 @@ impl Publisher {
                         }
                     },
                     (result, block_producer) = async {
+
+                        let fuel_block_time_unix = self
+                        .fuel_core
+                        .get_sealed_block_time_by_height(height as u32)
+                        .to_unix();
+
+                        if fuel_block_time_unix < latest_fuel_block_time_unix - (FUEL_BLOCK_TIME_SECS  * MAX_RETENTION_BLOCKS) as i64 {
+                            // Skip publishing for this block and move to the next height
+                            tracing::warn!("Block {} with time: {} is more than 100 blocks behind chain tip, skipped publishing", height, fuel_block_time_unix);
+                            return (Ok(()), None);
+                        }
+
                         let sealed_block = self
                             .fuel_core
                             .get_sealed_block_by_height(height as u32);
@@ -226,12 +243,13 @@ impl Publisher {
                         let (block, block_producer) =
                             self.fuel_core.get_block_and_producer(&sealed_block);
 
-                        (self.publish(&block, &block_producer).await, block_producer.clone())
+                        (self.publish(&block, &block_producer).await, Some(block_producer.clone()))
                     } => {
-                        if let Err(err) = result {
+                        if let (Err(err), Some(block_producer)) = (result, block_producer) {
                             tracing::warn!("Failed to publish block data: {}", err);
+                            self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
                         }
-                        self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
+                        // Increment the height after processing
                         height += 1;
                     }
                 }

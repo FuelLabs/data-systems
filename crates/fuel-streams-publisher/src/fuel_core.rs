@@ -7,7 +7,11 @@ use fuel_core::{
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::{blockchain::consensus::Sealed, fuel_tx::Bytes32};
+use fuel_core_types::{
+    blockchain::consensus::Sealed,
+    fuel_tx::Bytes32,
+    tai64::Tai64,
+};
 use fuel_streams_core::types::{
     Address,
     Block,
@@ -94,6 +98,18 @@ pub trait FuelCoreLike: Sync + Send {
             .get_sealed_block_by_height(&height.into())
             .expect("Failed to get latest block height")
             .expect("NATS Publisher: no block at height {height}")
+    }
+
+    fn get_sealed_block_time_by_height(&self, height: u32) -> Tai64 {
+        self.database()
+            .on_chain()
+            .latest_view()
+            .expect("failed to get latest db view")
+            .get_sealed_block_header(&height.into())
+            .expect("Failed to get sealed block header")
+            .expect("Failed to find sealed block header")
+            .entity
+            .time()
     }
 }
 
