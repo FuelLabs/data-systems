@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 #[cfg(any(test, feature = "test-helpers"))]
 use std::pin::Pin;
+use std::{fmt::Debug, time::Duration};
 
 use async_nats::{
     jetstream::{
@@ -17,6 +17,9 @@ use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
 use crate::{nats::types::*, prelude::NatsClient};
+
+const FUEL_BLOCK_TIME_NANOSECS: u64 = 1000;
+const MAX_RETENTION_BLOCKS: u64 = 100;
 
 /// Trait for types that can be streamed.
 ///
@@ -112,6 +115,9 @@ impl<S: Streamable> Stream<S> {
                 storage: stream::StorageType::File,
                 history: 1,
                 compression: true,
+                max_age: Duration::from_nanos(
+                    FUEL_BLOCK_TIME_NANOSECS * MAX_RETENTION_BLOCKS,
+                ),
                 ..Default::default()
             })
             .await

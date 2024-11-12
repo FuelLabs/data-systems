@@ -84,6 +84,7 @@ impl Streams {
             self.transactions.get_consumers_and_state().await?,
             self.blocks.get_consumers_and_state().await?,
             self.inputs.get_consumers_and_state().await?,
+            self.outputs.get_consumers_and_state().await?,
             self.receipts.get_consumers_and_state().await?,
             self.utxos.get_consumers_and_state().await?,
             self.logs.get_consumers_and_state().await?,
