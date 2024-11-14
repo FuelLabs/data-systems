@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
 use crate::{
-    packets::{PublishError, PublishOpts, PublishPacket},
+    publisher::packets::{PublishError, PublishOpts, PublishPacket},
     FuelCoreLike,
 };
 

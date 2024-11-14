@@ -5,7 +5,7 @@ use actix_server::Server;
 use actix_web::{http, web, App, HttpResponse, HttpServer};
 use tracing_actix_web::TracingLogger;
 
-use crate::server_state::ServerState;
+use super::state::ServerState;
 
 // We are keeping this low to give room for more
 // Publishing processing power. This is fine since the
@@ -69,7 +69,7 @@ mod tests {
     use fuel_streams_core::prelude::NATS_URL;
 
     use crate::{
-        server_state::{HealthResponse, ServerState},
+        server::state::{HealthResponse, ServerState},
         telemetry::Telemetry,
         FuelCore,
         Publisher,

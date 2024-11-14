@@ -5,7 +5,7 @@ use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::packets::{PublishError, PublishOpts, PublishPacket};
+use crate::publisher::packets::{PublishError, PublishOpts, PublishPacket};
 
 pub fn publish_tasks(
     tx_id: &Bytes32,

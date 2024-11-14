@@ -3,9 +3,8 @@ use std::{net::ToSocketAddrs, sync::Arc};
 use clap::Parser;
 use fuel_streams_publisher::{
     cli::Cli,
-    publisher_shutdown::ShutdownController,
-    server::create_web_server,
-    server_state::ServerState,
+    publisher::shutdown::ShutdownController,
+    server::{http::create_web_server, state::ServerState},
     telemetry::Telemetry,
     FuelCore,
     FuelCoreLike,

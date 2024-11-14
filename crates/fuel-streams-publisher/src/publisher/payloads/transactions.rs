@@ -9,15 +9,20 @@ use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
+use super::identifiers::{Identifier, IdsExtractable};
 use crate::{
-    identifiers::*,
-    inputs::publish_tasks as publish_inputs,
-    logs::publish_tasks as publish_logs,
-    outputs::publish_tasks as publish_outputs,
-    packets::{PublishError, PublishOpts, PublishPacket},
-    receipts::publish_tasks as publish_receipts,
+    publisher::{
+        packets::{PublishError, PublishOpts, PublishPacket},
+        payloads::{
+            identifiers::*,
+            inputs::publish_tasks as publish_inputs,
+            logs::publish_tasks as publish_logs,
+            outputs::publish_tasks as publish_outputs,
+            receipts::publish_tasks as publish_receipts,
+            utxos::publish_tasks as publish_utxos,
+        },
+    },
     sha256,
-    utxos::publish_tasks as publish_utxos,
     FuelCoreLike,
     Streams,
 };

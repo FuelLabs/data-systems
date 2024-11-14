@@ -1,28 +1,15 @@
-mod blocks;
-mod inputs;
-mod logs;
-mod outputs;
-mod receipts;
-mod transactions;
-mod utxos;
-
-mod fuel_core;
-mod packets;
-mod publisher;
-pub mod publisher_shutdown;
-
 pub mod cli;
-pub mod identifiers;
+pub mod publisher;
 pub mod server;
-pub mod server_state;
-
 pub mod telemetry;
 
 use std::{env, sync::LazyLock};
 
-pub use fuel_core::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
-pub use publisher::{Publisher, Streams};
+pub use publisher::{
+    core::{Publisher, Streams},
+    fuel::{FuelCore, FuelCoreLike},
+};
 use sha2::{Digest, Sha256};
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {

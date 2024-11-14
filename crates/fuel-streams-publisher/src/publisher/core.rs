@@ -12,11 +12,12 @@ use thiserror::Error;
 use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
 use crate::{
-    blocks,
-    packets::{PublishError, PublishOpts},
-    publisher_shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
+    publisher::{
+        packets::{PublishError, PublishOpts},
+        payloads::{blocks, transactions},
+        shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
+    },
     telemetry::Telemetry,
-    transactions,
     FuelCoreLike,
     PUBLISHER_MAX_THREADS,
 };
