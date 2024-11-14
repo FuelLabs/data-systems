@@ -111,5 +111,5 @@ if [ "$MODE" == "dev" ]; then
     cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
     cargo build --profile profiling --package fuel-streams-publisher
-    samply record ./target/release/fuel-streams-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    samply record ./target/profiling/fuel-streams-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi
