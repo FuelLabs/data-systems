@@ -9,20 +9,17 @@ use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use super::identifiers::{Identifier, IdsExtractable};
-use crate::{
-    publisher::{
-        packets::{PublishError, PublishOpts, PublishPacket},
-        payloads::{
-            identifiers::*,
-            inputs::publish_tasks as publish_inputs,
-            logs::publish_tasks as publish_logs,
-            outputs::publish_tasks as publish_outputs,
-            receipts::publish_tasks as publish_receipts,
-            utxos::publish_tasks as publish_utxos,
-        },
-    },
+use super::{
+    identifiers::*,
+    inputs::publish_tasks as publish_inputs,
+    logs::publish_tasks as publish_logs,
+    outputs::publish_tasks as publish_outputs,
+    receipts::publish_tasks as publish_receipts,
     sha256,
+    utxos::publish_tasks as publish_utxos,
+};
+use crate::{
+    packets::{PublishOpts, PublishPacket},
     FuelCoreLike,
     Streams,
 };
@@ -32,7 +29,7 @@ pub fn publish_all_tasks(
     streams: Streams,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let offline_db = fuel_core.database().off_chain().latest_view().unwrap();
 
     transactions
@@ -89,7 +86,7 @@ fn publish_tasks(
     stream: &Stream<Transaction>,
     opts: &Arc<PublishOpts>,
     receipts: &Vec<Receipt>,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let block_height = &opts.block_height;
     packets_from_tx(tx_item, tx_id, tx_status, block_height, receipts)
         .iter()

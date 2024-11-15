@@ -5,12 +5,7 @@ pub mod telemetry;
 
 use std::{env, sync::LazyLock};
 
-use fuel_streams_core::prelude::*;
-pub use publisher::{
-    core::{Publisher, Streams},
-    fuel::{FuelCore, FuelCoreLike},
-};
-use sha2::{Digest, Sha256};
+pub use publisher::*;
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
@@ -21,15 +16,3 @@ pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
         .and_then(|val| val.parse().ok())
         .unwrap_or(default_threads)
 });
-
-pub fn sha256(bytes: &[u8]) -> Bytes32 {
-    let mut sha256 = Sha256::new();
-    sha256.update(bytes);
-    let bytes: [u8; 32] = sha256
-        .finalize()
-        .as_slice()
-        .try_into()
-        .expect("Must be 32 bytes");
-
-    bytes.into()
-}

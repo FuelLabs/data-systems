@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
 use crate::{
-    publisher::packets::{PublishError, PublishOpts, PublishPacket},
+    packets::{PublishOpts, PublishPacket},
     FuelCoreLike,
 };
 
@@ -17,7 +17,7 @@ pub fn publish_tasks(
     stream: &Stream<Utxo>,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let packets: Vec<(UtxosSubject, Utxo)> = tx
         .inputs()
         .par_iter()
