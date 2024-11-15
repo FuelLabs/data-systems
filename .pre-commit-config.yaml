@@ -9,6 +9,7 @@ exclude: |
     CHANGELOG.md|
     pnpm-lock.yaml|
     helm/.*
+    cluster/.*
   )$
 
 repos:
@@ -42,3 +43,4 @@ repos:
         args:
           - -c
           - .yamlfix.toml
+        exclude: ^cluster/.*$

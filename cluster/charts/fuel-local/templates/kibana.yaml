@@ -1,0 +1,61 @@
+{{ if not .Values.onlyRequiredBaseServices }}
+{{ if .Values.kibana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: kibana
+  name: kibana
+spec:
+  ports:
+    - name: kibana
+      port: 5601
+      targetPort: 5601
+  selector:
+    service: kibana
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: kibana
+  name: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: kibana
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: kibana
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount }}
+      #imagePullSecrets:
+      #- name: fuel-local
+      containers:
+      - name: kibana
+        image: "{{ .Values.kibana.image }}:{{ .Values.kibana.tag }}"
+        env:
+        - name: SERVER_HOST
+          value: 0.0.0.0
+        - name: ELASTICSEARCH_HOSTS
+          value: http://elasticsearch:9200
+        ports:
+        - containerPort: 5601
+        readinessProbe:
+          tcpSocket:
+            port: 5601
+          initialDelaySeconds: 300
+          periodSeconds: 3
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        {{- if not .Values.disableResourceLimits }}
+        resources:
+        {{- .Values.resourceProfile.kibana | toYaml | nindent 10 }}
+        {{- end }}
+{{ end }}
+{{ end }}

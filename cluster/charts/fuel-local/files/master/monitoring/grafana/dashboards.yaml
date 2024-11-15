@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: kfs-dashboards
+    disableDeletion: true
+    editable: false
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

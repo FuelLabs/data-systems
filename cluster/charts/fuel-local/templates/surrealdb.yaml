@@ -1,0 +1,88 @@
+{{ if .Values.surrealdb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-surrealdb
+  labels:
+    app: surrealdb
+spec:
+  type: {{ .Values.surrealdb.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.surrealdb.service.port }}
+      targetPort: {{ .Values.surrealdb.service.targetPort }}
+      protocol: TCP
+  selector:
+    app: surrealdb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: surrealdb
+  labels:
+    app: surrealdb
+spec:
+  replicas: {{ .Values.surrealdb.replicaCount }}
+  selector:
+    matchLabels:
+      app: surrealdb
+  template:
+    metadata:
+      labels:
+        app: surrealdb
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount }}
+      containers:
+        - name: surrealdb
+          image: "{{ .Values.surrealdb.image.repository }}:{{ .Values.surrealdb.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.surrealdb.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.surrealdb.service.port }}
+              protocol: TCP
+          command:
+            - surreal
+          args:
+            - {{ .Values.surrealdb.args | join " " }}
+          env:
+            - name: SURREAL_NO_BANNER
+              value: "true"
+            - name: SURREAL_PATH
+              value: "{{ .Values.surrealdb.path }}"
+            - name: SURREAL_LOG
+              value: "{{ .Values.surrealdb.log }}"
+            - name: SURREAL_BIND
+              value: "0.0.0.0:{{ .Values.surrealdb.port }}"
+            {{- if .Values.surrealdb.initial_user }}
+            - name: SURREAL_USER
+              value: "{{ .Values.surrealdb.initial_user }}"
+            {{- end }}
+            {{- if .Values.surrealdb.initial_pass }}
+            - name: SURREAL_PASS
+              value: "{{ .Values.surrealdb.initial_pass }}"
+            {{- end }}
+          resources:
+            {{- toYaml .Values.surrealdb.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          {{- if .Values.surrealdb.volumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.surrealdb.volumeMounts | nindent 12 }}
+          {{- end }}
+      {{- if .Values.surrealdb.volumes }}
+      volumes:
+        {{- toYaml .Values.surrealdb.volumes | nindent 8 }}
+      {{- end }}
+      nodeSelector:
+        {{- toYaml .Values.surrealdb.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.surrealdb.tolerations | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.surrealdb.affinity | nindent 8 }}
+{{ end }}

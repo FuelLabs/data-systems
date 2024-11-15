@@ -1,0 +1,177 @@
+# general settings
+namespace: fuel-local
+clusterBaseUrl: svc.cluster.local
+
+docker:
+  registry: registry.dev.svc.cluster.local:5000
+
+ingress:
+  enabled: true
+roles:
+  create: true
+
+serviceAccount: local-fuel-serviceaccount
+
+kibanaDomain: local-kibana.fuel.com
+
+disableResourceLimits: true
+waitForServiceDependencies: false
+
+# pvc
+fuelSharedMnt:
+  accessModes:
+    value: "ReadWriteMany"
+  storageClassName:
+    enabled: false
+    value: "aws-efs"
+  enableHostPath: false
+  type: DirectoryOrCreate
+  hostPath: "/tmp/fuel-shared-mount"
+
+# Only start absolutely required jobs
+onlyRequiredBaseServices: false
+
+# service settings
+gqlApi:
+  enabled: false
+  image: "gql-api"
+  tag: "latest"
+  env: "dev"
+  configFilesFolders: {}
+
+nearApi:
+  enabled: false
+  image: "near-api"
+  tag: "latest"
+  env: "dev"
+  configFilesFolders: {}
+
+grafana:
+  image: "grafana/grafana"
+  tag: "7.2.1"
+
+prometheus:
+  image: "prom/prometheus"
+  tag: "v2.22.0"
+
+elasticsearch:
+  enabled: false
+  storage: "100Mi"
+  image: "docker.elastic.co/elasticsearch/elasticsearch"
+  tag: "7.10.2"
+  configFilesFolders: {}
+
+monitoring:
+  enabled: false
+  configFilesFolders: {}
+
+jaeger:
+  enabled: false
+  image: "jaegertracing/all-in-one"
+  tag: "latest"
+
+kibana:
+  enabled: false
+
+nearNode:
+  enabled: true
+  configFilesFolders: {}
+
+surrealdb:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: surrealdb/surrealdb
+    pullPolicy: IfNotPresent
+    tag: latest
+  args: ["start"]
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  path: "memory"
+  log: "info"
+  port: 8000
+  initial_user: "root"
+  initial_pass: "root"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  volumes: []
+  volumeMounts: []
+
+fuel-streams-publisher:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/fuellabs/fuel-streams-publisher
+    pullPolicy: IfNotPresent
+    tag: 7e14a2a
+  service:
+    type: ClusterIP
+    port: 3000
+    metrics_port: 9000
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  volumeMounts: []
+
+# Resource profiles for all containers.
+# This allows to easily override requests and limits via additional values file.
+resourceProfile:
+  gqlApi:
+    requests:
+      cpu: 0.05
+      memory: 300Mi
+    limits:
+      cpu: 0.3
+      memory: 600Mi
+  nearApi:
+    requests:
+      cpu: 0.05
+      memory: 300Mi
+    limits:
+      cpu: 0.3
+      memory: 600Mi
+  grafana:
+    requests:
+      cpu: 0.05
+      memory: 10Mi
+    limits:
+      cpu: 1
+      memory: 500Mi
+  prometheus:
+    requests:
+      cpu: 0.05
+      memory: 10Mi
+    limits:
+      cpu: 1
+      memory: 500Mi
+  elasticsearch:
+    requests:
+      cpu: 0.05
+      memory: 500Mi
+    limits:
+      cpu: 0.5
+      memory: 2Gi
+  kibana:
+    requests:
+      cpu: 0.05
+      memory: 400Mi
+    limits:
+      cpu: 0.2
+      memory: 700Mi
+  jaeger:
+    requests:
+      cpu: 0.05
+      memory: 400Mi
+    limits:
+      cpu: 0.2
+      memory: 700Mi
+  surrealdb:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"

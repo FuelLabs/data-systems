@@ -7,6 +7,7 @@ COMMANDS ?= rustup npm pre-commit docker python3
 RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
 RUST_VERSION ?= 1.81.0
 VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
+TILTFILE ?= ./Tiltfile
 
 PORT ?= 4000
 MODE ?= profiling
@@ -317,6 +318,17 @@ docs-serve: docs
 
 bench:
 	cargo bench -p data-parser -p nats-publisher -p bench-consumers
+
+# ------------------------------------------------------------
+#  Local cluster (Tilt)
+# ------------------------------------------------------------
+
+tilt_%:
+	@tilt --file ${TILTFILE} $* $(ARGS)
+
+cluster_up:   %: tilt_%  ## Start Tiltfile services.
+cluster_down: %: tilt_%  ## Stop Tiltfile services.
+cluster_reset: down up   ## Reset Tiltfile services.
 
 # ------------------------------------------------------------
 #  Help
