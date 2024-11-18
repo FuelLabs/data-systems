@@ -13,17 +13,15 @@ use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::publisher::{
-    packets::{PublishError, PublishOpts, PublishPacket},
-    payloads::identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
-};
+use super::identifiers::{Identifier, IdsExtractable, PacketIdBuilder};
+use crate::packets::{PublishOpts, PublishPacket};
 
 pub fn publish_tasks(
     tx: &Transaction,
     tx_id: &Bytes32,
     stream: &Stream<Input>,
     opts: &Arc<PublishOpts>,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let packets: Vec<PublishPacket<Input>> = tx
         .inputs()
         .par_iter()
@@ -170,7 +168,7 @@ impl IdsExtractable for Input {
         };
 
         if let Some((predicate_bytecode, _, _)) = self.predicate() {
-            let predicate_tag = crate::sha256(predicate_bytecode);
+            let predicate_tag = super::sha256(predicate_bytecode);
             ids.push(Identifier::PredicateID(
                 tx_id.to_owned(),
                 index,

@@ -1,20 +1,9 @@
 use std::sync::Arc;
 
 use fuel_streams_core::prelude::*;
-use thiserror::Error;
 use tokio::{sync::Semaphore, task::JoinHandle};
 
 use crate::telemetry::Telemetry;
-
-#[derive(Error, Debug)]
-pub enum PublishError {
-    #[error("Failed to publish to stream: {0}")]
-    StreamPublish(String),
-    #[error("Semaphore acquisition failed: {0}")]
-    Semaphore(#[from] tokio::sync::AcquireError),
-    #[error("Unknown error: {0}")]
-    Unknown(String),
-}
 
 #[derive(Clone)]
 pub struct PublishOpts {
@@ -43,7 +32,7 @@ impl<T: Streamable + 'static> PublishPacket<T> {
         &self,
         stream: Arc<Stream<T>>,
         opts: &Arc<PublishOpts>,
-    ) -> JoinHandle<Result<(), PublishError>> {
+    ) -> JoinHandle<anyhow::Result<()>> {
         let stream = Arc::clone(&stream);
         let opts = Arc::clone(opts);
         let payload = Arc::clone(&self.payload);
@@ -52,11 +41,7 @@ impl<T: Streamable + 'static> PublishPacket<T> {
         let wildcard = self.subject.wildcard();
 
         tokio::spawn(async move {
-            let _permit = opts
-                .semaphore
-                .acquire()
-                .await
-                .map_err(PublishError::Semaphore)?;
+            let _permit = opts.semaphore.acquire().await?;
 
             match stream.publish(&*subject, &payload).await {
                 Ok(published_data_size) => {
@@ -82,7 +67,7 @@ impl<T: Streamable + 'static> PublishPacket<T> {
                         &e.to_string(),
                     );
 
-                    Err(PublishError::StreamPublish(e.to_string()))
+                    anyhow::bail!("Failed to publish: {}", e.to_string())
                 }
             }
         })
