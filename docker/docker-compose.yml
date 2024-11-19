@@ -11,6 +11,7 @@ services:
     ports:
       - 4222:4222
       - 8222:8222
+      - 5000:5000
     volumes:
       - ./nats.conf:/etc/nats/nats.conf
     command:
