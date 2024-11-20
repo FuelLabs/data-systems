@@ -1,5 +1,6 @@
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
+use fuel_streams_types::Block;
 use futures::{future::try_join_all, StreamExt};
 use pretty_assertions::assert_eq;
 use streams_tests::{publish_blocks, publish_transactions, server_setup};
@@ -16,7 +17,7 @@ async fn blocks_streams_subscribe() {
     while let Some((i, bytes)) = sub.next().await {
         let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
         let (subject, block) = items[i].to_owned();
-        let height = *decoded_msg.payload.header().consensus().height;
+        let height = decoded_msg.payload.height;
 
         assert_eq!(decoded_msg.subject, subject.parse());
         assert_eq!(decoded_msg.payload, block);
@@ -55,7 +56,7 @@ async fn blocks_streams_subscribe_with_filter() {
         let message = message.unwrap();
         let decoded_msg =
             Block::decode_raw(message.payload.clone().into()).await;
-        let height = *decoded_msg.payload.header().consensus().height;
+        let height = decoded_msg.payload.height;
         assert_eq!(height, 5);
         if height == 5 {
             break;
@@ -147,7 +148,7 @@ async fn multiple_subscribers_same_subject() {
             while let Some((i, bytes)) = sub.next().await {
                 let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
                 let (subject, block) = items[i].to_owned();
-                let height = *decoded_msg.payload.header().consensus().height;
+                let height = decoded_msg.payload.height;
 
                 assert_eq!(decoded_msg.subject, subject.parse());
                 assert_eq!(decoded_msg.payload, block);
@@ -206,7 +207,7 @@ async fn multiple_subscribers_different_subjects() {
             while let Some((i, bytes)) = sub.next().await {
                 let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
                 let (subject, block) = items[i].to_owned();
-                let height = *decoded_msg.payload.header().consensus().height;
+                let height = decoded_msg.payload.height;
 
                 assert_eq!(decoded_msg.subject, subject.parse());
                 assert_eq!(decoded_msg.payload, block);

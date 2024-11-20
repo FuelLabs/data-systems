@@ -19,6 +19,7 @@ dotenvy = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
+fuel-streams-types = { workspace = true }
 futures = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
 rand = { workspace = true }
@@ -29,6 +30,7 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+serde_json = { workspace = true }
 
 [features]
 default = []

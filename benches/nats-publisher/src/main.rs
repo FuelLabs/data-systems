@@ -2,6 +2,7 @@ mod utils;
 
 use clap::Parser;
 use fuel_core_importer::ports::ImporterDatabase;
+use fuel_streams_types::Consensus;
 use utils::{blocks::BlockHelper, nats::NatsHelper, tx::TxHelper};
 
 #[derive(Parser)]
@@ -38,6 +39,7 @@ async fn main() -> anyhow::Result<()> {
     // OLD BLOCKS
     // ------------------------------------------------------------------------
     tokio::task::spawn({
+        let database = database.clone();
         let block_helper = block_helper.clone();
         let _tx_helper = tx_helper.clone();
         let last_height = database.on_chain().latest_block_height()?.unwrap();
@@ -45,6 +47,11 @@ async fn main() -> anyhow::Result<()> {
             for height in 0..*last_height {
                 let height = height.into();
                 let block = block_helper.find_by_height(height);
+                let block = fuel_streams_types::Block::new(
+                    &block,
+                    Consensus::default(),
+                );
+
                 block_helper.publish(&block).await?;
                 // for (index, tx) in block.transactions().iter().enumerate() {
                 //     tx_helper.publish(&block, tx, index).await?;
@@ -61,7 +68,9 @@ async fn main() -> anyhow::Result<()> {
     while let Ok(result) = subscription.recv().await {
         let result = &**result;
         let block = &result.sealed_block.entity;
-        block_helper.publish(block).await?;
+        let block = fuel_streams_types::Block::new(block, Consensus::default());
+
+        block_helper.publish(&block).await?;
         // for (index, tx) in block.transactions().iter().enumerate() {
         //     tx_helper.publish(block, tx, index).await?;
         // }

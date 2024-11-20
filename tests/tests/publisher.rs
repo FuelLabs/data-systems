@@ -285,7 +285,7 @@ fn send_block(broadcaster: &Sender<ImporterResult>) {
     assert!(broadcaster.send(block).is_ok());
 }
 fn create_test_block() -> ImporterResult {
-    let mut block_entity = Block::default();
+    let mut block_entity = FuelCoreBlock::default();
     let tx = Transaction::default_test_tx();
 
     *block_entity.transactions_mut() = vec![tx];

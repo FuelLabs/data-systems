@@ -9,6 +9,7 @@ use std::{
 
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::*;
+use fuel_streams_types::Block;
 use futures::StreamExt;
 use rand::Rng;
 use streams_tests::{publish_blocks, server_setup};
@@ -114,7 +115,7 @@ async fn main() -> BoxedResult<()> {
                     println!("Valid subscription");
                     let decoded_msg = Block::decode_raw(bytes).await;
                     let (subject, block) = items[index.unwrap()].to_owned();
-                    let height = *decoded_msg.payload.header().consensus().height;
+                    let height = decoded_msg.payload.height;
                     assert_eq!(decoded_msg.subject, subject.parse());
                     assert_eq!(decoded_msg.payload, block);
                     assert_eq!(height, index.unwrap() as u32);

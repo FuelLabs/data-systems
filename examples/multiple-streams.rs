@@ -20,6 +20,7 @@ use fuel_streams::{
     StreamConfig,
     StreamEncoder,
 };
+use fuel_streams_types::Block;
 use futures::{future::try_join_all, StreamExt};
 
 const FUEL_STREAMING_SERVICE_URL: &str = "nats:://fuel-streaming.testnet:4222";
@@ -130,7 +131,7 @@ async fn stream_blocks(
     };
     while let Some(bytes) = sub.next().await {
         let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
-        let block_height = *decoded_msg.payload.header().consensus().height;
+        let block_height = decoded_msg.payload.height;
         let block_subject = decoded_msg.subject;
         let block_published_at = decoded_msg.timestamp;
         println!(

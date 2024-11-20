@@ -21,6 +21,7 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-core = { workspace = true }
+fuel-streams-types = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

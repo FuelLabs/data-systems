@@ -35,7 +35,10 @@ impl BlockHelper {
             .entity
     }
 
-    pub async fn publish(&self, block: &Block) -> anyhow::Result<()> {
+    pub async fn publish(
+        &self,
+        block: &fuel_streams_types::Block,
+    ) -> anyhow::Result<()> {
         try_join!(
             self.publish_core(block),
             self.publish_encoded(block),
@@ -47,7 +50,10 @@ impl BlockHelper {
 
 /// Publisher
 impl BlockHelper {
-    async fn publish_core(&self, block: &Block) -> anyhow::Result<()> {
+    async fn publish_core(
+        &self,
+        block: &fuel_streams_types::Block,
+    ) -> anyhow::Result<()> {
         let subject: BlocksSubject = block.into();
         let payload = self.nats.data_parser().encode(block).await?;
         self.nats
@@ -57,8 +63,11 @@ impl BlockHelper {
 
         Ok(())
     }
-    async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
-        let height = self.get_height(block);
+    async fn publish_encoded(
+        &self,
+        block: &fuel_streams_types::Block,
+    ) -> anyhow::Result<()> {
+        let height = block.height;
         let subject: BlocksSubject = block.into();
         let payload = self.nats.data_parser().encode(block).await?;
         let nats_payload = Publish::build()
@@ -78,8 +87,11 @@ impl BlockHelper {
         Ok(())
     }
 
-    async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
-        let height = self.get_height(block);
+    async fn publish_to_kv(
+        &self,
+        block: &fuel_streams_types::Block,
+    ) -> anyhow::Result<()> {
+        let height = block.height;
         let subject: BlocksSubject = block.into();
 
         let payload = self.nats.data_parser().encode(block).await?;
@@ -90,12 +102,5 @@ impl BlockHelper {
 
         info!("NATS: publishing block {} to kv store \"blocks\"", height);
         Ok(())
-    }
-}
-
-/// Getters
-impl BlockHelper {
-    fn get_height(&self, block: &Block) -> u32 {
-        *block.header().consensus().height
     }
 }

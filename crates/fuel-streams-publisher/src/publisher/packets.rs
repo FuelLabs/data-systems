@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use fuel_streams_core::prelude::*;
+use fuel_streams_types::Consensus;
 use tokio::{sync::Semaphore, task::JoinHandle};
 
 use crate::telemetry::Telemetry;
@@ -12,16 +13,17 @@ pub struct PublishOpts {
     pub block_producer: Arc<Address>,
     pub block_height: Arc<BlockHeight>,
     pub telemetry: Arc<Telemetry>,
+    pub consensus: Arc<Consensus>,
 }
 
 // PublishPacket Struct
-pub struct PublishPacket<S: Streamable + 'static> {
+pub struct PublishPacket<S: Streamable> {
     subject: Arc<dyn IntoSubject>,
     payload: Arc<S>,
 }
 
-impl<T: Streamable + 'static> PublishPacket<T> {
-    pub fn new(payload: &T, subject: Arc<dyn IntoSubject>) -> Self {
+impl<S: Streamable + 'static> PublishPacket<S> {
+    pub fn new(payload: &S, subject: Arc<dyn IntoSubject>) -> Self {
         Self {
             subject,
             payload: Arc::new(payload.clone()), // Assuming T: Clone
@@ -30,7 +32,7 @@ impl<T: Streamable + 'static> PublishPacket<T> {
 
     pub fn publish(
         &self,
-        stream: Arc<Stream<T>>,
+        stream: Arc<Stream<S>>,
         opts: &Arc<PublishOpts>,
     ) -> JoinHandle<anyhow::Result<()>> {
         let stream = Arc::clone(&stream);

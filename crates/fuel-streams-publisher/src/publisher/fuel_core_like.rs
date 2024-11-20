@@ -3,19 +3,21 @@ use std::sync::Arc;
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::database_description::DatabaseHeight,
+    fuel_core_graphql_api::ports::DatabaseBlocks,
 };
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
-    blockchain::consensus::Sealed,
+    blockchain::consensus::{Consensus, Sealed},
     fuel_tx::Bytes32,
+    fuel_types::BlockHeight,
     tai64::Tai64,
 };
 use fuel_streams_core::types::{
     Address,
-    Block,
     ChainId,
+    FuelCoreBlock,
     FuelCoreTransactionStatus,
     Receipt,
 };
@@ -50,23 +52,48 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn get_block_and_producer_by_height(
         &self,
-        height: u64,
-    ) -> anyhow::Result<(Block, Address)> {
+        height: u32,
+    ) -> anyhow::Result<(FuelCoreBlock, Address)> {
         let sealed_block = self
             .database()
             .on_chain()
             .latest_view()?
-            .get_sealed_block_by_height(&(height as u32).into())?
+            .get_sealed_block_by_height(&(height).into())?
             .expect("NATS Publisher: no block at height {height}");
 
         Ok(self.get_block_and_producer(&sealed_block))
     }
 
     #[cfg(not(feature = "test-helpers"))]
+    fn get_consensus(
+        &self,
+        block_height: &BlockHeight,
+    ) -> anyhow::Result<Consensus> {
+        Ok(self
+            .database()
+            .on_chain()
+            .latest_view()?
+            .consensus(block_height)?)
+    }
+
+    #[cfg(feature = "test-helpers")]
+    fn get_consensus(
+        &self,
+        block_height: &BlockHeight,
+    ) -> anyhow::Result<Consensus> {
+        Ok(self
+            .database()
+            .on_chain()
+            .latest_view()?
+            .consensus(block_height)
+            .unwrap_or_default())
+    }
+
+    #[cfg(not(feature = "test-helpers"))]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
+        sealed_block: &Sealed<FuelCoreBlock>,
+    ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus
@@ -79,8 +106,8 @@ pub trait FuelCoreLike: Sync + Send {
     #[cfg(feature = "test-helpers")]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
+        sealed_block: &Sealed<FuelCoreBlock>,
+    ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus
@@ -90,7 +117,7 @@ pub trait FuelCoreLike: Sync + Send {
         (block, block_producer.into())
     }
 
-    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<Block> {
+    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<FuelCoreBlock> {
         self.database()
             .on_chain()
             .latest_view()

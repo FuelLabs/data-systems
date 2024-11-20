@@ -5,9 +5,8 @@ pub use fuel_core_types::{
     fuel_tx::Transaction,
     services::txpool::TransactionStatus as FuelCoreTransactionStatus,
 };
-
 #[cfg(any(test, feature = "test-helpers"))]
-use crate::types::*;
+use fuel_streams_types::Block;
 
 #[derive(Debug, Clone)]
 #[cfg(any(test, feature = "test-helpers"))]

@@ -2,7 +2,6 @@ use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
-    blockchain::block::Block,
     fuel_tx::{Transaction, UniqueIdentifier},
     fuel_types::ChainId,
     services::txpool::TransactionStatus as TxPoolTransactionStatus,
@@ -42,7 +41,7 @@ impl TxHelper {
 
     pub async fn publish(
         &self,
-        block: &Block,
+        block: &fuel_streams_types::Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
@@ -59,7 +58,7 @@ impl TxHelper {
 impl TxHelper {
     async fn publish_core(
         &self,
-        block: &Block,
+        block: &fuel_streams_types::Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
@@ -74,7 +73,7 @@ impl TxHelper {
 
     async fn publish_encoded(
         &self,
-        block: &Block,
+        block: &fuel_streams_types::Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
@@ -100,7 +99,7 @@ impl TxHelper {
 
     async fn publish_to_kv(
         &self,
-        block: &Block,
+        block: &fuel_streams_types::Block,
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
@@ -125,14 +124,14 @@ impl TxHelper {
     fn get_subject(
         &self,
         tx: &Transaction,
-        block: &Block,
+        block: &fuel_streams_types::Block,
         index: usize,
     ) -> TransactionsSubject {
         // construct tx subject
         let mut subject: TransactionsSubject = tx.into();
         subject = subject
             .with_index(Some(index))
-            .with_block_height(Some(BlockHeight::from(self.get_height(block))))
+            .with_block_height(Some(BlockHeight::from(block.height)))
             .with_status(self.get_status(tx).map(Into::into));
         subject
     }
@@ -140,10 +139,6 @@ impl TxHelper {
     fn get_id(&self, tx: &Transaction) -> String {
         let id = tx.id(&self.chain_id).to_string();
         format!("0x{id}")
-    }
-
-    fn get_height(&self, block: &Block) -> u32 {
-        *block.header().consensus().height
     }
 
     fn get_status(&self, tx: &Transaction) -> Option<TxPoolTransactionStatus> {

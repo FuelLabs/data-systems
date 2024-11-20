@@ -26,7 +26,8 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::connect(FUEL_STREAMING_SERVICE_URL).await?;
 
     // Create a new stream for blocks
-    let stream = fuel_streams::Stream::<Block>::new(&client).await;
+    let stream =
+        fuel_streams::Stream::<fuel_streams_types::Block>::new(&client).await;
 
     // Configure the stream to start from the last published block
     let config = StreamConfig {
@@ -41,7 +42,9 @@ async fn main() -> anyhow::Result<()> {
     // Process incoming blocks
     while let Some(bytes) = sub.next().await {
         let message = bytes?;
-        let decoded_msg = Block::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg =
+            fuel_streams_types::Block::decode_raw(message.payload.to_vec())
+                .await;
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;
 

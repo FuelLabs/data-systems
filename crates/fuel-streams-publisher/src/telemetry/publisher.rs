@@ -149,7 +149,7 @@ impl PublisherMetrics {
 // TODO: Will this be useful in the future?
 pub fn add_block_metrics(
     chain_id: &ChainId,
-    block: &Block<Transaction>,
+    block: &FuelCoreBlock<Transaction>,
     block_producer: &Address,
     metrics: &Arc<PublisherMetrics>,
 ) -> anyhow::Result<Arc<PublisherMetrics>> {

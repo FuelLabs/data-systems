@@ -6,10 +6,10 @@ pub mod streams;
 
 use std::sync::Arc;
 
-use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_importer::ImporterResult;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
+use fuel_streams_types::Consensus;
 use futures::{future::try_join_all, stream::FuturesUnordered};
 pub use streams::Streams;
 use tokio::sync::{broadcast::error::RecvError, Semaphore};
@@ -113,8 +113,8 @@ impl Publisher {
             .blocks
             .get_last_published(BlocksSubject::WILDCARD)
             .await?;
-        let last_published_height = last_published_block
-            .map(|block| block.header().height().as_u64())
+        let last_published_height: u64 = last_published_block
+            .map(|block| block.height.into())
             .unwrap_or(0);
 
         // Catch up the streams with the FuelCore
@@ -204,17 +204,18 @@ impl Publisher {
 
     async fn publish(
         &self,
-        block: &Block<Transaction>,
+        block: &FuelCoreBlock<Transaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
         let start_time = std::time::Instant::now();
 
-        let fuel_core = &*self.fuel_core;
         let semaphore = Arc::new(Semaphore::new(*PUBLISHER_MAX_THREADS));
         let chain_id = Arc::new(*self.fuel_core.chain_id());
         let block_producer = Arc::new(block_producer.clone());
         let block_height = block.header().consensus().height;
         let txs = block.transactions();
+        let consensus: Consensus =
+            self.fuel_core.get_consensus(&block_height)?.into();
 
         let streams = (*self.streams).clone();
         let block_stream = Arc::new(streams.blocks.to_owned());
@@ -224,8 +225,10 @@ impl Publisher {
             block_producer: Arc::clone(&block_producer),
             block_height: Arc::new(block_height.into()),
             telemetry: self.telemetry.clone(),
+            consensus: Arc::new(consensus),
         });
 
+        let fuel_core = &*self.fuel_core;
         let publish_tasks = payloads::transactions::publish_all_tasks(
             txs, streams, opts, fuel_core,
         )

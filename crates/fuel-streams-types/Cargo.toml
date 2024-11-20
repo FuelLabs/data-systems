@@ -1,0 +1,15 @@
+[package]
+name = "fuel-streams-types"
+description = "House all the types for fuel-streams for publishing and subcribing -- end users should only care about these types when subscribing to our streams. Overtime, these types would move into the fuel-streams-core and have the existing types there prefixed with `FuelCore`"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+fuel-core-types = { workspace = true }
+serde = { workspace = true }

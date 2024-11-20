@@ -1,10 +1,11 @@
 use fuel_streams_core::{
     nats::{NatsClient, NatsClientOpts},
-    types::{Block, ChainId, DeliverPolicy, Transaction, UniqueIdentifier},
+    types::{ChainId, DeliverPolicy, Transaction, UniqueIdentifier},
     StreamEncoder,
     Streamable,
     SubscribeConsumerConfig,
 };
+use fuel_streams_types::Block;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use surrealdb::{
@@ -19,7 +20,7 @@ static NATS_URL: &str = "nats://k8s-testnet-natstcp-8b9c299ba6-ebcb488b60030e81.
 #[derive(Debug, Serialize, Deserialize)]
 struct BlockRecord {
     id: Thing,
-    data: Block,
+    data: fuel_streams_types::Block,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,8 +73,9 @@ async fn sync_blocks(
 
     while let Some(msg) = subscription.next().await {
         let msg = msg?;
-        let block = Block::decode(msg.payload.clone().into()).await;
-        let height = *block.header().consensus().height;
+        let block =
+            fuel_streams_types::Block::decode(msg.payload.clone().into()).await;
+        let height = block.height;
         let id = height.to_string();
         let key = ("block".to_string(), id.clone());
         let record: Option<BlockRecord> = db
