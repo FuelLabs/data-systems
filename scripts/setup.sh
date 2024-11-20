@@ -16,6 +16,7 @@ rustup toolchain install nightly-2024-11-06 -c rustfmt
 # Install cargo global crates
 cargo install cargo-binstall
 cargo install cargo-tarpaulin
+cargo install --features=ssl websocat
 cargo install samply --locked
 cargo install cargo-audit --locked --features=fix
 cargo install cargo-nextest --locked --features=fix
