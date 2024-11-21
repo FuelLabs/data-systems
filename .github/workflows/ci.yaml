@@ -146,6 +146,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Protobuf Compiler
+        run: sudo apt-get install -y protobuf-compiler
+
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -175,6 +178,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Protobuf Compiler
+        run: sudo apt-get install -y protobuf-compiler
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust

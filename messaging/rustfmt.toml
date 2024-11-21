@@ -1,0 +1,13 @@
+edition = "2021"
+merge_imports = true
+normalize_comments = true
+unstable_features = true
+wrap_comments = true
+reorder_imports = true
+imports_granularity = "Crate"
+use_small_heuristics = "Max"
+comment_width = 100
+binop_separator = "Back"
+trailing_comma = "Vertical"
+trailing_semicolon = false
+use_field_init_shorthand = true
