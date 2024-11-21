@@ -1,3 +1,24 @@
+## 0.0.12 (2024-11-20)
+
+### 🚀 Features
+
+-   Add initial indexer project with SurrealDB (#244)
+-   Republish last block to ensure no missing data (#281)
+-   Added publisher logging (#280)
+-   Upgraded to latest nightly rust version (#304)
+-   Introduce Telemetry (#299)
+-   Added entries max retention time (#309)
+-   Restructured publisher into smaller modules (#310)
+-   Added local websocket for nats (#315)
+
+### 🐛 Fixes
+
+-   Rollback fuel-core version to 0.38
+-   Added panic hooks and reworked graceful shutdown (#278)
+-   Missing by id subjects (#282)
+-   Enable publish multi ById subjects (#294)
+-   Fixed profiling script (#311)
+
 ## 0.0.11 (2024-10-15)
 
 ### 🚀 Features
