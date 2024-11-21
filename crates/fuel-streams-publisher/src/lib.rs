@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod grpc;
 pub mod publisher;
 pub mod server;
 pub mod telemetry;

@@ -1,0 +1,18 @@
+
+syntax = "proto3";
+
+package fuel_streamer;
+
+service BtcServer {
+    rpc StreamBlocks(StreamBlocksRequestFilter) returns (StreamBlocksResponse) {}
+}
+
+message StreamBlocksRequestFilter {
+    uint64 from = 1;
+    uint64 to = 2;
+}
+
+message StreamBlocksResponse {
+    string type = 1;
+    bytes data = 2;
+}

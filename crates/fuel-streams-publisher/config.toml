@@ -1,0 +1,29 @@
+[grpc]
+# whether to enable gRPC reflection(introspection)
+enable-reflection = true
+# which compression encodings does the server accept for requests
+accept-compressed = "Gzip"
+# which compression encodings might the server use for responses
+send-compressed = "Gzip"
+# limits the maximum size of a decoded message. Defaults to 50MB
+max-decoding-message-size = 52428800
+# limits the maximum size of an encoded message. Defaults to 50MB
+max-encoding-message-size = 52428800
+# limits the maximum size of streaming channel
+max-channel-size = 128
+# set a timeout on for all request handlers in seconds. Defaults to 60s
+timeout = 180
+# sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+max-frame-size = 16777215
+# set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+concurrency-limit-per-connection = 32
+# sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
+max-concurrent-streams = 1024
+# set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+tcp-nodelay = true
+# max number of future periods considered during requests
+draw-lookahead-period-count = 10
+# set whether HTTP2 Ping frames are enabled on accepted connections. Default is no HTTP2 keepalive (`None`)
+http2-keepalive-interval = 180
+# sets a timeout for receiving an acknowledgement of the keepalive ping. Default is 20 seconds
+http2-keepalive-timeout = 60
