@@ -51,7 +51,7 @@ mod tests {
 
         let expected_json = json!({
             "consensus": {
-                "type": "Genesis",
+                "kind": "Genesis",
                 "chain_config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
                 "coins_root": "0000000000000000000000000000000000000000000000000000000000000000",
                 "contracts_root": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -61,20 +61,20 @@ mod tests {
             "header": {
                 "application_hash": "0000000000000000000000000000000000000000000000000000000000000000",
                 "consensus_parameters_version": 1,
-                "da_height": header.da_height,
+                "da_height": 1000,
                 "event_inbox_root": "0101010101010101010101010101010101010101010101010101010101010101",
-                "height": header.height,
+                "height": 42,
                 "id": "",
                 "message_outbox_root": "0303030303030303030303030303030303030303030303030303030303030303",
-                "message_receipt_count": header.message_receipt_count,
+                "message_receipt_count": 10,
                 "prev_root": "0404040404040404040404040404040404040404040404040404040404040404",
-                "state_transition_bytecode_version": header.state_transition_bytecode_version,
+                "state_transition_bytecode_version": 2,
                 "time": [0, 0, 0, 0, 101, 44, 62, 128],
-                "transactions_count": header.transactions_count,
+                "transactions_count": 5,
                 "transactions_root": "0505050505050505050505050505050505050505050505050505050505050505",
                 "version": "V1"
             },
-            "height": block.height,
+            "height": 42,
             "id": "",
             "transactions": [],
             "version": "V1"

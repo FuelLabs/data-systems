@@ -1,8 +1,7 @@
 use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::{blockchain::block::Block, fuel_types::BlockHeight};
-use fuel_streams_core::{blocks::BlocksSubject, prelude::IntoSubject};
+use fuel_streams_core::prelude::*;
 use tokio::try_join;
 use tracing::info;
 
@@ -22,7 +21,7 @@ impl BlockHelper {
         }
     }
 
-    pub fn find_by_height(&self, height: BlockHeight) -> Block {
+    pub fn find_by_height(&self, height: FuelCoreBlockHeight) -> FuelCoreBlock {
         self.database
             .on_chain()
             .latest_view()
@@ -58,7 +57,7 @@ impl BlockHelper {
         Ok(())
     }
     async fn publish_encoded(&self, block: &Block) -> anyhow::Result<()> {
-        let height = self.get_height(block);
+        let height = block.height;
         let subject: BlocksSubject = block.into();
         let payload = self.nats.data_parser().encode(block).await?;
         let nats_payload = Publish::build()
@@ -79,7 +78,7 @@ impl BlockHelper {
     }
 
     async fn publish_to_kv(&self, block: &Block) -> anyhow::Result<()> {
-        let height = self.get_height(block);
+        let height = block.height;
         let subject: BlocksSubject = block.into();
 
         let payload = self.nats.data_parser().encode(block).await?;
@@ -90,12 +89,5 @@ impl BlockHelper {
 
         info!("NATS: publishing block {} to kv store \"blocks\"", height);
         Ok(())
-    }
-}
-
-/// Getters
-impl BlockHelper {
-    fn get_height(&self, block: &Block) -> u32 {
-        *block.header().consensus().height
     }
 }
