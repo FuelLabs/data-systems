@@ -134,15 +134,6 @@ pub struct TransactionsSubject {
     pub kind: Option<TransactionKind>,
 }
 
-// impl From<&FuelCoreTransaction> for TransactionsSubject {
-//     fn from(value: &FuelCoreTransaction) -> Self {
-//         let subject = TransactionsSubject::new();
-//         let tx_id = value.cached_id().unwrap();
-//         let kind = TransactionKind::from(value.to_owned());
-//         subject.with_tx_id(Some(tx_id.into())).with_kind(Some(kind))
-//     }
-// }
-
 impl From<&Transaction> for TransactionsSubject {
     fn from(transaction: &Transaction) -> Self {
         let subject = TransactionsSubject::new();

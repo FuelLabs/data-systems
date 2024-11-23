@@ -20,6 +20,7 @@ use tokio::sync::broadcast::{self, Receiver, Sender};
 
 struct TestFuelCore {
     chain_id: ChainId,
+    base_asset_id: AssetId,
     database: CombinedDatabase,
     blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     receipts: Option<Vec<FuelCoreReceipt>>,
@@ -31,6 +32,7 @@ impl TestFuelCore {
     ) -> Self {
         Self {
             chain_id: ChainId::default(),
+            base_asset_id: AssetId::zeroed(),
             database: CombinedDatabase::default(),
             blocks_broadcaster,
             receipts: None,
@@ -54,7 +56,7 @@ impl FuelCoreLike for TestFuelCore {
     async fn stop(&self) {}
 
     fn base_asset_id(&self) -> &AssetId {
-        unimplemented!()
+        &self.base_asset_id
     }
     fn chain_id(&self) -> &ChainId {
         &self.chain_id
@@ -277,10 +279,10 @@ async fn stop_publisher(shutdown_controller: Arc<ShutdownController>) {
 }
 
 async fn wait_for_publisher_to_start() {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 async fn wait_for_publisher_to_process_block() {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 }
 
 fn send_block(broadcaster: &Sender<ImporterResult>) {
