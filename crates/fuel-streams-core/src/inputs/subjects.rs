@@ -1,6 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject};
-
-use crate::types::*;
+use crate::prelude::*;
 
 /// Represents a subject for querying inputs by their identifier in the Fuel ecosystem.
 ///

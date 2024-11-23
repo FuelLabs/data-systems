@@ -1,6 +1,6 @@
 #[cfg(any(test, feature = "test-helpers"))]
 use std::pin::Pin;
-use std::{fmt::Debug, time::Duration};
+use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use async_nats::{
     jetstream::{
@@ -12,7 +12,7 @@ use async_nats::{
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{future, StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
@@ -20,6 +20,21 @@ use crate::{nats::types::*, prelude::NatsClient};
 
 pub const FUEL_BLOCK_TIME_SECS: u64 = 1;
 pub const MAX_RETENTION_BLOCKS: u64 = 100;
+
+#[derive(Clone)]
+pub struct PublishPacket<T: Streamable> {
+    pub subject: Arc<dyn IntoSubject>,
+    pub payload: Arc<T>,
+}
+
+impl<T: Streamable> PublishPacket<T> {
+    pub fn new(payload: T, subject: Arc<dyn IntoSubject>) -> Self {
+        Self {
+            payload: Arc::new(payload),
+            subject,
+        }
+    }
+}
 
 /// Trait for types that can be streamed.
 ///
@@ -46,6 +61,10 @@ pub const MAX_RETENTION_BLOCKS: u64 = 100;
 pub trait Streamable: StreamEncoder {
     const NAME: &'static str;
     const WILDCARD_LIST: &'static [&'static str];
+
+    fn to_packet(&self, subject: Arc<dyn IntoSubject>) -> PublishPacket<Self> {
+        PublishPacket::new(self.clone(), subject)
+    }
 }
 
 /// Houses nats-agnostic APIs for publishing and consuming a streamable type
@@ -126,21 +145,6 @@ impl<S: Streamable> Stream<S> {
             store,
             _marker: std::marker::PhantomData,
         }
-    }
-
-    pub async fn publish_many(
-        &self,
-        subjects: &[Box<dyn IntoSubject>],
-        payload: &S,
-    ) -> Result<(), StreamError> {
-        future::try_join_all(
-            subjects
-                .iter()
-                .map(|subject| self.publish(&**subject, payload)),
-        )
-        .await?;
-
-        Ok(())
     }
 
     pub async fn publish(

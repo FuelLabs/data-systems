@@ -1,6 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject};
-
-use crate::types::*;
+use crate::prelude::*;
 
 /// Represents a subject for logs related to transactions in the Fuel network.
 ///

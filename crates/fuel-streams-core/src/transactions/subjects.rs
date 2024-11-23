@@ -1,8 +1,4 @@
-#![allow(unused)]
-use fuel_core_types::fuel_tx::UniqueIdentifier;
-use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
-
-use crate::{blocks::types::BlockHeight, types::*};
+use crate::prelude::*;
 
 /// Represents a subject for querying transactions by their identifier in the Fuel ecosystem.
 ///
@@ -138,12 +134,21 @@ pub struct TransactionsSubject {
     pub kind: Option<TransactionKind>,
 }
 
+// impl From<&FuelCoreTransaction> for TransactionsSubject {
+//     fn from(value: &FuelCoreTransaction) -> Self {
+//         let subject = TransactionsSubject::new();
+//         let tx_id = value.cached_id().unwrap();
+//         let kind = TransactionKind::from(value.to_owned());
+//         subject.with_tx_id(Some(tx_id.into())).with_kind(Some(kind))
+//     }
+// }
+
 impl From<&Transaction> for TransactionsSubject {
-    fn from(value: &Transaction) -> Self {
+    fn from(transaction: &Transaction) -> Self {
         let subject = TransactionsSubject::new();
-        let tx_id = value.cached_id().unwrap();
-        let kind = TransactionKind::from(value.to_owned());
-        subject.with_tx_id(Some(tx_id.into())).with_kind(Some(kind))
+        subject
+            .with_tx_id(Some(transaction.id.clone()))
+            .with_kind(Some(transaction.kind.clone()))
     }
 }
 
@@ -161,9 +166,6 @@ mod test {
         assert!(subject.index.is_none());
         assert!(subject.status.is_none());
         assert!(subject.kind.is_some());
-        assert_eq!(
-            subject.tx_id.unwrap(),
-            mock_tx.to_owned().cached_id().unwrap().into()
-        );
+        assert_eq!(subject.tx_id.unwrap(), mock_tx.to_owned().id);
     }
 }

@@ -10,23 +10,14 @@ pub mod utxos;
 
 pub mod nats;
 pub mod stream;
+
+pub mod subjects;
+
+mod fuel_core_types;
+mod primitive_types;
 pub mod types;
 
 pub use stream::*;
-
-pub mod subjects {
-    pub use fuel_streams_macros::subject::*;
-
-    pub use crate::{
-        blocks::subjects::*,
-        inputs::subjects::*,
-        logs::subjects::*,
-        outputs::subjects::*,
-        receipts::subjects::*,
-        transactions::subjects::*,
-        utxos::subjects::*,
-    };
-}
 
 pub mod prelude {
     pub use fuel_streams_macros::subject::*;

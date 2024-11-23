@@ -2,8 +2,8 @@ pub mod subjects;
 pub mod types;
 
 pub use subjects::*;
-use types::*;
 
+use super::types::*;
 use crate::{StreamEncoder, Streamable};
 
 impl StreamEncoder for Output {}
