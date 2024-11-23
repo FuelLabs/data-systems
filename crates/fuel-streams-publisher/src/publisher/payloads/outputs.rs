@@ -19,7 +19,11 @@ pub fn publish_tasks(
         .flat_map(|(index, output)| {
             let main_subject = main_subject(output, tx, tx_id, index);
             let identifier_subjects =
-                identifier_subjects(output, tx, tx_id, index as u8);
+                identifiers(output, tx, tx_id, index as u8)
+                    .into_par_iter()
+                    .map(|identifier| identifier.into())
+                    .map(|subject: OutputsByIdSubject| subject.arc())
+                    .collect::<Vec<_>>();
 
             let output: Output = output.into();
 
@@ -106,20 +110,19 @@ fn main_subject(
     }
 }
 
-pub fn identifier_subjects(
+pub fn identifiers(
     output: &FuelCoreOutput,
     tx: &FuelCoreTransaction,
     tx_id: &Bytes32,
     index: u8,
-) -> Vec<Arc<dyn IntoSubject>> {
+) -> Vec<Identifier> {
     match output {
         FuelCoreOutput::Change { to, asset_id, .. }
         | FuelCoreOutput::Variable { to, asset_id, .. }
         | FuelCoreOutput::Coin { to, asset_id, .. } => {
             vec![
-                Identifier::Address(tx_id.to_owned(), index, to.into()).into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::Address(tx_id.to_owned(), index, to.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreOutput::Contract(contract) => {
@@ -129,8 +132,7 @@ pub fn identifier_subjects(
                         tx_id.to_owned(),
                         index,
                         contract_id.into(),
-                    )
-                    .into()]
+                    )]
                 })
                 .unwrap_or_default()
         }
@@ -139,8 +141,7 @@ pub fn identifier_subjects(
                 tx_id.to_owned(),
                 index,
                 contract_id.into(),
-            )
-            .into()]
+            )]
         }
     }
 }

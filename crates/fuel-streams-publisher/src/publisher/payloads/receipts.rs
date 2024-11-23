@@ -17,8 +17,11 @@ pub fn publish_tasks(
         .enumerate()
         .flat_map(|(index, receipt)| {
             let main_subject = main_subject(receipt, tx_id, index);
-            let identifier_subjects =
-                identifier_subjects(receipt, tx_id, index as u8);
+            let identifier_subjects = identifiers(receipt, tx_id, index as u8)
+                .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: ReceiptsByIdSubject| subject.arc())
+                .collect::<Vec<_>>();
 
             let receipt: Receipt = receipt.into();
 
@@ -161,11 +164,11 @@ fn main_subject(
     }
 }
 
-pub fn identifier_subjects(
+pub fn identifiers(
     receipt: &FuelCoreReceipt,
     tx_id: &Bytes32,
     index: u8,
-) -> Vec<Arc<dyn IntoSubject>> {
+) -> Vec<Identifier> {
     match receipt {
         FuelCoreReceipt::Call {
             id: from,
@@ -174,12 +177,9 @@ pub fn identifier_subjects(
             ..
         } => {
             vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into())
-                    .into(),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into())
-                    .into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreReceipt::Return { id, .. }
@@ -188,8 +188,7 @@ pub fn identifier_subjects(
         | FuelCoreReceipt::Revert { id, .. }
         | FuelCoreReceipt::Log { id, .. }
         | FuelCoreReceipt::LogData { id, .. } => {
-            vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())
-                .into()]
+            vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())]
         }
         FuelCoreReceipt::Transfer {
             id: from,
@@ -198,12 +197,9 @@ pub fn identifier_subjects(
             ..
         } => {
             vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into())
-                    .into(),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into())
-                    .into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreReceipt::TransferOut {
@@ -213,22 +209,17 @@ pub fn identifier_subjects(
             ..
         } => {
             vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into())
-                    .into(),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into())
-                    .into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreReceipt::MessageOut {
             sender, recipient, ..
         } => {
             vec![
-                Identifier::Address(tx_id.to_owned(), index, sender.into())
-                    .into(),
-                Identifier::Address(tx_id.to_owned(), index, recipient.into())
-                    .into(),
+                Identifier::Address(tx_id.to_owned(), index, sender.into()),
+                Identifier::Address(tx_id.to_owned(), index, recipient.into()),
             ]
         }
         FuelCoreReceipt::Mint { contract_id, .. }
@@ -237,8 +228,7 @@ pub fn identifier_subjects(
                 tx_id.to_owned(),
                 index,
                 contract_id.into(),
-            )
-            .into()]
+            )]
         }
         _ => Vec::new(),
     }

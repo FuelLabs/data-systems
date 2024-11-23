@@ -108,17 +108,22 @@ fn packets_from_tx(
     let mut packets = vec![transaction.to_packet(main_subject)];
 
     packets.extend(
-        identifier_subjects(tx, tx_id, index as u8)
-            .into_iter()
-            .map(|subject| transaction.to_packet(subject)),
+        identifiers(tx, tx_id, index as u8)
+            .into_par_iter()
+            .map(|identifier| identifier.into())
+            .map(|subject: TransactionsByIdSubject| subject.arc())
+            .map(|subject| transaction.to_packet(subject))
+            .collect::<Vec<_>>(),
     );
 
     let packets_from_inputs: Vec<PublishPacket<Transaction>> = tx
         .inputs()
         .par_iter()
         .flat_map(|input| {
-            inputs::identifier_subjects(input, tx_id, index as u8)
+            inputs::identifiers(input, tx_id, index as u8)
                 .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
                 .map(|subject| transaction.to_packet(subject))
         })
         .collect();
@@ -129,8 +134,10 @@ fn packets_from_tx(
         .outputs()
         .par_iter()
         .flat_map(|output| {
-            outputs::identifier_subjects(output, tx, tx_id, index as u8)
+            outputs::identifiers(output, tx, tx_id, index as u8)
                 .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
                 .map(|subject| transaction.to_packet(subject))
         })
         .collect();
@@ -140,8 +147,10 @@ fn packets_from_tx(
     let packets_from_receipts: Vec<PublishPacket<Transaction>> = receipts
         .par_iter()
         .flat_map(|receipt| {
-            receipts::identifier_subjects(receipt, tx_id, index as u8)
+            receipts::identifiers(receipt, tx_id, index as u8)
                 .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
                 .map(|subject| transaction.to_packet(subject))
         })
         .collect();
@@ -151,16 +160,15 @@ fn packets_from_tx(
     packets
 }
 
-fn identifier_subjects(
+fn identifiers(
     tx: &FuelCoreTransaction,
     tx_id: &Bytes32,
     index: u8,
-) -> Vec<Arc<dyn IntoSubject>> {
+) -> Vec<Identifier> {
     match tx {
         FuelCoreTransaction::Script(tx) => {
             let script_tag = sha256(tx.script_data());
-            vec![Identifier::ScriptID(tx_id.to_owned(), index, script_tag)
-                .into()]
+            vec![Identifier::ScriptID(tx_id.to_owned(), index, script_tag)]
         }
         _ => Vec::new(),
     }

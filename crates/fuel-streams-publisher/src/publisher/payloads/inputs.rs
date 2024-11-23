@@ -27,8 +27,11 @@ pub fn publish_tasks(
         .enumerate()
         .flat_map(move |(index, input)| {
             let main_subject = main_subject(input, tx_id.clone(), index);
-            let identifier_subjects =
-                identifier_subjects(input, tx_id, index as u8);
+            let identifier_subjects = identifiers(input, tx_id, index as u8)
+                .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: InputsByIdSubject| subject.arc())
+                .collect::<Vec<_>>();
 
             let input: Input = input.into();
 
@@ -106,30 +109,26 @@ fn main_subject(
     }
 }
 
-pub fn identifier_subjects(
+pub fn identifiers(
     input: &FuelCoreInput,
     tx_id: &Bytes32,
     index: u8,
-) -> Vec<Arc<dyn IntoSubject>> {
+) -> Vec<Identifier> {
     let mut identifiers = match input {
         FuelCoreInput::CoinSigned(CoinSigned {
             owner, asset_id, ..
         }) => {
             vec![
-                Identifier::Address(tx_id.to_owned(), index, owner.into())
-                    .into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::Address(tx_id.to_owned(), index, owner.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreInput::CoinPredicate(CoinPredicate {
             owner, asset_id, ..
         }) => {
             vec![
-                Identifier::Address(tx_id.to_owned(), index, owner.into())
-                    .into(),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into())
-                    .into(),
+                Identifier::Address(tx_id.to_owned(), index, owner.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
             ]
         }
         FuelCoreInput::MessageCoinSigned(MessageCoinSigned {
@@ -153,10 +152,8 @@ pub fn identifier_subjects(
             ..
         }) => {
             vec![
-                Identifier::Address(tx_id.to_owned(), index, sender.into())
-                    .into(),
-                Identifier::Address(tx_id.to_owned(), index, recipient.into())
-                    .into(),
+                Identifier::Address(tx_id.to_owned(), index, sender.into()),
+                Identifier::Address(tx_id.to_owned(), index, recipient.into()),
             ]
         }
         FuelCoreInput::Contract(contract) => {
@@ -164,17 +161,17 @@ pub fn identifier_subjects(
                 tx_id.to_owned(),
                 index,
                 contract.contract_id.into(),
-            )
-            .into()]
+            )]
         }
     };
 
     if let Some((predicate_bytecode, _, _)) = input.predicate() {
         let predicate_tag = super::sha256(predicate_bytecode);
-        identifiers.push(
-            Identifier::PredicateID(tx_id.to_owned(), index, predicate_tag)
-                .into(),
-        );
+        identifiers.push(Identifier::PredicateID(
+            tx_id.to_owned(),
+            index,
+            predicate_tag,
+        ));
     }
 
     identifiers

@@ -37,8 +37,6 @@ impl std::fmt::Display for IdentifierKind {
     }
 }
 
-use std::sync::Arc;
-
 #[derive(Debug, Clone)]
 pub enum Identifier {
     Address(Bytes32, u8, Bytes32),
@@ -48,27 +46,14 @@ pub enum Identifier {
     ScriptID(Bytes32, u8, Bytes32),
 }
 
-/// Macro to implement `From<Identifier>` for a given subject.
+/// Macro to implement `From<Identifier>` for a specific ById subjects.
 ///
 /// This macro reduces boilerplate by automatically implementing the necessary
 /// conversions and payload builders based on the provided entity type and subject.
-///
-/// This implementation is particularly important for the *ByIdSubjects in the project,
-/// which are built using the Subject macro and utilize the builder pattern. Since these
-/// subjects don't have a direct interface to use them as parameters, we need to create
-/// this integration for each *ByIdSubject:
-///     - TransactionsByIdSubject
-///     - InputsByIdSubject
-///     - OutputsByIdSubject
-///     - ReceiptsByIdSubject
-///
-/// By using this macro, we ensure consistent and efficient implementation of the
-/// From<Identifier> trait and the PacketBuilder trait for various subjects,
-/// centralizing the logic of identity with data has inside the entity.
 #[macro_export]
 macro_rules! impl_from_identifier_for {
     ($subject:ident) => {
-        impl From<Identifier> for Arc<$subject> {
+        impl From<Identifier> for $subject {
             fn from(identifier: Identifier) -> Self {
                 match identifier {
                     Identifier::Address(tx_id, index, id) => $subject::build(
@@ -106,17 +91,9 @@ macro_rules! impl_from_identifier_for {
                         Some(id),
                     ),
                 }
-                .arc()
             }
         }
     };
-}
-
-#[allow(clippy::unconditional_recursion)]
-impl From<Identifier> for Arc<dyn IntoSubject> {
-    fn from(identifier: Identifier) -> Self {
-        identifier.into()
-    }
 }
 
 impl_from_identifier_for!(TransactionsByIdSubject);

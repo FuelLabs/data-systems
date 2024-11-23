@@ -277,10 +277,10 @@ async fn stop_publisher(shutdown_controller: Arc<ShutdownController>) {
 }
 
 async fn wait_for_publisher_to_start() {
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 }
 async fn wait_for_publisher_to_process_block() {
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 }
 
 fn send_block(broadcaster: &Sender<ImporterResult>) {
