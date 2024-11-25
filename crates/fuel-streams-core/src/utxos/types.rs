@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Utxo {
-    pub utxo_id: UtxoId,
+    pub utxo_id: FuelCoreUtxoId,
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub nonce: Option<Nonce>,

@@ -36,7 +36,7 @@ pub struct Transaction {
     pub storage_slots: Vec<HexString>,
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
-    pub tx_pointer: Option<TxPointer>,
+    pub tx_pointer: Option<FuelCoreTxPointer>,
     pub upgrade_purpose: Option<FuelCoreUpgradePurpose>,
     pub witnesses: Vec<HexString>,
 }
@@ -126,7 +126,7 @@ impl Transaction {
                 tx: &Tx,
             ) -> IntoIter<&fuel_core_types::fuel_types::ContractId>
             where
-                Tx: Inputs,
+                Tx: FuelCoreInputs,
             {
                 let mut inputs: Vec<_> = tx
                     .inputs()

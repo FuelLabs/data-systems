@@ -1,5 +1,5 @@
 /// FuelCore Types
-/// Allows the flexilibity of aggregating the FuelCore types in any payload
+/// Allows flexilibity of aggregating and transforming them for different payload types
 pub use fuel_core_types::fuel_tx::policies::Policies as FuelCorePolicies;
 pub use fuel_core_types::{
     blockchain::{
@@ -9,10 +9,11 @@ pub use fuel_core_types::{
             Consensus as FuelCoreConsensus,
             Genesis,
         },
-        header::BlockHeader,
+        header::BlockHeader as FuelCoreBlockHeader,
+        primitives::BlockId as FuelCoreBlockId,
     },
     fuel_tx::{
-        field::{Inputs, Outputs},
+        field::{Inputs as FuelCoreInputs, Outputs as FuelCoreOutputs},
         input::contract::Contract as FuelCoreInputContract,
         output::contract::Contract as FuelCoreOutputContract,
         Address as FuelCoreAddress,
@@ -26,16 +27,19 @@ pub use fuel_core_types::{
         Output as FuelCoreOutput,
         Receipt as FuelCoreReceipt,
         Transaction as FuelCoreTransaction,
-        TxPointer,
-        UniqueIdentifier,
+        TxPointer as FuelCoreTxPointer,
+        UniqueIdentifier as FuelCoreUniqueIdentifier,
         UpgradePurpose as FuelCoreUpgradePurpose,
-        UtxoId,
-        Word,
+        UtxoId as FuelCoreUtxoId,
+        Word as FuelCoreWord,
     },
-    fuel_types::{BlockHeight as FuelCoreBlockHeight, ChainId},
+    fuel_types::{
+        BlockHeight as FuelCoreBlockHeight,
+        ChainId as FuelCoreChainId,
+    },
     services::{
-        block_importer::ImportResult,
+        block_importer::ImportResult as FuelCoreImportResult,
         txpool::TransactionStatus as FuelCoreTransactionStatus,
     },
-    tai64::Tai64,
+    tai64::Tai64 as FuelCoreTai64,
 };

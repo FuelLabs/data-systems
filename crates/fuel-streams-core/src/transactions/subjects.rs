@@ -12,7 +12,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsByIdSubject {
 ///     tx_id: Some([1u8; 32].into()),
@@ -38,7 +38,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = TransactionsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::ContractID), None);
 /// assert_eq!(wildcard, "by_id.transactions.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.*");
@@ -48,7 +48,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsByIdSubject::new()
 ///     .with_tx_id(Some([1u8; 32].into()))
@@ -78,7 +78,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = TransactionsSubject {
 ///     block_height: Some(23.into()),
@@ -104,7 +104,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// let wildcard = TransactionsSubject::wildcard(None, None, Some(Bytes32::zeroed()), None, None);
 /// assert_eq!(wildcard, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
 /// ```
@@ -113,7 +113,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsSubject::new()
 ///     .with_block_height(Some(23.into()))

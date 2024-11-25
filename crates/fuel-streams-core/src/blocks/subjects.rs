@@ -11,7 +11,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = BlocksSubject {
 ///     producer: Some(Address::zeroed()),
@@ -31,7 +31,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// let wildcard = BlocksSubject::wildcard(None, Some(23.into()));
 /// assert_eq!(wildcard, "blocks.*.23");
 /// ```
@@ -41,7 +41,7 @@ use crate::prelude::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = BlocksSubject::new()
 ///     .with_producer(Some(Address::zeroed()))

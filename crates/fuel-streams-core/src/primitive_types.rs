@@ -1,9 +1,4 @@
 use fuel_core_types::fuel_types;
-
-// Scalar types
-pub type BlockId = String;
-pub type Tai64Timestamp = String;
-
 pub use serde::{Deserialize, Serialize};
 
 /// Macro to generate a wrapper type for different byte-based types (including Address type).
@@ -127,8 +122,7 @@ impl From<Bytes32> for MessageId {
 }
 impl From<&Bytes32> for MessageId {
     fn from(value: &Bytes32) -> Self {
-        let bytes: [u8; 32] = value.0.into();
-        MessageId::from(bytes)
+        value.clone().into()
     }
 }
 

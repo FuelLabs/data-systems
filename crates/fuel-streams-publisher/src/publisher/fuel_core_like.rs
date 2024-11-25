@@ -17,17 +17,10 @@ use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
     blockchain::consensus::{Consensus, Sealed},
-    fuel_tx::{AssetId, Bytes32},
     fuel_types::BlockHeight,
     tai64::Tai64,
 };
-use fuel_streams_core::types::{
-    Address,
-    ChainId,
-    FuelCoreBlock,
-    FuelCoreReceipt,
-    FuelCoreTransactionStatus,
-};
+use fuel_streams_core::types::*;
 use tokio::sync::broadcast::Receiver;
 
 pub type OffchainDatabase = GenericDatabase<
@@ -44,8 +37,8 @@ pub trait FuelCoreLike: Sync + Send {
     fn is_started(&self) -> bool;
     async fn stop(&self);
 
-    fn base_asset_id(&self) -> &AssetId;
-    fn chain_id(&self) -> &ChainId;
+    fn base_asset_id(&self) -> &FuelCoreAssetId;
+    fn chain_id(&self) -> &FuelCoreChainId;
 
     fn database(&self) -> &CombinedDatabase;
     fn onchain_database(&self) -> &Database<OnChain> {
@@ -68,7 +61,7 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn get_receipts(
         &self,
-        tx_id: &Bytes32,
+        tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>>;
 
     fn get_block_and_producer_by_height(
@@ -159,8 +152,8 @@ pub trait FuelCoreLike: Sync + Send {
 #[derive(Clone)]
 pub struct FuelCore {
     pub fuel_service: Arc<FuelService>,
-    chain_id: ChainId,
-    base_asset_id: AssetId,
+    chain_id: FuelCoreChainId,
+    base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
 }
 
@@ -237,10 +230,10 @@ impl FuelCoreLike for FuelCore {
         }
     }
 
-    fn base_asset_id(&self) -> &AssetId {
+    fn base_asset_id(&self) -> &FuelCoreAssetId {
         &self.base_asset_id
     }
-    fn chain_id(&self) -> &ChainId {
+    fn chain_id(&self) -> &FuelCoreChainId {
         &self.chain_id
     }
 
@@ -260,7 +253,7 @@ impl FuelCoreLike for FuelCore {
 
     fn get_receipts(
         &self,
-        tx_id: &Bytes32,
+        tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         let off_chain_database = self.database().off_chain().latest_view()?;
         let receipts = off_chain_database

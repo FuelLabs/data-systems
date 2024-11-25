@@ -262,7 +262,7 @@ use crate::fuel_core_like::OffchainDatabase;
 #[derive(Clone)]
 pub struct PublishOpts {
     pub semaphore: Arc<Semaphore>,
-    pub chain_id: Arc<ChainId>,
+    pub chain_id: Arc<FuelCoreChainId>,
     pub base_asset_id: Arc<FuelCoreAssetId>,
     pub block_producer: Arc<Address>,
     pub block_height: Arc<BlockHeight>,

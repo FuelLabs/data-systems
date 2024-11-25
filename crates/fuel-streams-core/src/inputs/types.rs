@@ -112,8 +112,8 @@ pub struct InputCoin {
     pub predicate: HexString,
     pub predicate_data: HexString,
     pub predicate_gas_used: u64,
-    pub tx_pointer: TxPointer,
-    pub utxo_id: UtxoId,
+    pub tx_pointer: FuelCoreTxPointer,
+    pub utxo_id: FuelCoreUtxoId,
     pub witness_index: u16,
 }
 
@@ -123,8 +123,8 @@ pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
     pub state_root: Bytes32,
-    pub tx_pointer: TxPointer,
-    pub utxo_id: UtxoId,
+    pub tx_pointer: FuelCoreTxPointer,
+    pub utxo_id: FuelCoreUtxoId,
 }
 
 impl From<&FuelCoreInputContract> for InputContract {

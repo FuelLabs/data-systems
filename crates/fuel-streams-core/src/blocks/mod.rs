@@ -20,7 +20,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_serialization() {
-        let header = Header {
+        let header = BlockHeader {
             application_hash: [0u8; 32].into(),
             consensus_parameters_version: 1,
             da_height: 1000,
@@ -31,10 +31,10 @@ mod tests {
             message_receipt_count: 10,
             prev_root: [4u8; 32].into(),
             state_transition_bytecode_version: 2,
-            time: Tai64(1697398400),
+            time: FuelCoreTai64(1697398400),
             transactions_count: 5,
             transactions_root: [5u8; 32].into(),
-            version: HeaderVersion::V1,
+            version: BlockHeaderVersion::V1,
         };
 
         let block = Block {
@@ -64,7 +64,7 @@ mod tests {
                 "da_height": 1000,
                 "event_inbox_root": "0101010101010101010101010101010101010101010101010101010101010101",
                 "height": 42,
-                "id": "",
+                "id": "0000000000000000000000000000000000000000000000000000000000000000",
                 "message_outbox_root": "0303030303030303030303030303030303030303030303030303030303030303",
                 "message_receipt_count": 10,
                 "prev_root": "0404040404040404040404040404040404040404040404040404040404040404",
@@ -75,7 +75,7 @@ mod tests {
                 "version": "V1"
             },
             "height": 42,
-            "id": "",
+            "id": "0000000000000000000000000000000000000000000000000000000000000000",
             "transactions": [],
             "version": "V1"
         });

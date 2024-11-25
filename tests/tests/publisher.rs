@@ -5,10 +5,7 @@ use std::{
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
-use fuel_core_types::{
-    blockchain::SealedBlock,
-    fuel_tx::{Address, AssetId, Bytes32, ContractId},
-};
+use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
     publisher::shutdown::ShutdownController,
@@ -19,8 +16,8 @@ use futures::StreamExt;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 struct TestFuelCore {
-    chain_id: ChainId,
-    base_asset_id: AssetId,
+    chain_id: FuelCoreChainId,
+    base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
     blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     receipts: Option<Vec<FuelCoreReceipt>>,
@@ -31,8 +28,8 @@ impl TestFuelCore {
         blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     ) -> Self {
         Self {
-            chain_id: ChainId::default(),
-            base_asset_id: AssetId::zeroed(),
+            chain_id: FuelCoreChainId::default(),
+            base_asset_id: FuelCoreAssetId::zeroed(),
             database: CombinedDatabase::default(),
             blocks_broadcaster,
             receipts: None,
@@ -55,10 +52,10 @@ impl FuelCoreLike for TestFuelCore {
     }
     async fn stop(&self) {}
 
-    fn base_asset_id(&self) -> &AssetId {
+    fn base_asset_id(&self) -> &FuelCoreAssetId {
         &self.base_asset_id
     }
-    fn chain_id(&self) -> &ChainId {
+    fn chain_id(&self) -> &FuelCoreChainId {
         &self.chain_id
     }
 
@@ -74,7 +71,7 @@ impl FuelCoreLike for TestFuelCore {
 
     fn get_receipts(
         &self,
-        _tx_id: &Bytes32,
+        _tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         Ok(self.receipts.clone())
     }
@@ -127,7 +124,7 @@ async fn publishes_receipts() {
 
     let receipts = [
         FuelCoreReceipt::Call {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             to: Default::default(),
             amount: 0,
             asset_id: Default::default(),
@@ -138,28 +135,28 @@ async fn publishes_receipts() {
             is: 0,
         },
         FuelCoreReceipt::Return {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
         },
         FuelCoreReceipt::ReturnData {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             ptr: 0,
             len: 0,
-            digest: Bytes32::default(),
+            digest: FuelCoreBytes32::default(),
             pc: 0,
             is: 0,
             data: None,
         },
         FuelCoreReceipt::Revert {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             ra: 0,
             pc: 0,
             is: 0,
         },
         FuelCoreReceipt::Log {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             ra: 0,
             rb: 0,
             rc: 0,
@@ -168,42 +165,42 @@ async fn publishes_receipts() {
             is: 0,
         },
         FuelCoreReceipt::LogData {
-            id: ContractId::default(),
+            id: FuelCoreContractId::default(),
             ra: 0,
             rb: 0,
             ptr: 0,
             len: 0,
-            digest: Bytes32::default(),
+            digest: FuelCoreBytes32::default(),
             pc: 0,
             is: 0,
             data: None,
         },
         FuelCoreReceipt::Transfer {
-            id: ContractId::default(),
-            to: ContractId::default(),
+            id: FuelCoreContractId::default(),
+            to: FuelCoreContractId::default(),
             amount: 0,
-            asset_id: AssetId::default(),
+            asset_id: FuelCoreAssetId::default(),
             pc: 0,
             is: 0,
         },
         FuelCoreReceipt::TransferOut {
-            id: ContractId::default(),
-            to: Address::default(),
+            id: FuelCoreContractId::default(),
+            to: FuelCoreAddress::default(),
             amount: 0,
-            asset_id: AssetId::default(),
+            asset_id: FuelCoreAssetId::default(),
             pc: 0,
             is: 0,
         },
         FuelCoreReceipt::Mint {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: FuelCoreBytes32::default(),
+            contract_id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
         },
         FuelCoreReceipt::Burn {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: FuelCoreBytes32::default(),
+            contract_id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
@@ -296,7 +293,7 @@ fn create_test_block() -> ImporterResult {
     *block_entity.transactions_mut() = vec![tx];
 
     ImporterResult {
-        shared_result: Arc::new(ImportResult {
+        shared_result: Arc::new(FuelCoreImportResult {
             sealed_block: SealedBlock {
                 entity: block_entity,
                 ..Default::default()

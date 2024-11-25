@@ -101,7 +101,7 @@ impl Telemetry {
         &self,
         subject: &str,
         published_data_size: usize,
-        chain_id: &ChainId,
+        chain_id: &FuelCoreChainId,
         block_producer: &Address,
     ) {
         self.maybe_use_metrics(|metrics| {
@@ -139,7 +139,7 @@ impl Telemetry {
     pub fn update_publisher_error_metrics(
         &self,
         subject: &str,
-        chain_id: &ChainId,
+        chain_id: &FuelCoreChainId,
         block_producer: &Address,
         error: &str,
     ) {
@@ -156,7 +156,11 @@ impl Telemetry {
         });
     }
 
-    pub fn record_streams_count(&self, chain_id: &ChainId, count: usize) {
+    pub fn record_streams_count(
+        &self,
+        chain_id: &FuelCoreChainId,
+        count: usize,
+    ) {
         self.maybe_use_metrics(|metrics| {
             metrics
                 .total_subs
@@ -167,7 +171,7 @@ impl Telemetry {
 
     pub fn record_failed_publishing(
         &self,
-        chain_id: &ChainId,
+        chain_id: &FuelCoreChainId,
         block_producer: &Address,
     ) {
         self.maybe_use_metrics(|metrics| {

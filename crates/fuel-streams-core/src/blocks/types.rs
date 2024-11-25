@@ -4,9 +4,9 @@ use crate::types::*;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
     pub consensus: Consensus,
-    pub header: Header,
+    pub header: BlockHeader,
     pub height: u32,
-    pub id: BlockId,
+    pub id: FuelCoreBlockId,
     pub transactions: Vec<Transaction>,
     pub version: BlockVersion,
 }
@@ -16,9 +16,9 @@ impl Block {
         block: &fuel_core_types::blockchain::block::Block,
         consensus: Consensus,
     ) -> Self {
-        let header: Header = block.header().into();
+        let header: BlockHeader = block.header().into();
         let height = header.height;
-        let id = header.id.clone();
+        let id = header.id;
 
         let version = match block {
             fuel_core_types::blockchain::block::Block::V1(_) => {
@@ -92,36 +92,36 @@ pub enum BlockVersion {
 
 // Header type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Header {
+pub struct BlockHeader {
     pub application_hash: Bytes32,
     pub consensus_parameters_version: u32,
     pub da_height: u64,
     pub event_inbox_root: Bytes32,
     pub height: u32,
-    pub id: BlockId,
+    pub id: FuelCoreBlockId,
     pub message_outbox_root: Bytes32,
     pub message_receipt_count: u32,
     pub prev_root: Bytes32,
     pub state_transition_bytecode_version: u32,
-    pub time: Tai64,
+    pub time: FuelCoreTai64,
     pub transactions_count: u16,
     pub transactions_root: Bytes32,
-    pub version: HeaderVersion,
+    pub version: BlockHeaderVersion,
 }
 
-impl From<&BlockHeader> for Header {
-    fn from(header: &BlockHeader) -> Self {
+impl From<&FuelCoreBlockHeader> for BlockHeader {
+    fn from(header: &FuelCoreBlockHeader) -> Self {
         let version = match header {
-            BlockHeader::V1(_) => HeaderVersion::V1,
+            FuelCoreBlockHeader::V1(_) => BlockHeaderVersion::V1,
         };
 
-        Header {
+        Self {
             application_hash: (*header.application_hash()).into(),
             consensus_parameters_version: header.consensus_parameters_version,
             da_height: header.da_height.into(),
             event_inbox_root: header.event_inbox_root.into(),
             height: (*header.height()).into(),
-            id: header.id().to_string(),
+            id: header.id(),
             message_outbox_root: header.message_outbox_root.into(),
             message_receipt_count: header.message_receipt_count,
             prev_root: (*header.prev_root()).into(),
@@ -135,10 +135,10 @@ impl From<&BlockHeader> for Header {
     }
 }
 
-// HeaderVersion enum
+// BlockHeaderVersion enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum HeaderVersion {
+pub enum BlockHeaderVersion {
     V1,
 }
 

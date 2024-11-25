@@ -57,7 +57,7 @@ impl From<&FuelCoreReceipt> for Receipt {
             reason: r.reason().map(Into::into),
             receipt_type: r.into(),
             recipient: r.recipient().copied().map(Into::into),
-            result: r.result().map(|r| Word::from(*r)),
+            result: r.result().map(|r| FuelCoreWord::from(*r)),
             sender: r.sender().copied().map(Into::into),
             sub_id: r.sub_id().copied().map(Into::into),
             to: r.to().copied().map(Into::into),
