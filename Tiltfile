@@ -50,26 +50,28 @@ overrides = [
     "kibana.tag=7.6.2",
 
     "surrealdb.enabled=true",
+
+    "fuelPublisher.enabled=true",
 ]
 
 k8s_yaml(helm(chart_dir, name=chart_name, namespace=namespace, values=[values], set=overrides))
 
 # build gqlApi image
-ref = 'gql-api:{}'.format(environment)
-command = 'make build-gql-api-{} && docker tag gql-api:{} $EXPECTED_REF'.format(environment, environment)
-deps = ["./gql-api/Cargo.lock", "./gql-api/Cargo.toml", "./gql-api/src", "./gql-api/target/release/**/*"]
-custom_build(ref=ref, command=command, deps=deps)
+# ref = 'gql-api:{}'.format(environment)
+# command = 'make build-gql-api-{} && docker tag gql-api:{} $EXPECTED_REF'.format(environment, environment)
+# deps = ["./gql-api/Cargo.lock", "./gql-api/Cargo.toml", "./gql-api/src", "./gql-api/target/release/**/*"]
+# custom_build(ref=ref, command=command, deps=deps)
 
 # build nearApi image
-ref = 'near-api:{}'.format(environment)
-command = 'make build-near-api-{} && docker tag near-api:{} $EXPECTED_REF'.format(environment, environment)
-deps = ["./near-api/package-lock.json", "./near-api/package.json", "./**/*"]
-custom_build(ref=ref, command=command, deps=deps)
+# ref = 'near-api:{}'.format(environment)
+# command = 'make build-near-api-{} && docker tag near-api:{} $EXPECTED_REF'.format(environment, environment)
+# deps = ["./near-api/package-lock.json", "./near-api/package.json", "./**/*"]
+# custom_build(ref=ref, command=command, deps=deps)
 
 # build k8s tools (tag is always latest!)
 ref = "k8s-tools:latest"
 command = "make build-k8s-tools && docker tag k8s-tools:latest $EXPECTED_REF"
-custom_build(ref=ref, command=command, deps=deps)
+custom_build(ref=ref, command=command, deps=[])
 
 # k8s resources
 ports = {
@@ -80,6 +82,7 @@ ports = {
     "kibana": ["5601:5601"],
     "gql-api": ["3200:8080"],
     "near-api": ["7000:50051"],
+    "fuel-publisher": [],
 }
 deps = {
     "monitoring": [],
@@ -87,9 +90,9 @@ deps = {
     "elasticsearch": [],
     "jaeger": [],
     "kibana": ["elasticsearch"],
-    "dashboard": [],
     "gql-api": ["monitoring", "elasticsearch" ],
     "near-api": [],
+    "fuel-publisher": [],
 }
 
 k8s_resource("gql-api", port_forwards=ports["gql-api"], resource_deps=deps["gql-api"], labels="data-streams")
@@ -99,3 +102,4 @@ k8s_resource("surrealdb", port_forwards=ports["surrealdb"], resource_deps=deps["
 k8s_resource("elasticsearch", port_forwards=ports["elasticsearch"], resource_deps=deps["elasticsearch"], labels="logging")
 k8s_resource("jaeger", port_forwards=ports["jaeger"], resource_deps=deps["jaeger"], labels="monitoring")
 k8s_resource("kibana", port_forwards=ports["kibana"], resource_deps=deps["kibana"], labels="logging")
+k8s_resource("fuel-publisher", port_forwards=ports["fuel-publisher"], resource_deps=deps["fuel-publisher"], labels="publisher")

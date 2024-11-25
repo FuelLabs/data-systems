@@ -14,18 +14,8 @@ spec:
   - websecure
   tls:
     domains:
-    - main: {{ .Values.kafkaUiDomain }}
     - main: {{ .Values.kibanaDomain }}
-    - main: {{ .Values.dashboardDomain }}
   routes:
-  {{ if .Values.kafkaUi.enabled }}
-  - kind: Rule
-    match: Host(`{{ .Values.kafkaUiDomain }}`)
-    services:
-    - kind: Service
-      name: kafka-ui
-      port: 9100
-  {{ end }}
   {{ if .Values.kibana.enabled }}
   - kind: Rule
     match: Host(`{{ .Values.kibanaDomain }}`)
@@ -33,14 +23,6 @@ spec:
       - kind: Service
         name: kibana
         port: 5601
-  {{ end }}
-  {{ if .Values.dashboard.enabled }}
-  - kind: Rule
-    match: Host(`{{ .Values.dashboardDomain }}`)
-    services:
-      - kind: Service
-        name: dashboard
-        port: 3100
   {{ end }}
 {{ end }}
 {{ end }}

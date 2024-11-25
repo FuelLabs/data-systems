@@ -10,28 +10,17 @@ fuelSharedMnt:
 # service settings
 gqlApi:
   enabled: true
-dashboard:
-  enabled: true
-redis:
-  enabled: true
-zookeeper:
-  enabled: true
-kafka:
-  enabled: true
-kafkaUi:
-  enabled: true
 monitoring:
   enabled: true
 elasticsearch:
   enabled: true
-kibana:
-  enabled: true
 jaeger:
   enabled: true
-nearNode:
+kibana:
   enabled: true
-adminer:
+surrealdb:
   enabled: true
-
+fuelPublisher:
+  enabled: true
 
 # disabled services
