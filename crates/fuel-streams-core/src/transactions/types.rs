@@ -39,6 +39,7 @@ pub struct Transaction {
     pub tx_pointer: Option<FuelCoreTxPointer>,
     pub upgrade_purpose: Option<FuelCoreUpgradePurpose>,
     pub witnesses: Vec<HexString>,
+    pub receipts: Vec<Receipt>,
 }
 
 impl Transaction {
@@ -47,6 +48,7 @@ impl Transaction {
         transaction: &FuelCoreTransaction,
         status: &TransactionStatus,
         base_asset_id: &FuelCoreAssetId,
+        receipts: &[FuelCoreReceipt],
     ) -> Self {
         let bytecode_root = {
             use fuel_core_types::fuel_tx::field::BytecodeRoot;
@@ -120,47 +122,22 @@ impl Transaction {
         };
 
         let input_contracts = {
-            use std::vec::IntoIter;
-
-            fn input_contracts<Tx>(
-                tx: &Tx,
-            ) -> IntoIter<&fuel_core_types::fuel_types::ContractId>
-            where
-                Tx: FuelCoreInputs,
-            {
-                let mut inputs: Vec<_> = tx
-                    .inputs()
-                    .iter()
-                    .filter_map(|input| match input {
-                        fuel_tx::Input::Contract(
-                            fuel_tx::input::contract::Contract {
-                                contract_id,
-                                ..
-                            },
-                        ) => Some(contract_id),
-                        _ => None,
-                    })
-                    .collect();
-                inputs.sort();
-                inputs.dedup();
-                inputs.into_iter()
-            }
             match transaction {
-                FuelCoreTransaction::Script(tx) => {
-                    Some(input_contracts(tx).map(|v| (*v).into()).collect())
-                }
-                FuelCoreTransaction::Create(tx) => {
-                    Some(input_contracts(tx).map(|v| (*v).into()).collect())
-                }
                 FuelCoreTransaction::Mint(_) => None,
-                FuelCoreTransaction::Upgrade(tx) => {
-                    Some(input_contracts(tx).map(|v| (*v).into()).collect())
-                }
-                FuelCoreTransaction::Upload(tx) => {
-                    Some(input_contracts(tx).map(|v| (*v).into()).collect())
-                }
-                FuelCoreTransaction::Blob(tx) => {
-                    Some(input_contracts(tx).map(|v| (*v).into()).collect())
+                tx => {
+                    let mut inputs: Vec<_> = tx
+                        .inputs()
+                        .iter()
+                        .filter_map(|input| match input {
+                            fuel_tx::Input::Contract(contract) => {
+                                Some(contract.contract_id)
+                            }
+                            _ => None,
+                        })
+                        .collect();
+                    inputs.sort();
+                    inputs.dedup();
+                    Some(inputs.into_iter().map(|id| (*id).into()).collect())
                 }
             }
         };
@@ -414,6 +391,7 @@ impl Transaction {
             tx_pointer,
             upgrade_purpose,
             witnesses,
+            receipts: receipts.iter().map(Into::into).collect(),
         }
     }
 }

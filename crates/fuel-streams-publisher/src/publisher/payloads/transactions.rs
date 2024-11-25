@@ -104,7 +104,8 @@ fn packets_from_tx(
     }
     .arc();
 
-    let transaction = Transaction::new(tx_id, tx, tx_status, base_asset_id);
+    let transaction =
+        Transaction::new(tx_id, tx, tx_status, base_asset_id, receipts);
     let mut packets = vec![transaction.to_packet(main_subject)];
 
     packets.extend(
