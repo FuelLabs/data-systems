@@ -53,6 +53,10 @@ spec:
         app: fuel-publisher
     spec:
       serviceAccountName: {{ .Values.serviceAccount }}
+      {{- with .Values.fuelPublisher.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         {{- toYaml .Values.fuelPublisher.podSecurityContext | nindent 8 }}
       containers:
@@ -88,5 +92,9 @@ spec:
         {{- toYaml .Values.fuelPublisher.tolerations | nindent 8 }}
       affinity:
         {{- toYaml .Values.fuelPublisher.affinity | nindent 8 }}
+  {{- with .Values.fuelPublisher.volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
 {{ end }}
 {{ end }}

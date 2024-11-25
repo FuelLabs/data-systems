@@ -103,11 +103,51 @@ fuelPublisher:
     initialDelaySeconds: 5
     periodSeconds: 5
     failureThreshold: 3
+  initContainers:
+    - name: update-db-folder
+      image: alpine:latest
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/chown"]
+      args: ["-R", "1000:1000", "/mnt/db"]
+      volumeMounts:
+        - name: rocks-db
+          mountPath: /mnt/db
+    - name: update-temp-folder
+      image: alpine:latest
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/chown"]
+      args: ["-R", "1000:1000", "/tmp"]
+      volumeMounts:
+        - name: tmp-folder
+          mountPath: /tmp
+  volumeClaimTemplates:
+    - metadata:
+        name: rocks-db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3-generic
+        resources:
+          requests:
+            storage: 800Gi
+    - metadata:
+        name: tmp-folder
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3-generic
+        resources:
+          requests:
+            storage: 5Gi
+  volumeMounts:
+    - name: rocks-db
+      mountPath: "/mnt/db"
+      readOnly: false
+    - name: tmp-folder
+      mountPath: "/tmp"
+      readOnly: false
   nodeSelector: {}
   tolerations: []
   affinity: {}
   podLabels: {}
-  volumeMounts: []
   autoscaling:
     enabled: false
     minReplicas: 1
