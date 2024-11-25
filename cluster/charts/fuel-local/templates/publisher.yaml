@@ -1,6 +1,23 @@
 {{ if not .Values.onlyRequiredBaseServices }}
 {{ if .Values.fuelPublisher.enabled }}
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fuel-streams-publisher
+data:
+  RELAYER: "https://sepolia.infura.io/v3/476ac0b4f1e345f6b076af50a4a9ea6f"
+  KEYPAIR: "f3a1fcab7606837a1ac8b9c9e39f907f8ea72c8e2a694b18ca2c440470fb603d"
+  RELAYER_V2_LISTENING_CONTRACTS: "0x01855B78C1f8868DE70e84507ec735983bf262dA"
+  RELAYER_DA_DEPLOY_HEIGHT: "5827607"
+  RELAYER_LOG_PAGE_SIZE: "10"
+  SYNC_HEADER_BATCH_SIZE: "100"
+  NATS_URL: "nats.testnet.svc.cluster.local:4222"
+  P2P_PORT: "30333"
+  RESERVED_NODE_DNS: "/dns4/fuelcore-sentry-0-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/fuelcore-sentry-1-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/fuelcore-sentry-2-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
+  CHAIN_CONFIG: "testnet"
+  PUBLISHER_MAX_THREADS: "32"
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: fuel-publisher
@@ -13,10 +30,6 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-    - port: {{ .Values.fuelPublisher.service.metrics_port }}
-      targetPort: metrics
-      protocol: TCP
-      name: metrics
   selector:
     app: fuel-publisher
 ---
@@ -52,9 +65,6 @@ spec:
             - name: http
               containerPort: {{ .Values.fuelPublisher.service.port }}
               protocol: TCP
-            - name: metrics
-              containerPort: {{ .Values.fuelPublisher.service.metrics_port }}
-              protocol: TCP
           livenessProbe:
             {{- toYaml .Values.fuelPublisher.livenessProbe | nindent 12 }}
           readinessProbe:
@@ -67,13 +77,11 @@ spec:
           {{- end }}
           envFrom:
             - configMapRef:
-                name: {{ .Release.Name }}
-            - secretRef:
-                name: {{ .Release.Name }}
+                name: fuel-streams-publisher
       volumes:
-        - name: fueldrop-allocation-config
+        - name: fuel-streams-publisher
           configMap:
-            name: fueldrop-allocation-config
+            name: fuel-streams-publisher
       nodeSelector:
         {{- toYaml .Values.fuelPublisher.nodeSelector | nindent 8 }}
       tolerations:

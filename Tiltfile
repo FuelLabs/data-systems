@@ -2,9 +2,9 @@
 load('ext://restart_process', 'docker_build_with_restart')
 load('ext://color', 'color')
 
-analytics_settings(True) # Disable telemetry dialogue in web UI
+analytics_settings(True) # Enable telemetry dialogue in web UI
 disable_snapshots()      # Disable TiltCloud Snapshots
-version_settings(True)   # Disable 'new version' banner
+version_settings(True)   # Enable 'new version' banner
 
 # parse Tiltfile config
 config.define_string(name="env", args=False, usage="This argument defines the build env (dev or release)")
@@ -15,22 +15,15 @@ environment=settings.get('env', "dev") #dev or release
 k8s_yaml('./cluster/charts/fuel-local/crds/traefik-resources.yaml')
 k8s_kind('IngressRoute')
 
+# disable unused image
+update_settings(suppress_unused_image_warnings=["k8s-tools:latest"])
+
 # load helm charts
 namespace = "fuel-local"
 chart_name = "fuel"
 chart_dir = "cluster/charts/fuel-local"
 values = "cluster/values/fuel-local.yaml"
 overrides = [
-    "nearApi.enabled=true",
-    "nearApi.image=near-api",
-    'nearApi.tag={}'.format(environment),
-    'nearApi.env={}'.format(environment),
-
-    "gqlApi.enabled=true",
-    "gqlApi.image=gql-api",
-    'gqlApi.tag={}'.format(environment),
-    'gqlApi.env={}'.format(environment),
-
     "monitoring.enabled=true",
     "grafana.image=grafana/grafana",
     "grafana.tag=7.2.1",
@@ -40,10 +33,6 @@ overrides = [
     "elasticsearch.enabled=true",
     "elasticsearch.image=docker.elastic.co/elasticsearch/elasticsearch",
     "elasticsearch.tag=7.10.2",
-
-    "jaeger.enabled=true",
-    "jaeger.image=jaegertracing/all-in-one",
-    "jaeger.tag=latest",
 
     "kibana.enabled=true",
     "kibana.image=docker.elastic.co/kibana/kibana",
@@ -56,16 +45,10 @@ overrides = [
 
 k8s_yaml(helm(chart_dir, name=chart_name, namespace=namespace, values=[values], set=overrides))
 
-# build gqlApi image
-# ref = 'gql-api:{}'.format(environment)
-# command = 'make build-gql-api-{} && docker tag gql-api:{} $EXPECTED_REF'.format(environment, environment)
-# deps = ["./gql-api/Cargo.lock", "./gql-api/Cargo.toml", "./gql-api/src", "./gql-api/target/release/**/*"]
-# custom_build(ref=ref, command=command, deps=deps)
-
-# build nearApi image
-# ref = 'near-api:{}'.format(environment)
-# command = 'make build-near-api-{} && docker tag near-api:{} $EXPECTED_REF'.format(environment, environment)
-# deps = ["./near-api/package-lock.json", "./near-api/package.json", "./**/*"]
+# build publisher image
+# ref = 'fuel-publisher:{}'
+# command = 'make build-fuel-publisher-{} && docker tag fuel-publisher:{} $EXPECTED_REF'.format(environment, environment)
+# deps = ["./fuel-publisher/Cargo.lock", "./fuel-publisher/Cargo.toml", "./fuel-publisher/src", "./fuel-publisher/target/release/**/*"]
 # custom_build(ref=ref, command=command, deps=deps)
 
 # build k8s tools (tag is always latest!)
@@ -77,29 +60,20 @@ custom_build(ref=ref, command=command, deps=[])
 ports = {
     "monitoring": ["9090:9090", "3000:3000"],
     "surrealdb": ["8000:8000", "8001:8001"],
-    "jaeger": ["5775:5775", "6831:6831", "6832:6832", "5778:5778", "16686:16686", "14268:14268", "9411:9411"],
     "elasticsearch": ["9200:9200", "9300:9300"],
     "kibana": ["5601:5601"],
-    "gql-api": ["3200:8080"],
-    "near-api": ["7000:50051"],
     "fuel-publisher": [],
 }
 deps = {
     "monitoring": [],
     "surrealdb": [],
     "elasticsearch": [],
-    "jaeger": [],
     "kibana": ["elasticsearch"],
-    "gql-api": ["monitoring", "elasticsearch" ],
-    "near-api": [],
     "fuel-publisher": [],
 }
 
-k8s_resource("gql-api", port_forwards=ports["gql-api"], resource_deps=deps["gql-api"], labels="data-streams")
-k8s_resource("near-api", port_forwards=ports["near-api"], resource_deps=deps["near-api"], labels="data-streams")
 k8s_resource("monitoring", port_forwards=ports["monitoring"], resource_deps=deps["monitoring"], labels="monitoring")
 k8s_resource("surrealdb", port_forwards=ports["surrealdb"], resource_deps=deps["surrealdb"], labels="indexer")
 k8s_resource("elasticsearch", port_forwards=ports["elasticsearch"], resource_deps=deps["elasticsearch"], labels="logging")
-k8s_resource("jaeger", port_forwards=ports["jaeger"], resource_deps=deps["jaeger"], labels="monitoring")
 k8s_resource("kibana", port_forwards=ports["kibana"], resource_deps=deps["kibana"], labels="logging")
 k8s_resource("fuel-publisher", port_forwards=ports["fuel-publisher"], resource_deps=deps["fuel-publisher"], labels="publisher")

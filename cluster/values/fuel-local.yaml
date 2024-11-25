@@ -8,13 +8,9 @@ fuelSharedMnt:
     value: "ReadWriteOnce"
 
 # service settings
-gqlApi:
-  enabled: true
 monitoring:
   enabled: true
 elasticsearch:
-  enabled: true
-jaeger:
   enabled: true
 kibana:
   enabled: true

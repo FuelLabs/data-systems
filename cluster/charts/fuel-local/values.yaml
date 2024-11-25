@@ -32,19 +32,6 @@ fuelSharedMnt:
 onlyRequiredBaseServices: false
 
 # service settings
-gqlApi:
-  enabled: false
-  image: "gql-api"
-  tag: "latest"
-  env: "dev"
-  configFilesFolders: {}
-
-nearApi:
-  enabled: false
-  image: "near-api"
-  tag: "latest"
-  env: "dev"
-  configFilesFolders: {}
 
 grafana:
   image: "grafana/grafana"
@@ -65,17 +52,8 @@ monitoring:
   enabled: false
   configFilesFolders: {}
 
-jaeger:
-  enabled: false
-  image: "jaegertracing/all-in-one"
-  tag: "latest"
-
 kibana:
   enabled: false
-
-nearNode:
-  enabled: true
-  configFilesFolders: {}
 
 surrealdb:
   enabled: true
@@ -107,21 +85,20 @@ fuelPublisher:
   image:
     repository: ghcr.io/fuellabs/fuel-streams-publisher
     pullPolicy: IfNotPresent
-    tag: 7e14a2a
+    tag: 44ea206
   service:
     type: ClusterIP
-    port: 3000
-    metrics_port: 9000
+    port: 4000
   livenessProbe:
     httpGet:
-      path: /health
+      path: /v1/health
       port: http
     initialDelaySeconds: 10
     periodSeconds: 5
     failureThreshold: 3
   readinessProbe:
     httpGet:
-      path: /health
+      path: /v1/health
       port: http
     initialDelaySeconds: 5
     periodSeconds: 5
@@ -147,20 +124,6 @@ fuelPublisher:
 # Resource profiles for all containers.
 # This allows to easily override requests and limits via additional values file.
 resourceProfile:
-  gqlApi:
-    requests:
-      cpu: 0.05
-      memory: 300Mi
-    limits:
-      cpu: 0.3
-      memory: 600Mi
-  nearApi:
-    requests:
-      cpu: 0.05
-      memory: 300Mi
-    limits:
-      cpu: 0.3
-      memory: 600Mi
   grafana:
     requests:
       cpu: 0.05
@@ -183,13 +146,6 @@ resourceProfile:
       cpu: 0.5
       memory: 2Gi
   kibana:
-    requests:
-      cpu: 0.05
-      memory: 400Mi
-    limits:
-      cpu: 0.2
-      memory: 700Mi
-  jaeger:
     requests:
       cpu: 0.05
       memory: 400Mi
