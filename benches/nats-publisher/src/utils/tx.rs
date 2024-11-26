@@ -1,17 +1,7 @@
 use async_nats::jetstream::context::Publish;
 use fuel_core::combined_database::CombinedDatabase;
-use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::{
-    blockchain::block::Block,
-    fuel_tx::{Transaction, UniqueIdentifier},
-    fuel_types::ChainId,
-    services::txpool::TransactionStatus as TxPoolTransactionStatus,
-};
-use fuel_streams_core::{
-    blocks::types::BlockHeight,
-    prelude::IntoSubject,
-    transactions::TransactionsSubject,
-};
+use fuel_core_types::fuel_types::ChainId;
+use fuel_streams_core::prelude::*;
 use tokio::try_join;
 use tracing::info;
 
@@ -78,7 +68,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let tx_id = self.get_id(tx);
+        let tx_id = &tx.id;
         let subject = self.get_subject(tx, block, index);
         let payload = self.nats.data_parser().encode(block).await?;
         let nats_payload = Publish::build()
@@ -104,7 +94,7 @@ impl TxHelper {
         tx: &Transaction,
         index: usize,
     ) -> anyhow::Result<()> {
-        let tx_id = self.get_id(tx);
+        let tx_id = &tx.id;
         let subject = self.get_subject(tx, block, index);
         let payload = self.nats.data_parser().encode(block).await?;
         self.nats
@@ -132,27 +122,8 @@ impl TxHelper {
         let mut subject: TransactionsSubject = tx.into();
         subject = subject
             .with_index(Some(index))
-            .with_block_height(Some(BlockHeight::from(self.get_height(block))))
-            .with_status(self.get_status(tx).map(Into::into));
+            .with_block_height(Some(BlockHeight::from(block.height)))
+            .with_status(Some(tx.status.clone()));
         subject
-    }
-
-    fn get_id(&self, tx: &Transaction) -> String {
-        let id = tx.id(&self.chain_id).to_string();
-        format!("0x{id}")
-    }
-
-    fn get_height(&self, block: &Block) -> u32 {
-        *block.header().consensus().height
-    }
-
-    fn get_status(&self, tx: &Transaction) -> Option<TxPoolTransactionStatus> {
-        self.database
-            .off_chain()
-            .latest_view()
-            .unwrap()
-            .get_tx_status(&tx.id(&self.chain_id))
-            .ok()
-            .flatten()
     }
 }

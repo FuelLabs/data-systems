@@ -1,36 +1,36 @@
-use fuel_core_types::fuel_tx::{Bytes32, ContractId, Receipt, Word};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use crate::types::*;
 
 /// A convenient aggregate type to represent a Fuel logs to allow users
 /// think about them agnostic of receipts.
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
 pub enum Log {
     WithoutData {
         id: ContractId,
-        ra: Word,
-        rb: Word,
-        rc: Word,
-        rd: Word,
-        pc: Word,
-        is: Word,
+        ra: FuelCoreWord,
+        rb: FuelCoreWord,
+        rc: FuelCoreWord,
+        rd: FuelCoreWord,
+        pc: FuelCoreWord,
+        is: FuelCoreWord,
     },
     WithData {
         id: ContractId,
-        ra: Word,
-        rb: Word,
-        ptr: Word,
-        len: Word,
+        ra: FuelCoreWord,
+        rb: FuelCoreWord,
+        ptr: FuelCoreWord,
+        len: FuelCoreWord,
         digest: Bytes32,
-        pc: Word,
-        is: Word,
+        pc: FuelCoreWord,
+        is: FuelCoreWord,
         data: Option<Vec<u8>>,
     },
 }
 
-impl From<Receipt> for Log {
-    fn from(value: Receipt) -> Self {
+impl From<FuelCoreReceipt> for Log {
+    fn from(value: FuelCoreReceipt) -> Self {
         match value {
-            Receipt::Log {
+            FuelCoreReceipt::Log {
                 id,
                 ra,
                 rb,
@@ -39,7 +39,7 @@ impl From<Receipt> for Log {
                 pc,
                 is,
             } => Log::WithoutData {
-                id,
+                id: id.into(),
                 ra,
                 rb,
                 rc,
@@ -47,7 +47,7 @@ impl From<Receipt> for Log {
                 pc,
                 is,
             },
-            Receipt::LogData {
+            FuelCoreReceipt::LogData {
                 id,
                 ra,
                 rb,
@@ -58,12 +58,12 @@ impl From<Receipt> for Log {
                 is,
                 data,
             } => Log::WithData {
-                id,
+                id: id.into(),
                 ra,
                 rb,
                 ptr,
                 len,
-                digest,
+                digest: digest.into(),
                 pc,
                 is,
                 data,
@@ -74,8 +74,8 @@ impl From<Receipt> for Log {
 }
 
 /// Introduced majorly allow delegating serialization and deserialization to `fuel-core`'s Receipt
-impl From<Log> for Receipt {
-    fn from(log: Log) -> Receipt {
+impl From<Log> for FuelCoreReceipt {
+    fn from(log: Log) -> FuelCoreReceipt {
         match log {
             Log::WithoutData {
                 id,
@@ -85,8 +85,8 @@ impl From<Log> for Receipt {
                 rd,
                 pc,
                 is,
-            } => Receipt::Log {
-                id,
+            } => FuelCoreReceipt::Log {
+                id: id.into(),
                 ra,
                 rb,
                 rc,
@@ -104,37 +104,17 @@ impl From<Log> for Receipt {
                 pc,
                 is,
                 data,
-            } => Receipt::LogData {
-                id,
+            } => FuelCoreReceipt::LogData {
+                id: id.into(),
                 ra,
                 rb,
                 ptr,
                 len,
-                digest,
+                digest: digest.into(),
                 pc,
                 is,
                 data,
             },
         }
-    }
-}
-
-impl Serialize for Log {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let receipt: Receipt = self.clone().into();
-        receipt.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Log {
-    fn deserialize<D>(deserializer: D) -> Result<Log, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let receipt = Receipt::deserialize(deserializer)?;
-        Ok(Log::from(receipt))
     }
 }

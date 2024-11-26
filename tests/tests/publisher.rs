@@ -5,10 +5,7 @@ use std::{
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
-use fuel_core_types::{
-    blockchain::SealedBlock,
-    fuel_tx::{Address, AssetId, Bytes32, ContractId},
-};
+use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
     publisher::shutdown::ShutdownController,
@@ -19,10 +16,11 @@ use futures::StreamExt;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 struct TestFuelCore {
-    chain_id: ChainId,
+    chain_id: FuelCoreChainId,
+    base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
     blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
-    receipts: Option<Vec<Receipt>>,
+    receipts: Option<Vec<FuelCoreReceipt>>,
 }
 
 impl TestFuelCore {
@@ -30,13 +28,14 @@ impl TestFuelCore {
         blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     ) -> Self {
         Self {
-            chain_id: ChainId::default(),
+            chain_id: FuelCoreChainId::default(),
+            base_asset_id: FuelCoreAssetId::zeroed(),
             database: CombinedDatabase::default(),
             blocks_broadcaster,
             receipts: None,
         }
     }
-    fn with_receipts(mut self, receipts: Vec<Receipt>) -> Self {
+    fn with_receipts(mut self, receipts: Vec<FuelCoreReceipt>) -> Self {
         self.receipts = Some(receipts);
         self
     }
@@ -53,7 +52,10 @@ impl FuelCoreLike for TestFuelCore {
     }
     async fn stop(&self) {}
 
-    fn chain_id(&self) -> &ChainId {
+    fn base_asset_id(&self) -> &FuelCoreAssetId {
+        &self.base_asset_id
+    }
+    fn chain_id(&self) -> &FuelCoreChainId {
         &self.chain_id
     }
 
@@ -69,8 +71,8 @@ impl FuelCoreLike for TestFuelCore {
 
     fn get_receipts(
         &self,
-        _tx_id: &Bytes32,
-    ) -> anyhow::Result<Option<Vec<Receipt>>> {
+        _tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         Ok(self.receipts.clone())
     }
 }
@@ -121,8 +123,8 @@ async fn publishes_receipts() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
 
     let receipts = [
-        Receipt::Call {
-            id: ContractId::default(),
+        FuelCoreReceipt::Call {
+            id: FuelCoreContractId::default(),
             to: Default::default(),
             amount: 0,
             asset_id: Default::default(),
@@ -132,29 +134,29 @@ async fn publishes_receipts() {
             pc: 0,
             is: 0,
         },
-        Receipt::Return {
-            id: ContractId::default(),
+        FuelCoreReceipt::Return {
+            id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
         },
-        Receipt::ReturnData {
-            id: ContractId::default(),
+        FuelCoreReceipt::ReturnData {
+            id: FuelCoreContractId::default(),
             ptr: 0,
             len: 0,
-            digest: Bytes32::default(),
+            digest: FuelCoreBytes32::default(),
             pc: 0,
             is: 0,
             data: None,
         },
-        Receipt::Revert {
-            id: ContractId::default(),
+        FuelCoreReceipt::Revert {
+            id: FuelCoreContractId::default(),
             ra: 0,
             pc: 0,
             is: 0,
         },
-        Receipt::Log {
-            id: ContractId::default(),
+        FuelCoreReceipt::Log {
+            id: FuelCoreContractId::default(),
             ra: 0,
             rb: 0,
             rc: 0,
@@ -162,43 +164,43 @@ async fn publishes_receipts() {
             pc: 0,
             is: 0,
         },
-        Receipt::LogData {
-            id: ContractId::default(),
+        FuelCoreReceipt::LogData {
+            id: FuelCoreContractId::default(),
             ra: 0,
             rb: 0,
             ptr: 0,
             len: 0,
-            digest: Bytes32::default(),
+            digest: FuelCoreBytes32::default(),
             pc: 0,
             is: 0,
             data: None,
         },
-        Receipt::Transfer {
-            id: ContractId::default(),
-            to: ContractId::default(),
+        FuelCoreReceipt::Transfer {
+            id: FuelCoreContractId::default(),
+            to: FuelCoreContractId::default(),
             amount: 0,
-            asset_id: AssetId::default(),
+            asset_id: FuelCoreAssetId::default(),
             pc: 0,
             is: 0,
         },
-        Receipt::TransferOut {
-            id: ContractId::default(),
-            to: Address::default(),
+        FuelCoreReceipt::TransferOut {
+            id: FuelCoreContractId::default(),
+            to: FuelCoreAddress::default(),
             amount: 0,
-            asset_id: AssetId::default(),
+            asset_id: FuelCoreAssetId::default(),
             pc: 0,
             is: 0,
         },
-        Receipt::Mint {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+        FuelCoreReceipt::Mint {
+            sub_id: FuelCoreBytes32::default(),
+            contract_id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
         },
-        Receipt::Burn {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+        FuelCoreReceipt::Burn {
+            sub_id: FuelCoreBytes32::default(),
+            contract_id: FuelCoreContractId::default(),
             val: 0,
             pc: 0,
             is: 0,
@@ -218,7 +220,7 @@ async fn publishes_receipts() {
     let mut receipts_stream =
         publisher.get_streams().receipts.catchup(10).await.unwrap();
 
-    let receipts: HashSet<Receipt> = receipts.into();
+    let receipts: HashSet<Receipt> = receipts.iter().map(Into::into).collect();
     while let Some(Some(receipt)) = receipts_stream.next().await {
         assert!(receipts.contains(&receipt));
     }
@@ -285,13 +287,13 @@ fn send_block(broadcaster: &Sender<ImporterResult>) {
     assert!(broadcaster.send(block).is_ok());
 }
 fn create_test_block() -> ImporterResult {
-    let mut block_entity = Block::default();
-    let tx = Transaction::default_test_tx();
+    let mut block_entity = FuelCoreBlock::default();
+    let tx = FuelCoreTransaction::default_test_tx();
 
     *block_entity.transactions_mut() = vec![tx];
 
     ImporterResult {
-        shared_result: Arc::new(ImportResult {
+        shared_result: Arc::new(FuelCoreImportResult {
             sealed_block: SealedBlock {
                 entity: block_entity,
                 ..Default::default()

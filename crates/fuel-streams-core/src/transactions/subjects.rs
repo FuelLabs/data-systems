@@ -1,8 +1,4 @@
-#![allow(unused)]
-use fuel_core_types::fuel_tx::UniqueIdentifier;
-use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
-
-use crate::{blocks::types::BlockHeight, types::*};
+use crate::prelude::*;
 
 /// Represents a subject for querying transactions by their identifier in the Fuel ecosystem.
 ///
@@ -16,7 +12,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsByIdSubject {
 ///     tx_id: Some([1u8; 32].into()),
@@ -42,7 +38,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = TransactionsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::ContractID), None);
 /// assert_eq!(wildcard, "by_id.transactions.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.*");
@@ -52,7 +48,7 @@ use crate::{blocks::types::BlockHeight, types::*};
 ///
 /// ```
 /// # use fuel_streams_core::transactions::subjects::TransactionsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsByIdSubject::new()
 ///     .with_tx_id(Some([1u8; 32].into()))
@@ -82,7 +78,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = TransactionsSubject {
 ///     block_height: Some(23.into()),
@@ -108,7 +104,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// let wildcard = TransactionsSubject::wildcard(None, None, Some(Bytes32::zeroed()), None, None);
 /// assert_eq!(wildcard, "transactions.*.*.0x0000000000000000000000000000000000000000000000000000000000000000.*.*");
 /// ```
@@ -117,7 +113,7 @@ pub struct TransactionsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::transactions::TransactionsSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = TransactionsSubject::new()
 ///     .with_block_height(Some(23.into()))
@@ -139,11 +135,11 @@ pub struct TransactionsSubject {
 }
 
 impl From<&Transaction> for TransactionsSubject {
-    fn from(value: &Transaction) -> Self {
+    fn from(transaction: &Transaction) -> Self {
         let subject = TransactionsSubject::new();
-        let tx_id = value.cached_id().unwrap();
-        let kind = TransactionKind::from(value.to_owned());
-        subject.with_tx_id(Some(tx_id.into())).with_kind(Some(kind))
+        subject
+            .with_tx_id(Some(transaction.id.clone()))
+            .with_kind(Some(transaction.kind.clone()))
     }
 }
 
@@ -161,9 +157,6 @@ mod test {
         assert!(subject.index.is_none());
         assert!(subject.status.is_none());
         assert!(subject.kind.is_some());
-        assert_eq!(
-            subject.tx_id.unwrap(),
-            mock_tx.to_owned().cached_id().unwrap().into()
-        );
+        assert_eq!(subject.tx_id.unwrap(), mock_tx.to_owned().id);
     }
 }

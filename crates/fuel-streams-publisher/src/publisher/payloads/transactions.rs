@@ -1,36 +1,27 @@
-use std::{
-    iter::{self, once},
-    sync::Arc,
-};
+use std::{iter::once, sync::Arc};
 
-use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::fuel_tx::field::ScriptData;
-use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
 use super::{
-    identifiers::*,
-    inputs::publish_tasks as publish_inputs,
+    inputs::{self, publish_tasks as publish_inputs},
     logs::publish_tasks as publish_logs,
-    outputs::publish_tasks as publish_outputs,
-    receipts::publish_tasks as publish_receipts,
+    outputs::{self, publish_tasks as publish_outputs},
+    receipts::{self, publish_tasks as publish_receipts},
     sha256,
     utxos::publish_tasks as publish_utxos,
 };
-use crate::{
-    packets::{PublishOpts, PublishPacket},
-    FuelCoreLike,
-    Streams,
-};
+use crate::{publish, FuelCoreLike, PublishOpts, Streams};
 
 pub fn publish_all_tasks(
-    transactions: &[Transaction],
+    transactions: &[FuelCoreTransaction],
     streams: Streams,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
 ) -> Vec<JoinHandle<anyhow::Result<()>>> {
-    let offline_db = fuel_core.database().off_chain().latest_view().unwrap();
+    let offchain_database = Arc::clone(&opts.offchain_database);
 
     transactions
         .iter()
@@ -38,10 +29,10 @@ pub fn publish_all_tasks(
         .flat_map(|tx_item| {
             let (_, tx) = tx_item;
             let tx_id: Bytes32 = tx.id(&opts.chain_id).into();
-            let tx_status: TransactionStatus = offline_db
+            let tx_status: TransactionStatus = offchain_database
                 .get_tx_status(&tx_id.to_owned().into_inner())
                 .unwrap()
-                .map(|status| status.into())
+                .map(|status| (&status).into())
                 .unwrap_or_default();
 
             let receipts = fuel_core
@@ -60,110 +51,126 @@ pub fn publish_all_tasks(
             .chain(once(publish_inputs(tx, &tx_id, &streams.inputs, opts)))
             .chain(once(publish_outputs(tx, &tx_id, &streams.outputs, opts)))
             .chain(once(publish_receipts(
-                tx,
                 &tx_id,
                 &streams.receipts,
                 opts,
                 &receipts,
             )))
             .chain(once(publish_logs(&tx_id, &streams.logs, opts, &receipts)))
-            .chain(once(publish_utxos(
-                tx,
-                &tx_id,
-                &streams.utxos,
-                opts,
-                fuel_core,
-            )))
+            .chain(once(publish_utxos(tx, &tx_id, &streams.utxos, opts)))
             .flatten()
         })
         .collect()
 }
 
 fn publish_tasks(
-    tx_item: (usize, &Transaction),
+    tx_item: (usize, &FuelCoreTransaction),
     tx_id: &Bytes32,
     tx_status: &TransactionStatus,
     stream: &Stream<Transaction>,
     opts: &Arc<PublishOpts>,
-    receipts: &Vec<Receipt>,
+    receipts: &Vec<FuelCoreReceipt>,
 ) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let block_height = &opts.block_height;
-    packets_from_tx(tx_item, tx_id, tx_status, block_height, receipts)
-        .iter()
-        .map(|packet| packet.publish(Arc::new(stream.to_owned()), opts))
-        .collect()
+    let base_asset_id = &opts.base_asset_id;
+
+    packets_from_tx(
+        tx_item,
+        tx_id,
+        tx_status,
+        base_asset_id,
+        block_height,
+        receipts,
+    )
+    .iter()
+    .map(|packet| publish(packet, Arc::new(stream.to_owned()), opts))
+    .collect()
 }
 
 fn packets_from_tx(
-    (index, tx): (usize, &Transaction),
+    (index, tx): (usize, &FuelCoreTransaction),
     tx_id: &Bytes32,
     tx_status: &TransactionStatus,
+    base_asset_id: &FuelCoreAssetId,
     block_height: &BlockHeight,
-    receipts: &Vec<Receipt>,
+    receipts: &Vec<FuelCoreReceipt>,
 ) -> Vec<PublishPacket<Transaction>> {
-    let kind = TransactionKind::from(tx.to_owned());
+    let main_subject = TransactionsSubject {
+        block_height: Some(block_height.to_owned()),
+        index: Some(index),
+        tx_id: Some(tx_id.to_owned()),
+        status: Some(tx_status.to_owned()),
+        kind: Some(tx.into()),
+    }
+    .arc();
+
+    let transaction =
+        Transaction::new(tx_id, tx, tx_status, base_asset_id, receipts);
+    let mut packets = vec![transaction.to_packet(main_subject)];
+
+    packets.extend(
+        identifiers(tx, tx_id, index as u8)
+            .into_par_iter()
+            .map(|identifier| identifier.into())
+            .map(|subject: TransactionsByIdSubject| subject.arc())
+            .map(|subject| transaction.to_packet(subject))
+            .collect::<Vec<_>>(),
+    );
+
     let packets_from_inputs: Vec<PublishPacket<Transaction>> = tx
         .inputs()
         .par_iter()
-        .flat_map(|item| {
-            let ids = item.extract_ids(tx, tx_id, index as u8);
-            tx.packets_from_ids(ids)
+        .flat_map(|input| {
+            inputs::identifiers(input, tx_id, index as u8)
+                .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
+                .map(|subject| transaction.to_packet(subject))
         })
         .collect();
+
+    packets.extend(packets_from_inputs);
 
     let packets_from_outputs: Vec<PublishPacket<Transaction>> = tx
         .outputs()
         .par_iter()
-        .flat_map(|item| {
-            let ids = item.extract_ids(tx, tx_id, index as u8);
-            tx.packets_from_ids(ids)
+        .flat_map(|output| {
+            outputs::identifiers(output, tx, tx_id, index as u8)
+                .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
+                .map(|subject| transaction.to_packet(subject))
         })
         .collect();
+
+    packets.extend(packets_from_outputs);
 
     let packets_from_receipts: Vec<PublishPacket<Transaction>> = receipts
         .par_iter()
-        .flat_map(|item| {
-            let ids = item.extract_ids(tx, tx_id, index as u8);
-            tx.packets_from_ids(ids)
+        .flat_map(|receipt| {
+            receipts::identifiers(receipt, tx_id, index as u8)
+                .into_par_iter()
+                .map(|identifier| identifier.into())
+                .map(|subject: TransactionsByIdSubject| subject.arc())
+                .map(|subject| transaction.to_packet(subject))
         })
         .collect();
 
-    iter::once(PublishPacket::new(
-        tx,
-        TransactionsSubject {
-            block_height: Some(block_height.to_owned()),
-            index: Some(index),
-            tx_id: Some(tx_id.to_owned()),
-            status: Some(tx_status.to_owned()),
-            kind: Some(kind),
-        }
-        .arc(),
-    ))
-    .par_bridge()
-    .chain(packets_from_inputs)
-    .chain(packets_from_outputs)
-    .chain(packets_from_receipts)
-    .collect()
+    packets.extend(packets_from_receipts);
+
+    packets
 }
 
-impl IdsExtractable for Transaction {
-    fn extract_ids(
-        &self,
-        _tx: &Transaction,
-        tx_id: &Bytes32,
-        index: u8,
-    ) -> Vec<Identifier> {
-        match self {
-            Transaction::Script(tx) => {
-                let script_tag = sha256(tx.script_data());
-                iter::once(Identifier::ScriptID(
-                    tx_id.to_owned(),
-                    index,
-                    script_tag,
-                ))
-                .collect()
-            }
-            _ => Vec::new(),
+fn identifiers(
+    tx: &FuelCoreTransaction,
+    tx_id: &Bytes32,
+    index: u8,
+) -> Vec<Identifier> {
+    match tx {
+        FuelCoreTransaction::Script(tx) => {
+            let script_tag = sha256(tx.script_data());
+            vec![Identifier::ScriptID(tx_id.to_owned(), index, script_tag)]
         }
+        _ => Vec::new(),
     }
 }

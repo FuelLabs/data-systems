@@ -1,6 +1,6 @@
 use fuel_streams_core::{
-    nats::{NatsClient, NatsClientOpts},
-    types::{Block, ChainId, DeliverPolicy, Transaction, UniqueIdentifier},
+    nats::{types::DeliverPolicy, NatsClient, NatsClientOpts},
+    types::{Block, Transaction},
     StreamEncoder,
     Streamable,
     SubscribeConsumerConfig,
@@ -73,7 +73,7 @@ async fn sync_blocks(
     while let Some(msg) = subscription.next().await {
         let msg = msg?;
         let block = Block::decode(msg.payload.clone().into()).await;
-        let height = *block.header().consensus().height;
+        let height = block.height;
         let id = height.to_string();
         let key = ("block".to_string(), id.clone());
         let record: Option<BlockRecord> = db
@@ -106,7 +106,7 @@ async fn sync_transactions(
     while let Some(msg) = subscription.next().await {
         let msg = msg?;
         let transaction = Transaction::decode(msg.payload.clone().into()).await;
-        let tx_id = transaction.id(&ChainId::default());
+        let tx_id = &transaction.id;
         let id = format!("0x{}", tx_id);
         let key = ("transaction".to_string(), id.clone());
         let record: Option<TransactionRecord> = db

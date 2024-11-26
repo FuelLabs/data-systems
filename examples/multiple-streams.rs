@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use fuel_core_types::fuel_tx::{ContractId, Receipt};
+use fuel_core_types::fuel_tx::ContractId;
 use fuel_streams::{
     client::Client,
     subjects::*,
@@ -130,7 +130,7 @@ async fn stream_blocks(
     };
     while let Some(bytes) = sub.next().await {
         let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
-        let block_height = *decoded_msg.payload.header().consensus().height;
+        let block_height = decoded_msg.payload.height;
         let block_subject = decoded_msg.subject;
         let block_published_at = decoded_msg.timestamp;
         println!(
@@ -283,8 +283,8 @@ async fn stream_contract(
         let receipt = decoded_msg.payload;
 
         // Check if the receipt has a contract_id and if it matches our target
-        if let Some(receipt_contract_id) = receipt.contract_id() {
-            if *receipt_contract_id == contract_id {
+        if let Some(receipt_contract_id) = &receipt.contract_id {
+            if *receipt_contract_id == contract_id.into() {
                 let receipt_subject = decoded_msg.subject;
                 let receipt_published_at = decoded_msg.timestamp;
                 println!(
