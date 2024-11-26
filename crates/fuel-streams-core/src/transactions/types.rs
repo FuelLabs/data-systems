@@ -3,6 +3,7 @@ use fuel_core_types::fuel_tx;
 use crate::types::*;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: Bytes32,
     pub kind: TransactionKind,

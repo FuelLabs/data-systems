@@ -1,6 +1,7 @@
 pub use crate::types::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Receipt {
     pub amount: Option<u64>,
     pub asset_id: Option<AssetId>,

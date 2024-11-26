@@ -2,6 +2,7 @@ use crate::types::*;
 
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Block {
     pub consensus: Consensus,
     pub header: BlockHeader,
@@ -37,7 +38,7 @@ impl Block {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BlockHeight(String);
 
 impl From<FuelCoreBlockHeight> for BlockHeight {
@@ -61,10 +62,32 @@ impl std::fmt::Display for BlockHeight {
 
 // Consensus enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "type")]
 pub enum Consensus {
     Genesis(Genesis),
-    PoAConsensus(PoAConsensus),
+    PoAConsensus(FuelCorePoAConsensus),
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Genesis {
+    pub chain_config_hash: Bytes32,
+    pub coins_root: Bytes32,
+    pub contracts_root: Bytes32,
+    pub messages_root: Bytes32,
+    pub transactions_root: Bytes32,
+}
+
+impl From<FuelCoreGenesis> for Genesis {
+    fn from(genesis: FuelCoreGenesis) -> Self {
+        Self {
+            chain_config_hash: genesis.chain_config_hash.into(),
+            coins_root: genesis.coins_root.into(),
+            contracts_root: genesis.contracts_root.into(),
+            messages_root: genesis.messages_root.into(),
+            transactions_root: genesis.transactions_root.into(),
+        }
+    }
 }
 
 impl Default for Consensus {
@@ -76,7 +99,9 @@ impl Default for Consensus {
 impl From<FuelCoreConsensus> for Consensus {
     fn from(consensus: FuelCoreConsensus) -> Self {
         match consensus {
-            FuelCoreConsensus::Genesis(genesis) => Consensus::Genesis(genesis),
+            FuelCoreConsensus::Genesis(genesis) => {
+                Consensus::Genesis(genesis.into())
+            }
             FuelCoreConsensus::PoA(poa) => Consensus::PoAConsensus(poa),
             _ => panic!("Unknown consensus type: {:?}", consensus),
         }
@@ -92,6 +117,7 @@ pub enum BlockVersion {
 
 // Header type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockHeader {
     pub application_hash: Bytes32,
     pub consensus_parameters_version: u32,
