@@ -1,6 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject, SubjectBuildable};
-
-use crate::types::*;
+use crate::prelude::*;
 
 /// Represents a NATS subject for blocks in the Fuel network.
 ///
@@ -13,7 +11,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::IntoSubject;
 /// let subject = BlocksSubject {
 ///     producer: Some(Address::zeroed()),
@@ -33,7 +31,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// let wildcard = BlocksSubject::wildcard(None, Some(23.into()));
 /// assert_eq!(wildcard, "blocks.*.23");
 /// ```
@@ -43,7 +41,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::blocks::BlocksSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = BlocksSubject::new()
 ///     .with_producer(Some(Address::zeroed()))
@@ -60,23 +58,6 @@ pub struct BlocksSubject {
 
 impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
-        let block_height = *block.header().height();
-        BlocksSubject::new().with_height(Some(BlockHeight::from(block_height)))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use pretty_assertions::assert_eq;
-
-    use super::*;
-
-    #[test]
-    fn block_subjects_from_block() {
-        let mock_block = &MockBlock::build(1);
-        let subject: BlocksSubject = mock_block.into();
-
-        assert!(subject.producer.is_none());
-        assert_eq!(subject.height.unwrap(), mock_block.clone().into());
+        BlocksSubject::new().with_height(Some(block.height.into()))
     }
 }

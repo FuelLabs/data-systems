@@ -1,12 +1,10 @@
 pub mod fuel_core_like;
-pub mod packets;
 pub mod payloads;
 pub mod shutdown;
 pub mod streams;
 
 use std::sync::Arc;
 
-use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_importer::ImporterResult;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
@@ -15,7 +13,6 @@ pub use streams::Streams;
 use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
 use super::{
-    packets::PublishOpts,
     payloads::blocks,
     shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
     telemetry::Telemetry,
@@ -113,8 +110,8 @@ impl Publisher {
             .blocks
             .get_last_published(BlocksSubject::WILDCARD)
             .await?;
-        let last_published_height = last_published_block
-            .map(|block| block.header().height().as_u64())
+        let last_published_height: u64 = last_published_block
+            .map(|block| block.height.into())
             .unwrap_or(0);
 
         // Catch up the streams with the FuelCore
@@ -204,26 +201,34 @@ impl Publisher {
 
     async fn publish(
         &self,
-        block: &Block<Transaction>,
+        block: &FuelCoreBlock<FuelCoreTransaction>,
         block_producer: &Address,
     ) -> anyhow::Result<()> {
         let start_time = std::time::Instant::now();
 
-        let fuel_core = &*self.fuel_core;
         let semaphore = Arc::new(Semaphore::new(*PUBLISHER_MAX_THREADS));
         let chain_id = Arc::new(*self.fuel_core.chain_id());
+        let base_asset_id = Arc::new(*self.fuel_core.base_asset_id());
         let block_producer = Arc::new(block_producer.clone());
         let block_height = block.header().consensus().height;
         let txs = block.transactions();
+        let consensus: Consensus =
+            self.fuel_core.get_consensus(&block_height)?.into();
+
+        let fuel_core = &*self.fuel_core;
+        let offchain_database = fuel_core.offchain_database()?;
 
         let streams = (*self.streams).clone();
         let block_stream = Arc::new(streams.blocks.to_owned());
         let opts = &Arc::new(PublishOpts {
             semaphore,
             chain_id,
+            base_asset_id,
             block_producer: Arc::clone(&block_producer),
             block_height: Arc::new(block_height.into()),
             telemetry: self.telemetry.clone(),
+            consensus: Arc::new(consensus),
+            offchain_database,
         });
 
         let publish_tasks = payloads::transactions::publish_all_tasks(
@@ -248,4 +253,65 @@ impl Publisher {
 
         Ok(())
     }
+}
+
+use tokio::task::JoinHandle;
+
+use crate::fuel_core_like::OffchainDatabase;
+
+#[derive(Clone)]
+pub struct PublishOpts {
+    pub semaphore: Arc<Semaphore>,
+    pub chain_id: Arc<FuelCoreChainId>,
+    pub base_asset_id: Arc<FuelCoreAssetId>,
+    pub block_producer: Arc<Address>,
+    pub block_height: Arc<BlockHeight>,
+    pub telemetry: Arc<Telemetry>,
+    pub consensus: Arc<Consensus>,
+    pub offchain_database: Arc<OffchainDatabase>,
+}
+
+pub fn publish<S: Streamable + 'static>(
+    packet: &PublishPacket<S>,
+    stream: Arc<Stream<S>>,
+    opts: &Arc<PublishOpts>,
+) -> JoinHandle<anyhow::Result<()>> {
+    let stream = Arc::clone(&stream);
+    let opts = Arc::clone(opts);
+    let payload = Arc::clone(&packet.payload);
+    let subject = Arc::clone(&packet.subject);
+    let telemetry = Arc::clone(&opts.telemetry);
+    let wildcard = packet.subject.wildcard();
+
+    tokio::spawn(async move {
+        let _permit = opts.semaphore.acquire().await?;
+
+        match stream.publish(&*subject, &payload).await {
+            Ok(published_data_size) => {
+                telemetry.log_info(&format!(
+                    "Successfully published for stream: {}",
+                    wildcard
+                ));
+                telemetry.update_publisher_success_metrics(
+                    wildcard,
+                    published_data_size,
+                    &opts.chain_id,
+                    &opts.block_producer,
+                );
+
+                Ok(())
+            }
+            Err(e) => {
+                telemetry.log_error(&e.to_string());
+                telemetry.update_publisher_error_metrics(
+                    wildcard,
+                    &opts.chain_id,
+                    &opts.block_producer,
+                    &e.to_string(),
+                );
+
+                anyhow::bail!("Failed to publish: {}", e.to_string())
+            }
+        }
+    })
 }

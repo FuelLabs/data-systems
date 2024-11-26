@@ -1,5 +1,4 @@
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
-use fuel_core_types::fuel_tx::Output;
 use fuel_streams::types::Log;
 use fuel_streams_core::prelude::*;
 

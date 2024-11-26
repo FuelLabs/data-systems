@@ -1,6 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject};
-
-use crate::types::*;
+use crate::prelude::*;
 
 /// Represents a subject for querying outputs by their identifier in the Fuel ecosystem.
 ///
@@ -14,7 +12,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = OutputsByIdSubject {
 ///     tx_id: Some([1u8; 32].into()),
@@ -40,7 +38,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = OutputsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::AssetID), None);
 /// assert_eq!(wildcard, "by_id.outputs.0x0101010101010101010101010101010101010101010101010101010101010101.0.asset_id.*");
@@ -50,7 +48,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::outputs::subjects::OutputsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = OutputsByIdSubject::new()
 ///     .with_tx_id(Some([1u8; 32].into()))
@@ -80,7 +78,7 @@ pub struct OutputsByIdSubject {
 ///
 /// ```
 /// use fuel_streams_core::outputs::subjects::OutputsCoinSubject;
-/// use fuel_streams_core::types::*;
+/// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsCoinSubject::new()
@@ -114,7 +112,7 @@ pub struct OutputsCoinSubject {
 ///
 /// ```
 /// use fuel_streams_core::outputs::subjects::OutputsContractSubject;
-/// use fuel_streams_core::types::*;
+/// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsContractSubject::new()
@@ -146,7 +144,7 @@ pub struct OutputsContractSubject {
 ///
 /// ```
 /// use fuel_streams_core::outputs::subjects::OutputsChangeSubject;
-/// use fuel_streams_core::types::*;
+/// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsChangeSubject::new()
@@ -180,7 +178,7 @@ pub struct OutputsChangeSubject {
 ///
 /// ```
 /// use fuel_streams_core::outputs::subjects::OutputsVariableSubject;
-/// use fuel_streams_core::types::*;
+/// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsVariableSubject::new()
@@ -214,7 +212,7 @@ pub struct OutputsVariableSubject {
 ///
 /// ```
 /// use fuel_streams_core::outputs::subjects::OutputsContractCreatedSubject;
-/// use fuel_streams_core::types::*;
+/// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::SubjectBuildable;
 ///
 /// let subject = OutputsContractCreatedSubject::new()

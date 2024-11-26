@@ -1,6 +1,4 @@
-use fuel_streams_macros::subject::{IntoSubject, Subject};
-
-use crate::types::*;
+use crate::prelude::*;
 
 /// Represents a subject for querying receipts by their identifier in the Fuel ecosystem.
 ///
@@ -14,7 +12,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsByIdSubject {
 ///     tx_id: Some([1u8; 32].into()),
@@ -40,7 +38,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsByIdSubject::wildcard(Some([1u8; 32].into()), Some(0), Some(IdentifierKind::ContractID), None);
 /// assert_eq!(wildcard, "by_id.receipts.0x0101010101010101010101010101010101010101010101010101010101010101.0.contract_id.*");
@@ -50,7 +48,7 @@ use crate::types::*;
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsByIdSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsByIdSubject::new()
 ///     .with_tx_id(Some([1u8; 32].into()))
@@ -81,7 +79,7 @@ pub struct ReceiptsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsCallSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsCallSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -108,7 +106,7 @@ pub struct ReceiptsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsCallSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsCallSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -127,7 +125,7 @@ pub struct ReceiptsByIdSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsCallSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsCallSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -162,7 +160,7 @@ pub struct ReceiptsCallSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsReturnSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -187,7 +185,7 @@ pub struct ReceiptsCallSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsReturnSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -204,7 +202,7 @@ pub struct ReceiptsCallSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsReturnSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -234,7 +232,7 @@ pub struct ReceiptsReturnSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsReturnDataSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -259,7 +257,7 @@ pub struct ReceiptsReturnSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsReturnDataSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -276,7 +274,7 @@ pub struct ReceiptsReturnSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsReturnDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsReturnDataSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -307,7 +305,7 @@ pub struct ReceiptsReturnDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsPanicSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsPanicSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -332,7 +330,7 @@ pub struct ReceiptsReturnDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsPanicSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsPanicSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -349,7 +347,7 @@ pub struct ReceiptsReturnDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsPanicSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsPanicSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -380,7 +378,7 @@ pub struct ReceiptsPanicSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsRevertSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsRevertSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -405,7 +403,7 @@ pub struct ReceiptsPanicSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsRevertSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsRevertSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -422,7 +420,7 @@ pub struct ReceiptsPanicSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsRevertSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsRevertSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -453,7 +451,7 @@ pub struct ReceiptsRevertSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsLogSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -478,7 +476,7 @@ pub struct ReceiptsRevertSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsLogSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -495,7 +493,7 @@ pub struct ReceiptsRevertSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsLogSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -526,7 +524,7 @@ pub struct ReceiptsLogSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsLogDataSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -551,7 +549,7 @@ pub struct ReceiptsLogSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsLogDataSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -568,7 +566,7 @@ pub struct ReceiptsLogSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsLogDataSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsLogDataSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -600,7 +598,7 @@ pub struct ReceiptsLogDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsTransferSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -627,7 +625,7 @@ pub struct ReceiptsLogDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsTransferSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -646,7 +644,7 @@ pub struct ReceiptsLogDataSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsTransferSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -682,7 +680,7 @@ pub struct ReceiptsTransferSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsTransferOutSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -709,7 +707,7 @@ pub struct ReceiptsTransferSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsTransferOutSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -728,7 +726,7 @@ pub struct ReceiptsTransferSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsTransferOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsTransferOutSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -763,7 +761,7 @@ pub struct ReceiptsTransferOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsScriptResultSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsScriptResultSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -787,7 +785,7 @@ pub struct ReceiptsTransferOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsScriptResultSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsScriptResultSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -803,7 +801,7 @@ pub struct ReceiptsTransferOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsScriptResultSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsScriptResultSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -832,7 +830,7 @@ pub struct ReceiptsScriptResultSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMessageOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsMessageOutSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -858,7 +856,7 @@ pub struct ReceiptsScriptResultSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMessageOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsMessageOutSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -876,7 +874,7 @@ pub struct ReceiptsScriptResultSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMessageOutSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsMessageOutSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -909,7 +907,7 @@ pub struct ReceiptsMessageOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMintSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsMintSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -935,7 +933,7 @@ pub struct ReceiptsMessageOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMintSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsMintSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -953,7 +951,7 @@ pub struct ReceiptsMessageOutSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsMintSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsMintSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))
@@ -986,7 +984,7 @@ pub struct ReceiptsMintSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsBurnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsBurnSubject {
 ///     tx_id: Some(Bytes32::from([1u8; 32])),
@@ -1012,7 +1010,7 @@ pub struct ReceiptsMintSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsBurnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = ReceiptsBurnSubject::wildcard(
 ///     Some(Bytes32::from([1u8; 32])),
@@ -1030,7 +1028,7 @@ pub struct ReceiptsMintSubject {
 ///
 /// ```
 /// # use fuel_streams_core::receipts::subjects::ReceiptsBurnSubject;
-/// # use fuel_streams_core::types::*;
+/// # use fuel_streams_core::prelude::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = ReceiptsBurnSubject::new()
 ///     .with_tx_id(Some(Bytes32::from([1u8; 32])))

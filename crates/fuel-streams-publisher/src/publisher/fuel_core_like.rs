@@ -2,24 +2,32 @@ use std::sync::Arc;
 
 use fuel_core::{
     combined_database::CombinedDatabase,
-    database::database_description::DatabaseHeight,
+    database::{
+        database_description::{on_chain::OnChain, DatabaseHeight},
+        Database,
+    },
+    fuel_core_graphql_api::ports::DatabaseBlocks,
+    state::{
+        generic_database::GenericDatabase,
+        iterable_key_value_view::IterableKeyValueViewWrapper,
+    },
 };
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
-    blockchain::consensus::Sealed,
-    fuel_tx::Bytes32,
+    blockchain::consensus::{Consensus, Sealed},
+    fuel_types::BlockHeight,
     tai64::Tai64,
 };
-use fuel_streams_core::types::{
-    Address,
-    Block,
-    ChainId,
-    FuelCoreTransactionStatus,
-    Receipt,
-};
+use fuel_streams_core::types::*;
 use tokio::sync::broadcast::Receiver;
+
+pub type OffchainDatabase = GenericDatabase<
+    IterableKeyValueViewWrapper<
+        fuel_core::fuel_core_graphql_api::storage::Column,
+    >,
+>;
 
 /// Interface for `fuel-core` related logic.
 /// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
@@ -29,44 +37,74 @@ pub trait FuelCoreLike: Sync + Send {
     fn is_started(&self) -> bool;
     async fn stop(&self);
 
-    fn chain_id(&self) -> &ChainId;
+    fn base_asset_id(&self) -> &FuelCoreAssetId;
+    fn chain_id(&self) -> &FuelCoreChainId;
+
     fn database(&self) -> &CombinedDatabase;
+    fn onchain_database(&self) -> &Database<OnChain> {
+        self.database().on_chain()
+    }
+    fn offchain_database(&self) -> anyhow::Result<Arc<OffchainDatabase>> {
+        Ok(Arc::new(self.database().off_chain().latest_view()?))
+    }
+
     fn blocks_subscription(
         &self,
     ) -> Receiver<fuel_core_importer::ImporterResult>;
 
     fn get_latest_block_height(&self) -> anyhow::Result<Option<u64>> {
         Ok(self
-            .database()
-            .on_chain()
+            .onchain_database()
             .latest_block_height()?
             .map(|h| h.as_u64()))
     }
 
     fn get_receipts(
         &self,
-        tx_id: &Bytes32,
-    ) -> anyhow::Result<Option<Vec<Receipt>>>;
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>>;
 
     fn get_block_and_producer_by_height(
         &self,
-        height: u64,
-    ) -> anyhow::Result<(Block, Address)> {
+        height: u32,
+    ) -> anyhow::Result<(FuelCoreBlock, Address)> {
         let sealed_block = self
-            .database()
-            .on_chain()
+            .onchain_database()
             .latest_view()?
-            .get_sealed_block_by_height(&(height as u32).into())?
+            .get_sealed_block_by_height(&(height).into())?
             .expect("NATS Publisher: no block at height {height}");
 
         Ok(self.get_block_and_producer(&sealed_block))
     }
 
     #[cfg(not(feature = "test-helpers"))]
+    fn get_consensus(
+        &self,
+        block_height: &BlockHeight,
+    ) -> anyhow::Result<Consensus> {
+        Ok(self
+            .onchain_database()
+            .latest_view()?
+            .consensus(block_height)?)
+    }
+
+    #[cfg(feature = "test-helpers")]
+    fn get_consensus(
+        &self,
+        block_height: &BlockHeight,
+    ) -> anyhow::Result<Consensus> {
+        Ok(self
+            .onchain_database()
+            .latest_view()?
+            .consensus(block_height)
+            .unwrap_or_default())
+    }
+
+    #[cfg(not(feature = "test-helpers"))]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
+        sealed_block: &Sealed<FuelCoreBlock>,
+    ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus
@@ -79,8 +117,8 @@ pub trait FuelCoreLike: Sync + Send {
     #[cfg(feature = "test-helpers")]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<Block>,
-    ) -> (Block, Address) {
+        sealed_block: &Sealed<FuelCoreBlock>,
+    ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus
@@ -90,9 +128,8 @@ pub trait FuelCoreLike: Sync + Send {
         (block, block_producer.into())
     }
 
-    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<Block> {
-        self.database()
-            .on_chain()
+    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<FuelCoreBlock> {
+        self.onchain_database()
             .latest_view()
             .expect("failed to get latest db view")
             .get_sealed_block_by_height(&height.into())
@@ -101,8 +138,7 @@ pub trait FuelCoreLike: Sync + Send {
     }
 
     fn get_sealed_block_time_by_height(&self, height: u32) -> Tai64 {
-        self.database()
-            .on_chain()
+        self.onchain_database()
             .latest_view()
             .expect("failed to get latest db view")
             .get_sealed_block_header(&height.into())
@@ -116,7 +152,8 @@ pub trait FuelCoreLike: Sync + Send {
 #[derive(Clone)]
 pub struct FuelCore {
     pub fuel_service: Arc<FuelService>,
-    chain_id: ChainId,
+    chain_id: FuelCoreChainId,
+    base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
 }
 
@@ -125,12 +162,14 @@ impl From<FuelService> for FuelCore {
         let chain_config =
             fuel_service.shared.config.snapshot_reader.chain_config();
         let chain_id = chain_config.consensus_parameters.chain_id();
+        let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
 
         let database = fuel_service.shared.database.clone();
 
         Self {
             fuel_service: Arc::new(fuel_service),
             chain_id,
+            base_asset_id,
             database,
         }
     }
@@ -191,7 +230,10 @@ impl FuelCoreLike for FuelCore {
         }
     }
 
-    fn chain_id(&self) -> &ChainId {
+    fn base_asset_id(&self) -> &FuelCoreAssetId {
+        &self.base_asset_id
+    }
+    fn chain_id(&self) -> &FuelCoreChainId {
         &self.chain_id
     }
 
@@ -211,8 +253,8 @@ impl FuelCoreLike for FuelCore {
 
     fn get_receipts(
         &self,
-        tx_id: &Bytes32,
-    ) -> anyhow::Result<Option<Vec<Receipt>>> {
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         let off_chain_database = self.database().off_chain().latest_view()?;
         let receipts = off_chain_database
             .get_tx_status(tx_id)?

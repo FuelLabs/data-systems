@@ -148,8 +148,8 @@ impl PublisherMetrics {
 #[allow(dead_code)]
 // TODO: Will this be useful in the future?
 pub fn add_block_metrics(
-    chain_id: &ChainId,
-    block: &Block<Transaction>,
+    chain_id: &FuelCoreChainId,
+    block: &FuelCoreBlock<FuelCoreTransaction>,
     block_producer: &Address,
     metrics: &Arc<PublisherMetrics>,
 ) -> anyhow::Result<Arc<PublisherMetrics>> {

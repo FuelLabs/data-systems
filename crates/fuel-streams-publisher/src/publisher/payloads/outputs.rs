@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
-use fuel_core_types::fuel_tx::{output::contract::Contract, Output};
-use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use super::identifiers::{Identifier, IdsExtractable, PacketIdBuilder};
-use crate::packets::{PublishOpts, PublishPacket};
+use crate::{publish, PublishOpts};
 
 pub fn publish_tasks(
-    tx: &Transaction,
+    tx: &FuelCoreTransaction,
     tx_id: &Bytes32,
     stream: &Stream<Output>,
     opts: &Arc<PublishOpts>,
@@ -19,120 +17,116 @@ pub fn publish_tasks(
         .par_iter()
         .enumerate()
         .flat_map(|(index, output)| {
-            let ids = output.extract_ids(tx, tx_id, index as u8);
-            let mut packets = output.packets_from_ids(ids);
-            let packet =
-                packet_from_output(output, tx_id.to_owned(), index, tx);
-            packets.push(packet);
+            let main_subject = main_subject(output, tx, tx_id, index);
+            let identifier_subjects =
+                identifiers(output, tx, tx_id, index as u8)
+                    .into_par_iter()
+                    .map(|identifier| identifier.into())
+                    .map(|subject: OutputsByIdSubject| subject.arc())
+                    .collect::<Vec<_>>();
+
+            let output: Output = output.into();
+
+            let mut packets = vec![output.to_packet(main_subject)];
+            packets.extend(
+                identifier_subjects
+                    .into_iter()
+                    .map(|subject| output.to_packet(subject)),
+            );
+
             packets
         })
         .collect();
 
     packets
         .iter()
-        .map(|packet| packet.publish(Arc::new(stream.to_owned()), opts))
+        .map(|packet| publish(packet, Arc::new(stream.to_owned()), opts))
         .collect()
 }
 
-fn packet_from_output(
-    output: &Output,
-    tx_id: Bytes32,
+fn main_subject(
+    output: &FuelCoreOutput,
+    transaction: &FuelCoreTransaction,
+    tx_id: &Bytes32,
     index: usize,
-    transaction: &Transaction,
-) -> PublishPacket<Output> {
+) -> Arc<dyn IntoSubject> {
     match output {
-        Output::Coin { to, asset_id, .. } => PublishPacket::new(
-            output,
-            OutputsCoinSubject {
-                tx_id: Some(tx_id),
-                index: Some(index as u16),
-                to: Some((*to).into()),
-                asset_id: Some((*asset_id).into()),
-            }
-            .arc(),
-        ),
-        Output::Contract(contract) => {
-            let contract_id = find_output_contract_id(transaction, contract)
-                .ok_or_else(|| anyhow::anyhow!("Contract input not found"))
-                .unwrap_or_default();
-
-            PublishPacket::new(
-                output,
-                OutputsContractSubject {
-                    tx_id: Some(tx_id),
-                    index: Some(index as u16),
-                    contract_id: Some(contract_id.into()),
-                }
-                .arc(),
-            )
+        FuelCoreOutput::Coin { to, asset_id, .. } => OutputsCoinSubject {
+            tx_id: Some(tx_id.to_owned()),
+            index: Some(index as u16),
+            to: Some((*to).into()),
+            asset_id: Some((*asset_id).into()),
         }
-        Output::Change { to, asset_id, .. } => PublishPacket::new(
-            output,
-            OutputsChangeSubject {
-                tx_id: Some(tx_id),
+        .arc(),
+
+        FuelCoreOutput::Contract(contract) => {
+            let contract_id =
+                match find_output_contract_id(transaction, contract) {
+                    Some(contract_id) => contract_id,
+                    None => {
+                        tracing::warn!(
+                            "Contract ID not found for output: {:?}",
+                            output
+                        );
+
+                        Default::default()
+                    }
+                };
+
+            OutputsContractSubject {
+                tx_id: Some(tx_id.to_owned()),
                 index: Some(index as u16),
-                to: Some((*to).into()),
-                asset_id: Some((*asset_id).into()),
+                contract_id: Some(contract_id.into()),
             }
-            .arc(),
-        ),
-        Output::Variable { to, asset_id, .. } => PublishPacket::new(
-            output,
+            .arc()
+        }
+
+        FuelCoreOutput::Change { to, asset_id, .. } => OutputsChangeSubject {
+            tx_id: Some(tx_id.to_owned()),
+            index: Some(index as u16),
+            to: Some((*to).into()),
+            asset_id: Some((*asset_id).into()),
+        }
+        .arc(),
+
+        FuelCoreOutput::Variable { to, asset_id, .. } => {
             OutputsVariableSubject {
-                tx_id: Some(tx_id),
+                tx_id: Some(tx_id.to_owned()),
                 index: Some(index as u16),
                 to: Some((*to).into()),
                 asset_id: Some((*asset_id).into()),
             }
-            .arc(),
-        ),
-        Output::ContractCreated { contract_id, .. } => PublishPacket::new(
-            output,
+            .arc()
+        }
+
+        FuelCoreOutput::ContractCreated { contract_id, .. } => {
             OutputsContractCreatedSubject {
-                tx_id: Some(tx_id),
+                tx_id: Some(tx_id.to_owned()),
                 index: Some(index as u16),
                 contract_id: Some((*contract_id).into()),
             }
-            .arc(),
-        ),
+            .arc()
+        }
     }
 }
 
-pub fn find_output_contract_id(
-    tx: &Transaction,
-    contract: &Contract,
-) -> Option<fuel_core_types::fuel_tx::ContractId> {
-    let input_index = contract.input_index as usize;
-    tx.inputs().get(input_index).and_then(|input| {
-        if let Input::Contract(input_contract) = input {
-            Some(input_contract.contract_id)
-        } else {
-            None
+pub fn identifiers(
+    output: &FuelCoreOutput,
+    tx: &FuelCoreTransaction,
+    tx_id: &Bytes32,
+    index: u8,
+) -> Vec<Identifier> {
+    match output {
+        FuelCoreOutput::Change { to, asset_id, .. }
+        | FuelCoreOutput::Variable { to, asset_id, .. }
+        | FuelCoreOutput::Coin { to, asset_id, .. } => {
+            vec![
+                Identifier::Address(tx_id.to_owned(), index, to.into()),
+                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+            ]
         }
-    })
-}
-
-impl IdsExtractable for Output {
-    fn extract_ids(
-        &self,
-        tx: &Transaction,
-        tx_id: &Bytes32,
-        index: u8,
-    ) -> Vec<Identifier> {
-        match self {
-            Output::Change { to, asset_id, .. }
-            | Output::Variable { to, asset_id, .. }
-            | Output::Coin { to, asset_id, .. } => {
-                vec![
-                    Identifier::Address(tx_id.to_owned(), index, to.into()),
-                    Identifier::AssetID(
-                        tx_id.to_owned(),
-                        index,
-                        asset_id.into(),
-                    ),
-                ]
-            }
-            Output::Contract(contract) => find_output_contract_id(tx, contract)
+        FuelCoreOutput::Contract(contract) => {
+            find_output_contract_id(tx, contract)
                 .map(|contract_id| {
                     vec![Identifier::ContractID(
                         tx_id.to_owned(),
@@ -140,14 +134,28 @@ impl IdsExtractable for Output {
                         contract_id.into(),
                     )]
                 })
-                .unwrap_or_default(),
-            Output::ContractCreated { contract_id, .. } => {
-                vec![Identifier::ContractID(
-                    tx_id.to_owned(),
-                    index,
-                    contract_id.into(),
-                )]
-            }
+                .unwrap_or_default()
+        }
+        FuelCoreOutput::ContractCreated { contract_id, .. } => {
+            vec![Identifier::ContractID(
+                tx_id.to_owned(),
+                index,
+                contract_id.into(),
+            )]
         }
     }
+}
+
+pub fn find_output_contract_id(
+    tx: &FuelCoreTransaction,
+    contract: &FuelCoreOutputContract,
+) -> Option<fuel_core_types::fuel_tx::ContractId> {
+    let input_index = contract.input_index as usize;
+    tx.inputs().get(input_index).and_then(|input| {
+        if let FuelCoreInput::Contract(input_contract) = input {
+            Some(input_contract.contract_id)
+        } else {
+            None
+        }
+    })
 }

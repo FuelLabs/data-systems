@@ -1,173 +1,145 @@
 use std::sync::Arc;
 
-use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::fuel_tx::{input::AsField, UtxoId};
-use fuel_streams_core::{prelude::*, transactions::TransactionExt};
+use fuel_core_types::fuel_tx::{
+    input::{
+        coin::{CoinPredicate, CoinSigned},
+        contract::Contract,
+        message::{
+            compute_message_id,
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
+            MessageDataSigned,
+        },
+    },
+    UtxoId,
+};
+use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::{
-    packets::{PublishOpts, PublishPacket},
-    FuelCoreLike,
-};
+use crate::{publish, PublishOpts};
 
 pub fn publish_tasks(
-    tx: &Transaction,
+    tx: &FuelCoreTransaction,
     tx_id: &Bytes32,
     stream: &Stream<Utxo>,
     opts: &Arc<PublishOpts>,
-    fuel_core: &dyn FuelCoreLike,
 ) -> Vec<JoinHandle<anyhow::Result<()>>> {
-    let packets: Vec<(UtxosSubject, Utxo)> = tx
+    let packets = tx
         .inputs()
         .par_iter()
-        .filter_map(|input| {
-            find_utxo(
-                input,
-                tx_id.to_owned(),
-                input.utxo_id().cloned(),
-                fuel_core,
-            )
-        })
-        .collect();
+        .filter_map(|input| utxo_packet(input, tx_id, input.utxo_id().cloned()))
+        .collect::<Vec<_>>();
 
     packets
         .into_iter()
-        .map(|(subject, utxo)| {
-            let packet = PublishPacket::new(&utxo, subject.arc());
-            packet.publish(Arc::new(stream.to_owned()), opts)
-        })
+        .map(|packet| publish(&packet, Arc::new(stream.to_owned()), opts))
         .collect()
 }
 
-fn find_utxo(
-    input: &Input,
-    tx_id: Bytes32,
+fn utxo_packet(
+    input: &FuelCoreInput,
+    tx_id: &Bytes32,
     utxo_id: Option<UtxoId>,
-    fuel_core: &dyn FuelCoreLike,
-) -> Option<(UtxosSubject, Utxo)> {
+) -> Option<PublishPacket<Utxo>> {
     utxo_id?;
     let utxo_id = utxo_id.expect("safe to unwrap utxo");
-    let on_chain_database = fuel_core
-        .database()
-        .on_chain()
-        .latest_view()
-        .expect("error getting latest view");
+
     match input {
-        Input::Contract(c) => {
-            on_chain_database.contract_latest_utxo(c.contract_id).ok()?;
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                None,
-                None,
-                None,
-                None,
-                None,
-                tx_id.into_inner(),
-            );
+        FuelCoreInput::Contract(Contract { utxo_id, .. }) => {
+            let utxo = Utxo {
+                utxo_id: utxo_id.to_owned(),
+                tx_id: tx_id.to_owned(),
+                ..Default::default()
+            };
+
             let subject = UtxosSubject {
                 utxo_type: Some(UtxoType::Contract),
-                hash: Some(utxo_payload.compute_hash().into()),
-            };
-            Some((subject, utxo_payload))
+                hash: Some(tx_id.to_owned().into()),
+            }
+            .arc();
+
+            Some(utxo.to_packet(subject))
         }
-        Input::CoinSigned(c) => {
-            on_chain_database.coin(&utxo_id).ok()?;
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                None,
-                None,
-                None,
-                None,
-                Some(c.amount),
-                tx_id.into_inner(),
-            );
+        FuelCoreInput::CoinSigned(CoinSigned {
+            utxo_id, amount, ..
+        })
+        | FuelCoreInput::CoinPredicate(CoinPredicate {
+            utxo_id, amount, ..
+        }) => {
+            let utxo = Utxo {
+                utxo_id: utxo_id.to_owned(),
+                amount: Some(*amount),
+                tx_id: tx_id.to_owned(),
+                ..Default::default()
+            };
+
             let subject = UtxosSubject {
                 utxo_type: Some(UtxoType::Coin),
-                hash: Some(utxo_payload.compute_hash().into()),
-            };
-            Some((subject, utxo_payload))
+                hash: Some(tx_id.to_owned().into()),
+            }
+            .arc();
+
+            Some(utxo.to_packet(subject))
         }
-        Input::CoinPredicate(c) => {
-            on_chain_database.coin(&utxo_id).ok()?;
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                None,
-                None,
-                None,
-                None,
-                Some(c.amount),
-                tx_id.into_inner(),
-            );
-            let subject = UtxosSubject {
-                utxo_type: Some(UtxoType::Coin),
-                hash: Some(utxo_payload.compute_hash().into()),
+        message @ (FuelCoreInput::MessageCoinSigned(MessageCoinSigned {
+            amount,
+            nonce,
+            recipient,
+            sender,
+            ..
+        })
+        | FuelCoreInput::MessageCoinPredicate(
+            MessageCoinPredicate {
+                amount,
+                nonce,
+                recipient,
+                sender,
+                ..
+            },
+        )
+        | FuelCoreInput::MessageDataSigned(MessageDataSigned {
+            amount,
+            nonce,
+            recipient,
+            sender,
+            ..
+        })
+        | FuelCoreInput::MessageDataPredicate(
+            MessageDataPredicate {
+                amount,
+                nonce,
+                recipient,
+                sender,
+                ..
+            },
+        )) => {
+            let (data, hash) = if let Some(data) = message.input_data() {
+                let hash: MessageId =
+                    compute_message_id(sender, recipient, nonce, *amount, data)
+                        .into();
+                (Some(data.to_vec()), hash)
+            } else {
+                (None, tx_id.to_owned().into())
             };
-            Some((subject, utxo_payload))
-        }
-        Input::MessageCoinSigned(message) => {
-            let utxo_payload = Utxo::new(
+
+            let utxo = Utxo {
                 utxo_id,
-                Some(message.sender),
-                Some(message.recipient),
-                Some(message.nonce),
-                message.data.as_field().cloned(),
-                Some(message.amount),
-                tx_id.into_inner(),
-            );
-            let subject = UtxosSubject {
-                utxo_type: Some(UtxoType::Message),
-                hash: Some(utxo_payload.compute_hash().into()),
+                sender: Some(sender.into()),
+                recipient: Some(recipient.into()),
+                nonce: Some(nonce.into()),
+                amount: Some(*amount),
+                tx_id: tx_id.to_owned(),
+                data,
             };
-            Some((subject, utxo_payload))
-        }
-        Input::MessageCoinPredicate(message) => {
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                Some(message.sender),
-                Some(message.recipient),
-                Some(message.nonce),
-                message.data.as_field().cloned(),
-                Some(message.amount),
-                tx_id.into_inner(),
-            );
-            let subject = UtxosSubject {
-                utxo_type: Some(UtxoType::Message),
-                hash: Some(utxo_payload.compute_hash().into()),
-            };
-            Some((subject, utxo_payload))
-        }
-        Input::MessageDataSigned(message) => {
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                Some(message.sender),
-                Some(message.recipient),
-                Some(message.nonce),
-                message.data.as_field().cloned(),
-                Some(message.amount),
-                tx_id.into_inner(),
-            );
             let subject = UtxosSubject {
                 utxo_type: Some(UtxoType::Message),
-                hash: Some(utxo_payload.compute_hash().into()),
-            };
-            Some((subject, utxo_payload))
-        }
-        Input::MessageDataPredicate(message) => {
-            let utxo_payload = Utxo::new(
-                utxo_id,
-                Some(message.sender),
-                Some(message.recipient),
-                Some(message.nonce),
-                message.data.as_field().cloned(),
-                Some(message.amount),
-                tx_id.into_inner(),
-            );
-            let subject = UtxosSubject {
-                utxo_type: Some(UtxoType::Message),
-                hash: Some(utxo_payload.compute_hash().into()),
-            };
-            Some((subject, utxo_payload))
+                hash: Some(hash),
+            }
+            .arc();
+
+            Some(utxo.to_packet(subject))
         }
     }
 }

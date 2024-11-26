@@ -3,7 +3,7 @@ use std::time::Duration;
 use fuel_streams_core::{
     nats::NatsClient,
     prelude::*,
-    types::{Block, Transaction},
+    types::Transaction,
     Stream,
 };
 use tokio::task::JoinHandle;
@@ -84,7 +84,7 @@ pub fn publish_transactions(
     for i in 0..10 {
         let tx = MockTransaction::build();
         let subject = TransactionsSubject::from(&tx)
-            .with_block_height(Some(mock_block.clone().into()))
+            .with_block_height(Some(mock_block.height.into()))
             .with_index(Some(use_index.unwrap_or(i) as usize))
             .with_status(Some(TransactionStatus::Success));
         items.push((subject, tx));
