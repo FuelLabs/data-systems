@@ -14,17 +14,17 @@ serviceAccount: local-fuel-serviceaccount
 
 kibanaDomain: local-kibana.fuel.com
 
-disableResourceLimits: true
-waitForServiceDependencies: false
+disableResourceLimits: false
+waitForServiceDependencies: true
 
 # pvc
 fuelSharedMnt:
   accessModes:
-    value: "ReadWriteMany"
+    value: "ReadWriteOnce"
   storageClassName:
-    enabled: false
-    value: "aws-efs"
-  enableHostPath: false
+    enabled: true
+    value: "fuel-pvc"
+  enableHostPath: true
   type: DirectoryOrCreate
   hostPath: "/tmp/fuel-shared-mount"
 
@@ -42,18 +42,20 @@ prometheus:
   tag: "v2.22.0"
 
 elasticsearch:
-  enabled: false
+  enabled: true
   storage: "100Mi"
   image: "docker.elastic.co/elasticsearch/elasticsearch"
   tag: "7.10.2"
   configFilesFolders: {}
 
 monitoring:
-  enabled: false
+  enabled: true
   configFilesFolders: {}
 
 kibana:
-  enabled: false
+  enabled: true
+  image: "docker.elastic.co/kibana/kibana"
+  tag: "7.6.2"
 
 surrealdb:
   enabled: true
@@ -125,15 +127,15 @@ fuelPublisher:
         name: rocks-db
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: gp3-generic
+        storageClassName: standard
         resources:
           requests:
-            storage: 800Gi
+            storage: 8Gi
     - metadata:
         name: tmp-folder
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: gp3-generic
+        storageClassName: standard
         resources:
           requests:
             storage: 5Gi

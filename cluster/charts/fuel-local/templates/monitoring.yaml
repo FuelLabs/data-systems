@@ -17,9 +17,9 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fuel-publisher-dashboard
+  name: grafana-dashboards
 data:
-  gql-api.json: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards/fuel-publisher-metrics-dashboard.json" (.Values.monitoring.configFilesFolders.fuelPublisher | default "master"))) . | quote }}
+  fuel-publisher-metrics-dashboard.json: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards/fuel-publisher-metrics-dashboard.json" (.Values.monitoring.configFilesFolders.fuelPublisher | default "master"))) . | quote }}
 ---
 apiVersion: v1
 kind: ConfigMap

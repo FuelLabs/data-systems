@@ -18,32 +18,20 @@ k8s_kind('IngressRoute')
 # disable unused image
 update_settings(suppress_unused_image_warnings=["k8s-tools:latest"])
 
-# load helm charts
+# project namespace
 namespace = "fuel-local"
-chart_name = "fuel"
-chart_dir = "cluster/charts/fuel-local"
-values = "cluster/values/fuel-local.yaml"
-overrides = [
-    "monitoring.enabled=true",
-    "grafana.image=grafana/grafana",
-    "grafana.tag=7.2.1",
-    "prometheus.image=prom/prometheus",
-    "prometheus.tag=v2.22.0",
 
-    "elasticsearch.enabled=true",
-    "elasticsearch.image=docker.elastic.co/elasticsearch/elasticsearch",
-    "elasticsearch.tag=7.10.2",
+# load fuel helm chart
+fuel_chart_name = "fuel"
+fuel_chart_dir = "cluster/charts/fuel-local"
+fuel_values = "cluster/charts/fuel-local/values.yaml"
+k8s_yaml(helm(fuel_chart_dir, name=fuel_chart_name, namespace=namespace, values=[fuel_values], set=[]))
 
-    "kibana.enabled=true",
-    "kibana.image=docker.elastic.co/kibana/kibana",
-    "kibana.tag=7.6.2",
-
-    "surrealdb.enabled=true",
-
-    "fuelPublisher.enabled=true",
-]
-
-k8s_yaml(helm(chart_dir, name=chart_name, namespace=namespace, values=[values], set=overrides))
+# load nats helm chart
+nats_chart_name = "nats"
+nats_chart_dir = "cluster/charts/fuel-nats"
+nats_values = "cluster/charts/fuel-nats/values.yaml"
+k8s_yaml(helm(nats_chart_dir, name=nats_chart_name, namespace=namespace, values=[nats_values], set=[]))
 
 # build publisher image
 # ref = 'fuel-publisher:{}'
@@ -63,6 +51,8 @@ ports = {
     "elasticsearch": ["9200:9200", "9300:9300"],
     "kibana": ["5601:5601"],
     "fuel-publisher": [],
+    "nats": ["4222:4222"],
+    "nats-box": [],
 }
 deps = {
     "monitoring": [],
@@ -70,6 +60,8 @@ deps = {
     "elasticsearch": [],
     "kibana": ["elasticsearch"],
     "fuel-publisher": [],
+    "nats": [],
+    "nats-box": [],
 }
 
 k8s_resource("monitoring", port_forwards=ports["monitoring"], resource_deps=deps["monitoring"], labels="monitoring")
@@ -77,3 +69,5 @@ k8s_resource("surrealdb", port_forwards=ports["surrealdb"], resource_deps=deps["
 k8s_resource("elasticsearch", port_forwards=ports["elasticsearch"], resource_deps=deps["elasticsearch"], labels="logging")
 k8s_resource("kibana", port_forwards=ports["kibana"], resource_deps=deps["kibana"], labels="logging")
 k8s_resource("fuel-publisher", port_forwards=ports["fuel-publisher"], resource_deps=deps["fuel-publisher"], labels="publisher")
+k8s_resource("nats", port_forwards=ports["nats"], resource_deps=deps["nats"], labels="nats")
+k8s_resource("nats-box", port_forwards=ports["nats-box"], resource_deps=deps["nats-box"], labels="nats")

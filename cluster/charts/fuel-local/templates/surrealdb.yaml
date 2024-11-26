@@ -34,7 +34,7 @@ spec:
       serviceAccountName: {{ .Values.serviceAccount }}
       containers:
         - name: surrealdb
-          image: "{{ .Values.surrealdb.image.repository }}:{{ .Values.surrealdb.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.surrealdb.image.repository }}:{{ .Values.surrealdb.image.tag }}"
           imagePullPolicy: {{ .Values.surrealdb.image.pullPolicy }}
           ports:
             - name: http
@@ -43,7 +43,7 @@ spec:
           command:
             - surreal
           args:
-            - {{ .Values.surrealdb.args | join " " }}
+            - start
           env:
             - name: SURREAL_NO_BANNER
               value: "true"
