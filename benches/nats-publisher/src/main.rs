@@ -47,7 +47,8 @@ async fn main() -> anyhow::Result<()> {
             for height in 0..*last_height {
                 let height = height.into();
                 let block = block_helper.find_by_height(height);
-                let block = Block::new(&block, Consensus::default());
+                let block =
+                    Block::new(&block, Consensus::default(), Vec::new());
 
                 block_helper.publish(&block).await?;
                 // for (index, tx) in block.transactions().iter().enumerate() {
@@ -65,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
     while let Ok(result) = subscription.recv().await {
         let result = &**result;
         let block = &result.sealed_block.entity;
-        let block = Block::new(block, Consensus::default());
+        let block = Block::new(block, Consensus::default(), Vec::new());
 
         block_helper.publish(&block).await?;
         // for (index, tx) in block.transactions().iter().enumerate() {

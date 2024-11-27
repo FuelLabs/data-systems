@@ -42,7 +42,7 @@ mod tests {
             header: header.clone(),
             height: 42,
             id: Default::default(),
-            transactions: vec![], // Always empty for now
+            transaction_ids: vec![],
             version: BlockVersion::V1,
         };
 
@@ -76,7 +76,7 @@ mod tests {
             },
             "height": 42,
             "id": "0000000000000000000000000000000000000000000000000000000000000000",
-            "transactions": [],
+            "transactionIds": [],
             "version": "V1"
         });
 
