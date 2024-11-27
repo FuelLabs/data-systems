@@ -57,29 +57,6 @@ kibana:
   image: "docker.elastic.co/kibana/kibana"
   tag: "7.6.2"
 
-surrealdb:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: surrealdb/surrealdb
-    pullPolicy: IfNotPresent
-    tag: latest
-  args: ["start"]
-  service:
-    type: ClusterIP
-    port: 8000
-    targetPort: 8000
-  path: "memory"
-  log: "info"
-  port: 8000
-  initial_user: "root"
-  initial_pass: "root"
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  volumes: []
-  volumeMounts: []
-
 fuelPublisher:
   enabled: true
   imagePullSecrets: []

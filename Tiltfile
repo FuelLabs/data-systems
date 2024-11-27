@@ -33,6 +33,12 @@ nats_chart_dir = "cluster/charts/fuel-nats"
 nats_values = "cluster/charts/fuel-nats/values.yaml"
 k8s_yaml(helm(nats_chart_dir, name=nats_chart_name, namespace=namespace, values=[nats_values], set=[]))
 
+# load surrealdb helm chart
+surrealdb_chart_name = "surrealdb"
+surrealdb_chart_dir = "cluster/charts/fuel-surrealdb"
+surrealdb_values = "cluster/charts/fuel-surrealdb/values.yaml"
+k8s_yaml(helm(surrealdb_chart_dir, name=surrealdb_chart_name, namespace=namespace, values=[surrealdb_values], set=[]))
+
 # build publisher image
 # ref = 'fuel-publisher:{}'
 # command = 'make build-fuel-publisher-{} && docker tag fuel-publisher:{} $EXPECTED_REF'.format(environment, environment)
