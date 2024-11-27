@@ -8,7 +8,7 @@ pub struct Block {
     pub header: BlockHeader,
     pub height: u32,
     pub id: FuelCoreBlockId,
-    pub transactions: Vec<Transaction>,
+    pub transaction_ids: Vec<Bytes32>,
     pub version: BlockVersion,
 }
 
@@ -16,6 +16,7 @@ impl Block {
     pub fn new(
         block: &fuel_core_types::blockchain::block::Block,
         consensus: Consensus,
+        transaction_ids: Vec<Bytes32>,
     ) -> Self {
         let header: BlockHeader = block.header().into();
         let height = header.height;
@@ -32,7 +33,7 @@ impl Block {
             header,
             height,
             id,
-            transactions: Vec::new(),
+            transaction_ids,
             version,
         }
     }
@@ -187,6 +188,6 @@ impl MockBlock {
             .collect::<Vec<_>>();
         *block.transactions_mut() = txs;
 
-        Block::new(&block, Consensus::default())
+        Block::new(&block, Consensus::default(), Vec::new())
     }
 }
