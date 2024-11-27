@@ -5,9 +5,9 @@ pub use fuel_core_types::{
     blockchain::{
         block::Block as FuelCoreBlock,
         consensus::{
-            poa::PoAConsensus,
+            poa::PoAConsensus as FuelCorePoAConsensus,
             Consensus as FuelCoreConsensus,
-            Genesis,
+            Genesis as FuelCoreGenesis,
         },
         header::BlockHeader as FuelCoreBlockHeader,
         primitives::BlockId as FuelCoreBlockId,
