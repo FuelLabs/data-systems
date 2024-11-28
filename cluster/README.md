@@ -25,12 +25,37 @@ The following are prerequisites for spinning up the fuel-data-systems cluster lo
 
 ## Setup
 
-1. To setup minikube cluster, run the script `./setup_minikube.sh`. To start the cluster, run `./start_minikube.sh` which should spin up the minikube cluster for you. Make sure there are no errors!
-2. Run `kubectl create namespace fuel-local` to create a new namespace on the cluster called `fuel-local`
-3. Run `kubectl config use-context minikube && kubectl config set-context --current --cluster=minikube --namespace=fuel-local` to set the current context to the latter namespace
-4. Run `kubectl config get-contexts` to make sure your cluster is listed as `minikube` and the namespace `fuel-local` belongs to it
-5. Run `scripts/traefik2-ds.sh` scrupt.
-6. Run `make tilt_up/down/reset` to start/shutdown/reset tilt with the entire stack and all services in it. This needs to be run from the root of the project!
+1. To setup and start the local environment, run:
+   ```bash
+   make cluster_setup  # Sets up both minikube and kubernetes configuration
+   ```
+
+   Alternatively, you can run the setup steps individually:
+   ```bash
+   make minikube_setup  # Sets up minikube with required addons
+   make k8s_setup       # Configures kubernetes with proper namespace and context
+   ```
+
+   You can also start the minikube cluster without running the setup script:
+   ```bash
+   make minikube_start  # Start minikube cluster
+   ```
+
+2. Start the Tilt services:
+   ```bash
+   make cluster_up  # Starts Tiltfile services
+   ```
+
+> **Note for Docker Desktop Users:**
+> To get ingress to work you'll need to open a new terminal window and run `minikube tunnel` and in the following step use `127.0.0.1` in place of `<ip_from_above>`.
+
+You can use the following commands to manage the services:
+```bash
+make cluster_up     # Start services
+make cluster_down   # Stop services
+make cluster_reset  # Reset services
+make minikube_start # Start minikube (if you've already run setup before)
+```
 
 ## Using `k9s` for an interactive terminal UI
 

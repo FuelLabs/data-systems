@@ -1,23 +1,42 @@
 #!/usr/bin/env bash
 
+# Enable strict error handling
+set -euo pipefail
+[[ ${DEBUG:-} == true ]] && set -x
+
+# Constants
 K8S_NS="kube-system"
 VALID_CONTEXTS=("microk8s" "docker-desktop" "minikube")
 CURRENT_CONTEXT=$(kubectl config current-context)
-SCRIPT_DIR=$(dirname $0)
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
-if [[ "${VALID_CONTEXTS[@]}" =~ "${CURRENT_CONTEXT}" ]]; then
-    echo "K8S context valid: ${CURRENT_CONTEXT}"
-else
-    echo "K8S invalid context: ${CURRENT_CONTEXT}"
+# Helper function to run kubectl commands
+kubectl_cmd() {
+    kubectl --context="${CURRENT_CONTEXT}" -n "${K8S_NS}" "$@"
+}
+
+# Log script location
+echo "Running script from: ${SCRIPT_DIR}"
+
+# Validate kubernetes context
+if [[ ! " ${VALID_CONTEXTS[*]} " =~ ${CURRENT_CONTEXT} ]]; then
+    echo "Error: Invalid kubernetes context '${CURRENT_CONTEXT}'"
+    echo "Valid contexts are: ${VALID_CONTEXTS[*]}"
     exit 1
 fi
+echo "Using valid kubernetes context: ${CURRENT_CONTEXT}"
 
-# delete the old ingress deployment/service since now we use a DaemonSet for Linux/Mac
-if [[ $(kubectl --context="${CURRENT_CONTEXT}" -n ${K8S_NS} get deployment/traefik-ingress-controller 2> /dev/null) ]]; then
-    kubectl --context="${CURRENT_CONTEXT}" -n ${K8S_NS} delete deployment/traefik-ingress-controller
-fi
-if [[ $(kubectl --context="${CURRENT_CONTEXT}" -n ${K8S_NS} get service/traefik-ingress-controller 2> /dev/null) ]]; then
-    kubectl --context="${CURRENT_CONTEXT}" -n ${K8S_NS} delete service/traefik-ingress-controller
-fi
+# Clean up old ingress controller resources
+echo "Cleaning up old ingress controller resources..."
+for resource in deployment service; do
+    if kubectl_cmd get "${resource}/traefik-ingress-controller" &>/dev/null; then
+        echo "Deleting ${resource}/traefik-ingress-controller..."
+        kubectl_cmd delete "${resource}/traefik-ingress-controller"
+    fi
+done
 
-kubectl --context="${CURRENT_CONTEXT}" -n ${K8S_NS} apply -f "$SCRIPT_DIR/traefik2-ds.yaml"
+# Apply new DaemonSet configuration
+echo "Applying Traefik DaemonSet configuration..."
+kubectl_cmd apply -f "${SCRIPT_DIR}/traefik2-ds.yaml"
+
+echo "Traefik setup completed successfully"
