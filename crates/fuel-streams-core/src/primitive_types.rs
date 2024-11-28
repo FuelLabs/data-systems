@@ -90,7 +90,7 @@ macro_rules! generate_byte_type_wrapper {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.strip_prefix("0x").unwrap_or(s);
-                if s.len() != $byte_size {
+                if s.len() != std::mem::size_of::<$inner_type>() * 2 {
                     panic!("Invalid length for {}", stringify!($wrapper_type));
                 }
                 let mut inner = <$inner_type>::zeroed();

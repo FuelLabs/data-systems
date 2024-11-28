@@ -1,27 +1,5 @@
 use crate::types::*;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeight(String);
-
-impl From<FuelCoreBlockHeight> for BlockHeight {
-    fn from(value: FuelCoreBlockHeight) -> Self {
-        let height = *value;
-        BlockHeight(height.to_string())
-    }
-}
-
-impl From<u32> for BlockHeight {
-    fn from(value: u32) -> Self {
-        BlockHeight::from(FuelCoreBlockHeight::from(value))
-    }
-}
-
-impl std::fmt::Display for BlockHeight {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +38,28 @@ impl Block {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct BlockHeight(String);
+
+impl From<FuelCoreBlockHeight> for BlockHeight {
+    fn from(value: FuelCoreBlockHeight) -> Self {
+        let height = *value;
+        BlockHeight(height.to_string())
+    }
+}
+
+impl From<u32> for BlockHeight {
+    fn from(value: u32) -> Self {
+        BlockHeight::from(FuelCoreBlockHeight::from(value))
+    }
+}
+
+impl std::fmt::Display for BlockHeight {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 // Consensus enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -91,7 +91,6 @@ impl From<FuelCoreGenesis> for Genesis {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct PoAConsensus {
     pub signature: Signature,
 }
