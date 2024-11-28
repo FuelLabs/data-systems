@@ -3,8 +3,31 @@ use fuel_core_types::fuel_tx;
 use crate::types::*;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StorageSlot {
+    pub key: HexString,
+    pub value: HexString,
+}
+
+impl From<FuelCoreStorageSlot> for StorageSlot {
+    fn from(slot: FuelCoreStorageSlot) -> Self {
+        Self::from(&slot)
+    }
+}
+
+impl From<&FuelCoreStorageSlot> for StorageSlot {
+    fn from(slot: &FuelCoreStorageSlot) -> Self {
+        Self {
+            key: slot.key().as_slice().into(),
+            value: slot.value().as_slice().into(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: Bytes32,
+    #[serde(rename = "type")]
     pub kind: TransactionKind,
     pub bytecode_root: Option<Bytes32>,
     pub bytecode_witness_index: Option<u16>,
@@ -33,7 +56,7 @@ pub struct Transaction {
     pub script_data: Option<HexString>,
     pub script_gas_limit: Option<u64>,
     pub status: TransactionStatus,
-    pub storage_slots: Vec<HexString>,
+    pub storage_slots: Vec<StorageSlot>,
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
     pub tx_pointer: Option<FuelCoreTxPointer>,
@@ -273,16 +296,7 @@ impl Transaction {
                 FuelCoreTransaction::Create(create) => create
                     .storage_slots()
                     .iter()
-                    .map(|slot| {
-                        HexString(
-                            slot.key()
-                                .as_slice()
-                                .iter()
-                                .chain(slot.value().as_slice())
-                                .copied()
-                                .collect(),
-                        )
-                    })
+                    .map(|slot| slot.into())
                     .collect(),
                 _ => vec![],
             }
@@ -397,6 +411,7 @@ impl Transaction {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum TransactionKind {
     #[default]
     Create,

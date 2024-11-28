@@ -56,6 +56,7 @@ impl From<&FuelCoreOutput> for Output {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CoinOutput {
     pub amount: u64,
     pub asset_id: AssetId,
@@ -63,6 +64,7 @@ pub struct CoinOutput {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChangeOutput {
     pub amount: u64,
     pub asset_id: AssetId,
@@ -70,6 +72,7 @@ pub struct ChangeOutput {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VariableOutput {
     pub amount: u64,
     pub asset_id: AssetId,
@@ -77,6 +80,7 @@ pub struct VariableOutput {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OutputContract {
     pub balance_root: Bytes32,
     pub input_index: u16,
@@ -94,6 +98,7 @@ impl From<&FuelCoreOutputContract> for OutputContract {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ContractCreated {
     contract_id: ContractId,
     state_root: Bytes32,

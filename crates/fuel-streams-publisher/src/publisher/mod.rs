@@ -212,6 +212,11 @@ impl Publisher {
         let block_producer = Arc::new(block_producer.clone());
         let block_height = block.header().consensus().height;
         let txs = block.transactions();
+        let transaction_ids = txs
+            .iter()
+            .map(|tx| tx.id(&chain_id).into())
+            .collect::<Vec<Bytes32>>();
+
         let consensus: Consensus =
             self.fuel_core.get_consensus(&block_height)?.into();
 
@@ -239,6 +244,7 @@ impl Publisher {
             block,
             block_stream,
             opts,
+            transaction_ids,
         )))
         .collect::<FuturesUnordered<_>>();
 

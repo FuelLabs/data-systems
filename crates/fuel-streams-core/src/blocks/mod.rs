@@ -25,13 +25,13 @@ mod tests {
             consensus_parameters_version: 1,
             da_height: 1000,
             event_inbox_root: [1u8; 32].into(),
-            height: 42,
             id: Default::default(),
+            height: 42,
             message_outbox_root: [3u8; 32].into(),
             message_receipt_count: 10,
             prev_root: [4u8; 32].into(),
             state_transition_bytecode_version: 2,
-            time: FuelCoreTai64(1697398400),
+            time: FuelCoreTai64(1697398400).into(),
             transactions_count: 5,
             transactions_root: [5u8; 32].into(),
             version: BlockHeaderVersion::V1,
@@ -42,7 +42,7 @@ mod tests {
             header: header.clone(),
             height: 42,
             id: Default::default(),
-            transactions: vec![], // Always empty for now
+            transaction_ids: vec![],
             version: BlockVersion::V1,
         };
 
@@ -51,32 +51,32 @@ mod tests {
 
         let expected_json = json!({
             "consensus": {
-                "kind": "Genesis",
-                "chain_config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-                "coins_root": "0000000000000000000000000000000000000000000000000000000000000000",
-                "contracts_root": "0000000000000000000000000000000000000000000000000000000000000000",
-                "messages_root": "0000000000000000000000000000000000000000000000000000000000000000",
-                "transactions_root": "0000000000000000000000000000000000000000000000000000000000000000"
+                "chainConfigHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "coinsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "contractsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "messagesRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "transactionsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "type": "Genesis"
             },
             "header": {
-                "application_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-                "consensus_parameters_version": 1,
-                "da_height": 1000,
-                "event_inbox_root": "0101010101010101010101010101010101010101010101010101010101010101",
+                "applicationHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "consensusParametersVersion": 1,
+                "daHeight": 1000,
+                "eventInboxRoot": "0x0101010101010101010101010101010101010101010101010101010101010101",
+                "id": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "height": 42,
-                "id": "0000000000000000000000000000000000000000000000000000000000000000",
-                "message_outbox_root": "0303030303030303030303030303030303030303030303030303030303030303",
-                "message_receipt_count": 10,
-                "prev_root": "0404040404040404040404040404040404040404040404040404040404040404",
-                "state_transition_bytecode_version": 2,
-                "time": [0, 0, 0, 0, 101, 44, 62, 128],
-                "transactions_count": 5,
-                "transactions_root": "0505050505050505050505050505050505050505050505050505050505050505",
+                "messageOutboxRoot": "0x0303030303030303030303030303030303030303030303030303030303030303",
+                "messageReceiptCount": 10,
+                "prevRoot": "0x0404040404040404040404040404040404040404040404040404040404040404",
+                "stateTransitionBytecodeVersion": 2,
+                "time": "1697398400",
+                "transactionsCount": 5,
+                "transactionsRoot": "0x0505050505050505050505050505050505050505050505050505050505050505",
                 "version": "V1"
             },
             "height": 42,
-            "id": "0000000000000000000000000000000000000000000000000000000000000000",
-            "transactions": [],
+            "id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "transactionIds": [],
             "version": "V1"
         });
 

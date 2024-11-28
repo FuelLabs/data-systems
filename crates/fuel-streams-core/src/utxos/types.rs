@@ -1,8 +1,9 @@
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Utxo {
-    pub utxo_id: FuelCoreUtxoId,
+    pub utxo_id: UtxoId,
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub nonce: Option<Nonce>,

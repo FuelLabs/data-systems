@@ -9,12 +9,13 @@ pub fn publish_task(
     block: &FuelCoreBlock<FuelCoreTransaction>,
     stream: Arc<Stream<Block>>,
     opts: &Arc<PublishOpts>,
+    transaction_ids: Vec<Bytes32>,
 ) -> JoinHandle<anyhow::Result<()>> {
     let block_height = (*opts.block_height).clone();
     let block_producer = (*opts.block_producer).clone();
     let consensus = (*opts.consensus).clone();
 
-    let block = Block::new(block, consensus);
+    let block = Block::new(block, consensus, transaction_ids);
     let packet = PublishPacket::new(
         block,
         BlocksSubject {

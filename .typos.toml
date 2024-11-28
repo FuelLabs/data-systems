@@ -1,5 +1,6 @@
 [files]
 extend-exclude = [
+    "pnpm-lock.yaml",
     "crates/fuel-streams-publisher/README.md",
     "crates/fuel-streams-publisher/src/elastic.rs",
     "crates/fuel-indexer/*",
