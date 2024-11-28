@@ -337,7 +337,12 @@ minikube_%:
 k8s_setup:
 	@./cluster/setup_k8s.sh
 
-cluster_setup: minikube_setup k8s_setup  ## Setup both minikube and k8s configuration
+cluster_setup: minikube_setup k8s_setup helm_setup  ## Setup both minikube and kubernetes configuration
+
+helm_setup:  ## Update Helm dependencies
+	@echo "Updating Helm dependencies..."
+	cd cluster/charts/fuel-local && helm dependency update
+	cd cluster/charts/fuel-nats && helm dependency update
 
 # ------------------------------------------------------------
 #  Websocket

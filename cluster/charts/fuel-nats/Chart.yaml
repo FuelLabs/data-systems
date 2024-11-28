@@ -1,15 +1,11 @@
 apiVersion: v2
-appVersion: 2.10.22
-description: A Helm chart for the NATS.io High Speed Cloud Native Distributed Communications Technology.
-name: nats
-keywords:
-- nats
-- messaging
-- cncf
-version: 1.2.6
-home: http://github.com/nats-io/k8s
-maintainers:
-- email: info@nats.io
-  name: The NATS Authors
-  url: https://github.com/nats-io
-icon: https://nats.io/img/nats-icon-color.png
+name: fuel-nats
+description: Fuel's NATS configuration based on the official NATS Helm chart
+type: application
+version: 1.0.0
+appVersion: "2.10.22"
+
+dependencies:
+  - name: nats
+    version: "1.2.6"
+    repository: https://nats-io.github.io/k8s/helm/charts/
