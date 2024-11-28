@@ -1,3 +1,15 @@
+## 0.0.13 (2024-11-28)
+
+### 🚀 Features
+
+-   Introduce FuelStreams Types (#320)
+-   Ensure types are compatible with TS interfaces (#323)
+
+### 🐛 Fixes
+
+-   Include `transaction_ids` in blocks (#324)
+-   Adjust types for better TS SDK compatibility (#325)
+
 ## 0.0.12 (2024-11-21)
 
 ### 🚀 Features
