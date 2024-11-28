@@ -1,6 +1,33 @@
 use fuel_core_types::fuel_types;
 pub use serde::{Deserialize, Serialize};
 
+use crate::fuel_core_types::*;
+
+/// Implements hex-formatted serialization and deserialization for a type
+/// that implements Display and FromStr
+macro_rules! impl_hex_serde {
+    ($type:ty) => {
+        impl Serialize for $type {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_str(&self.to_string())
+            }
+        }
+
+        impl<'de> Deserialize<'de> for $type {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = String::deserialize(deserializer)?;
+                s.parse().map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+
 /// Macro to generate a wrapper type for different byte-based types (including Address type).
 ///
 /// This macro creates a new struct that wraps the specified inner type,
@@ -22,9 +49,11 @@ pub use serde::{Deserialize, Serialize};
 /// Where `WrapperType` is the name of the new wrapper struct to be created,
 /// and `InnerType` is the type being wrapped.
 macro_rules! generate_byte_type_wrapper {
-    ($wrapper_type:ident, $inner_type:ty) => {
-        #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-        pub struct $wrapper_type($inner_type);
+    ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub struct $wrapper_type(pub $inner_type);
+
+        impl_hex_serde!($wrapper_type);
 
         impl From<$inner_type> for $wrapper_type {
             fn from(value: $inner_type) -> Self {
@@ -38,8 +67,8 @@ macro_rules! generate_byte_type_wrapper {
             }
         }
 
-        impl From<[u8; 32]> for $wrapper_type {
-            fn from(value: [u8; 32]) -> Self {
+        impl From<[u8; $byte_size]> for $wrapper_type {
+            fn from(value: [u8; $byte_size]) -> Self {
                 $wrapper_type(<$inner_type>::from(value))
             }
         }
@@ -56,10 +85,12 @@ macro_rules! generate_byte_type_wrapper {
             }
         }
 
-        impl From<&str> for $wrapper_type {
-            fn from(s: &str) -> Self {
+        impl std::str::FromStr for $wrapper_type {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.strip_prefix("0x").unwrap_or(s);
-                if s.len() != std::mem::size_of::<$inner_type>() * 2 {
+                if s.len() != $byte_size {
                     panic!("Invalid length for {}", stringify!($wrapper_type));
                 }
                 let mut inner = <$inner_type>::zeroed();
@@ -71,7 +102,19 @@ macro_rules! generate_byte_type_wrapper {
                     .unwrap();
                     inner.as_mut()[i] = byte;
                 }
-                $wrapper_type(inner)
+                Ok($wrapper_type(inner))
+            }
+        }
+
+        impl From<&str> for $wrapper_type {
+            fn from(s: &str) -> Self {
+                s.parse().unwrap_or_else(|e| {
+                    panic!(
+                        "Failed to parse {}: {}",
+                        stringify!($wrapper_type),
+                        e
+                    )
+                })
             }
         }
 
@@ -105,15 +148,23 @@ macro_rules! generate_byte_type_wrapper {
     };
 }
 
-generate_byte_type_wrapper!(Address, fuel_types::Address);
-generate_byte_type_wrapper!(Bytes32, fuel_types::Bytes32);
-generate_byte_type_wrapper!(ContractId, fuel_types::ContractId);
-generate_byte_type_wrapper!(AssetId, fuel_types::AssetId);
-generate_byte_type_wrapper!(BlobId, fuel_types::BlobId);
-generate_byte_type_wrapper!(Nonce, fuel_types::Nonce);
-generate_byte_type_wrapper!(Salt, fuel_types::Salt);
+generate_byte_type_wrapper!(Address, fuel_types::Address, 32);
+generate_byte_type_wrapper!(Bytes32, fuel_types::Bytes32, 32);
+generate_byte_type_wrapper!(ContractId, fuel_types::ContractId, 32);
+generate_byte_type_wrapper!(AssetId, fuel_types::AssetId, 32);
+generate_byte_type_wrapper!(BlobId, fuel_types::BlobId, 32);
+generate_byte_type_wrapper!(Nonce, fuel_types::Nonce, 32);
+generate_byte_type_wrapper!(Salt, fuel_types::Salt, 32);
+generate_byte_type_wrapper!(MessageId, fuel_types::MessageId, 32);
+generate_byte_type_wrapper!(BlockId, fuel_types::Bytes32, 32);
+generate_byte_type_wrapper!(Signature, fuel_types::Bytes64, 64);
 
-generate_byte_type_wrapper!(MessageId, fuel_types::MessageId);
+impl From<FuelCoreBlockId> for BlockId {
+    fn from(value: FuelCoreBlockId) -> Self {
+        Self(FuelCoreBytes32::from(value))
+    }
+}
+
 impl From<Bytes32> for MessageId {
     fn from(value: Bytes32) -> Self {
         let bytes: [u8; 32] = value.0.into();
@@ -123,6 +174,90 @@ impl From<Bytes32> for MessageId {
 impl From<&Bytes32> for MessageId {
     fn from(value: &Bytes32) -> Self {
         value.clone().into()
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct HexString(pub Vec<u8>);
+impl_hex_serde!(HexString);
+
+impl From<&[u8]> for HexString {
+    fn from(value: &[u8]) -> Self {
+        HexString(value.to_vec())
+    }
+}
+
+impl std::fmt::Display for HexString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
+
+impl std::str::FromStr for HexString {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.strip_prefix("0x").unwrap_or(s);
+        hex::decode(s).map(HexString).map_err(|e| e.to_string())
+    }
+}
+
+#[derive(
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Deserialize,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct TxPointer {
+    block_height: FuelCoreBlockHeight,
+    tx_index: u16,
+}
+
+impl From<FuelCoreTxPointer> for TxPointer {
+    fn from(value: FuelCoreTxPointer) -> Self {
+        Self {
+            block_height: value.block_height(),
+            tx_index: value.tx_index(),
+        }
+    }
+}
+
+#[derive(
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct UtxoId {
+    tx_id: FuelCoreTxId,
+    output_index: u16,
+}
+impl From<FuelCoreUtxoId> for UtxoId {
+    fn from(value: FuelCoreUtxoId) -> Self {
+        Self::from(&value)
+    }
+}
+impl From<&FuelCoreUtxoId> for UtxoId {
+    fn from(value: &FuelCoreUtxoId) -> Self {
+        Self {
+            tx_id: *value.tx_id(),
+            output_index: value.output_index(),
+        }
     }
 }
 
@@ -164,21 +299,3 @@ macro_rules! impl_from_bytes32 {
 impl_from_bytes32!(fuel_types::ContractId);
 impl_from_bytes32!(fuel_types::AssetId);
 impl_from_bytes32!(fuel_types::Address);
-
-#[derive(
-    Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-pub struct HexString(pub Vec<u8>);
-
-impl From<&[u8]> for HexString {
-    fn from(value: &[u8]) -> Self {
-        HexString(value.to_vec())
-    }
-}
-
-impl std::fmt::Display for HexString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(&self.0));
-        s.fmt(f)
-    }
-}
