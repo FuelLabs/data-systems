@@ -1,0 +1,187 @@
+# general settings
+namespace: fuel-local
+clusterBaseUrl: svc.cluster.local
+
+docker:
+  registry: registry.dev.svc.cluster.local:5000
+
+ingress:
+  enabled: true
+roles:
+  create: true
+
+serviceAccount: local-fuel-serviceaccount
+
+kibanaDomain: local-kibana.fuel.com
+
+disableResourceLimits: false
+waitForServiceDependencies: true
+
+# pvc
+fuelSharedMnt:
+  accessModes:
+    value: "ReadWriteOnce"
+  storageClassName:
+    enabled: true
+    value: "fuel-pvc"
+  enableHostPath: true
+  type: DirectoryOrCreate
+  hostPath: "/tmp/fuel-shared-mount"
+
+# Only start absolutely required jobs
+onlyRequiredBaseServices: false
+
+# service settings
+
+grafana:
+  image: "grafana/grafana"
+  tag: "7.2.1"
+
+prometheus:
+  image: "prom/prometheus"
+  tag: "v2.22.0"
+
+elasticsearch:
+  enabled: true
+  storage: "100Mi"
+  image: "docker.elastic.co/elasticsearch/elasticsearch"
+  tag: "7.10.2"
+  configFilesFolders: {}
+
+monitoring:
+  enabled: true
+  configFilesFolders: {}
+
+kibana:
+  enabled: true
+  image: "docker.elastic.co/kibana/kibana"
+  tag: "7.6.2"
+
+fuelPublisher:
+  enabled: true
+  imagePullSecrets: []
+  replicaCount: 1
+  image:
+    repository: ghcr.io/fuellabs/fuel-streams-publisher
+    pullPolicy: IfNotPresent
+    tag: 44ea206
+  service:
+    type: ClusterIP
+    port: 4000
+  livenessProbe:
+    httpGet:
+      path: /v1/health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /v1/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  initContainers:
+    - name: update-db-folder
+      image: alpine:latest
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/chown"]
+      args: ["-R", "1000:1000", "/mnt/db"]
+      volumeMounts:
+        - name: rocks-db
+          mountPath: /mnt/db
+    - name: update-temp-folder
+      image: alpine:latest
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/chown"]
+      args: ["-R", "1000:1000", "/tmp"]
+      volumeMounts:
+        - name: tmp-folder
+          mountPath: /tmp
+  volumeClaimTemplates:
+    - metadata:
+        name: rocks-db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 8Gi
+    - metadata:
+        name: tmp-folder
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 5Gi
+  volumeMounts:
+    - name: rocks-db
+      mountPath: "/mnt/db"
+      readOnly: false
+    - name: tmp-folder
+      mountPath: "/tmp"
+      readOnly: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podLabels: {}
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  podSecurityContext: {}
+  securityContext:
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+# Resource profiles for all containers.
+# This allows to easily override requests and limits via additional values file.
+resourceProfile:
+  grafana:
+    requests:
+      cpu: 0.05
+      memory: 10Mi
+    limits:
+      cpu: 1
+      memory: 500Mi
+  prometheus:
+    requests:
+      cpu: 0.05
+      memory: 10Mi
+    limits:
+      cpu: 1
+      memory: 500Mi
+  elasticsearch:
+    requests:
+      cpu: 0.05
+      memory: 500Mi
+    limits:
+      cpu: 0.5
+      memory: 2Gi
+  kibana:
+    requests:
+      cpu: 0.05
+      memory: 400Mi
+    limits:
+      cpu: 0.2
+      memory: 700Mi
+  surrealdb:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+  fuelPublisher:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"

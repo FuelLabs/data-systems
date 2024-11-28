@@ -7,4 +7,5 @@ extend-exclude = [
     "docker/chain-config",
     "docker/monitoring",
     "helm",
+    "cluster",
 ]

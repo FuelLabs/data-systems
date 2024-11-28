@@ -1,0 +1,69 @@
+{{ if not .Values.onlyRequiredBaseServices }}
+{{ if .Values.elasticsearch.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: elasticsearch
+  name: elasticsearch
+spec:
+  clusterIP: None
+  ports:
+    - name: "elasticsearch1"
+      port: 9200
+      targetPort: 9200
+    - name: "elasticsearch2"
+      port: 9300
+      targetPort: 9300
+  selector:
+    service: elasticsearch
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    service: elasticsearch
+  name: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      service: elasticsearch
+  template:
+    metadata:
+      labels:
+        service: elasticsearch
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount }}
+      #imagePullSecrets:
+      #- name: fuel-local
+      containers:
+      - env:
+        - name: discovery.type
+          value: "single-node"
+        image:  "{{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.tag }}"
+        name: elasticsearch
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+        {{- if not .Values.disableResourceLimits }}
+        resources:
+        {{- .Values.resourceProfile.elasticsearch | toYaml | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /data
+          name: elasticsearch-data
+          subPath: data
+      restartPolicy: Always
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ default "1Gi" .Values.elasticsearch.storage }}
+{{ end }}
+{{ end }}
