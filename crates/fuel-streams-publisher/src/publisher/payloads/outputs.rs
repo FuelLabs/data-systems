@@ -5,17 +5,15 @@ use fuel_streams_core::{prelude::*, transactions::TransactionExt};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::{
-    identifiers::{Identifier, IdsExtractable, PacketIdBuilder},
-    packets::{PublishError, PublishOpts, PublishPacket},
-};
+use super::identifiers::{Identifier, IdsExtractable, PacketIdBuilder};
+use crate::packets::{PublishOpts, PublishPacket};
 
 pub fn publish_tasks(
     tx: &Transaction,
     tx_id: &Bytes32,
     stream: &Stream<Output>,
     opts: &Arc<PublishOpts>,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let packets: Vec<PublishPacket<Output>> = tx
         .outputs()
         .par_iter()

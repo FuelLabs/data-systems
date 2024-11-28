@@ -1,109 +1,26 @@
+pub mod fuel_core_like;
+pub mod packets;
+pub mod payloads;
+pub mod shutdown;
+pub mod streams;
+
 use std::sync::Arc;
 
-use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_core::database::database_description::DatabaseHeight;
 use fuel_core_importer::ImporterResult;
-use fuel_core_types::fuel_tx::Output;
-use fuel_streams::types::Log;
+pub use fuel_core_like::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
-use futures::{stream::FuturesUnordered, StreamExt};
-use rayon::prelude::*;
-use thiserror::Error;
+use futures::{future::try_join_all, stream::FuturesUnordered};
+pub use streams::Streams;
 use tokio::sync::{broadcast::error::RecvError, Semaphore};
 
-use crate::{
-    blocks,
-    packets::{PublishError, PublishOpts},
-    publisher_shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
+use super::{
+    packets::PublishOpts,
+    payloads::blocks,
+    shutdown::{ShutdownToken, GRACEFUL_SHUTDOWN_TIMEOUT},
     telemetry::Telemetry,
-    transactions,
-    FuelCoreLike,
     PUBLISHER_MAX_THREADS,
 };
-
-#[derive(Clone, Debug)]
-/// Streams we currently support publishing to.
-pub struct Streams {
-    pub transactions: Stream<Transaction>,
-    pub blocks: Stream<Block>,
-    pub inputs: Stream<Input>,
-    pub outputs: Stream<Output>,
-    pub receipts: Stream<Receipt>,
-    pub utxos: Stream<Utxo>,
-    pub logs: Stream<Log>,
-}
-
-impl Streams {
-    pub async fn new(nats_client: &NatsClient) -> Self {
-        Self {
-            transactions: Stream::<Transaction>::new(nats_client).await,
-            blocks: Stream::<Block>::new(nats_client).await,
-            inputs: Stream::<Input>::new(nats_client).await,
-            outputs: Stream::<Output>::new(nats_client).await,
-            receipts: Stream::<Receipt>::new(nats_client).await,
-            utxos: Stream::<Utxo>::new(nats_client).await,
-            logs: Stream::<Log>::new(nats_client).await,
-        }
-    }
-
-    pub fn subjects_wildcards(&self) -> &[&'static str] {
-        &[
-            TransactionsSubject::WILDCARD,
-            BlocksSubject::WILDCARD,
-            InputsByIdSubject::WILDCARD,
-            InputsCoinSubject::WILDCARD,
-            InputsMessageSubject::WILDCARD,
-            InputsContractSubject::WILDCARD,
-            ReceiptsLogSubject::WILDCARD,
-            ReceiptsBurnSubject::WILDCARD,
-            ReceiptsByIdSubject::WILDCARD,
-            ReceiptsCallSubject::WILDCARD,
-            ReceiptsMintSubject::WILDCARD,
-            ReceiptsPanicSubject::WILDCARD,
-            ReceiptsReturnSubject::WILDCARD,
-            ReceiptsRevertSubject::WILDCARD,
-            ReceiptsLogDataSubject::WILDCARD,
-            ReceiptsTransferSubject::WILDCARD,
-            ReceiptsMessageOutSubject::WILDCARD,
-            ReceiptsReturnDataSubject::WILDCARD,
-            ReceiptsTransferOutSubject::WILDCARD,
-            ReceiptsScriptResultSubject::WILDCARD,
-            UtxosSubject::WILDCARD,
-            LogsSubject::WILDCARD,
-        ]
-    }
-
-    pub async fn get_consumers_and_state(
-        &self,
-    ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind> {
-        Ok(vec![
-            self.transactions.get_consumers_and_state().await?,
-            self.blocks.get_consumers_and_state().await?,
-            self.inputs.get_consumers_and_state().await?,
-            self.outputs.get_consumers_and_state().await?,
-            self.receipts.get_consumers_and_state().await?,
-            self.utxos.get_consumers_and_state().await?,
-            self.logs.get_consumers_and_state().await?,
-        ])
-    }
-
-    #[cfg(feature = "test-helpers")]
-    pub async fn is_empty(&self) -> bool {
-        self.blocks.is_empty(BlocksSubject::WILDCARD).await
-            && self
-                .transactions
-                .is_empty(TransactionsSubject::WILDCARD)
-                .await
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum PublishBlockError {
-    #[error("Task execution error: {0}")]
-    TaskExecution(String),
-    #[error("Publish error: {0}")]
-    Publish(#[from] PublishError),
-}
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -291,6 +208,7 @@ impl Publisher {
         block_producer: &Address,
     ) -> anyhow::Result<()> {
         let start_time = std::time::Instant::now();
+
         let fuel_core = &*self.fuel_core;
         let semaphore = Arc::new(Semaphore::new(*PUBLISHER_MAX_THREADS));
         let chain_id = Arc::new(*self.fuel_core.chain_id());
@@ -308,58 +226,26 @@ impl Publisher {
             telemetry: self.telemetry.clone(),
         });
 
-        let tasks =
-            transactions::publish_all_tasks(txs, streams, opts, fuel_core)
-                .into_iter()
-                .chain(std::iter::once(blocks::publish_task(
-                    block,
-                    block_stream,
-                    opts,
-                )))
-                .collect::<FuturesUnordered<_>>();
+        let publish_tasks = payloads::transactions::publish_all_tasks(
+            txs, streams, opts, fuel_core,
+        )
+        .into_iter()
+        .chain(std::iter::once(blocks::publish_task(
+            block,
+            block_stream,
+            opts,
+        )))
+        .collect::<FuturesUnordered<_>>();
 
-        let errors: Vec<PublishBlockError> = tasks
-            .filter_map(|res| self.handle_task_result(res))
-            .collect()
-            .await;
+        try_join_all(publish_tasks).await?;
 
-        if !errors.is_empty() {
-            let error_message = errors
-                .par_iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
+        let elapsed = start_time.elapsed();
+        tracing::info!(
+            "Published streams for BlockHeight: {} in {:?}",
+            *block_height,
+            elapsed
+        );
 
-            Err(anyhow::anyhow!(
-                "Errors occurred during block publishing: {}",
-                error_message
-            ))
-        } else {
-            let elapsed = start_time.elapsed();
-            tracing::info!(
-                "Published streams for BlockHeight: {} in {:?}",
-                *block_height,
-                elapsed
-            );
-
-            Ok(())
-        }
-    }
-
-    async fn handle_task_result(
-        &self,
-        result: Result<Result<(), PublishError>, tokio::task::JoinError>,
-    ) -> Option<PublishBlockError> {
-        match result {
-            Ok(Ok(())) => None,
-            Ok(Err(publish_error)) => {
-                tracing::error!("Publish error: {:?}", publish_error);
-                Some(PublishBlockError::Publish(publish_error))
-            }
-            Err(join_error) => {
-                tracing::error!("Task join error: {:?}", join_error);
-                Some(PublishBlockError::TaskExecution(join_error.to_string()))
-            }
-        }
+        Ok(())
     }
 }

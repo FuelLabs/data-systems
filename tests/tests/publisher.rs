@@ -11,7 +11,7 @@ use fuel_core_types::{
 };
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
-    publisher_shutdown::ShutdownController,
+    publisher::shutdown::ShutdownController,
     FuelCoreLike,
     Publisher,
 };

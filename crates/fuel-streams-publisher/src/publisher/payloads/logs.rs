@@ -5,14 +5,14 @@ use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::packets::{PublishError, PublishOpts, PublishPacket};
+use crate::packets::{PublishOpts, PublishPacket};
 
 pub fn publish_tasks(
     tx_id: &Bytes32,
     stream: &Stream<Log>,
     opts: &Arc<PublishOpts>,
     receipts: &Vec<Receipt>,
-) -> Vec<JoinHandle<Result<(), PublishError>>> {
+) -> Vec<JoinHandle<anyhow::Result<()>>> {
     let block_height = (*opts.block_height).clone();
     let packets: Vec<PublishPacket<Log>> = receipts
         .par_iter()
