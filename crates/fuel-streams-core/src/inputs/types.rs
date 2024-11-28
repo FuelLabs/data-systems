@@ -16,8 +16,8 @@ impl From<&FuelCoreInput> for Input {
                 balance_root: input.balance_root.into(),
                 contract_id: input.contract_id.into(),
                 state_root: input.state_root.into(),
-                tx_pointer: input.tx_pointer,
-                utxo_id: input.utxo_id,
+                tx_pointer: input.tx_pointer.into(),
+                utxo_id: input.utxo_id.into(),
             }),
             FuelCoreInput::CoinSigned(input) => Input::Coin(InputCoin {
                 amount: input.amount,
@@ -26,8 +26,8 @@ impl From<&FuelCoreInput> for Input {
                 predicate: HexString::default(),
                 predicate_data: HexString::default(),
                 predicate_gas_used: 0,
-                tx_pointer: input.tx_pointer,
-                utxo_id: input.utxo_id,
+                tx_pointer: input.tx_pointer.into(),
+                utxo_id: input.utxo_id.into(),
                 witness_index: input.witness_index,
             }),
             FuelCoreInput::CoinPredicate(input) => Input::Coin(InputCoin {
@@ -37,8 +37,8 @@ impl From<&FuelCoreInput> for Input {
                 predicate: input.predicate.as_slice().into(),
                 predicate_data: input.predicate_data.as_slice().into(),
                 predicate_gas_used: input.predicate_gas_used,
-                tx_pointer: input.tx_pointer,
-                utxo_id: input.utxo_id,
+                tx_pointer: input.tx_pointer.into(),
+                utxo_id: input.utxo_id.into(),
                 witness_index: 0,
             }),
             FuelCoreInput::MessageCoinSigned(input) => {
@@ -47,7 +47,9 @@ impl From<&FuelCoreInput> for Input {
                     data: HexString::default(),
                     nonce: input.nonce.into(),
                     predicate: HexString::default(),
+                    predicate_length: 0,
                     predicate_data: HexString::default(),
+                    predicate_data_length: 0,
                     predicate_gas_used: 0,
                     recipient: input.recipient.into(),
                     sender: input.sender.into(),
@@ -60,7 +62,12 @@ impl From<&FuelCoreInput> for Input {
                     data: HexString::default(),
                     nonce: input.nonce.into(),
                     predicate: input.predicate.as_slice().into(),
+                    predicate_length: input.predicate.as_slice().len(),
                     predicate_data: input.predicate_data.as_slice().into(),
+                    predicate_data_length: input
+                        .predicate_data
+                        .as_slice()
+                        .len(),
                     predicate_gas_used: input.predicate_gas_used,
                     recipient: input.recipient.into(),
                     sender: input.sender.into(),
@@ -73,7 +80,9 @@ impl From<&FuelCoreInput> for Input {
                     data: input.data.as_slice().into(),
                     nonce: input.nonce.into(),
                     predicate: HexString::default(),
+                    predicate_length: 0,
                     predicate_data: HexString::default(),
+                    predicate_data_length: 0,
                     predicate_gas_used: 0,
                     recipient: input.recipient.into(),
                     sender: input.sender.into(),
@@ -86,7 +95,12 @@ impl From<&FuelCoreInput> for Input {
                     data: input.data.as_slice().into(),
                     nonce: input.nonce.into(),
                     predicate: input.predicate.as_slice().into(),
+                    predicate_length: input.predicate.as_slice().len(),
                     predicate_data: input.predicate_data.as_slice().into(),
+                    predicate_data_length: input
+                        .predicate_data
+                        .as_slice()
+                        .len(),
                     predicate_gas_used: input.predicate_gas_used,
                     recipient: input.recipient.into(),
                     sender: input.sender.into(),
@@ -113,8 +127,8 @@ pub struct InputCoin {
     pub predicate: HexString,
     pub predicate_data: HexString,
     pub predicate_gas_used: u64,
-    pub tx_pointer: FuelCoreTxPointer,
-    pub utxo_id: FuelCoreUtxoId,
+    pub tx_pointer: TxPointer,
+    pub utxo_id: UtxoId,
     pub witness_index: u16,
 }
 
@@ -125,8 +139,8 @@ pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
     pub state_root: Bytes32,
-    pub tx_pointer: FuelCoreTxPointer,
-    pub utxo_id: FuelCoreUtxoId,
+    pub tx_pointer: TxPointer,
+    pub utxo_id: UtxoId,
 }
 
 impl From<&FuelCoreInputContract> for InputContract {
@@ -135,8 +149,8 @@ impl From<&FuelCoreInputContract> for InputContract {
             balance_root: input.balance_root.into(),
             contract_id: input.contract_id.into(),
             state_root: input.state_root.into(),
-            tx_pointer: input.tx_pointer,
-            utxo_id: input.utxo_id,
+            tx_pointer: input.tx_pointer.into(),
+            utxo_id: input.utxo_id.into(),
         }
     }
 }
@@ -149,8 +163,10 @@ pub struct InputMessage {
     pub data: HexString,
     pub nonce: Nonce,
     pub predicate: HexString,
+    pub predicate_length: usize,
     pub predicate_data: HexString,
     pub predicate_gas_used: u64,
+    pub predicate_data_length: usize,
     pub recipient: Address,
     pub sender: Address,
     pub witness_index: u16,

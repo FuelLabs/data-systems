@@ -7,7 +7,7 @@ pub struct Block {
     pub consensus: Consensus,
     pub header: BlockHeader,
     pub height: u32,
-    pub id: FuelCoreBlockId,
+    pub id: BlockId,
     pub transaction_ids: Vec<Bytes32>,
     pub version: BlockVersion,
 }
@@ -20,7 +20,6 @@ impl Block {
     ) -> Self {
         let header: BlockHeader = block.header().into();
         let height = header.height;
-        let id = header.id;
 
         let version = match block {
             fuel_core_types::blockchain::block::Block::V1(_) => {
@@ -30,9 +29,9 @@ impl Block {
 
         Self {
             consensus,
-            header,
+            header: header.to_owned(),
             height,
-            id,
+            id: header.id,
             transaction_ids,
             version,
         }
@@ -66,7 +65,7 @@ impl std::fmt::Display for BlockHeight {
 #[serde(tag = "type")]
 pub enum Consensus {
     Genesis(Genesis),
-    PoAConsensus(FuelCorePoAConsensus),
+    PoAConsensus(PoAConsensus),
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -91,6 +90,25 @@ impl From<FuelCoreGenesis> for Genesis {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PoAConsensus {
+    pub signature: Signature,
+}
+
+impl PoAConsensus {
+    pub fn new(signature: Signature) -> Self {
+        Self { signature }
+    }
+}
+
+impl From<FuelCorePoAConsensus> for PoAConsensus {
+    fn from(poa: FuelCorePoAConsensus) -> Self {
+        Self {
+            signature: Signature(poa.signature.into()),
+        }
+    }
+}
+
 impl Default for Consensus {
     fn default() -> Self {
         Consensus::Genesis(Genesis::default())
@@ -103,7 +121,7 @@ impl From<FuelCoreConsensus> for Consensus {
             FuelCoreConsensus::Genesis(genesis) => {
                 Consensus::Genesis(genesis.into())
             }
-            FuelCoreConsensus::PoA(poa) => Consensus::PoAConsensus(poa),
+            FuelCoreConsensus::PoA(poa) => Consensus::PoAConsensus(poa.into()),
             _ => panic!("Unknown consensus type: {:?}", consensus),
         }
     }
@@ -124,13 +142,13 @@ pub struct BlockHeader {
     pub consensus_parameters_version: u32,
     pub da_height: u64,
     pub event_inbox_root: Bytes32,
+    pub id: BlockId,
     pub height: u32,
-    pub id: FuelCoreBlockId,
     pub message_outbox_root: Bytes32,
     pub message_receipt_count: u32,
     pub prev_root: Bytes32,
     pub state_transition_bytecode_version: u32,
-    pub time: FuelCoreTai64,
+    pub time: FuelCoreTai64Timestamp,
     pub transactions_count: u16,
     pub transactions_root: Bytes32,
     pub version: BlockHeaderVersion,
@@ -147,14 +165,14 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
             consensus_parameters_version: header.consensus_parameters_version,
             da_height: header.da_height.into(),
             event_inbox_root: header.event_inbox_root.into(),
+            id: header.id().into(),
             height: (*header.height()).into(),
-            id: header.id(),
             message_outbox_root: header.message_outbox_root.into(),
             message_receipt_count: header.message_receipt_count,
             prev_root: (*header.prev_root()).into(),
             state_transition_bytecode_version: header
                 .state_transition_bytecode_version,
-            time: header.time(),
+            time: header.time().into(),
             transactions_count: header.transactions_count,
             transactions_root: header.transactions_root.into(),
             version,

@@ -49,7 +49,7 @@ fn utxo_packet(
     match input {
         FuelCoreInput::Contract(Contract { utxo_id, .. }) => {
             let utxo = Utxo {
-                utxo_id: utxo_id.to_owned(),
+                utxo_id: utxo_id.into(),
                 tx_id: tx_id.to_owned(),
                 ..Default::default()
             };
@@ -69,7 +69,7 @@ fn utxo_packet(
             utxo_id, amount, ..
         }) => {
             let utxo = Utxo {
-                utxo_id: utxo_id.to_owned(),
+                utxo_id: utxo_id.into(),
                 amount: Some(*amount),
                 tx_id: tx_id.to_owned(),
                 ..Default::default()
@@ -125,7 +125,7 @@ fn utxo_packet(
             };
 
             let utxo = Utxo {
-                utxo_id,
+                utxo_id: utxo_id.into(),
                 sender: Some(sender.into()),
                 recipient: Some(recipient.into()),
                 nonce: Some(nonce.into()),

@@ -79,7 +79,7 @@ impl FuelCoreLike for TestFuelCore {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
-    let (blocks_broadcaster, __) = broadcast::channel::<ImporterResult>(1);
+    let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
     let publisher = new_publisher(blocks_broadcaster.clone()).await;
 
     let shutdown_controller = start_publisher(&publisher).await;
@@ -252,8 +252,8 @@ async fn publish_block(
     publisher: &Publisher,
     blocks_broadcaster: &Sender<ImporterResult>,
 ) {
-    let shutdown_controller = start_publisher(&publisher).await;
-    send_block(&blocks_broadcaster);
+    let shutdown_controller = start_publisher(publisher).await;
+    send_block(blocks_broadcaster);
     stop_publisher(shutdown_controller).await;
 }
 
