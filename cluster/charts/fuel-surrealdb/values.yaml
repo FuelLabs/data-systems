@@ -1,0 +1,156 @@
+# Default values for surrealdb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- The number of SurrealDB pods to run
+#
+# Note that you usually scale this only when the backend supports it.
+# For example, if you specify volumes and volumeMounts to make this SurrealDB
+# instance stateful, you should not scale it, as it will result in two or more
+# instances writing to the same volume or working independently.
+replicaCount: 1
+
+image:
+  # -- Repository to use for SurrealDB
+  repository: surrealdb/surrealdb
+  # -- Image pull policy for SurrealDB
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # -- Tag to use for SurrealDB
+  # @default -- `""` (defaults to chart appVersion)
+  tag: ""
+# -- Secrets with credentials to pull images from a private registry
+imagePullSecrets: []
+
+# -- Provide a name in place of `surrealdb`
+nameOverride: ""
+# -- String to fully override `"surrealdb"`
+fullnameOverride: ""
+
+# -- Command line arguments to pass to SurrealDB
+args: [start]
+
+surrealdb:
+  # Datastore path
+  #
+  # * tikv example
+  # -- path: tikv://tikv-pd:2379
+  path: memory
+  # -- Log configuration
+  log: info
+  # -- Initial user credentials
+  # Set these values to bootstrap the datastore with an initial root user the first time you install the chart.
+  # Remember to remove them after the first install, as they are no longer used:
+  # initial_user: ""
+  # initial_pass: ""
+  # -- Enable unauthenticated access
+  # Warning: Enabling it will allow any unauthenticated user to access SurrealDB!
+  # Authentication is enabled by default in 2.x. This value replaces the depreacted "auth" value.
+  # unauthenticated: false
+  # -- DEPRECATED: Enable authentication
+  # This value has been deprecated in 2.x but is kept for backward compatibility.
+  # The "unauthenticated" value should now be used instead, which will be converted in 1.x deployments.
+  # auth: true
+
+  # -- SurrealDB container port
+  port: 8000
+  # Enable the following for jwks feature
+  # object_cache: "file:/data/cache"
+  # object_store: "file:/data/store"
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # If not set and create is true, a name is generated using the fullname template
+  # -- The name of the service account to use.
+  # @default -- `""` (defaults to the fullname template)
+  name: ""
+
+# -- Extra env entries added to the SurrealDB pods
+podExtraEnv:
+  []
+  # - name: TZ
+  #   value: "Europe/London"
+  # - name: SURREAL_PASS
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: creds
+  #       key: password
+
+# -- Annotations to be added to SurrealDB pods
+podAnnotations: {}
+
+# -- Toggle and define pod-level security context.
+# @default -- `{}` (See [values.yaml])
+podSecurityContext: {}
+#  runAsUser: 999
+#  runAsGroup: 999
+#  fsGroup: 999
+
+# -- SurrealDB container-level security context
+# @default -- `{}` (See [values.yaml])
+securityContext: {}
+#  runAsNonRoot: true
+#  readOnlyRootFilesystem: true
+#  allowPrivilegeEscalation: false
+#  seccompProfile:
+#    type: RuntimeDefault
+#  capabilities:
+#    drop:
+#      - ALL
+
+service:
+  # -- Service annotations
+  annotations: {}
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 8000
+  # -- Target container port
+  targetPort: http
+
+ingress:
+  # -- Enable an ingress resource
+  enabled: false
+  # -- Defines which ingress controller will implement the resource
+  className: ""
+  # -- Additional ingress annotations
+  annotations: {}
+  # -- List of hosts to be covered by ingress record
+  # @default -- `[]` (See [values.yaml])
+  hosts: []
+  # - host: surreal.example.com
+  #   paths:
+  #     - path: /*
+  #       pathType: Prefix
+
+  # -- Create default backend
+  defaultBackend: true
+  # -- List of TLS configuration
+  # @default -- `[]` (See [values.yaml])
+  tls: []
+  # - hosts:
+  #   - surreal.example.com
+  #   secretName: your-certificate-name
+
+# -- Resource limits and requests
+resources: {}
+#  requests: {}
+#  limits: {}
+
+# -- [Node selector]
+nodeSelector: {}
+
+# -- [Tolerations] for use with node taints
+tolerations: []
+
+# -- Assign custom [affinity] rules to the deployment
+affinity: {}
+
+# Additional volumes for surrealdb pods
+volumes: []
+
+# Additional volumeMounts for the surrealdb container
+volumeMounts: []

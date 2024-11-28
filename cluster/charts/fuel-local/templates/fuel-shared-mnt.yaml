@@ -1,0 +1,15 @@
+{{ if not .Values.fuelSharedMnt.enableHostPath }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fuel-shared-mnt
+spec:
+  accessModes:
+  - "{{ .Values.fuelSharedMnt.accessModes.value }}"
+  resources:
+    requests:
+      storage: 1Gi
+  {{ if .Values.fuelSharedMnt.storageClassName.enabled }}
+  storageClassName: "{{ .Values.fuelSharedMnt.storageClassName.value }}"
+  {{ end }}
+{{ end }}

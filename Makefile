@@ -7,6 +7,7 @@ COMMANDS ?= rustup npm pre-commit docker python3
 RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
 RUST_VERSION ?= 1.81.0
 VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
+TILTFILE ?= ./Tiltfile
 
 PORT ?= 4000
 MODE ?= profiling
@@ -206,25 +207,21 @@ $(foreach n,$(NETWORKS),$(foreach p,$(PROFILES),$(eval $(call profile_rules,$(n)
 PUBLISHER_SCRIPT = ./scripts/run_publisher.sh
 EXTRA_ARGS ?=
 
-# This defines how to run the publisher script with network and mode parameters
-define run_publisher
-	@$(PUBLISHER_SCRIPT) --network $(1) --mode $(2) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
-endef
+# Define how to run the publisher script
+publisher_%:
+	@network=$$(echo "$*" | cut -d'-' -f1) && \
+	mode=$$(echo "$*" | cut -d'-' -f2) && \
+	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
-run-mainnet-dev: check-network
-	$(call run_publisher,mainnet,dev)
+# Publisher commands for different networks and modes
+run-mainnet-dev: check-network publisher_mainnet-dev        ## Run publisher in mainnet dev mode
+run-mainnet-profiling: check-network publisher_mainnet-profiling  ## Run publisher in mainnet profiling mode
+run-testnet-dev: check-network publisher_testnet-dev        ## Run publisher in testnet dev mode
+run-testnet-profiling: check-network publisher_testnet-profiling  ## Run publisher in testnet profiling mode
 
-run-mainnet-profiling: check-network
-	$(call run_publisher,mainnet,profiling)
-
-run-testnet-dev: check-network
-	$(call run_publisher,testnet,dev)
-
-run-testnet-profiling: check-network
-	$(call run_publisher,testnet,profiling)
-
+# Generic publisher command using environment variables
 run-publisher: check-network
-	$(call run_publisher,$(NETWORK),$(MODE))
+	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # ------------------------------------------------------------
 #  Testing
@@ -319,6 +316,30 @@ bench:
 	cargo bench -p data-parser -p nats-publisher -p bench-consumers
 
 # ------------------------------------------------------------
+#  Local cluster (Tilt)
+# ------------------------------------------------------------
+
+# Default values for minikube resources
+MINIKUBE_DISK_SIZE ?= 50000mb
+MINIKUBE_MEMORY ?= 20000mb
+
+tilt_%:
+	@tilt --file ${TILTFILE} $* $(ARGS)
+
+cluster_up:   %: tilt_%  ## Start Tiltfile services.
+cluster_down: %: tilt_%  ## Stop Tiltfile services.
+cluster_reset: down up   ## Reset Tiltfile services.
+
+# Minikube and K8s setup commands
+minikube_%:
+	@./cluster/$*_minikube.sh "$(MINIKUBE_DISK_SIZE)" "$(MINIKUBE_MEMORY)"
+
+k8s_setup:
+	@./cluster/setup_k8s.sh
+
+cluster_setup: minikube_setup k8s_setup  ## Setup both minikube and k8s configuration
+
+# ------------------------------------------------------------
 #  Websocket
 # ------------------------------------------------------------
 
@@ -344,6 +365,11 @@ help:
 	@echo "Development Workflow:"
 	@echo "  dev-watch            - Run in development watch mode"
 	@echo "  ci                   - Run CI checks (lint, test, coverage, audit)"
+	@echo ""
+	@echo "Cluster Setup:"
+	@echo "  cluster_setup        - Setup both minikube and k8s configuration"
+	@echo "  minikube_setup       - Setup minikube with required addons"
+	@echo "  k8s_setup            - Setup kubernetes configuration"
 	@echo ""
 	@echo "Version Control:"
 	@echo "  version              - Show current version"

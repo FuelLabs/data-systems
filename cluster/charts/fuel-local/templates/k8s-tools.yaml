@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: k8s-tools
+
+data:
+  await-jobs.sh: |-
+    set -eo pipefail
+
+    NAMESPACE="fuel-local"
+
+    if [[ -n "${JOBS}" ]]; then
+      IFS=',' read -r -a AWAIT_JOBS <<< "${JOBS}"
+      for JOB_NAME in ${AWAIT_JOBS[@]}; do
+        while ! kubectl wait --timeout=3s --for=condition=complete job/${JOB_NAME} 1>/dev/null 2>&1; do
+          echo "Awaiting ${JOB_NAME} to complete..."
+        done
+      done
+    fi
+
+    if [[ -n "${PODS}" ]]; then
+      IFS=',' read -r -a AWAIT_PODS <<< "${PODS}"
+      for POD_NAME in ${AWAIT_PODS[@]}; do
+        RUNNING_POD_NAME=""
+        while ! kubectl wait --timeout=3s --for=condition=ready pod/${RUNNING_POD_NAME} 1>/dev/null 2>&1; do
+          echo "Awaiting ${POD_NAME} (${RUNNING_POD_NAME:-not yet started}) to be ready..."
+          RUNNING_POD_NAME=$(kubectl get pod --namespace=${NAMESPACE} -l service=${POD_NAME} -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || sleep 10)
+        done
+      done
+    fi

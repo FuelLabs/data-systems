@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "surrealdb.fullname" . }}-isready"
+  labels:
+    {{- include "surrealdb.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-isready
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      args: ['isready', '--endpoint', 'http://{{ include "surrealdb.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
