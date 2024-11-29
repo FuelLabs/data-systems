@@ -238,7 +238,7 @@ impl Publisher {
 
         let publish_tasks = payloads::transactions::publish_all_tasks(
             txs, streams, opts, fuel_core,
-        )
+        )?
         .into_iter()
         .chain(std::iter::once(blocks::publish_task(
             block,
