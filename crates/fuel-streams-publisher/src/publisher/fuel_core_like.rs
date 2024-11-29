@@ -255,14 +255,12 @@ impl FuelCoreLike for FuelCore {
         &self,
         tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
-        let off_chain_database = self.database().off_chain().latest_view()?;
-        let receipts = off_chain_database
+        let receipts = self
+            .offchain_database()?
             .get_tx_status(tx_id)?
             .map(|status| match &status {
-                FuelCoreTransactionStatus::Success { receipts, .. } => {
-                    Some(receipts.clone())
-                }
-                FuelCoreTransactionStatus::Failed { receipts, .. } => {
+                FuelCoreTransactionStatus::Success { receipts, .. }
+                | FuelCoreTransactionStatus::Failed { receipts, .. } => {
                     Some(receipts.clone())
                 }
                 _ => None,
