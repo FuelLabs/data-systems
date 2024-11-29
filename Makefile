@@ -324,6 +324,8 @@ MINIKUBE_DISK_SIZE ?= 50000mb
 MINIKUBE_MEMORY ?= 20000mb
 
 tilt_%:
+	@./scripts/set_envs.sh
+	@./scripts/gen_env_secret.sh
 	@tilt --file ${TILTFILE} $* $(ARGS)
 
 cluster_up:   %: tilt_%  ## Start Tiltfile services.

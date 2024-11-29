@@ -61,11 +61,18 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          envFrom:
-            - configMapRef:
-                name: {{ .Release.Name }}
-            - secretRef:
-                name: {{ .Release.Name }}
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.secrets }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fuel-streams-publisher.fullname" $ }}
+                  key: {{ $key }}
+            {{- end }}
       volumes:
         - name: fueldrop-allocation-config
           configMap:

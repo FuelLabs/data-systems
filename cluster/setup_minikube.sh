@@ -40,7 +40,7 @@ ADDONS=(
     "registry"
     "metrics-server"
     "dashboard"
-    "ingress"
+    # "ingress"
 )
 
 for addon in "${ADDONS[@]}"; do

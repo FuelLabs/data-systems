@@ -1,0 +1,6 @@
+dependencies:
+- name: fuel-streams-publisher
+  repository: file://../../../helm/fuel-streams-publisher
+  version: 0.3.6
+digest: sha256:ed50aa81394507af92a9f9d23acca14c625b80dc5af51dcf4ed869ffd4702f79
+generated: "2024-11-28T19:53:47.802447-03:00"

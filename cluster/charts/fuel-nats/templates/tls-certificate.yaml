@@ -1,0 +1,17 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "fuel-nats.fullname" . }}-tls
+  labels:
+    {{- include "fuel-nats.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "fuel-nats.fullname" . }}-tls
+  issuerRef:
+    name: {{ .Values.tls.certManager.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    {{- range .Values.tls.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+{{- end }}
