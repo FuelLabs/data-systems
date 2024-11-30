@@ -1,4 +1,4 @@
-use std::{iter::once, sync::Arc};
+use std::sync::Arc;
 
 use fuel_core_types::fuel_tx::field::ScriptData;
 use fuel_streams_core::prelude::*;
@@ -20,47 +20,43 @@ pub fn publish_all_tasks(
     streams: Streams,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
-) -> Vec<JoinHandle<anyhow::Result<()>>> {
+) -> anyhow::Result<Vec<JoinHandle<anyhow::Result<()>>>> {
     let offchain_database = Arc::clone(&opts.offchain_database);
+    let mut tasks = vec![];
 
-    transactions
-        .iter()
-        .enumerate()
-        .flat_map(|tx_item| {
-            let (_, tx) = tx_item;
-            let tx_id: Bytes32 = tx.id(&opts.chain_id).into();
-            let tx_status: TransactionStatus = offchain_database
-                .get_tx_status(&tx_id.to_owned().into_inner())
-                .unwrap()
-                .map(|status| (&status).into())
-                .unwrap_or_default();
+    for tx_item @ (_, tx) in transactions.iter().enumerate() {
+        let tx_id = tx.id(&opts.chain_id);
+        let tx_status: TransactionStatus = offchain_database
+            .get_tx_status(&tx_id)?
+            .map(|status| (&status).into())
+            .unwrap_or_default();
 
-            let receipts = fuel_core
-                .get_receipts(&tx_id.to_owned().into_inner())
-                .unwrap_or_default()
-                .unwrap_or_default();
+        let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
 
-            once(publish_tasks(
-                tx_item,
-                &tx_id,
-                &tx_status,
-                &streams.transactions,
-                opts,
-                &receipts,
-            ))
-            .chain(once(publish_inputs(tx, &tx_id, &streams.inputs, opts)))
-            .chain(once(publish_outputs(tx, &tx_id, &streams.outputs, opts)))
-            .chain(once(publish_receipts(
-                &tx_id,
-                &streams.receipts,
-                opts,
-                &receipts,
-            )))
-            .chain(once(publish_logs(&tx_id, &streams.logs, opts, &receipts)))
-            .chain(once(publish_utxos(tx, &tx_id, &streams.utxos, opts)))
-            .flatten()
-        })
-        .collect()
+        let tx_id = tx_id.into();
+
+        tasks.extend(publish_tasks(
+            tx_item,
+            &tx_id,
+            &tx_status,
+            &streams.transactions,
+            opts,
+            &receipts,
+        ));
+        tasks.extend(publish_inputs(tx, &tx_id, &streams.inputs, opts));
+        tasks.extend(publish_outputs(tx, &tx_id, &streams.outputs, opts));
+        tasks.extend(publish_receipts(
+            &tx_id,
+            &streams.receipts,
+            opts,
+            &receipts,
+        ));
+        tasks.extend(publish_outputs(tx, &tx_id, &streams.outputs, opts));
+        tasks.extend(publish_logs(&tx_id, &streams.logs, opts, &receipts));
+        tasks.extend(publish_utxos(tx, &tx_id, &streams.utxos, opts));
+    }
+
+    Ok(tasks)
 }
 
 fn publish_tasks(
