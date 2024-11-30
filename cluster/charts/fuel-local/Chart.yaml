@@ -5,6 +5,8 @@ name: fuel-local
 version: 0.2.0
 dependencies:
   - name: fuel-streams-publisher
-    version: "0.3.6"
-    repository: "file://../../../helm/fuel-streams-publisher"
-    condition: fuelPublisher.enabled
+    version: "0.3.7"
+    repository: "file://../fuel-streams-publisher"
+  - name: fuel-nats
+    version: "0.1.0"
+    repository: "file://../fuel-nats"

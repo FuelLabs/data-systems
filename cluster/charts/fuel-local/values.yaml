@@ -1,39 +1,23 @@
 # general settings
 namespace: fuel-local
 clusterBaseUrl: svc.cluster.local
-network: testnet
+serviceAccount: local-fuel-serviceaccount
+kibanaDomain: local-kibana.fuel.com
+disableResourceLimits: false
+waitForServiceDependencies: true
+# Only start absolutely required jobs
+onlyRequiredBaseServices: false
 
 docker:
   registry: registry.dev.svc.cluster.local:5000
 
 ingress:
   enabled: true
+
 roles:
   create: true
 
-serviceAccount: local-fuel-serviceaccount
-
-kibanaDomain: local-kibana.fuel.com
-
-disableResourceLimits: false
-waitForServiceDependencies: true
-
-# pvc
-fuelSharedMnt:
-  accessModes:
-    value: "ReadWriteOnce"
-  storageClassName:
-    enabled: true
-    value: "fuel-pvc"
-  enableHostPath: true
-  type: DirectoryOrCreate
-  hostPath: "/tmp/fuel-shared-mount"
-
-# Only start absolutely required jobs
-onlyRequiredBaseServices: false
-
 # service settings
-
 grafana:
   image: "grafana/grafana"
   tag: "7.2.1"
@@ -57,9 +41,6 @@ kibana:
   enabled: true
   image: "docker.elastic.co/kibana/kibana"
   tag: "7.6.2"
-
-fuelPublisher:
-  enabled: true
 
 # Resource profiles for all containers.
 # This allows to easily override requests and limits via additional values file.
@@ -92,17 +73,27 @@ resourceProfile:
     limits:
       cpu: 0.2
       memory: 700Mi
-  surrealdb:
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-    requests:
-      cpu: "250m"
-      memory: "256Mi"
-  fuelPublisher:
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-    requests:
-      cpu: "250m"
-      memory: "256Mi"
+
+fuel-streams-publisher:
+  # You dont need to setup your secrets here because they will be generated automatically by Tilt
+  image:
+    repository: "fuel-streams-publisher"
+    pullPolicy: Never
+    tag: latest
+
+  persistence:
+    data:
+      size: 50Gi
+      storageClass: standard
+    temp:
+      size: 5Gi
+      storageClass: standard
+
+  env:
+    NATS_URL: local-nats:4222
+
+fuel-nats:
+  container:
+    env:
+      NATS_SYSTEM_PASS: temp-system-pass
+      NATS_ADMIN_PASS: temp-admin-pass

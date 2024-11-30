@@ -6,6 +6,5 @@ extend-exclude = [
     "crates/fuel-indexer/*",
     "docker/chain-config",
     "docker/monitoring",
-    "helm",
     "cluster",
 ]

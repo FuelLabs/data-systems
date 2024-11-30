@@ -40,8 +40,12 @@ ADDONS=(
     "registry"
     "metrics-server"
     "dashboard"
-    # "ingress"
 )
+
+# Add ingress addon only if not on macOS (ingress is not working properly on macOS)
+if [[ "$(uname)" != "Darwin" ]]; then
+    ADDONS+=("ingress")
+fi
 
 for addon in "${ADDONS[@]}"; do
     echo "Enabling $addon..."

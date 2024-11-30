@@ -1,57 +1,100 @@
-# Values for the NATS chart
+# External service configuration (for production)
+externalService:
+  enabled: false # Enable for production
+
+# TLS configuration (for production)
+tls:
+  enabled: false
+  issuer: letsencrypt-prod
+
 nats:
-  # Prometheus monitoring configuration
   promExporter:
-    enabled: false  # Enable this in production
+    enabled: false
+    port: 6777
     image:
       repository: natsio/prometheus-nats-exporter
       tag: 0.15.0
-    port: 7777
     podMonitor:
       enabled: false
-      merge:
-        metadata:
-          labels:
-            release: kube-prometheus-stack
+      metadata:
+        labels:
+          release: kube-prometheus-stack
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.22-alpine
+    env:
+      GOMEMLIMIT: 3GiB
+      NATS_SYSTEM_PASS: temp-system-pass # Override in production
+      NATS_ADMIN_PASS: temp-admin-pass # Override in production
+    startupProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      failureThreshold: 1080
+    resources:
+      requests:
+        cpu: 4
+        memory: 4Gi
+
+  serviceAccount:
+    enabled: true
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      cluster:
+        enabled: false # Set this true on production
+      monitor:
+        enabled: false
+      mqtt:
+        enabled: false
+      leafnodes:
+        enabled: false
+      websocket:
+        enabled: true
 
   config:
     cluster:
-      enabled: false  # Set to true for production clusters
-      replicas: 3
+      enabled: false # Set this true on production
       port: 6222
+      replicas: 3
       routeURLs:
         useFQDN: true
 
     jetstream:
       enabled: true
       fileStore:
-        enabled: true
         dir: /data
         pvc:
           enabled: true
-          size: 10Gi  # Adjust based on environment
-          storageClassName: standard  # Adjust based on environment
+          size: 10Gi
+          storageClassName: standard
 
     websocket:
       enabled: true
-      port: 8080  # Default for local, override to 8443 for production
-      tls:
-        enabled: false  # Enable for production
-        merge:
-          no_tls: false
-          same_origin: false
-          compression: false
-          handshake_timeout: "20s"
-          no_auth_user: default_user
+      port: 8443
+      merge:
+        no_tls: true
+      # Configuration to setup TLS on production for websocket
+      # tls:
+      #   enabled: true
+      #   secretName: nats-ws-tls
+      #   dir: /etc/nats-certs/websocket
+      #   cert: tls.crt
+      #   key: tls.key
+      # merge:
+      #   no_tls: false
+      #   same_origin: false
+      #   compression: false
+      #   handshake_timeout: "20s"
+      #   no_auth_user: default_user
 
-    monitor:
-      enabled: true
-      port: 8222
-
-    # Core NATS configuration
     merge:
       jetstream:
-        max_file_store: << 10GiB >>  # Adjust based on environment
+        max_file_store: << 100GiB >>
         max_memory_store: << 7168MiB >>
       max_payload: << 8MiB >>
       system_account: SYS
@@ -88,61 +131,3 @@ nats:
                     - "$JS.API.STREAM.RESTORE.>"
                     - "$JS.API.STREAM.MSG.DELETE.>"
                     - "$JS.API.CONSUMER.DURABLE.CREATE.>"
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.22-alpine
-    env:
-      GOMEMLIMIT: 14GiB
-      NATS_SYSTEM_PASS: temp-system-pass  # Override in production
-      NATS_ADMIN_PASS: temp-admin-pass    # Override in production
-
-    merge:
-      startupProbe:
-        initialDelaySeconds: 60
-        periodSeconds: 10
-        failureThreshold: 1080
-      resources:
-        requests:
-          cpu: 4
-          memory: 4Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      websocket:
-        enabled: true
-      monitor:
-        enabled: true
-      cluster:
-        enabled: false  # Enable for production clusters
-
-  natsBox:
-    enabled: true
-
-  # Production specific configurations
-  podTemplate:
-    topologySpreadConstraints: []  # Add constraints for production
-
-# External service configuration (for production)
-externalService:
-  enabled: false  # Enable for production
-  annotations: {}
-  type: LoadBalancer
-  ports:
-    - name: nats
-      port: 4222
-      targetPort: nats
-    - name: wss
-      port: 8443
-      targetPort: websocket
-
-# TLS configuration (for production)
-tls:
-  enabled: false
-  certManager:
-    enabled: false
-    clusterIssuer: letsencrypt-prod

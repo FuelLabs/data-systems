@@ -1,6 +1,9 @@
 dependencies:
 - name: fuel-streams-publisher
-  repository: file://../../../helm/fuel-streams-publisher
-  version: 0.3.6
-digest: sha256:ed50aa81394507af92a9f9d23acca14c625b80dc5af51dcf4ed869ffd4702f79
-generated: "2024-11-28T19:53:47.802447-03:00"
+  repository: file://../fuel-streams-publisher
+  version: 0.3.7
+- name: fuel-nats
+  repository: file://../fuel-nats
+  version: 0.1.0
+digest: sha256:4362071bef367c36d9433fa948178f176614e65a69cd5e08f880937f2c4795df
+generated: "2024-11-30T00:12:23.285838-03:00"

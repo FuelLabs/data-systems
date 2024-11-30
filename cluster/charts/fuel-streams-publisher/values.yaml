@@ -1,0 +1,141 @@
+# Default values for fuel-streams-publisher
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# These are custom resource definitions that can be overridden by the user
+# nameOverride: ""
+# fullnameOverride: ""
+
+# general configurations
+config:
+  replicaCount: 1
+  imagePullSecrets: []
+  annotations: {}
+  labels: {}
+  securityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # resources:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+
+image:
+  repository: ghcr.io/fuellabs/fuel-streams-publisher
+  pullPolicy: Always
+  tag: "latest"
+
+serviceAccount:
+  create: true
+  automount: true
+  # annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  # name: ""
+
+service:
+  type: ClusterIP
+  port: 4000
+
+prometheus:
+  enabled: true
+  scrape: true
+  port: 9000
+  path: /metrics
+
+securityContext:
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30 # Increase for slower startups
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: true
+  data:
+    name: rocks-db
+    mountPath: /mnt/db
+    size: 800Gi
+    storageClass: gp3-generic
+    accessMode: ReadWriteOnce
+    annotations: {}
+  temp:
+    name: tmp-folder
+    mountPath: /tmp
+    size: 5Gi
+    storageClass: gp3-generic
+    accessMode: ReadWriteOnce
+    annotations: {}
+
+env:
+  RELAYER_V2_LISTENING_CONTRACTS: "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+  RELAYER_DA_DEPLOY_HEIGHT: "20620434"
+  RELAYER_LOG_PAGE_SIZE: "2000"
+  SYNC_HEADER_BATCH_SIZE: "100"
+  NATS_URL: "nats:4222"
+  P2P_PORT: "30333"
+  RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
+  CHAIN_CONFIG: "mainnet"
+  PUBLISHER_MAX_THREADS: "32"
+  DB_PATH: "/mnt/db/"
+  POA_INSTANT: "false"
+  SERVICE_NAME: "NATS Publisher Node"
+
+# Additional environment variables with complex structures
+# extraEnv:
+#   - name: RELAYER
+#     valueFrom:
+#       secretKeyRef:
+#         name: fuel-streams-publisher
+#         key: RELAYER
+#   - name: KEYPAIR
+#     valueFrom:
+#       secretKeyRef:
+#         name: fuel-streams-publisher
+#         key: KEYPAIR
+#   - name: NATS_ADMIN_PASS
+#     valueFrom:
+#       secretKeyRef:
+#         name: fuel-streams-publisher
+#         key: NATS_ADMIN_PASS
+# Optional: Bulk environment references
+# envFrom:
+#   - configMapRef:
+#       name: additional-config
+#   - secretRef:
+#       name: additional-secrets
