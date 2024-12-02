@@ -8,7 +8,7 @@ exclude: |
   (?x)^(
     CHANGELOG.md|
     pnpm-lock.yaml|
-    helm/.*|
+    cluster/charts/.*|
     node_modules/.*
   )$
 

@@ -329,9 +329,11 @@ bench:
 
 # Default values for minikube resources
 MINIKUBE_DISK_SIZE ?= 50000mb
-MINIKUBE_MEMORY ?= 20000mb
+MINIKUBE_MEMORY ?= 8000mb
 
 tilt_%:
+	@./scripts/set_envs.sh
+	@./cluster/scripts/gen_env_secret.sh
 	@tilt --file ${TILTFILE} $* $(ARGS)
 
 cluster_up:   %: tilt_%  ## Start Tiltfile services.
@@ -340,12 +342,18 @@ cluster_reset: down up   ## Reset Tiltfile services.
 
 # Minikube and K8s setup commands
 minikube_%:
-	@./cluster/$*_minikube.sh "$(MINIKUBE_DISK_SIZE)" "$(MINIKUBE_MEMORY)"
+	@./cluster/scripts/$*_minikube.sh "$(MINIKUBE_DISK_SIZE)" "$(MINIKUBE_MEMORY)"
 
 k8s_setup:
-	@./cluster/setup_k8s.sh
+	@./cluster/scripts/setup_k8s.sh
 
-cluster_setup: minikube_setup k8s_setup  ## Setup both minikube and k8s configuration
+cluster_setup: minikube_setup k8s_setup helm_setup  ## Setup both minikube and kubernetes configuration
+
+helm_setup:  ## Update Helm dependencies
+	@echo "Updating Helm dependencies..."
+	cd cluster/charts/fuel-local && helm dependency update
+	cd cluster/charts/fuel-nats && helm dependency update
+	cd cluster/charts/fuel-streams-publisher && helm dependency update
 
 # ------------------------------------------------------------
 #  Websocket

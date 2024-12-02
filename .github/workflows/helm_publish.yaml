@@ -1,11 +1,13 @@
 name: Build and publish Helm Chart
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - helm/fuel-streams-publisher/Chart.yaml
+      - cluster/charts/fuel-streams-publisher/Chart.yaml
+      - cluster/charts/fuel-nats/Chart.yaml
 
 permissions:
   contents: read
@@ -20,9 +22,18 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        chart:
+          - fuel-streams-publisher
+          - fuel-nats
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Helm Dependencies Update For fuel-nats
+        run: |
+          cd cluster/charts/${{ matrix.chart }} && helm dependency update
 
       - name: Package and Push Charts
         uses: bsord/helm-push@v4.1.0
@@ -32,4 +43,4 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./helm/fuel-streams-publisher
+          chart-folder: ./cluster/charts/${{ matrix.chart }}
