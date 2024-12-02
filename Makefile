@@ -10,6 +10,7 @@ VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | sele
 TILTFILE ?= ./Tiltfile
 
 PORT ?= 4000
+TELEMETRY_PORT ?= 8080
 MODE ?= profiling
 MODES = dev profiling
 
@@ -154,19 +155,19 @@ endef
 # Helper function to execute docker commands with consistent parameters
 define docker_cmd
 	$(call check_docker_env)
-	NETWORK=$(1) PORT=$(2) $(DOCKER_COMPOSE) --profile $(3) $(4)
+	NETWORK=$(1) PORT=$(2) TELEMETRY_PORT=$(3) $(DOCKER_COMPOSE) --profile $(4) $(5)
 endef
 
 start:
-	$(call docker_cmd,$(NETWORK),$(PORT),$(PROFILE),up -d)
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),up -d)
 
 stop:
-	$(call docker_cmd,$(NETWORK),$(PORT),$(PROFILE),down)
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down)
 
 restart: stop start
 
 clean/docker: stop
-	$(call docker_cmd,$(NETWORK),$(PORT),$(PROFILE),down -v --rmi all --remove-orphans)
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down -v --rmi all --remove-orphans)
 
 # Define rules for network-only, profile-only, and network-profile combinations
 define profile_rules
@@ -211,7 +212,7 @@ EXTRA_ARGS ?=
 publisher_%:
 	@network=$$(echo "$*" | cut -d'-' -f1) && \
 	mode=$$(echo "$*" | cut -d'-' -f2) && \
-	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
+	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # Publisher commands for different networks and modes
 run-mainnet-dev: check-network publisher_mainnet-dev        ## Run publisher in mainnet dev mode
@@ -221,7 +222,7 @@ run-testnet-profiling: check-network publisher_testnet-profiling  ## Run publish
 
 # Generic publisher command using environment variables
 run-publisher: check-network
-	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
+	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # ------------------------------------------------------------
 #  Testing

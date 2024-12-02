@@ -15,10 +15,6 @@ use anyhow::Result;
 use fuel_streams::{prelude::*, receipts::*};
 use futures::StreamExt;
 
-/// The URL of the Fuel streaming service.
-const FUEL_STREAMING_SERVICE_URL: &str =
-    "nats://fuel-streaming-service.fuel.sh:4222";
-
 /// The contract ID to stream the receipts for. For this example, we're using the contract ID of the https://thundernft.market/
 const CONTRACT_ID: &str =
     "0x243ef4c2301f44eecbeaf1c39fee9379664b59a2e5b75317e8c7e7f26a25ed4d";
@@ -46,7 +42,7 @@ const CONTRACT_ID: &str =
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FUEL_STREAMING_SERVICE_URL).await?;
+    let client = Client::connect(FuelNetwork::Testnet).await?;
 
     let contract_id: ContractId = CONTRACT_ID.into();
 

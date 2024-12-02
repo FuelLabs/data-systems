@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use fuel_core::{
     combined_database::CombinedDatabase,
@@ -18,10 +18,9 @@ use fuel_core_storage::transactional::AtomicView;
 use fuel_core_types::{
     blockchain::consensus::{Consensus, Sealed},
     fuel_types::BlockHeight,
-    tai64::Tai64,
 };
 use fuel_streams_core::types::*;
-use tokio::sync::broadcast::Receiver;
+use tokio::{sync::broadcast::Receiver, time::sleep};
 
 pub type OffchainDatabase = GenericDatabase<
     IterableKeyValueViewWrapper<
@@ -48,34 +47,27 @@ pub trait FuelCoreLike: Sync + Send {
         Ok(Arc::new(self.database().off_chain().latest_view()?))
     }
 
+    async fn await_offchain_db_sync(
+        &self,
+        block_id: &FuelCoreBlockId,
+    ) -> anyhow::Result<()>;
+
     fn blocks_subscription(
         &self,
     ) -> Receiver<fuel_core_importer::ImporterResult>;
 
-    fn get_latest_block_height(&self) -> anyhow::Result<Option<u64>> {
+    fn get_latest_block_height(&self) -> anyhow::Result<u64> {
         Ok(self
             .onchain_database()
             .latest_block_height()?
-            .map(|h| h.as_u64()))
+            .map(|h| h.as_u64())
+            .unwrap_or_default())
     }
 
     fn get_receipts(
         &self,
         tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>>;
-
-    fn get_block_and_producer_by_height(
-        &self,
-        height: u32,
-    ) -> anyhow::Result<(FuelCoreBlock, Address)> {
-        let sealed_block = self
-            .onchain_database()
-            .latest_view()?
-            .get_sealed_block_by_height(&(height).into())?
-            .expect("NATS Publisher: no block at height {height}");
-
-        Ok(self.get_block_and_producer(&sealed_block))
-    }
 
     #[cfg(not(feature = "test-helpers"))]
     fn get_consensus(
@@ -103,7 +95,7 @@ pub trait FuelCoreLike: Sync + Send {
     #[cfg(not(feature = "test-helpers"))]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<FuelCoreBlock>,
+        sealed_block: Sealed<FuelCoreBlock>,
     ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
@@ -117,7 +109,7 @@ pub trait FuelCoreLike: Sync + Send {
     #[cfg(feature = "test-helpers")]
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<FuelCoreBlock>,
+        sealed_block: Sealed<FuelCoreBlock>,
     ) -> (FuelCoreBlock, Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
@@ -135,17 +127,6 @@ pub trait FuelCoreLike: Sync + Send {
             .get_sealed_block_by_height(&height.into())
             .expect("Failed to get latest block height")
             .expect("NATS Publisher: no block at height {height}")
-    }
-
-    fn get_sealed_block_time_by_height(&self, height: u32) -> Tai64 {
-        self.onchain_database()
-            .latest_view()
-            .expect("failed to get latest db view")
-            .get_sealed_block_header(&height.into())
-            .expect("Failed to get sealed block header")
-            .expect("Failed to find sealed block header")
-            .entity
-            .time()
     }
 }
 
@@ -228,6 +209,25 @@ impl FuelCoreLike for FuelCore {
             }
             Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
         }
+    }
+
+    async fn await_offchain_db_sync(
+        &self,
+        block_id: &FuelCoreBlockId,
+    ) -> anyhow::Result<()> {
+        loop {
+            if self
+                .offchain_database()?
+                .get_block_height(block_id)?
+                .is_some()
+            {
+                break;
+            };
+
+            sleep(Duration::from_millis(500)).await;
+        }
+
+        Ok(())
     }
 
     fn base_asset_id(&self) -> &FuelCoreAssetId {

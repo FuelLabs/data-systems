@@ -1,5 +1,5 @@
 use fuel_streams_core::{
-    nats::{types::DeliverPolicy, NatsClient, NatsClientOpts},
+    nats::{types::DeliverPolicy, FuelNetwork, NatsClient, NatsClientOpts},
     types::{Block, Transaction},
     StreamEncoder,
     Streamable,
@@ -13,8 +13,6 @@ use surrealdb::{
     sql::Thing,
     Surreal,
 };
-
-static NATS_URL: &str = "nats://k8s-testnet-natstcp-8b9c299ba6-ebcb488b60030e81.elb.us-east-1.amazonaws.com";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct BlockRecord {
@@ -46,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
 
     db.use_ns("fuel_indexer").use_db("fuel_indexer").await?;
 
-    let nats_client_opts = NatsClientOpts::admin_opts(NATS_URL);
+    let nats_client_opts = NatsClientOpts::admin_opts(FuelNetwork::Testnet);
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
     tokio::try_join!(

@@ -3,14 +3,18 @@ pub mod payloads;
 pub mod shutdown;
 pub mod streams;
 
-use std::sync::Arc;
+mod unpublished_blocks;
 
-use fuel_core_importer::ImporterResult;
+use std::{cmp::max, sync::Arc};
+
+use anyhow::Context;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
 use fuel_streams_core::prelude::*;
-use futures::{future::try_join_all, stream::FuturesUnordered};
+use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
 pub use streams::Streams;
-use tokio::sync::{broadcast::error::RecvError, Semaphore};
+use tokio::sync::Semaphore;
+use tokio_stream::wrappers::BroadcastStream;
+use unpublished_blocks::UnpublishedBlocks;
 
 use super::{
     payloads::blocks,
@@ -31,10 +35,10 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
-        nats_url: &str,
+        network: FuelNetwork,
         telemetry: Arc<Telemetry>,
     ) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::admin_opts(nats_url);
+        let nats_client_opts = NatsClientOpts::admin_opts(network);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let streams = Arc::new(Streams::new(&nats_client).await);
 
@@ -69,16 +73,6 @@ impl Publisher {
         &self.streams
     }
 
-    async fn publish_block_data(
-        &self,
-        result: ImporterResult,
-    ) -> anyhow::Result<()> {
-        let (block, block_producer) =
-            self.fuel_core.get_block_and_producer(&result.sealed_block);
-        self.publish(&block, &block_producer).await?;
-        Ok(())
-    }
-
     async fn shutdown_services_with_timeout(&self) -> anyhow::Result<()> {
         tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
             Publisher::flush_await_all_streams(&self.nats_client).await;
@@ -105,98 +99,94 @@ impl Publisher {
         &self,
         shutdown_token: ShutdownToken,
     ) -> anyhow::Result<()> {
-        let last_published_block = self
-            .streams
-            .blocks
-            .get_last_published(BlocksSubject::WILDCARD)
+        tracing::info!("Publishing started...");
+
+        let latest_block_height = self.fuel_core.get_latest_block_height()?;
+        let last_published_block_height = self
+            .get_last_published_block_height(latest_block_height)
             .await?;
-        let last_published_height: u64 = last_published_block
-            .map(|block| block.height.into())
-            .unwrap_or(0);
 
-        // Catch up the streams with the FuelCore
-        if let Some(latest_fuel_core_height) =
-            self.fuel_core.get_latest_block_height()?
-        {
-            if latest_fuel_core_height > last_published_height + 1 {
-                tracing::warn!("Missing blocks: last block height in Node={latest_fuel_core_height}, last published block height={last_published_height}");
-            }
+        // TODO: Move the synchronous operations here to a dedicated Rayon pool
+        let old_blocks_stream = futures::stream::iter(
+            last_published_block_height..latest_block_height,
+        )
+        .map(|height| self.fuel_core.get_sealed_block_by_height(height as u32));
 
-            let latest_fuel_block_time_unix = self
-                .fuel_core
-                .get_sealed_block_time_by_height(latest_fuel_core_height as u32)
-                .to_unix();
+        let new_blocks_stream = BroadcastStream::new(
+            self.fuel_core.blocks_subscription(),
+        )
+        .map(|import_result| {
+            import_result
+                .expect("Failed to get ImportResult")
+                .sealed_block
+                .clone()
+        });
 
-            let mut height = last_published_height;
-            while height <= latest_fuel_core_height {
-                tokio::select! {
-                    shutdown =  shutdown_token.wait_for_shutdown() => {
-                        if shutdown {
-                            tracing::info!("Shutdown signal received during historical blocks processing. Last published block height {height}");
-                            self.shutdown_services_with_timeout().await?;
-                            return Ok(());
-                        }
-                    },
-                    (result, block_producer) = async {
+        let unpublished_blocks =
+            UnpublishedBlocks::new(last_published_block_height);
 
-                        let fuel_block_time_unix = self
-                        .fuel_core
-                        .get_sealed_block_time_by_height(height as u32)
-                        .to_unix();
+        let mut blocks_stream =
+            futures::stream::select(old_blocks_stream, new_blocks_stream);
 
-                        if fuel_block_time_unix < latest_fuel_block_time_unix - (FUEL_BLOCK_TIME_SECS  * MAX_RETENTION_BLOCKS) as i64 {
-                            // Skip publishing for this block and move to the next height
-                            tracing::warn!("Block {} with time: {} is more than 100 blocks behind chain tip, skipped publishing", height, fuel_block_time_unix);
-                            return (Ok(()), None);
-                        }
+        loop {
+            tokio::select! {
+                Some(block) = blocks_stream.next() => {
+                    let unpublished_blocks = unpublished_blocks.clone();
+                    unpublished_blocks.add_block(block);
+                    let next_blocks_to_publish =
+                        unpublished_blocks.get_next_blocks_to_publish();
 
-                        let sealed_block = self
-                            .fuel_core
-                            .get_sealed_block_by_height(height as u32);
+                    tracing::info!("Processing blocks stream");
 
+                    for sealed_block in next_blocks_to_publish.into_iter() {
+                        let fuel_core = &self.fuel_core;
                         let (block, block_producer) =
-                            self.fuel_core.get_block_and_producer(&sealed_block);
+                            fuel_core.get_block_and_producer(sealed_block);
 
-                        (self.publish(&block, &block_producer).await, Some(block_producer.clone()))
-                    } => {
-                        if let (Err(err), Some(block_producer)) = (result, block_producer) {
-                            tracing::warn!("Failed to publish block data: {}", err);
+                        // TODO: Avoid awaiting Offchain DB sync for all streams by grouping in their own service
+                        fuel_core
+                            .await_offchain_db_sync(&block.id())
+                            .await
+                            .context("Failed to await Offchain DB sync")?;
+
+                        if let Err(err) = self.publish(&block, &block_producer).await {
+                            tracing::error!("Failed to publish block data: {}", err);
                             self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
                         }
-                        // Increment the height after processing
-                        height += 1;
                     }
-                }
-            }
-        }
-
-        // publish subscribed data
-        loop {
-            let fuel_core = self.fuel_core.clone();
-            let mut blocks_subscription = fuel_core.blocks_subscription();
-
-            tokio::select! {
-                result = blocks_subscription.recv() => {
-                    match result {
-                        Ok(result) => {
-                            self.publish_block_data(result).await?;
-                        }
-                        Err(RecvError::Closed) | Err(RecvError::Lagged(_)) => {
-                            // The sender has been dropped or has lagged, exit the loop
-                            break;
-                        }
-                    }
-                }
-                shutdown = shutdown_token.wait_for_shutdown()  => {
+                },
+                shutdown = shutdown_token.wait_for_shutdown() => {
                     if shutdown {
+                        tracing::info!("Shutdown signal received. Stopping services ...");
                         self.shutdown_services_with_timeout().await?;
                         break;
                     }
-                }
-            }
+                },
+            };
         }
 
+        tracing::info!("Publishing stopped successfully!");
+
         Ok(())
+    }
+
+    const MAX_RETAINED_BLOCKS: u64 = 100;
+    async fn get_last_published_block_height(
+        &self,
+        latest_block_height: u64,
+    ) -> anyhow::Result<u64> {
+        Ok(self
+            .streams
+            .get_last_published_block()
+            .await?
+            .map(|block| block.height.into())
+            .map(|block_height: u64| {
+                max(
+                    block_height,
+                    latest_block_height - Self::MAX_RETAINED_BLOCKS,
+                )
+            })
+            .unwrap_or_default())
     }
 
     async fn publish(

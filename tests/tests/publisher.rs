@@ -52,6 +52,13 @@ impl FuelCoreLike for TestFuelCore {
     }
     async fn stop(&self) {}
 
+    async fn await_offchain_db_sync(
+        &self,
+        _block_id: &FuelCoreBlockId,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn base_asset_id(&self) -> &FuelCoreAssetId {
         &self.base_asset_id
     }
@@ -305,9 +312,8 @@ fn create_test_block() -> ImporterResult {
 }
 
 async fn nats_client() -> NatsClient {
-    const NATS_URL: &str = "nats://localhost:4222";
     let nats_client_opts =
-        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+        NatsClientOpts::admin_opts(FuelNetwork::Local).with_rdn_namespace();
     NatsClient::connect(&nats_client_opts)
         .await
         .expect("NATS connection failed")

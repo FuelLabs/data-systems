@@ -89,9 +89,6 @@ fuel-streams-publisher:
       size: 5Gi
       storageClass: standard
 
-  env:
-    NATS_URL: local-nats:4222
-
 fuel-nats:
   container:
     env:

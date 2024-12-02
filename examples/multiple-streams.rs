@@ -22,13 +22,11 @@ use fuel_streams::{
 };
 use futures::{future::try_join_all, StreamExt};
 
-const FUEL_STREAMING_SERVICE_URL: &str = "nats:://fuel-streaming.testnet:4222";
-
 // This example demonstrates how to use the fuel-streams library to subscribe to multiple streams.
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     // initialize a client
-    let client = Client::connect(FUEL_STREAMING_SERVICE_URL).await?;
+    let client = Client::connect(FuelNetwork::Testnet).await?;
 
     let mut handles = vec![];
 
