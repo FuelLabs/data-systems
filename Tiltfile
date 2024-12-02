@@ -56,7 +56,7 @@ ports = {
     "surrealdb": ["8000:8000", "8001:8001"],
     "elasticsearch": ["9200:9200", "9300:9300"],
     "kibana": ["5601:5601"],
-    "fuel-publisher": [],
+    "fuel-publisher": ["4000:4000", "8080:8080"],
     "nats": ["4222:4222"],
     "nats-box": [],
 }
