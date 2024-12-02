@@ -7,7 +7,6 @@ COMMANDS ?= rustup npm pre-commit docker python3
 RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
 RUST_VERSION ?= 1.81.0
 VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
-TILTFILE ?= ./Tiltfile
 
 PORT ?= 4000
 TELEMETRY_PORT ?= 8080
@@ -321,17 +320,10 @@ bench:
 # ------------------------------------------------------------
 
 # Default values for minikube resources
+TILTFILE ?= ./Tiltfile
+CLUSTER_MODE ?= full
 MINIKUBE_DISK_SIZE ?= 50000mb
 MINIKUBE_MEMORY ?= 8000mb
-
-tilt_%:
-	@./scripts/set_envs.sh
-	@./cluster/scripts/gen_env_secret.sh
-	@tilt --file ${TILTFILE} $* $(ARGS)
-
-cluster_up:   %: tilt_%  ## Start Tiltfile services.
-cluster_down: %: tilt_%  ## Stop Tiltfile services.
-cluster_reset: down up   ## Reset Tiltfile services.
 
 # Minikube and K8s setup commands
 minikube_%:
@@ -340,13 +332,34 @@ minikube_%:
 k8s_setup:
 	@./cluster/scripts/setup_k8s.sh
 
-cluster_setup: minikube_setup k8s_setup helm_setup  ## Setup both minikube and kubernetes configuration
-
 helm_setup:  ## Update Helm dependencies
 	@echo "Updating Helm dependencies..."
 	cd cluster/charts/fuel-local && helm dependency update
 	cd cluster/charts/fuel-nats && helm dependency update
 	cd cluster/charts/fuel-streams-publisher && helm dependency update
+
+cluster_setup: minikube_setup k8s_setup helm_setup  ## Setup both minikube and kubernetes configuration
+
+# Define common cluster operation steps
+define cluster_operation
+	@echo "Running cluster with mode: $(1)"
+	@./scripts/set_envs.sh
+	@./cluster/scripts/gen_env_secret.sh
+	@CLUSTER_MODE=$(1) tilt --file ${TILTFILE} $(2) $(ARGS)
+endef
+
+cluster_up_%:
+	$(call cluster_operation,$*,up)
+
+cluster_down_%:
+	$(call cluster_operation,$*,down)
+
+cluster_reset_%: cluster_down_$* cluster_up_$*
+	@echo "Reset cluster in $* mode"
+
+cluster_up: cluster_up_full
+cluster_down: cluster_down_full
+cluster_reset: cluster_reset_full
 
 # ------------------------------------------------------------
 #  Websocket

@@ -1,5 +1,4 @@
-{{ if not .Values.onlyRequiredBaseServices }}
-{{ if .Values.elasticsearch.enabled }}
+{{ if .Values.services.telemetry.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,5 +64,4 @@ spec:
       resources:
         requests:
           storage: {{ default "1Gi" .Values.elasticsearch.storage }}
-{{ end }}
 {{ end }}

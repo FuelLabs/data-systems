@@ -30,7 +30,12 @@ custom_build(
     ignore=['./target']
 )
 
-# Deploy the Helm chart with values from .env
+# Get deployment mode from environment variable, default to 'full'
+# and configure values based on mode
+config_mode = os.getenv('CLUSTER_MODE', 'full')
+print(config_mode)
+
+# Deploy the Helm chart with values
 k8s_yaml(helm(
     'cluster/charts/fuel-local',
     name='local',
@@ -38,58 +43,58 @@ k8s_yaml(helm(
     values=[
         'cluster/charts/fuel-local/values.yaml',
         'cluster/charts/fuel-local/values-publisher-env.yaml',
-    ]
+    ],
+    set=['services.telemetry.enabled=' + ('false' if config_mode == 'minimal' else 'true')]
 ))
 
-# k8s resources
-ports = {
-    "monitoring": ["9090:9090", "3000:3000"],
-    "elasticsearch": ["9200:9200", "9300:9300"],
-    "kibana": ["5601:5601"],
-    "publisher": ["4000:4000", "8080:8080"],
-    "nats": ["4222:4222"],
-    "nats-box": [],
+# Resource configurations
+RESOURCES = {
+    'publisher': {
+        'name': 'local-fuel-streams-publisher',
+        'ports': ['4000:4000', '8080:8080'],
+        'labels': 'publisher',
+        'config_mode': ['minimal', 'full']
+    },
+    'nats': {
+        'name': 'local-nats',
+        'ports': ['4222:4222'],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
+    },
+    'nats-box': {
+        'name': 'local-nats-box',
+        'ports': [],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
+    },
+    # Optional services (enabled in full mode only)
+    'monitoring': {
+        'name': 'monitoring',
+        'ports': ['9090:9090', '3000:3000'],
+        'labels': 'monitoring',
+        'config_mode': ['full']
+    },
+    'elasticsearch': {
+        'name': 'elasticsearch',
+        'ports': ['9200:9200', '9300:9300'],
+        'labels': 'logging',
+        'config_mode': ['full']
+    },
+    'kibana': {
+        'name': 'kibana',
+        'ports': ['5601:5601'],
+        'labels': 'logging',
+        'deps': ['elasticsearch'],
+        'config_mode': ['full']
+    }
 }
-
-deps = {
-    "monitoring": [],
-    "elasticsearch": [],
-    "kibana": ["elasticsearch"],
-    "publisher": [],
-    "nats": [],
-    "nats-box": [],
-}
-
-k8s_resource("monitoring",
-    port_forwards=ports["monitoring"],
-    resource_deps=deps["monitoring"],
-    labels="monitoring"
-)
-k8s_resource("elasticsearch",
-    port_forwards=ports["elasticsearch"],
-    resource_deps=deps["elasticsearch"],
-    labels="logging"
-)
-k8s_resource("kibana",
-    port_forwards=ports["kibana"],
-    resource_deps=deps["kibana"],
-    labels="logging"
-)
-k8s_resource("local-fuel-streams-publisher",
-    new_name="publisher",  # Override the display name
-    resource_deps=deps["publisher"],
-    port_forwards=ports["publisher"],
-    labels="publisher"
-)
-k8s_resource("local-nats",
-    new_name="nats",
-    port_forwards=ports["nats"],
-    resource_deps=deps["nats"],
-    labels="nats"
-)
-k8s_resource("local-nats-box",
-    new_name="nats-box",
-    port_forwards=ports["nats-box"],
-    resource_deps=deps["nats-box"],
-    labels="nats"
-)
+# Configure k8s resources
+for name, resource in RESOURCES.items():
+    if config_mode in resource['config_mode']:
+        k8s_resource(
+            resource['name'],
+            new_name=name,
+            port_forwards=resource['ports'],
+            resource_deps=resource.get('deps', []),
+            labels=resource['labels']
+        )

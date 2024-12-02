@@ -1,5 +1,4 @@
-{{ if not .Values.onlyRequiredBaseServices }}
-{{ if .Values.kibana.enabled }}
+{{ if .Values.services.telemetry.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -57,5 +56,4 @@ spec:
         resources:
         {{- .Values.resourceProfile.kibana | toYaml | nindent 10 }}
         {{- end }}
-{{ end }}
 {{ end }}

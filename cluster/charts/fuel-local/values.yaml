@@ -4,8 +4,15 @@ clusterBaseUrl: svc.cluster.local
 serviceAccount: local-fuel-serviceaccount
 disableResourceLimits: false
 waitForServiceDependencies: true
-# Only start absolutely required jobs
-onlyRequiredBaseServices: false
+
+# Service enablement flags
+services:
+  nats:
+    enabled: true
+  publisher:
+    enabled: true
+  telemetry:
+    enabled: true
 
 docker:
   registry: registry.dev.svc.cluster.local:5000
@@ -23,18 +30,15 @@ prometheus:
   tag: "v2.22.0"
 
 elasticsearch:
-  enabled: true
   storage: "100Mi"
   image: "docker.elastic.co/elasticsearch/elasticsearch"
   tag: "7.10.2"
   configFilesFolders: {}
 
 monitoring:
-  enabled: true
   configFilesFolders: {}
 
 kibana:
-  enabled: true
   image: "docker.elastic.co/kibana/kibana"
   tag: "7.6.2"
 

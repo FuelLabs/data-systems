@@ -1,5 +1,4 @@
-{{ if not .Values.onlyRequiredBaseServices }}
-{{ if .Values.monitoring.enabled }}
+{{ if .Values.services.telemetry.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -149,5 +148,4 @@ spec:
         configMap:
           name: prometheus
       restartPolicy: Always
-{{ end }}
 {{ end }}
