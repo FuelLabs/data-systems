@@ -55,7 +55,7 @@ scrape_configs:
     scrape_timeout: 2s
     static_configs:
       - targets:
-          - 'fuel-streams-publisher:9000'
+          - 'fuel-streams-publisher:8080'
 
   - job_name: 'cadvisor'
     scrape_interval: 5s
