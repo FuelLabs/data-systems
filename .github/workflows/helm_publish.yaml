@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - helm/fuel-streams-publisher/Chart.yaml
+      - cluster/charts/fuel-streams-publisher/Chart.yaml
+      - cluster/charts/fuel-nats/Chart.yaml
 
 permissions:
   contents: read
@@ -20,6 +21,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        chart:
+          - fuel-streams-publisher
+          - fuel-nats
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -32,4 +38,4 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./helm/fuel-streams-publisher
+          chart-folder: ./cluster/charts/${{ matrix.chart }}

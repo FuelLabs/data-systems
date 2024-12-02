@@ -19,3 +19,5 @@ profile.json
 .rust-version
 coverage/
 docs/
+**/**/charts/**.tgz
+values-publisher-env.yaml
