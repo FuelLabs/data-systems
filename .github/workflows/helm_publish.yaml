@@ -1,6 +1,7 @@
 name: Build and publish Helm Chart
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -29,6 +30,11 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Helm Dependencies Update
+        run: |
+          cd cluster/charts/fuel-nats && helm dependency update
+          cd cluster/charts/fuel-streams-publisher && helm dependency update
 
       - name: Package and Push Charts
         uses: bsord/helm-push@v4.1.0
