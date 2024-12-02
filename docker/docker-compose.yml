@@ -38,7 +38,6 @@ services:
       - ./../.env
     environment:
       - NETWORK=${NETWORK}
-      - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
       - RESERVED_NODES=${RESERVED_NODES}
       - RELAYER_V2_LISTENING_CONTRACTS=${RELAYER_V2_LISTENING_CONTRACTS}
@@ -54,13 +53,13 @@ services:
       - fuel-streams-publisher-db-${NETWORK}:/mnt/db
     ports:
       - 4000:4000
-      - 9000:9000
+      - 8080:8080
     healthcheck:
       test:
         - "CMD"
         - "curl"
         - "-f"
-        - "http://fuel-streams-publisher:9000/health"
+        - "http://fuel-streams-publisher:8080/health"
       interval: 10s  # How often to run the check
       timeout: 5s  # Time to wait for the check to complete
       retries: 5  # Number of retries before marking the container as unhealthy

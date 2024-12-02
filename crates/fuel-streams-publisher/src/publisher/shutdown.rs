@@ -17,7 +17,6 @@ pub struct ShutdownToken {
 
 impl ShutdownToken {
     pub async fn wait_for_shutdown(&self) -> bool {
-        // Clone the receiver for this wait operation
         let mut rx = self.receiver.resubscribe();
         rx.recv().await.is_ok()
     }

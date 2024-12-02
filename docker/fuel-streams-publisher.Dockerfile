@@ -58,7 +58,7 @@ FROM ubuntu:22.04 AS run
 
 ARG IP=0.0.0.0
 ARG PORT=4000
-ARG SERVER_ADDR=0.0.0.0:9000
+ARG TELEMETRY_PORT=8080
 ARG P2P_PORT=30333
 ARG DB_PATH=/mnt/db/
 ARG POA_INSTANT=false
@@ -69,7 +69,7 @@ ARG RESERVED_NODES=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7
 
 ENV IP=$IP
 ENV PORT=$PORT
-ENV SERVER_ADDR=$SERVER_ADDR
+ENV TELEMETRY_PORT=$TELEMETRY_PORT
 ENV DB_PATH=$DB_PATH
 ENV POA_INSTANT=false
 ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
@@ -83,6 +83,8 @@ ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV CHAIN_CONFIG=
 ENV NETWORK=
+ENV USE_PUBLISHER_METRICS=
+ENV USE_ELASTIC_LOGGING=
 
 WORKDIR /usr/src
 
@@ -99,6 +101,7 @@ COPY --from=builder /root/fuel-streams-publisher.d .
 COPY /docker/chain-config ./chain-config
 EXPOSE ${PORT}
 EXPOSE ${P2P_PORT}
+EXPOSE ${TELEMETRY_PORT}
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
@@ -110,6 +113,7 @@ CMD exec ./fuel-streams-publisher \
     --relayer $RELAYER \
     --ip $IP \
     --port $PORT \
+    --telemetry-port $TELEMETRY_PORT \
     --peering-port $P2P_PORT \
     --db-path "${DB_PATH}" \
     --utxo-validation \
@@ -122,5 +126,4 @@ CMD exec ./fuel-streams-publisher \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30 \
-    --server-addr $SERVER_ADDR
+    --sync-block-stream-buffer-size 30

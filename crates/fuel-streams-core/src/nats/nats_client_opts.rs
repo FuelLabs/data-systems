@@ -19,6 +19,20 @@ pub enum FuelNetwork {
     Mainnet,
 }
 
+impl FuelNetwork {
+    pub fn to_url(&self) -> String {
+        match self {
+            FuelNetwork::Local => "nats://localhost:4222".to_string(),
+            FuelNetwork::Testnet => {
+                "nats://stream-testnet.fuel.network:4222".to_string()
+            }
+            FuelNetwork::Mainnet => {
+                "nats://stream-mainnet.fuel.network:4222".to_string()
+            }
+        }
+    }
+}
+
 /// Represents options for configuring a NATS client.
 ///
 /// # Examples
@@ -63,7 +77,7 @@ pub struct NatsClientOpts {
 impl NatsClientOpts {
     pub fn new(network: FuelNetwork) -> Self {
         Self {
-            url: Self::fetch_url(network),
+            url: network.to_url(),
             role: NatsUserRole::default(),
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
@@ -82,26 +96,13 @@ impl NatsClientOpts {
     pub fn with_role(self, role: NatsUserRole) -> Self {
         Self { role, ..self }
     }
-
-    pub fn fetch_url(network: FuelNetwork) -> String {
-        match network {
-            FuelNetwork::Local => "nats://localhost:4222".to_string(),
-            FuelNetwork::Testnet => {
-                "nats://stream-testnet.fuel.network:4222".to_string()
-            }
-            FuelNetwork::Mainnet => {
-                "nats://stream-mainnet.fuel.network:4222".to_string()
-            }
-        }
-    }
-
     pub fn get_url(&self) -> &str {
         &self.url
     }
 
     pub fn with_fuel_network(self, network: FuelNetwork) -> Self {
         Self {
-            url: Self::fetch_url(network),
+            url: network.to_url(),
             ..self
         }
     }

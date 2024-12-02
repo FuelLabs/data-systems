@@ -15,13 +15,16 @@ usage() {
     echo "                  Default: profiling"
     echo "  --port        : Specify the port number"
     echo "                  Default: 4000"
+    echo "  --telemtry-port : Specify the telemetry port number"
+    echo "                  Default: 8080"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
     echo ""
     echo "Examples:"
     echo "  $0                                              # Runs with all defaults"
     echo "  $0 --network mainnet                            # Runs mainnet with default settings"
     echo "  $0 --port 4001                                  # Runs on port 4001"
-    echo "  $0 --network mainnet --port 4001 --mode dev     # Custom network, port, and mode"
+    echo "  $0 --telemetry-port 8081                        # uses telemetry port 8081"
+    echo "  $0 --network mainnet --port 4001 --telemetry-port 8081 --mode dev     # Custom network, port, telemetry-port and mode"
     exit 1
 }
 
@@ -37,6 +40,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --port)
             PORT="$2"
+            shift 2
+            ;;
+        --telemetry-port)
+            TELEMETRY_PORT="$2"
             shift 2
             ;;
         --extra-args)
@@ -68,6 +75,7 @@ echo "Runtime Settings:"
 echo "  → Network: $NETWORK"
 echo "  → Mode: $MODE"
 echo "  → Port: $PORT"
+echo "  → Telemetry Port: $TELEMETRY_PORT"
 if [ -n "$EXTRA_ARGS" ]; then
     echo "→ Extra Arguments: $EXTRA_ARGS"
 fi
@@ -92,8 +100,9 @@ COMMON_ARGS=(
     "--service-name" "fuel-${NETWORK}-node"
     "--db-path" "./docker/db-${NETWORK}"
     "--snapshot" "./docker/chain-config/${NETWORK}"
-    "--network" "${NETWORK}"
+    "--network" "local"
     "--port" "${PORT}"
+    "--telemetry-port" "${TELEMETRY_PORT}"
     "--peering-port" "30333"
     "--utxo-validation"
     "--poa-instant" "false"

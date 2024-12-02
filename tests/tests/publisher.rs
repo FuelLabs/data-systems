@@ -52,6 +52,13 @@ impl FuelCoreLike for TestFuelCore {
     }
     async fn stop(&self) {}
 
+    async fn await_offchain_db_sync(
+        &self,
+        _block_id: &FuelCoreBlockId,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn base_asset_id(&self) -> &FuelCoreAssetId {
         &self.base_asset_id
     }

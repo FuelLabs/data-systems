@@ -7,6 +7,7 @@ use async_nats::{
     ConnectOptions,
 };
 use fuel_data_parser::DataParser;
+use fuel_streams_core::nats::FuelNetwork;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -60,7 +61,7 @@ impl NatsHelper {
 pub async fn connect() -> anyhow::Result<async_nats::Client> {
     Ok(ConnectOptions::new()
         .user_and_password("admin".into(), "secret".into())
-        .connect("localhost:4222")
+        .connect(FuelNetwork::Local.to_url())
         .await?)
 }
 

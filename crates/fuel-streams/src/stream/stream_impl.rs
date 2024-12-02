@@ -67,12 +67,13 @@ impl<S: Streamable> Stream<S> {
     /// # Examples
     ///
     /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
     /// use fuel_streams::client::Client;
     /// use fuel_streams::stream::Stream;
     /// use fuel_streams::blocks::Block;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let client = Client::connect("nats://localhost:4222").await?;
+    /// let client = Client::connect(FuelNetwork::Local).await?;
     /// let stream = Stream::<Block>::new(&client).await;
     /// # Ok(())
     /// # }
@@ -99,13 +100,14 @@ impl<S: Streamable> Stream<S> {
     /// # Examples
     ///
     /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
     /// use fuel_streams::client::Client;
     /// use fuel_streams::stream::{Stream, Filter};
     /// use fuel_streams::blocks::{Block, BlocksSubject};
     /// use fuel_streams::types::Address;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// # let client = Client::connect("nats://localhost:4222").await?;
+    /// # let client = Client::connect(FuelNetwork::Local).await?;
     /// # let mut stream = Stream::<Block>::new(&client).await;
     /// let filter = Filter::<BlocksSubject>::build()
     ///     .with_producer(Some(Address::zeroed()))
@@ -129,12 +131,13 @@ impl<S: Streamable> Stream<S> {
     /// # Examples
     ///
     /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
     /// use fuel_streams::client::Client;
     /// use fuel_streams::stream::Stream;
     /// use fuel_streams::blocks::Block;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// # let client = Client::connect("nats://localhost:4222").await?;
+    /// # let client = Client::connect(FuelNetwork::Local).await?;
     /// # let stream = Stream::<Block>::new(&client).await;
     /// let subscription = stream.subscribe().await?;
     /// # Ok(())
@@ -166,13 +169,14 @@ impl<S: Streamable> Stream<S> {
     /// # Examples
     ///
     /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
     /// use fuel_streams::client::Client;
     /// use fuel_streams::stream::{Stream, StreamConfig};
     /// use fuel_streams::blocks::Block;
     /// use fuel_streams::types::DeliverPolicy;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// # let client = Client::connect("nats://localhost:4222").await?;
+    /// # let client = Client::connect(FuelNetwork::Local).await?;
     /// # let stream = Stream::<Block>::new(&client).await;
     /// let config = StreamConfig {
     ///     deliver_policy: DeliverPolicy::All,

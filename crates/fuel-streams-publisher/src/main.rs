@@ -1,4 +1,7 @@
-use std::{net::ToSocketAddrs, sync::Arc};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::Arc,
+};
 
 use clap::Parser;
 use fuel_streams_publisher::{
@@ -30,11 +33,10 @@ async fn main() -> anyhow::Result<()> {
 
     let state = ServerState::new(publisher.clone()).await;
     // create the actix webserver
-    let server_addr = cli
-        .server_addr
-        .to_socket_addrs()?
-        .next()
-        .expect("Must be valid server address");
+    let server_addr = std::net::SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::UNSPECIFIED,
+        cli.telemetry_port,
+    ));
     let server = create_web_server(state, server_addr)?;
     // get server handle
     let server_handle = server.handle();
