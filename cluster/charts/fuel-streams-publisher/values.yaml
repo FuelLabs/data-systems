@@ -107,7 +107,6 @@ env:
   RELAYER_DA_DEPLOY_HEIGHT: "20620434"
   RELAYER_LOG_PAGE_SIZE: "2000"
   SYNC_HEADER_BATCH_SIZE: "100"
-  NATS_URL: "nats:4222"
   P2P_PORT: "30333"
   RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
   CHAIN_CONFIG: "mainnet"
@@ -115,7 +114,6 @@ env:
   DB_PATH: "/mnt/db/"
   POA_INSTANT: "false"
   SERVICE_NAME: "NATS Publisher Node"
-
 # Additional environment variables with complex structures
 # extraEnv:
 #   - name: RELAYER
@@ -139,3 +137,4 @@ env:
 #       name: additional-config
 #   - secretRef:
 #       name: additional-secrets
+
