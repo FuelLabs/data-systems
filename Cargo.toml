@@ -40,6 +40,7 @@ fuel-core-storage = { version = "0.40" }
 fuel-core-types = { version = "0.40", features = ["test-helpers", "serde"] }
 fuel-core-services = "0.40"
 futures-util = "0.3"
+itertools = "0.13"
 hex = "0.4"
 pretty_assertions = "1.4"
 rand = "0.8"
@@ -49,7 +50,9 @@ sha2 = "0.10"
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1.41", features = ["full"] }
+tokio-stream = "0.1.16"
 tracing = "0.1"
+tracing-subscriber = "0.3"
 tracing-actix-web = "0.7"
 thiserror = "1.0"
 

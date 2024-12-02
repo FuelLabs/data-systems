@@ -54,6 +54,15 @@ impl Streams {
         ]
     }
 
+    pub async fn get_last_published_block(
+        &self,
+    ) -> anyhow::Result<Option<Block>> {
+        Ok(self
+            .blocks
+            .get_last_published(BlocksSubject::WILDCARD)
+            .await?)
+    }
+
     pub async fn get_consumers_and_state(
         &self,
     ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind> {
