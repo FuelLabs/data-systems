@@ -3736,6 +3736,7 @@ dependencies = [
  "async-nats",
  "async-trait",
  "chrono",
+ "clap 4.5.20",
  "displaydoc",
  "dotenvy",
  "fuel-core-client",

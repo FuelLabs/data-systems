@@ -23,7 +23,4 @@ pub mod prelude {
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{nats::*, stream::*, subjects::*, types::*};
-
-    #[cfg(feature = "test-helpers")]
-    pub static NATS_URL: &str = "localhost:4222";
 }

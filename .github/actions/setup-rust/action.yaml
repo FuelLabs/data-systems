@@ -21,7 +21,6 @@ runs:
     - name: Create .env file with NATS environment variables
       shell: bash
       run: |
-        echo "NATS_URL=${NATS_URL:-nats://127.0.0.1:4222}" > .env
         echo "NATS_ADMIN_PASS=${NATS_ADMIN_PASS:-default_pass}" >> .env
         echo "NATS_PUBLIC_PASS=${NATS_PUBLIC_PASS:-temp-public-pass}" >> .env
 
