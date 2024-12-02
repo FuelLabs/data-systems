@@ -1,7 +1,7 @@
 apiVersion: v2
 name: fuel-nats
 description: Fuel's NATS configuration based on the official NATS Helm chart
-version: 0.1.0
+version: 0.1.1
 appVersion: "2.10.22"
 type: application
 
