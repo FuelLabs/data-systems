@@ -1,6 +1,5 @@
 //! This binary subscribes to events emitted from a Fuel client or node
 //! to publish streams that can consumed via the `fuel-streams` SDK.
-use std::net::SocketAddr;
 
 use clap::Parser;
 
@@ -24,10 +23,10 @@ pub struct Cli {
     /// Http server address
     #[arg(
         long,
-        value_name = "ADDR",
-        env = "SERVER_ADDR",
-        default_value = "0.0.0.0:8080",
-        help = "Address for the Actix Web server to bind to."
+        value_name = "TPORT",
+        env = "TELEMETRY_PORT",
+        default_value = "8080",
+        help = "Port for the Actix Web server to bind telemetry to."
     )]
-    pub server_addr: SocketAddr,
+    pub telemetry_port: u16,
 }
