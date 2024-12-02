@@ -63,6 +63,7 @@ Here are some examples to get you started with Fuel Streams:
 ### Subscribing to all new blocks
 
 ```rust,no_run
+use fuel_streams::types::FuelNetwork;
 use fuel_streams::client::Client;
 use fuel_streams::stream::{Stream, StreamEncoder};
 use fuel_streams::blocks::Block;
@@ -70,7 +71,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), fuel_streams::Error> {
-    let client = Client::connect("nats://localhost:4222").await?;
+    let client = Client::connect(FuelNetwork::Local).await?;
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
 
     let mut subscription = stream.subscribe().await?;
@@ -86,6 +87,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 ### Subscribing to all transactions (Filtering by block height)
 
 ```rust,no_run
+use fuel_streams::types::FuelNetwork;
 use fuel_streams::client::Client;
 use fuel_streams::stream::{Filter, Stream, StreamEncoder, StreamConfig};
 use fuel_streams::transactions::{Transaction, TransactionKind, TransactionsSubject};
@@ -93,7 +95,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), fuel_streams::Error> {
-    let client = Client::connect("nats://localhost:4222").await?;
+    let client = Client::connect(FuelNetwork::Local).await?;
     let mut stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     // Filter transactions from block height 5
@@ -122,6 +124,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
 The `DeliverPolicy` provides fine-grained control over message delivery in your stream. This powerful feature allows you to customize how and when messages are received. Below is an illustrative example demonstrating how to subscribe to all blocks from the first block until the last block in the stream:
 
 ```rust,no_run
+use fuel_streams::types::FuelNetwork;
 use fuel_streams::client::Client;
 use fuel_streams::stream::{Stream, StreamConfig, StreamEncoder, Filter};
 use fuel_streams::blocks::{Block, BlocksSubject};
@@ -130,7 +133,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), fuel_streams::Error> {
-    let client = Client::connect("nats://localhost:4222").await?;
+    let client = Client::connect(FuelNetwork::Local).await?;
     let mut stream = fuel_streams::Stream::<Block>::new(&client).await;
 
     let filter = Filter::<BlocksSubject>::build();
@@ -170,6 +173,7 @@ Filters allow you to narrow down the data you receive from a stream based on spe
 Here's an example of how to use filters with a stream of transactions:
 
 ```rust,no_run
+use fuel_streams::types::FuelNetwork;
 use fuel_streams::client::Client;
 use fuel_streams::stream::{Stream, StreamConfig, StreamEncoder, Filter};
 use fuel_streams::transactions::{Transaction, TransactionsSubject, TransactionKind};
@@ -178,7 +182,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), fuel_streams::Error> {
-    let client = Client::connect("nats://localhost:4222").await?;
+    let client = Client::connect(FuelNetwork::Local).await?;
     let mut stream = fuel_streams::Stream::<Transaction>::new(&client).await;
 
     // Create a filter for transactions from a specific block height and kind

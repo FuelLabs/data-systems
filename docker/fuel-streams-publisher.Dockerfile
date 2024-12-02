@@ -81,8 +81,8 @@ ENV KEYPAIR=
 ENV RELAYER=
 ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
-ENV NATS_URL=
 ENV CHAIN_CONFIG=
+ENV NETWORK=
 ENV USE_PUBLISHER_METRICS=
 ENV USE_ELASTIC_LOGGING=
 
@@ -108,6 +108,7 @@ EXPOSE ${TELEMETRY_PORT}
 # hadolint ignore=DL3025
 CMD exec ./fuel-streams-publisher \
     --service-name "${SERVICE_NAME}" \
+    --network $NETWORK \
     --keypair $KEYPAIR \
     --relayer $RELAYER \
     --ip $IP \
@@ -125,5 +126,4 @@ CMD exec ./fuel-streams-publisher \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30 \
-    --nats-url "${NATS_URL}"
+    --sync-block-stream-buffer-size 30

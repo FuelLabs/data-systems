@@ -100,6 +100,7 @@ COMMON_ARGS=(
     "--service-name" "fuel-${NETWORK}-node"
     "--db-path" "./docker/db-${NETWORK}"
     "--snapshot" "./docker/chain-config/${NETWORK}"
+    "--network" "local"
     "--port" "${PORT}"
     "--telemetry-port" "${TELEMETRY_PORT}"
     "--peering-port" "30333"
@@ -112,7 +113,6 @@ COMMON_ARGS=(
     "--bootstrap-nodes" "${RESERVED_NODES}"
     "--relayer-v2-listening-contracts=${RELAYER_V2_LISTENING_CONTRACTS}"
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
-    "--nats-url=nats://localhost:4222"
 )
 
 # Execute based on mode

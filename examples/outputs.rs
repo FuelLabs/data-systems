@@ -14,16 +14,13 @@
 use fuel_streams::prelude::*;
 use futures::StreamExt;
 
-/// The URL of the Fuel streaming service.
-const FUEL_STREAMING_SERVICE_URL: &str = "nats://fuel-streaming.testnet:4222";
-
 // This example demonstrates how to use the fuel-streams library to stream
 // outputs from a Fuel network. It connects to a streaming service,
 // subscribes to an output stream, and prints incoming outputs.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FUEL_STREAMING_SERVICE_URL).await?;
+    let client = Client::connect(FuelNetwork::Testnet).await?;
 
     // Create a new stream for outputs
     let stream = fuel_streams::Stream::<Output>::new(&client).await;

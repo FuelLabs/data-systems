@@ -60,7 +60,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> BoxedResult<()> {
     // Connect to NATS server
-    let opts = NatsClientOpts::new("nats://localhost:4222");
+    let opts = NatsClientOpts::new(FuelNetwork::Local);
     let client = NatsClient::connect(&opts).await?;
 
     // Create a stream for blocks
