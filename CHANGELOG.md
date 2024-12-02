@@ -1,3 +1,10 @@
+## 0.0.14 (2024-12-02)
+
+### 🐛 Fixes
+
+-   Resolve block publication race conditions and synchronization issues (#329)
+-   Fixed telemetry envs and port (#330)
+
 ## 0.0.13 (2024-11-28)
 
 ### 🚀 Features
