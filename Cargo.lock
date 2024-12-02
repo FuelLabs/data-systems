@@ -3736,6 +3736,7 @@ dependencies = [
  "async-nats",
  "async-trait",
  "chrono",
+ "clap 4.5.20",
  "displaydoc",
  "dotenvy",
  "fuel-core-client",
@@ -5824,9 +5825,9 @@ dependencies = [
  "chrono",
  "criterion",
  "fuel-core-types 0.40.0",
+ "fuel-streams",
  "fuel-streams-core",
  "futures",
- "nats-publisher",
  "statrs",
  "tokio",
 ]

@@ -16,7 +16,7 @@ impl Client {
     ///
     /// # Parameters
     ///
-    /// * `url`: A string-like type that can be converted to a `String`, representing the NATS server URL.
+    /// * `network`: An enum variant representing the fuel network we are connecting to.
     ///
     /// # Returns
     ///
@@ -25,17 +25,15 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// use fuel_streams::client::Client;
+    /// use fuel_streams::client::{Client, FuelNetwork};
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let client = Client::connect("nats://localhost:4222").await?;
+    /// let client = Client::connect(FuelNetwork::Local).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect(
-        url: impl ToString + Send,
-    ) -> Result<Self, crate::Error> {
-        let opts = NatsClientOpts::new(url);
+    pub async fn connect(network: FuelNetwork) -> Result<Self, crate::Error> {
+        let opts = NatsClientOpts::new(network);
         let conn = NatsClient::connect(&opts)
             .await
             .map_err(ClientError::ConnectionFailed)?;
@@ -55,11 +53,11 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// use fuel_streams::client::Client;
+    /// use fuel_streams::client::{Client, FuelNetwork};
     /// use fuel_streams_core::nats::NatsClientOpts;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let opts = NatsClientOpts::new("nats://localhost:4222");
+    /// let opts = NatsClientOpts::new(FuelNetwork::Local);
     /// let client = Client::with_opts(&opts).await?;
     /// # Ok(())
     /// # }

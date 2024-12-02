@@ -52,13 +52,14 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 
     ```rust
     use fuel_streams::client::Client;
+    use fuel_streams::types::FuelNetwork;
     use fuel_streams::stream::{Stream, StreamEncoder};
     use fuel_streams::blocks::Block;
     use futures::StreamExt;
 
     #[tokio::main]
     async fn main() -> Result<(), fuel_streams::Error> {
-        let client = Client::connect("nats://stream.fuel.network").await?;
+        let client = Client::connect(FuelNetwork::Mainnet).await?;
         let stream = fuel_streams::Stream::<Block>::new(&client).await;
 
         let mut subscription = stream.subscribe().await?;

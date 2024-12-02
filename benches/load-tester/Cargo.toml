@@ -11,7 +11,7 @@ rust-version = { workspace = true }
 publish = false
 
 [[bench]]
-name = "consumers"
+name = "load-test"
 harness = false
 path = "benches/load-test.rs"
 
@@ -20,9 +20,9 @@ anyhow = { workspace = true }
 async-nats = { workspace = true }
 chrono = { workspace = true }
 fuel-core-types = { workspace = true }
+fuel-streams = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["bench-helpers"] }
 futures = { workspace = true }
-nats-publisher = { path = "../nats-publisher" }
 statrs = "0.17"
 tokio = { workspace = true }
 

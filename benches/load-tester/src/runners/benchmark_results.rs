@@ -14,7 +14,6 @@ pub struct BenchmarkResult {
     pub messages_per_second: Option<f64>,
     pub publish_times: Vec<Duration>,
     pub mean_publish_time: Option<Duration>,
-    pub messages_limit: usize,
 }
 
 impl fmt::Display for BenchmarkResult {
@@ -36,7 +35,7 @@ impl fmt::Display for BenchmarkResult {
 }
 
 impl BenchmarkResult {
-    pub fn new(name: String, messages_limit: usize) -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             name,
             message_count: 0,
@@ -46,7 +45,6 @@ impl BenchmarkResult {
             messages_per_second: None,
             publish_times: vec![],
             mean_publish_time: None,
-            messages_limit,
         }
     }
 
@@ -58,6 +56,7 @@ impl BenchmarkResult {
         self.error_count += 1;
     }
 
+    #[allow(dead_code)]
     pub fn finalize(&mut self) -> &mut Self {
         self.calculate_mean_publish_time();
         let elapsed = self.start_time.elapsed();
@@ -65,10 +64,6 @@ impl BenchmarkResult {
         self.messages_per_second =
             Some(self.message_count as f64 / elapsed.as_secs_f64());
         self
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.message_count + self.error_count >= self.messages_limit
     }
 
     pub fn add_publish_time(&mut self, timestamp: u128) -> &mut Self {
