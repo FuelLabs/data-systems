@@ -305,9 +305,8 @@ fn create_test_block() -> ImporterResult {
 }
 
 async fn nats_client() -> NatsClient {
-    const NATS_URL: &str = "nats://localhost:4222";
     let nats_client_opts =
-        NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+        NatsClientOpts::admin_opts(FuelNetwork::Local).with_rdn_namespace();
     NatsClient::connect(&nats_client_opts)
         .await
         .expect("NATS connection failed")

@@ -31,7 +31,8 @@ impl Streams {
 }
 
 pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
-    let opts = NatsClientOpts::admin_opts(NATS_URL).with_rdn_namespace();
+    let opts =
+        NatsClientOpts::admin_opts(FuelNetwork::Local).with_rdn_namespace();
     let client = NatsClient::connect(&opts).await?;
     let streams = Streams::new(&client).await;
     Ok((client, streams))

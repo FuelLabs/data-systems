@@ -11,6 +11,14 @@ pub enum NatsUserRole {
     Default,
 }
 
+#[derive(Debug, Copy, Clone, Default, clap::ValueEnum)]
+pub enum FuelNetwork {
+    Local,
+    #[default]
+    Testnet,
+    Mainnet,
+}
+
 /// Represents options for configuring a NATS client.
 ///
 /// # Examples
@@ -20,7 +28,7 @@ pub enum NatsUserRole {
 /// ```
 /// use fuel_streams_core::nats::NatsClientOpts;
 ///
-/// let opts = NatsClientOpts::new("nats://localhost:4222");
+/// let opts = NatsClientOpts::new(FuelNetwork::Local);
 /// ```
 ///
 /// Creating a public `NatsClientOpts`:
@@ -28,7 +36,7 @@ pub enum NatsUserRole {
 /// ```
 /// use fuel_streams_core::nats::NatsClientOpts;
 ///
-/// let opts = NatsClientOpts::default_opts("nats://localhost:4222");
+/// let opts = NatsClientOpts::default_opts(FuelNetwork::Local);
 /// ```
 ///
 /// Modifying `NatsClientOpts`:
@@ -36,14 +44,14 @@ pub enum NatsUserRole {
 /// ```
 /// use fuel_streams_core::nats::{NatsClientOpts, NatsUserRole};
 ///
-/// let opts = NatsClientOpts::new("nats://localhost:4222")
+/// let opts = NatsClientOpts::new(FuelNetwork::Local)
 ///     .with_role(NatsUserRole::Admin)
 ///     .with_timeout(10);
 /// ```
 #[derive(Debug, Clone)]
 pub struct NatsClientOpts {
     /// The URL of the NATS server to connect to.
-    pub(crate) url: String,
+    url: String,
     /// The role of the user connecting to the NATS server (Admin or Public).
     pub(crate) role: NatsUserRole,
     /// The namespace used as a prefix for NATS streams, consumers, and subject names.
@@ -53,26 +61,49 @@ pub struct NatsClientOpts {
 }
 
 impl NatsClientOpts {
-    pub fn new(url: impl ToString) -> Self {
+    pub fn new(network: FuelNetwork) -> Self {
         Self {
-            url: url.to_string(),
+            url: Self::fetch_url(network),
             role: NatsUserRole::default(),
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
         }
     }
 
-    pub fn default_opts(url: impl ToString) -> Self {
-        Self::new(url).with_role(NatsUserRole::Default)
+    pub fn default_opts(network: FuelNetwork) -> Self {
+        Self::new(network).with_role(NatsUserRole::Default)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn admin_opts(url: impl ToString) -> Self {
-        Self::new(url).with_role(NatsUserRole::Admin)
+    pub fn admin_opts(network: FuelNetwork) -> Self {
+        Self::new(network).with_role(NatsUserRole::Admin)
     }
 
     pub fn with_role(self, role: NatsUserRole) -> Self {
         Self { role, ..self }
+    }
+
+    pub fn fetch_url(network: FuelNetwork) -> String {
+        match network {
+            FuelNetwork::Local => "nats://localhost:4222".to_string(),
+            FuelNetwork::Testnet => {
+                "nats://stream-testnet.fuel.network:4222".to_string()
+            }
+            FuelNetwork::Mainnet => {
+                "nats://stream-mainnet.fuel.network:4222".to_string()
+            }
+        }
+    }
+
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+
+    pub fn with_fuel_network(self, network: FuelNetwork) -> Self {
+        Self {
+            url: Self::fetch_url(network),
+            ..self
+        }
     }
 
     #[cfg(any(test, feature = "test-helpers"))]

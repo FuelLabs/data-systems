@@ -18,7 +18,7 @@ usage() {
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
     echo ""
     echo "Examples:"
-    echo "  $0                                               # Runs with all defaults"
+    echo "  $0                                              # Runs with all defaults"
     echo "  $0 --network mainnet                            # Runs mainnet with default settings"
     echo "  $0 --port 4001                                  # Runs on port 4001"
     echo "  $0 --network mainnet --port 4001 --mode dev     # Custom network, port, and mode"
@@ -92,6 +92,7 @@ COMMON_ARGS=(
     "--service-name" "fuel-${NETWORK}-node"
     "--db-path" "./docker/db-${NETWORK}"
     "--snapshot" "./docker/chain-config/${NETWORK}"
+    "--network" "${NETWORK}"
     "--port" "${PORT}"
     "--peering-port" "30333"
     "--utxo-validation"
@@ -103,7 +104,6 @@ COMMON_ARGS=(
     "--bootstrap-nodes" "${RESERVED_NODES}"
     "--relayer-v2-listening-contracts=${RELAYER_V2_LISTENING_CONTRACTS}"
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
-    "--nats-url=nats://localhost:4222"
 )
 
 # Execute based on mode

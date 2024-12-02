@@ -13,7 +13,6 @@ data:
   RELAYER_DA_DEPLOY_HEIGHT: "5827607"
   RELAYER_LOG_PAGE_SIZE: "10"
   SYNC_HEADER_BATCH_SIZE: "100"
-  NATS_URL: "nats.fuel-local.svc.cluster.local:4222"
   P2P_PORT: "30333"
   RESERVED_NODE_DNS: "/dns4/fuelcore-sentry-0-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/fuelcore-sentry-1-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/fuelcore-sentry-2-service.testnet.svc.cluster.local/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
   CHAIN_CONFIG: "testnet"

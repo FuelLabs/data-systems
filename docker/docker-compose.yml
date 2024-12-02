@@ -38,7 +38,6 @@ services:
       - ./../.env
     environment:
       - NETWORK=${NETWORK}
-      - NATS_URL=nats://nats:4222
       - SERVER_ADDR=0.0.0.0:9000
       - P2P_PORT=30333
       - RESERVED_NODES=${RESERVED_NODES}

@@ -13,7 +13,7 @@ pub mod subjects {
 
 pub mod types {
     pub use fuel_streams_core::{
-        nats::{types::*, NatsClientOpts},
+        nats::{types::*, FuelNetwork, NatsClientOpts},
         types::*,
     };
 

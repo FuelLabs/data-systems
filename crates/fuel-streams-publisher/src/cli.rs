@@ -3,21 +3,23 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
+use fuel_streams::types::FuelNetwork;
 
 /// CLI structure for parsing command-line arguments.
 ///
-/// - `nats_url`: The URL of the NATS server to connect to.
+/// - `network`: The fuel network we want to connect to.
 /// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
 #[derive(Clone, Parser)]
 pub struct Cli {
-    /// Nats connection url
+    /// Fuel Network to connect to.
     #[arg(
         long,
-        value_name = "URL",
-        env = "NATS_URL",
-        default_value = "localhost:4222"
+        value_name = "NETWORK",
+        env = "NETWORK",
+        default_value = "Local",
+        value_parser = clap::value_parser!(FuelNetwork)
     )]
-    pub nats_url: String,
+    pub network: FuelNetwork,
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     pub fuel_core_config: fuel_core_bin::cli::run::Command,
