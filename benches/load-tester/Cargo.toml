@@ -1,0 +1,30 @@
+[package]
+name = "load-tester"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[[bench]]
+name = "consumers"
+harness = false
+path = "benches/load-test.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+chrono = { workspace = true }
+fuel-core-types = { workspace = true }
+fuel-streams-core = { workspace = true, features = ["bench-helpers"] }
+futures = { workspace = true }
+nats-publisher = { path = "../nats-publisher" }
+statrs = "0.17"
+tokio = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
