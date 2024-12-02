@@ -42,11 +42,6 @@ ADDONS=(
     "dashboard"
 )
 
-# Add ingress addon only if not on macOS (ingress is not working properly on macOS)
-if [[ "$(uname)" != "Darwin" ]]; then
-    ADDONS+=("ingress")
-fi
-
 for addon in "${ADDONS[@]}"; do
     echo "Enabling $addon..."
     minikube addons enable "$addon"
@@ -59,13 +54,3 @@ minikube addons list | grep -E "STATUS|enabled"
 # Display minikube status
 echo -e "\n\033[1;33mMinikube Status:\033[0m"
 minikube status
-
-# Check if traefik script exists
-TRAEFIK_SCRIPT="./cluster/charts/fuel-local/scripts/traefik2-ds.sh"
-if [ -f "$TRAEFIK_SCRIPT" ]; then
-    echo -e "\n\033[1;33mSetting up traefik:\033[0m"
-    $TRAEFIK_SCRIPT
-else
-    echo -e "\n\033[1;31mWarning: Traefik setup script not found at $TRAEFIK_SCRIPT\033[0m"
-    exit 1
-fi

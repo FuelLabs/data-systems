@@ -46,9 +46,6 @@ The following are prerequisites for spinning up the fuel-data-systems cluster lo
    make cluster_up  # Starts Tiltfile services
    ```
 
-> **Note for Docker Desktop Users:**
-> To get ingress to work you'll need to open a new terminal window and run `minikube tunnel` and in the following step use `127.0.0.1` in place of `<ip_from_above>`.
-
 You can use the following commands to manage the services:
 ```bash
 make cluster_up     # Start services

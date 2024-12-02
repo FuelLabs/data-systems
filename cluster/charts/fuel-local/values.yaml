@@ -2,7 +2,6 @@
 namespace: fuel-local
 clusterBaseUrl: svc.cluster.local
 serviceAccount: local-fuel-serviceaccount
-kibanaDomain: local-kibana.fuel.com
 disableResourceLimits: false
 waitForServiceDependencies: true
 # Only start absolutely required jobs
@@ -10,9 +9,6 @@ onlyRequiredBaseServices: false
 
 docker:
   registry: registry.dev.svc.cluster.local:5000
-
-ingress:
-  enabled: true
 
 roles:
   create: true
