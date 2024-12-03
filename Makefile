@@ -20,7 +20,7 @@ MODES = dev profiling
 
 .PHONY: all install setup build clean lint fmt help test doc bench coverage audit \
         version bump-version release release-dry-run docs docs-serve \
-        test-all test-watch validate-env dev-watch ci \
+        test-watch validate-env dev-watch ci \
         fmt-cargo fmt-rust fmt-prettier fmt-markdown \
         check lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
         coverage audit audit-fix audit-fix-test \
@@ -236,16 +236,15 @@ run-publisher: check-network
 #  Testing
 # ------------------------------------------------------------
 
-test-all: test coverage bench
-
 test-watch:
 	cargo watch -x test
 
 test:
-	cargo nextest run --workspace --color always --locked
+	@cargo nextest run --workspace --color always --locked
+	@cargo test --doc --workspace
 
-coverage:
-	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
+# coverage:
+# 	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
 
 # ------------------------------------------------------------
 #  Formatting & Linting
@@ -396,7 +395,6 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                 - Run tests"
-	@echo "  test-all             - Run all tests, coverage, and benchmarks"
 	@echo "  test-watch           - Run tests in watch mode"
 	@echo "  coverage             - Generate test coverage"
 	@echo "  bench                - Run benchmarks"
