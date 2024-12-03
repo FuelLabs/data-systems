@@ -132,7 +132,7 @@ clean/build:
 
 
 REPO_OWNER ?= fuellabs
-REPO_NAME ?= data-system
+REPO_NAME ?= data-systems
 DAYS_TO_KEEP ?= 15
 
 cleanup_artifacts:
