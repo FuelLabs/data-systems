@@ -244,10 +244,10 @@ test-watch:
 
 test:
 	@if [ "$(TEST_PROJECT)" = "all" ]; then \
-		cargo nextest run --profile $(CARGO_PROFILE) --workspace --color always --locked && \
+		cargo nextest run --cargo-profile $(CARGO_PROFILE) --workspace --color always --locked && \
 		cargo test --profile $(CARGO_PROFILE) --doc --workspace; \
 	else \
-		cargo nextest run --profile $(CARGO_PROFILE) -p $(TEST_PROJECT) --color always --locked && \
+		cargo nextest run --cargo-profile $(CARGO_PROFILE) -p $(TEST_PROJECT) --color always --locked && \
 		cargo test --profile $(CARGO_PROFILE) --doc -p $(TEST_PROJECT); \
 	fi
 

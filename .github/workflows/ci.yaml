@@ -23,8 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compile:
-    name: Compile packages
+  install-deps:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,9 +32,39 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+          cache: true
 
-      - name: Compile all packages
-        run: cargo build --profile ci --workspace
+      - name: Install nextest
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-nextest
+          locked: true
+
+      - name: Install dependencies
+        run: cargo fetch
+
+  compile:
+    needs: install-deps
+    name: Compile ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - fuel-streams
+          - fuel-streams-core
+          - fuel-streams-macros
+          - fuel-streams-publisher
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Compile package
+        run: cargo build --profile ci --package ${{ matrix.package }}
 
   test:
     needs: compile
@@ -82,8 +111,7 @@ jobs:
         run: make stop/nats
 
   build:
-    # needs:
-    #   - cargo-verifications
+    needs: test
     name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
     runs-on: ${{ matrix.platform.os }}
     strategy:

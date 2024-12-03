@@ -22,7 +22,7 @@ defaults:
 env:
   # Prevents cargo from complaining about unstable features
   RUSTC_BOOTSTRAP: 1
-  RUST_VERSION: 1.79.0
+  RUST_VERSION: 1.81.0
   PR_TITLE: "chore(deps): weekly `cargo update`"
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.

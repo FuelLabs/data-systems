@@ -15,9 +15,13 @@ inherits = "dev"
 debug = 0
 opt-level = 0
 debug-assertions = true
-codegen-units = 16
-incremental = false
+codegen-units = 32
+incremental = true
 rpath = false
 lto = false
 panic = 'unwind'
 overflow-checks = true
+
+[net]
+git-fetch-with-cli = true
+parallel = true
