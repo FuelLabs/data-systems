@@ -164,6 +164,7 @@ jobs:
         run: make lint
 
   install-deps:
+    name: Install dependencies
     needs:
       - cargo-verifications
       - publish-crates-check

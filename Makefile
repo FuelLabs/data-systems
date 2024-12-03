@@ -310,13 +310,13 @@ fmt-markdown:
 	pnpm md:fix
 
 lint-cargo:
-	cargo sort -w --check
+	cargo sort -w --check --workspace
 
 lint-rust:
-	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --check --color always
+	cargo +$(RUST_NIGHTLY_VERSION) fmt --all --check -- --color always
 
 lint-clippy:
-	cargo clippy --workspace -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 lint-prettier:
 	pnpm prettier:validate

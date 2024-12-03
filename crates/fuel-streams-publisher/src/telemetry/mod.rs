@@ -1,6 +1,7 @@
 mod elastic_search;
 mod publisher;
 mod runtime;
+#[allow(clippy::needless_borrows_for_generic_args)]
 mod system;
 
 use std::{sync::Arc, time::Duration};
