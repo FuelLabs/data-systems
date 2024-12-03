@@ -17,7 +17,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// use fuel_streams_core::prelude::*;
 ///
 /// async fn example() -> BoxedResult<()> {
-///     let opts = NatsClientOpts::new(FuelNetwork::Local);
+///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 ///     let client = NatsClient::connect(&opts).await?;
 ///     Ok(())
 /// }
@@ -30,7 +30,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// use async_nats::jetstream::kv;
 ///
 /// async fn example() -> BoxedResult<()> {
-///     let opts = NatsClientOpts::new(FuelNetwork::Local);
+///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 ///     let client = NatsClient::connect(&opts).await?;
 ///     let kv_config = kv::Config {
 ///         bucket: "my-bucket".into(),

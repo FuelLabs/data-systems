@@ -57,7 +57,7 @@ impl Client {
     /// use fuel_streams_core::nats::NatsClientOpts;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let opts = NatsClientOpts::new(FuelNetwork::Local);
+    /// let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
     /// let client = Client::with_opts(&opts).await?;
     /// # Ok(())
     /// # }
