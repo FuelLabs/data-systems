@@ -27,7 +27,7 @@ impl FuelNetwork {
                 "nats://stream-testnet.fuel.network:4222".to_string()
             }
             FuelNetwork::Mainnet => {
-                "nats://stream-mainnet.fuel.network:4222".to_string()
+                "nats://stream.fuel.network:4222".to_string()
             }
         }
     }
