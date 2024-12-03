@@ -236,12 +236,19 @@ run-publisher: check-network
 #  Testing
 # ------------------------------------------------------------
 
+TEST_PROJECT ?= all
+
 test-watch:
 	cargo watch -x test
 
 test:
-	@cargo nextest run --workspace --color always --locked
-	@cargo test --doc --workspace
+	@if [ "$(TEST_PROJECT)" = "all" ]; then \
+		cargo nextest run --workspace --color always --locked && \
+		cargo test --doc --workspace; \
+	else \
+		cargo nextest run -p $(TEST_PROJECT) --color always --locked && \
+		cargo test --doc -p $(TEST_PROJECT); \
+	fi
 
 # coverage:
 # 	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml

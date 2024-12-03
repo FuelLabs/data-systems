@@ -159,19 +159,32 @@ jobs:
         with:
           config: ./.typos.toml
 
-      - uses: taiki-e/install-action@cargo-machete
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-machete
+
       - name: Lint project
         run: make lint
 
   test:
     needs:
       - cargo-verifications
-    name: Test
+    name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
       NATS_ADMIN_PASS: secret
       NATS_PUBLIC_PASS: secret
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          # - fuel-data-parser
+          # - fuel-indexer
+          - fuel-streams
+          - fuel-streams-core
+          - fuel-streams-macros
+          - fuel-streams-publisher
 
     steps:
       - uses: actions/checkout@v4
@@ -182,14 +195,17 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-nextest
+          locked: true
 
       - name: Start Nats
         run: |
           make start/nats
 
       - name: Run tests
-        run: make test
+        run: make test PROJECT=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()
