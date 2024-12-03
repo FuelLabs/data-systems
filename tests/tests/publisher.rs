@@ -20,7 +20,8 @@ struct TestFuelCore {
     base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
     blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
-    receipts: Option<Vec<FuelCoreReceipt>>,
+    tx_status_and_receipts:
+        Option<(FuelCoreTransactionStatus, Vec<FuelCoreReceipt>)>,
 }
 
 impl TestFuelCore {
@@ -32,11 +33,20 @@ impl TestFuelCore {
             base_asset_id: FuelCoreAssetId::zeroed(),
             database: CombinedDatabase::default(),
             blocks_broadcaster,
-            receipts: None,
+            tx_status_and_receipts: None,
         }
     }
     fn with_receipts(mut self, receipts: Vec<FuelCoreReceipt>) -> Self {
-        self.receipts = Some(receipts);
+        let fake_tx_status = FuelCoreTransactionStatus::Success {
+            time: [0; 8].into(),
+            block_height: 0.into(),
+            result: Default::default(),
+            receipts: receipts.clone(),
+            total_gas: 0,
+            total_fee: 0,
+        };
+
+        self.tx_status_and_receipts = Some((fake_tx_status, receipts));
         self
     }
     fn arc(self) -> Arc<Self> {
@@ -54,7 +64,7 @@ impl FuelCoreLike for TestFuelCore {
 
     async fn await_offchain_db_sync(
         &self,
-        _block_id: &FuelCoreBlockId,
+        _block_id: FuelCoreBlockHeight,
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -76,11 +86,12 @@ impl FuelCoreLike for TestFuelCore {
         self.blocks_broadcaster.subscribe()
     }
 
-    fn get_receipts(
+    fn get_transaction_status_and_receipts(
         &self,
         _tx_id: &FuelCoreBytes32,
-    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
-        Ok(self.receipts.clone())
+    ) -> anyhow::Result<Option<(FuelCoreTransactionStatus, Vec<FuelCoreReceipt>)>>
+    {
+        Ok(self.tx_status_and_receipts.clone())
     }
 }
 

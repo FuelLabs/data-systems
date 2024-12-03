@@ -142,13 +142,11 @@ impl Publisher {
                         let fuel_core = &self.fuel_core;
                         let (block, block_producer) =
                             fuel_core.get_block_and_producer(sealed_block);
-
                         // TODO: Avoid awaiting Offchain DB sync for all streams by grouping in their own service
                         fuel_core
-                            .await_offchain_db_sync(&block.id())
-                            .await
-                            .context("Failed to await Offchain DB sync")?;
-
+                        .await_offchain_db_sync(block.header().consensus().height)
+                        .await
+                        .context("Failed to await Offchain DB sync")?;
                         if let Err(err) = self.publish(&block, &block_producer).await {
                             tracing::error!("Failed to publish block data: {}", err);
                             self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
@@ -211,7 +209,6 @@ impl Publisher {
             self.fuel_core.get_consensus(&block_height)?.into();
 
         let fuel_core = &*self.fuel_core;
-        let offchain_database = fuel_core.offchain_database()?;
 
         let streams = (*self.streams).clone();
         let block_stream = Arc::new(streams.blocks.to_owned());
@@ -223,7 +220,6 @@ impl Publisher {
             block_height: Arc::new(block_height.into()),
             telemetry: self.telemetry.clone(),
             consensus: Arc::new(consensus),
-            offchain_database,
         });
 
         let publish_tasks = payloads::transactions::publish_all_tasks(
@@ -253,8 +249,6 @@ impl Publisher {
 
 use tokio::task::JoinHandle;
 
-use crate::fuel_core_like::OffchainDatabase;
-
 #[derive(Clone)]
 pub struct PublishOpts {
     pub semaphore: Arc<Semaphore>,
@@ -264,7 +258,6 @@ pub struct PublishOpts {
     pub block_height: Arc<BlockHeight>,
     pub telemetry: Arc<Telemetry>,
     pub consensus: Arc<Consensus>,
-    pub offchain_database: Arc<OffchainDatabase>,
 }
 
 pub fn publish<S: Streamable + 'static>(

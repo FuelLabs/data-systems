@@ -483,8 +483,8 @@ impl std::fmt::Display for TransactionStatus {
     }
 }
 
-impl From<&FuelCoreTransactionStatus> for TransactionStatus {
-    fn from(value: &FuelCoreTransactionStatus) -> Self {
+impl From<FuelCoreTransactionStatus> for TransactionStatus {
+    fn from(value: FuelCoreTransactionStatus) -> Self {
         match value {
             FuelCoreTransactionStatus::Failed { .. } => {
                 TransactionStatus::Failed

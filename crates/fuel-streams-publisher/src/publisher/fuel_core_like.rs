@@ -3,30 +3,24 @@ use std::{sync::Arc, time::Duration};
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::{
-        database_description::{on_chain::OnChain, DatabaseHeight},
+        database_description::{
+            off_chain::OffChain,
+            on_chain::OnChain,
+            DatabaseHeight,
+        },
         Database,
     },
     fuel_core_graphql_api::ports::DatabaseBlocks,
-    state::{
-        generic_database::GenericDatabase,
-        iterable_key_value_view::IterableKeyValueViewWrapper,
-    },
 };
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
-use fuel_core_storage::transactional::AtomicView;
+use fuel_core_storage::transactional::{AtomicView, HistoricalView};
 use fuel_core_types::{
     blockchain::consensus::{Consensus, Sealed},
     fuel_types::BlockHeight,
 };
 use fuel_streams_core::types::*;
 use tokio::{sync::broadcast::Receiver, time::sleep};
-
-pub type OffchainDatabase = GenericDatabase<
-    IterableKeyValueViewWrapper<
-        fuel_core::fuel_core_graphql_api::storage::Column,
-    >,
->;
 
 /// Interface for `fuel-core` related logic.
 /// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
@@ -43,13 +37,13 @@ pub trait FuelCoreLike: Sync + Send {
     fn onchain_database(&self) -> &Database<OnChain> {
         self.database().on_chain()
     }
-    fn offchain_database(&self) -> anyhow::Result<Arc<OffchainDatabase>> {
-        Ok(Arc::new(self.database().off_chain().latest_view()?))
+    fn offchain_database(&self) -> &Database<OffChain> {
+        self.database().off_chain()
     }
 
     async fn await_offchain_db_sync(
         &self,
-        block_id: &FuelCoreBlockId,
+        block_id: FuelCoreBlockHeight,
     ) -> anyhow::Result<()>;
 
     fn blocks_subscription(
@@ -64,10 +58,10 @@ pub trait FuelCoreLike: Sync + Send {
             .unwrap_or_default())
     }
 
-    fn get_receipts(
+    fn get_transaction_status_and_receipts(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>>;
+    ) -> anyhow::Result<Option<(FuelCoreTransactionStatus, Vec<FuelCoreReceipt>)>>;
 
     #[cfg(not(feature = "test-helpers"))]
     fn get_consensus(
@@ -213,15 +207,15 @@ impl FuelCoreLike for FuelCore {
 
     async fn await_offchain_db_sync(
         &self,
-        block_id: &FuelCoreBlockId,
+        block_height: FuelCoreBlockHeight,
     ) -> anyhow::Result<()> {
         loop {
-            if self
-                .offchain_database()?
-                .get_block_height(block_id)?
-                .is_some()
+            if let Some(latest_block_height) =
+                self.offchain_database().latest_height()
             {
-                break;
+                if latest_block_height > block_height {
+                    break;
+                }
             };
 
             sleep(Duration::from_millis(500)).await;
@@ -251,22 +245,24 @@ impl FuelCoreLike for FuelCore {
             .subscribe()
     }
 
-    fn get_receipts(
+    fn get_transaction_status_and_receipts(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
-        let receipts = self
-            .offchain_database()?
+    ) -> anyhow::Result<Option<(FuelCoreTransactionStatus, Vec<FuelCoreReceipt>)>>
+    {
+        Ok(self
+            .offchain_database()
+            .latest_view()?
             .get_tx_status(tx_id)?
-            .map(|status| match &status {
-                FuelCoreTransactionStatus::Success { receipts, .. }
-                | FuelCoreTransactionStatus::Failed { receipts, .. } => {
-                    Some(receipts.clone())
-                }
-                _ => None,
-            })
-            .unwrap_or_default();
-
-        Ok(receipts)
+            .map(|status| {
+                let receipts = match &status {
+                    FuelCoreTransactionStatus::Success { receipts, .. }
+                    | FuelCoreTransactionStatus::Failed { receipts, .. } => {
+                        receipts.clone()
+                    }
+                    _ => vec![],
+                };
+                (status, receipts)
+            }))
     }
 }

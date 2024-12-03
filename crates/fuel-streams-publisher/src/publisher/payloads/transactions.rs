@@ -21,17 +21,14 @@ pub fn publish_all_tasks(
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
 ) -> anyhow::Result<Vec<JoinHandle<anyhow::Result<()>>>> {
-    let offchain_database = Arc::clone(&opts.offchain_database);
     let mut tasks = vec![];
 
     for tx_item @ (_, tx) in transactions.iter().enumerate() {
         let tx_id = tx.id(&opts.chain_id);
-        let tx_status: TransactionStatus = offchain_database
-            .get_tx_status(&tx_id)?
-            .map(|status| (&status).into())
+        let (tx_status, receipts): (TransactionStatus, Vec<_>) = fuel_core
+            .get_transaction_status_and_receipts(&tx_id)?
+            .map(|(tx_status, receipts)| (tx_status.into(), receipts))
             .unwrap_or_default();
-
-        let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
 
         let tx_id = tx_id.into();
 
