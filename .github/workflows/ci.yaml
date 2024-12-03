@@ -23,9 +23,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  compile:
+    name: Compile packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Compile all packages
+        run: cargo build --workspace
+
   test:
-    # needs:
-    #   - cargo-verifications
+    needs: compile
     name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
     env:
