@@ -97,8 +97,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "fuel-streams-publisher.fullname" . }}
+                optional: true
             - secretRef:
                 name: {{ include "fuel-streams-publisher.fullname" . }}
+                optional: true
             {{- if .Values.envFrom }}
             {{- toYaml .Values.envFrom | nindent 12 }}
             {{- end }}
