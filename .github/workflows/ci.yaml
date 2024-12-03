@@ -79,7 +79,7 @@ jobs:
         package:
           - fuel-streams-publisher
         is_release:
-          - ${{ github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, 'ci(release): Preparing') || github.event_name == 'workflow_dispatch' }}
+          - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu
