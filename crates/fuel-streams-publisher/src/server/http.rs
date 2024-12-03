@@ -66,7 +66,6 @@ mod tests {
     use fuel_core::service::Config;
     use fuel_core_bin::FuelService;
     use fuel_core_services::State;
-    use fuel_streams::types::{FuelNetwork, NatsClientOpts};
 
     use crate::{
         server::state::{HealthResponse, ServerState},
@@ -84,10 +83,13 @@ mod tests {
         let telemetry = Telemetry::new().await.unwrap();
 
         let fuel_core = FuelCore::from(fuel_service);
-        let publisher =
-            Publisher::new(fuel_core.arc(), FuelNetwork::Local, telemetry)
-                .await
-                .unwrap();
+        let publisher = Publisher::new(
+            fuel_core.arc(),
+            "nats://nats:4222".to_string(),
+            telemetry,
+        )
+        .await
+        .unwrap();
         let state = ServerState::new(publisher).await;
         assert!(state.publisher.nats_client.is_connected());
 
