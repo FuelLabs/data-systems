@@ -23,7 +23,7 @@ fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["bench-helpers"] }
 futures = { workspace = true }
 nats-publisher = { path = "../nats-publisher" }
-statrs = "0.17"
+statrs = "0.18"
 tokio = { workspace = true }
 
 [dev-dependencies]
