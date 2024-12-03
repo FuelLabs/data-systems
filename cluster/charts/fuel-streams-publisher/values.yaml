@@ -110,6 +110,7 @@ env:
   P2P_PORT: "30333"
   RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
   CHAIN_CONFIG: "mainnet"
+  NETWORK: "mainnet"
   PUBLISHER_MAX_THREADS: "32"
   DB_PATH: "/mnt/db/"
   POA_INSTANT: "false"

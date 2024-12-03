@@ -1,0 +1,79 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-datasources" "context" .) | nindent 2 }}
+data:
+  datasources.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/datasources.yaml" (.Values.grafana.configFilesFolders.datasources | default "master"))) . | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-dashboards-provisioning" "context" .) | nindent 2 }}
+data:
+  dashboards.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards.yaml" (.Values.grafana.configFilesFolders.dashboards | default "master"))) . | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-dashboards" "context" .) | nindent 2 }}
+data:
+  fuel-publisher-metrics-dashboard.json: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards/fuel-publisher-metrics-dashboard.json" (.Values.grafana.configFilesFolders.fuelPublisher | default "master"))) . | quote }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana" "context" .) | nindent 2 }}
+spec:
+  serviceName: {{ include "fuel-local.name" . }}-grafana
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "fuel-local.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "fuel-local.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "common.security-context" (dict "service" "grafana" "context" .) | nindent 6 }}
+      serviceAccountName: {{ include "fuel-local.serviceAccountName" . }}
+      containers:
+      - name: grafana
+        {{- include "common.container-security-context" (dict "service" "grafana" "context" .) | nindent 8 }}
+        image: "{{ .Values.grafana.image }}:{{ .Values.grafana.tag }}"
+        ports:
+        - name: "http"
+          containerPort: 3000
+        {{- include "common.probes" (dict "service" "grafana" "serviceProbes" .Values.grafana.probes "context" .) | nindent 8 }}
+        {{- if not .Values.config.disableResourceLimits }}
+        {{- include "common.resources" (dict "service" "grafana" "context" .) | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /etc/grafana/provisioning/datasources/
+          name: {{ include "fuel-local.name" . }}-grafana-datasources
+        - mountPath: /etc/grafana/provisioning/dashboards/
+          name: {{ include "fuel-local.name" . }}-grafana-dashboards-provisioning
+        - mountPath: /var/lib/grafana/dashboards/
+          name: {{ include "fuel-local.name" . }}-grafana-dashboards
+        - mountPath: /var/lib/grafana
+          name: grafana-storage
+      volumes:
+      - name: {{ include "fuel-local.name" . }}-grafana-datasources
+        configMap:
+          name: {{ include "fuel-local.fullname" . }}-grafana-datasources
+      - name: {{ include "fuel-local.name" . }}-grafana-dashboards
+        configMap:
+          name: {{ include "fuel-local.fullname" . }}-grafana-dashboards
+      - name: {{ include "fuel-local.name" . }}-grafana-dashboards-provisioning
+        configMap:
+          name: {{ include "fuel-local.fullname" . }}-grafana-dashboards-provisioning
+  volumeClaimTemplates:
+  - metadata:
+      name: grafana-storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.grafana.storage | default "2Gi" }}
+{{- end }}

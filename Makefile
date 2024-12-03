@@ -359,7 +359,7 @@ cluster_reset_%: cluster_down_$* cluster_up_$*
 
 cluster_up: cluster_up_full
 cluster_down: cluster_down_full
-cluster_reset: cluster_reset_full
+cluster_reset: cluster_down_full cluster_up_full
 
 # ------------------------------------------------------------
 #  Websocket

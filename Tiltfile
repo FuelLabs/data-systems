@@ -33,19 +33,6 @@ custom_build(
 # Get deployment mode from environment variable, default to 'full'
 # and configure values based on mode
 config_mode = os.getenv('CLUSTER_MODE', 'full')
-print(config_mode)
-
-# Deploy the Helm chart with values
-k8s_yaml(helm(
-    'cluster/charts/fuel-local',
-    name='local',
-    namespace='fuel-local',
-    values=[
-        'cluster/charts/fuel-local/values.yaml',
-        'cluster/charts/fuel-local/values-publisher-env.yaml',
-    ],
-    set=['services.telemetry.enabled=' + ('false' if config_mode == 'minimal' else 'true')]
-))
 
 # Resource configurations
 RESOURCES = {
@@ -67,27 +54,51 @@ RESOURCES = {
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
-    # Optional services (enabled in full mode only)
-    'monitoring': {
-        'name': 'monitoring',
-        'ports': ['9090:9090', '3000:3000'],
+    'prometheus': {
+        'name': 'local-fuel-local-prometheus',
+        'ports': ['9090:9090'],
+        'labels': 'monitoring',
+        'config_mode': ['full']
+    },
+    'grafana': {
+        'name': 'local-fuel-local-grafana',
+        'ports': ['3000:3000'],
         'labels': 'monitoring',
         'config_mode': ['full']
     },
     'elasticsearch': {
-        'name': 'elasticsearch',
+        'name': 'local-fuel-local-elasticsearch',
         'ports': ['9200:9200', '9300:9300'],
         'labels': 'logging',
         'config_mode': ['full']
     },
     'kibana': {
-        'name': 'kibana',
+        'name': 'local-fuel-local-kibana',
         'ports': ['5601:5601'],
         'labels': 'logging',
         'deps': ['elasticsearch'],
         'config_mode': ['full']
     }
 }
+
+# Deploy the Helm chart with values
+helm_set_values = [
+    name + ".enabled=" + str(config_mode in resource['config_mode']).lower()
+    for name, resource in RESOURCES.items()
+    if name not in ['publisher', 'nats', 'nats-box']  # Skip non-optional services
+]
+
+k8s_yaml(helm(
+    'cluster/charts/fuel-local',
+    name='local',
+    namespace='fuel-local',
+    values=[
+        'cluster/charts/fuel-local/values.yaml',
+        'cluster/charts/fuel-local/values-publisher-env.yaml',
+    ],
+    set=helm_set_values,
+))
+
 # Configure k8s resources
 for name, resource in RESOURCES.items():
     if config_mode in resource['config_mode']:

@@ -1,59 +1,103 @@
-{{ if .Values.services.telemetry.enabled }}
+{{- if .Values.kibana.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    service: kibana
-  name: kibana
+  {{- include "common.metadata" (dict "service" "kibana" "context" .) | nindent 2 }}
 spec:
+  selector:
+    {{- include "fuel-local.selectorLabels" . | nindent 4 }}
   ports:
     - name: kibana
       port: 5601
+      protocol: TCP
       targetPort: 5601
-  selector:
-    service: kibana
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    service: kibana
-  name: kibana
+  {{- include "common.metadata" (dict "service" "kibana" "context" .) | nindent 2 }}
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      service: kibana
-  strategy:
-    type: Recreate
+      {{- include "fuel-local.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        service: kibana
+        {{- include "fuel-local.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ .Values.serviceAccount }}
-      #imagePullSecrets:
-      #- name: fuel-local
+      {{- include "common.security-context" (dict "service" "kibana" "context" .) | nindent 6 }}
+      {{- if .Values.config.highAvailability }}
+      {{- include "common.pod-anti-affinity" (dict "service" "kibana" "context" .) | nindent 6 }}
+      {{- end }}
+      serviceAccountName: {{ include "fuel-local.serviceAccountName" . }}
+      initContainers:
+      - name: wait-for-elasticsearch
+        image: "busybox:latest"
+        command: 
+        - sh
+        - -c
+        - |
+          until wget -q -T 5 --spider http://{{ include "fuel-local.fullname" . }}-elasticsearch:9200/_cluster/health?wait_for_status=yellow&timeout=50s; do 
+          echo "waiting for elasticsearch to be ready"; 
+            sleep 10; 
+          done;
+          echo "elasticsearch is ready"
+      - name: configure-kibana
+        image: "busybox:latest"
+        command:
+        - sh
+        - -c
+        - |
+          cat << EOF > /usr/share/kibana/config/kibana.yml
+          server.host: "0.0.0.0"
+          server.port: 5601
+          elasticsearch.hosts: ["http://{{ include "fuel-local.fullname" . }}-elasticsearch:9200"]
+          elasticsearch.ssl.verificationMode: none
+          xpack.fleet.enabled: true
+          xpack.fleet.agents.enabled: true
+          EOF
+        volumeMounts:
+        - name: kibana-config
+          mountPath: /usr/share/kibana/config/
       containers:
       - name: kibana
+        {{- include "common.container-security-context" (dict "service" "kibana" "context" .) | nindent 8 }}
         image: "{{ .Values.kibana.image }}:{{ .Values.kibana.tag }}"
         env:
         - name: SERVER_HOST
-          value: 0.0.0.0
+          value: "0.0.0.0"
         - name: ELASTICSEARCH_HOSTS
-          value: http://elasticsearch:9200
+          value: "http://{{ include "fuel-local.fullname" . }}-elasticsearch:9200"
+        {{- if .Values.kibana.env }}
+        {{- toYaml .Values.kibana.env | nindent 8 }}
+        {{- end }}
         ports:
         - containerPort: 5601
-        readinessProbe:
-          tcpSocket:
-            port: 5601
-          initialDelaySeconds: 300
-          periodSeconds: 3
-          timeoutSeconds: 3
-          successThreshold: 1
-          failureThreshold: 3
-        {{- if not .Values.disableResourceLimits }}
-        resources:
-        {{- .Values.resourceProfile.kibana | toYaml | nindent 10 }}
+        {{- include "common.probes" (dict "service" "kibana" "serviceProbes" .Values.kibana.probes "context" .) | nindent 8 }}
+        {{- if not .Values.config.disableResourceLimits }}
+        {{- include "common.resources" (dict "service" "kibana" "context" .) | nindent 8 }}
         {{- end }}
-{{ end }}
+        volumeMounts:
+          - name: {{ include "fuel-local.name" . }}-kibana-data
+            mountPath: /usr/share/kibana/data
+          - name: kibana-config
+            mountPath: /usr/share/kibana/config/
+      volumes:
+        - name: {{ include "fuel-local.name" . }}-kibana-data
+          persistentVolumeClaim:
+            claimName: {{ include "fuel-local.fullname" . }}-kibana-data
+        - name: kibana-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  {{- include "common.metadata" (dict "service" "kibana" "context" .) | nindent 2 }}
+  name: {{ include "fuel-local.fullname" . }}-kibana-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.kibana.storage }}
+{{- end }}
