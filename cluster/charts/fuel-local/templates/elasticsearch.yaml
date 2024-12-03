@@ -31,9 +31,7 @@ spec:
         {{- include "fuel-local.selectorLabels" . | nindent 8 }}
     spec:
       {{- include "common.security-context" (dict "service" "elasticsearch" "context" .) | nindent 6 }}
-      {{- if .Values.config.highAvailability }}
       {{- include "common.pod-anti-affinity" (dict "service" "elasticsearch" "context" .) | nindent 6 }}
-      {{- end }}
       serviceAccountName: {{ include "fuel-local.serviceAccountName" . }}
       containers:
         - name: elasticsearch
@@ -50,9 +48,7 @@ spec:
             - containerPort: 9200
             - containerPort: 9300
           {{- include "common.probes" (dict "service" "elasticsearch" "serviceProbes" .Values.elasticsearch.probes "context" .) | nindent 10 }}
-          {{- if not .Values.config.disableResourceLimits }}
           {{- include "common.resources" (dict "service" "elasticsearch" "context" .) | nindent 10 }}
-          {{- end }}
           volumeMounts:
             - mountPath: /data
               name: elasticsearch-data

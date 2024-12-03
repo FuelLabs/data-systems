@@ -127,10 +127,11 @@ securityContext:
 Common pod anti-affinity for stateful services
 */}}
 {{- define "common.pod-anti-affinity" -}}
+{{- if .context.Values.config.highAvailability }}
 affinity:
 {{- include "common.merge-with-defaults" (dict "service" .service "context" .context "defaultKey" "global.affinity" "path" "affinity") | nindent 2 }}
 {{- end }}
-
+{{- end }}
 {{/*
 Common probes configuration
 */}}

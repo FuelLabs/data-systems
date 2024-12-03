@@ -56,11 +56,10 @@ subjects:
 {{ end }}
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
 spec:
-  serviceName: {{ include "fuel-local.name" . }}-prometheus
   replicas: 1
   selector:
     matchLabels:
@@ -71,6 +70,7 @@ spec:
         {{- include "fuel-local.selectorLabels" . | nindent 8 }}
     spec:
       {{- include "common.security-context" (dict "service" "prometheus" "context" .) | nindent 6 }}
+      {{- include "common.pod-anti-affinity" (dict "service" "prometheus" "context" .) | nindent 6 }}
       serviceAccountName: {{ include "fuel-local.serviceAccountName" . }}
       containers:
         - name: prometheus
@@ -80,9 +80,7 @@ spec:
             - name: "http"
               containerPort: 9090
           {{- include "common.probes" (dict "service" "prometheus" "serviceProbes" .Values.prometheus.probes "context" .) | nindent 10 }}
-          {{- if not .Values.config.disableResourceLimits }}
           {{- include "common.resources" (dict "service" "prometheus" "context" .) | nindent 10 }}
-          {{- end }}
           volumeMounts:
             - mountPath: /etc/prometheus/prometheus.yml
               name: prometheus-config
@@ -93,13 +91,19 @@ spec:
         - name: prometheus-config
           configMap:
             name: {{ include "fuel-local.fullname" . }}-prometheus
-  volumeClaimTemplates:
-    - metadata:
-        name: prometheus-data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ default "10Gi" .Values.prometheus.storage }}
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: {{ include "fuel-local.fullname" . }}-prometheus-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "fuel-local.fullname" . }}-prometheus-data
+  {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ default "10Gi" .Values.prometheus.storage }}
 {{ end }}
