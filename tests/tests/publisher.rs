@@ -312,8 +312,8 @@ fn create_test_block() -> ImporterResult {
 }
 
 async fn nats_client() -> NatsClient {
-    let nats_client_opts =
-        NatsClientOpts::admin_opts(FuelNetwork::Local).with_rdn_namespace();
+    let nats_client_opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
+        .with_rdn_namespace();
     NatsClient::connect(&nats_client_opts)
         .await
         .expect("NATS connection failed")

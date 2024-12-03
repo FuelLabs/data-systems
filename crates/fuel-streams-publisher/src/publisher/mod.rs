@@ -35,10 +35,11 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
-        network: FuelNetwork,
+        nats_url: String,
         telemetry: Arc<Telemetry>,
     ) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::admin_opts(network);
+        let nats_client_opts =
+            NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let streams = Arc::new(Streams::new(&nats_client).await);
 

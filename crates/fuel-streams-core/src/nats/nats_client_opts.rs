@@ -40,25 +40,25 @@ impl FuelNetwork {
 /// Creating a new `NatsClientOpts` instance:
 ///
 /// ```
-/// use fuel_streams_core::nats::NatsClientOpts;
+/// use fuel_streams_core::nats::{NatsClientOpts, FuelNetwork};
 ///
-/// let opts = NatsClientOpts::new(FuelNetwork::Local);
+/// let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 /// ```
 ///
 /// Creating a public `NatsClientOpts`:
 ///
 /// ```
-/// use fuel_streams_core::nats::NatsClientOpts;
+/// use fuel_streams_core::nats::{NatsClientOpts, FuelNetwork};
 ///
-/// let opts = NatsClientOpts::default_opts(FuelNetwork::Local);
+/// let opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local));
 /// ```
 ///
 /// Modifying `NatsClientOpts`:
 ///
 /// ```
-/// use fuel_streams_core::nats::{NatsClientOpts, NatsUserRole};
+/// use fuel_streams_core::nats::{NatsClientOpts, NatsUserRole, FuelNetwork};
 ///
-/// let opts = NatsClientOpts::new(FuelNetwork::Local)
+/// let opts = NatsClientOpts::new(Some(FuelNetwork::Local))
 ///     .with_role(NatsUserRole::Admin)
 ///     .with_timeout(10);
 /// ```
@@ -75,21 +75,21 @@ pub struct NatsClientOpts {
 }
 
 impl NatsClientOpts {
-    pub fn new(network: FuelNetwork) -> Self {
+    pub fn new(network: Option<FuelNetwork>) -> Self {
         Self {
-            url: network.to_url(),
+            url: network.unwrap_or_default().to_url(),
             role: NatsUserRole::default(),
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
         }
     }
 
-    pub fn default_opts(network: FuelNetwork) -> Self {
+    pub fn default_opts(network: Option<FuelNetwork>) -> Self {
         Self::new(network).with_role(NatsUserRole::Default)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn admin_opts(network: FuelNetwork) -> Self {
+    pub fn admin_opts(network: Option<FuelNetwork>) -> Self {
         Self::new(network).with_role(NatsUserRole::Admin)
     }
 
@@ -105,6 +105,10 @@ impl NatsClientOpts {
             url: network.to_url(),
             ..self
         }
+    }
+
+    pub fn with_custom_url(self, url: String) -> Self {
+        Self { url, ..self }
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
