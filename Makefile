@@ -310,7 +310,7 @@ fmt-markdown:
 	pnpm md:fix
 
 lint-cargo:
-	cargo sort -w --check --workspace
+	cargo sort --check --workspace
 
 lint-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt --all --check -- --color always
