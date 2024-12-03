@@ -85,7 +85,7 @@ mod tests {
         let fuel_core = FuelCore::from(fuel_service);
         let publisher = Publisher::new(
             fuel_core.arc(),
-            "nats://nats:4222".to_string(),
+            "nats://localhost:4222".to_string(),
             telemetry,
         )
         .await
