@@ -82,7 +82,7 @@ ENV RELAYER=
 ENV RELAYER_V2_LISTENING_CONTRACTS=
 ENV RELAYER_DA_DEPLOY_HEIGHT=
 ENV CHAIN_CONFIG=
-ENV NETWORK=
+ENV NATS_URL=
 ENV USE_PUBLISHER_METRICS=
 ENV USE_ELASTIC_LOGGING=
 
@@ -108,7 +108,7 @@ EXPOSE ${TELEMETRY_PORT}
 # hadolint ignore=DL3025
 CMD exec ./fuel-streams-publisher \
     --service-name "${SERVICE_NAME}" \
-    --network $NETWORK \
+    --nats_url $NATS_URL \
     --keypair $KEYPAIR \
     --relayer $RELAYER \
     --ip $IP \

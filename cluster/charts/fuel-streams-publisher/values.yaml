@@ -114,6 +114,7 @@ env:
   DB_PATH: "/mnt/db/"
   POA_INSTANT: "false"
   SERVICE_NAME: "NATS Publisher Node"
+  NATS_URL: "nats:4222"
 # Additional environment variables with complex structures
 # extraEnv:
 #   - name: RELAYER
