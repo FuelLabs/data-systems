@@ -6,10 +6,10 @@ on:
       days_to_keep:
         description: "Number of days to keep artifacts"
         required: true
-        default: 30
+        default: 15
         type: number
   schedule:
-    - cron: '0 0 */15 * *'  # Runs every 15 days at midnight UTC
+    - cron: "0 0 */15 * *"  # Runs every 15 days at midnight UTC
 
 permissions:
   contents: read
@@ -22,13 +22,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check GitHub CLI Authentication
+        run: gh auth status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Artifact Cleanup
         env:
-          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.repository }}
+          REPO_NAME: ${{ github.event.repository.name }}
           DAYS_TO_KEEP: ${{ github.event.inputs.days_to_keep || '15' }}
         run: |-
+          # Debug information
+          echo "Repository Owner: ${REPO_OWNER}"
+          echo "Repository Name: ${REPO_NAME}"
+
           make cleanup_artifacts \
             REPO_OWNER="${REPO_OWNER}" \
             REPO_NAME="${REPO_NAME}" \

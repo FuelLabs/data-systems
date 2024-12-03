@@ -19,16 +19,21 @@ REPO_OWNER="$1"
 REPO_NAME="$2"
 DAYS_TO_KEEP="$3"
 
+# Debug: Print input parameters
+echo "Debug: Script parameters:"
+echo "  REPO_OWNER: ${REPO_OWNER}"
+echo "  REPO_NAME: ${REPO_NAME}"
+echo "  DAYS_TO_KEEP: ${DAYS_TO_KEEP}"
+
 # Ensure gh CLI is installed and authenticated
 if ! command -v gh &> /dev/null; then
     echo "GitHub CLI (gh) is not installed. Please install it first."
     exit 1
 fi
 
-if ! gh auth status &> /dev/null; then
-    echo "GitHub CLI is not authenticated. Please run 'gh auth login' first."
-    exit 1
-fi
+# Debug: Check gh auth status
+echo "Debug: Checking gh auth status..."
+gh auth status
 
 # Get the cutoff date
 CUTOFF_DATE=$(get_date "$DAYS_TO_KEEP")
@@ -39,11 +44,25 @@ PAGE=1
 while true; do
     echo "Processing page $PAGE"
 
-    RESPONSE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts?per_page=100&page=$PAGE" 2>&1)
+    # Debug: Print API URL being called
+    API_URL="repos/$REPO_OWNER/$REPO_NAME/actions/artifacts?per_page=100&page=$PAGE"
+    echo "Debug: Calling API endpoint: $API_URL"
+
+    # Debug: Test API call with curl
+    echo "Debug: Testing API endpoint with curl..."
+    curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/$API_URL"
+
+    RESPONSE=$(gh api "$API_URL" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "Error fetching artifacts: $RESPONSE"
+        echo "Debug: Full API response:"
+        echo "$RESPONSE"
         exit 1
     fi
+
+    # Debug: Print response structure (without sensitive data)
+    echo "Debug: Response structure:"
+    echo "$RESPONSE" | jq 'del(.artifacts[].archive_download_url)' 2> /dev/null || echo "Failed to parse response as JSON"
 
     ART_EXIST=$(echo "$RESPONSE" | jq -r '.artifacts[]')
     if [[ -z "$ART_EXIST" ]]; then
@@ -54,6 +73,7 @@ while true; do
     ARTIFACTS=$(echo "$RESPONSE" | jq -r ".artifacts[] | select(.created_at < \"$CUTOFF_DATE\") | .id")
 
     for ARTIFACT_ID in $ARTIFACTS; do
+        echo "Debug: Processing artifact ID: $ARTIFACT_ID"
         ARTIFACT_INFO=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" 2>&1)
         if [[ $? -ne 0 ]]; then
             echo "Error fetching artifact info for ID $ARTIFACT_ID: $ARTIFACT_INFO"
