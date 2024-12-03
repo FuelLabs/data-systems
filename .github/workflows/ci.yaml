@@ -35,7 +35,7 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Compile all packages
-        run: cargo build --workspace
+        run: cargo build --profile ci --workspace
 
   test:
     needs: compile
@@ -75,7 +75,7 @@ jobs:
           make start/nats
 
       - name: Run tests
-        run: make test PROJECT=${{ matrix.package }}
+        run: make test PROJECT=${{ matrix.package }} CARGO_PROFILE=ci
 
       - name: Stop Nats
         if: always()

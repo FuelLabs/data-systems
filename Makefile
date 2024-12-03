@@ -237,17 +237,18 @@ run-publisher: check-network
 # ------------------------------------------------------------
 
 TEST_PROJECT ?= all
+CARGO_PROFILE ?= dev
 
 test-watch:
-	cargo watch -x test
+	cargo watch -x "test --profile $(CARGO_PROFILE)"
 
 test:
 	@if [ "$(TEST_PROJECT)" = "all" ]; then \
-		cargo nextest run --workspace --color always --locked && \
-		cargo test --doc --workspace; \
+		cargo nextest run --profile $(CARGO_PROFILE) --workspace --color always --locked && \
+		cargo test --profile $(CARGO_PROFILE) --doc --workspace; \
 	else \
-		cargo nextest run -p $(TEST_PROJECT) --color always --locked && \
-		cargo test --doc -p $(TEST_PROJECT); \
+		cargo nextest run --profile $(CARGO_PROFILE) -p $(TEST_PROJECT) --color always --locked && \
+		cargo test --profile $(CARGO_PROFILE) --doc -p $(TEST_PROJECT); \
 	fi
 
 # coverage:
