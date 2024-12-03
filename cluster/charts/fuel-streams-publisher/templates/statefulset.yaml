@@ -24,12 +24,12 @@ spec:
         prometheus.io/path: {{ .Values.prometheus.path | quote }}
         {{- end }}
         # Add checksums to force pod restart when configs change
-        {{- if (lookup "v1" "ConfigMap" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }}
-        checksum/config: {{ include (print $.Template.BasePath "/env-configmap.yaml") . | sha256sum }}
-        {{- end }}
-        {{- if (lookup "v1" "Secret" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }}
-        checksum/secrets: {{ include (print $.Template.BasePath "/env-secrets.yaml") . | sha256sum }}
-        {{- end }}
+        {{/* {{- if (lookup "v1" "ConfigMap" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }} */}}
+        {{/* checksum/config: {{ include (print $.Template.BasePath "/env-configmap.yaml") . | sha256sum }} */}}
+        {{/* {{- end }} */}}
+        {{/* {{- if (lookup "v1" "Secret" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }} */}}
+        {{/* checksum/secrets: {{ include (print $.Template.BasePath "/env-secrets.yaml") . | sha256sum }} */}}
+        {{/* {{- end }} */}}
         {{- with .Values.config.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
