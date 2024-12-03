@@ -8,65 +8,28 @@ on:
         required: true
         default: 30
         type: number
+  schedule:
+    - cron: '0 0 */15 * *'  # Runs every 15 days at midnight UTC
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Artifact Cleanup
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.repository }}
-          DAYS_TO_KEEP: ${{ github.event.inputs.days_to_keep || '30' }}
+          DAYS_TO_KEEP: ${{ github.event.inputs.days_to_keep || '15' }}
         run: |-
-          get_date() {
-            local days="$1"
-            if CUTOFF_DATE=$(date --date="${days} days ago" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null); then
-              echo "$CUTOFF_DATE"
-            elif CUTOFF_DATE=$(date -v-"${days}"d +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null); then
-              echo "$CUTOFF_DATE"
-            else
-              echo "Error: Unable to calculate cutoff date" >&2
-              return 1
-            fi
-          }
-
-          CUTOFF_DATE=$(get_date "$DAYS_TO_KEEP")
-          echo "Cutoff date: $CUTOFF_DATE"
-
-          PAGE=1
-          while true; do
-            echo "Processing page $PAGE"
-
-            if ! RESPONSE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts?per_page=100&page=$PAGE" 2>&1); then
-              echo "Error fetching artifacts: $RESPONSE"
-              exit 1
-            fi
-
-            ART_EXIST=$(echo "$RESPONSE" | jq -r '.artifacts[]')
-            if [[ -z "$ART_EXIST" ]]; then
-              echo "No more artifacts found."
-              break
-            fi
-
-            ARTIFACTS=$(echo "$RESPONSE" | jq -r ".artifacts[] | select(.created_at < \"$CUTOFF_DATE\") | .id")
-            for ARTIFACT_ID in $ARTIFACTS; do
-              if ! ARTIFACT_INFO=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" 2>&1); then
-                echo "Error fetching artifact info for ID $ARTIFACT_ID: $ARTIFACT_INFO"
-                continue
-              fi
-
-              ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | jq -r '.name')
-              echo "Deleting artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID)..."
-              if ! DELETE_RESULT=$(gh api "repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID" -X DELETE 2>&1); then
-                echo "Error deleting artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID): $DELETE_RESULT"
-              else
-                echo "Successfully deleted artifact $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
-              fi
-            done
-
-            PAGE=$((PAGE + 1))
-          done
-
-          echo "Artifact cleanup completed."
+          make cleanup_artifacts \
+            REPO_OWNER="${REPO_OWNER}" \
+            REPO_NAME="${REPO_NAME}" \
+            DAYS_TO_KEEP="${DAYS_TO_KEEP}"
