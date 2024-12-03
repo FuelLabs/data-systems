@@ -5824,7 +5824,6 @@ dependencies = [
  "async-nats",
  "chrono",
  "clap 4.5.20",
- "fuel-core-types 0.40.0",
  "fuel-streams",
  "fuel-streams-core",
  "futures",
