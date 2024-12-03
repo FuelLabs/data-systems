@@ -32,8 +32,8 @@ The Fuel Streams Publisher is a binary that subscribes to events emitted from a 
 
 ### Prerequisites
 
--   [Rust toolchain](https://www.rust-lang.org/tools/install)
--   [Docker](https://www.docker.com/get-started/) (optional)
+- [Rust toolchain](https://www.rust-lang.org/tools/install)
+- [Docker](https://www.docker.com/get-started/) (optional)
 
 ### Development
 

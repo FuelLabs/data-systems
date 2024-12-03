@@ -34,11 +34,11 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 
 ## 🚀 Features
 
--   Real-time streaming of Fuel blockchain data
--   Support for various Fuel-specific data types
--   Customizable filters for targeted data retrieval
--   Flexible delivery policies for historical and real-time data
--   Seamless integration with other Fuel ecosystem tools
+- Real-time streaming of Fuel blockchain data
+- Support for various Fuel-specific data types
+- Customizable filters for targeted data retrieval
+- Flexible delivery policies for historical and real-time data
+- Seamless integration with other Fuel ecosystem tools
 
 ## ⚡ Getting Started
 

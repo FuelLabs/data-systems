@@ -41,12 +41,12 @@ Fuel Streams is a Rust library designed for working with streams of Fuel blockch
 
 ## 🚀 Features
 
--   Real-time streaming of Fuel blockchain data
--   Support for Fuel-specific data types
--   Efficient data handling using NATS
--   Easy-to-use API for subscribing to and processing blockchain events
--   Customizable filters for targeted data retrieval
--   Seamless integration with other Fuel ecosystem tools
+- Real-time streaming of Fuel blockchain data
+- Support for Fuel-specific data types
+- Efficient data handling using NATS
+- Easy-to-use API for subscribing to and processing blockchain events
+- Customizable filters for targeted data retrieval
+- Seamless integration with other Fuel ecosystem tools
 
 ## 🛠️ Installing
 
@@ -158,11 +158,11 @@ async fn main() -> Result<(), fuel_streams::Error> {
 
 Available `DeliverPolicy` options:
 
--   `All`: Delivers all messages in the stream.
--   `Last`: Delivers the last message for the selected subjects.
--   `New`: Delivers only new messages that are received after the subscription is created.
--   `ByStartSequence(u64)`: Delivers messages starting from a specific sequence number.
--   `ByStartTime(DateTime<Utc>)`: Delivers messages starting from a specific time.
+- `All`: Delivers all messages in the stream.
+- `Last`: Delivers the last message for the selected subjects.
+- `New`: Delivers only new messages that are received after the subscription is created.
+- `ByStartSequence(u64)`: Delivers messages starting from a specific sequence number.
+- `ByStartTime(DateTime<Utc>)`: Delivers messages starting from a specific time.
 
 Choose the appropriate `DeliverPolicy` based on your application's requirements for historical data processing or real-time updates.
 
@@ -209,8 +209,8 @@ In this example, we're creating a filter that will only return transactions from
 
 Available filter methods depend on the subject type. The project currently supports subjects for the following data types:
 
--   [Blocks](../fuel-streams-core/src/blocks/subjects.rs)
--   [Transactions](../fuel-streams-core/src/transactions/subjects.rs)
+- [Blocks](../fuel-streams-core/src/blocks/subjects.rs)
+- [Transactions](../fuel-streams-core/src/transactions/subjects.rs)
 
 Filters can be combined to create more specific queries. Each filter method narrows down the results further.
 
