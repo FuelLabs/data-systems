@@ -130,6 +130,15 @@ clean/build:
 	rm -rf target/
 	rm -rf node_modules/
 
+
+REPO_OWNER ?= fuellabs
+REPO_NAME ?= data-systems
+DAYS_TO_KEEP ?= 15
+
+cleanup_artifacts:
+	@echo "Running artifact cleanup..."
+	@./scripts/cleanup_artifacts.sh $(REPO_OWNER) $(REPO_NAME) $(DAYS_TO_KEEP)
+
 # ------------------------------------------------------------
 #  Docker Commands
 # ------------------------------------------------------------
@@ -210,8 +219,7 @@ EXTRA_ARGS ?=
 
 # Define how to run the publisher script
 publisher_%:
-	@network=$$(echo "$*" | cut -d'-' -f1) && \
-	mode=$$(echo "$*" | cut -d'-' -f2) && \
+	@network=$$(echo "$**" | cut -d'-' -f2) && \
 	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # Publisher commands for different networks and modes
