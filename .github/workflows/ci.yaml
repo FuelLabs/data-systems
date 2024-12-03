@@ -81,7 +81,7 @@ jobs:
           make start/nats
 
       - name: Run tests
-        run: make test PROFILE=ci TEST_PROJECT=${{ matrix.package }}
+        run: make test PROFILE=ci PACKAGE=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()

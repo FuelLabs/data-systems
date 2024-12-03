@@ -1,21 +1,35 @@
 # ------------------------------------------------------------
-#  Variables
+#  Core Variables (Simple Assignment)
 # ------------------------------------------------------------
 
-PACKAGE ?= fuel-streams
-COMMANDS ?= rustup npm pre-commit docker python3
-RUST_NIGHTLY_VERSION ?= nightly-2024-10-18
-RUST_VERSION ?= 1.81.0
-VERSION ?= $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
-TILTFILE ?= ./Tiltfile
-
-PORT ?= 4000
-TELEMETRY_PORT ?= 8080
-MODE ?= profiling
-MODES = dev profiling
+PACKAGE := fuel-streams
+VERSION := $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "$(PACKAGE)") | .version')
+TILTFILE := ./Tiltfile
 
 # ------------------------------------------------------------
-#  Phony Targets
+#  Tool Versions (Simple Assignment)
+# ------------------------------------------------------------
+
+RUST_VERSION := 1.81.0
+RUST_NIGHTLY_VERSION := nightly-2024-11-06
+
+# ------------------------------------------------------------
+#  Required Commands and Tools (Simple Assignment)
+# ------------------------------------------------------------
+
+COMMANDS := rustup npm pre-commit docker python3
+
+# ------------------------------------------------------------
+#  Docker Configuration (Simple Assignment)
+# ------------------------------------------------------------
+
+NETWORKS := mainnet testnet
+PROFILES := all dev nats fuel monitoring indexer logging
+MODES := dev profiling
+DOCKER_COMPOSE := ./scripts/set_envs.sh && docker compose -f docker/docker-compose.yml --env-file .env
+
+# ------------------------------------------------------------
+#  Phony Targets Declaration
 # ------------------------------------------------------------
 
 .PHONY: all install setup build clean lint fmt help test doc bench coverage audit \
@@ -42,6 +56,7 @@ all: help
 version:
 	@echo "Current version: $(VERSION)"
 
+bump-version: NEW_VERSION ?=
 bump-version:
 	@if [ -z "$(NEW_VERSION)" ]; then \
 		echo "Error: NEW_VERSION is required"; \
@@ -55,6 +70,7 @@ bump-version:
 #  Release Management
 # ------------------------------------------------------------
 
+release: NEW_VERSION ?=
 release: validate-env test lint
 	@if [ -z "$(NEW_VERSION)" ]; then \
 		echo "Error: NEW_VERSION is required"; \
@@ -70,7 +86,7 @@ release-dry-run:
 	@knope prepare-release --dry-run
 
 # ------------------------------------------------------------
-#  Setup & Validation
+#  Setup & Validation Targets
 # ------------------------------------------------------------
 
 install:
@@ -83,6 +99,7 @@ validate-env: check-commands check-versions check-dev-env
 	@cargo --version >/dev/null 2>&1 || { echo "cargo is required but not installed"; exit 1; }
 	@echo "Environment validation complete"
 
+check-commands: COMMANDS ?= rustup npm pre-commit docker python3
 check-commands:
 	@for cmd in $(COMMANDS); do \
 		if ! command -v $$cmd >/dev/null 2>&1; then \
@@ -91,10 +108,11 @@ check-commands:
 		fi \
 	done
 
+check-network: NETWORK ?= testnet
 check-network:
 	@if [ "$(NETWORK)" != "mainnet" ] && [ "$(NETWORK)" != "testnet" ]; then \
 		echo "Error: NETWORK must be either 'mainnet' or 'testnet'"; \
-		exit 1; \
+			exit 1; \
 	fi
 
 check-versions:
@@ -110,12 +128,12 @@ check-dev-env:
 		cp .env.example .env; \
 	fi
 
-setup: COMMANDS=rustup npm pre-commit
+setup: COMMANDS := rustup npm pre-commit
 setup: check-commands check-versions check-dev-env
 	./scripts/setup.sh
 
 # ------------------------------------------------------------
-#  Development
+#  Development Targets
 # ------------------------------------------------------------
 
 dev-watch:
@@ -130,11 +148,9 @@ clean/build:
 	rm -rf target/
 	rm -rf node_modules/
 
-
-REPO_OWNER ?= fuellabs
-REPO_NAME ?= data-systems
-DAYS_TO_KEEP ?= 15
-
+cleanup_artifacts: REPO_OWNER ?= fuellabs
+cleanup_artifacts: REPO_NAME ?= data-systems
+cleanup_artifacts: DAYS_TO_KEEP ?= 15
 cleanup_artifacts:
 	@echo "Running artifact cleanup..."
 	@./scripts/cleanup_artifacts.sh $(REPO_OWNER) $(REPO_NAME) $(DAYS_TO_KEEP)
@@ -166,17 +182,6 @@ define docker_cmd
 	$(call check_docker_env)
 	NETWORK=$(1) PORT=$(2) TELEMETRY_PORT=$(3) $(DOCKER_COMPOSE) --profile $(4) $(5)
 endef
-
-start:
-	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),up -d)
-
-stop:
-	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down)
-
-restart: stop start
-
-clean/docker: stop
-	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down -v --rmi all --remove-orphans)
 
 # Define rules for network-only, profile-only, and network-profile combinations
 define profile_rules
@@ -210,14 +215,33 @@ $(foreach p,$(PROFILES),$(eval $(call profile_rules,,$(p))))
 # Generate rules for all network-profile combinations
 $(foreach n,$(NETWORKS),$(foreach p,$(PROFILES),$(eval $(call profile_rules,$(n),$(p)))))
 
+start: NETWORK ?= testnet
+start: PORT ?= 4000
+start: TELEMETRY_PORT ?= 8080
+start: PROFILE ?= all
+start:
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),up -d)
+
+stop: NETWORK ?= testnet
+stop: PORT ?= 4000
+stop: TELEMETRY_PORT ?= 8080
+stop: PROFILE ?= all
+stop:
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down)
+
+restart: stop start
+
+clean/docker: stop
+	$(call docker_cmd,$(NETWORK),$(PORT),$(TELEMETRY_PORT),$(PROFILE),down -v --rmi all --remove-orphans)
+
 # ------------------------------------------------------------
 #  Publisher Run Commands (Local Development)
 # ------------------------------------------------------------
 
-PUBLISHER_SCRIPT = ./scripts/run_publisher.sh
-EXTRA_ARGS ?=
+PUBLISHER_SCRIPT := ./scripts/run_publisher.sh
 
 # Define how to run the publisher script
+publisher_%: EXTRA_ARGS ?=
 publisher_%:
 	@network=$$(echo "$**" | cut -d'-' -f2) && \
 	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
@@ -229,6 +253,11 @@ run-testnet-dev: check-network publisher_testnet-dev        ## Run publisher in 
 run-testnet-profiling: check-network publisher_testnet-profiling  ## Run publisher in testnet profiling mode
 
 # Generic publisher command using environment variables
+run-publisher: NETWORK ?= testnet
+run-publisher: MODE ?= dev
+run-publisher: PORT ?= 4000
+run-publisher: TELEMETRY_PORT ?= 8080
+run-publisher: EXTRA_ARGS ?=
 run-publisher: check-network
 	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
@@ -236,23 +265,26 @@ run-publisher: check-network
 #  Testing
 # ------------------------------------------------------------
 
-TEST_PROJECT ?= all
-CARGO_PROFILE ?= dev
-
+test-watch: PROFILE ?= dev
 test-watch:
-	cargo watch -x "test --profile $(CARGO_PROFILE)"
+	cargo watch -x "test --profile $(PROFILE)"
 
+test: PACKAGE ?= all
+test: PROFILE ?= dev
 test:
-	@if [ "$(TEST_PROJECT)" = "all" ]; then \
-		cargo nextest run --cargo-profile $(CARGO_PROFILE) --workspace --color always --locked && \
-		cargo test --profile $(CARGO_PROFILE) --doc --workspace; \
+	@if [ "$(PACKAGE)" = "all" ]; then \
+		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --locked --no-tests=pass && \
+		cargo test --profile $(PROFILE) --doc --workspace; \
 	else \
-		cargo nextest run --cargo-profile $(CARGO_PROFILE) -p $(TEST_PROJECT) --color always --locked && \
-		cargo test --profile $(CARGO_PROFILE) --doc -p $(TEST_PROJECT); \
+		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --locked --no-tests=pass && \
+		cargo test --profile $(PROFILE) --doc -p $(PACKAGE); \
 	fi
 
 # coverage:
 # 	RUSTFLAGS="-Z threads=8" cargo +$(RUST_NIGHTLY_VERSION) tarpaulin --config ./tarpaulin.toml
+
+bench:
+	cargo bench -p data-parser -p nats-publisher -p bench-consumers
 
 # ------------------------------------------------------------
 #  Formatting & Linting
@@ -262,6 +294,7 @@ check:
 	cargo check --all-targets --all-features
 
 fmt: fmt-cargo fmt-rust fmt-prettier fmt-markdown
+
 lint: check lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-machete
 
 fmt-cargo:
@@ -308,7 +341,7 @@ audit-fix:
 	cargo audit fix
 
 # ------------------------------------------------------------
-#  Build, Test, and Documentation
+#  Build & Documentation
 # ------------------------------------------------------------
 
 build:
