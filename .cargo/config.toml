@@ -24,4 +24,3 @@ overflow-checks = true
 
 [net]
 git-fetch-with-cli = true
-parallel = true

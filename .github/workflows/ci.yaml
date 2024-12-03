@@ -43,31 +43,8 @@ jobs:
       - name: Install dependencies
         run: cargo fetch
 
-  compile:
-    needs: install-deps
-    name: Compile ${{ matrix.package }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - fuel-streams
-          - fuel-streams-core
-          - fuel-streams-macros
-          - fuel-streams-publisher
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-
-      - name: Compile package
-        run: cargo build --profile ci --package ${{ matrix.package }}
-
   test:
-    needs: compile
+    needs: install-deps
     name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
     env:
@@ -104,7 +81,7 @@ jobs:
           make start/nats
 
       - name: Run tests
-        run: make test PROJECT=${{ matrix.package }} CARGO_PROFILE=ci
+        run: make test PROFILE=ci TEST_PROJECT=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()
