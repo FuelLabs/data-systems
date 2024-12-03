@@ -6,11 +6,11 @@ This guide will show you how to run this project locally if you want to test or 
 
 Most projects under the umbrella of data systems are written in Rust, so we prefer using Rust tooling and community standards. Ensure you have the following tools installed:
 
--   [Rust](https://www.rust-lang.org/tools/install) (latest stable version recommended)
--   [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-11-06)
--   [Make](https://www.gnu.org/software/make/)
--   [Pre-commit](https://pre-commit.com/#install)
--   [NodeJS](https://nodejs.org/en/download/)
+- [Rust](https://www.rust-lang.org/tools/install) (latest stable version recommended)
+- [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-11-06)
+- [Make](https://www.gnu.org/software/make/)
+- [Pre-commit](https://pre-commit.com/#install)
+- [NodeJS](https://nodejs.org/en/download/)
 
 ## 📟 Setting up
 
@@ -33,44 +33,44 @@ You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is b
 
 Here's a brief overview of the project's directory structure:
 
--   `crates/`: Contains the main Rust crates for the project
--   `benches/`: Benchmarking code
--   `docker/`: Docker-related files
--   `helm/`: Helm charts for Kubernetes deployment
--   `scripts/`: Utility scripts
+- `crates/`: Contains the main Rust crates for the project
+- `benches/`: Benchmarking code
+- `docker/`: Docker-related files
+- `helm/`: Helm charts for Kubernetes deployment
+- `scripts/`: Utility scripts
 
 ## 📇 Code conventions
 
 We enforce some conventions to ensure code quality, sustainability, and maintainability. The following tools help us with that:
 
--   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) - Ensures that commit messages are clear and understandable.
--   [Pre-commit](https://pre-commit.com/) - Ensures that the code is formatted and linted before being committed.
--   [Commitlint](https://commitlint.js.org/) - Lints commit messages to ensure they follow the Conventional Commits specification.
+- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) - Ensures that commit messages are clear and understandable.
+- [Pre-commit](https://pre-commit.com/) - Ensures that the code is formatted and linted before being committed.
+- [Commitlint](https://commitlint.js.org/) - Lints commit messages to ensure they follow the Conventional Commits specification.
 
 ### 📝 Writing your Commits & Pull Requests
 
 When creating a commit, please follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Use `category(scope or module): message` in your commit message with one of the following categories:
 
--   `build`: Changes regarding the build of the software, dependencies, or the addition of new dependencies.
--   `ci`: Changes regarding the configuration of continuous integration (e.g., GitHub Actions, CI systems).
--   `docs`: Changes to existing documentation or creation of new documentation (e.g., README, usage docs).
--   `feat`: All changes that introduce completely new code or new features.
--   `fix`: Changes that fix a bug (ideally referencing an issue if present).
--   `perf`: Changes that improve the performance of the software.
--   `refactor`: Any code-related change that is not a fix or a feature.
--   `test`: Changes regarding tests (adding new tests or changing existing ones).
+- `build`: Changes regarding the build of the software, dependencies, or the addition of new dependencies.
+- `ci`: Changes regarding the configuration of continuous integration (e.g., GitHub Actions, CI systems).
+- `docs`: Changes to existing documentation or creation of new documentation (e.g., README, usage docs).
+- `feat`: All changes that introduce completely new code or new features.
+- `fix`: Changes that fix a bug (ideally referencing an issue if present).
+- `perf`: Changes that improve the performance of the software.
+- `refactor`: Any code-related change that is not a fix or a feature.
+- `test`: Changes regarding tests (adding new tests or changing existing ones).
 
 This is a general rule used for commits. When you are creating a PR, ensure that the title follows the same pattern, but in terms of PR, the scope is a mandatory field. That's the scopes allowed at the moment:
 
--   `repo`: Changes that affect a global scope of the repository.
--   `release`: Scoped used for automatic release pull requests.
--   `core`: Changes that affect the core package.
--   `publisher`: Changes that affect the publisher package.
--   `fuel-streams`: Changes that affect the fuel-streams package.
--   `benches`: Changes related to benchmarks.
--   `deps`: Changes related to dependencies.
--   `data-parser`: Changes that affect the data-parser package.
--   `macros`: Changes that affect the macros package.
+- `repo`: Changes that affect a global scope of the repository.
+- `release`: Scoped used for automatic release pull requests.
+- `core`: Changes that affect the core package.
+- `publisher`: Changes that affect the publisher package.
+- `fuel-streams`: Changes that affect the fuel-streams package.
+- `benches`: Changes related to benchmarks.
+- `deps`: Changes related to dependencies.
+- `data-parser`: Changes that affect the data-parser package.
+- `macros`: Changes that affect the macros package.
 
 ## 📜 Useful Commands
 
@@ -137,7 +137,7 @@ If you encounter any other issues not listed here, please open an issue on the G
 
 ## 📚 Additional Resources
 
--   [Rust Documentation](https://doc.rust-lang.org/book/)
--   [Fuel Labs Documentation](https://docs.fuel.network/)
+- [Rust Documentation](https://doc.rust-lang.org/book/)
+- [Fuel Labs Documentation](https://docs.fuel.network/)
 
 We appreciate your contributions to the Fuel Data Systems project!
