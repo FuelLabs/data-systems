@@ -261,6 +261,9 @@ run-publisher: EXTRA_ARGS ?=
 run-publisher: check-network
 	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
+run-ws-server:
+	cargo run --package fuel-ws-streamer --bin ws-server -- --config crates/fuel-ws-streamer/config.toml
+
 # ------------------------------------------------------------
 #  Testing
 # ------------------------------------------------------------

@@ -1,0 +1,79 @@
+[package]
+name = "fuel-ws-streamer"
+description = "Fuel library for streaming data from nats and storage"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[[bin]]
+name = "ws-server"
+path = "src/bin/ws-server.rs"
+
+[[bin]]
+name = "ws-client"
+path = "src/bin/ws-client.rs"
+
+[dependencies]
+actix-cors = { workspace = true }
+actix-server = { workspace = true }
+actix-web = { workspace = true }
+actix-ws = "0.3.0"
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+async-trait = { workspace = true }
+aws-config = "1.5.5"
+aws-sdk-s3 = "1.46.0"
+chrono = { workspace = true }
+clap = { workspace = true }
+confy = "0.6"
+derive_more = { version = "1.0", features = ["full"] }
+displaydoc = { workspace = true }
+dotenvy = { workspace = true }
+elasticsearch = "8.15.0-alpha.1"
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
+futures-util = { workspace = true }
+jsonwebtoken = "9.3.0"
+num_cpus = "1.16"
+parking_lot = { version = "0.12", features = ["serde"] }
+prometheus = { version = "0.13", features = ["process"] }
+rand = { workspace = true }
+reqwest = { version = "^0.12.9", features = ["json", "blocking"] }
+rust_decimal = { version = "1.13" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_prometheus = { version = "0.2" }
+sysinfo = { version = "0.29" }
+thiserror = "2.0"
+tokio = { workspace = true }
+toml = "0.8.19"
+tracing = { workspace = true }
+tracing-actix-web = { workspace = true }
+tungstenite = "0.24.0"
+url = "2.5"
+uuid = { version = "1.11.0", features = ["serde", "v4"] }
+
+[dev-dependencies]
+
+[features]
+default = []
+test-helpers = []
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.x86_64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
