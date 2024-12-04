@@ -20,7 +20,7 @@ spec:
         # Prometheus scraping configuration
         {{- if .Values.prometheus.enabled }}
         prometheus.io/scrape: {{ .Values.prometheus.scrape | quote }}
-        prometheus.io/port: {{ .Values.prometheus.port | quote }}
+        prometheus.io/port: {{ .Values.service.port | quote }}
         prometheus.io/path: {{ .Values.prometheus.path | quote }}
         {{- end }}
         # Add checksums to force pod restart when configs change
@@ -74,11 +74,6 @@ spec:
             - name: http
               containerPort: {{ int .Values.service.port }}
               protocol: TCP
-            {{- if .Values.prometheus.enabled }}
-            - name: metrics
-              containerPort: {{ int .Values.prometheus.port }}
-              protocol: TCP
-            {{- end }}
           # Health check probes
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
