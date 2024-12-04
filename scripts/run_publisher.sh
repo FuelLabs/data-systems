@@ -100,7 +100,7 @@ COMMON_ARGS=(
     "--service-name" "fuel-${NETWORK}-node"
     "--db-path" "./docker/db-${NETWORK}"
     "--snapshot" "./docker/chain-config/${NETWORK}"
-    "--network" "local"
+    "--nats-url" "nats://localhost:4222"
     "--port" "${PORT}"
     "--telemetry-port" "${TELEMETRY_PORT}"
     "--peering-port" "30333"

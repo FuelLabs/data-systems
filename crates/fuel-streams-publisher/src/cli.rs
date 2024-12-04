@@ -2,7 +2,6 @@
 //! to publish streams that can consumed via the `fuel-streams` SDK.
 
 use clap::Parser;
-use fuel_streams::types::FuelNetwork;
 
 /// CLI structure for parsing command-line arguments.
 ///
@@ -13,12 +12,12 @@ pub struct Cli {
     /// Fuel Network to connect to.
     #[arg(
         long,
-        value_name = "NETWORK",
-        env = "NETWORK",
-        default_value = "Local",
-        value_parser = clap::value_parser!(FuelNetwork)
+        value_name = "NATS_URL",
+        env = "NATS_URL",
+        default_value = "localhost:4222",
+        help = "NATS URL to connect to."
     )]
-    pub network: FuelNetwork,
+    pub nats_url: String,
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     pub fuel_core_config: fuel_core_bin::cli::run::Command,

@@ -163,14 +163,48 @@ jobs:
       - name: Lint project
         run: make lint
 
-  test:
+  install-deps:
+    name: Install dependencies
     needs:
       - cargo-verifications
-    name: Test
+      - publish-crates-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+          cache: true
+
+      - name: Install nextest
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-nextest
+          locked: true
+
+      - name: Install dependencies
+        run: cargo fetch
+
+  test:
+    needs: install-deps
+    name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
     env:
+      NATS_URL: nats://127.0.0.1:4222
       NATS_ADMIN_PASS: secret
       NATS_PUBLIC_PASS: secret
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          # - fuel-data-parser
+          # - fuel-indexer
+          - fuel-streams
+          - fuel-streams-core
+          - fuel-streams-macros
+          - fuel-streams-publisher
 
     steps:
       - uses: actions/checkout@v4
@@ -181,72 +215,24 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-nextest
+          locked: true
 
       - name: Start Nats
         run: |
           make start/nats
 
       - name: Run tests
-        run: make test
+        run: make test PROFILE=ci PACKAGE=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()
         run: make stop/nats
 
-  # test-coverage:
-  #   # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-  #   needs:
-  #     - cargo-verifications
-  #   name: Test & Coverage
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     NATS_ADMIN_PASS: secret
-  #     NATS_PUBLIC_PASS: temp-public-pass
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #
-  #     - name: Install Rust
-  #       uses: ./.github/actions/setup-rust
-  #       with:
-  #         toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-  #         target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
-  #         cache: false
-  #
-  #     - name: Start Nats
-  #       run: |
-  #         make start/nats
-  #
-  #     - name: Install dependencies
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y libclang-dev curl
-  #
-  #     - name: Install Tarpaulin (Pre-built Binary)
-  #       uses: taiki-e/cache-cargo-install-action@v2
-  #       with:
-  #         tool: cargo-tarpaulin@0.31
-  #
-  #     - name: Generate Code Coverage
-  #       run: make coverage
-  #
-  #     - name: Upload to codecov.io
-  #       uses: codecov/codecov-action@v4
-  #       if: always()
-  #       with:
-  #         name: codecov-data-systems
-  #         fail_ci_if_error: false
-  #         verbose: true
-  #         files: ./cov-reports/cobertura.xml ./cov-reports/tarpaulin-report.xml
-  #         token: ${{ secrets.CODECOV_TOKEN }}
-  #
-  #     - name: Stop Nats
-  #       if: always()
-  #       run: make stop/nats
-
   build:
-    needs:
-      - cargo-verifications
+    needs: install-deps
     name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
@@ -254,30 +240,41 @@ jobs:
       matrix:
         package:
           - fuel-streams-publisher
+        is_release:
+          - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            build_on_pr: true
           - os_name: Linux-x86_64-musl
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
+            build_on_pr: false
 
           # linux aarch64
           - os_name: Linux-aarch64-gnu
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            build_on_pr: false
           - os_name: Linux-aarch64-musl
             os: ubuntu-latest
             target: aarch64-unknown-linux-musl
+            build_on_pr: false
 
           # macOS
           - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
+            build_on_pr: true
           - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
+            build_on_pr: false
+        exclude:
+          - is_release: false
+            platform: {build_on_pr: false}
     steps:
       - uses: actions/checkout@v4
 

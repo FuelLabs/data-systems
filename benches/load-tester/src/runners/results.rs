@@ -2,7 +2,7 @@ use core::fmt;
 use std::{
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Mutex,
+        RwLock,
     },
     time::{Duration, Instant},
 };
@@ -16,10 +16,10 @@ pub struct LoadTestTracker {
     pub message_count: AtomicUsize,
     pub error_count: AtomicUsize,
     start_time: Instant,
-    pub elapsed_time: Mutex<Option<Duration>>,
-    pub messages_per_second: Mutex<Option<f64>>,
-    pub publish_times: Mutex<Vec<Duration>>,
-    pub mean_publish_time: Mutex<Option<Duration>>,
+    pub elapsed_time: RwLock<Option<Duration>>,
+    pub messages_per_second: RwLock<Option<f64>>,
+    pub publish_times: RwLock<Vec<Duration>>,
+    pub mean_publish_time: RwLock<Option<Duration>>,
 }
 
 impl fmt::Display for LoadTestTracker {
@@ -32,9 +32,9 @@ impl fmt::Display for LoadTestTracker {
             "=".repeat(50),
             self.message_count.load(Ordering::Relaxed),
             self.error_count.load(Ordering::Relaxed),
-            self.elapsed_time.lock().unwrap().unwrap_or_default(),
-            self.messages_per_second.lock().unwrap().unwrap_or_default(),
-            self.mean_publish_time.lock().unwrap().unwrap_or_default(),
+            self.elapsed_time.read().unwrap().unwrap_or_default(),
+            self.messages_per_second.read().unwrap().unwrap_or_default(),
+            self.mean_publish_time.read().unwrap().unwrap_or_default(),
             "=".repeat(50)
         )
     }
@@ -47,10 +47,10 @@ impl LoadTestTracker {
             message_count: AtomicUsize::new(0),
             error_count: AtomicUsize::new(0),
             start_time: Instant::now(),
-            elapsed_time: Mutex::new(None),
-            messages_per_second: Mutex::new(None),
-            publish_times: Mutex::new(vec![]),
-            mean_publish_time: Mutex::new(None),
+            elapsed_time: RwLock::new(None),
+            messages_per_second: RwLock::new(None),
+            publish_times: RwLock::new(vec![]),
+            mean_publish_time: RwLock::new(None),
         }
     }
 
@@ -68,11 +68,11 @@ impl LoadTestTracker {
         let elapsed = self.start_time.elapsed();
         let message_count = self.message_count.load(Ordering::Relaxed);
 
-        if let Ok(mut elapsed_time) = self.elapsed_time.lock() {
+        if let Ok(mut elapsed_time) = self.elapsed_time.write() {
             *elapsed_time = Some(elapsed);
         }
 
-        if let Ok(mut messages_per_second) = self.messages_per_second.lock() {
+        if let Ok(mut messages_per_second) = self.messages_per_second.write() {
             *messages_per_second =
                 Some(message_count as f64 / elapsed.as_secs_f64());
         }
@@ -90,7 +90,7 @@ impl LoadTestTracker {
             .to_std()
             .expect("Duration calculation failed");
 
-        if let Ok(mut times) = self.publish_times.lock() {
+        if let Ok(mut times) = self.publish_times.write() {
             times.push(duration);
         }
         self
@@ -98,7 +98,7 @@ impl LoadTestTracker {
 
     pub fn calculate_mean_publish_time(&self) {
         // Lock the mutex to access publish_times
-        let times = self.publish_times.lock().unwrap();
+        let times = self.publish_times.read().unwrap();
 
         if times.is_empty() {
             return;
@@ -111,7 +111,7 @@ impl LoadTestTracker {
         let data = Data::new(times_ns);
         let mean_ns = data.mean().unwrap();
 
-        if let Ok(mut mean_publish_time) = self.mean_publish_time.lock() {
+        if let Ok(mut mean_publish_time) = self.mean_publish_time.write() {
             *mean_publish_time = Some(Duration::from_nanos(mean_ns as u64));
         }
     }

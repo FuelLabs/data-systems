@@ -2,18 +2,12 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use fuel_streams::client::Client;
-use fuel_streams_core::nats::FuelNetwork;
+use fuel_streams_core::prelude::*;
 use tokio::task::JoinHandle;
 
 use super::{
     results::LoadTestTracker,
-    runner_blocks::run_blocks_consumer,
-    runner_inputs::run_inputs_consumer,
-    runner_logs::run_logs_consumer,
-    runner_outputs::run_outputs_consumer,
-    runner_receipts::run_receipts_consumer,
-    runner_txs::run_txs_consumer,
-    runner_utxos::run_utxos_consumer,
+    runner_streamable::run_streamable_consumer,
 };
 
 pub struct LoadTesterEngine {
@@ -123,9 +117,11 @@ impl LoadTesterEngine {
                     let client = client.clone();
                     let blocks_test_tracker = Arc::clone(&blocks_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_blocks_consumer(&client, blocks_test_tracker)
-                                .await
+                        if let Err(e) = run_streamable_consumer::<Block>(
+                            &client,
+                            blocks_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!(
                                 "Error in blocks subscriptions - {:?}",
@@ -139,8 +135,11 @@ impl LoadTesterEngine {
                     let client = client.clone();
                     let logs_test_tracker = Arc::clone(&logs_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_logs_consumer(&client, logs_test_tracker).await
+                        if let Err(e) = run_streamable_consumer::<Log>(
+                            &client,
+                            logs_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!("Error in logs subscriptions - {:?}", e);
                         }
@@ -151,9 +150,11 @@ impl LoadTesterEngine {
                     let client = client.clone();
                     let inputs_test_tracker = Arc::clone(&inputs_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_inputs_consumer(&client, inputs_test_tracker)
-                                .await
+                        if let Err(e) = run_streamable_consumer::<Input>(
+                            &client,
+                            inputs_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!(
                                 "Error in inputs subscriptions - {:?}",
@@ -167,8 +168,11 @@ impl LoadTesterEngine {
                     let client = client.clone();
                     let txs_test_tracker = Arc::clone(&txs_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_txs_consumer(&client, txs_test_tracker).await
+                        if let Err(e) = run_streamable_consumer::<Transaction>(
+                            &client,
+                            txs_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!("Error in txs subscriptions - {:?}", e);
                         }
@@ -180,9 +184,11 @@ impl LoadTesterEngine {
                     let outputs_test_tracker =
                         Arc::clone(&outputs_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_outputs_consumer(&client, outputs_test_tracker)
-                                .await
+                        if let Err(e) = run_streamable_consumer::<Output>(
+                            &client,
+                            outputs_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!(
                                 "Error in outputs subscriptions - {:?}",
@@ -196,9 +202,11 @@ impl LoadTesterEngine {
                     let client = client.clone();
                     let utxos_test_tracker = Arc::clone(&utxos_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) =
-                            run_utxos_consumer(&client, utxos_test_tracker)
-                                .await
+                        if let Err(e) = run_streamable_consumer::<Utxo>(
+                            &client,
+                            utxos_test_tracker,
+                        )
+                        .await
                         {
                             eprintln!("Error in utxos subscriptions - {:?}", e);
                         }
@@ -210,7 +218,7 @@ impl LoadTesterEngine {
                     let receipts_test_tracker =
                         Arc::clone(&receipts_test_tracker);
                     handles.push(tokio::spawn(async move {
-                        if let Err(e) = run_receipts_consumer(
+                        if let Err(e) = run_streamable_consumer::<Receipt>(
                             &client,
                             receipts_test_tracker,
                         )

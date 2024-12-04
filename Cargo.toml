@@ -24,21 +24,21 @@ actix-cors = "0.7"
 actix-server = "2.5"
 actix-web = "4.9"
 anyhow = "1.0"
-async-nats = "0.37"
+async-nats = "0.38"
 async-trait = "0.1"
-bytes = "1.8"
+bytes = "1.9"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { version = "0.40", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.40", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.40" }
-fuel-core-importer = { version = "0.40" }
-fuel-core-storage = { version = "0.40" }
-fuel-core-types = { version = "0.40", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.40"
+fuel-core-bin = { version = "0.40.1", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.40.1", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.40.1" }
+fuel-core-importer = { version = "0.40.1" }
+fuel-core-storage = { version = "0.40.1" }
+fuel-core-types = { version = "0.40.1", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.40.1"
 futures-util = "0.3"
 itertools = "0.13"
 hex = "0.4"
@@ -54,7 +54,7 @@ tokio-stream = "0.1.16"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-actix-web = "0.7"
-thiserror = "1.0"
+thiserror = "2.0"
 
 fuel-streams = { path = "crates/fuel-streams" }
 fuel-data-parser = { version = "0.0.13", path = "crates/fuel-data-parser" }

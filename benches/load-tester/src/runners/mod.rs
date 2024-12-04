@@ -1,10 +1,4 @@
 pub mod cli;
 pub mod results;
 pub mod runner_all;
-pub mod runner_blocks;
-pub mod runner_inputs;
-pub mod runner_logs;
-pub mod runner_outputs;
-pub mod runner_receipts;
-pub mod runner_txs;
-pub mod runner_utxos;
+pub mod runner_streamable;
