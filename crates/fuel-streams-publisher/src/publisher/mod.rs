@@ -176,18 +176,18 @@ impl Publisher {
         &self,
         latest_block_height: u64,
     ) -> anyhow::Result<u64> {
+        let max_last_published_block_height =
+            max(0, latest_block_height - Self::MAX_RETAINED_BLOCKS);
+
         Ok(self
             .streams
             .get_last_published_block()
             .await?
             .map(|block| block.height.into())
             .map(|block_height: u64| {
-                max(
-                    block_height,
-                    latest_block_height - Self::MAX_RETAINED_BLOCKS,
-                )
+                max(block_height, max_last_published_block_height)
             })
-            .unwrap_or_default())
+            .unwrap_or(max_last_published_block_height))
     }
 
     async fn publish(
