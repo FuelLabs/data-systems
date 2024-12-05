@@ -89,7 +89,7 @@ impl ServerState {
     pub async fn get_health(&self) -> HealthResponse {
         let streams_info = self
             .publisher
-            .streams
+            .fuel_streams
             .get_consumers_and_state()
             .await
             .unwrap_or_default()

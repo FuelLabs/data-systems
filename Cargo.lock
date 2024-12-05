@@ -536,6 +536,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "155a5a185e42c6b77ac7b88a15143d930a9e9727a5b7b77eed417404ab15c247"
 
 [[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
 name = "async-channel"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3647,7 +3653,7 @@ dependencies = [
  "fuel-vm 0.58.2",
  "impl-tools",
  "itertools 0.12.1",
- "mockall",
+ "mockall 0.11.4",
  "num_enum",
  "paste",
  "postcard",
@@ -3944,6 +3950,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-core-client",
+ "fuel-core-importer",
  "fuel-core-types 0.40.1",
  "fuel-data-parser",
  "fuel-streams-macros",
@@ -3984,6 +3991,7 @@ dependencies = [
  "actix-server",
  "actix-web",
  "anyhow",
+ "assert_matches",
  "async-nats",
  "async-trait",
  "chrono",
@@ -4001,7 +4009,8 @@ dependencies = [
  "fuel-streams",
  "fuel-streams-core",
  "futures",
- "itertools 0.13.0",
+ "mockall 0.13.1",
+ "mockall_double",
  "num_cpus",
  "openssl",
  "parking_lot",
@@ -6455,8 +6464,22 @@ dependencies = [
  "downcast",
  "fragile",
  "lazy_static",
- "mockall_derive",
- "predicates",
+ "mockall_derive 0.11.4",
+ "predicates 2.1.5",
+ "predicates-tree",
+]
+
+[[package]]
+name = "mockall"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39a6bfcc6c8c7eed5ee98b9c3e33adc726054389233e201c95dab2d41a3839d2"
+dependencies = [
+ "cfg-if",
+ "downcast",
+ "fragile",
+ "mockall_derive 0.13.1",
+ "predicates 3.1.2",
  "predicates-tree",
 ]
 
@@ -6470,6 +6493,30 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "mockall_derive"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25ca3004c2efe9011bd4e461bd8256445052b9615405b4f7ea43fc8ca5c20898"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
+name = "mockall_double"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1ca96e5ac35256ae3e13536edd39b172b88f41615e1d7b653c8ad24524113e8"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
 ]
 
 [[package]]
@@ -7527,6 +7574,16 @@ dependencies = [
  "normalize-line-endings",
  "predicates-core",
  "regex",
+]
+
+[[package]]
+name = "predicates"
+version = "3.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e9086cc7640c29a356d1a29fd134380bee9d8f79a17410aa76e7ad295f42c97"
+dependencies = [
+ "anstyle",
+ "predicates-core",
 ]
 
 [[package]]

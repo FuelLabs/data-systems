@@ -33,7 +33,6 @@ fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
-itertools = { workspace = true }
 num_cpus = "1.16"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
@@ -53,6 +52,9 @@ tracing-actix-web = { workspace = true }
 url = "2.5"
 
 [dev-dependencies]
+assert_matches = { workspace = true }
+mockall = { workspace = true }
+mockall_double = { workspace = true }
 
 [features]
 default = []
