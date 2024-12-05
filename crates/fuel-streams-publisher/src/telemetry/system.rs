@@ -596,6 +596,7 @@ mod tests {
                 .collect(),
             },
         };
+
         let output = serde_prometheus::to_string(&metrics, None, &[])
             .expect("prometheus");
 

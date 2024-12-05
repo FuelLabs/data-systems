@@ -75,7 +75,7 @@ async fn main() -> BoxedResult<()> {
         .expect("Failed to change directory to workspace root");
 
     // ensure nats is connected and running
-    let client_opts = NatsClientOpts::admin_opts(FuelNetwork::Local)
+    let client_opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
         .with_rdn_namespace()
         .with_timeout(1);
     let is_connected = Client::with_opts(&client_opts)
@@ -124,7 +124,7 @@ async fn main() -> BoxedResult<()> {
                 }
             }
             _ = action_interval.tick() => {
-                let client_opts = NatsClientOpts::admin_opts(FuelNetwork::Local)
+                let client_opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
                 .with_rdn_namespace()
                 .with_timeout(1);
                 let is_nats_connected = Client::with_opts(&client_opts).await.ok().map(|c| c.conn.is_connected()).unwrap_or_default();

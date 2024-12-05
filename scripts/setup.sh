@@ -13,11 +13,18 @@ pnpm install
 # Install fixed nightly toolchain
 rustup toolchain install nightly-2024-11-06 -c rustfmt
 
+install_cmd="cargo binstall --force --no-confirm"
+
 # Install cargo global crates
 cargo install cargo-binstall
-cargo install cargo-tarpaulin
-cargo install --features=ssl websocat
-cargo install samply --locked
-cargo install cargo-audit --locked --features=fix
-cargo install cargo-nextest --locked --features=fix
-cargo binstall --no-confirm cargo-watch knope cargo-sort typos-cli
+$install_cmd cargo-tarpaulin
+$install_cmd samply
+$install_cmd cargo-watch
+$install_cmd knope
+$install_cmd cargo-sort
+$install_cmd typos-cli
+$install_cmd cargo-nextest --secure
+
+# Binstall does not support --features
+cargo install websocat --features=ssl --force
+cargo install cargo-audit --locked --features=fix --force

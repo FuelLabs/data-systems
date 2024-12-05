@@ -12,10 +12,13 @@ config:
   imagePullSecrets: []
   annotations: {}
   labels: {}
-  securityContext: {}
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  resources: {}
+  podSecurityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -43,12 +46,11 @@ serviceAccount:
 
 service:
   type: ClusterIP
-  port: 4000
+  port: 8080
 
 prometheus:
   enabled: true
   scrape: true
-  port: 9000
   path: /metrics
 
 securityContext:
@@ -89,32 +91,25 @@ persistence:
   enabled: true
   data:
     name: rocks-db
+    containerName: update-db-folder
     mountPath: /mnt/db
     size: 800Gi
     storageClass: gp3-generic
     accessMode: ReadWriteOnce
     annotations: {}
+    securityContext:
+      fsGroup: 1000
   temp:
     name: tmp-folder
+    containerName: update-temp-folder
     mountPath: /tmp
     size: 5Gi
     storageClass: gp3-generic
     accessMode: ReadWriteOnce
     annotations: {}
+    securityContext:
+      fsGroup: 1000
 
-env:
-  RELAYER_V2_LISTENING_CONTRACTS: "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
-  RELAYER_DA_DEPLOY_HEIGHT: "20620434"
-  RELAYER_LOG_PAGE_SIZE: "2000"
-  SYNC_HEADER_BATCH_SIZE: "100"
-  P2P_PORT: "30333"
-  RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
-  CHAIN_CONFIG: "mainnet"
-  NETWORK: "mainnet"
-  PUBLISHER_MAX_THREADS: "32"
-  DB_PATH: "/mnt/db/"
-  POA_INSTANT: "false"
-  SERVICE_NAME: "NATS Publisher Node"
 # Additional environment variables with complex structures
 # extraEnv:
 #   - name: RELAYER
@@ -139,3 +134,16 @@ env:
 #   - secretRef:
 #       name: additional-secrets
 
+env:
+  RELAYER_V2_LISTENING_CONTRACTS: "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+  RELAYER_DA_DEPLOY_HEIGHT: "20620434"
+  RELAYER_LOG_PAGE_SIZE: "2000"
+  SYNC_HEADER_BATCH_SIZE: "100"
+  P2P_PORT: "30333"
+  RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
+  CHAIN_CONFIG: "mainnet"
+  PUBLISHER_MAX_THREADS: "32"
+  DB_PATH: "/mnt/db/"
+  POA_INSTANT: "false"
+  SERVICE_NAME: "NATS Publisher Node"
+  NATS_URL: "nats:4222"

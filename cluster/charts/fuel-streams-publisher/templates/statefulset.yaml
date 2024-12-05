@@ -20,16 +20,12 @@ spec:
         # Prometheus scraping configuration
         {{- if .Values.prometheus.enabled }}
         prometheus.io/scrape: {{ .Values.prometheus.scrape | quote }}
-        prometheus.io/port: {{ .Values.prometheus.port | quote }}
+        prometheus.io/port: {{ .Values.service.port | quote }}
         prometheus.io/path: {{ .Values.prometheus.path | quote }}
         {{- end }}
         # Add checksums to force pod restart when configs change
-        {{- if (lookup "v1" "ConfigMap" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }}
-        checksum/config: {{ include (print $.Template.BasePath "/env-configmap.yaml") . | sha256sum }}
-        {{- end }}
-        {{- if (lookup "v1" "Secret" .Release.Namespace (include "fuel-streams-publisher.fullname" .)) }}
-        checksum/secrets: {{ include (print $.Template.BasePath "/env-secrets.yaml") . | sha256sum }}
-        {{- end }}
+        {{/* checksum/config: {{ include (print $.Template.BasePath "/env-configmap.yaml") . | sha256sum }} */}}
+        {{/* checksum/secrets: {{ include (print $.Template.BasePath "/env-secrets.yaml") . | sha256sum }} */}}
         {{- with .Values.config.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -45,11 +41,11 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "fuel-streams-publisher.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.config.securityContext | nindent 8 }}
+        {{- toYaml .Values.config.podSecurityContext | nindent 8 }}
       # Initialize persistent volumes with correct permissions
       {{- if .Values.persistence.enabled }}
       initContainers:
-        - name: update-{{ .Values.persistence.data.name }}-permissions
+        - name: {{ .Values.persistence.data.containerName }}
           image: alpine:latest
           imagePullPolicy: IfNotPresent
           command: ["/bin/chown"]
@@ -57,7 +53,7 @@ spec:
           volumeMounts:
             - name: {{ .Values.persistence.data.name }}
               mountPath: {{ .Values.persistence.data.mountPath }}
-        - name: update-{{ .Values.persistence.temp.name }}-permissions
+        - name: {{ .Values.persistence.temp.containerName }}
           image: alpine:latest
           imagePullPolicy: IfNotPresent
           command: ["/bin/chown"]
@@ -78,9 +74,6 @@ spec:
             - name: http
               containerPort: {{ int .Values.service.port }}
               protocol: TCP
-            - name: metrics
-              containerPort: {{ int .Values.prometheus.port }}
-              protocol: TCP
           # Health check probes
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
@@ -88,7 +81,6 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.config.resources | nindent 12 }}
-          # Environment variables from configmap and secrets
           env:
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
@@ -97,8 +89,14 @@ spec:
             {{- if .Values.extraEnv }}
             {{- toYaml .Values.extraEnv | nindent 12 }}
             {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "fuel-streams-publisher.fullname" . }}
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams-publisher.fullname" . }}
+                optional: true
             {{- if .Values.envFrom }}
-            envFrom:
             {{- toYaml .Values.envFrom | nindent 12 }}
             {{- end }}
 
@@ -141,6 +139,10 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.data.size }}
+        {{- with .Values.persistence.data.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
     - metadata:
         name: {{ .Values.persistence.temp.name }}
         {{- with .Values.persistence.temp.annotations }}
@@ -154,4 +156,8 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.temp.size }}
+        {{- with .Values.persistence.temp.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
   {{- end }}

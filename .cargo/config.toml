@@ -9,3 +9,18 @@ linker = "aarch64-linux-gnu-gcc"
 [profile.profiling]
 inherits = "release"
 debug = 1
+
+[profile.ci]
+inherits = "dev"
+debug = 0
+opt-level = 0
+debug-assertions = true
+codegen-units = 32
+incremental = true
+rpath = false
+lto = false
+panic = 'unwind'
+overflow-checks = true
+
+[net]
+git-fetch-with-cli = true

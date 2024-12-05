@@ -189,7 +189,7 @@ impl<S: Streamable> Stream<S> {
             consumers.push(consumer);
         }
 
-        let state = self.store.stream.cached_info().state;
+        let state = self.store.stream.cached_info().state.clone();
         let stream_name = self.get_stream_name().to_string();
         Ok((stream_name, consumers, state))
     }

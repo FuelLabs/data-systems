@@ -35,10 +35,11 @@ pub struct Publisher {
 impl Publisher {
     pub async fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
-        network: FuelNetwork,
+        nats_url: String,
         telemetry: Arc<Telemetry>,
     ) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::admin_opts(network);
+        let nats_client_opts =
+            NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let streams = Arc::new(Streams::new(&nats_client).await);
 
@@ -175,18 +176,18 @@ impl Publisher {
         &self,
         latest_block_height: u64,
     ) -> anyhow::Result<u64> {
+        let max_last_published_block_height =
+            max(0, latest_block_height - Self::MAX_RETAINED_BLOCKS);
+
         Ok(self
             .streams
             .get_last_published_block()
             .await?
             .map(|block| block.height.into())
             .map(|block_height: u64| {
-                max(
-                    block_height,
-                    latest_block_height - Self::MAX_RETAINED_BLOCKS,
-                )
+                max(block_height, max_last_published_block_height)
             })
-            .unwrap_or_default())
+            .unwrap_or(max_last_published_block_height))
     }
 
     async fn publish(

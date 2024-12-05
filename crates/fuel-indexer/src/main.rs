@@ -1,5 +1,5 @@
 use fuel_streams_core::{
-    nats::{types::DeliverPolicy, FuelNetwork, NatsClient, NatsClientOpts},
+    nats::{types::DeliverPolicy, NatsClient, NatsClientOpts},
     types::{Block, Transaction},
     StreamEncoder,
     Streamable,
@@ -44,7 +44,8 @@ async fn main() -> anyhow::Result<()> {
 
     db.use_ns("fuel_indexer").use_db("fuel_indexer").await?;
 
-    let nats_client_opts = NatsClientOpts::admin_opts(FuelNetwork::Testnet);
+    let nats_client_opts = NatsClientOpts::admin_opts(None)
+        .with_custom_url("nats:4222".to_string());
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
     tokio::try_join!(
