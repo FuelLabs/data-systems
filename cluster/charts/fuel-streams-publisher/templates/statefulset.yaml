@@ -128,10 +128,6 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: {{ .Values.persistence.data.name }}
-        {{- with .Values.persistence.data.annotations }}
-        annotations:
-          {{- toYaml . | nindent 8 }}
-        {{- end }}
       spec:
         accessModes:
           - {{ .Values.persistence.data.accessMode }}
@@ -139,16 +135,8 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.data.size }}
-        {{- with .Values.persistence.data.securityContext }}
-        securityContext:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
     - metadata:
         name: {{ .Values.persistence.temp.name }}
-        {{- with .Values.persistence.temp.annotations }}
-        annotations:
-          {{- toYaml . | nindent 8 }}
-        {{- end }}
       spec:
         accessModes:
           - {{ .Values.persistence.temp.accessMode }}
@@ -156,8 +144,4 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.temp.size }}
-        {{- with .Values.persistence.temp.securityContext }}
-        securityContext:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
   {{- end }}

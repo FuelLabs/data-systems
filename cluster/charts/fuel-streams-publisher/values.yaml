@@ -16,9 +16,7 @@ config:
   tolerations: []
   affinity: {}
   resources: {}
-  podSecurityContext:
-    fsGroup: 1000
-    fsGroupChangePolicy: "OnRootMismatch"
+  podSecurityContext: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -90,25 +88,19 @@ autoscaling:
 persistence:
   enabled: true
   data:
-    name: rocks-db
-    containerName: update-db-folder
+    name: rocks-db-vol
+    containerName: update-rocks-db-vol
     mountPath: /mnt/db
-    size: 800Gi
+    size: 500Gi
     storageClass: gp3-generic
     accessMode: ReadWriteOnce
-    annotations: {}
-    securityContext:
-      fsGroup: 1000
   temp:
-    name: tmp-folder
-    containerName: update-temp-folder
+    name: tmp-vol
+    containerName: update-tmp-vol
     mountPath: /tmp
     size: 5Gi
     storageClass: gp3-generic
     accessMode: ReadWriteOnce
-    annotations: {}
-    securityContext:
-      fsGroup: 1000
 
 # Additional environment variables with complex structures
 # extraEnv:
