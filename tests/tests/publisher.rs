@@ -53,6 +53,9 @@ impl FuelCoreLike for TestFuelCore {
     fn is_started(&self) -> bool {
         true
     }
+    async fn await_synced_at_least_once(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
     async fn stop(&self) {}
 
     async fn await_offchain_db_sync(
