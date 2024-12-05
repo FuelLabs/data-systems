@@ -1,20 +1,19 @@
 pub mod fuel_core_like;
+pub mod fuel_streams;
 pub mod payloads;
 pub mod shutdown;
-pub mod streams;
 
-mod unpublished_blocks;
+mod blocks_streams;
 
-use std::{cmp::max, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Context;
+use blocks_streams::build_blocks_stream;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
+pub use fuel_streams::{FuelStreams, FuelStreamsExt};
 use fuel_streams_core::prelude::*;
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-pub use streams::Streams;
 use tokio::sync::Semaphore;
-use tokio_stream::wrappers::BroadcastStream;
-use unpublished_blocks::UnpublishedBlocks;
 
 use super::{
     payloads::blocks,
@@ -23,12 +22,11 @@ use super::{
     PUBLISHER_MAX_THREADS,
 };
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Publisher {
     pub fuel_core: Arc<dyn FuelCoreLike>,
     pub nats_client: NatsClient,
-    pub streams: Arc<Streams>,
+    pub fuel_streams: Arc<dyn FuelStreamsExt>,
     pub telemetry: Arc<Telemetry>,
 }
 
@@ -41,16 +39,16 @@ impl Publisher {
         let nats_client_opts =
             NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let streams = Arc::new(Streams::new(&nats_client).await);
+        let fuel_streams = Arc::new(FuelStreams::new(&nats_client).await);
 
         telemetry.record_streams_count(
             fuel_core.chain_id(),
-            streams.subjects_wildcards().len(),
+            fuel_streams.subjects_wildcards().len(),
         );
 
         Ok(Publisher {
             fuel_core,
-            streams,
+            fuel_streams,
             nats_client,
             telemetry,
         })
@@ -63,15 +61,15 @@ impl Publisher {
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
             fuel_core,
-            streams: Arc::new(Streams::new(nats_client).await),
+            fuel_streams: Arc::new(FuelStreams::new(nats_client).await),
             nats_client: nats_client.clone(),
             telemetry: Telemetry::new().await?,
         })
     }
 
     #[cfg(feature = "test-helpers")]
-    pub fn get_streams(&self) -> &Streams {
-        &self.streams
+    pub fn get_fuel_streams(&self) -> &Arc<(dyn FuelStreamsExt + 'static)> {
+        &self.fuel_streams
     }
 
     async fn shutdown_services_with_timeout(&self) -> anyhow::Result<()> {
@@ -96,50 +94,26 @@ impl Publisher {
         }
     }
 
+    const MAX_RETAINED_BLOCKS: u64 = 100;
     pub async fn run(
         &self,
         shutdown_token: ShutdownToken,
     ) -> anyhow::Result<()> {
         tracing::info!("Publishing started...");
 
-        let latest_block_height = self.fuel_core.get_latest_block_height()?;
-        let last_published_block_height = self
-            .get_last_published_block_height(latest_block_height)
-            .await?;
-
-        // TODO: Move the synchronous operations here to a dedicated Rayon pool
-        let old_blocks_stream = futures::stream::iter(
-            last_published_block_height..latest_block_height,
-        )
-        .map(|height| self.fuel_core.get_sealed_block_by_height(height as u32));
-
-        let new_blocks_stream = BroadcastStream::new(
-            self.fuel_core.blocks_subscription(),
-        )
-        .map(|import_result| {
-            import_result
-                .expect("Failed to get ImportResult")
-                .sealed_block
-                .clone()
-        });
-
-        let unpublished_blocks =
-            UnpublishedBlocks::new(last_published_block_height);
-
-        let mut blocks_stream =
-            futures::stream::select(old_blocks_stream, new_blocks_stream);
+        let mut blocks_stream = build_blocks_stream(
+            &self.fuel_streams,
+            &self.fuel_core,
+            Self::MAX_RETAINED_BLOCKS,
+        );
 
         loop {
             tokio::select! {
-                Some(block) = blocks_stream.next() => {
-                    let unpublished_blocks = unpublished_blocks.clone();
-                    unpublished_blocks.add_block(block);
-                    let next_blocks_to_publish =
-                        unpublished_blocks.get_next_blocks_to_publish();
+                Some(sealed_block) = blocks_stream.next() => {
+                    let sealed_block = sealed_block.context("block streams failed to produce sealed block")?;
 
-                    tracing::info!("Processing blocks stream");
+                        tracing::info!("Processing blocks stream");
 
-                    for sealed_block in next_blocks_to_publish.into_iter() {
                         let fuel_core = &self.fuel_core;
                         let (block, block_producer) =
                             fuel_core.get_block_and_producer(sealed_block);
@@ -154,7 +128,7 @@ impl Publisher {
                             tracing::error!("Failed to publish block data: {}", err);
                             self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
                         }
-                    }
+
                 },
                 shutdown = shutdown_token.wait_for_shutdown() => {
                     if shutdown {
@@ -169,25 +143,6 @@ impl Publisher {
         tracing::info!("Publishing stopped successfully!");
 
         Ok(())
-    }
-
-    const MAX_RETAINED_BLOCKS: u64 = 100;
-    async fn get_last_published_block_height(
-        &self,
-        latest_block_height: u64,
-    ) -> anyhow::Result<u64> {
-        let max_last_published_block_height =
-            max(0, latest_block_height - Self::MAX_RETAINED_BLOCKS);
-
-        Ok(self
-            .streams
-            .get_last_published_block()
-            .await?
-            .map(|block| block.height.into())
-            .map(|block_height: u64| {
-                max(block_height, max_last_published_block_height)
-            })
-            .unwrap_or(max_last_published_block_height))
     }
 
     async fn publish(
@@ -214,8 +169,8 @@ impl Publisher {
         let fuel_core = &*self.fuel_core;
         let offchain_database = fuel_core.offchain_database()?;
 
-        let streams = (*self.streams).clone();
-        let block_stream = Arc::new(streams.blocks.to_owned());
+        let fuel_streams = &*self.fuel_streams;
+        let blocks_stream = Arc::new(fuel_streams.blocks().to_owned());
         let opts = &Arc::new(PublishOpts {
             semaphore,
             chain_id,
@@ -228,12 +183,15 @@ impl Publisher {
         });
 
         let publish_tasks = payloads::transactions::publish_all_tasks(
-            txs, streams, opts, fuel_core,
+            txs,
+            fuel_streams,
+            opts,
+            fuel_core,
         )?
         .into_iter()
         .chain(std::iter::once(blocks::publish_task(
             block,
-            block_stream,
+            blocks_stream,
             opts,
             transaction_ids,
         )))
@@ -273,7 +231,6 @@ pub fn publish<S: Streamable + 'static>(
     stream: Arc<Stream<S>>,
     opts: &Arc<PublishOpts>,
 ) -> JoinHandle<anyhow::Result<()>> {
-    let stream = Arc::clone(&stream);
     let opts = Arc::clone(opts);
     let payload = Arc::clone(&packet.payload);
     let subject = Arc::clone(&packet.subject);

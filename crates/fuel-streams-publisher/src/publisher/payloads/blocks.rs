@@ -25,5 +25,5 @@ pub fn publish_task(
         .arc(),
     );
 
-    publish(&packet, Arc::clone(&stream), opts)
+    publish(&packet, stream, opts)
 }

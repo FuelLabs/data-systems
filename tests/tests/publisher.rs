@@ -15,6 +15,7 @@ use fuel_streams_publisher::{
 use futures::StreamExt;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
+// TODO - Re-implement with `mockall` and `mock` macros
 struct TestFuelCore {
     chain_id: FuelCoreChainId,
     base_asset_id: FuelCoreAssetId,
@@ -46,7 +47,9 @@ impl TestFuelCore {
 
 #[async_trait::async_trait]
 impl FuelCoreLike for TestFuelCore {
-    async fn start(&self) {}
+    async fn start(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
     fn is_started(&self) -> bool {
         true
     }
@@ -92,7 +95,7 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let shutdown_controller = start_publisher(&publisher).await;
     stop_publisher(shutdown_controller).await;
 
-    assert!(publisher.get_streams().is_empty().await);
+    assert!(publisher.get_fuel_streams().is_empty().await);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -103,8 +106,8 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
-        .get_streams()
-        .blocks
+        .get_fuel_streams()
+        .blocks()
         .get_last_published(BlocksSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
@@ -118,8 +121,8 @@ async fn publishes_transaction_for_each_published_block() {
     publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
-        .get_streams()
-        .transactions
+        .get_fuel_streams()
+        .transactions()
         .get_last_published(TransactionsSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
@@ -224,8 +227,12 @@ async fn publishes_receipts() {
 
     publish_block(&publisher, &blocks_broadcaster).await;
 
-    let mut receipts_stream =
-        publisher.get_streams().receipts.catchup(10).await.unwrap();
+    let mut receipts_stream = publisher
+        .get_fuel_streams()
+        .receipts()
+        .catchup(10)
+        .await
+        .unwrap();
 
     let receipts: HashSet<Receipt> = receipts.iter().map(Into::into).collect();
     while let Some(Some(receipt)) = receipts_stream.next().await {
@@ -241,8 +248,8 @@ async fn publishes_inputs() {
     publish_block(&publisher, &blocks_broadcaster).await;
 
     assert!(publisher
-        .get_streams()
-        .inputs
+        .get_fuel_streams()
+        .inputs()
         .get_last_published(InputsByIdSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));

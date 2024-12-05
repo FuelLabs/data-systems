@@ -16,3 +16,7 @@ pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
         .and_then(|val| val.parse().ok())
         .unwrap_or(default_threads)
 });
+
+#[cfg(test)]
+#[macro_use]
+extern crate assert_matches;
