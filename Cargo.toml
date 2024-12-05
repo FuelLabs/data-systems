@@ -33,13 +33,13 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { version = "0.40.1", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core = { version = "0.40.1", features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-client = { version = "0.40.1" }
-fuel-core-importer = { version = "0.40.1" }
-fuel-core-storage = { version = "0.40.1" }
-fuel-core-types = { version = "0.40.1", features = ["test-helpers", "serde"] }
-fuel-core-services = "0.40.1"
+fuel-core-bin = { version = "0.40.0", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.40.0", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.40.0" }
+fuel-core-importer = { version = "0.40.0" }
+fuel-core-storage = { version = "0.40.0" }
+fuel-core-types = { version = "0.40.0", features = ["test-helpers", "serde"] }
+fuel-core-services = "0.40.0"
 futures-util = "0.3"
 itertools = "0.13"
 mockall = "0.13"
