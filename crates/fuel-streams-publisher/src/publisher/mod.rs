@@ -54,6 +54,11 @@ impl Publisher {
         })
     }
 
+    pub fn is_healthy(&self) -> bool {
+        // TODO: Update this condition to include more health checks
+        self.fuel_core.is_started() && self.nats_client.is_connected()
+    }
+
     #[cfg(feature = "test-helpers")]
     pub async fn default(
         nats_client: &NatsClient,
@@ -99,6 +104,12 @@ impl Publisher {
         &self,
         shutdown_token: ShutdownToken,
     ) -> anyhow::Result<()> {
+        tracing::info!("Awaiting FuelCore Sync...");
+
+        self.fuel_core.await_synced_at_least_once().await?;
+
+        tracing::info!("FuelCore has synced successfully!");
+
         tracing::info!("Publishing started...");
 
         let mut blocks_stream = build_blocks_stream(

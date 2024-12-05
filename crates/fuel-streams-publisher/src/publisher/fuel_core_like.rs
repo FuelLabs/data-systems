@@ -34,6 +34,7 @@ pub type OffchainDatabase = GenericDatabase<
 pub trait FuelCoreLike: Sync + Send {
     async fn start(&self) -> anyhow::Result<()>;
     fn is_started(&self) -> bool;
+    async fn await_synced_at_least_once(&self) -> anyhow::Result<()>;
     async fn stop(&self);
 
     fn base_asset_id(&self) -> &FuelCoreAssetId;
@@ -163,8 +164,6 @@ impl FuelCore {
         let fuel_service =
             fuel_core_bin::cli::run::get_service(command).await?;
 
-        fuel_service.await_relayer_synced().await?;
-
         let fuel_core: Self = fuel_service.into();
 
         Ok(fuel_core.arc())
@@ -183,9 +182,12 @@ impl FuelCoreLike for FuelCore {
 
         Ok(())
     }
-
     fn is_started(&self) -> bool {
         self.fuel_service.state().started()
+    }
+    async fn await_synced_at_least_once(&self) -> anyhow::Result<()> {
+        self.fuel_service.await_relayer_synced().await?;
+        Ok(())
     }
 
     async fn stop(&self) {

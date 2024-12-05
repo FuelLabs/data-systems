@@ -77,13 +77,7 @@ impl ServerState {
 
 impl ServerState {
     pub fn is_healthy(&self) -> bool {
-        if !self.publisher.fuel_core.is_started() {
-            return false;
-        }
-        if !self.publisher.nats_client.is_connected() {
-            return false;
-        }
-        true
+        self.publisher.is_healthy()
     }
 
     pub async fn get_health(&self) -> HealthResponse {

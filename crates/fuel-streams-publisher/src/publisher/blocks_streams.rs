@@ -327,6 +327,7 @@ mod tests {
             fn blocks_subscription(&self) -> broadcast::Receiver<FuelCoreImporterResult>;
             async fn start(&self) -> anyhow::Result<()>;
             fn is_started(&self) -> bool;
+            async fn await_synced_at_least_once(&self) -> anyhow::Result<()>;
             async fn stop(&self);
             fn base_asset_id(&self) -> &FuelCoreAssetId;
             fn chain_id(&self) -> &FuelCoreChainId;
