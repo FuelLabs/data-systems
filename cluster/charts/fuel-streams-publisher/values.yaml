@@ -58,25 +58,8 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 1000
 
-livenessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 30 # Increase for slower startups
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 6
-  successThreshold: 1
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-  successThreshold: 1
+livenessProbe: {}
+readinessProbe: {}
 
 autoscaling:
   enabled: false
