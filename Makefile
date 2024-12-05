@@ -356,6 +356,12 @@ docs-serve: docs
 	@echo "Serving documentation on http://localhost:8000"
 	@python3 -m http.server 8000 --directory target/doc
 
+# ------------------------------------------------------------
+#  Load Testing
+# ------------------------------------------------------------
+
+load-test:
+	cargo run -p load-tester -- --network testnet --max-subscriptions 10 --step-size 1
 
 # ------------------------------------------------------------
 #  Benchmarking
