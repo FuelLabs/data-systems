@@ -161,7 +161,7 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-machete
       - name: Lint project
-        run: make lint
+        run: just lint
 
   install-deps:
     name: Install dependencies
@@ -222,14 +222,14 @@ jobs:
 
       - name: Start Nats
         run: |
-          make start/nats
+          just docker-up
 
       - name: Run tests
-        run: make test PROFILE=ci PACKAGE=${{ matrix.package }}
+        run: just test profile=ci package=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()
-        run: make stop/nats
+        run: just docker-down
 
   build:
     needs: install-deps

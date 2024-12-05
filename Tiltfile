@@ -18,7 +18,7 @@ custom_build(
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './docker/fuel-streams-publisher.Dockerfile'
+        './cluster/docker/fuel-streams-publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),

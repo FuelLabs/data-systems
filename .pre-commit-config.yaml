@@ -32,7 +32,7 @@ repos:
       - id: format
         name: format
         description: Format files using different tools
-        entry: make fmt
+        entry: just fmt
         language: rust
         pass_filenames: false
 

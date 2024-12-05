@@ -24,7 +24,7 @@ $install_cmd knope
 $install_cmd cargo-sort
 $install_cmd typos-cli
 $install_cmd cargo-nextest --secure
+$install_cmd just
 
 # Binstall does not support --features
-cargo install websocat --features=ssl --force
 cargo install cargo-audit --locked --features=fix --force

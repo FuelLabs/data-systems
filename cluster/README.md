@@ -27,31 +27,31 @@ The following are prerequisites for spinning up the fuel-data-systems cluster lo
 
 1. To setup and start the local environment, run:
    ```bash
-   make cluster_setup  # Sets up both minikube and kubernetes configuration
+   just cluster-setup  # Sets up both minikube and kubernetes configuration
    ```
 
    Alternatively, you can run the setup steps individually:
    ```bash
-   make minikube_setup  # Sets up minikube with required addons
-   make k8s_setup       # Configures kubernetes with proper namespace and context
+   just minikube-setup  # Sets up minikube with required addons
+   just k8s-setup      # Configures kubernetes with proper namespace and context
    ```
 
    You can also start the minikube cluster without running the setup script:
    ```bash
-   make minikube_start  # Start minikube cluster
+   just minikube-start  # Start minikube cluster
    ```
 
 2. Start the Tilt services:
    ```bash
-   make cluster_up  # Starts Tiltfile services
+   just cluster-up  # Starts Tiltfile services
    ```
 
 You can use the following commands to manage the services:
 ```bash
-make cluster_up     # Start services
-make cluster_down   # Stop services
-make cluster_reset  # Reset services
-make minikube_start # Start minikube (if you've already run setup before)
+just cluster-up      # Start services
+just cluster-down    # Stop services
+just cluster-reset   # Reset services
+just minikube-start  # Start minikube (if you've already run setup before)
 ```
 
 ## Using `k9s` for an interactive terminal UI
