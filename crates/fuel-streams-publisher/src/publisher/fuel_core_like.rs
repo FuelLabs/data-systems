@@ -163,6 +163,8 @@ impl FuelCore {
         let fuel_service =
             fuel_core_bin::cli::run::get_service(command).await?;
 
+        fuel_service.await_relayer_synced().await?;
+
         let fuel_core: Self = fuel_service.into();
 
         Ok(fuel_core.arc())
