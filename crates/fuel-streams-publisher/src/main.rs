@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
 
     let fuel_core: Arc<dyn FuelCoreLike> =
         FuelCore::new(cli.fuel_core_config).await?;
-    fuel_core.start().await;
+    fuel_core.start().await?;
 
     let telemetry = Telemetry::new().await?;
     telemetry.start().await?;

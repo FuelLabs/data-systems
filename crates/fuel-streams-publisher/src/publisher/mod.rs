@@ -3,18 +3,21 @@ pub mod payloads;
 pub mod shutdown;
 pub mod streams;
 
-mod unpublished_blocks;
-
-use std::{cmp::max, sync::Arc};
+use std::{cmp::max, pin::Pin, sync::Arc};
 
 use anyhow::Context;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
+use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
-use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
+use futures::{
+    future::try_join_all,
+    stream::{self, BoxStream, FuturesUnordered},
+    StreamExt,
+    TryStreamExt,
+};
 pub use streams::Streams;
 use tokio::sync::Semaphore;
 use tokio_stream::wrappers::BroadcastStream;
-use unpublished_blocks::UnpublishedBlocks;
 
 use super::{
     payloads::blocks,
@@ -23,7 +26,6 @@ use super::{
     PUBLISHER_MAX_THREADS,
 };
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Publisher {
     pub fuel_core: Arc<dyn FuelCoreLike>,
@@ -102,44 +104,16 @@ impl Publisher {
     ) -> anyhow::Result<()> {
         tracing::info!("Publishing started...");
 
-        let latest_block_height = self.fuel_core.get_latest_block_height()?;
-        let last_published_block_height = self
-            .get_last_published_block_height(latest_block_height)
-            .await?;
-
-        // TODO: Move the synchronous operations here to a dedicated Rayon pool
-        let old_blocks_stream = futures::stream::iter(
-            last_published_block_height..latest_block_height,
-        )
-        .map(|height| self.fuel_core.get_sealed_block_by_height(height as u32));
-
-        let new_blocks_stream = BroadcastStream::new(
-            self.fuel_core.blocks_subscription(),
-        )
-        .map(|import_result| {
-            import_result
-                .expect("Failed to get ImportResult")
-                .sealed_block
-                .clone()
-        });
-
-        let unpublished_blocks =
-            UnpublishedBlocks::new(last_published_block_height);
-
-        let mut blocks_stream =
-            futures::stream::select(old_blocks_stream, new_blocks_stream);
+        let mut stream_of_blocks_stream = self.get_blocks_stream();
 
         loop {
             tokio::select! {
-                Some(block) = blocks_stream.next() => {
-                    let unpublished_blocks = unpublished_blocks.clone();
-                    unpublished_blocks.add_block(block);
-                    let next_blocks_to_publish =
-                        unpublished_blocks.get_next_blocks_to_publish();
+                Some(sealed_block) = stream_of_blocks_stream.next() => {
 
-                    tracing::info!("Processing blocks stream");
+                    let sealed_block = sealed_block.context("block streams failed to produce sealed block")?;
 
-                    for sealed_block in next_blocks_to_publish.into_iter() {
+                        tracing::info!("Processing blocks stream");
+
                         let fuel_core = &self.fuel_core;
                         let (block, block_producer) =
                             fuel_core.get_block_and_producer(sealed_block);
@@ -154,7 +128,7 @@ impl Publisher {
                             tracing::error!("Failed to publish block data: {}", err);
                             self.telemetry.record_failed_publishing(self.fuel_core.chain_id(), &block_producer);
                         }
-                    }
+
                 },
                 shutdown = shutdown_token.wait_for_shutdown() => {
                     if shutdown {
@@ -171,13 +145,65 @@ impl Publisher {
         Ok(())
     }
 
-    const MAX_RETAINED_BLOCKS: u64 = 100;
+    fn get_blocks_stream<'a>(
+        &'a self,
+    ) -> BoxStream<'a, anyhow::Result<SealedBlock>> {
+        let this = Arc::new(self.clone());
+
+        stream::try_unfold((), move |_state| {
+            let this = Arc::clone(&this);
+            let fuel_core = this.fuel_core.clone();
+
+            async move {
+                let latest_block_height =
+                    fuel_core.get_latest_block_height()?;
+                let last_published_block_height = this
+                    .get_last_published_block_height(latest_block_height)
+                    .await?;
+
+                let old_blocks_stream = stream::iter(
+                    last_published_block_height..latest_block_height,
+                )
+                .map({
+                    let fuel_core = fuel_core.clone();
+
+                    move |height| {
+                        (&fuel_core).get_sealed_block_by_height(height as u32)
+                    }
+                });
+
+                let has_published_latest =
+                    latest_block_height == last_published_block_height;
+
+                let blocks_stream = if has_published_latest {
+                    BroadcastStream::new(fuel_core.blocks_subscription())
+                        .map(|import_result| {
+                            import_result
+                                .expect("Failed to get ImportResult")
+                                .sealed_block
+                                .clone()
+                        })
+                        .map(Ok)
+                        .boxed()
+                } else {
+                    old_blocks_stream.map(Ok).boxed()
+                };
+
+                anyhow::Ok(Some((blocks_stream, ())))
+            }
+        })
+        .try_flatten()
+        .boxed()
+    }
+
+    const MAX_RETAINED_BLOCKS: i64 = 100;
     async fn get_last_published_block_height(
         &self,
         latest_block_height: u64,
     ) -> anyhow::Result<u64> {
         let max_last_published_block_height =
-            max(0, latest_block_height - Self::MAX_RETAINED_BLOCKS);
+            max(0, latest_block_height as i64 - Self::MAX_RETAINED_BLOCKS)
+                as u64;
 
         Ok(self
             .streams

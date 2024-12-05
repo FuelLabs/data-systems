@@ -46,7 +46,9 @@ impl TestFuelCore {
 
 #[async_trait::async_trait]
 impl FuelCoreLike for TestFuelCore {
-    async fn start(&self) {}
+    async fn start(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
     fn is_started(&self) -> bool {
         true
     }
