@@ -38,8 +38,7 @@ async fn main() -> anyhow::Result<()> {
     // Process incoming transactions
     while let Some(bytes) = sub.next().await {
         let message = bytes?;
-        let decoded_msg =
-            Transaction::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Transaction::decode_raw(message.payload.to_vec());
         let tx = decoded_msg.payload;
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;

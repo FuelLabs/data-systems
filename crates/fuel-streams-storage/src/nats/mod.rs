@@ -13,3 +13,4 @@ pub use error::*;
 pub use nats_client::*;
 pub use nats_client_opts::*;
 pub use nats_namespace::*;
+pub use types::*;

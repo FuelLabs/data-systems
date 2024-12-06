@@ -104,7 +104,7 @@ async fn main() -> Result<()> {
     // Process incoming receipts
     while let Some(bytes) = sub.next().await {
         let message = bytes.unwrap();
-        let decoded_msg = Receipt::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Receipt::decode_raw(message.payload.to_vec());
         let receipt = decoded_msg.payload;
         let receipt_subject = decoded_msg.subject;
         let receipt_published_at = decoded_msg.timestamp;

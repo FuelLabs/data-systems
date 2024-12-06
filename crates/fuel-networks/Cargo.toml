@@ -1,0 +1,14 @@
+[package]
+name = "fuel-networks"
+description = "Networks for the Fuel blockchain and utilities for tranforming them for different apps"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+clap = { workspace = true }

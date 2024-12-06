@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use async_nats::ConnectOptions;
+use fuel_networks::FuelNetwork;
 
 use super::NatsNamespace;
 
@@ -9,28 +10,6 @@ pub enum NatsUserRole {
     Admin,
     #[default]
     Default,
-}
-
-#[derive(Debug, Copy, Clone, Default, clap::ValueEnum)]
-pub enum FuelNetwork {
-    Local,
-    #[default]
-    Testnet,
-    Mainnet,
-}
-
-impl FuelNetwork {
-    pub fn to_url(&self) -> String {
-        match self {
-            FuelNetwork::Local => "nats://localhost:4222".to_string(),
-            FuelNetwork::Testnet => {
-                "nats://stream-testnet.fuel.network:4222".to_string()
-            }
-            FuelNetwork::Mainnet => {
-                "nats://stream.fuel.network:4222".to_string()
-            }
-        }
-    }
 }
 
 /// Represents options for configuring a NATS client.
@@ -77,7 +56,7 @@ pub struct NatsClientOpts {
 impl NatsClientOpts {
     pub fn new(network: Option<FuelNetwork>) -> Self {
         Self {
-            url: network.unwrap_or_default().to_url(),
+            url: network.unwrap_or_default().to_nats_url(),
             role: NatsUserRole::default(),
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
@@ -102,7 +81,7 @@ impl NatsClientOpts {
 
     pub fn with_fuel_network(self, network: FuelNetwork) -> Self {
         Self {
-            url: network.to_url(),
+            url: network.to_nats_url(),
             ..self
         }
     }

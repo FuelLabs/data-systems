@@ -29,7 +29,7 @@ pub async fn run_streamable_consumer<S: Streamable>(
             Err(_) => load_test_tracker.increment_error_count(),
             Ok(message) => {
                 load_test_tracker.increment_message_count();
-                let decoded_msg = S::decode_raw(message.payload.to_vec()).await;
+                let decoded_msg = S::decode_raw(message.payload.to_vec());
                 let ts_millis = decoded_msg.ts_as_millis();
                 load_test_tracker
                     .add_publish_time(ts_millis)

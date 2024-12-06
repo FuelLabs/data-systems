@@ -12,6 +12,7 @@ use blocks_streams::build_blocks_stream;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
 pub use fuel_streams::{FuelStreams, FuelStreamsExt};
 use fuel_streams_core::prelude::*;
+use fuel_streams_storage::S3Client;
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
 use tokio::sync::Semaphore;
 
@@ -185,6 +186,8 @@ impl Publisher {
 
         let fuel_streams = &*self.fuel_streams;
         let blocks_stream = Arc::new(fuel_streams.blocks().to_owned());
+        let s3_client = S3Client::new("fuel-streams", "u2-eas-1").await?;
+
         let opts = &Arc::new(PublishOpts {
             semaphore,
             chain_id,
@@ -194,6 +197,7 @@ impl Publisher {
             telemetry: self.telemetry.clone(),
             consensus: Arc::new(consensus),
             offchain_database,
+            s3_client: Arc::new(s3_client),
         });
 
         let publish_tasks = payloads::transactions::publish_all_tasks(
@@ -238,6 +242,7 @@ pub struct PublishOpts {
     pub telemetry: Arc<Telemetry>,
     pub consensus: Arc<Consensus>,
     pub offchain_database: Arc<OffchainDatabase>,
+    pub s3_client: Arc<S3Client>,
 }
 
 pub fn publish<S: Streamable + 'static>(
@@ -246,15 +251,16 @@ pub fn publish<S: Streamable + 'static>(
     opts: &Arc<PublishOpts>,
 ) -> JoinHandle<anyhow::Result<()>> {
     let opts = Arc::clone(opts);
-    let payload = Arc::clone(&packet.payload);
-    let subject = Arc::clone(&packet.subject);
+    let packet = packet.clone();
+    let s3_client = Arc::clone(&opts.s3_client);
     let telemetry = Arc::clone(&opts.telemetry);
     let wildcard = packet.subject.wildcard();
 
     tokio::spawn(async move {
         let _permit = opts.semaphore.acquire().await?;
 
-        match stream.publish(&*subject, &payload).await {
+        // Publish to NATS
+        match stream.publish(&packet, &s3_client).await {
             Ok(published_data_size) => {
                 telemetry.log_info(&format!(
                     "Successfully published for stream: {}",

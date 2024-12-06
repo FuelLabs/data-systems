@@ -23,6 +23,8 @@ version = "0.0.13"
 actix-cors = "0.7"
 actix-server = "2.5"
 actix-web = "4.9"
+aws-sdk-s3 = "1.65.0"
+aws-config = "1.5.10"
 anyhow = "1.0"
 async-nats = "0.38"
 async-trait = "0.1"
@@ -60,10 +62,12 @@ tracing-actix-web = "0.7"
 thiserror = "2.0"
 
 fuel-streams = { path = "crates/fuel-streams" }
+fuel-networks = { path = "crates/fuel-networks" }
 fuel-data-parser = { version = "0.0.13", path = "crates/fuel-data-parser" }
 fuel-streams-core = { version = "0.0.13", path = "crates/fuel-streams-core" }
 fuel-streams-publisher = { version = "0.0.13", path = "crates/fuel-streams-publisher" }
 fuel-streams-macros = { version = "0.0.13", path = "crates/fuel-streams-macros" }
+fuel-streams-storage = { version = "0.0.13", path = "crates/fuel-streams-storage" }
 subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
 
 # Workspace projects

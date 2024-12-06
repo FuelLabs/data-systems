@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use fuel_streams_core::{
     nats::NatsClient,
@@ -46,11 +46,16 @@ pub fn publish_items<T: Streamable + 'static>(
         let stream = stream.clone();
         let items = items.clone();
         async move {
+            let s3_client = S3Client::new("fuel-streams-tests", "us-east-1")
+                .await
+                .unwrap();
             for item in items {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 let payload = item.1.clone();
-                let subject = item.0;
-                stream.publish(&subject, &payload).await.unwrap();
+                let subject = Arc::new(item.0);
+                let packet = payload.to_packet(subject);
+
+                stream.publish(&packet, &s3_client).await.unwrap();
             }
         }
     })

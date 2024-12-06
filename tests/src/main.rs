@@ -112,7 +112,7 @@ async fn main() -> BoxedResult<()> {
                 let (index, bytes) = bytes.unzip();
                 if let Some(bytes) = bytes.flatten() {
                     println!("Valid subscription");
-                    let decoded_msg = Block::decode_raw(bytes).await;
+                    let decoded_msg = Block::decode_raw(bytes);
                     let (subject, block) = items[index.unwrap()].to_owned();
                     let height = decoded_msg.payload.height;
                     assert_eq!(decoded_msg.subject, subject.parse());
