@@ -1,3 +1,22 @@
+## 0.0.14 (2024-12-06)
+
+### 🚀 Features
+
+- Updated crates and npm packages (#341)
+
+### 🐛 Fixes
+
+- Resolve block publication race conditions and synchronization issues (#329)
+- Fixed telemetry envs and port (#330)
+- Mainnet DNS value for NATS (#339)
+- Rollback NATS_URL for Publisher (#343)
+- Fix last published logic to honor retention policy (#344)
+- Simplify and test BlocksStream for old and new blocks (#346)
+- Rollback fuel-core to v0.40.0
+- Allow healthcheck while awaiting relayer node sync (#347)
+- Update cargo.lock
+- Using fuel-core from branch release/v0.40.2
+
 ## 0.0.13 (2024-11-28)
 
 ### 🚀 Features
