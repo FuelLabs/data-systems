@@ -18,3 +18,24 @@ services:
       - -D
     env_file:
       - ./../../.env
+  localstack:
+    profiles:
+      - all
+      - s3
+      - dev
+      - monitoring
+    image: localstack/localstack:latest
+    container_name: localstack
+    restart: always
+    ports:
+      - "4566:4566"  # LocalStack main gateway port
+      - "4572:4572"  # S3 service port (optional)
+    environment:
+      - SERVICES=s3  # Enable just S3 service
+      - DEBUG=1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - DEFAULT_REGION=us-east-1
+    volumes:
+      - ./localstack-data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
