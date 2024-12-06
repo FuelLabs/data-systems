@@ -29,6 +29,7 @@ pub struct Publisher {
     pub nats_client: NatsClient,
     pub fuel_streams: Arc<dyn FuelStreamsExt>,
     pub telemetry: Arc<Telemetry>,
+    pub s3_client: Arc<S3Client>,
 }
 
 impl Publisher {
@@ -41,6 +42,7 @@ impl Publisher {
             NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let fuel_streams = Arc::new(FuelStreams::new(&nats_client).await);
+        let s3_client = Arc::new(S3Client::new("fuel-streams").await?);
 
         telemetry.record_streams_count(
             fuel_core.chain_id(),
@@ -52,6 +54,7 @@ impl Publisher {
             fuel_streams,
             nats_client,
             telemetry,
+            s3_client,
         })
     }
 
@@ -65,11 +68,16 @@ impl Publisher {
         nats_client: &NatsClient,
         fuel_core: Arc<dyn FuelCoreLike>,
     ) -> anyhow::Result<Self> {
+        let namespace = nats_client.namespace.to_string();
+
         Ok(Publisher {
             fuel_core,
             fuel_streams: Arc::new(FuelStreams::new(nats_client).await),
             nats_client: nats_client.clone(),
             telemetry: Telemetry::new().await?,
+            s3_client: Arc::new(
+                S3Client::new(&format!("test-streams-{namespace}")).await?,
+            ),
         })
     }
 
@@ -186,7 +194,6 @@ impl Publisher {
 
         let fuel_streams = &*self.fuel_streams;
         let blocks_stream = Arc::new(fuel_streams.blocks().to_owned());
-        let s3_client = S3Client::new("fuel-streams", "u2-eas-1").await?;
 
         let opts = &Arc::new(PublishOpts {
             semaphore,
@@ -197,7 +204,7 @@ impl Publisher {
             telemetry: self.telemetry.clone(),
             consensus: Arc::new(consensus),
             offchain_database,
-            s3_client: Arc::new(s3_client),
+            s3_client: Arc::clone(&self.s3_client),
         });
 
         let publish_tasks = payloads::transactions::publish_all_tasks(

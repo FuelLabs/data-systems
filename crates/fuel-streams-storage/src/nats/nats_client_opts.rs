@@ -19,7 +19,8 @@ pub enum NatsUserRole {
 /// Creating a new `NatsClientOpts` instance:
 ///
 /// ```
-/// use fuel_streams_core::nats::{NatsClientOpts, FuelNetwork};
+/// use fuel_streams_storage::nats::NatsClientOpts;
+/// use fuel_networks::FuelNetwork;
 ///
 /// let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 /// ```
@@ -27,7 +28,8 @@ pub enum NatsUserRole {
 /// Creating a public `NatsClientOpts`:
 ///
 /// ```
-/// use fuel_streams_core::nats::{NatsClientOpts, FuelNetwork};
+/// use fuel_streams_storage::nats::NatsClientOpts;
+/// use fuel_networks::FuelNetwork;
 ///
 /// let opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local));
 /// ```
@@ -35,7 +37,8 @@ pub enum NatsUserRole {
 /// Modifying `NatsClientOpts`:
 ///
 /// ```
-/// use fuel_streams_core::nats::{NatsClientOpts, NatsUserRole, FuelNetwork};
+/// use fuel_streams_storage::nats::{NatsClientOpts, NatsUserRole};
+/// use fuel_networks::FuelNetwork;
 ///
 /// let opts = NatsClientOpts::new(Some(FuelNetwork::Local))
 ///     .with_role(NatsUserRole::Admin)

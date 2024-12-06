@@ -154,7 +154,6 @@ impl<S: Streamable> Stream<S> {
                 bucket: bucket_name.to_owned(),
                 storage: stream::StorageType::File,
                 history: 1,
-                compression: true,
                 ..Default::default()
             })
             .await
