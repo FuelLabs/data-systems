@@ -64,7 +64,7 @@ Create the name of the service account to use
 {{/*
 Generic configuration merger that handles deep merging of configs
 Input expects:
-- service: name of the service (e.g., "prometheus", "kibana")
+- service: name of the service (e.g., "prometheus")
 - component: name of the component to merge (e.g., "resources", "securityContext")
 - context: the root context (.)
 - defaultKey: the key for default values (e.g., "global.resources", "global.securityContext")
@@ -88,7 +88,7 @@ Input expects:
 {{- end }}
 {{- $mergedConfig := deepCopy $defaultConfig }}
 {{- if $serviceConfig }}
-{{- $_ := mergeOverwrite $mergedConfig $serviceConfig }}
+{{- $_ := mustMergeOverwrite $mergedConfig $serviceConfig }}
 {{- end }}
 {{- toYaml $mergedConfig }}
 {{- end }}
@@ -97,7 +97,7 @@ Input expects:
 Common resource management
 */}}
 {{- define "common.resources" -}}
-{{- if not .context.Values.config.disableResourceLimits }}
+{{- if .context.Values.global.resources.enabled }}
 resources:
 {{- include "common.merge-with-defaults" (dict "service" .service "context" .context "defaultKey" "global.resources" "path" "resources") | nindent 2 }}
 {{- end }}
@@ -107,7 +107,7 @@ resources:
 Common security context for pods
 */}}
 {{- define "common.security-context" -}}
-{{- if not .context.Values.config.disableSecurityContext }}
+{{- if .context.Values.global.securityContext.enabled }}
 securityContext:
 {{- include "common.merge-with-defaults" (dict "service" .service "context" .context "defaultKey" "global.securityContext" "path" "securityContext") | nindent 2 }}
 {{- end }}
@@ -132,6 +132,7 @@ affinity:
 {{- include "common.merge-with-defaults" (dict "service" .service "context" .context "defaultKey" "global.affinity" "path" "affinity") | nindent 2 }}
 {{- end }}
 {{- end }}
+
 {{/*
 Common probes configuration
 */}}

@@ -1,0 +1,13 @@
+{{ if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "fuel-local.fullname" . }}-prometheus-data
+  {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ default "10Gi" .Values.prometheus.storage }}
+{{ end }}

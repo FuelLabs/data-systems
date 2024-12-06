@@ -1,0 +1,42 @@
+{{ if .Values.prometheus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "fuel-local.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "fuel-local.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "common.security-context" (dict "service" "prometheus" "context" .) | nindent 6 }}
+      {{- include "common.pod-anti-affinity" (dict "service" "prometheus" "context" .) | nindent 6 }}
+      serviceAccountName: {{ include "fuel-local.serviceAccountName" . }}
+      containers:
+        - name: prometheus
+          {{- include "common.container-security-context" (dict "service" "prometheus" "context" .) | nindent 10 }}
+          image: "{{ .Values.prometheus.image }}:{{ .Values.prometheus.tag }}"
+          ports:
+            - name: "http"
+              containerPort: 9090
+          {{- include "common.probes" (dict "service" "prometheus" "serviceProbes" .Values.prometheus.probes "context" .) | nindent 10 }}
+          {{- include "common.resources" (dict "service" "prometheus" "context" .) | nindent 10 }}
+          volumeMounts:
+            - mountPath: /etc/prometheus/prometheus.yml
+              name: prometheus-config
+              subPath: prometheus.yml
+            - mountPath: /prometheus
+              name: prometheus-data
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: {{ include "fuel-local.fullname" . }}-prometheus
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: {{ include "fuel-local.fullname" . }}-prometheus-data
+{{ end }}
+

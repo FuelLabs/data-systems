@@ -1,0 +1,13 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "fuel-local.fullname" . }}-grafana-storage
+  {{- include "common.metadata" (dict "service" "grafana" "context" .) | nindent 2 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.grafana.storage | default "2Gi" }}
+{{- end }}

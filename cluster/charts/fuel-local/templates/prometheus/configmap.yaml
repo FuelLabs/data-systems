@@ -1,0 +1,9 @@
+{{ if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
+data:
+  prometheus.yml: {{ tpl (.Files.Get (printf "files/%s/monitoring/prometheus.yaml" (.Values.prometheus.configFilesFolders.prometheus | default "master"))) . | quote }}
+{{ end }}
+

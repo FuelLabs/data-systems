@@ -1,25 +1,4 @@
 {{- if .Values.grafana.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  {{- include "common.metadata" (dict "service" "grafana-datasources" "context" .) | nindent 2 }}
-data:
-  datasources.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/datasources.yaml" (.Values.grafana.configFilesFolders.datasources | default "master"))) . | quote }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  {{- include "common.metadata" (dict "service" "grafana-dashboards-provisioning" "context" .) | nindent 2 }}
-data:
-  dashboards.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards.yaml" (.Values.grafana.configFilesFolders.dashboards | default "master"))) . | quote }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  {{- include "common.metadata" (dict "service" "grafana-dashboards" "context" .) | nindent 2 }}
-data:
-  fuel-publisher-metrics-dashboard.json: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards/fuel-publisher-metrics-dashboard.json" (.Values.grafana.configFilesFolders.fuelPublisher | default "master"))) . | quote }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -68,16 +47,4 @@ spec:
       - name: grafana-storage
         persistentVolumeClaim:
           claimName: {{ include "fuel-local.fullname" . }}-grafana-storage
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "fuel-local.fullname" . }}-grafana-storage
-  {{- include "common.metadata" (dict "service" "grafana" "context" .) | nindent 2 }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.grafana.storage | default "2Gi" }}
 {{- end }}

@@ -1,0 +1,23 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-datasources" "context" .) | nindent 2 }}
+data:
+  datasources.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/datasources.yaml" (.Values.grafana.configFilesFolders.datasources | default "master"))) . | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-dashboards-provisioning" "context" .) | nindent 2 }}
+data:
+  dashboards.yaml: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards.yaml" (.Values.grafana.configFilesFolders.dashboards | default "master"))) . | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "common.metadata" (dict "service" "grafana-dashboards" "context" .) | nindent 2 }}
+data:
+  fuel-publisher-metrics-dashboard.json: {{ tpl (.Files.Get (printf "files/%s/monitoring/grafana/dashboards/fuel-publisher-metrics-dashboard.json" (.Values.grafana.configFilesFolders.fuelPublisher | default "master"))) . | quote }}
+{{- end }}
+

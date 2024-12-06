@@ -1,20 +1,4 @@
 {{- if .Values.elasticsearch.enabled }}
-apiVersion: v1
-kind: Service
-metadata:
-  {{- include "common.metadata" (dict "service" "elasticsearch" "context" .) | nindent 2 }}
-spec:
-  clusterIP: None
-  ports:
-    - name: "elasticsearch1"
-      port: 9200
-      targetPort: 9200
-    - name: "elasticsearch2"
-      port: 9300
-      targetPort: 9300
-  selector:
-    {{- include "fuel-local.selectorLabels" . | nindent 4 }}
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -64,3 +48,4 @@ spec:
           requests:
             storage: {{ default "1Gi" .Values.elasticsearch.storage }}
 {{- end }}
+

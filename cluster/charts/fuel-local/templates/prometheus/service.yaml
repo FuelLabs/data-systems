@@ -1,0 +1,15 @@
+{{ if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "common.metadata" (dict "service" "prometheus" "context" .) | nindent 2 }}
+spec:
+  ports:
+    - name: prometheus
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    {{- include "fuel-local.selectorLabels" . | nindent 4 }}
+{{ end }}
+

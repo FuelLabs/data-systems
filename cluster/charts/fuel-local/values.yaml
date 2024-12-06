@@ -8,10 +8,6 @@ config:
   fullnameOverride: ""
   # Enable network policy that allows only traffic from the fuel-local namespace
   networkPolicy: true
-  # Disable security context management
-  disableSecurityContext: false
-  # Disable resource limits management
-  disableResourceLimits: false
   # Wait for service dependencies to be ready before starting the fuel-local services
   waitForServiceDependencies: true
   # Create roles and rolebindings for the fuel-local serviceaccount
@@ -25,25 +21,6 @@ serviceAccount:
   name: fuel-local-serviceaccount
   create: true
   automount: true
-
-# Service configurations
-kibana:
-  enabled: true
-  image: "docker.elastic.co/kibana/kibana"
-  tag: "8.15.5"
-  storage: 1Gi
-  containerSecurityContext:
-    readOnlyRootFilesystem: false
-  probes:
-    healthPath: "/api/status"
-    port: 5601
-  resources:
-    limits:
-      cpu: 0.5
-      memory: 2Gi
-  env:
-    - name: ELASTICSEARCH_SSL_VERIFICATIONMODE
-      value: "none"
 
 elasticsearch:
   enabled: true
@@ -142,6 +119,7 @@ global:
     privileged: false
 
   resources:
+    enabled: true
     requests:
       cpu: 0.05
       memory: 10Mi

@@ -1,16 +1,4 @@
 {{- if and .Values.config.highAvailability }}
-{{- if .Values.elasticsearch.enabled }}
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  {{- include "common.metadata" (dict "service" "elasticsearch-pdb" "context" .) | nindent 2 }}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      {{- include "fuel-local.selectorLabels" . | nindent 6 }}
----
-{{- end }}
 {{- if .Values.prometheus.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -23,3 +11,4 @@ spec:
       {{- include "fuel-local.selectorLabels" . | nindent 6 }}
 {{- end }}
 {{- end }}
+
