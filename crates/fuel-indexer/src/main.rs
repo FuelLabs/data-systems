@@ -71,7 +71,7 @@ async fn sync_blocks(
 
     while let Some(msg) = subscription.next().await {
         let msg = msg?;
-        let block = Block::decode(msg.payload.clone().into()).await;
+        let block = Block::decode(msg.payload.clone().into());
         let height = block.height;
         let id = height.to_string();
         let key = ("block".to_string(), id.clone());
@@ -104,7 +104,7 @@ async fn sync_transactions(
 
     while let Some(msg) = subscription.next().await {
         let msg = msg?;
-        let transaction = Transaction::decode(msg.payload.clone().into()).await;
+        let transaction = Transaction::decode(msg.payload.clone().into());
         let tx_id = &transaction.id;
         let id = format!("0x{}", tx_id);
         let key = ("transaction".to_string(), id.clone());

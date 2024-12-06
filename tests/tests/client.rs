@@ -298,7 +298,7 @@ async fn ensure_deduplication_when_publishing() -> BoxedResult<()> {
         match timeout(timeout_duration, sub.next()).await {
             Ok(Some((idx, entry))) => {
                 assert!(entry.is_some());
-                let decoded_msg = Block::decode_raw(entry.unwrap()).await;
+                let decoded_msg = Block::decode_raw(entry.unwrap());
                 let (subject, _block) = items[idx].to_owned();
                 let height = decoded_msg.payload.height;
                 assert_eq!(decoded_msg.subject, subject.parse());

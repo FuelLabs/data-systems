@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     // Process incoming UTXOs
     while let Some(bytes) = sub.next().await {
         let message = bytes?;
-        let decoded_msg = Utxo::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Utxo::decode_raw(message.payload.to_vec());
         let utxo_subject = decoded_msg.subject;
         let utxo_published_at = decoded_msg.timestamp;
 

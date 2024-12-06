@@ -1,6 +1,6 @@
 #[cfg(any(test, feature = "test-helpers"))]
 use std::pin::Pin;
-use std::{fmt::Debug, sync::Arc, time::Duration};
+use std::{fmt::Debug, sync::Arc};
 
 use async_nats::{
     jetstream::{
@@ -11,27 +11,30 @@ use async_nats::{
     RequestErrorKind,
 };
 use async_trait::async_trait;
+use fuel_networks::FuelNetwork;
 use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_storage::*;
 use futures::{StreamExt, TryStreamExt};
+use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
 
 use super::{error::StreamError, stream_encoding::StreamEncoder};
-use crate::{nats::types::*, prelude::NatsClient};
-
-pub const FUEL_BLOCK_TIME_SECS: u64 = 1;
-pub const MAX_RETENTION_BLOCKS: u64 = 100;
 
 #[derive(Clone)]
 pub struct PublishPacket<T: Streamable> {
     pub subject: Arc<dyn IntoSubject>,
     pub payload: Arc<T>,
+    pub s3_path: String,
 }
 
 impl<T: Streamable> PublishPacket<T> {
     pub fn new(payload: T, subject: Arc<dyn IntoSubject>) -> Self {
+        let s3_path = payload.get_s3_path(&subject.parse());
+
         Self {
             payload: Arc::new(payload),
             subject,
+            s3_path,
         }
     }
 }
@@ -64,6 +67,24 @@ pub trait Streamable: StreamEncoder {
 
     fn to_packet(&self, subject: Arc<dyn IntoSubject>) -> PublishPacket<Self> {
         PublishPacket::new(self.clone(), subject)
+    }
+
+    fn get_s3_path(&self, subject: &str) -> String {
+        format!(
+            "{}/{}/v1/{}.json",
+            FuelNetwork::load_from_env(),
+            Self::NAME,
+            self.get_consistent_hash(subject)
+        )
+    }
+
+    fn get_consistent_hash(&self, subject: &str) -> String {
+        let serialized = self.encode(subject);
+
+        let mut hasher = Sha256::new();
+        hasher.update(serialized);
+
+        format!("{:x}", hasher.finalize())
     }
 }
 
@@ -118,25 +139,22 @@ impl<S: Streamable> Stream<S> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
-    pub async fn get_or_init(client: &NatsClient) -> Self {
+    pub async fn get_or_init(nats_client: &NatsClient) -> Self {
         let cell = Self::INSTANCE;
-        cell.get_or_init(|| async { Self::new(client).await.to_owned() })
+        cell.get_or_init(|| async { Self::new(nats_client).await.to_owned() })
             .await
             .to_owned()
     }
 
-    pub async fn new(client: &NatsClient) -> Self {
-        let namespace = &client.namespace;
+    pub async fn new(nats_client: &NatsClient) -> Self {
+        let namespace = &nats_client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
-        let store = client
+        let store = nats_client
             .get_or_create_kv_store(kv::Config {
                 bucket: bucket_name.to_owned(),
                 storage: stream::StorageType::File,
                 history: 1,
                 compression: true,
-                max_age: Duration::from_secs(
-                    FUEL_BLOCK_TIME_SECS * MAX_RETENTION_BLOCKS,
-                ),
                 ..Default::default()
             })
             .await
@@ -150,27 +168,34 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn publish(
         &self,
-        subject: &dyn IntoSubject,
-        payload: &S,
+        packet: &PublishPacket<S>,
+        s3_client: &S3Client,
     ) -> Result<usize, StreamError> {
-        let subject_name = &subject.parse();
-        self.publish_raw(subject_name, payload).await
+        let payload = &packet.payload;
+        let s3_path = &packet.s3_path;
+        let subject_name = &packet.subject.parse();
+
+        // publish payload to S3
+        s3_client
+            .put_object(s3_path, payload.encode(subject_name))
+            .await?;
+
+        self.publish_s3_path_to_nats(subject_name, s3_path).await
     }
 
-    /// Publish with subject name with no static guarantees of the subject
-    pub async fn publish_raw(
+    async fn publish_s3_path_to_nats(
         &self,
         subject_name: &str,
-        payload: &S,
+        s3_path: &str,
     ) -> Result<usize, StreamError> {
-        let data = payload.encode(subject_name).await;
+        let data = s3_path.to_string().into_bytes();
         let data_size = data.len();
+
         let result = self.store.create(subject_name, data.into()).await;
 
         match result {
             Ok(_) => Ok(data_size),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
-                // This is a workaround to avoid publish two times the same message
                 Ok(data_size)
             }
             Err(e) => Err(StreamError::PublishFailed {
@@ -233,7 +258,7 @@ impl<S: Streamable> Stream<S> {
         let stream = consumer.messages().await?.take(number_of_messages).then(
             |message| async {
                 if let Ok(message) = message {
-                    Some(S::decode(message.payload.to_vec()).await)
+                    Some(S::decode(message.payload.to_vec()))
                 } else {
                     None
                 }
@@ -300,7 +325,7 @@ impl<S: Streamable> Stream<S> {
 
         match message {
             Ok(message) => {
-                let payload = S::decode(message.payload.to_vec()).await;
+                let payload = S::decode(message.payload.to_vec());
 
                 Ok(Some(payload))
             }

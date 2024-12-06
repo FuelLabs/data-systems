@@ -1,0 +1,32 @@
+[package]
+name = "fuel-streams-storage"
+description = "strategies and adapters for storing fuel streams in transient and file storage systems (i.e. NATS and S3)"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+async-nats = { workspace = true }
+aws-config = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+displaydoc = { workspace = true }
+dotenvy = { workspace = true }
+fuel-networks = { workspace = true }
+futures = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+default = []
+test-helpers = []
+bench-helpers = []

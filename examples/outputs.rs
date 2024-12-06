@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     // Process incoming outputs
     while let Some(bytes) = sub.next().await {
         let message = bytes?;
-        let decoded_msg = Output::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Output::decode_raw(message.payload.to_vec());
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;
 

@@ -14,7 +14,7 @@ async fn blocks_streams_subscribe() {
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
-        let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
+        let decoded_msg = Block::decode_raw(bytes.unwrap());
         let (subject, block) = items[i].to_owned();
         let height = decoded_msg.payload.height;
 
@@ -53,8 +53,7 @@ async fn blocks_streams_subscribe_with_filter() {
     // result should be just 1 single message with height 5
     while let Some(message) = sub.next().await {
         let message = message.unwrap();
-        let decoded_msg =
-            Block::decode_raw(message.payload.clone().into()).await;
+        let decoded_msg = Block::decode_raw(message.payload.clone().into());
         let height = decoded_msg.payload.height;
         assert_eq!(height, 5);
         if height == 5 {
@@ -76,8 +75,7 @@ async fn transactions_streams_subscribe() {
 
     let mut sub = stream.subscribe().await.unwrap().enumerate();
     while let Some((i, bytes)) = sub.next().await {
-        let decoded_msg =
-            Transaction::decode_raw(bytes.unwrap().to_vec()).await;
+        let decoded_msg = Transaction::decode_raw(bytes.unwrap().to_vec());
 
         let (_, transaction) = items[i].to_owned();
         assert_eq!(decoded_msg.payload, transaction);
@@ -116,7 +114,7 @@ async fn transactions_streams_subscribe_with_filter() {
     while let Some((i, message)) = sub.next().await {
         let message = message.unwrap();
         let payload = message.payload.clone().into();
-        let decoded_msg = Transaction::decode(payload).await;
+        let decoded_msg = Transaction::decode(payload);
 
         let (_, transaction) = items[i].to_owned();
         assert_eq!(decoded_msg, transaction);
@@ -145,7 +143,7 @@ async fn multiple_subscribers_same_subject() {
         handles.push(tokio::spawn(async move {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
-                let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
+                let decoded_msg = Block::decode_raw(bytes.unwrap());
                 let (subject, block) = items[i].to_owned();
                 let height = decoded_msg.payload.height;
 
@@ -204,7 +202,7 @@ async fn multiple_subscribers_different_subjects() {
         handles.push(tokio::spawn(async move {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
-                let decoded_msg = Block::decode_raw(bytes.unwrap()).await;
+                let decoded_msg = Block::decode_raw(bytes.unwrap());
                 let (subject, block) = items[i].to_owned();
                 let height = decoded_msg.payload.height;
 
@@ -225,7 +223,7 @@ async fn multiple_subscribers_different_subjects() {
             let mut sub = stream.subscribe().await.unwrap().enumerate();
             while let Some((i, bytes)) = sub.next().await {
                 let decoded_msg =
-                    Transaction::decode_raw(bytes.unwrap().to_vec()).await;
+                    Transaction::decode_raw(bytes.unwrap().to_vec());
                 let (_, transaction) = items[i].to_owned();
                 assert_eq!(decoded_msg.payload, transaction);
                 if i == 9 {
