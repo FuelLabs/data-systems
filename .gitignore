@@ -21,3 +21,5 @@ coverage/
 docs/
 **/**/charts/**.tgz
 values-publisher-secrets.yaml
+values-publisher-env.yaml
+localstack-data
