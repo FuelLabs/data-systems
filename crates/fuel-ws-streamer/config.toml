@@ -1,5 +1,5 @@
 [api]
-port = "9003"
+port = 9003
 
 [nats]
 url = "nats://localhost:4222"

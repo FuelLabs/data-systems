@@ -3,8 +3,12 @@ use std::{sync::Arc, time::Duration};
 use aws_sdk_s3::Client as S3Client;
 use fuel_streams_core::prelude::*;
 
-use super::streams::Streams;
-use crate::{config::Config, systems::s3::s3_connect, telemetry::Telemetry};
+use crate::{
+    config::Config,
+    server::ws::streams::Streams,
+    systems::s3::s3_connect,
+    telemetry::Telemetry,
+};
 
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -23,6 +27,7 @@ impl Context {
         let nats_client_opts = NatsClientOpts::default_opts(None)
             .with_custom_url(config.nats.url.clone());
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
+        tracing::info!("XXXXXXXXXXXXXXXXXX");
         let streams = Arc::new(Streams::new(&nats_client).await);
 
         let telemetry = Telemetry::new().await?;

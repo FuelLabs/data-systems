@@ -3,24 +3,40 @@ use clap::Parser;
 use fuel_ws_streamer::{
     cli::Cli,
     config::Config,
-    server::{context::Context, http::create_web_server, state::ServerState},
+    server::{api::create_api, context::Context, state::ServerState},
 };
+use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // init tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
+
     // load envs
     dotenvy::dotenv().context("Failed to env values")?;
 
     // read cli args
     let cli = Cli::parse();
 
-    // init config
-    let mut config = Config::new(cli.config_path)
-        .await
-        .context("Failed to load toml config")?;
-
-    // update config using envs
-    config.from_envs();
+    // load config
+    let config = match cli.config_path {
+        Some(path) => {
+            tracing::info!("Using config file: {}", path);
+            Config::from_path(path)
+                .await
+                .context("Failed to load toml config")?
+        }
+        None => {
+            tracing::info!("Using envs to load config");
+            Config::from_envs().context("Failed to load toml config")?
+        }
+    };
 
     // init context
     let context = Context::new(&config).await?;
@@ -29,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
     let state = ServerState::new(context).await;
 
     // create the actix webserver
-    let server = create_web_server(&config, state)?;
+    let server = create_api(&config, state)?;
 
     // get server handle
     let server_handle = server.handle();

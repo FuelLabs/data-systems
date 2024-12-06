@@ -16,6 +16,7 @@ pub struct Streams {
 
 impl Streams {
     pub async fn new(nats_client: &NatsClient) -> Self {
+        tracing::info!("YYYYYYYYYYYYYYYYYYYY");
         Self {
             transactions: Stream::<Transaction>::new(nats_client).await,
             blocks: Stream::<Block>::new(nats_client).await,

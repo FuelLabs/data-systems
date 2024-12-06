@@ -13,11 +13,11 @@ use super::{
     sha256,
     utxos::publish_tasks as publish_utxos,
 };
-use crate::{publish, FuelCoreLike, PublishOpts, Streams};
+use crate::{publish, FuelCoreLike, FuelStreamsExt, PublishOpts};
 
 pub fn publish_all_tasks(
     transactions: &[FuelCoreTransaction],
-    streams: Streams,
+    fuel_streams: &dyn FuelStreamsExt,
     opts: &Arc<PublishOpts>,
     fuel_core: &dyn FuelCoreLike,
 ) -> anyhow::Result<Vec<JoinHandle<anyhow::Result<()>>>> {
@@ -39,21 +39,26 @@ pub fn publish_all_tasks(
             tx_item,
             &tx_id,
             &tx_status,
-            &streams.transactions,
+            fuel_streams.transactions(),
             opts,
             &receipts,
         ));
-        tasks.extend(publish_inputs(tx, &tx_id, &streams.inputs, opts));
-        tasks.extend(publish_outputs(tx, &tx_id, &streams.outputs, opts));
+        tasks.extend(publish_inputs(tx, &tx_id, fuel_streams.inputs(), opts));
+        tasks.extend(publish_outputs(tx, &tx_id, fuel_streams.outputs(), opts));
         tasks.extend(publish_receipts(
             &tx_id,
-            &streams.receipts,
+            fuel_streams.receipts(),
             opts,
             &receipts,
         ));
-        tasks.extend(publish_outputs(tx, &tx_id, &streams.outputs, opts));
-        tasks.extend(publish_logs(&tx_id, &streams.logs, opts, &receipts));
-        tasks.extend(publish_utxos(tx, &tx_id, &streams.utxos, opts));
+        tasks.extend(publish_outputs(tx, &tx_id, fuel_streams.outputs(), opts));
+        tasks.extend(publish_logs(
+            &tx_id,
+            fuel_streams.logs(),
+            opts,
+            &receipts,
+        ));
+        tasks.extend(publish_utxos(tx, &tx_id, fuel_streams.utxos(), opts));
     }
 
     Ok(tasks)

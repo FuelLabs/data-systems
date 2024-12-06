@@ -107,6 +107,7 @@ pub trait Streamable: StreamEncoder {
 /// ```
 ///
 /// TODO: Split this into two traits StreamPublisher + StreamSubscriber
+/// TODO: Rename as FuelStream?
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
     store: kv::Store,

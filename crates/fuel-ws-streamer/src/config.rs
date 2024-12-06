@@ -1,6 +1,7 @@
 use std::{
+    num::ParseIntError,
     path::{Path, PathBuf},
-    str::FromStr,
+    str::{FromStr, ParseBoolError},
     time::Duration,
 };
 
@@ -26,6 +27,10 @@ pub enum Error {
     Confy(ConfyError),
     /// Missing config element: {0}
     MissingConfigElement(&'static str),
+    /// Parse int error: {0}
+    ParseInt(ParseIntError),
+    /// Parse bool error: {0}
+    ParseBool(ParseBoolError),
 }
 
 #[derive(Debug, Default, Deserialize, Clone)]
@@ -119,70 +124,46 @@ where
 }
 
 impl Config {
-    pub async fn new(path: impl AsRef<Path> + Send) -> Result<Self, Error> {
+    pub async fn from_path(
+        path: impl AsRef<Path> + Send,
+    ) -> Result<Self, Error> {
         read_to_string(path).await?.parse()
     }
 
-    pub fn from_envs(&mut self) {
-        // // ----------------------DB--------------------------------
-        // let db_user = std::env::var("POSTGRES_USER").ok();
-        // if let Some(db_user) = db_user {
-        //     self.db.username = db_user;
-        // }
+    pub fn from_envs() -> Result<Self, Error> {
+        let mut config = Self::default();
 
-        // let db_pwd = std::env::var("POSTGRES_PASSWORD").ok();
-        // if let Some(db_pwd) = db_pwd {
-        //     self.db.password = Some(db_pwd);
-        // }
+        // ----------------------API--------------------------------
+        if let Ok(app_port) = dotenvy::var("API_PORT") {
+            config.api.port =
+                app_port.parse::<u16>().map_err(Error::ParseInt)?;
+        }
 
-        // let db_name = std::env::var("POSTGRES_DB").ok();
-        // if let Some(db_name) = db_name {
-        //     self.db.database = Some(db_name);
-        // }
+        // ----------------------NATS--------------------------------
+        if let Ok(nats_url) = dotenvy::var("NATS_URL") {
+            config.nats.url = nats_url;
+        }
 
-        // let db_host = std::env::var("POSTGRES_HOST").ok();
-        // if let Some(db_host) = db_host {
-        //     self.db.host = db_host;
-        // }
+        // ----------------------S3--------------------------------
+        if let Ok(s3_enabled) = dotenvy::var("S3_ENABLED") {
+            config.s3.enabled =
+                s3_enabled.parse::<bool>().map_err(Error::ParseBool)?;
+        }
+        if let Ok(s3_region) = dotenvy::var("S3_REGION") {
+            config.s3.region = s3_region;
+        }
+        if let Ok(s3_bucket) = dotenvy::var("S3_BUCKET") {
+            config.s3.bucket = s3_bucket;
+        }
+        if let Ok(s3_endpoint) = dotenvy::var("S3_ENDPOINT") {
+            config.s3.endpoint = s3_endpoint;
+        }
 
-        // let db_port = std::env::var("POSTGRES_PORT")
-        //     .ok()
-        //     .map(|p| p.parse::<u16>().ok())
-        //     .flatten();
-        // if let Some(db_port) = db_port {
-        //     self.db.port = db_port;
-        // }
-
-        // // ----------------------AMQP--------------------------------
-        // let amqp_host = std::env::var("RABBITMQ_HOST").ok();
-        // if let Some(amqp_host) = amqp_host {
-        //     self.amqp.host = amqp_host;
-        // }
-
-        // let amqp_port = std::env::var("RABBITMQ_PORT")
-        //     .ok()
-        //     .map(|p| p.parse::<u16>().ok())
-        //     .flatten();
-        // if let Some(amqp_port) = amqp_port {
-        //     self.amqp.port = amqp_port;
-        // }
-
-        // let amqp_user = std::env::var("RABBITMQ_USER").ok();
-        // if let Some(amqp_user) = amqp_user {
-        //     self.amqp.username = amqp_user;
-        // }
-
-        // let amqp_pwd = std::env::var("RABBITMQ_PASSWORD").ok();
-        // if let Some(amqp_pwd) = amqp_pwd {
-        //     self.amqp.password = amqp_pwd;
-        // }
-
-        // // ----------------------JWT--------------------------------
-        // if let Some(jwt_secret) = std::env::var("JWT_SECRET").ok() {
-        //     self.auth.jwt_secret = jwt_secret;
-        // }
-
-        // ----------------------REDIS--------------------------------
+        // ----------------------AUTH--------------------------------
+        if let Ok(jwt_secret) = dotenvy::var("JWT_SECRET") {
+            config.auth.jwt_secret = jwt_secret;
+        }
+        Ok(config)
     }
 }
 

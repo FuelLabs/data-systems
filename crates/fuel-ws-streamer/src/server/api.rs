@@ -4,15 +4,18 @@ use actix_cors::Cors;
 use actix_server::Server;
 use actix_web::{
     http,
-    middleware::Logger as ActixLogger,
+    middleware::{Compress, Logger as ActixLogger},
     web,
     App,
-    HttpResponse,
     HttpServer,
 };
 use tracing_actix_web::TracingLogger;
 
-use super::{state::ServerState, ws::ws};
+use super::{
+    http::handlers::{get_health, get_metrics, request_jwt},
+    state::ServerState,
+    ws::socket::get_ws,
+};
 use crate::config::Config;
 
 // We are keeping this low to give room for more
@@ -23,7 +26,11 @@ const MAX_WORKERS: usize = 2;
 
 const API_VERSION: &str = "v1";
 
-pub fn create_web_server(
+fn with_prefixed_route(route: &str) -> String {
+    format!("/api/{}/{}", API_VERSION, route)
+}
+
+pub fn create_api(
     config: &Config,
     state: ServerState,
 ) -> anyhow::Result<Server> {
@@ -48,29 +55,23 @@ pub fn create_web_server(
             .app_data(web::Data::new(state.clone()))
             .wrap(ActixLogger::default())
             .wrap(TracingLogger::default())
+            .wrap(Compress::default())
             .wrap(cors)
             .service(
-                web::resource(format!("/api/{}/health", API_VERSION)).route(
-                    web::get().to(|state: web::Data<ServerState>| async move {
-                        if !state.is_healthy() {
-                            return HttpResponse::ServiceUnavailable()
-                                .body("Service Unavailable");
-                        }
-                        HttpResponse::Ok().json(state.get_health().await)
-                    }),
-                ),
+                web::resource(with_prefixed_route("health"))
+                    .route(web::get().to(get_health)),
             )
             .service(
-                web::resource(format!("/api/{}/metrics", API_VERSION)).route(
-                    web::get().to(|state: web::Data<ServerState>| async move {
-                        HttpResponse::Ok()
-                            .body(state.context.telemetry.get_metrics().await)
-                    }),
-                ),
+                web::resource(with_prefixed_route("metrics"))
+                    .route(web::get().to(get_metrics)),
             )
             .service(
-                web::resource(format!("/api/{}/ws", API_VERSION))
-                    .route(web::get().to(ws)),
+                web::resource(with_prefixed_route("jwt"))
+                    .route(web::get().to(request_jwt)),
+            )
+            .service(
+                web::resource(with_prefixed_route("ws"))
+                    .route(web::get().to(get_ws)),
             )
     })
     .bind(server_addr)?

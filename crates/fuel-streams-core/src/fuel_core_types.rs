@@ -1,6 +1,7 @@
 /// FuelCore Types
 /// Allows flexilibity of aggregating and transforming them for different payload types
 pub use fuel_core_client::client::schema::Tai64Timestamp as FuelCoreTai64Timestamp;
+pub use fuel_core_importer::ImporterResult as FuelCoreImporterResult;
 pub use fuel_core_types::{
     blockchain::{
         block::Block as FuelCoreBlock,
@@ -11,6 +12,7 @@ pub use fuel_core_types::{
         },
         header::BlockHeader as FuelCoreBlockHeader,
         primitives::BlockId as FuelCoreBlockId,
+        SealedBlock as FuelCoreSealedBlock,
     },
     fuel_crypto::Signature as FuelCoreSignature,
     fuel_tx::{
@@ -42,7 +44,10 @@ pub use fuel_core_types::{
         ChainId as FuelCoreChainId,
     },
     services::{
-        block_importer::ImportResult as FuelCoreImportResult,
+        block_importer::{
+            ImportResult as FuelCoreImportResult,
+            SharedImportResult as FuelCoreSharedImportResult,
+        },
         txpool::TransactionStatus as FuelCoreTransactionStatus,
     },
     tai64::Tai64 as FuelCoreTai64,

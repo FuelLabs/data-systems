@@ -256,5 +256,5 @@ impl Telemetry {
 }
 
 pub fn should_use_metrics() -> bool {
-    dotenvy::var("USE_metrics").is_ok_and(|val| val == "true")
+    dotenvy::var("USE_METRICS").is_ok_and(|val| val == "true")
 }

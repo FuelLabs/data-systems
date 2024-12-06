@@ -18,6 +18,7 @@ clap = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core-client = { workspace = true }
+fuel-core-importer = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }

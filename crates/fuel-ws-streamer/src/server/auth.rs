@@ -1,5 +1,6 @@
-use std::{collections::HashMap, convert::TryFrom, fmt, sync::Arc};
+use std::{collections::HashMap, convert::TryFrom, fmt};
 
+use actix_web::{HttpResponse, ResponseError};
 use chrono::Utc;
 use displaydoc::Display as DisplayDoc;
 use jsonwebtoken::{
@@ -15,8 +16,6 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
-
-use super::context::Context;
 
 const BEARER: &str = "Bearer ";
 
@@ -41,12 +40,43 @@ pub enum UserError {
     UnallowedUserRole(String),
     /// Missing password
     MissingPassword,
+    /// Missing username
+    MissingUsername,
     /// Wrong password
     WrongPassword,
-    /// Unavailable Username
-    UnavailableUsername,
     /// User is not verified
     UnverifiedUser,
+}
+
+impl ResponseError for UserError {
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            UserError::UserNotFound => {
+                HttpResponse::NotFound().body(self.to_string())
+            }
+            UserError::UnknownUserRole(_) => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            UserError::UnknownUserStatus(_) => {
+                HttpResponse::NotFound().body(self.to_string())
+            }
+            UserError::UnallowedUserRole(_) => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            UserError::MissingPassword => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            UserError::MissingUsername => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            UserError::WrongPassword => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            UserError::UnverifiedUser => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+        }
+    }
 }
 
 /// Auth errors
@@ -70,6 +100,40 @@ pub enum AuthError {
     BadEncodedUserRole(String),
     /// Unparsable UUID error: `{0}`
     UnparsableUuid(String),
+}
+
+impl ResponseError for AuthError {
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            AuthError::WrongCredentialsError => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::JWTTokenError => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::JWTTokenCreationError => {
+                HttpResponse::InternalServerError().body(self.to_string())
+            }
+            AuthError::NoAuthHeaderError => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::InvalidAuthHeaderError => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::NoPermissionError => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::ExpiredToken => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::BadEncodedUserRole(_) => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+            AuthError::UnparsableUuid(_) => {
+                HttpResponse::Unauthorized().body(self.to_string())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -230,14 +294,14 @@ fn jwt_from_header(
     Ok(auth_header.trim_start_matches(BEARER).to_owned())
 }
 
-pub async fn authorize(
-    (resources, headers): (Arc<Context>, HeaderMap<HeaderValue>),
+fn authorize(
+    (jwt_secret, headers): (String, HeaderMap<HeaderValue>),
 ) -> Result<(Uuid, String), AuthError> {
     match jwt_from_header(&headers) {
         Ok(jwt) => {
             let decoded = decode::<Claims>(
                 &jwt,
-                &DecodingKey::from_secret(resources.jwt_secret.as_bytes()),
+                &DecodingKey::from_secret(jwt_secret.as_bytes()),
                 &Validation::new(Algorithm::HS512),
             )
             .map_err(|_| AuthError::JWTTokenError)?;
@@ -271,9 +335,9 @@ pub async fn authorize(
     }
 }
 
-pub async fn authorize_ws(
-    (resources, mut headers, query_map): (
-        Arc<Context>,
+pub fn authorize_request(
+    (jwt_secret, mut headers, query_map): (
+        String,
         HeaderMap<HeaderValue>,
         HashMap<String, String>,
     ),
@@ -285,5 +349,5 @@ pub async fn authorize_ws(
                 .insert(AUTHORIZATION, HeaderValue::from_str(value).unwrap());
         }
     }
-    authorize((resources, headers)).await
+    authorize((jwt_secret, headers))
 }

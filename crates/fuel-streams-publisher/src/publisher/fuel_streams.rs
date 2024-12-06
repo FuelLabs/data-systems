@@ -4,7 +4,7 @@ use fuel_streams_core::prelude::*;
 
 #[derive(Clone, Debug)]
 /// Streams we currently support publishing to.
-pub struct Streams {
+pub struct FuelStreams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
     pub inputs: Stream<Input>,
@@ -14,7 +14,8 @@ pub struct Streams {
     pub logs: Stream<Log>,
 }
 
-impl Streams {
+#[cfg_attr(test, mockall::automock)]
+impl FuelStreams {
     pub async fn new(nats_client: &NatsClient) -> Self {
         Self {
             transactions: Stream::<Transaction>::new(nats_client).await,
@@ -26,8 +27,21 @@ impl Streams {
             logs: Stream::<Log>::new(nats_client).await,
         }
     }
+}
 
-    pub fn subjects_wildcards(&self) -> &[&'static str] {
+#[async_trait::async_trait]
+pub trait FuelStreamsExt: Sync + Send {
+    fn blocks(&self) -> &Stream<Block>;
+    fn transactions(&self) -> &Stream<Transaction>;
+    fn inputs(&self) -> &Stream<Input>;
+    fn outputs(&self) -> &Stream<Output>;
+    fn receipts(&self) -> &Stream<Receipt>;
+    fn utxos(&self) -> &Stream<Utxo>;
+    fn logs(&self) -> &Stream<Log>;
+
+    async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>>;
+
+    fn subjects_wildcards(&self) -> &[&'static str] {
         &[
             TransactionsSubject::WILDCARD,
             BlocksSubject::WILDCARD,
@@ -54,16 +68,46 @@ impl Streams {
         ]
     }
 
-    pub async fn get_last_published_block(
+    async fn get_consumers_and_state(
         &self,
-    ) -> anyhow::Result<Option<Block>> {
+    ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind>;
+
+    #[cfg(feature = "test-helpers")]
+    async fn is_empty(&self) -> bool;
+}
+
+#[async_trait::async_trait]
+impl FuelStreamsExt for FuelStreams {
+    fn blocks(&self) -> &Stream<Block> {
+        &self.blocks
+    }
+    fn transactions(&self) -> &Stream<Transaction> {
+        &self.transactions
+    }
+    fn inputs(&self) -> &Stream<Input> {
+        &self.inputs
+    }
+    fn outputs(&self) -> &Stream<Output> {
+        &self.outputs
+    }
+    fn receipts(&self) -> &Stream<Receipt> {
+        &self.receipts
+    }
+    fn utxos(&self) -> &Stream<Utxo> {
+        &self.utxos
+    }
+    fn logs(&self) -> &Stream<Log> {
+        &self.logs
+    }
+
+    async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>> {
         Ok(self
             .blocks
             .get_last_published(BlocksSubject::WILDCARD)
             .await?)
     }
 
-    pub async fn get_consumers_and_state(
+    async fn get_consumers_and_state(
         &self,
     ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind> {
         Ok(vec![
@@ -78,7 +122,7 @@ impl Streams {
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn is_empty(&self) -> bool {
+    async fn is_empty(&self) -> bool {
         self.blocks.is_empty(BlocksSubject::WILDCARD).await
             && self
                 .transactions

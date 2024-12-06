@@ -13,5 +13,5 @@ pub struct Cli {
         default_value = "config.toml",
         help = "Path to toml config file"
     )]
-    pub config_path: String,
+    pub config_path: Option<String>,
 }
