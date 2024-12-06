@@ -1,0 +1,255 @@
+suite: test publisher deployment
+templates:
+  - templates/publisher/statefulset.yaml
+tests:
+  - it: should create deployment with correct name
+    set:
+      publisher.enabled: true
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-publisher
+
+  - it: should set correct image and tag
+    set:
+      publisher.enabled: true
+      publisher.image.repository: ghcr.io/fuellabs/fuel-streams-publisher
+      publisher.image.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/fuel-streams-publisher:latest
+
+  - it: should use chart version when tag is not specified
+    set:
+      publisher.enabled: true
+      publisher.image.repository: ghcr.io/fuellabs/fuel-streams-publisher
+      publisher.image.tag: null
+      Chart:
+        Version: "1.0"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/fuel-streams-publisher:1.0
+
+  - it: should merge environment variables correctly
+    set:
+      publisher.enabled: true
+      publisher.env:
+        CHAIN_CONFIG: "testnet"  # Override default
+        NEW_VAR: "new-value"     # Add new var
+      publisher.extraEnv:
+      - name: SIMPLE_VAR
+        value: "simple-value"
+      - name: SECRET_VAR
+        valueFrom:
+          secretKeyRef:
+            name: my-secret
+            key: my-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CHAIN_CONFIG
+            value: "testnet"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NEW_VAR
+            value: "new-value"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SIMPLE_VAR
+            value: "simple-value"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SECRET_VAR
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: my-key
+
+  - it: should handle complex persistence configuration
+    set:
+      publisher.enabled: true
+      publisher.persistence:
+        enabled: true
+        data:
+          name: rocks-db
+          containerName: update-rocks-db
+          size: 500Gi
+          mountPath: /mnt/db
+          storageClass: gp3-generic
+          accessMode: ReadWriteOnce
+        temp:
+          name: tmp
+          containerName: update-tmp
+          size: 5Gi
+          mountPath: /tmp
+          storageClass: gp3-generic
+          accessMode: ReadWriteOnce
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: rocks-db
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /mnt/db
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].name
+          value: tmp
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].mountPath
+          value: /tmp
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: update-rocks-db
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: rocks-db
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /mnt/db
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: update-tmp
+      - equal:
+          path: spec.template.spec.initContainers[1].volumeMounts[0].name
+          value: tmp
+      - equal:
+          path: spec.template.spec.initContainers[1].volumeMounts[0].mountPath
+          value: /tmp
+
+  - it: should handle persistence disabled
+    set:
+      publisher.enabled: true
+      publisher.persistence:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isNull:
+          path: spec.template.spec.initContainers
+      - isNull:
+          path: spec.template.spec.containers[0].volumeMounts
+
+  - it: should handle persistence enabled with minimal configuration
+    set:
+      publisher.enabled: true
+      publisher.persistence:
+        enabled: true
+        data:
+          name: data
+          mountPath: /data
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isNotEmpty:
+          path: spec.template.spec.containers[0].volumeMounts
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /data
+            readOnly: false
+
+  - it: should set labels and annotations from service config
+    set:
+      publisher.enabled: true
+      publisher.config:
+        labels:
+          app: "publisher"
+          custom: "local"
+        annotations:
+          service: "publisher"
+          monitoring: "enabled"
+    asserts:
+      - equal:
+          path: metadata.labels
+          value:
+            helm.sh/chart: fuel-streams-0.2.0
+            app.kubernetes.io/name: fuel-streams
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/version: "1.0"
+            app.kubernetes.io/managed-by: Helm
+            app: "publisher"
+            custom: "local"
+      - equal:
+          path: metadata.annotations
+          value:
+            service: "publisher"
+            monitoring: "enabled"
+
+  - it: should merge security contexts with defaults
+    set:
+      publisher.enabled: true
+      containerSecurityContext:
+        runAsUser: 3000
+        capabilities:
+          drop: ["NONE"]
+      publisher.config.containerSecurityContext:
+        readOnlyRootFilesystem: false
+        runAsUser: 2000  # Should override both default and global
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            capabilities:
+              drop:
+                - NONE
+            readOnlyRootFilesystem: false
+            runAsUser: 2000
+
+  - it: should merge global and publisher-specific configurations
+    set:
+      publisher.enabled: true
+      # Global configurations
+      probes:
+        liveness:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readiness:
+          initialDelaySeconds: 20
+          periodSeconds: 5
+      publisher.probes:
+        path: /custom-health
+        port: 9090
+        liveness:
+          initialDelaySeconds: 45  # Should override global
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /custom-health
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: 9090
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+          value: 45
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.periodSeconds
+          value: 10
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 20
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.periodSeconds
+          value: 5
+
+  - it: should set replicas when autoscaling is disabled
+    set:
+      publisher.enabled: true
+      autoscaling:
+        enabled: false
+      publisher.config:
+        replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3

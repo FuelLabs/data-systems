@@ -1,0 +1,151 @@
+docker:
+  registry: registry.dev.svc.cluster.local:5000
+
+config:
+  namespace: fuel-streams
+  # Override the name and fullname of the chart
+  nameOverride: ""
+  fullnameOverride: ""
+  # Enable network policy that allows only traffic from the fuel-streams namespace
+  networkPolicy: true
+  # Create roles and rolebindings for the fuel-streams serviceaccount
+  createRoles: true
+  # Enable health checks for all services
+  healthChecks: true
+
+serviceAccount:
+  name: fuel-streams-serviceaccount
+  create: true
+  automount: true
+
+# -------------------------------------------------------------------------------------------------
+# Global configurations
+# -------------------------------------------------------------------------------------------------
+
+containerSecurityContext: {}
+securityContext: {}
+annotations: {}
+labels: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+  readiness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+  startup:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 30
+    successThreshold: 1
+
+# -------------------------------------------------------------------------------------------------
+# Services configurations
+# -------------------------------------------------------------------------------------------------
+
+publisher:
+  enabled: true
+  image:
+    repository: ghcr.io/fuellabs/fuel-streams-publisher
+    pullPolicy: Always
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8080
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /metrics
+  persistence:
+    enabled: true
+    data:
+      name: rocks-db
+      containerName: update-rocks-db
+      mountPath: /mnt/db
+      size: 500Gi
+      storageClass: gp3-generic
+      accessMode: ReadWriteOnce
+    temp:
+      name: tmp
+      containerName: update-tmp
+      mountPath: /tmp
+      size: 5Gi
+      storageClass: gp3-generic
+      accessMode: ReadWriteOnce
+  probes:
+    path: "/health"
+    port: 8080
+    # liveness: {}
+    # readiness: {}
+    # startup: {}
+  config:
+    replicaCount: 1
+    annotations: {}
+    labels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    resources: {}
+    ports: []
+    containerSecurityContext: {}
+    securityContext: 
+      capabilities:
+        drop: [ALL]
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+  env:
+    RELAYER_V2_LISTENING_CONTRACTS: "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+    RELAYER_DA_DEPLOY_HEIGHT: "20620434"
+    RELAYER_LOG_PAGE_SIZE: "2000"
+    SYNC_HEADER_BATCH_SIZE: "100"
+    P2P_PORT: "30333"
+    RESERVED_NODES: "/dnsaddr/mainnet.fuel.network"
+    CHAIN_CONFIG: "mainnet"
+    PUBLISHER_MAX_THREADS: "32"
+    DB_PATH: "/mnt/db/"
+    POA_INSTANT: "false"
+    SERVICE_NAME: "NATS Publisher Node"
+    NATS_URL: "nats:4222"
+  # Additional environment variables with complex structures
+  extraEnv: []
+  #   - name: RELAYER
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-publisher
+  #         key: RELAYER
+  #   - name: KEYPAIR
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-publisher
+  #         key: KEYPAIR
+  #   - name: NATS_ADMIN_PASS
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-publisher
+  #         key: NATS_ADMIN_PASS
+  # Optional: Bulk environment references
+  envFrom: {}
+  #   - configMapRef:
+  #       name: additional-config
+  #   - secretRef:
+  #       name: additional-secrets

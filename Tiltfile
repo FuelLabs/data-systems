@@ -72,13 +72,6 @@ RESOURCES = {
         'labels': 'logging',
         'config_mode': ['full']
     },
-    'kibana': {
-        'name': 'local-fuel-local-kibana',
-        'ports': ['5601:5601'],
-        'labels': 'logging',
-        'deps': ['elasticsearch'],
-        'config_mode': ['full']
-    }
 }
 
 # Deploy the Helm chart with values

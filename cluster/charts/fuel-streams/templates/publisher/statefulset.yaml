@@ -1,0 +1,111 @@
+{{- if .Values.publisher.enabled -}}
+{{- $publisher := .Values.publisher }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  {{- $labels := $publisher.config.labels | default (dict) }}
+  {{- $annotations := $publisher.config.annotations | default (dict) }}
+  {{- include "resource.metadata" (dict "service" "publisher" "context" . "labels" $labels "annotations" $annotations) | nindent 2 }}
+spec:
+  serviceName: {{ include "fuel-streams.fullname" . }}-publisher
+
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ $publisher.config.replicaCount }}
+  {{- end }}
+
+  selector:
+    matchLabels:
+      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
+
+  template:
+    metadata:
+      annotations:
+        {{- include "render-field-value" (dict "context" $publisher "field" "annotations" "path" "config.annotations") | nindent 8 }}
+      labels:
+        {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
+        {{- include "render-field-value" (dict "context" $publisher "field" "labels" "path" "config.labels") | nindent 8 }}
+
+    spec:
+      serviceAccountName: {{ include "fuel-streams.serviceAccountName" . }}
+      {{- include "k8s.security-context" (dict "service" "publisher" "context" .) | nindent 6 }}
+      {{- include "render-field-with-key" (dict "context" $publisher "field" "imagePullSecrets" "path" "config.imagePullSecrets") | nindent 6 -}}
+      {{- include "render-field-with-key" (dict "context" $publisher "field" "nodeSelector" "path" "config.nodeSelector") | nindent 6 -}}
+      {{- include "render-field-with-key" (dict "context" $publisher "field" "affinity" "path" "config.affinity") | nindent 6 -}}
+      {{- include "render-field-with-key" (dict "context" $publisher "field" "tolerations" "path" "config.tolerations") | nindent 6 -}}
+
+      {{- if $publisher.persistence.enabled }}
+      initContainers:
+        {{- range $key, $value := omit $publisher.persistence "enabled" }}
+        - name: {{ $value.containerName }}
+          image: alpine:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/chown"]
+          args: ["-R", "1000:1000", "{{ $value.mountPath }}"]
+          volumeMounts:
+            - name: {{ $value.name }}
+              mountPath: {{ $value.mountPath }}
+        {{- end }}
+      {{- end }}
+
+      containers:
+        - name: publisher
+          {{- include "k8s.container-security-context" (dict "service" "publisher" "context" .) | nindent 10 }}
+          {{- include "pod.probes" (dict "service" "publisher" "serviceProbes" $publisher.probes "context" .) | nindent 10 }}
+          image: "{{ $publisher.image.repository }}:{{ $publisher.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $publisher.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ int $publisher.service.port }}
+              protocol: TCP
+            {{- if $publisher.ports }}
+            {{- toYaml $publisher.ports | nindent 12 }}
+            {{- end }}
+
+          resources:
+            {{- include "render-field-value" (dict "context" $publisher "field" "resources" "path" "config.resources") | nindent 12 }}
+
+          env:
+            {{- range $key, $value := $publisher.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if $publisher.extraEnv }}
+            {{- toYaml $publisher.extraEnv | nindent 12 }}
+            {{- end }}
+
+          envFrom:
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-publisher
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-publisher
+                optional: true
+            {{- if $publisher.envFrom }}
+            {{- toYaml $publisher.envFrom | nindent 12 }}
+            {{- end }}
+
+          {{- if $publisher.persistence.enabled }}
+          volumeMounts:
+            {{- range $key, $value := omit $publisher.persistence "enabled" }}
+            - name: {{ $value.name }}
+              mountPath: {{ $value.mountPath }}
+              readOnly: false
+            {{- end }}
+          {{- end }}
+
+      {{- if $publisher.persistence.enabled }}
+      volumeClaimTemplates:
+        {{- range $key, $value := omit $publisher.persistence "enabled" }}
+        - metadata:
+            name: {{ $value.name }}
+          spec:
+            accessModes:
+              - {{ $value.accessMode }}
+            storageClassName: {{ $value.storageClass }}
+            resources:
+              requests:
+                storage: {{ $value.size }}
+        {{- end }}
+      {{- end }}
+{{- end -}}
