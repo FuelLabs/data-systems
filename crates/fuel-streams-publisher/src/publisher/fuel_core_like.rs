@@ -32,8 +32,9 @@ pub type OffchainDatabase = GenericDatabase<
 /// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
 #[async_trait::async_trait]
 pub trait FuelCoreLike: Sync + Send {
-    async fn start(&self);
+    async fn start(&self) -> anyhow::Result<()>;
     fn is_started(&self) -> bool;
+    async fn await_synced_at_least_once(&self) -> anyhow::Result<()>;
     async fn stop(&self);
 
     fn base_asset_id(&self) -> &FuelCoreAssetId;
@@ -174,17 +175,19 @@ impl FuelCore {
 
 #[async_trait::async_trait]
 impl FuelCoreLike for FuelCore {
-    async fn start(&self) {
+    async fn start(&self) -> anyhow::Result<()> {
         fuel_core_bin::cli::init_logging();
 
-        self.fuel_service
-            .start_and_await()
-            .await
-            .expect("Fuel core service startup failed");
-    }
+        self.fuel_service.start_and_await().await?;
 
+        Ok(())
+    }
     fn is_started(&self) -> bool {
         self.fuel_service.state().started()
+    }
+    async fn await_synced_at_least_once(&self) -> anyhow::Result<()> {
+        self.fuel_service.await_relayer_synced().await?;
+        Ok(())
     }
 
     async fn stop(&self) {
