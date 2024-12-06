@@ -14,9 +14,10 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// Creating a new `NatsClient`:
 ///
 /// ```no_run
-/// use fuel_streams_core::prelude::*;
+/// use fuel_streams_storage::nats::*;
+/// use fuel_networks::FuelNetwork;
 ///
-/// async fn example() -> BoxedResult<()> {
+/// async fn example() -> Result<(), Box<dyn std::error::Error>> {
 ///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 ///     let client = NatsClient::connect(&opts).await?;
 ///     Ok(())
@@ -26,10 +27,11 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// Creating a key-value store:
 ///
 /// ```no_run
-/// use fuel_streams_core::prelude::*;
+/// use fuel_streams_storage::nats::*;
+/// use fuel_networks::FuelNetwork;
 /// use async_nats::jetstream::kv;
 ///
-/// async fn example() -> BoxedResult<()> {
+/// async fn example() -> Result<(), Box<dyn std::error::Error>> {
 ///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
 ///     let client = NatsClient::connect(&opts).await?;
 ///     let kv_config = kv::Config {

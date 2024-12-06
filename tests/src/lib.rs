@@ -46,9 +46,7 @@ pub fn publish_items<T: Streamable + 'static>(
         let stream = stream.clone();
         let items = items.clone();
         async move {
-            let s3_client = S3Client::new("fuel-streams-tests", "us-east-1")
-                .await
-                .unwrap();
+            let s3_client = S3Client::new_for_testing().await;
             for item in items {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 let payload = item.1.clone();
@@ -57,6 +55,7 @@ pub fn publish_items<T: Streamable + 'static>(
 
                 stream.publish(&packet, &s3_client).await.unwrap();
             }
+            s3_client.cleanup_after_testing().await;
         }
     })
 }
