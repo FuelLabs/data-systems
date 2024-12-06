@@ -24,7 +24,7 @@ COMMANDS := rustup npm pre-commit docker python3
 # ------------------------------------------------------------
 
 NETWORKS := mainnet testnet
-PROFILES := all dev nats fuel monitoring indexer logging
+PROFILES := all dev nats s3 fuel monitoring indexer logging
 MODES := dev profiling
 DOCKER_COMPOSE := ./scripts/set_envs.sh && docker compose -f docker/docker-compose.yml --env-file .env
 
@@ -162,7 +162,7 @@ cleanup_artifacts:
 NETWORK ?= testnet
 NETWORKS = mainnet testnet
 PROFILE ?= all
-PROFILES = all dev nats fuel monitoring indexer logging
+PROFILES = all dev nats s3 fuel monitoring indexer logging
 DOCKER_COMPOSE = ./scripts/set_envs.sh && docker compose -f docker/docker-compose.yml --env-file .env
 
 # Helper functions to validate Docker environment and execute commands
