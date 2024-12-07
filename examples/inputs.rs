@@ -31,14 +31,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Subscribe to the input stream with the specified configuration
-    let mut sub = stream.subscribe_with_config(config).await?;
+    let mut sub = stream.subscribe_raw_with_config(config).await?;
 
     println!("Listening for inputs...");
 
     // Process incoming inputs
     while let Some(bytes) = sub.next().await {
-        let message = bytes?;
-        let decoded_msg = Input::decode_raw(message.payload.to_vec());
+        let decoded_msg = Input::decode_raw(bytes).unwrap();
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;
 

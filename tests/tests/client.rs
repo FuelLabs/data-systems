@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use fuel_streams::prelude::*;
 use fuel_streams_core::prelude::{types, *};
@@ -22,7 +22,7 @@ fn gen_random_string(size: usize) -> String {
 
 #[tokio::test]
 async fn conn_streams_has_required_streams() -> BoxedResult<()> {
-    let (client, streams) = server_setup().await.unwrap();
+    let (client, streams, _) = server_setup().await.unwrap();
     let mut context_streams = client.jetstream.stream_names();
 
     let mut names = HashSet::new();
@@ -41,23 +41,27 @@ async fn conn_streams_has_required_streams() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn fuel_streams_client_connection() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local));
-    let client = NatsClient::connect(&opts).await?;
+    let nats_opts = NatsClientOpts::admin_opts();
+    let client = NatsClient::connect(&nats_opts).await?;
     assert!(client.is_connected());
-    let client = Client::with_opts(&opts).await?;
-    assert!(client.conn.is_connected());
+    let s3_opts = Arc::new(S3ClientOpts::admin_opts());
+    let client = Client::with_opts(&nats_opts, &s3_opts).await?;
+    assert!(client.nats_conn.is_connected());
     Ok(())
 }
 
 #[tokio::test]
 async fn multiple_client_connections() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local));
+    let nats_opts = NatsClientOpts::admin_opts();
+    let s3_opts = Arc::new(S3ClientOpts::admin_opts());
     let tasks: Vec<_> = (0..100)
         .map(|_| {
-            let opts = opts.clone();
+            let nats_opts = nats_opts.clone();
+            let s3_opts = s3_opts.clone();
             async move {
-                let client = Client::with_opts(&opts).await.unwrap();
-                assert!(client.conn.is_connected());
+                let client =
+                    Client::with_opts(&nats_opts, &s3_opts).await.unwrap();
+                assert!(client.nats_conn.is_connected());
                 Ok::<(), NatsError>(())
             }
         })
@@ -69,7 +73,7 @@ async fn multiple_client_connections() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() -> BoxedResult<()> {
-    let opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::new(FuelNetwork::Local)
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -91,7 +95,7 @@ async fn public_user_cannot_create_streams() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_stores() -> BoxedResult<()> {
-    let opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::new(FuelNetwork::Local)
         .with_rdn_namespace()
         .with_timeout(1);
 
@@ -112,7 +116,7 @@ async fn public_user_cannot_create_stores() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::admin_opts()
         .with_rdn_namespace()
         .with_timeout(1);
 
@@ -127,7 +131,7 @@ async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
         })
         .await?;
 
-    let opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::new(FuelNetwork::Local)
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -143,7 +147,7 @@ async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::admin_opts()
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -160,7 +164,7 @@ async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
         })
         .await?;
 
-    let public_opts = opts.clone().with_role(NatsUserRole::Default);
+    let public_opts = opts.clone().with_role(FuelNetworkUserRole::Default);
     let public_client = NatsClient::connect(&public_opts).await?;
 
     assert!(
@@ -177,40 +181,44 @@ async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_can_access_streams_after_created() {
-    let opts = NatsClientOpts::new(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::new(FuelNetwork::Local)
         .with_rdn_namespace()
         .with_timeout(1);
 
-    let admin_opts = opts.clone().with_role(NatsUserRole::Admin);
+    let admin_opts = opts.clone().with_role(FuelNetworkUserRole::Admin);
     assert!(NatsClient::connect(&admin_opts).await.is_ok());
 
-    let public_opts = opts.clone().with_role(NatsUserRole::Default);
+    let public_opts = opts.clone().with_role(FuelNetworkUserRole::Default);
     assert!(NatsClient::connect(&public_opts).await.is_ok());
 }
 
 #[tokio::test]
 async fn public_and_admin_user_can_access_streams_after_created(
 ) -> BoxedResult<()> {
-    let admin_opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local));
+    let admin_opts = NatsClientOpts::admin_opts();
+    let s3_opts = Arc::new(S3ClientOpts::admin_opts());
     let admin_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
         .map(|_| {
             let opts: NatsClientOpts = admin_opts.clone();
+            let s3_opts = s3_opts.clone();
             async move {
-                let client = Client::with_opts(&opts).await.unwrap();
-                assert!(client.conn.is_connected());
+                let client = Client::with_opts(&opts, &s3_opts).await.unwrap();
+                assert!(client.nats_conn.is_connected());
                 Ok::<(), NatsError>(())
             }
             .boxed()
         })
         .collect();
 
-    let public_opts = NatsClientOpts::default_opts(Some(FuelNetwork::Local));
+    let public_opts = NatsClientOpts::new(FuelNetwork::Local);
+    let s3_public_opts = Arc::new(S3ClientOpts::new(FuelNetwork::Local));
     let public_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
         .map(|_| {
             let opts: NatsClientOpts = public_opts.clone();
+            let s3_opts = s3_public_opts.clone();
             async move {
-                let client = Client::with_opts(&opts).await.unwrap();
-                assert!(client.conn.is_connected());
+                let client = Client::with_opts(&opts, &s3_opts).await.unwrap();
+                assert!(client.nats_conn.is_connected());
                 Ok::<(), NatsError>(())
             }
             .boxed()
@@ -229,7 +237,7 @@ async fn public_and_admin_user_can_access_streams_after_created(
 
 #[tokio::test]
 async fn admin_user_can_delete_stream() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::admin_opts()
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -254,7 +262,7 @@ async fn admin_user_can_delete_stream() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn admin_user_can_delete_stores() -> BoxedResult<()> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
+    let opts = NatsClientOpts::admin_opts()
         .with_rdn_namespace()
         .with_timeout(1);
 
@@ -280,8 +288,7 @@ async fn admin_user_can_delete_stores() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn ensure_deduplication_when_publishing() -> BoxedResult<()> {
-    let (conn, _) = server_setup().await.unwrap();
-    let client = Client::with_opts(&conn.opts).await.unwrap();
+    let (_, _, client) = server_setup().await.unwrap();
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
     let producer = Some(Address::zeroed());
     let const_block_height = 1001;
@@ -290,15 +297,14 @@ async fn ensure_deduplication_when_publishing() -> BoxedResult<()> {
             .unwrap()
             .0;
 
-    let mut sub = stream.subscribe().await.unwrap().enumerate();
+    let mut sub = stream.subscribe_raw().await.unwrap().enumerate();
     let timeout_duration = Duration::from_secs(1);
 
     // ensure just one message was published
     'l: loop {
         match timeout(timeout_duration, sub.next()).await {
             Ok(Some((idx, entry))) => {
-                assert!(entry.is_some());
-                let decoded_msg = Block::decode_raw(entry.unwrap());
+                let decoded_msg = Block::decode_raw(entry).unwrap();
                 let (subject, _block) = items[idx].to_owned();
                 let height = decoded_msg.payload.height;
                 assert_eq!(decoded_msg.subject, subject.parse());

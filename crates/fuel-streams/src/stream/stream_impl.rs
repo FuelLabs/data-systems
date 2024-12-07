@@ -1,8 +1,10 @@
+use std::pin::Pin;
+
 use fuel_streams_core::{
     prelude::{IntoSubject, SubjectBuildable},
-    types::{DeliverPolicy, PullConsumerStream},
+    types::DeliverPolicy,
     Streamable,
-    SubscribeConsumerConfig,
+    SubscriptionConfig,
 };
 
 use crate::{client::Client, stream::StreamError};
@@ -79,8 +81,11 @@ impl<S: Streamable> Stream<S> {
     /// # }
     /// ```
     pub async fn new(client: &Client) -> Self {
-        let stream =
-            fuel_streams_core::Stream::<S>::get_or_init(&client.conn).await;
+        let stream = fuel_streams_core::Stream::<S>::get_or_init(
+            &client.nats_conn,
+            &client.s3_conn,
+        )
+        .await;
         Self {
             stream,
             filter_subjects: Vec::new(),
@@ -121,7 +126,7 @@ impl<S: Streamable> Stream<S> {
         self
     }
 
-    /// Subscribes to the stream.
+    /// Subscribes to the stream item.
     ///
     /// # Returns
     ///
@@ -143,19 +148,57 @@ impl<S: Streamable> Stream<S> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn subscribe(
-        &self,
-    ) -> Result<impl futures::Stream<Item = Option<Vec<u8>>>, StreamError> {
+    pub async fn subscribe<'a>(
+        &'a self,
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = S> + Send + 'a>>, StreamError>
+    {
         // TODO: Why implicitly select a stream for the user?
         // TODO: Should this be a combination of streams
         self.stream
         // TODO: Improve DX by ensuring the stream returns the streamable entity directly
-            .subscribe(S::WILDCARD_LIST[0])
+            .subscribe(None)
             .await
             .map_err(|source| StreamError::Subscribe { source })
     }
 
-    /// Subscribes to the stream with custom configuration options.
+    /// Subscribes to the stream bytes.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a `futures::Stream` of byte vectors on success,
+    /// or a `StreamError` on failure.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
+    /// use fuel_streams::client::Client;
+    /// use fuel_streams::stream::Stream;
+    /// use fuel_streams::blocks::Block;
+    ///
+    /// # async fn example() -> Result<(), fuel_streams::Error> {
+    /// # let client = Client::connect(FuelNetwork::Local).await?;
+    /// # let stream = Stream::<Block>::new(&client).await;
+    /// let subscription = stream.subscribe().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn subscribe_raw<'a>(
+        &'a self,
+    ) -> Result<
+        Pin<Box<dyn futures::Stream<Item = Vec<u8>> + Send + 'a>>,
+        StreamError,
+    > {
+        // TODO: Why implicitly select a stream for the user?
+        // TODO: Should this be a combination of streams
+        self.stream
+        // TODO: Improve DX by ensuring the stream returns the streamable entity directly
+            .subscribe_raw(None)
+            .await
+            .map_err(|source| StreamError::Subscribe { source })
+    }
+
+    /// Subscribes to the stream item with custom configuration options.
     ///
     /// # Parameters
     ///
@@ -185,15 +228,64 @@ impl<S: Streamable> Stream<S> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn subscribe_with_config(
-        &self,
+    pub async fn subscribe_with_config<'a>(
+        &'a self,
         opts: StreamConfig,
-    ) -> Result<PullConsumerStream, StreamError> {
+    ) -> Result<Pin<Box<dyn futures::Stream<Item = S> + Send + 'a>>, StreamError>
+    {
         self.stream
-            .subscribe_consumer(SubscribeConsumerConfig {
+        // TODO: Improve DX by ensuring the stream returns the streamable entity directly
+            .subscribe(Some(SubscriptionConfig {
                 deliver_policy: opts.deliver_policy,
                 filter_subjects: self.filter_subjects.to_owned(),
-            })
+            }))
+            .await
+            .map_err(|source| StreamError::SubscribeWithOpts { source })
+    }
+
+    /// Subscribes to the stream bytes with custom configuration options.
+    ///
+    /// # Parameters
+    ///
+    /// * `opts`: A `StreamConfig` instance containing custom configuration options.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a `PullConsumerStream` on success,
+    /// or a `StreamError` on failure.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fuel_streams::types::FuelNetwork;
+    /// use fuel_streams::client::Client;
+    /// use fuel_streams::stream::{Stream, StreamConfig};
+    /// use fuel_streams::blocks::Block;
+    /// use fuel_streams::types::DeliverPolicy;
+    ///
+    /// # async fn example() -> Result<(), fuel_streams::Error> {
+    /// # let client = Client::connect(FuelNetwork::Local).await?;
+    /// # let stream = Stream::<Block>::new(&client).await;
+    /// let config = StreamConfig {
+    ///     deliver_policy: DeliverPolicy::All,
+    /// };
+    /// let subscription = stream.subscribe_with_config(config).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn subscribe_raw_with_config<'a>(
+        &'a self,
+        opts: StreamConfig,
+    ) -> Result<
+        Pin<Box<dyn futures::Stream<Item = Vec<u8>> + Send + 'a>>,
+        StreamError,
+    > {
+        self.stream
+        // TODO: Improve DX by ensuring the stream returns the streamable entity directly
+            .subscribe_raw(Some(SubscriptionConfig {
+                deliver_policy: opts.deliver_policy,
+                filter_subjects: self.filter_subjects.to_owned(),
+            }))
             .await
             .map_err(|source| StreamError::SubscribeWithOpts { source })
     }

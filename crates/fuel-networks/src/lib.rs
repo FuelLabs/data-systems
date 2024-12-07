@@ -1,7 +1,16 @@
+/// FuelStreamsNetworks; shortened to FuelNetworks for brievity and public familiarity
+
+#[derive(Debug, Clone, Default)]
+pub enum FuelNetworkUserRole {
+    Admin,
+    #[default]
+    Default,
+}
+
 #[derive(Debug, Copy, Clone, Default, clap::ValueEnum)]
 pub enum FuelNetwork {
-    Local,
     #[default]
+    Local,
     Testnet,
     Mainnet,
 }
@@ -18,11 +27,10 @@ impl std::fmt::Display for FuelNetwork {
 
 impl FuelNetwork {
     pub fn load_from_env() -> Self {
-        match std::env::var("FUEL_NETWORK").as_deref() {
-            Ok("local") => FuelNetwork::Local,
+        match std::env::var("NETWORK").as_deref() {
             Ok("testnet") => FuelNetwork::Testnet,
             Ok("mainnet") => FuelNetwork::Mainnet,
-            _ => FuelNetwork::Testnet,
+            _ => FuelNetwork::Local,
         }
     }
 
@@ -31,6 +39,16 @@ impl FuelNetwork {
             FuelNetwork::Local => "nats://localhost:4222",
             FuelNetwork::Testnet => "nats://stream-testnet.fuel.network:4222",
             FuelNetwork::Mainnet => "nats://stream.fuel.network:4222",
+        }
+        .to_string()
+    }
+
+    pub fn to_s3_url(&self) -> String {
+        match self {
+            FuelNetwork::Local => "http://localhost:4566",
+            FuelNetwork::Testnet | FuelNetwork::Mainnet => {
+                "https://fuel_streams.s3.us-east-1.amazonaws.com"
+            }
         }
         .to_string()
     }

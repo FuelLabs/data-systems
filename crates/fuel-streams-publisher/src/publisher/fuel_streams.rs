@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_streams::types::Log;
 use fuel_streams_core::prelude::*;
@@ -14,17 +16,20 @@ pub struct FuelStreams {
     pub logs: Stream<Log>,
 }
 
-#[cfg_attr(test, mockall::automock)]
 impl FuelStreams {
-    pub async fn new(nats_client: &NatsClient) -> Self {
+    pub async fn new(
+        nats_client: &NatsClient,
+        s3_client: &Arc<S3Client>,
+    ) -> Self {
         Self {
-            transactions: Stream::<Transaction>::new(nats_client).await,
-            blocks: Stream::<Block>::new(nats_client).await,
-            inputs: Stream::<Input>::new(nats_client).await,
-            outputs: Stream::<Output>::new(nats_client).await,
-            receipts: Stream::<Receipt>::new(nats_client).await,
-            utxos: Stream::<Utxo>::new(nats_client).await,
-            logs: Stream::<Log>::new(nats_client).await,
+            transactions: Stream::<Transaction>::new(nats_client, s3_client)
+                .await,
+            blocks: Stream::<Block>::new(nats_client, s3_client).await,
+            inputs: Stream::<Input>::new(nats_client, s3_client).await,
+            outputs: Stream::<Output>::new(nats_client, s3_client).await,
+            receipts: Stream::<Receipt>::new(nats_client, s3_client).await,
+            utxos: Stream::<Utxo>::new(nats_client, s3_client).await,
+            logs: Stream::<Log>::new(nats_client, s3_client).await,
         }
     }
 }
