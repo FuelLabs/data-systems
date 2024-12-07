@@ -14,22 +14,21 @@ rust-version = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
-clap = { workspace = true }
 displaydoc = { workspace = true }
-dotenvy = { workspace = true }
 fuel-core-client = { workspace = true }
 fuel-core-importer = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-data-parser = { workspace = true }
+fuel-networks = { workspace = true }
 fuel-streams-macros = { workspace = true }
+fuel-streams-storage = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
-rand = { workspace = true }
 serde = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tracing = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

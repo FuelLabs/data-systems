@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use fuel_streams_core::{
     nats::{types::DeliverPolicy, NatsClient, NatsClientOpts},
+    s3::{S3Client, S3ClientOpts},
     types::{Block, Transaction},
-    StreamEncoder,
     Streamable,
-    SubscribeConsumerConfig,
+    SubscriptionConfig,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -44,13 +46,15 @@ async fn main() -> anyhow::Result<()> {
 
     db.use_ns("fuel_indexer").use_db("fuel_indexer").await?;
 
-    let nats_client_opts = NatsClientOpts::admin_opts(None)
-        .with_custom_url("nats:4222".to_string());
+    let nats_client_opts = NatsClientOpts::admin_opts();
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
+    let s3_client_opts = S3ClientOpts::admin_opts();
+    let s3_client = S3Client::new(&s3_client_opts).await?.arc();
+
     tokio::try_join!(
-        sync_blocks(&db, &nats_client),
-        sync_transactions(&db, &nats_client)
+        sync_blocks(&db, &nats_client, s3_client.clone()),
+        sync_transactions(&db, &nats_client, s3_client)
     )?;
 
     Ok(())
@@ -59,19 +63,20 @@ async fn main() -> anyhow::Result<()> {
 async fn sync_blocks(
     db: &Surreal<Client>,
     client: &NatsClient,
+    s3_client: Arc<S3Client>,
 ) -> anyhow::Result<()> {
-    let stream = fuel_streams_core::Stream::<Block>::get_or_init(client).await;
+    let stream =
+        fuel_streams_core::Stream::<Block>::get_or_init(client, &s3_client)
+            .await;
 
     let mut subscription = stream
-        .subscribe_consumer(SubscribeConsumerConfig {
+        .subscribe(Some(SubscriptionConfig {
             deliver_policy: DeliverPolicy::All,
             filter_subjects: vec![Block::WILDCARD_LIST[0].to_string()],
-        })
+        }))
         .await?;
 
-    while let Some(msg) = subscription.next().await {
-        let msg = msg?;
-        let block = Block::decode(msg.payload.clone().into()).await;
+    while let Some(block) = subscription.next().await {
         let height = block.height;
         let id = height.to_string();
         let key = ("block".to_string(), id.clone());
@@ -91,20 +96,21 @@ async fn sync_blocks(
 async fn sync_transactions(
     db: &Surreal<Client>,
     client: &NatsClient,
+    s3_client: Arc<S3Client>,
 ) -> anyhow::Result<()> {
-    let stream =
-        fuel_streams_core::Stream::<Transaction>::get_or_init(client).await;
+    let stream = fuel_streams_core::Stream::<Transaction>::get_or_init(
+        client, &s3_client,
+    )
+    .await;
 
     let mut subscription = stream
-        .subscribe_consumer(SubscribeConsumerConfig {
+        .subscribe(Some(SubscriptionConfig {
             deliver_policy: DeliverPolicy::All,
             filter_subjects: vec![Transaction::WILDCARD_LIST[0].to_string()],
-        })
+        }))
         .await?;
 
-    while let Some(msg) = subscription.next().await {
-        let msg = msg?;
-        let transaction = Transaction::decode(msg.payload.clone().into()).await;
+    while let Some(transaction) = subscription.next().await {
         let tx_id = &transaction.id;
         let id = format!("0x{}", tx_id);
         let key = ("transaction".to_string(), id.clone());

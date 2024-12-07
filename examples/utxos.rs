@@ -31,14 +31,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Subscribe to the UTXO stream with the specified configuration
-    let mut sub = stream.subscribe_with_config(config).await?;
+    let mut sub = stream.subscribe_raw_with_config(config).await?;
 
     println!("Listening for UTXOs...");
 
     // Process incoming UTXOs
     while let Some(bytes) = sub.next().await {
-        let message = bytes?;
-        let decoded_msg = Utxo::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Utxo::decode_raw(bytes).unwrap();
         let utxo_subject = decoded_msg.subject;
         let utxo_published_at = decoded_msg.timestamp;
 

@@ -6,6 +6,6 @@ pub use fuel_streams_core::stream::{
     StreamData,
     StreamEncoder,
     Streamable,
-    SubscribeConsumerConfig,
+    SubscriptionConfig,
 };
 pub use stream_impl::*;
