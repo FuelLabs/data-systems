@@ -123,11 +123,13 @@ async fn stream_blocks(
     let mut block_stream = fuel_streams::Stream::<Block>::new(client).await;
 
     let mut sub = match filter {
-        Some(filter) => block_stream.with_filter(filter).subscribe().await?,
-        None => block_stream.subscribe().await?,
+        Some(filter) => {
+            block_stream.with_filter(filter).subscribe_raw().await?
+        }
+        None => block_stream.subscribe_raw().await?,
     };
     while let Some(bytes) = sub.next().await {
-        let decoded_msg = Block::decode_raw(bytes.unwrap());
+        let decoded_msg = Block::decode_raw(bytes).unwrap();
         let block_height = decoded_msg.payload.height;
         let block_subject = decoded_msg.subject;
         let block_published_at = decoded_msg.timestamp;
@@ -155,15 +157,14 @@ async fn stream_transactions(
         Some(filter) => {
             txs_stream
                 .with_filter(filter)
-                .subscribe_with_config(config)
+                .subscribe_raw_with_config(config)
                 .await?
         }
-        None => txs_stream.subscribe_with_config(config).await?,
+        None => txs_stream.subscribe_raw_with_config(config).await?,
     };
 
     while let Some(bytes) = sub.next().await {
-        let message = bytes?;
-        let decoded_msg = Transaction::decode_raw(message.payload.to_vec());
+        let decoded_msg = Transaction::decode_raw(bytes).unwrap();
         let tx = decoded_msg.payload;
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;
@@ -200,10 +201,10 @@ async fn stream_transactions_by_contract(
         .with_id_value(Some((*contract_id).into()));
 
     // Filtered stream
-    let mut sub = txs_stream.with_filter(filter).subscribe().await?;
+    let mut sub = txs_stream.with_filter(filter).subscribe_raw().await?;
 
     while let Some(bytes) = sub.next().await {
-        let decoded_msg = Transaction::decode_raw(bytes.unwrap());
+        let decoded_msg = Transaction::decode_raw(bytes).unwrap();
         let tx = decoded_msg.payload;
         let tx_subject = decoded_msg.subject;
         let tx_published_at = decoded_msg.timestamp;
@@ -273,10 +274,10 @@ async fn stream_contract(
         ReceiptsMintSubject::new().with_contract_id(Some(contract_id.into())),
     );
 
-    let mut sub = receipt_stream.subscribe().await?;
+    let mut sub = receipt_stream.subscribe_raw().await?;
 
     while let Some(bytes) = sub.next().await {
-        let decoded_msg = Receipt::decode_raw(bytes.unwrap().to_vec());
+        let decoded_msg = Receipt::decode_raw(bytes).unwrap();
         let receipt = decoded_msg.payload;
 
         // Check if the receipt has a contract_id and if it matches our target
@@ -320,10 +321,10 @@ async fn stream_inputs_by_contract(
             .with_id_value(Some((*contract_id).into())),
     );
 
-    let mut sub = inputs_stream.subscribe().await?;
+    let mut sub = inputs_stream.subscribe_raw().await?;
 
     while let Some(bytes) = sub.next().await {
-        let decoded_msg = Input::decode_raw(bytes.unwrap().to_vec());
+        let decoded_msg = Input::decode_raw(bytes).unwrap();
         let input = decoded_msg.payload;
         let input_subject = decoded_msg.subject;
         let input_published_at = decoded_msg.timestamp;
@@ -361,10 +362,10 @@ async fn stream_receipts_by_contract(
             .with_id_value(Some((*contract_id).into())),
     );
 
-    let mut sub = receipt_stream.subscribe().await?;
+    let mut sub = receipt_stream.subscribe_raw().await?;
 
     while let Some(bytes) = sub.next().await {
-        let decoded_msg = Receipt::decode_raw(bytes.unwrap().to_vec());
+        let decoded_msg = Receipt::decode_raw(bytes).unwrap();
         let receipt = decoded_msg.payload;
         let receipt_subject = decoded_msg.subject;
         let receipt_published_at = decoded_msg.timestamp;

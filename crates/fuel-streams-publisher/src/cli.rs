@@ -9,15 +9,6 @@ use clap::Parser;
 /// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
 #[derive(Clone, Parser)]
 pub struct Cli {
-    /// Fuel Network to connect to.
-    #[arg(
-        long,
-        value_name = "NATS_URL",
-        env = "NATS_URL",
-        default_value = "localhost:4222",
-        help = "NATS URL to connect to."
-    )]
-    pub nats_url: String,
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     pub fuel_core_config: fuel_core_bin::cli::run::Command,

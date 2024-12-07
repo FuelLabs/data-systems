@@ -9,7 +9,7 @@ set -e
 usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  --network     : Specify the network (mainnet|testnet)"
+    echo "  --network     : Specify the network (mainnet|testnet|local)"
     echo "                  Default: testnet"
     echo "  --mode        : Specify the run mode (dev|profiling)"
     echo "                  Default: profiling"

@@ -18,7 +18,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// use fuel_networks::FuelNetwork;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
-///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
+///     let opts = NatsClientOpts::new(FuelNetwork::Local);
 ///     let client = NatsClient::connect(&opts).await?;
 ///     Ok(())
 /// }
@@ -32,7 +32,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// use async_nats::jetstream::kv;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
-///     let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
+///     let opts = NatsClientOpts::new(FuelNetwork::Local);
 ///     let client = NatsClient::connect(&opts).await?;
 ///     let kv_config = kv::Config {
 ///         bucket: "my-bucket".into(),
@@ -57,7 +57,7 @@ pub struct NatsClient {
 
 impl NatsClient {
     pub async fn connect(opts: &NatsClientOpts) -> Result<Self, NatsError> {
-        let url = opts.get_url();
+        let url = &opts.get_url();
         let namespace = opts.namespace.clone();
         let nats_client =
             opts.connect_opts().connect(url).await.map_err(|e| {
