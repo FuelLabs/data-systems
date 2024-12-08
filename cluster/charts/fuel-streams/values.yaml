@@ -6,8 +6,6 @@ config:
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
-  # Enable network policy that allows only traffic from the fuel-streams namespace
-  networkPolicy: true
   # Create roles and rolebindings for the fuel-streams serviceaccount
   createRoles: true
   # Enable health checks for all services
@@ -78,7 +76,6 @@ monitoring:
 # -------------------------------------------------------------------------------------------------
 
 publisher:
-  enabled: true
   network: mainnet
   image:
     repository: fuel-streams-publisher
@@ -158,6 +155,20 @@ publisher:
 # -------------------------------------------------------------------------------------------------
 # NATS configuration (Core)
 # -------------------------------------------------------------------------------------------------
+
+nats:
+  dns: "nats-core.fuel-streams.svc.cluster.local"
+  externalService:
+    enabled: false
+  ports:
+    leafnodes: 7422
+    websocket: 8443
+  tls:
+    enabled: false
+    issuer: letsencrypt-prod
+    duration: 2160h
+    renewBefore: 360h
+    annotations: {}
 
 nats-core:
   enabled: true
@@ -299,6 +310,7 @@ nats-client:
 
     leafnodes:
       enabled: true
+      port: 7422
       remotes:
         - url: "nats://nats-core:7422"
 
@@ -405,6 +417,7 @@ nats-publisher:
 
     leafnodes:
       enabled: true
+      port: 7422
       remotes:
         - url: "nats://nats-core:7422"
 

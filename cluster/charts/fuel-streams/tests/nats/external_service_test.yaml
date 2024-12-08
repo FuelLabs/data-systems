@@ -1,0 +1,98 @@
+suite: Testing NATS external service
+templates:
+  - templates/nats/external-service.yaml
+tests:
+  - it: should not create resources when external service is disabled
+    set:
+      nats.externalService.enabled: false
+      nats.dns: "nats.example.com"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create resources when DNS is not set
+    set:
+      nats.externalService.enabled: true
+      nats.dns: ""
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have correct service metadata and type
+    set:
+      nats.externalService.enabled: true
+      nats.dns: "nats.example.com"
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-external
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+      - equal:
+          path: spec.loadBalancerClass
+          value: service.k8s.aws/nlb
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+
+  - it: should configure ports correctly
+    set:
+      nats.externalService.enabled: true
+      nats.dns: "nats.example.com"
+      nats.ports.nats: 4222
+      nats.ports.leafnodes: 7422
+    asserts:
+      - equal:
+          path: spec.ports[0].name
+          value: nats
+      - equal:
+          path: spec.ports[0].port
+          value: 4222
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+      - equal:
+          path: spec.ports[1].name
+          value: leafnodes
+      - equal:
+          path: spec.ports[1].port
+          value: 7422
+      - equal:
+          path: spec.ports[1].protocol
+          value: TCP
+
+  - it: should set correct selectors
+    set:
+      nats.externalService.enabled: true
+      nats.dns: "nats.example.com"
+    asserts:
+      - equal:
+          path: 'spec.selector["app.kubernetes.io/name"]'
+          value: nats-client
+      - equal:
+          path: 'spec.selector["app.kubernetes.io/instance"]'
+          value: RELEASE-NAME
+
+  - it: should set correct annotations
+    set:
+      nats.externalService.enabled: true
+      nats.dns: "nats.example.com"
+    asserts:
+      - equal:
+          path: 'metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]'
+          value: "nats.example.com"
+      - equal:
+          path: 'metadata.annotations["external-dns.alpha.kubernetes.io/cloudflare-proxied"]'
+          value: "false"
+      - equal:
+          path: 'metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-type"]'
+          value: "external"
+      - equal:
+          path: 'metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"]'
+          value: "internet-facing"
+      - equal:
+          path: 'metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"]'
+          value: "ip"

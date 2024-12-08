@@ -1,4 +1,4 @@
-suite: test publisher deployment
+suite: Testing Publisher statefulset
 templates:
   - templates/publisher/statefulset.yaml
 tests:
