@@ -9,7 +9,7 @@ metadata:
     {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 4 }}
 data:
   P2P_PORT: "30333"
-  DB_PATH: "/mnt/db/"
+  DB_PATH: {{ .Values.publisher.storage.mountPath | quote }}
   POA_INSTANT: "false"
   SERVICE_NAME: "Publisher Node ({{ $publisher.network }})"
   {{- if eq $publisher.network "mainnet" }}

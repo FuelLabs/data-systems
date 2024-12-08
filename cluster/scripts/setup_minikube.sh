@@ -19,7 +19,7 @@ minikube delete
 
 # Default values for resources
 DEFAULT_DISK_SIZE='50000mb'
-DEFAULT_MEMORY='20000mb'
+DEFAULT_MEMORY='12000mb'
 
 # Get parameters with defaults
 DISK_SIZE=${1:-$DEFAULT_DISK_SIZE}
@@ -30,26 +30,7 @@ minikube start \
     --driver=docker \
     --disk-size="$DISK_SIZE" \
     --memory="$MEMORY" \
-    --cpus 8 \
-    --insecure-registry registry.dev.svc.cluster.local:5000
-
-# Enable required addons
-echo "Enabling minikube addons..."
-ADDONS=(
-    "registry-creds"
-    "registry"
-    "metrics-server"
-    "dashboard"
-)
-
-for addon in "${ADDONS[@]}"; do
-    echo "Enabling $addon..."
-    minikube addons enable "$addon"
-done
-
-# Display enabled addons
-echo -e "\n\033[1;33mEnabled Addons:\033[0m"
-minikube addons list | grep -E "STATUS|enabled"
+    --cpus 8
 
 # Display minikube status
 echo -e "\n\033[1;33mMinikube Status:\033[0m"

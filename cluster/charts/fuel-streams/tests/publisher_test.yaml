@@ -41,13 +41,13 @@ tests:
         CHAIN_CONFIG: "testnet"  # Override default
         NEW_VAR: "new-value"     # Add new var
       publisher.extraEnv:
-      - name: SIMPLE_VAR
-        value: "simple-value"
-      - name: SECRET_VAR
-        valueFrom:
-          secretKeyRef:
-            name: my-secret
-            key: my-key
+        - name: SIMPLE_VAR
+          value: "simple-value"
+        - name: SECRET_VAR
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: my-key
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -73,25 +73,15 @@ tests:
                 name: my-secret
                 key: my-key
 
-  - it: should handle complex persistence configuration
+  - it: should handle storage configuration correctly
     set:
       publisher.enabled: true
-      publisher.persistence:
-        enabled: true
-        data:
-          name: rocks-db
-          containerName: update-rocks-db
-          size: 500Gi
-          mountPath: /mnt/db
-          storageClass: gp3-generic
-          accessMode: ReadWriteOnce
-        temp:
-          name: tmp
-          containerName: update-tmp
-          size: 5Gi
-          mountPath: /tmp
-          storageClass: gp3-generic
-          accessMode: ReadWriteOnce
+      publisher.storage:
+        name: rocks-db
+        size: 500Gi
+        mountPath: /mnt/db
+        storageClass: gp3-generic
+        accessMode: ReadWriteOnce
     asserts:
       - hasDocuments:
           count: 1
@@ -102,12 +92,6 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts[0].mountPath
           value: /mnt/db
       - equal:
-          path: spec.template.spec.containers[0].volumeMounts[1].name
-          value: tmp
-      - equal:
-          path: spec.template.spec.containers[0].volumeMounts[1].mountPath
-          value: /tmp
-      - equal:
           path: spec.template.spec.initContainers[0].name
           value: update-rocks-db
       - equal:
@@ -117,47 +101,39 @@ tests:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /mnt/db
       - equal:
-          path: spec.template.spec.initContainers[1].name
-          value: update-tmp
+          path: spec.volumeClaimTemplates[0].metadata.name
+          value: rocks-db
       - equal:
-          path: spec.template.spec.initContainers[1].volumeMounts[0].name
-          value: tmp
+          path: spec.volumeClaimTemplates[0].spec.accessModes[0]
+          value: ReadWriteOnce
       - equal:
-          path: spec.template.spec.initContainers[1].volumeMounts[0].mountPath
-          value: /tmp
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+          value: gp3-generic
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 500Gi
 
-  - it: should handle persistence disabled
+  - it: should handle storage with minimal configuration
     set:
       publisher.enabled: true
-      publisher.persistence:
-        enabled: false
+      publisher.storage:
+        name: data
+        size: 10Gi
+        mountPath: /data
+        storageClass: standard
+        accessMode: ReadWriteOnce
     asserts:
       - hasDocuments:
           count: 1
-      - isNull:
-          path: spec.template.spec.initContainers
-      - isNull:
-          path: spec.template.spec.containers[0].volumeMounts
-
-  - it: should handle persistence enabled with minimal configuration
-    set:
-      publisher.enabled: true
-      publisher.persistence:
-        enabled: true
-        data:
-          name: data
-          mountPath: /data
-    asserts:
-      - hasDocuments:
-          count: 1
-      - isNotEmpty:
-          path: spec.template.spec.containers[0].volumeMounts
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0]
+          value:
             name: data
             mountPath: /data
             readOnly: false
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 10Gi
 
   - it: should set labels and annotations from service config
     set:
@@ -186,42 +162,14 @@ tests:
             service: "publisher"
             monitoring: "enabled"
 
-  - it: should merge security contexts with defaults
-    set:
-      publisher.enabled: true
-      containerSecurityContext:
-        runAsUser: 3000
-        capabilities:
-          drop: ["NONE"]
-      publisher.config.containerSecurityContext:
-        readOnlyRootFilesystem: false
-        runAsUser: 2000  # Should override both default and global
-    asserts:
-      - equal:
-          path: spec.template.spec.containers[0].securityContext
-          value:
-            capabilities:
-              drop:
-                - NONE
-            readOnlyRootFilesystem: false
-            runAsUser: 2000
-
   - it: should merge global and publisher-specific configurations
     set:
       publisher.enabled: true
-      # Global configurations
-      probes:
-        liveness:
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readiness:
-          initialDelaySeconds: 20
-          periodSeconds: 5
-      publisher.probes:
-        path: /custom-health
-        port: 9090
-        liveness:
-          initialDelaySeconds: 45  # Should override global
+      publisher.config.livenessProbe:
+        initialDelaySeconds: 45
+        httpGet:
+          path: /custom-health
+          port: 9090
     asserts:
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.httpGet.path
@@ -234,13 +182,7 @@ tests:
           value: 45
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.periodSeconds
-          value: 10
-      - equal:
-          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
           value: 20
-      - equal:
-          path: spec.template.spec.containers[0].readinessProbe.periodSeconds
-          value: 5
 
   - it: should set replicas when autoscaling is disabled
     set:
@@ -253,3 +195,33 @@ tests:
       - equal:
           path: spec.replicas
           value: 3
+
+  - it: should replace security contexts with provided values
+    set:
+      publisher.enabled: true
+      publisher.config:
+        securityContext:
+          fsGroup: 2500
+        containerSecurityContext:
+          runAsUser: 2500
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            fsGroup: 2500
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            runAsUser: 2500
+            runAsGroup: 1000
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false

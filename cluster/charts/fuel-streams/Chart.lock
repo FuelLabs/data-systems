@@ -1,9 +1,12 @@
 dependencies:
-- name: fuel-streams-publisher
-  repository: file://../fuel-streams-publisher
-  version: 0.3.8
-- name: fuel-nats
-  repository: file://../fuel-nats
-  version: 0.1.1
-digest: sha256:954b2e3b532b160949cf0627a36d894a7216a49f05d82ffec74eef6872468cd5
-generated: "2024-12-02T16:16:29.801159-03:00"
+- name: nats
+  repository: https://nats-io.github.io/k8s/helm/charts/
+  version: 1.2.6
+- name: nats
+  repository: https://nats-io.github.io/k8s/helm/charts/
+  version: 1.2.6
+- name: nats
+  repository: https://nats-io.github.io/k8s/helm/charts/
+  version: 1.2.6
+digest: sha256:0a15dbb728d337f770b849d7f13f40af7b10216d6bceec6c113e9982adec9448
+generated: "2024-12-08T01:06:24.45926-03:00"

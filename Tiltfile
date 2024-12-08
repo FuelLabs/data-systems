@@ -31,65 +31,65 @@ custom_build(
 )
 
 # Get deployment mode from environment variable, default to 'full'
-# and configure values based on mode
 config_mode = os.getenv('CLUSTER_MODE', 'full')
 
 # Resource configurations
 RESOURCES = {
     'publisher': {
-        'name': 'local-fuel-streams-publisher',
+        'name': 'fuel-streams-publisher',
         'ports': ['4000:4000', '8080:8080'],
         'labels': 'publisher',
         'config_mode': ['minimal', 'full']
     },
-    'nats': {
-        'name': 'local-nats',
-        'ports': ['4222:4222'],
+    'nats-core': {
+        'name': 'fuel-streams-nats-core',
+        'ports': ['4222:4222', '8222:8222'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
-    'nats-box': {
-        'name': 'local-nats-box',
-        'ports': [],
+    'nats-client': {
+        'name': 'fuel-streams-nats-client',
+        'ports': ['4223:4222', '8443:8443'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
-    'prometheus': {
-        'name': 'local-fuel-local-prometheus',
-        'ports': ['9090:9090'],
-        'labels': 'monitoring',
-        'config_mode': ['full']
+    'nats-publisher': {
+        'name': 'fuel-streams-nats-publisher',
+        'ports': ['4224:4222'],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
     },
-    'grafana': {
-        'name': 'local-fuel-local-grafana',
-        'ports': ['3000:3000'],
-        'labels': 'monitoring',
-        'config_mode': ['full']
-    },
-    'elasticsearch': {
-        'name': 'local-fuel-local-elasticsearch',
-        'ports': ['9200:9200', '9300:9300'],
-        'labels': 'logging',
-        'config_mode': ['full']
-    },
+    # 'grafana': {
+    #     'name': 'fuel-streams-grafana',
+    #     'ports': ['3000:3000'],
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'prometheus-operator': {
+    #     'name': 'fuel-streams-prometheus-operator',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'kube-state-metrics': {
+    #     'name': 'fuel-streams-kube-state-metrics',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'node-exporter': {
+    #     'name': 'fuel-streams-prometheus-node-exporter',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # }
 }
 
-# Deploy the Helm chart with values
-helm_set_values = [
-    name + ".enabled=" + str(config_mode in resource['config_mode']).lower()
-    for name, resource in RESOURCES.items()
-    if name not in ['publisher', 'nats', 'nats-box']  # Skip non-optional services
-]
-
 k8s_yaml(helm(
-    'cluster/charts/fuel-local',
-    name='local',
-    namespace='fuel-local',
+    'cluster/charts/fuel-streams',
+    name='fuel-streams',
+    namespace='fuel-streams',
     values=[
-        'cluster/charts/fuel-local/values.yaml',
-        'cluster/charts/fuel-local/values-publisher-env.yaml',
-    ],
-    set=helm_set_values,
+        'cluster/charts/fuel-streams/values-publisher-secrets.yaml',
+        'cluster/charts/fuel-streams/values.yaml'
+    ]
 ))
 
 # Configure k8s resources
@@ -98,7 +98,7 @@ for name, resource in RESOURCES.items():
         k8s_resource(
             resource['name'],
             new_name=name,
-            port_forwards=resource['ports'],
+            port_forwards=resource.get('ports', []),
             resource_deps=resource.get('deps', []),
             labels=resource['labels']
         )

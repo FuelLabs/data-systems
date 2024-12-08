@@ -74,105 +74,102 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Create the name of the service account to use
 Logic:
-- If service account creation is enabled, use the fullname template (unless overridden)
-- If service account creation is disabled, use the specified name or "default"
+- If service account creation is enabled, use the fullname template with "-service-account" suffix
 Returns: String - The name of the service account to use
 */}}
 {{- define "fuel-streams.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "fuel-streams.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- printf "%s-%s" (include "fuel-streams.fullname" .) "service-account" }}
 {{- end }}
 {{- end }}
 
 {{/*
 Merges configuration values between global defaults and service-specific overrides
 Parameters:
-  - service: Service name (e.g., "publisher")
-  - component: Component being configured (e.g., "resources", "securityContext")
-  - context: Root context (.)
-  - defaultKey: Path to global default values
-  - path: Path to service-specific override values
+  - context: Root context for accessing global values
+  - service: Service name for service-specific overrides
+  - defaultKey: Key for default configuration values
+  - path: Path to service-specific configuration values
+Example:
+  {{- include "merge" (dict "context" . "service" "publisher" "defaultKey" "livenessProbe" "path" "config.livenessProbe") }}
 Returns: Deep-merged YAML configuration with service values taking precedence
 */}}
-{{- define "merge-with-defaults" -}}
+{{- define "merge" -}}
 {{- $defaultConfig := dict }}
 {{- $serviceConfig := dict }}
-{{- $context := default dict .context }}
-{{- $values := default dict $context.Values }}
+{{- $context := .context }}
+{{- $service := .service }}
+{{- $defaultKey := .defaultKey }}
+{{- $path := .path }}
 
-{{- if and $context $values }}
-  {{- $defaultConfig = include "get-value-from-path" (dict "context" $values "path" .defaultKey) | fromYaml }}
+{{- if and $context $context.Values }}
+  {{- $defaultConfig = include "get-value-from-path" (dict "context" $context.Values "path" $defaultKey) | fromYaml }}
 {{- end }}
 
-{{- if and .service $values (hasKey $values .service) }}
-  {{- $serviceConfig = include "get-value-from-path" (dict "context" (index $values .service) "path" .path) | fromYaml }}
+{{- if and $context $context.Values }}
+  {{- $serviceConfig = include "get-value-from-path" (dict "context" (index $context.Values $service) "path" $path) | fromYaml }}
 {{- end }}
 
 {{- $mergedConfig := deepCopy $defaultConfig }}
-{{- if $serviceConfig }}
-{{- $_ := mustMergeOverwrite $mergedConfig $serviceConfig }}
+{{- if and $serviceConfig (not (empty $serviceConfig)) }}
+  {{- $_ := mustMergeOverwrite $mergedConfig $serviceConfig }}
 {{- end }}
 {{- toYaml $mergedConfig }}
 {{- end }}
 
 {{/*
-Helper function to traverse and retrieve values from nested paths
+Get value from nested path with improved error handling
 Parameters:
   - context: The context object to traverse
-  - path: Dot-notation string path (e.g., "config.resources.limits")
-Example:
-  {{- include "get-value-from-path" (dict "context" .context "path" .path) }}
-Returns: The value at the specified path, or empty if not found
+  - path: Dot-notation string path
+Returns: Value at path or empty if not found
 */}}
 {{- define "get-value-from-path" -}}
-{{- $current := .context -}}
-{{- range $part := splitList "." .path -}}
-{{- if $current -}}
-{{- $current = index $current $part -}}
-{{- end -}}
-{{- end -}}
-{{- if $current -}}
-{{- toYaml $current -}}
-{{- end -}}
-{{- end -}}
+  {{- $current := .context }}
+  {{- if and .path (not (empty .path)) }}
+    {{- range $part := splitList "." .path }}
+      {{- if and $current (kindIs "map" $current) }}
+        {{- if hasKey $current $part }}
+          {{- $current = index $current $part }}
+        {{- else }}
+          {{- $current = dict }}
+        {{- end }}
+      {{- else }}
+        {{- $current = dict }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $current }}
+    {{- toYaml $current }}
+  {{- end }}
+{{- end }}
 
 {{/*
-Renders a YAML field with its key name, supporting nested path lookups
+Set field and value with improved validation
 Parameters:
-  - field: The field name to render (e.g., "nodeSelector", "tolerations")
-  - path: Dot-notation path to the field's value in Values.yaml
-  - context: The context to use (e.g., $publisher)
-Example:
-  {{- include "set-field-and-value" (dict "field" "nodeSelector" "path" "config.nodeSelector" "context" $publisher) }}
-Returns:
-  nodeSelector:
-    key: value
+  - field: Field name to set
+  - path: Path to value
+  - context: Context object
+Returns: Field and value if value exists and is not empty
 */}}
 {{- define "set-field-and-value" -}}
-{{- $value := include "get-value-from-path" . | fromYaml -}}
-{{- if and $value (not (empty $value)) -}}
-{{ .field -}}:
-{{- toYaml $value | nindent 2 -}}
-{{- end -}}
-{{- end -}}
+{{- $value := include "get-value-from-path" . | fromYaml }}
+{{- if and $value (not (empty $value)) (not (eq (kindOf $value) "invalid")) }}
+{{ .field }}:
+  {{- toYaml $value | nindent 2 }}
+{{- end }}
+{{- end }}
 
 {{/*
-Renders only the YAML value without the field name, supporting nested path lookups
+Set value only with improved validation
 Parameters:
-  - field: Field name (used for context only)
-  - path: Dot-notation path to the value in Values.yaml
-  - context: The context to use (e.g., $publisher)
-Example:
-  {{- include "set-value" (dict "context" .context "path" .path) }}
-Returns:
-  key: value
+  - path: Path to value
+  - context: Context object
+Returns: Value if it exists and is not empty
 */}}
 {{- define "set-value" -}}
-{{- $value := include "get-value-from-path" . | fromYaml -}}
-{{- if and $value (not (empty $value)) -}}
-{{- toYaml $value | nindent 0 -}}
-{{- end -}}
-{{- end -}}
-
+{{- $value := include "get-value-from-path" . | fromYaml }}
+{{- if and $value (not (empty $value)) (not (eq (kindOf $value) "invalid")) }}
+  {{- toYaml $value | nindent 0 }}
+{{- end }}
+{{- end }}

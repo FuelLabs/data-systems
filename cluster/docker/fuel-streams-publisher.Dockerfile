@@ -98,7 +98,7 @@ RUN apt-get update -y \
 COPY --from=builder /root/fuel-streams-publisher .
 COPY --from=builder /root/fuel-streams-publisher.d .
 
-COPY /docker/chain-config ./chain-config
+COPY /cluster/chain-config ./chain-config
 EXPOSE ${PORT}
 EXPOSE ${P2P_PORT}
 EXPOSE ${TELEMETRY_PORT}

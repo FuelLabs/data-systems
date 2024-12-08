@@ -238,10 +238,10 @@ docker-clean: (run-docker-compose "down -v --rmi all --remove-orphans")
 #  Local cluster (Tilt)
 # ------------------------------------------------------------
 
-minikube-setup disk_size="50000mb" memory="8000mb":
+minikube-setup disk_size="50000mb" memory="12000mb":
     @./cluster/scripts/setup_minikube.sh "{{disk_size}}" "{{memory}}"
 
-minikube-start disk_size="50000mb" memory="8000mb":
+minikube-start disk_size="50000mb" memory="12000mb":
     #!/usr/bin/env bash
     echo "Starting minikube with disk-size={{disk_size}}, memory={{memory}}..."
     minikube start \
@@ -257,9 +257,9 @@ minikube-delete:
     @echo "Deleting minikube..."
     @minikube delete
 
-k8s-setup:
+k8s-setup namespace="fuel-streams":
     @echo "Setting up k8s..."
-    @./cluster/scripts/setup_k8s.sh
+    @./cluster/scripts/setup_k8s.sh {{namespace}}
 
 helm-setup:
     @cd cluster/charts/fuel-local && helm dependency update
