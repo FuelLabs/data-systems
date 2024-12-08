@@ -2,6 +2,9 @@ dependencies:
 - name: fuel-streams-publisher
   repository: file://../fuel-streams-publisher
   version: 0.3.7
+- name: fuel-streams-ws
+  repository: file://../fuel-streams-ws
+  version: 0.3.7
 - name: fuel-nats
   repository: file://../fuel-nats
   version: 0.1.0

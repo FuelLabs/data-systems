@@ -3,6 +3,7 @@ extend-exclude = [
     "pnpm-lock.yaml",
     "crates/fuel-streams-publisher/README.md",
     "crates/fuel-streams-publisher/src/elastic.rs",
+    "crates/fuel-streams-ws/README.md",
     "crates/fuel-indexer/*",
     "docker/chain-config",
     "docker/monitoring",

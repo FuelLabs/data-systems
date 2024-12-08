@@ -243,7 +243,7 @@ PUBLISHER_SCRIPT := ./scripts/run_publisher.sh
 # Define how to run the publisher script
 publisher_%: EXTRA_ARGS ?=
 publisher_%:
-	@network=$$(echo "$**" | cut -d'-' -f2) && \
+	@network=$$(echo "$**" | cut -d'_' -f2) && \
 	$(PUBLISHER_SCRIPT) --network $$network --mode $$mode --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # Publisher commands for different networks and modes
@@ -261,8 +261,25 @@ run-publisher: EXTRA_ARGS ?=
 run-publisher: check-network
 	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
+
+# ------------------------------------------------------------
+#  Streamer Websockets Run Commands (Local Development)
+# ------------------------------------------------------------
 run-ws-streamer:
-	cargo run --package fuel-ws-streamer --bin ws-streamer -- --config-path crates/fuel-ws-streamer/config.toml
+	cargo run --package fuel-ws-streamer --bin ws-streamer -- --config-path crates/fuel-streams-ws/config.toml
+
+run-ws-client:
+	cargo run --package fuel-ws-streamer --bin ws-client -- --config-path crates/fuel-streams-ws/config.toml
+
+STREAMER_SCRIPT := ./scripts/run_ws_streamer.sh
+
+# Generic publisher command using environment variables
+run-streamer: MODE ?= dev
+run-streamer: CONFIG_PATH ?= crates/fuel-streams-ws/config.toml
+run-streamer: EXTRA_ARGS ?=
+
+run-streamer: check-network
+	@$(STREAMER_SCRIPT) --mode $(MODE) $(if $(CONFIG_PATH),--config-path "$(CONFIG_PATH)") $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
 # ------------------------------------------------------------
 #  Testing
@@ -397,6 +414,7 @@ helm_setup:  ## Update Helm dependencies
 	cd cluster/charts/fuel-local && helm dependency update
 	cd cluster/charts/fuel-nats && helm dependency update
 	cd cluster/charts/fuel-streams-publisher && helm dependency update
+	cd cluster/charts/fuel-streams-ws && helm dependency update
 
 # ------------------------------------------------------------
 #  Websocket

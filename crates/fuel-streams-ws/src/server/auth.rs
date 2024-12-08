@@ -1,6 +1,10 @@
 use std::{collections::HashMap, convert::TryFrom, fmt};
 
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{
+    http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    HttpResponse,
+    ResponseError,
+};
 use chrono::Utc;
 use displaydoc::Display as DisplayDoc;
 use jsonwebtoken::{
@@ -12,12 +16,11 @@ use jsonwebtoken::{
     Header,
     Validation,
 };
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-const BEARER: &str = "Bearer ";
+const BEARER: &str = "Bearer";
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd,
@@ -277,9 +280,7 @@ pub fn create_jwt(
         .map_err(|_| AuthError::JWTTokenCreationError)
 }
 
-fn jwt_from_header(
-    headers: &HeaderMap<HeaderValue>,
-) -> Result<String, AuthError> {
+fn jwt_from_header(headers: &HeaderMap) -> Result<String, AuthError> {
     let header = match headers.get(AUTHORIZATION) {
         Some(v) => v,
         None => return Err(AuthError::NoAuthHeaderError),
@@ -291,11 +292,16 @@ fn jwt_from_header(
     if !auth_header.starts_with(BEARER) {
         return Err(AuthError::InvalidAuthHeaderError);
     }
-    Ok(auth_header.trim_start_matches(BEARER).to_owned())
+    let decoded_jwt =
+        urlencoding::decode(auth_header.trim_start_matches(BEARER))
+            .unwrap()
+            .trim()
+            .to_string();
+    Ok(decoded_jwt)
 }
 
 fn authorize(
-    (jwt_secret, headers): (String, HeaderMap<HeaderValue>),
+    (jwt_secret, headers): (String, actix_web::http::header::HeaderMap),
 ) -> Result<(Uuid, String), AuthError> {
     match jwt_from_header(&headers) {
         Ok(jwt) => {
@@ -311,7 +317,6 @@ fn authorize(
                 Uuid::parse_str(&decoded.claims.sub).map_err(|_| {
                     AuthError::UnparsableUuid(decoded.claims.sub.to_string())
                 })?;
-
             // check token expiration
             let now = Utc::now().timestamp();
 
@@ -328,7 +333,6 @@ fn authorize(
                 })?;
 
             // TODO: verify db user's role vs token_role
-
             Ok((user_id, jwt))
         }
         Err(e) => Err(e),
@@ -338,7 +342,7 @@ fn authorize(
 pub fn authorize_request(
     (jwt_secret, mut headers, query_map): (
         String,
-        HeaderMap<HeaderValue>,
+        actix_web::http::header::HeaderMap,
         HashMap<String, String>,
     ),
 ) -> Result<(Uuid, String), AuthError> {

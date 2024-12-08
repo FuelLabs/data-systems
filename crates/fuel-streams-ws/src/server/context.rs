@@ -27,10 +27,8 @@ impl Context {
         let nats_client_opts = NatsClientOpts::default_opts(None)
             .with_custom_url(config.nats.url.clone());
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        tracing::info!("XXXXXXXXXXXXXXXXXX");
         let streams = Arc::new(Streams::new(&nats_client).await);
-
-        let telemetry = Telemetry::new().await?;
+        let telemetry = Telemetry::new(None).await?;
         telemetry.start().await?;
 
         Ok(Context {
@@ -50,7 +48,7 @@ impl Context {
         Ok(Context {
             streams: Arc::new(Streams::new(nats_client).await),
             nats_client: Arc::new(nats_client.clone()),
-            telemetry: Telemetry::new().await?,
+            telemetry: Telemetry::new(None).await?,
             s3_client: None,
             jwt_secret: String::new(),
         })

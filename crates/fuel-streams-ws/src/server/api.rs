@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, SocketAddrV4};
 use actix_cors::Cors;
 use actix_server::Server;
 use actix_web::{
-    http,
+    http::{self, Method},
     middleware::{Compress, Logger as ActixLogger},
     web,
     App,
@@ -13,16 +13,13 @@ use tracing_actix_web::TracingLogger;
 
 use super::{
     http::handlers::{get_health, get_metrics, request_jwt},
+    middlewares::auth::JwtAuth,
     state::ServerState,
     ws::socket::get_ws,
 };
 use crate::config::Config;
 
-// We are keeping this low to give room for more
-// Publishing processing power. This is fine since the
-// the latency tolerance when fetching /health and /metrics
-// is trivial
-const MAX_WORKERS: usize = 2;
+const MAX_WORKERS: usize = 10;
 
 const API_VERSION: &str = "v1";
 
@@ -38,12 +35,21 @@ pub fn create_api(
         Ipv4Addr::UNSPECIFIED,
         config.api.port,
     ));
-
+    let jwt_secret = config.auth.jwt_secret.clone();
     let server = HttpServer::new(move || {
+        let jwt_secret = jwt_secret.clone();
         // create cors
         let cors = Cors::default()
             .allow_any_origin()
-            .allowed_methods(vec!["GET", "POST"])
+            .allowed_methods(vec![
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::OPTIONS,
+                Method::DELETE,
+                Method::PATCH,
+                Method::TRACE,
+            ])
             .allowed_headers(vec![
                 http::header::AUTHORIZATION,
                 http::header::ACCEPT,
@@ -71,6 +77,7 @@ pub fn create_api(
             )
             .service(
                 web::resource(with_prefixed_route("ws"))
+                    .wrap(JwtAuth::new(jwt_secret))
                     .route(web::get().to(get_ws)),
             )
     })
@@ -94,12 +101,14 @@ mod tests {
             context::Context,
             state::{HealthResponse, ServerState},
         },
-        telemetry::Telemetry,
+        telemetry::{metrics::Metrics, Telemetry},
     };
 
     #[actix_web::test]
     async fn test_health_check() {
-        let telemetry = Telemetry::new().await.unwrap();
+        let telemetry = Telemetry::new(Some(Metrics::generate_random_prefix()))
+            .await
+            .unwrap();
         telemetry.start().await.unwrap();
 
         let mut config = Config::default();

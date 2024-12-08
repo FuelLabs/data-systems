@@ -1,5 +1,5 @@
 mod elastic_search;
-mod metrics;
+pub mod metrics;
 mod runtime;
 #[allow(clippy::needless_borrows_for_generic_args)]
 mod system;
@@ -13,7 +13,6 @@ use elastic_search::{
     ElasticSearch,
     LogEntry,
 };
-use fuel_streams_core::prelude::*;
 use metrics::Metrics;
 // TODO: Consider using tokio's Rwlock instead
 use parking_lot::RwLock;
@@ -31,13 +30,13 @@ pub struct Telemetry {
 impl Telemetry {
     const DEDICATED_THREADS: usize = 2;
 
-    pub async fn new() -> anyhow::Result<Arc<Self>> {
+    pub async fn new(prefix: Option<String>) -> anyhow::Result<Arc<Self>> {
         let runtime =
             Runtime::new(Self::DEDICATED_THREADS, Duration::from_secs(20));
         let system = Arc::new(RwLock::new(System::new().await));
 
         let metrics = if should_use_metrics() {
-            Some(Arc::new(Metrics::default()))
+            Some(Arc::new(Metrics::new(prefix)?))
         } else {
             None
         };
@@ -98,75 +97,45 @@ impl Telemetry {
         }
     }
 
-    pub fn update_publisher_success_metrics(
+    pub fn update_streamer_success_metrics(
         &self,
-        subject: &str,
-        published_data_size: usize,
-        chain_id: &FuelCoreChainId,
-        block_producer: &Address,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
     ) {
         self.maybe_use_metrics(|metrics| {
-            // Update message size histogram
+            // Increment total user subscribed messages
             metrics
-                .message_size_histogram
+                .user_subscribed_messages
                 .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                ])
-                .observe(published_data_size as f64);
-
-            // Increment total published messages
-            metrics
-                .total_published_messages
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
+                    user_id.to_string().as_str(),
+                    subject_wildcard,
                 ])
                 .inc();
 
-            // Increment throughput for the published messages
+            // Increment throughput for the subscribed messages
             metrics
-                .published_messages_throughput
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                ])
+                .subs_messages_throughput
+                .with_label_values(&[subject_wildcard])
                 .inc();
         });
     }
 
-    pub fn update_publisher_error_metrics(
+    pub fn update_streamer_error_metrics(
         &self,
-        subject: &str,
-        chain_id: &FuelCoreChainId,
-        block_producer: &Address,
-        error: &str,
+        subject_wildcard: &str,
+        error_type: &str,
     ) {
         self.maybe_use_metrics(|metrics| {
             metrics
-                .error_rates
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                    error,
-                ])
+                .subs_messages_error_rates
+                .with_label_values(&[subject_wildcard, error_type])
                 .inc();
         });
     }
 
-    pub fn record_streams_count(
-        &self,
-        chain_id: &FuelCoreChainId,
-        count: usize,
-    ) {
+    pub fn record_subscriptions_count(&self) {
         self.maybe_use_metrics(|metrics| {
-            metrics
-                .total_subs
-                .with_label_values(&[&chain_id.to_string()])
-                .set(count as i64);
+            metrics.total_ws_subs.with_label_values(&[]).inc();
         });
     }
 

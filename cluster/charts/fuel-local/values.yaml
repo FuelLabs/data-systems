@@ -89,6 +89,21 @@ fuel-streams-publisher:
       size: 5Gi
       storageClass: standard
 
+fuel-streams-ws:
+  # You dont need to setup your secrets here because they will be generated automatically by Tilt
+  image:
+    repository: "fuel-streams-ws"
+    pullPolicy: Never
+    tag: latest
+
+  persistence:
+    data:
+      size: 1Gi
+      storageClass: standard
+    temp:
+      size: 1Gi
+      storageClass: standard
+
 fuel-nats:
   container:
     env:

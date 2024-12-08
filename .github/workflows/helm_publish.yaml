@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - cluster/charts/fuel-streams-publisher/Chart.yaml
+      - cluster/charts/fuel-streams-ws/Chart.yaml
       - cluster/charts/fuel-nats/Chart.yaml
 
 permissions:
@@ -26,6 +27,7 @@ jobs:
       matrix:
         chart:
           - fuel-streams-publisher
+          - fuel-streams-ws
           - fuel-nats
     steps:
       - name: Check out code

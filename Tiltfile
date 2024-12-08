@@ -30,6 +30,26 @@ custom_build(
     ignore=['./target']
 )
 
+# Build streamer ws image with proper configuration for Minikube
+custom_build(
+    ref='fuel-streams-ws:latest',
+    command=['./cluster/scripts/build_ws_streamer.sh'],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './docker/fuel-streams-ws.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    skips_local_docker=True,
+    ignore=['./target']
+)
+
 # Deploy the Helm chart with values from .env
 k8s_yaml(helm(
     'cluster/charts/fuel-local',
@@ -37,7 +57,7 @@ k8s_yaml(helm(
     namespace='fuel-local',
     values=[
         'cluster/charts/fuel-local/values.yaml',
-        'cluster/charts/fuel-local/values-publisher-env.yaml',
+        'cluster/charts/fuel-local/values-ws-env.yaml',
     ]
 ))
 
@@ -47,6 +67,7 @@ ports = {
     "elasticsearch": ["9200:9200", "9300:9300"],
     "kibana": ["5601:5601"],
     "publisher": ["4000:4000", "8080:8080"],
+    "streamer": ["9003:9003"],
     "nats": ["4222:4222"],
     "nats-box": [],
 }
@@ -56,6 +77,7 @@ deps = {
     "elasticsearch": [],
     "kibana": ["elasticsearch"],
     "publisher": [],
+    "streamer": [],
     "nats": [],
     "nats-box": [],
 }
@@ -80,6 +102,12 @@ k8s_resource("local-fuel-streams-publisher",
     resource_deps=deps["publisher"],
     port_forwards=ports["publisher"],
     labels="publisher"
+)
+k8s_resource("local-fuel-streams-ws",
+    new_name="steamer",  # Override the display name
+    resource_deps=deps["steamer"],
+    port_forwards=ports["steamer"],
+    labels="steamer"
 )
 k8s_resource("local-nats",
     new_name="nats",

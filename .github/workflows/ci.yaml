@@ -205,6 +205,7 @@ jobs:
           - fuel-streams-core
           - fuel-streams-macros
           - fuel-streams-publisher
+          - fuel-streams-ws
 
     steps:
       - uses: actions/checkout@v4
@@ -240,6 +241,7 @@ jobs:
       matrix:
         package:
           - fuel-streams-publisher
+          - fuel-streams-ws
         is_release:
           - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:

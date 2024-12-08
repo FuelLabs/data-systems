@@ -57,6 +57,13 @@ scrape_configs:
       - targets:
           - 'fuel-streams-publisher:8080'
 
+  - job_name: 'fuel-streams-ws'
+    scrape_interval: 5s
+    scrape_timeout: 2s
+    static_configs:
+      - targets:
+          - 'fuel-streams-ws:9003'
+
   - job_name: 'cadvisor'
     scrape_interval: 5s
     scrape_timeout: 2s

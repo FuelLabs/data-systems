@@ -7,6 +7,9 @@ dependencies:
   - name: fuel-streams-publisher
     version: "0.3.8"
     repository: "file://../fuel-streams-publisher"
+  - name: fuel-streams-ws
+    version: "0.3.8"
+    repository: "file://../fuel-streams-ws"
   - name: fuel-nats
     version: "0.1.1"
     repository: "file://../fuel-nats"

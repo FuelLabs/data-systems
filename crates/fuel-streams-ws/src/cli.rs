@@ -2,7 +2,7 @@ use clap::Parser;
 
 /// CLI structure for parsing command-line arguments.
 ///
-/// - `conig_path`: Path to the toml config file.
+/// - `config_path`: Path to the toml config file.
 #[derive(Clone, Parser)]
 pub struct Cli {
     /// Config path

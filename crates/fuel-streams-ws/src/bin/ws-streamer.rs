@@ -1,10 +1,11 @@
 use anyhow::Context as _;
 use clap::Parser;
-use fuel_ws_streamer::{
+use fuel_streams_ws::{
     cli::Cli,
     config::Config,
     server::{api::create_api, context::Context, state::ServerState},
 };
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
 #[tokio::main]
@@ -12,8 +13,9 @@ async fn main() -> anyhow::Result<()> {
     // init tracing
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
         )
         .with_span_events(FmtSpan::CLOSE)
         .init();
@@ -51,11 +53,14 @@ async fn main() -> anyhow::Result<()> {
     let server_handle = server.handle();
 
     // spawn the server in the background
-    tokio::spawn(async move {
+    let jh = tokio::spawn(async move {
+        tracing::info!("Starting actix server ...");
         if let Err(err) = server.await {
             tracing::error!("Actix Web server error: {:?}", err);
         }
     });
+
+    let _ = tokio::join!(jh);
 
     // Await the Actix server shutdown
     tracing::info!("Stopping actix server ...");

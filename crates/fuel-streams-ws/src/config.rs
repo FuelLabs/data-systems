@@ -134,7 +134,7 @@ impl Config {
         let mut config = Self::default();
 
         // ----------------------API--------------------------------
-        if let Ok(app_port) = dotenvy::var("API_PORT") {
+        if let Ok(app_port) = dotenvy::var("STREAMER_API_PORT") {
             config.api.port =
                 app_port.parse::<u16>().map_err(Error::ParseInt)?;
         }
@@ -160,7 +160,7 @@ impl Config {
         }
 
         // ----------------------AUTH--------------------------------
-        if let Ok(jwt_secret) = dotenvy::var("JWT_SECRET") {
+        if let Ok(jwt_secret) = dotenvy::var("JWT_AUTH_SECRET") {
             config.auth.jwt_secret = jwt_secret;
         }
         Ok(config)

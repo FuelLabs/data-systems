@@ -66,6 +66,45 @@ services:
       retries: 5  # Number of retries before marking the container as unhealthy
       start_period: 5s  # Start period before the first health check
 
+  fuel-streams-ws:
+    profiles:
+      - all
+      - fuel
+      - dev
+    image: fuel-streams-ws:latest
+    container_name: fuel-streams-ws
+    restart: always
+    depends_on:
+      - nats
+    env_file:
+      - ./../.env
+    environment:
+      - NETWORK=${NETWORK}
+      - STREAMER_API_PORT=9003
+      - NATS_URL=nats://nats:4222
+      - S3_ENABLED=${S3_ENABLED}
+      - S3_REGION=${S3_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - JWT_AUTH_SECRET=${JWT_AUTH_SECRET}
+    build:
+      context: ..
+      dockerfile: docker/fuel-streams-ws.Dockerfile
+    volumes:
+      - fuel-streams-ws-db-${NETWORK}:/mnt/db
+    ports:
+      - 9003:9003
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl"
+        - "-f"
+        - "http://fuel-streams-ws:8080/health"
+      interval: 10s  # How often to run the check
+      timeout: 5s  # Time to wait for the check to complete
+      retries: 5  # Number of retries before marking the container as unhealthy
+      start_period: 5s  # Start period before the first health check
+
   prometheus:
     profiles:
       - all

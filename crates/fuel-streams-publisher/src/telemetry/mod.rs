@@ -273,5 +273,5 @@ impl Telemetry {
 }
 
 pub fn should_use_publisher_metrics() -> bool {
-    dotenvy::var("USE_PUBLISHER_METRICS").is_ok_and(|val| val == "true")
+    dotenvy::var("USE_METRICS").is_ok_and(|val| val == "true")
 }
