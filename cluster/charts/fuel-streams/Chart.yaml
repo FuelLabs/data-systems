@@ -18,9 +18,4 @@ dependencies:
     version: 1.2.6
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats-client
-    condition: nats-publisher.enabled
-  # - name: kube-prometheus-stack
-  #   version: 55.5.0
-  #   repository: https://prometheus-community.github.io/helm-charts
-  #   condition: monitoring.enabled
-  #   alias: prometheus
+    condition: nats-client.enabled

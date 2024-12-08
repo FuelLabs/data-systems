@@ -76,6 +76,7 @@ monitoring:
 # -------------------------------------------------------------------------------------------------
 
 publisher:
+  enabled: true
   network: mainnet
   image:
     repository: fuel-streams-publisher
@@ -153,7 +154,7 @@ publisher:
   #       name: additional-secrets
 
 # -------------------------------------------------------------------------------------------------
-# NATS configuration (Core)
+# NATS general configuration
 # -------------------------------------------------------------------------------------------------
 
 nats:
@@ -169,6 +170,10 @@ nats:
     duration: 2160h
     renewBefore: 360h
     annotations: {}
+
+# -------------------------------------------------------------------------------------------------
+# NATS Core configuration
+# -------------------------------------------------------------------------------------------------
 
 nats-core:
   enabled: true
@@ -248,11 +253,11 @@ nats-core:
       max_payload: << 8MiB >>
 
 # -------------------------------------------------------------------------------------------------
-# NATS configuration (Client)
+# NATS Client configuration
 # -------------------------------------------------------------------------------------------------
 
 nats-client:
-  enabled: false
+  enabled: true
 
   natsBox:
     enabled: false
@@ -355,9 +360,8 @@ nats-client:
                     - "$JS.API.STREAM.MSG.DELETE.>"
                     - "$JS.API.CONSUMER.DURABLE.CREATE.>"
 
-
 # -------------------------------------------------------------------------------------------------
-# NATS configuration (Publisher)
+# NATS Publisher configuration
 # -------------------------------------------------------------------------------------------------
 
 nats-publisher:
