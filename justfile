@@ -262,8 +262,7 @@ k8s-setup namespace="fuel-streams":
     @./cluster/scripts/setup_k8s.sh {{namespace}}
 
 helm-setup:
-    @cd cluster/charts/fuel-local && helm dependency update
-    @cd cluster/charts/fuel-nats && helm dependency update
+    @cd cluster/charts/fuel-streams && helm dependency update
     @cd cluster/charts/fuel-streams-publisher && helm dependency update
 
 cluster-setup: minikube-setup k8s-setup helm-setup

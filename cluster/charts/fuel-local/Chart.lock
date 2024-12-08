@@ -1,9 +1,0 @@
-dependencies:
-- name: fuel-streams-publisher
-  repository: file://../fuel-streams-publisher
-  version: 0.4.7
-- name: fuel-nats
-  repository: file://../fuel-nats
-  version: 0.1.1
-digest: sha256:46c09d46e0aa155948e37de4bb26e13c4984b39eb67171dff8b9f30b57a57955
-generated: "2024-12-08T00:24:47.783691-03:00"

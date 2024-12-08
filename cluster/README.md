@@ -58,7 +58,7 @@ just minikube-start  # Start minikube (if you've already run setup before)
 
 Install k9s from [here](https://github.com/derailed/k9s)
 
-Run it with `k9s --context=<your kubectl context> --namespace=<namespace you want to watch>` e.g. `k9s --context=minikube --namespace=fuel-local`. You can do things like view logs with `l`, describe with `d`, delete with `Ctrl+d`.
+Run it with `k9s --context=<your kubectl context> --namespace=<namespace you want to watch>` e.g. `k9s --context=minikube --namespace=fuel-streams`. You can do things like view logs with `l`, describe with `d`, delete with `Ctrl+d`.
 
 ## Useful links
 
