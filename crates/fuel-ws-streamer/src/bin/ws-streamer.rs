@@ -51,11 +51,14 @@ async fn main() -> anyhow::Result<()> {
     let server_handle = server.handle();
 
     // spawn the server in the background
-    tokio::spawn(async move {
+    let jh = tokio::spawn(async move {
+        tracing::info!("Starting actix server ...");
         if let Err(err) = server.await {
             tracing::error!("Actix Web server error: {:?}", err);
         }
     });
+
+    let _ = tokio::join!(jh);
 
     // Await the Actix server shutdown
     tracing::info!("Stopping actix server ...");
