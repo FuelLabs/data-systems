@@ -261,6 +261,9 @@ run-publisher: EXTRA_ARGS ?=
 run-publisher: check-network
 	@$(PUBLISHER_SCRIPT) --network $(NETWORK) --mode $(MODE) --port $(PORT) --telemetry-port $(TELEMETRY_PORT) $(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
 
+run-ws-streamer:
+	cargo run --package fuel-ws-streamer --bin ws-streamer -- --config-path crates/fuel-ws-streamer/config.toml
+
 # ------------------------------------------------------------
 #  Testing
 # ------------------------------------------------------------
@@ -362,13 +365,6 @@ docs-serve: docs
 
 load-test:
 	cargo run -p load-tester -- --network testnet --max-subscriptions 10 --step-size 1
-
-# ------------------------------------------------------------
-#  Benchmarking
-# ------------------------------------------------------------
-
-bench:
-	cargo bench -p data-parser -p nats-publisher -p bench-consumers
 
 # ------------------------------------------------------------
 #  Local cluster (Tilt)
