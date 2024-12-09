@@ -24,7 +24,15 @@ $install_cmd knope
 $install_cmd cargo-sort
 $install_cmd typos-cli
 $install_cmd cargo-nextest --secure
+$install_cmd just
 
 # Binstall does not support --features
-cargo install websocat --features=ssl --force
 cargo install cargo-audit --locked --features=fix --force
+
+# Check Helm and install helm-unittest plugin
+if ! command -v helm &> /dev/null; then
+    echo "Warning: Helm is not installed. Please install Helm first."
+else
+    echo "Installing Helm unittest plugin..."
+    helm plugin install https://github.com/quintush/helm-unittest
+fi

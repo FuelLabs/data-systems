@@ -103,10 +103,13 @@ impl Publisher {
     pub async fn run(
         &self,
         shutdown_token: ShutdownToken,
+        historical: bool,
     ) -> anyhow::Result<()> {
         tracing::info!("Awaiting FuelCore Sync...");
 
-        self.fuel_core.await_synced_at_least_once().await?;
+        self.fuel_core
+            .await_synced_at_least_once(historical)
+            .await?;
 
         tracing::info!("FuelCore has synced successfully!");
 

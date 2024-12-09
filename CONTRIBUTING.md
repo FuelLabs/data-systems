@@ -8,9 +8,14 @@ Most projects under the umbrella of data systems are written in Rust, so we pref
 
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable version recommended)
 - [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-11-06)
-- [Make](https://www.gnu.org/software/make/)
+- [Just](https://github.com/casey/just#installation)
 - [Pre-commit](https://pre-commit.com/#install)
 - [NodeJS](https://nodejs.org/en/download/)
+- [PNPM](https://pnpm.io/installation)
+- [NATS](https://nats.io/download/)
+- [Tilt](https://docs.tilt.dev/install.html)
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/)
+- [Kubernetes](https://kubernetes.io/)
 
 ## 📟 Setting up
 
@@ -21,23 +26,42 @@ git clone git@github.com:fuellabs/data-systems.git
 cd data-systems
 ```
 
-Now, install the necessary tools to ensure code quality and standards. Use Make to simplify this process:
+Now, install the necessary tools to ensure code quality and standards. Use Just to simplify this process:
 
 ```sh
-make setup
+just setup
 ```
+
+After setup, you'll need to create the environment configuration. First, make sure you have an Infura API key:
+
+1. Go to [Infura](https://infura.io/) and create an account
+2. Create a new project
+3. Copy your project ID (API key)
+
+Then run the environment setup command:
+
+```sh
+just create-env
+```
+
+The script will prompt you to enter your Infura API key and will automatically:
+
+- Generate a new keypair for P2P communication
+- Create a `.env` file from the template
+- Configure the environment with your Infura key and the generated keypair
 
 You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is being installed on your machine.
 
 ## 📂 Project Structure
 
-Here's a brief overview of the project's directory structure:
+Here's an overview of the project's directory structure:
 
 - `crates/`: Contains the main Rust crates for the project
-- `benches/`: Benchmarking code
-- `docker/`: Docker-related files
-- `helm/`: Helm charts for Kubernetes deployment
-- `scripts/`: Utility scripts
+- `benches/`: Benchmarking code and performance tests
+- `tests/`: Integration and end-to-end tests
+- `examples/`: Example code and usage demonstrations
+- `cluster/`: Kubernetes cluster configuration and deployment files
+- `scripts/`: Utility scripts for setup, deployment, and maintenance
 
 ## 📇 Code conventions
 
@@ -76,43 +100,55 @@ This is a general rule used for commits. When you are creating a PR, ensure that
 
 To make your life easier, here are some commands to run common tasks in this project:
 
-| Command          | Description                                           |
-| ---------------- | ----------------------------------------------------- |
-| `make build`     | Build the project with default settings               |
-| `make clean`     | Clean the build artifacts and release directory       |
-| `make dev-watch` | Run the project in development mode with auto-reload  |
-| `make dev`       | Run the project in development mode                   |
-| `make fmt`       | Format the code and Markdown files                    |
-| `make install`   | Fetch the project dependencies using `cargo fetch`    |
-| `make lint`      | Perform linting checks on the code and Markdown files |
-| `make run`       | Run the built executable using `cargo run --release`  |
-| `make setup`     | Run the setup script located at `./scripts/setup.sh`  |
-| `make test`      | Run all tests in the project                          |
-| `make coverage`  | Generate code coverage reports                        |
+| Command                  | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `just install`           | Fetch the project dependencies using `cargo fetch`    |
+| `just setup`             | Run the setup script located at `./scripts/setup.sh`  |
+| `just create-env`        | Create environment configuration file                 |
+| `just fmt`               | Format the code and Markdown files                    |
+| `just lint`              | Perform linting checks on the code and Markdown files |
+| `just test`              | Run all tests in the project                          |
+| `just test-watch`        | Run tests in watch mode                               |
+| `just clean`             | Clean the build artifacts                             |
+| `just dev-watch`         | Run the project in development mode with auto-reload  |
+| `just bench`             | Run benchmarks for the project                        |
+| `just audit`             | Run security audit on dependencies                    |
+| `just audit-fix`         | Fix security vulnerabilities in dependencies          |
+| `just version`           | Show current version                                  |
+| `just bump-version`      | Bump project version                                  |
+| `just load-test`         | Run load tests                                        |
+| `just run-publisher`     | Run the publisher with custom configuration           |
+| `just run-mainnet-dev`   | Run publisher in mainnet dev mode                     |
+| `just run-testnet-dev`   | Run publisher in testnet dev mode                     |
+| `just validate-env`      | Validate environment setup                            |
+| `just cleanup-artifacts` | Clean up old artifacts on Github                      |
+
+## 🚀 Running Local Cluster
+
+The project includes support for running a local Kubernetes cluster using [Minikube](https://minikube.sigs.k8s.io/docs/start/) for development and testing. Here's a quick guide to get started:
+
+1. Setup Minikube cluster:
+
+```sh
+just minikube-setup
+just minikube-start
+```
+
+For detailed information about the necessary tools to install, cluster configuration, deployment options, and troubleshooting, please refer to the [Cluster Documentation](./cluster/README.md).
 
 ## 🧪 Running Tests
 
 To run all tests in the project, use:
 
 ```sh
-make test
+just test
 ```
 
-For running specific tests or test modules, you can use the standard Cargo test command:
+For running specific tests or test modules, you can use:
 
 ```sh
-cargo test [test_name_or_module]
+just test package=<package-name>
 ```
-
-## 📊 Code Coverage
-
-To generate code coverage reports, use:
-
-```sh
-make coverage
-```
-
-This will generate coverage reports for different packages in the project. You can find the configuration for coverage analysis in the `tarpaulin.toml` file.
 
 ## 📬 Open a Pull Request
 

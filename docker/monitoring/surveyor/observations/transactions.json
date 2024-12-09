@@ -1,6 +1,0 @@
-{
-  "name": "transactions",
-  "topic": "*.transactions.>",
-  "username": "admin",
-  "password": "secret"
-}

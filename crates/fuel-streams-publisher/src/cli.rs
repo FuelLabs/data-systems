@@ -30,4 +30,12 @@ pub struct Cli {
         help = "Port for the Actix Web server to bind telemetry to."
     )]
     pub telemetry_port: u16,
+    #[arg(
+        long,
+        value_name = "HISTORICAL",
+        env = "HISTORICAL",
+        default_value = "false",
+        help = "Whether to publish historical data to NATS"
+    )]
+    pub historical: bool,
 }

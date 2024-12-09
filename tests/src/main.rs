@@ -36,11 +36,11 @@ fn find_workspace_root() -> Option<PathBuf> {
     None
 }
 
-fn start_nats(makefile_path: &Path) {
-    let status = Command::new("make")
+fn start_nats(justfile_path: &Path) {
+    let status = Command::new("just")
         .arg("-f")
-        .arg(makefile_path.to_str().unwrap())
-        .arg("start/nats")
+        .arg(justfile_path.to_str().unwrap())
+        .arg("cluster_up")
         .status()
         .expect("Failed to start NATS");
 
@@ -51,11 +51,11 @@ fn start_nats(makefile_path: &Path) {
     }
 }
 
-fn stop_nats(makefile_path: &Path) {
-    let status = Command::new("make")
+fn stop_nats(justfile_path: &Path) {
+    let status = Command::new("just")
         .arg("-f")
-        .arg(makefile_path.to_str().unwrap())
-        .arg("stop/nats")
+        .arg(justfile_path.to_str().unwrap())
+        .arg("cluster_up")
         .status()
         .expect("Failed to stop NATS");
 
@@ -70,7 +70,7 @@ fn stop_nats(makefile_path: &Path) {
 async fn main() -> BoxedResult<()> {
     let workspace_root =
         find_workspace_root().expect("Could not find the workspace root");
-    let makefile_path = workspace_root.join("Makefile");
+    let justfile_path = workspace_root.join("justfile");
     env::set_current_dir(&workspace_root)
         .expect("Failed to change directory to workspace root");
 
@@ -85,7 +85,7 @@ async fn main() -> BoxedResult<()> {
         .unwrap_or_default();
     if !is_connected {
         println!("Starting nats ...");
-        start_nats(&makefile_path);
+        start_nats(&justfile_path);
     }
 
     // create a subscription
@@ -129,9 +129,9 @@ async fn main() -> BoxedResult<()> {
                 .with_timeout(1);
                 let is_nats_connected = Client::with_opts(&client_opts).await.ok().map(|c| c.conn.is_connected()).unwrap_or_default();
                 if is_nats_connected {
-                    stop_nats(&makefile_path);
+                    stop_nats(&justfile_path);
                 } else {
-                    start_nats(&makefile_path);
+                    start_nats(&justfile_path);
                 }
                 action_interval = tokio::time::interval(Duration::from_secs(rng.gen_range(INTERVAL)));
             }

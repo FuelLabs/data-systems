@@ -3,15 +3,18 @@
 [[ $DEBUG = true ]] && set -x
 set -euo pipefail
 
-# Configure fuel-local namespace and context
-echo -e "\n\033[1;33mConfiguring fuel-local namespace and context:\033[0m"
+# Parse command line arguments
+NAMESPACE="${1:-fuel-streams}"  # Use first argument, default to "fuel-streams" if not provided
+
+# Configure namespace and context
+echo -e "\n\033[1;33mConfiguring ${NAMESPACE} namespace and context:\033[0m"
 
 # Check if namespace exists
-if kubectl get namespace fuel-local &>/dev/null; then
-    echo "Namespace fuel-local already exists"
+if kubectl get namespace ${NAMESPACE} &>/dev/null; then
+    echo "Namespace ${NAMESPACE} already exists"
 else
-    echo "Creating namespace fuel-local..."
-    kubectl create namespace fuel-local
+    echo "Creating namespace ${NAMESPACE}..."
+    kubectl create namespace ${NAMESPACE}
 fi
 
 # Switch to minikube context
@@ -24,11 +27,11 @@ fi
 
 # Set namespace for current context
 CURRENT_NAMESPACE=$(kubectl config view --minify --output 'jsonpath={..namespace}')
-if [ "$CURRENT_NAMESPACE" != "fuel-local" ]; then
-    echo "Setting current namespace to fuel-local..."
-    kubectl config set-context --current --cluster=minikube --namespace=fuel-local
+if [ "$CURRENT_NAMESPACE" != "${NAMESPACE}" ]; then
+    echo "Setting current namespace to ${NAMESPACE}..."
+    kubectl config set-context --current --cluster=minikube --namespace=${NAMESPACE}
 else
-    echo "Context namespace is already set to fuel-local"
+    echo "Context namespace is already set to ${NAMESPACE}"
 fi
 
 # Verify context configuration

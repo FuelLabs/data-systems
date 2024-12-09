@@ -16,6 +16,7 @@ use fuel_streams_publisher::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let historical = cli.clone().historical;
 
     let fuel_core: Arc<dyn FuelCoreLike> =
         FuelCore::new(cli.fuel_core_config).await?;
@@ -53,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
     ShutdownController::spawn_signal_listener(shutdown_controller);
 
     // run publisher until shutdown signal intercepted
-    if let Err(err) = publisher.run(shutdown_token).await {
+    if let Err(err) = publisher.run(shutdown_token, historical).await {
         tracing::error!("Publisher encountered an error: {:?}", err);
     }
     tracing::info!("Publisher stopped");

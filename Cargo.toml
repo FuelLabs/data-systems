@@ -33,24 +33,13 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-importer = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-storage = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-types = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
-    "test-helpers",
-    "serde",
-] }
-fuel-core-services = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
+fuel-core-bin = { version = "0.40.2", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core = { version = "0.40.2", features = ["p2p", "relayer", "rocksdb"] }
+fuel-core-client = { version = "0.40.2" }
+fuel-core-importer = { version = "0.40.2" }
+fuel-core-storage = { version = "0.40.2" }
+fuel-core-types = { version = "0.40.2", features = ["test-helpers", "serde"] }
+fuel-core-services = { version = "0.40.2" }
 futures-util = "0.3"
 itertools = "0.13"
 mockall = "0.13"

@@ -1,9 +1,0 @@
-servers: nats://nats:4222
-accounts: true
-log-level: debug
-port: 7777
-jetstream: /jetstream
-observe: /observations
-count: 1
-user: admin
-password: secret

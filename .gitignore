@@ -20,4 +20,4 @@ profile.json
 coverage/
 docs/
 **/**/charts/**.tgz
-values-publisher-env.yaml
+values-publisher-secrets.yaml

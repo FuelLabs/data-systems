@@ -1,0 +1,189 @@
+suite: Testing Webserver deployment
+templates:
+  - templates/webserver/deployment.yaml
+tests:
+  - it: should not create deployment when webserver is disabled
+    set:
+      webserver.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create deployment with correct kind and metadata
+    set:
+      webserver.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - isAPIVersion:
+          of: apps/v1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-webserver
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: webserver
+
+  - it: should set correct selector labels
+    set:
+      webserver.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: webserver
+      - isSubset:
+          path: spec.selector.matchLabels
+          content:
+            app.kubernetes.io/name: fuel-streams
+            app.kubernetes.io/instance: RELEASE-NAME
+
+  - it: should set image configuration correctly
+    set:
+      webserver.enabled: true
+      webserver.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      webserver.image.tag: latest
+      webserver.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/fuel-streams-webserver:latest
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should use chart version when tag is not specified
+    set:
+      webserver.enabled: true
+      webserver.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      webserver.image.tag: null
+      Chart:
+        Version: "1.0"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/fuel-streams-webserver:1.0
+
+  - it: should configure ports correctly
+    set:
+      webserver.enabled: true
+      webserver.service.port: 8082
+      webserver.ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 2
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: webserver
+            containerPort: 8082
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: metrics
+            containerPort: 9090
+            protocol: TCP
+
+  - it: should set replicas when autoscaling is disabled
+    set:
+      webserver.enabled: true
+      webserver.autoscaling.enabled: false
+      webserver.config.replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      webserver.enabled: true
+      webserver.autoscaling.enabled: true
+      webserver.config.replicaCount: 3
+    asserts:
+      - isNull:
+          path: spec.replicas
+
+  - it: should merge environment variables correctly
+    set:
+      webserver.enabled: true
+      webserver.env:
+        RUST_LOG: info
+        APP_PORT: "8080"
+      webserver.extraEnv:
+        - name: EXTRA_VAR
+          value: "extra-value"
+        - name: SECRET_VAR
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: my-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RUST_LOG
+            value: "info"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APP_PORT
+            value: "8080"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_VAR
+            value: "extra-value"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SECRET_VAR
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: my-key
+
+  - it: should set security context when specified
+    set:
+      webserver.enabled: true
+      webserver.config.securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.template.spec.securityContext.runAsGroup
+          value: 3000
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 2000
+
+  - it: should set resource limits and requests
+    set:
+      webserver.enabled: true
+      webserver.config.resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 100m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 128Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 50m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi

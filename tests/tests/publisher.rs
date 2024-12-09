@@ -53,7 +53,10 @@ impl FuelCoreLike for TestFuelCore {
     fn is_started(&self) -> bool {
         true
     }
-    async fn await_synced_at_least_once(&self) -> anyhow::Result<()> {
+    async fn await_synced_at_least_once(
+        &self,
+        _historical: bool,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
     async fn stop(&self) {}
@@ -280,7 +283,7 @@ async fn start_publisher(publisher: &Publisher) -> Arc<ShutdownController> {
     tokio::spawn({
         let publisher = publisher.clone();
         async move {
-            publisher.run(shutdown_token).await.unwrap();
+            publisher.run(shutdown_token, true).await.unwrap();
         }
     });
     wait_for_publisher_to_start().await;
