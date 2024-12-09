@@ -27,7 +27,7 @@ jobs:
       github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - name: Build and push Fuel Core NATS image
+      - name: Build and push Docker Image
         uses: ./.github/actions/docker-publish
         id: publish
         with:
