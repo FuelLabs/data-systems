@@ -54,25 +54,28 @@ fuel-streams-core = "*"
 Here's a simple example to get you started with Fuel Streams Core:
 
 ```rust,no_run
+use std::sync::Arc;
 use fuel_streams_core::prelude::*;
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> BoxedResult<()> {
     // Connect to NATS server
-    let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
-    let client = NatsClient::connect(&opts).await?;
+    let nats_opts = NatsClientOpts::new(FuelNetwork::Local);
+    let nats_client = NatsClient::connect(&nats_opts).await?;
+
+    let s3_opts = S3ClientOpts::new(FuelNetwork::Local);
+    let s3_client = Arc::new(S3Client::new(&s3_opts).await?);
 
     // Create a stream for blocks
-    let stream = Stream::<Block>::new(&client).await;
+    let stream = Stream::<Block>::new(&nats_client, &s3_client).await;
 
     // Subscribe to the stream
     let wildcard = BlocksSubject::wildcard(None, None); // blocks.*.*
-    let mut subscription = stream.subscribe(&wildcard).await?;
+    let mut subscription = stream.subscribe(None).await?;
 
     // Process incoming blocks
-    while let Some(bytes) = subscription.next().await {
-        let block = Block::decode_raw(bytes.unwrap()).await;
+    while let Some(block) = subscription.next().await {
         dbg!(block);
     }
 

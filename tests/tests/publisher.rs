@@ -96,7 +96,8 @@ impl FuelCoreLike for TestFuelCore {
 #[tokio::test(flavor = "multi_thread")]
 async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-    let publisher = new_publisher(blocks_broadcaster.clone()).await;
+    let s3_client = Arc::new(S3Client::new_for_testing().await);
+    let publisher = new_publisher(blocks_broadcaster.clone(), &s3_client).await;
 
     let shutdown_controller = start_publisher(&publisher).await;
     stop_publisher(shutdown_controller).await;
@@ -107,7 +108,8 @@ async fn doesnt_publish_any_message_when_no_block_has_been_mined() {
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-    let publisher = new_publisher(blocks_broadcaster.clone()).await;
+    let s3_client = Arc::new(S3Client::new_for_testing().await);
+    let publisher = new_publisher(blocks_broadcaster.clone(), &s3_client).await;
 
     publish_block(&publisher, &blocks_broadcaster).await;
 
@@ -117,12 +119,14 @@ async fn publishes_a_block_message_when_a_single_block_has_been_mined() {
         .get_last_published(BlocksSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
+    s3_client.cleanup_after_testing().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_transaction_for_each_published_block() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-    let publisher = new_publisher(blocks_broadcaster.clone()).await;
+    let s3_client = Arc::new(S3Client::new_for_testing().await);
+    let publisher = new_publisher(blocks_broadcaster.clone(), &s3_client).await;
 
     publish_block(&publisher, &blocks_broadcaster).await;
 
@@ -132,6 +136,7 @@ async fn publishes_transaction_for_each_published_block() {
         .get_last_published(TransactionsSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
+    s3_client.cleanup_after_testing().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -227,9 +232,11 @@ async fn publishes_receipts() {
         .with_receipts(receipts.to_vec())
         .arc();
 
-    let publisher = Publisher::default(&nats_client().await, fuel_core)
-        .await
-        .unwrap();
+    let s3_client = Arc::new(S3Client::new_for_testing().await);
+    let publisher =
+        Publisher::new_for_testing(&nats_client().await, &s3_client, fuel_core)
+            .await
+            .unwrap();
 
     publish_block(&publisher, &blocks_broadcaster).await;
 
@@ -244,12 +251,15 @@ async fn publishes_receipts() {
     while let Some(Some(receipt)) = receipts_stream.next().await {
         assert!(receipts.contains(&receipt));
     }
+
+    s3_client.cleanup_after_testing().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn publishes_inputs() {
     let (blocks_broadcaster, _) = broadcast::channel::<ImporterResult>(1);
-    let publisher = new_publisher(blocks_broadcaster.clone()).await;
+    let s3_client = Arc::new(S3Client::new_for_testing().await);
+    let publisher = new_publisher(blocks_broadcaster.clone(), &s3_client).await;
 
     publish_block(&publisher, &blocks_broadcaster).await;
 
@@ -259,11 +269,15 @@ async fn publishes_inputs() {
         .get_last_published(InputsByIdSubject::WILDCARD)
         .await
         .is_ok_and(|result| result.is_some()));
+    s3_client.cleanup_after_testing().await;
 }
 
-async fn new_publisher(broadcaster: Sender<ImporterResult>) -> Publisher {
+async fn new_publisher(
+    broadcaster: Sender<ImporterResult>,
+    s3_client: &Arc<S3Client>,
+) -> Publisher {
     let fuel_core = TestFuelCore::default(broadcaster).arc();
-    Publisher::default(&nats_client().await, fuel_core)
+    Publisher::new_for_testing(&nats_client().await, s3_client, fuel_core)
         .await
         .unwrap()
 }
@@ -325,9 +339,8 @@ fn create_test_block() -> ImporterResult {
 }
 
 async fn nats_client() -> NatsClient {
-    let nats_client_opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
-        .with_rdn_namespace();
-    NatsClient::connect(&nats_client_opts)
+    let opts = NatsClientOpts::admin_opts().with_rdn_namespace();
+    NatsClient::connect(&opts)
         .await
         .expect("NATS connection failed")
 }
