@@ -67,7 +67,7 @@ pub trait Streamable: StreamEncoder {
     }
 
     fn get_s3_path(&self) -> String {
-        format!("{}/v1/{}.json", Self::NAME, self.get_consistent_hash())
+        format!("v1/{}/{}.json", Self::NAME, self.get_consistent_hash())
     }
 
     fn get_consistent_hash(&self) -> String {

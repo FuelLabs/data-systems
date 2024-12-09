@@ -13,7 +13,7 @@ pub struct S3ClientOpts {
 impl S3ClientOpts {
     pub fn new(fuel_network: FuelNetwork) -> Self {
         Self {
-            bucket: "fuel_streams".to_string(),
+            bucket: fuel_network.to_s3_bucket(),
             region: "us-east-1".to_string(),
             fuel_network,
             role: FuelNetworkUserRole::default(),

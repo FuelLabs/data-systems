@@ -45,10 +45,19 @@ impl FuelNetwork {
 
     pub fn to_s3_url(&self) -> String {
         match self {
-            FuelNetwork::Local => "http://localhost:4566",
+            FuelNetwork::Local => "http://localhost:4566".to_string(),
             FuelNetwork::Testnet | FuelNetwork::Mainnet => {
-                "https://fuel_streams.s3.us-east-1.amazonaws.com"
+                let bucket = self.to_s3_bucket();
+                format!("https://{bucket}.s3.us-east-1.amazonaws.com")
             }
+        }
+    }
+
+    pub fn to_s3_bucket(&self) -> String {
+        match self {
+            FuelNetwork::Local => "fuel-streams-local",
+            FuelNetwork::Testnet => "fuel-streams-testnet",
+            FuelNetwork::Mainnet => "fuel-streams",
         }
         .to_string()
     }
