@@ -94,7 +94,7 @@ bump-version new_version="":
 
 release new_version="" dry_run="": (validate-env) test lint
     #!/usr/bin/env bash
-    just bump-version new_version={{new_version}}
+    just bump-version {{new_version}}
     args=$(if [ "{{dry_run}}" = "true" ]; then echo "--dry-run"; else echo ""; fi)
     knope prepare-release $args
 
