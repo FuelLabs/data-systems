@@ -186,7 +186,7 @@ impl FuelCoreLike for FuelCore {
         self.fuel_service.state().started()
     }
     async fn await_synced_at_least_once(&self) -> anyhow::Result<()> {
-        self.fuel_service.await_relayer_synced().await?;
+        // self.fuel_service.await_relayer_synced().await?;
         Ok(())
     }
 
