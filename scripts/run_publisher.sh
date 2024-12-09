@@ -28,6 +28,12 @@ usage() {
     exit 1
 }
 
+# Set default values from environment variables with fallbacks
+NETWORK=${NETWORK:-"testnet"}
+MODE=${MODE:-"profiling"}
+PORT=${PORT:-"4000"}
+TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --network)
@@ -63,7 +69,7 @@ done
 # ------------------------------
 # Load Environment
 # ------------------------------
-source ./scripts/set_env.sh
+source ./scripts/set_env.sh NETWORK=${NETWORK}
 
 # Print the configuration being used
 echo -e "\n=========================================="
@@ -102,7 +108,6 @@ COMMON_ARGS=(
     "--snapshot" "./cluster/chain-config/${NETWORK}"
     "--nats-url" "nats://localhost:4222"
     "--port" "${PORT}"
-    "--telemetry-port" "${TELEMETRY_PORT}"
     "--peering-port" "30333"
     "--utxo-validation"
     "--poa-instant" "false"
@@ -117,8 +122,8 @@ COMMON_ARGS=(
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-emitter -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package fuel-streams-publisher
-    samply record ./target/profiling/fuel-streams-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo build --profile profiling --package sv-emitter
+    samply record ./target/profiling/sv-emitter "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

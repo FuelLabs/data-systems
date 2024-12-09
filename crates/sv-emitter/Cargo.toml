@@ -1,0 +1,49 @@
+[package]
+name = "sv-emitter"
+description = "Service that emitts new blocks using fuel-core block subscription"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+async-trait = { workspace = true }
+clap = { workspace = true }
+fuel-core = { workspace = true }
+fuel-core-bin = { workspace = true }
+fuel-core-importer = { workspace = true }
+fuel-core-services = { workspace = true }
+fuel-core-storage = { workspace = true }
+fuel-core-types = { workspace = true }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
+postcard = "1.1.1"
+rayon = "1.10.0"
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = "0.7.13"
+tracing = { workspace = true }
+
+[features]
+default = []
+test-helpers = []
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.x86_64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
