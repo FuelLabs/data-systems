@@ -49,6 +49,12 @@ pub trait StreamEncoder: DataParseable {
             .expect("Streamable must encode correctly")
     }
 
+    fn encode_self(&self) -> Vec<u8> {
+        Self::data_parser()
+            .encode_json(self)
+            .expect("Streamable must encode correctly")
+    }
+
     fn decode(encoded: Vec<u8>) -> Result<Self, fuel_data_parser::Error> {
         Ok(Self::decode_raw(encoded)?.payload)
     }

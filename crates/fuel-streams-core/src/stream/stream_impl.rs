@@ -26,7 +26,7 @@ pub struct PublishPacket<T: Streamable> {
 
 impl<T: Streamable> PublishPacket<T> {
     pub fn new(payload: T, subject: Arc<dyn IntoSubject>) -> Self {
-        let s3_path = payload.get_s3_path(&subject.parse());
+        let s3_path = payload.get_s3_path();
 
         Self {
             payload: Arc::new(payload),
@@ -66,16 +66,12 @@ pub trait Streamable: StreamEncoder {
         PublishPacket::new(self.clone(), subject)
     }
 
-    fn get_s3_path(&self, subject: &str) -> String {
-        format!(
-            "{}/v1/{}.json",
-            Self::NAME,
-            self.get_consistent_hash(subject)
-        )
+    fn get_s3_path(&self) -> String {
+        format!("{}/v1/{}.json", Self::NAME, self.get_consistent_hash())
     }
 
-    fn get_consistent_hash(&self, subject: &str) -> String {
-        let serialized = self.encode(subject);
+    fn get_consistent_hash(&self) -> String {
+        let serialized = self.encode_self();
 
         let mut hasher = Sha256::new();
         hasher.update(serialized);
