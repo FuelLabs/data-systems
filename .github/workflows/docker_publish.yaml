@@ -27,11 +27,16 @@ jobs:
       github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - name: Build and push Fuel Core NATS image
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
         uses: ./.github/actions/docker-publish
         id: publish
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-streams-publisher
-          dockerfile: docker/fuel-streams-publisher.Dockerfile
+          dockerfile: cluster/docker/fuel-streams-publisher.Dockerfile

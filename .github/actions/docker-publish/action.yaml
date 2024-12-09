@@ -52,9 +52,10 @@ runs:
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
         logout: false
+
     - name: Docker meta
       id: meta
-      uses: docker/metadata-action@v3
+      uses: docker/metadata-action@v5
       with:
         images: |
           ${{ inputs.image }}
@@ -62,8 +63,10 @@ runs:
           type=ref,event=branch
           type=sha,prefix=
           type=semver,pattern={{raw}}
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+
     - name: Build and push the image to ghcr.io
       uses: docker/build-push-action@v6
       id: publish
@@ -73,10 +76,24 @@ runs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        annotations: ${{ steps.meta.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
     - id: imageOutput
       shell: bash
       run: |-
         echo "imageUrl=${{ fromJSON(steps.publish.outputs.metadata)['image.name'] }}" >> $GITHUB_OUTPUT
+
+    - name: Build Summary
+      shell: bash
+      run: |-
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "### Docker Build Summary 🐳" >> $GITHUB_STEP_SUMMARY
+        echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Image | \`${{ inputs.image }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Tags | \`$(echo ${{ steps.meta.outputs.tags }} | tr '\n' ' ')\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Digest | \`${{ steps.publish.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Image ID | \`${{ steps.publish.outputs.imageid }}\` |" >> $GITHUB_STEP_SUMMARY

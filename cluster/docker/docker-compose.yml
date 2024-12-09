@@ -1,0 +1,20 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: nats
+    restart: always
+    ports:
+      - 4222:4222
+      - 8222:8222
+      - 8443:8443
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf
+    command:
+      - -m
+      - "8222"
+      - --name=fuel-streams-publisher-server
+      - --js
+      - --config=/etc/nats/nats.conf
+      - -D
+    env_file:
+      - ./../../.env

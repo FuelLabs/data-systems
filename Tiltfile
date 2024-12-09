@@ -18,7 +18,7 @@ custom_build(
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './docker/fuel-streams-publisher.Dockerfile'
+        './cluster/docker/fuel-streams-publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -30,66 +30,75 @@ custom_build(
     ignore=['./target']
 )
 
-# Deploy the Helm chart with values from .env
+# Get deployment mode from environment variable, default to 'full'
+config_mode = os.getenv('CLUSTER_MODE', 'full')
+
+# Resource configurations
+RESOURCES = {
+    'publisher': {
+        'name': 'fuel-streams-publisher',
+        'ports': ['4000:4000', '8080:8080'],
+        'labels': 'publisher',
+        'config_mode': ['minimal', 'full']
+    },
+    'nats-core': {
+        'name': 'fuel-streams-nats-core',
+        'ports': ['4222:4222', '8222:8222'],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
+    },
+    'nats-client': {
+        'name': 'fuel-streams-nats-client',
+        'ports': ['4223:4222', '8443:8443'],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
+    },
+    'nats-publisher': {
+        'name': 'fuel-streams-nats-publisher',
+        'ports': ['4224:4222'],
+        'labels': 'nats',
+        'config_mode': ['minimal', 'full']
+    },
+    # 'grafana': {
+    #     'name': 'fuel-streams-grafana',
+    #     'ports': ['3000:3000'],
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'prometheus-operator': {
+    #     'name': 'fuel-streams-prometheus-operator',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'kube-state-metrics': {
+    #     'name': 'fuel-streams-kube-state-metrics',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    # 'node-exporter': {
+    #     'name': 'fuel-streams-prometheus-node-exporter',
+    #     'labels': 'monitoring',
+    #     'config_mode': ['minimal', 'full']
+    # }
+}
+
 k8s_yaml(helm(
-    'cluster/charts/fuel-local',
-    name='local',
-    namespace='fuel-local',
+    'cluster/charts/fuel-streams',
+    name='fuel-streams',
+    namespace='fuel-streams',
     values=[
-        'cluster/charts/fuel-local/values.yaml',
-        'cluster/charts/fuel-local/values-publisher-env.yaml',
+        'cluster/charts/fuel-streams/values-publisher-secrets.yaml',
+        'cluster/charts/fuel-streams/values.yaml'
     ]
 ))
 
-# k8s resources
-ports = {
-    "monitoring": ["9090:9090", "3000:3000"],
-    "elasticsearch": ["9200:9200", "9300:9300"],
-    "kibana": ["5601:5601"],
-    "publisher": ["4000:4000", "8080:8080"],
-    "nats": ["4222:4222"],
-    "nats-box": [],
-}
-
-deps = {
-    "monitoring": [],
-    "elasticsearch": [],
-    "kibana": ["elasticsearch"],
-    "publisher": [],
-    "nats": [],
-    "nats-box": [],
-}
-
-k8s_resource("monitoring",
-    port_forwards=ports["monitoring"],
-    resource_deps=deps["monitoring"],
-    labels="monitoring"
-)
-k8s_resource("elasticsearch",
-    port_forwards=ports["elasticsearch"],
-    resource_deps=deps["elasticsearch"],
-    labels="logging"
-)
-k8s_resource("kibana",
-    port_forwards=ports["kibana"],
-    resource_deps=deps["kibana"],
-    labels="logging"
-)
-k8s_resource("local-fuel-streams-publisher",
-    new_name="publisher",  # Override the display name
-    resource_deps=deps["publisher"],
-    port_forwards=ports["publisher"],
-    labels="publisher"
-)
-k8s_resource("local-nats",
-    new_name="nats",
-    port_forwards=ports["nats"],
-    resource_deps=deps["nats"],
-    labels="nats"
-)
-k8s_resource("local-nats-box",
-    new_name="nats-box",
-    port_forwards=ports["nats-box"],
-    resource_deps=deps["nats-box"],
-    labels="nats"
-)
+# Configure k8s resources
+for name, resource in RESOURCES.items():
+    if config_mode in resource['config_mode']:
+        k8s_resource(
+            resource['name'],
+            new_name=name,
+            port_forwards=resource.get('ports', []),
+            resource_deps=resource.get('deps', []),
+            labels=resource['labels']
+        )

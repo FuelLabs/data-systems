@@ -43,7 +43,11 @@ jobs:
           toolchain: stable
 
       - name: Update Cargo Dependencies
-        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        run: |
+          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+          if [ ! -s cargo_update.log ]; then
+            echo "No updates found" > cargo_update.log
+          fi
 
       - name: Cargo audit dependencies
         uses: actions-rs/audit-check@v1.2.0
@@ -106,9 +110,9 @@ jobs:
           title: ${{ env.PR_TITLE }}
           body: |
             ${{ env.PR_MESSAGE }}
-            '```txt'
+            ```txt
             $(cat cargo_update.log)
-            '```'
+            ```
           branch: cargo_update
           labels: dependencies
         env:

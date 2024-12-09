@@ -63,7 +63,7 @@ done
 # ------------------------------
 # Load Environment
 # ------------------------------
-source ./scripts/set_envs.sh
+source ./scripts/set_env.sh
 
 # Print the configuration being used
 echo -e "\n=========================================="
