@@ -184,7 +184,7 @@ publisher:
 # -------------------------------------------------------------------------------------------------
 
 webserver:
-  enabled: true
+  enabled: false
 
   image:
     repository: fuel-streams-webserver

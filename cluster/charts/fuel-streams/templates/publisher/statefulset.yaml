@@ -40,6 +40,12 @@ spec:
       {{- include "set-field-and-value" (dict "context" $publisher "field" "tolerations" "path" "config.tolerations") | nindent 6 }}
       {{- include "k8s.security-context" (dict "context" . "service" "publisher") | nindent 6 }}
 
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+        - name: var-dir
+          emptyDir: {}
+      
       initContainers:
         - name: update-{{ $publisher.storage.name }}
           image: alpine:latest
@@ -56,6 +62,20 @@ spec:
           volumeMounts:
             - name: {{ $publisher.storage.name }}
               mountPath: {{ $publisher.storage.mountPath }}
+
+        - name: init-permissions
+          image: alpine:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /var/fuel-streams/tmp && \
+              chown -R 1000:1000 /var/fuel-streams
+          volumeMounts:
+            - name: var-dir
+              mountPath: /var/fuel-streams
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
 
       containers:
         - name: publisher
@@ -74,6 +94,8 @@ spec:
           {{- include "k8s.container-security-context" (dict "context" . "service" "publisher") | nindent 10 }}
 
           env:
+            - name: TMPDIR
+              value: "/var/fuel-streams/tmp"
             {{- range $key, $value := $publisher.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -99,6 +121,8 @@ spec:
             - name: {{ $publisher.storage.name }}
               mountPath: {{ $publisher.storage.mountPath }}
               readOnly: false
+            - name: var-dir
+              mountPath: /var/fuel-streams
 
   volumeClaimTemplates:
     - metadata:
