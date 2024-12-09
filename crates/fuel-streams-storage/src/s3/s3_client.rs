@@ -46,26 +46,31 @@ pub struct S3Client {
 
 impl S3Client {
     pub async fn new(opts: &S3ClientOpts) -> Result<Self, S3ClientError> {
-        let region_provider =
-            RegionProviderChain::first_try(Region::new(opts.region()));
-        let region = region_provider.region().await.unwrap();
-
         // Load AWS configuration
-        let aws_config = aws_config::from_env()
-            .endpoint_url(opts.endpoint_url())
-            .region(region)
-            .load()
-            .await;
+        let mut aws_config = aws_config::from_env();
 
-        let s3_config = aws_sdk_s3::config::Builder::from(&aws_config)
-            .force_path_style(true)
-            .build();
+        if let Some(endpoint_url) = opts.endpoint_url() {
+            aws_config = aws_config.endpoint_url(endpoint_url);
+        }
+
+        if let Some(region) = opts.region() {
+            let region_provider =
+                RegionProviderChain::first_try(Region::new(region));
+            let region = region_provider.region().await.unwrap();
+
+            aws_config = aws_config.region(region);
+        }
+
+        let s3_config =
+            aws_sdk_s3::config::Builder::from(&aws_config.load().await)
+                .force_path_style(true)
+                .build();
 
         let client = aws_sdk_s3::Client::from_conf(s3_config);
 
         Ok(Self {
             client,
-            bucket: opts.bucket.clone(),
+            bucket: opts.bucket(),
         })
     }
 
@@ -134,14 +139,8 @@ impl S3Client {
 
         dotenvy::dotenv().expect(".env file not found");
 
-        let random_bucket = {
-            use rand::Rng;
-            let random_int: u32 = rand::thread_rng().gen();
-            format!("fuel-streams-test-{}", random_int)
-        };
-
         let s3_client = Self::new(
-            &S3ClientOpts::new(FuelNetwork::Local).with_bucket(&random_bucket),
+            &S3ClientOpts::new(FuelNetwork::Local).with_random_namespace(),
         )
         .await
         .expect(

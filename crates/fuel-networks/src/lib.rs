@@ -48,8 +48,19 @@ impl FuelNetwork {
             FuelNetwork::Local => "http://localhost:4566".to_string(),
             FuelNetwork::Testnet | FuelNetwork::Mainnet => {
                 let bucket = self.to_s3_bucket();
-                format!("https://{bucket}.s3.us-east-1.amazonaws.com")
+                let region = self.to_s3_region();
+                // TODO: Update for client streaming
+                format!("https://{bucket}.s3-website-{region}.amazonaws.com")
             }
+        }
+    }
+
+    pub fn to_s3_region(&self) -> String {
+        // TODO: Update correctly for client streaming
+        match self {
+            FuelNetwork::Local
+            | FuelNetwork::Testnet
+            | FuelNetwork::Mainnet => "us-east-1".to_string(),
         }
     }
 

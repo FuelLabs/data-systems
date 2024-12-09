@@ -39,7 +39,7 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Client)> {
     let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
-    let s3_client_opts = S3ClientOpts::admin_opts().with_random_bucket();
+    let s3_client_opts = S3ClientOpts::admin_opts().with_random_namespace();
     let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
     s3_client.create_bucket().await?;
 
