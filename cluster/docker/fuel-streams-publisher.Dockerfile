@@ -76,6 +76,7 @@ ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
 ENV SERVICE_NAME=$SERVICE_NAME
 ENV SYNC_HEADER_BATCH_SIZE=$SYNC_HEADER_BATCH_SIZE
 ENV RESERVED_NODES=$RESERVED_NODES
+ENV HISTORICAL=false
 
 ENV KEYPAIR=
 ENV RELAYER=
@@ -126,4 +127,5 @@ CMD exec ./fuel-streams-publisher \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30
+    --sync-block-stream-buffer-size 30 \
+    --historical $HISTORICAL

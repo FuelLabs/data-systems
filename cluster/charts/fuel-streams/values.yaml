@@ -154,6 +154,7 @@ publisher:
   env:
     PUBLISHER_MAX_THREADS: "32"
     NATS_URL: "fuel-streams-nats-publisher:4222"
+    HISTORICAL: "true"
 
   # Additional environment variables with complex structures
   # extraEnv: []
