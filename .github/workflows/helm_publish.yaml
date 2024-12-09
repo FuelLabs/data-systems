@@ -1,7 +1,15 @@
-name: Build and publish Helm Chart
+name: Build and Publish Helm Chart
 
 on:
   workflow_dispatch:
+    inputs:
+      chart:
+        description: "Select the Helm chart to deploy"
+        required: true
+        type: choice
+        options:
+          - fuel-streams-publisher
+          - fuel-streams
   push:
     branches:
       - main
@@ -17,25 +25,45 @@ jobs:
     name: Build Helm Chart
     runs-on: ubuntu-latest
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'release' && github.event.action == 'published') ||
-      github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'pull_request'
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        chart:
-          - fuel-streams-publisher
-          - fuel-streams
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Helm Dependencies Update For fuel-nats
+      - name: Determine charts to process
+        id: charts
         run: |
-          cd cluster/charts/${{ matrix.chart }} && helm dependency update
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "charts=${{ github.event.inputs.chart }}" >> $GITHUB_OUTPUT
+          else
+            echo "charts=fuel-streams-publisher fuel-streams" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Package and Push Charts
+      - name: Validate Chart Names
+        run: |
+          for chart in ${{ steps.charts.outputs.charts }}; do
+            if [ ! -d "cluster/charts/$chart" ]; then
+              echo "Error: Chart '$chart' does not exist."
+              exit 1
+            fi
+          done
+
+      - name: Helm Dependencies Update
+        run: |
+          set -e
+          for chart in ${{ steps.charts.outputs.charts }}; do
+            echo "Updating dependencies for $chart"
+            helm dependency update cluster/charts/$chart
+          done
+
+      - name: Package and Push Chart (fuel-streams-publisher)
+        if: contains(steps.charts.outputs.charts, 'fuel-streams-publisher')
         uses: bsord/helm-push@v4.1.0
         with:
           useOCIRegistry: true
@@ -43,4 +71,15 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./cluster/charts/${{ matrix.chart }}
+          chart-folder: ./cluster/charts/fuel-streams-publisher
+
+      - name: Package and Push Chart (fuel-streams)
+        if: contains(steps.charts.outputs.charts, 'fuel-streams')
+        uses: bsord/helm-push@v4.1.0
+        with:
+          useOCIRegistry: true
+          registry-url: oci://ghcr.io/fuellabs/helmcharts
+          username: ${{ github.repository_owner }}
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+          chart-folder: ./cluster/charts/fuel-streams
