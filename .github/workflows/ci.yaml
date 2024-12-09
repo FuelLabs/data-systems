@@ -200,7 +200,6 @@ jobs:
       matrix:
         package:
           # - fuel-data-parser
-          # - fuel-indexer
           - fuel-streams
           - fuel-streams-core
           - fuel-streams-macros
