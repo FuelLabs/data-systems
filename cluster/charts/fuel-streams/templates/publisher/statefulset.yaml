@@ -4,22 +4,31 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   {{- include "k8s.metadata" (dict "context" . "suffix" "-publisher") | nindent 2 }}
-  {{- include "set-field-and-value" (dict "context" $publisher "field" "annotations" "path" "config.annotations") | nindent 2 }}
+  annotations:
+    {{- include "set-value" (dict "context" $publisher "path" "config.annotations") | nindent 4 }}
   labels:
     {{- include "fuel-streams.labels" . | nindent 4 }}
     {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 4 }}
+    app.kubernetes.io/component: publisher
 spec:
-  serviceName: {{ include "fuel-streams.fullname" . }}-publisher{{- if not .Values.autoscaling.enabled }}
-  replicas: {{ $publisher.config.replicaCount }}{{- end }}
+  serviceName: {{ include "fuel-streams.fullname" . }}-publisher
+  {{- if not $publisher.autoscaling.enabled }}
+  replicas: {{ $publisher.replicas }}
+  {{- end }}
   selector:
-    matchLabels: {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
+    matchLabels:
+      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
+      {{- include "set-value" (dict "context" $publisher "path" "config.selectorLabels") | nindent 6 }}
+      app.kubernetes.io/component: publisher 
 
   template:
     metadata:
-      {{- include "set-field-and-value" (dict "context" $publisher "field" "annotations" "path" "config.podAnnotations") | nindent 6 }}
+      annotations:
+        {{- include "set-value" (dict "context" $publisher "path" "config.podAnnotations") | nindent 8 }}
       labels:
         {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
         {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 8 }}
+        app.kubernetes.io/component: publisher
 
     spec:
       {{- if .Values.serviceAccount.create }}

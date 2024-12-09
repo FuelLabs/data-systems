@@ -19,17 +19,26 @@ serviceAccount:
 # Global configurations
 # -------------------------------------------------------------------------------------------------
 
-containerSecurityContext: {}
-securityContext: {}
-annotations: {}
 labels: {}
+annotations: {}
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
+securityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+containerSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
 
 livenessProbe:
   httpGet:
@@ -64,6 +73,24 @@ startupProbe:
   failureThreshold: 6
   successThreshold: 1
 
+tls:
+  enabled: false
+  issuer: "letsencrypt-prod"
+  duration: "2160h"
+  renewBefore: "360h"
+  annotations: {}
+  labels: {}
+
+externalService:
+  enabled: false
+  dns: "streams.svc.cluster.local"
+  labels: {}
+  annotations: {}
+  ports:
+    leafnodes: 7422
+    websocket: 8443
+    webserver: 8082
+
 # -------------------------------------------------------------------------------------------------
 # Monitoring
 # -------------------------------------------------------------------------------------------------
@@ -78,53 +105,52 @@ monitoring:
 publisher:
   enabled: true
   network: mainnet
+
   image:
     repository: fuel-streams-publisher
     pullPolicy: Never
     tag: "latest"
+
   service:
     type: ClusterIP
     port: 8080
+
   prometheus:
     enabled: false
     scrape: true
     path: /metrics
+
   storage:
     name: rocks-db
     size: 10Gi
     storageClass: standard
     accessMode: ReadWriteOnce
     mountPath: /mnt/db
+
   config:
     replicaCount: 1
+    labels: {}
     annotations: {}
     podAnnotations: {}
-    labels: {}
     nodeSelector: {}
     tolerations: []
     affinity: {}
     imagePullSecrets: []
-    resources: {}
     ports: []
     livenessProbe: {}
     readinessProbe: {}
     startupProbe: {}
-    securityContext:
-      fsGroup: 1000
-      runAsUser: 1000
-      runAsGroup: 1000
-      runAsNonRoot: true
-      capabilities:
-        drop: [ALL]
-      readOnlyRootFilesystem: true
-    containerSecurityContext:
-      runAsUser: 1000
-      runAsGroup: 1000
-      runAsNonRoot: true
-      capabilities:
-        drop: [ALL]
-      readOnlyRootFilesystem: true
-      allowPrivilegeEscalation: false
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
   env:
     PUBLISHER_MAX_THREADS: "32"
     NATS_URL: "fuel-streams-nats-publisher:4222"
@@ -154,22 +180,46 @@ publisher:
   #       name: additional-secrets
 
 # -------------------------------------------------------------------------------------------------
-# NATS general configuration
+# WebServer configuration
 # -------------------------------------------------------------------------------------------------
 
-nats:
-  dns: "nats-core.fuel-streams.svc.cluster.local"
-  externalService:
-    enabled: false
-  ports:
-    leafnodes: 7422
-    websocket: 8443
-  tls:
-    enabled: false
-    issuer: letsencrypt-prod
-    duration: 2160h
-    renewBefore: 360h
+webserver:
+  enabled: true
+
+  image:
+    repository: fuel-streams-webserver
+    pullPolicy: Never
+    tag: "latest"
+
+  config:
+    replicaCount: 1
+    labels: {}
     annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 # -------------------------------------------------------------------------------------------------
 # NATS Core configuration
@@ -258,6 +308,10 @@ nats-core:
 
 nats-client:
   enabled: true
+
+  global:
+    labels:
+      app.kubernetes.io/service: external-service
 
   natsBox:
     enabled: false

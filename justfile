@@ -136,6 +136,9 @@ test package="all" profile="dev":
 bench:
     cargo bench -p data-parser -p nats-publisher -p bench-consumers
 
+helm-test:
+    helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams
+
 # ------------------------------------------------------------
 #  Formatting & Linting
 # ------------------------------------------------------------

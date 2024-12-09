@@ -154,6 +154,7 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/version: "1.0"
             app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/component: publisher
             app: "publisher"
             custom: "local"
       - equal:
@@ -187,10 +188,8 @@ tests:
   - it: should set replicas when autoscaling is disabled
     set:
       publisher.enabled: true
-      autoscaling:
-        enabled: false
-      publisher.config:
-        replicaCount: 3
+      publisher.autoscaling.enabled: false
+      publisher.replicas: 3
     asserts:
       - equal:
           path: spec.replicas

@@ -3,10 +3,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   {{- include "k8s.metadata" (dict "context" . "suffix" "-network-config") | nindent 2 }}
-  {{- include "set-field-and-value" (dict "context" $publisher "field" "annotations" "path" "config.annotations") | nindent 2 }}
+  annotations:
+    {{- include "set-value" (dict "context" $publisher "path" "config.annotations") | nindent 4 }}
   labels:
     {{- include "fuel-streams.labels" . | nindent 4 }}
     {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 4 }}
+    app.kubernetes.io/component: publisher
 data:
   P2P_PORT: "30333"
   DB_PATH: {{ .Values.publisher.storage.mountPath | quote }}
