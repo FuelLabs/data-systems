@@ -128,4 +128,4 @@ CMD exec ./fuel-streams-publisher \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
     --sync-block-stream-buffer-size 30 \
-    --historical $HISTORICAL
+    $([ "$HISTORICAL" = "true" ] && echo "--historical")
