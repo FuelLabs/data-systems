@@ -24,19 +24,8 @@ spec:
   loadBalancerClass: service.k8s.aws/nlb
   externalTrafficPolicy: Local
   ports:
-    - name: leafnodes
-      port: {{ $externalService.ports.leafnodes }}
-      targetPort: leafnodes
-      protocol: TCP
-    - name: websocket
-      port: {{ $externalService.ports.websocket }}
-      targetPort: websocket
-      protocol: TCP
-    - name: webserver
-      port: {{ $externalService.ports.webserver }}
-      targetPort: http
-      protocol: TCP
+    {{- toYaml $externalService.ports | nindent 4 }}
   selector:
+    {{- include "fuel-streams.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/service: external-service
-    app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

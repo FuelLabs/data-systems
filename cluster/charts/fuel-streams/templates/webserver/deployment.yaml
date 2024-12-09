@@ -51,7 +51,7 @@ spec:
 
           ports:
             - name: webserver
-              containerPort: {{ int .Values.externalService.ports.webserver }}
+              containerPort: {{ $webserver.port }}
               protocol: TCP
           {{- if $webserver.ports }}
             {{- toYaml $webserver.ports | nindent 12 }}

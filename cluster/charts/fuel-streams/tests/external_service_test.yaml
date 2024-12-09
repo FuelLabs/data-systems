@@ -42,61 +42,48 @@ tests:
     set:
       externalService.enabled: true
       externalService.dns: "example.com"
-      externalService.ports.leafnodes: 7422
-      externalService.ports.websocket: 8443
-      externalService.ports.webserver: 8082
+      externalService.ports:
+        - name: websocket
+          port: 8443
+          targetPort: websocket
+          protocol: TCP
+        - name: webserver
+          port: 8082
+          targetPort: http
+          protocol: TCP
     asserts:
       - equal:
-          path: spec.ports[0].name
-          value: leafnodes
-      - equal:
-          path: spec.ports[0].port
-          value: 7422
-      - equal:
-          path: spec.ports[0].targetPort
-          value: leafnodes
-      - equal:
-          path: spec.ports[1].name
-          value: websocket
-      - equal:
-          path: spec.ports[1].port
-          value: 8443
-      - equal:
-          path: spec.ports[1].targetPort
-          value: websocket
-      - equal:
-          path: spec.ports[2].name
-          value: webserver
-      - equal:
-          path: spec.ports[2].port
-          value: 8082
-      - equal:
-          path: spec.ports[2].targetPort
-          value: http
+          path: spec.ports
+          value:
+            - name: websocket
+              port: 8443
+              targetPort: websocket
+              protocol: TCP
+            - name: webserver
+              port: 8082
+              targetPort: http
+              protocol: TCP
 
   - it: should set correct selectors
     set:
       externalService.enabled: true
       externalService.dns: "example.com"
     asserts:
-      - equal:
-          path: 'spec.selector["app.kubernetes.io/service"]'
-          value: external-service
-      - equal:
-          path: 'spec.selector["app.kubernetes.io/instance"]'
-          value: RELEASE-NAME
+      - isSubset:
+          path: spec.selector
+          content:
+            app.kubernetes.io/name: fuel-streams
+            app.kubernetes.io/service: external-service
 
   - it: should set correct annotations
     set:
       externalService.enabled: true
       externalService.dns: "example.com"
     asserts:
-      - equal:
-          path: 'metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]'
-          value: "example.com"
-      - equal:
-          path: 'metadata.annotations["external-dns.alpha.kubernetes.io/cloudflare-proxied"]'
-          value: "false"
-      - equal:
-          path: 'metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-type"]'
-          value: "external"
+      - isSubset:
+          path: metadata.annotations
+          content:
+            external-dns.alpha.kubernetes.io/hostname: "example.com"
+            external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+            service.beta.kubernetes.io/aws-load-balancer-type: "external"
+

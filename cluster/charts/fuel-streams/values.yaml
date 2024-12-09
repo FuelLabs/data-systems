@@ -2,7 +2,6 @@ docker:
   registry: registry.dev.svc.cluster.local:5000
 
 config:
-  namespace: fuel-streams
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
@@ -87,9 +86,14 @@ externalService:
   labels: {}
   annotations: {}
   ports:
-    leafnodes: 7422
-    websocket: 8443
-    webserver: 8082
+    - name: websocket
+      port: 8443
+      targetPort: websocket
+      protocol: TCP
+    - name: webserver
+      port: 8082
+      targetPort: http
+      protocol: TCP
 
 # -------------------------------------------------------------------------------------------------
 # Monitoring
@@ -186,6 +190,7 @@ publisher:
 
 webserver:
   enabled: false
+  port: 8082
 
   image:
     repository: fuel-streams-webserver

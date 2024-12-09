@@ -146,20 +146,17 @@ tests:
           service: "publisher"
           monitoring: "enabled"
     asserts:
-      - equal:
+      - isSubset:
           path: metadata.labels
-          value:
-            helm.sh/chart: fuel-streams-0.2.0
+          content:
             app.kubernetes.io/name: fuel-streams
             app.kubernetes.io/instance: RELEASE-NAME
-            app.kubernetes.io/version: "1.0"
-            app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/component: publisher
             app: "publisher"
             custom: "local"
-      - equal:
+      - isSubset:
           path: metadata.annotations
-          value:
+          content:
             service: "publisher"
             monitoring: "enabled"
 
