@@ -221,14 +221,14 @@ jobs:
 
       - name: Start Nats
         run: |
-          just docker-up
+          just start-nats
 
       - name: Run tests
         run: just test profile=ci package=${{ matrix.package }}
 
       - name: Stop Nats
         if: always()
-        run: just docker-down
+        run: just stop-nats
 
   build:
     needs: install-deps

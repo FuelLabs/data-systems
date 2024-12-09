@@ -9,7 +9,7 @@
 2. Make sure you have NATS server running within the workspace root:
 
     ```sh
-    just docker-up
+    just start-nats
     ```
 
 3. The, you can start local node and start publishing on NATS:

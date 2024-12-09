@@ -232,10 +232,10 @@ run-docker-compose command="":
     @./scripts/set_env.sh
     @docker compose -f cluster/docker/docker-compose.yml --env-file .env {{command}}
 
-docker-up: (run-docker-compose "up -d")
-docker-down: (run-docker-compose "down")
-docker-restart: (run-docker-compose "restart")
-docker-clean: (run-docker-compose "down -v --rmi all --remove-orphans")
+start-nats: (run-docker-compose "up -d")
+stop-nats: (run-docker-compose "down")
+restart-nats: (run-docker-compose "restart")
+clean-nats: (run-docker-compose "down -v --rmi all --remove-orphans")
 
 # ------------------------------------------------------------
 #  Local cluster (Tilt)
