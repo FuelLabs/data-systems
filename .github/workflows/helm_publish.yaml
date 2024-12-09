@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   helm-release:
-    name: Build Helm Chart
+    name: Build Helm Charts
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
@@ -62,7 +62,15 @@ jobs:
             helm dependency update cluster/charts/$chart
           done
 
-      - name: Package and Push Chart (fuel-streams-publisher)
+      - name: Get chart versions
+        id: versions
+        run: |
+          publisher_version=$(awk '/^version:/ {print $2}' cluster/charts/fuel-streams-publisher/Chart.yaml)
+          streams_version=$(awk '/^version:/ {print $2}' cluster/charts/fuel-streams/Chart.yaml)
+          echo "publisher_version=$publisher_version" >> $GITHUB_OUTPUT
+          echo "streams_version=$streams_version" >> $GITHUB_OUTPUT
+
+      - name: "Build chart: [fuel-streams-publisher v${{ steps.versions.outputs.publisher_version }}]"
         if: contains(steps.charts.outputs.charts, 'fuel-streams-publisher')
         uses: bsord/helm-push@v4.1.0
         with:
@@ -73,7 +81,7 @@ jobs:
           force: true
           chart-folder: ./cluster/charts/fuel-streams-publisher
 
-      - name: Package and Push Chart (fuel-streams)
+      - name: "Build chart: [fuel-streams v${{ steps.versions.outputs.streams_version }}]"
         if: contains(steps.charts.outputs.charts, 'fuel-streams')
         uses: bsord/helm-push@v4.1.0
         with:
@@ -83,3 +91,19 @@ jobs:
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
           chart-folder: ./cluster/charts/fuel-streams
+
+      - name: Build Summary
+        run: |-
+          echo "### Helm Charts Build Summary 📊" >> $GITHUB_STEP_SUMMARY
+          echo "| Chart | Version | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          for chart in ${{ steps.charts.outputs.charts }}; do
+            version=""
+            if [ "$chart" = "fuel-streams-publisher" ]; then
+              version="${{ steps.versions.outputs.publisher_version }}"
+            elif [ "$chart" = "fuel-streams" ]; then
+              version="${{ steps.versions.outputs.streams_version }}"
+            fi
+            echo "| $chart | $version | ✅ Published |" >> $GITHUB_STEP_SUMMARY
+          done
