@@ -161,7 +161,7 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-machete
       - name: Lint project
-        run: just lint
+        run: make lint
 
   install-deps:
     name: Install dependencies
@@ -204,7 +204,7 @@ jobs:
 
       - name: Run Helm unit tests
         run: |
-          just helm-test
+          make helm-test
 
   test:
     needs: install-deps
@@ -240,14 +240,14 @@ jobs:
 
       - name: Start Nats
         run: |
-          just start-nats
+          make start-nats
 
       - name: Run tests
-        run: just test ${{ matrix.package }} ci
+        run: make test PACKAGE=${{ matrix.package }} PROFILE=ci
 
       - name: Stop Nats
         if: always()
-        run: just stop-nats
+        run: make stop-nats
 
   build:
     needs: install-deps

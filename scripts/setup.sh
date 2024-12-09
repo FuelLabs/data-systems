@@ -24,7 +24,6 @@ $install_cmd knope
 $install_cmd cargo-sort
 $install_cmd typos-cli
 $install_cmd cargo-nextest --secure
-$install_cmd just
 
 # Binstall does not support --features
 cargo install cargo-audit --locked --features=fix --force

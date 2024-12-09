@@ -8,7 +8,7 @@ Most projects under the umbrella of data systems are written in Rust, so we pref
 
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable version recommended)
 - [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2024-11-06)
-- [Just](https://github.com/casey/just#installation)
+- [Make](https://www.gnu.org/software/make/)
 - [Pre-commit](https://pre-commit.com/#install)
 - [NodeJS](https://nodejs.org/en/download/)
 - [PNPM](https://pnpm.io/installation)
@@ -26,10 +26,10 @@ git clone git@github.com:fuellabs/data-systems.git
 cd data-systems
 ```
 
-Now, install the necessary tools to ensure code quality and standards. Use Just to simplify this process:
+Now, install the necessary tools to ensure code quality and standards. Use Make to simplify this process:
 
 ```sh
-just setup
+make setup
 ```
 
 After setup, you'll need to create the environment configuration. First, make sure you have an Infura API key:
@@ -41,7 +41,7 @@ After setup, you'll need to create the environment configuration. First, make su
 Then run the environment setup command:
 
 ```sh
-just create-env
+make create-env
 ```
 
 The script will prompt you to enter your Infura API key and will automatically:
@@ -102,26 +102,26 @@ To make your life easier, here are some commands to run common tasks in this pro
 
 | Command                  | Description                                           |
 | ------------------------ | ----------------------------------------------------- |
-| `just install`           | Fetch the project dependencies using `cargo fetch`    |
-| `just setup`             | Run the setup script located at `./scripts/setup.sh`  |
-| `just create-env`        | Create environment configuration file                 |
-| `just fmt`               | Format the code and Markdown files                    |
-| `just lint`              | Perform linting checks on the code and Markdown files |
-| `just test`              | Run all tests in the project                          |
-| `just test-watch`        | Run tests in watch mode                               |
-| `just clean`             | Clean the build artifacts                             |
-| `just dev-watch`         | Run the project in development mode with auto-reload  |
-| `just bench`             | Run benchmarks for the project                        |
-| `just audit`             | Run security audit on dependencies                    |
-| `just audit-fix`         | Fix security vulnerabilities in dependencies          |
-| `just version`           | Show current version                                  |
-| `just bump-version`      | Bump project version                                  |
-| `just load-test`         | Run load tests                                        |
-| `just run-publisher`     | Run the publisher with custom configuration           |
-| `just run-mainnet-dev`   | Run publisher in mainnet dev mode                     |
-| `just run-testnet-dev`   | Run publisher in testnet dev mode                     |
-| `just validate-env`      | Validate environment setup                            |
-| `just cleanup-artifacts` | Clean up old artifacts on Github                      |
+| `make install`           | Fetch the project dependencies using `cargo fetch`    |
+| `make setup`             | Run the setup script located at `./scripts/setup.sh`  |
+| `make create-env`        | Create environment configuration file                 |
+| `make fmt`               | Format the code and Markdown files                    |
+| `make lint`              | Perform linting checks on the code and Markdown files |
+| `make test`              | Run all tests in the project                          |
+| `make test-watch`        | Run tests in watch mode                               |
+| `make clean`             | Clean the build artifacts                             |
+| `make dev-watch`         | Run the project in development mode with auto-reload  |
+| `make bench`             | Run benchmarks for the project                        |
+| `make audit`             | Run security audit on dependencies                    |
+| `make audit-fix`         | Fix security vulnerabilities in dependencies          |
+| `make version`           | Show current version                                  |
+| `make bump-version`      | Bump project version                                  |
+| `make load-test`         | Run load tests                                        |
+| `make run-publisher`     | Run the publisher with custom configuration           |
+| `make run-mainnet-dev`   | Run publisher in mainnet dev mode                     |
+| `make run-testnet-dev`   | Run publisher in testnet dev mode                     |
+| `make validate-env`      | Validate environment setup                            |
+| `make cleanup-artifacts` | Clean up old artifacts on Github                      |
 
 ## 🚀 Running Local Cluster
 
@@ -130,8 +130,8 @@ The project includes support for running a local Kubernetes cluster using [Minik
 1. Setup Minikube cluster:
 
 ```sh
-just minikube-setup
-just minikube-start
+make minikube-setup
+make minikube-start
 ```
 
 For detailed information about the necessary tools to install, cluster configuration, deployment options, and troubleshooting, please refer to the [Cluster Documentation](./cluster/README.md).
@@ -141,13 +141,13 @@ For detailed information about the necessary tools to install, cluster configura
 To run all tests in the project, use:
 
 ```sh
-just test
+make test
 ```
 
 For running specific tests or test modules, you can use:
 
 ```sh
-just test package=<package-name>
+make test PACKAGE=<package-name>
 ```
 
 ## 📬 Open a Pull Request
