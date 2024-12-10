@@ -40,7 +40,7 @@ fn start_nats(makefile_path: &Path) {
     let status = Command::new("make")
         .arg("-f")
         .arg(makefile_path.to_str().unwrap())
-        .arg("start/nats")
+        .arg("cluster_up")
         .status()
         .expect("Failed to start NATS");
 
@@ -55,7 +55,7 @@ fn stop_nats(makefile_path: &Path) {
     let status = Command::new("make")
         .arg("-f")
         .arg(makefile_path.to_str().unwrap())
-        .arg("stop/nats")
+        .arg("cluster_up")
         .status()
         .expect("Failed to stop NATS");
 

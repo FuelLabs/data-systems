@@ -27,19 +27,16 @@ jobs:
       github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - name: Build and push Fuel publisher image
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
         uses: ./.github/actions/docker-publish
         id: publish-fuel-streams-nats
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-streams-publisher
-          dockerfile: docker/fuel-streams-publisher.Dockerfile
-      - name: Build and push fule ws streams image
-        uses: ./.github/actions/docker-publish
-        id: publish-fuel-ws-nats
-        with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-streams-ws
-          dockerfile: docker/fuel-streams-ws.Dockerfile
+          dockerfile: cluster/docker/fuel-streams-publisher.Dockerfile

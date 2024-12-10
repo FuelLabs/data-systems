@@ -11,6 +11,11 @@ Most projects under the umbrella of data systems are written in Rust, so we pref
 - [Make](https://www.gnu.org/software/make/)
 - [Pre-commit](https://pre-commit.com/#install)
 - [NodeJS](https://nodejs.org/en/download/)
+- [PNPM](https://pnpm.io/installation)
+- [NATS](https://nats.io/download/)
+- [Tilt](https://docs.tilt.dev/install.html)
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/)
+- [Kubernetes](https://kubernetes.io/)
 
 ## 📟 Setting up
 
@@ -27,17 +32,36 @@ Now, install the necessary tools to ensure code quality and standards. Use Make 
 make setup
 ```
 
+After setup, you'll need to create the environment configuration. First, make sure you have an Infura API key:
+
+1. Go to [Infura](https://infura.io/) and create an account
+2. Create a new project
+3. Copy your project ID (API key)
+
+Then run the environment setup command:
+
+```sh
+make create-env
+```
+
+The script will prompt you to enter your Infura API key and will automatically:
+
+- Generate a new keypair for P2P communication
+- Create a `.env` file from the template
+- Configure the environment with your Infura key and the generated keypair
+
 You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is being installed on your machine.
 
 ## 📂 Project Structure
 
-Here's a brief overview of the project's directory structure:
+Here's an overview of the project's directory structure:
 
 - `crates/`: Contains the main Rust crates for the project
-- `benches/`: Benchmarking code
-- `docker/`: Docker-related files
-- `helm/`: Helm charts for Kubernetes deployment
-- `scripts/`: Utility scripts
+- `benches/`: Benchmarking code and performance tests
+- `tests/`: Integration and end-to-end tests
+- `examples/`: Example code and usage demonstrations
+- `cluster/`: Kubernetes cluster configuration and deployment files
+- `scripts/`: Utility scripts for setup, deployment, and maintenance
 
 ## 📇 Code conventions
 
@@ -76,19 +100,41 @@ This is a general rule used for commits. When you are creating a PR, ensure that
 
 To make your life easier, here are some commands to run common tasks in this project:
 
-| Command          | Description                                           |
-| ---------------- | ----------------------------------------------------- |
-| `make build`     | Build the project with default settings               |
-| `make clean`     | Clean the build artifacts and release directory       |
-| `make dev-watch` | Run the project in development mode with auto-reload  |
-| `make dev`       | Run the project in development mode                   |
-| `make fmt`       | Format the code and Markdown files                    |
-| `make install`   | Fetch the project dependencies using `cargo fetch`    |
-| `make lint`      | Perform linting checks on the code and Markdown files |
-| `make run`       | Run the built executable using `cargo run --release`  |
-| `make setup`     | Run the setup script located at `./scripts/setup.sh`  |
-| `make test`      | Run all tests in the project                          |
-| `make coverage`  | Generate code coverage reports                        |
+| Command                  | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `make install`           | Fetch the project dependencies using `cargo fetch`    |
+| `make setup`             | Run the setup script located at `./scripts/setup.sh`  |
+| `make create-env`        | Create environment configuration file                 |
+| `make fmt`               | Format the code and Markdown files                    |
+| `make lint`              | Perform linting checks on the code and Markdown files |
+| `make test`              | Run all tests in the project                          |
+| `make test-watch`        | Run tests in watch mode                               |
+| `make clean`             | Clean the build artifacts                             |
+| `make dev-watch`         | Run the project in development mode with auto-reload  |
+| `make bench`             | Run benchmarks for the project                        |
+| `make audit`             | Run security audit on dependencies                    |
+| `make audit-fix`         | Fix security vulnerabilities in dependencies          |
+| `make version`           | Show current version                                  |
+| `make bump-version`      | Bump project version                                  |
+| `make load-test`         | Run load tests                                        |
+| `make run-publisher`     | Run the publisher with custom configuration           |
+| `make run-mainnet-dev`   | Run publisher in mainnet dev mode                     |
+| `make run-testnet-dev`   | Run publisher in testnet dev mode                     |
+| `make validate-env`      | Validate environment setup                            |
+| `make cleanup-artifacts` | Clean up old artifacts on Github                      |
+
+## 🚀 Running Local Cluster
+
+The project includes support for running a local Kubernetes cluster using [Minikube](https://minikube.sigs.k8s.io/docs/start/) for development and testing. Here's a quick guide to get started:
+
+1. Setup Minikube cluster:
+
+```sh
+make minikube-setup
+make minikube-start
+```
+
+For detailed information about the necessary tools to install, cluster configuration, deployment options, and troubleshooting, please refer to the [Cluster Documentation](./cluster/README.md).
 
 ## 🧪 Running Tests
 
@@ -98,21 +144,11 @@ To run all tests in the project, use:
 make test
 ```
 
-For running specific tests or test modules, you can use the standard Cargo test command:
+For running specific tests or test modules, you can use:
 
 ```sh
-cargo test [test_name_or_module]
+make test PACKAGE=<package-name>
 ```
-
-## 📊 Code Coverage
-
-To generate code coverage reports, use:
-
-```sh
-make coverage
-```
-
-This will generate coverage reports for different packages in the project. You can find the configuration for coverage analysis in the `tarpaulin.toml` file.
 
 ## 📬 Open a Pull Request
 
