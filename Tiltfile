@@ -30,6 +30,27 @@ custom_build(
     ignore=['./target']
 )
 
+# Build streamer ws image with proper configuration for Minikube
+custom_build(
+    ref='fuel-streams-ws:latest',
+    command=['./cluster/scripts/build_streamer.sh'],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './docker/fuel-streams-ws.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    skips_local_docker=True,
+    ignore=['./target']
+)
+
+# Deploy the Helm chart with values from .env
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
 

@@ -25,7 +25,13 @@ pub enum SerializationType {
 
 /// Traits required for a data type to be parseable
 pub trait DataParseable:
-    serde::Serialize + serde::de::DeserializeOwned + Clone + Send + Sync + Debug
+    serde::Serialize
+    + serde::de::DeserializeOwned
+    + Clone
+    + Send
+    + Sync
+    + Debug
+    + std::marker::Sized
 {
 }
 

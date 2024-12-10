@@ -1,5 +1,5 @@
 mod elastic_search;
-mod publisher;
+pub mod metrics;
 mod runtime;
 #[allow(clippy::needless_borrows_for_generic_args)]
 mod system;
@@ -13,10 +13,9 @@ use elastic_search::{
     ElasticSearch,
     LogEntry,
 };
-use fuel_streams_core::prelude::*;
+use metrics::Metrics;
 // TODO: Consider using tokio's Rwlock instead
 use parking_lot::RwLock;
-use publisher::PublisherMetrics;
 use runtime::Runtime;
 use system::{System, SystemMetricsWrapper};
 
@@ -24,20 +23,20 @@ use system::{System, SystemMetricsWrapper};
 pub struct Telemetry {
     runtime: Arc<Runtime>,
     system: Arc<RwLock<System>>,
-    publisher_metrics: Option<Arc<PublisherMetrics>>,
+    metrics: Option<Arc<Metrics>>,
     elastic_search: Option<Arc<ElasticSearch>>,
 }
 
 impl Telemetry {
     const DEDICATED_THREADS: usize = 2;
 
-    pub async fn new() -> anyhow::Result<Arc<Self>> {
+    pub async fn new(prefix: Option<String>) -> anyhow::Result<Arc<Self>> {
         let runtime =
             Runtime::new(Self::DEDICATED_THREADS, Duration::from_secs(20));
         let system = Arc::new(RwLock::new(System::new().await));
 
-        let publisher_metrics = if should_use_publisher_metrics() {
-            Some(Arc::new(PublisherMetrics::default()))
+        let metrics = if should_use_metrics() {
+            Some(Arc::new(Metrics::new(prefix)?))
         } else {
             None
         };
@@ -51,7 +50,7 @@ impl Telemetry {
         Ok(Arc::new(Self {
             runtime: Arc::new(runtime),
             system,
-            publisher_metrics,
+            metrics,
             elastic_search,
         }))
     }
@@ -98,116 +97,69 @@ impl Telemetry {
         }
     }
 
-    pub fn update_publisher_success_metrics(
+    pub fn update_streamer_success_metrics(
         &self,
-        subject: &str,
-        published_data_size: usize,
-        chain_id: &FuelCoreChainId,
-        block_producer: &Address,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
     ) {
         self.maybe_use_metrics(|metrics| {
-            // Update message size histogram
+            // Increment total user subscribed messages
             metrics
-                .message_size_histogram
+                .user_subscribed_messages
                 .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                ])
-                .observe(published_data_size as f64);
-
-            // Increment total published messages
-            metrics
-                .total_published_messages
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
+                    user_id.to_string().as_str(),
+                    subject_wildcard,
                 ])
                 .inc();
 
-            // Increment throughput for the published messages
+            // Increment throughput for the subscribed messages
             metrics
-                .published_messages_throughput
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                ])
+                .subs_messages_throughput
+                .with_label_values(&[subject_wildcard])
                 .inc();
         });
     }
 
-    pub fn update_publisher_error_metrics(
+    pub fn update_streamer_error_metrics(
         &self,
-        subject: &str,
-        chain_id: &FuelCoreChainId,
-        block_producer: &Address,
-        error: &str,
+        subject_wildcard: &str,
+        error_type: &str,
     ) {
         self.maybe_use_metrics(|metrics| {
             metrics
-                .error_rates
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                    subject,
-                    error,
-                ])
+                .subs_messages_error_rates
+                .with_label_values(&[subject_wildcard, error_type])
                 .inc();
         });
     }
 
-    pub fn record_streams_count(
-        &self,
-        chain_id: &FuelCoreChainId,
-        count: usize,
-    ) {
+    pub fn record_subscriptions_count(&self) {
         self.maybe_use_metrics(|metrics| {
-            metrics
-                .total_subs
-                .with_label_values(&[&chain_id.to_string()])
-                .set(count as i64);
-        });
-    }
-
-    pub fn record_failed_publishing(
-        &self,
-        chain_id: &FuelCoreChainId,
-        block_producer: &Address,
-    ) {
-        self.maybe_use_metrics(|metrics| {
-            metrics
-                .total_failed_messages
-                .with_label_values(&[
-                    &chain_id.to_string(),
-                    &block_producer.to_string(),
-                ])
-                .inc();
+            metrics.total_ws_subs.with_label_values(&[]).inc();
         });
     }
 
     pub fn maybe_use_metrics<F>(&self, f: F)
     where
-        F: Fn(&PublisherMetrics),
+        F: Fn(&Metrics),
     {
-        if let Some(metrics) = &self.publisher_metrics {
+        if let Some(metrics) = &self.metrics {
             f(metrics);
         }
     }
 
-    // TODO: Break into smaller functions
     pub async fn get_metrics(&self) -> String {
         use prometheus::Encoder;
         let encoder = prometheus::TextEncoder::new();
 
-        if self.publisher_metrics.is_none() {
+        if self.metrics.is_none() {
             return "".to_string();
         }
 
         // fetch all measured metrics
         let mut buffer = Vec::new();
         if let Err(e) = encoder.encode(
-            &self.publisher_metrics.as_ref().unwrap().registry.gather(),
+            &self.metrics.as_ref().unwrap().registry.gather(),
             &mut buffer,
         ) {
             tracing::error!("could not encode custom metrics: {}", e);
@@ -272,6 +224,6 @@ impl Telemetry {
     }
 }
 
-pub fn should_use_publisher_metrics() -> bool {
+pub fn should_use_metrics() -> bool {
     dotenvy::var("USE_METRICS").is_ok_and(|val| val == "true")
 }

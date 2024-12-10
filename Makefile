@@ -209,17 +209,45 @@ run-publisher: check-network
 		$(if $(TELEMETRY_PORT),--telemetry-port $(TELEMETRY_PORT),) \
 		$(if $(extra_args),--extra-args "$(extra_args)",)
 
-run-mainnet-dev:
+run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
 
-run-mainnet-profiling:
+run-publisher-mainnet-profiling:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling
 
-run-testnet-dev:
+run-publisher-testnet-dev:
 	$(MAKE) run-publisher NETWORK=testnet MODE=dev
 
-run-testnet-profiling:
+run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
+
+# ------------------------------------------------------------
+#  Streamer Run Commands
+# ------------------------------------------------------------
+
+run-streamer-local:
+	cargo run --package fuel-streams-ws --bin ws-streamer -- --config-path crates/fuel-streams-ws/config.toml
+
+run-client-local:
+	cargo run --package fuel-streams-ws --bin ws-client -- --config-path crates/fuel-streams-ws/config.toml
+
+run-streamer: check-network
+	@./scripts/run_streamer.sh \
+		--mode $(MODE) \
+		$(if $(CONFIG_PATH),--config-path $(CONFIG_PATH),) \
+		$(if $(extra_args),--extra-args "$(extra_args)",)
+
+run-streamer-mainnet-dev:
+	$(MAKE) run-streamer NETWORK=mainnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+
+run-streamer-mainnet-profiling:
+	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
+
+run-streamer-testnet-dev:
+	$(MAKE) run-streamer NETWORK=testnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+
+run-streamer-testnet-profiling:
+	$(MAKE) run-streamer NETWORK=testnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
 
 # ------------------------------------------------------------
 #  Docker Compose
