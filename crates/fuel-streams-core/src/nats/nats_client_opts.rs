@@ -1,6 +1,7 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use async_nats::ConnectOptions;
+use serde::{Deserialize, Serialize};
 
 use super::NatsNamespace;
 
@@ -11,12 +12,27 @@ pub enum NatsUserRole {
     Default,
 }
 
-#[derive(Debug, Copy, Clone, Default, clap::ValueEnum)]
+#[derive(
+    Debug, Copy, Clone, Default, clap::ValueEnum, Serialize, Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum FuelNetwork {
     Local,
     #[default]
     Testnet,
     Mainnet,
+}
+
+impl FromStr for FuelNetwork {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "local" => Ok(FuelNetwork::Local),
+            "testnet" => Ok(FuelNetwork::Testnet),
+            "mainnet" => Ok(FuelNetwork::Mainnet),
+            _ => Err(()),
+        }
+    }
 }
 
 impl FuelNetwork {

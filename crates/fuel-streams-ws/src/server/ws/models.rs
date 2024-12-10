@@ -10,6 +10,10 @@ pub enum SubscriptionType {
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
     pub topic: SubscriptionType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<u64>,
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
@@ -24,6 +28,7 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Subscribed(SubscriptionPayload),
     Unsubscribed(SubscriptionPayload),
+    Update(Vec<u8>),
     Error(String),
 }
 
@@ -36,6 +41,8 @@ mod tests {
         let stream_topic_wildcard = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
             topic: SubscriptionType::Stream(stream_topic_wildcard.clone()),
+            from: None,
+            to: None,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
         println!("Ser value {:?}", ser_str_value);

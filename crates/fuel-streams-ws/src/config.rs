@@ -7,6 +7,7 @@ use std::{
 
 use confy::ConfyError;
 use displaydoc::Display as DisplayDoc;
+use fuel_streams::types::FuelNetwork;
 use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
@@ -25,8 +26,8 @@ pub enum Error {
     ReadMeta(std::io::Error),
     /// Failed to read env config: {0}
     Confy(ConfyError),
-    /// Missing config element: {0}
-    MissingConfigElement(&'static str),
+    /// Undecodable config element: {0}
+    UndecodableConfigElement(&'static str),
     /// Parse int error: {0}
     ParseInt(ParseIntError),
     /// Parse bool error: {0}
@@ -64,6 +65,12 @@ pub struct AuthConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct FuelConfig {
+    pub network: FuelNetwork,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct NatsConfig {
     pub url: String,
 }
@@ -75,6 +82,7 @@ pub struct Config {
     pub auth: AuthConfig,
     pub s3: S3Config,
     pub nats: NatsConfig,
+    pub fuel: FuelConfig,
 }
 
 impl Default for Config {
@@ -93,6 +101,9 @@ impl Default for Config {
                 region: String::new(),
                 bucket: String::new(),
                 endpoint: String::new(),
+            },
+            fuel: FuelConfig {
+                network: FuelNetwork::Local,
             },
         }
     }
@@ -163,6 +174,13 @@ impl Config {
         if let Ok(jwt_secret) = dotenvy::var("JWT_AUTH_SECRET") {
             config.auth.jwt_secret = jwt_secret;
         }
+
+        // ----------------------FUEL--------------------------------
+        if let Ok(network) = dotenvy::var("NETWORK") {
+            config.fuel.network = FuelNetwork::from_str(&network)
+                .map_err(|_| Error::UndecodableConfigElement("NETWORK"))?;
+        }
+
         Ok(config)
     }
 }

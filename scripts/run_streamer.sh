@@ -17,7 +17,7 @@ usage() {
     echo "Examples:"
     echo "  $0                                              # Runs with all defaults"
     echo "  $0 --config-path                                # Runs with default config.toml"
-    echo "  $0 --mod dev                                    # Runs with dev mode"
+    echo "  $0 --mode dev                                   # Runs with dev mode"
     echo "  $0 --config-path ../config.toml --mode dev      # Custom config toml path and mode"
     exit 1
 }
@@ -49,7 +49,7 @@ done
 # ------------------------------
 # Load Environment
 # ------------------------------
-source ./scripts/set_envs.sh
+source ./scripts/set_env.sh
 
 # Print the configuration being used
 echo -e "\n=========================================="
@@ -58,7 +58,7 @@ echo -e "=========================================="
 
 # Runtime Configuration
 echo "Runtime Settings:"
-echo "  → Mode: $MODE"
+echo "→ Mode: $MODE"
 if [ -n "$CONFIG_PATH" ]; then
     echo "→ Config path: $CONFIG_PATH"
 fi
@@ -68,7 +68,7 @@ fi
 
 # Environment Variables
 echo -e "\nEnvironment Variables:"
-echo "  → Use Metrics: ${USE_METRICS}..."
+echo "  → Use Metrics: ${USE_METRICS}"
 echo "  → Use Elastic Logging: $USE_ELASTIC_LOGGING"
 echo "  → S3 Enabled: $S3_ENABLED"
 echo "  → S3 Region: $S3_REGION"

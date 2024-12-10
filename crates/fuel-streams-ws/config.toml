@@ -4,6 +4,9 @@ port = 9003
 [nats]
 url = "nats://localhost:4222"
 
+[fuel]
+network = "mainnet"
+
 [s3]
 enabled = false
 region = "us-west-rack1"
