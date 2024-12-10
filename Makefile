@@ -202,12 +202,13 @@ load-test:
 # ------------------------------------------------------------
 
 run-publisher: check-network
-	@./scripts/run_publisher.sh \
-		--network $(NETWORK) \
-		--mode $(MODE) \
-		$(if $(PORT),--port $(PORT),) \
-		$(if $(TELEMETRY_PORT),--telemetry-port $(TELEMETRY_PORT),) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+	@NETWORK=$(NETWORK) \
+	PACKAGE=$(PACKAGE) \
+	MODE=$(MODE) \
+	PORT=$(PORT) \
+	TELEMETRY_PORT=$(TELEMETRY_PORT) \
+	EXTRA_ARGS="$(extra_args)" \
+	./scripts/run_publisher.sh
 
 run-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
