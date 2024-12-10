@@ -2,6 +2,7 @@ use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 use fuel_streams::{client::Client, types::Log, StreamConfig};
 use fuel_streams_core::prelude::*;
 use futures_util::StreamExt;
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub enum StreamableType {
@@ -16,13 +17,13 @@ pub enum StreamableType {
 
 pub fn get_streamable_type(name: &str) -> Option<StreamableType> {
     match name {
-        "transactions" => Some(StreamableType::Transaction),
-        "blocks" => Some(StreamableType::Block),
-        "inputs" => Some(StreamableType::Input),
-        "outputs" => Some(StreamableType::Output),
-        "receipts" => Some(StreamableType::Receipt),
-        "utxos" => Some(StreamableType::Utxo),
-        "logs" => Some(StreamableType::Log),
+        Transaction::NAME => Some(StreamableType::Transaction),
+        Block::NAME => Some(StreamableType::Block),
+        Input::NAME => Some(StreamableType::Input),
+        Output::NAME => Some(StreamableType::Output),
+        Receipt::NAME => Some(StreamableType::Receipt),
+        Utxo::NAME => Some(StreamableType::Utxo),
+        Log::NAME => Some(StreamableType::Log),
         _ => None,
     }
 }
@@ -37,6 +38,7 @@ pub struct Streams {
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
     pub logs: Stream<Log>,
+    pub nats_client: NatsClient,
 }
 
 impl Streams {
@@ -49,6 +51,7 @@ impl Streams {
             receipts: Stream::<Receipt>::new(nats_client).await,
             utxos: Stream::<Utxo>::new(nats_client).await,
             logs: Stream::<Log>::new(nats_client).await,
+            nats_client: nats_client.clone(),
         }
     }
 
@@ -134,41 +137,41 @@ impl Streams {
         ])
     }
 
-    pub async fn run_dynamic_consumer(
-        name: &str,
-        client: &Client,
-    ) -> anyhow::Result<()> {
-        match get_streamable_type(name) {
-            Some(StreamableType::Transaction) => {
-                Streams::run_streamable_consumer::<Transaction>(client).await
-            }
-            Some(StreamableType::Block) => {
-                Streams::run_streamable_consumer::<Block>(client).await
-            }
-            Some(StreamableType::Input) => {
-                Streams::run_streamable_consumer::<Input>(client).await
-            }
-            Some(StreamableType::Output) => {
-                Streams::run_streamable_consumer::<Output>(client).await
-            }
-            Some(StreamableType::Receipt) => {
-                Streams::run_streamable_consumer::<Receipt>(client).await
-            }
-            Some(StreamableType::Utxo) => {
-                Streams::run_streamable_consumer::<Utxo>(client).await
-            }
-            Some(StreamableType::Log) => {
-                Streams::run_streamable_consumer::<Log>(client).await
-            }
-            None => Err(anyhow::anyhow!("Unknown streamable type: {}", name)),
-        }
-    }
+    // pub async fn run_dynamic_consumer<S: Streamable>(
+    //     name: &str,
+    //     client: Client,
+    // ) -> anyhow::Result<mpsc::UnboundedReceiver<StreamData<S>>> {
+    //     match get_streamable_type(name) {
+    //         Some(StreamableType::Transaction) => {
+    //             let rx = Streams::run_streamable_consumer::<Transaction>(client).await
+    //         }
+    //         Some(StreamableType::Block) => {
+    //             Streams::run_streamable_consumer::<Block>(client).await
+    //         }
+    //         Some(StreamableType::Input) => {
+    //             Streams::run_streamable_consumer::<Input>(client).await
+    //         }
+    //         Some(StreamableType::Output) => {
+    //             Streams::run_streamable_consumer::<Output>(client).await
+    //         }
+    //         Some(StreamableType::Receipt) => {
+    //             Streams::run_streamable_consumer::<Receipt>(client).await
+    //         }
+    //         Some(StreamableType::Utxo) => {
+    //             Streams::run_streamable_consumer::<Utxo>(client).await
+    //         }
+    //         Some(StreamableType::Log) => {
+    //             Streams::run_streamable_consumer::<Log>(client).await
+    //         }
+    //         None => Err(anyhow::anyhow!("Unknown streamable type: {}", name)),
+    //     }
+    // }
 
-    pub async fn run_streamable_consumer<S: Streamable>(
-        client: &Client,
-    ) -> anyhow::Result<()> {
+    pub async fn run_streamable_consumer<S: Streamable + Send + 'static>(
+        client: Client,
+    ) -> anyhow::Result<mpsc::UnboundedReceiver<StreamData<S>>> {
         // Create a new stream for blocks
-        let stream = fuel_streams::Stream::<S>::new(client).await;
+        let stream = fuel_streams::Stream::<S>::new(&client).await;
 
         // Configure the stream to start from the last published block
         let config = StreamConfig {
@@ -178,17 +181,33 @@ impl Streams {
         // Subscribe to the block stream with the specified configuration
         let mut sub = stream.subscribe_with_config(config).await?;
 
+        let (tx, rx) = mpsc::unbounded_channel::<StreamData<S>>();
+
         // Process incoming blocks
-        while let Some(bytes) = sub.next().await {
-            match bytes.as_ref() {
-                Err(_) => {}
-                Ok(message) => {
-                    let _decoded_msg =
-                        S::decode_raw(message.payload.to_vec()).await;
+        actix_web::rt::spawn(async move {
+            while let Some(bytes) = sub.next().await {
+                match bytes.as_ref() {
+                    Ok(message) => {
+                        tracing::info!("Received message: {:?}", message);
+                        let decoded_msg =
+                            S::decode_raw(message.payload.to_vec()).await;
+                        if let Err(e) = tx.send(decoded_msg) {
+                            tracing::error!(
+                                "Error sending decoded message: {:?}",
+                                e
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Error receiving message from stream: {:?}",
+                            e
+                        );
+                    }
                 }
             }
-        }
+        });
 
-        Ok(())
+        Ok(rx)
     }
 }

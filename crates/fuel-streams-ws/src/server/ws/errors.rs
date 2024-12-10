@@ -10,4 +10,6 @@ pub enum WsSubscriptionError {
     UnknownSubjectName(String),
     /// Unsupported wildcard pattern: `{0}`
     UnsupportedWildcardPattern(String),
+    /// Unserializable message payload: `{0}`
+    UnserializableMessagePayload(serde_json::Error),
 }

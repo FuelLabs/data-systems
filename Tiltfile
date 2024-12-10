@@ -33,7 +33,7 @@ custom_build(
 # Build streamer ws image with proper configuration for Minikube
 custom_build(
     ref='fuel-streams-ws:latest',
-    command=['./cluster/scripts/build_ws_streamer.sh'],
+    command=['./cluster/scripts/build_streamer.sh'],
     deps=[
         './src',
         './Cargo.toml',

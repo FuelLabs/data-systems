@@ -7,6 +7,12 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{AggregatedMessage, Session};
+use fuel_streams::{
+    client::Client,
+    types::{Block, FuelNetwork},
+    StreamData,
+    Streamable,
+};
 use uuid::Uuid;
 
 use super::{
@@ -91,6 +97,7 @@ pub async fn get_ws(
                             let SubscriptionType::Stream(subject_wildcard) =
                                 payload.topic;
 
+                            // verify the subject name
                             if let Err(e) =
                                 verify_subject_name(&subject_wildcard)
                             {
@@ -98,6 +105,7 @@ pub async fn get_ws(
                                 return;
                             }
 
+                            // update metrics
                             state
                                 .context
                                 .telemetry
@@ -105,6 +113,34 @@ pub async fn get_ws(
                                     user_id,
                                     &subject_wildcard,
                                 );
+
+                            // start the streamer async
+                            let mut stream_session = session.clone();
+                            let client = Client::connect(FuelNetwork::Local)
+                                .await
+                                .unwrap();
+                            let mut rx = Streams::run_streamable_consumer::<
+                                Block,
+                            >(client)
+                            .await
+                            .unwrap();
+
+                            // receive in a background thread
+                            actix_web::rt::spawn(async move {
+                                while let Some(res) = rx.recv().await {
+                                    let serialized_payload =
+                                        match serialize_message_to_bytes(res) {
+                                            Ok(res) => res,
+                                            Err(e) => {
+                                                tracing::error!("Error serializing received stream message: {:?}", e);
+                                                continue;
+                                            }
+                                        };
+                                    let _ = stream_session
+                                        .binary(serialized_payload)
+                                        .await;
+                                }
+                            });
                         }
                         ClientMessage::Unsubscribe(payload) => {
                             tracing::info!(
@@ -144,6 +180,14 @@ fn parse_client_message(
     let msg = serde_json::from_slice::<ClientMessage>(&msg)
         .map_err(WsSubscriptionError::UnparsablePayload)?;
     Ok(msg)
+}
+
+fn serialize_message_to_bytes<S: Streamable>(
+    msg: StreamData<S>,
+) -> Result<Vec<u8>, WsSubscriptionError> {
+    let serialized = serde_json::to_vec::<StreamData<S>>(&msg)
+        .map_err(WsSubscriptionError::UnserializableMessagePayload)?;
+    Ok(serialized)
 }
 
 fn verify_subject_name(

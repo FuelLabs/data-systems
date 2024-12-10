@@ -85,6 +85,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stream_topic_wildcard = "blocks.*.*".to_owned();
     let msg = ClientMessage::Subscribe(SubscriptionPayload {
         topic: SubscriptionType::Stream(stream_topic_wildcard.clone()),
+        from: None,
+        to: None,
     });
     socket
         .send(Message::Text(serde_json::to_string(&msg).unwrap()))
@@ -104,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let bad_sub = serde_json::json!({
         "subscribe": {
-            "topics": {
+            "topic": {
                 "stream": stream_topic_wildcard
             }
         }
