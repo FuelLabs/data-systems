@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use sv_emitter::{
     cli::Cli,
     fuel_core_like::{FuelCore, FuelCoreLike},
+    shutdown::ShutdownController,
 };
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
@@ -33,48 +34,48 @@ async fn main() -> anyhow::Result<()> {
     let nats_client = setup_nats(&cli.nats_url).await?;
     let last_block_height = fuel_core.get_latest_block_height()?;
     let last_published = find_last_published_height(&nats_client).await?;
-    let cancel_token = CancellationToken::new();
-    setup_shutdown_handler(cancel_token.clone());
+    let shutdown = Arc::new(ShutdownController::new());
 
     tracing::info!("Last published height: {}", last_published);
     tracing::info!("Last block height: {}", last_block_height);
 
-    tokio::select! {
-        _ = cancel_token.cancelled() => {
-            println!("Shutdown initiated");
+    shutdown
+        .clone()
+        .spawn_signal_handler()
+        .run_with_cancellation(|token| {
+            let fuel_core = fuel_core.clone();
+            async move {
+                let historical = process_historical_blocks(
+                    &nats_client,
+                    fuel_core.clone(),
+                    last_block_height,
+                    last_published,
+                    token.clone(),
+                );
+
+                let live = process_live_blocks(
+                    &nats_client.jetstream,
+                    fuel_core.clone(),
+                    token,
+                );
+
+                let _ = tokio::join!(historical, live);
+                Ok(())
+            }
+        })
+        .await?;
+
+    shutdown.on_shutdown({
+        let fuel_core = fuel_core.clone();
+        move || {
+            tracing::info!("Stopping Fuel Core...");
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(fuel_core.stop());
         }
-        _ = async {
-            let historical = process_historical_blocks(
-                &nats_client,
-                fuel_core.clone(),
-                last_block_height,
-                last_published,
-                cancel_token.clone()
-            );
-
-            let live = process_live_blocks(
-                &nats_client.jetstream,
-                fuel_core.clone(),
-                cancel_token.clone(),
-            );
-
-            let _ = tokio::join!(historical, live);
-        } => {}
-    }
-
-    fuel_core.stop().await;
-    println!("Shutdown complete");
-    Ok(())
-}
-
-fn setup_shutdown_handler(cancel_token: CancellationToken) {
-    tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to listen for ctrl+c");
-        println!("Shutting down gracefully...");
-        cancel_token.cancel();
     });
+
+    tracing::info!("Shutdown complete");
+    Ok(())
 }
 
 async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
@@ -132,7 +133,7 @@ fn process_historical_blocks(
     fuel_core: Arc<dyn FuelCoreLike>,
     last_block_height: u32,
     last_published_height: u32,
-    cancel_token: CancellationToken,
+    token: CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
     let jetstream = nats_client.jetstream.clone();
     tokio::spawn(async move {
@@ -147,19 +148,13 @@ fn process_historical_blocks(
             .map(|height| {
                 let jetstream = jetstream.clone();
                 let fuel_core = fuel_core.clone();
-                let cancel_token = cancel_token.clone();
                 let sealed_block = fuel_core.get_sealed_block_by_height(height);
                 async move {
-                    if cancel_token.is_cancelled() {
-                        return;
-                    }
                     match publish_block(&jetstream, &sealed_block).await {
-                        Ok(_) => {
-                            tracing::debug!(
-                                "Published historical block {}",
-                                height
-                            )
-                        }
+                        Ok(_) => tracing::debug!(
+                            "Published historical block {}",
+                            height
+                        ),
                         Err(e) => tracing::error!(
                             "Failed to publish historical block {}: {}",
                             height,
@@ -169,6 +164,7 @@ fn process_historical_blocks(
                 }
             })
             .buffer_unordered(100)
+            .take_until(token.cancelled())
             .collect::<Vec<_>>()
             .await;
 
@@ -176,14 +172,23 @@ fn process_historical_blocks(
     })
 }
 
+#[derive(Error, Debug)]
+pub enum LiveBlockProcessingError {
+    #[error("Failed to publish block: {0}")]
+    PublishError(#[from] PublishError),
+
+    #[error("Processing was cancelled")]
+    Cancelled,
+}
+
 async fn process_live_blocks(
     jetstream: &Context,
     fuel_core: Arc<dyn FuelCoreLike>,
-    cancel_token: CancellationToken,
-) -> anyhow::Result<()> {
+    token: CancellationToken,
+) -> Result<(), LiveBlockProcessingError> {
     let mut subscription = fuel_core.blocks_subscription();
     while let Ok(data) = subscription.recv().await {
-        if cancel_token.is_cancelled() {
+        if token.is_cancelled() {
             break;
         }
         if let Err(e) = publish_block(jetstream, &data.sealed_block).await {

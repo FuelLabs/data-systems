@@ -1,6 +1,6 @@
 [package]
-name = "sv-emitter"
-description = "Service that emitts new blocks using fuel-core block subscription"
+name = "sv-consumer"
+description = "Service that consumers new blocks from the emitter"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 publish = false
 
 [[bin]]
-name = "sv-emitter"
+name = "sv-consumer"
 path = "src/main.rs"
 
 [dependencies]
@@ -31,6 +31,7 @@ futures = { workspace = true }
 postcard = "1.1.1"
 rayon = "1.10.0"
 serde = { workspace = true }
+sv-emitter = { path = "../sv-emitter" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = "0.7.13"

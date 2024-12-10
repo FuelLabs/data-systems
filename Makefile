@@ -18,7 +18,7 @@ RUST_VERSION := 1.81.0
         clean clean-build cleanup-artifacts test-watch test bench helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
-        audit audit-fix-test audit-fix load-test run-publisher \
+        audit audit-fix-test audit-fix load-test run-publisher run-consumer \
         run-mainnet-dev run-mainnet-profiling run-testnet-dev run-testnet-profiling \
         start-nats stop-nats restart-nats clean-nats minikube-setup minikube-start \
         minikube-delete k8s-setup helm-setup cluster-setup pre-cluster \
@@ -221,6 +221,9 @@ run-testnet-dev:
 
 run-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
+
+run-consumer:
+	cargo run --package sv-consumer --profile dev
 
 # ------------------------------------------------------------
 #  Docker Compose
