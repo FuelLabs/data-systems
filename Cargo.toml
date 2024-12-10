@@ -48,6 +48,7 @@ hex = "0.4"
 pretty_assertions = "1.4"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
+rayon = "1.10.0"
 serde_json = "1.0"
 sha2 = "0.10"
 strum = "0.26"

@@ -1,6 +1,6 @@
 #[cfg(any(test, feature = "test-helpers"))]
 use std::pin::Pin;
-use std::{fmt::Debug, sync::Arc, time::Duration};
+use std::{fmt::Debug, sync::Arc};
 
 use async_nats::{
     jetstream::{
@@ -134,9 +134,6 @@ impl<S: Streamable> Stream<S> {
                 storage: stream::StorageType::File,
                 history: 1,
                 compression: true,
-                max_age: Duration::from_secs(
-                    FUEL_BLOCK_TIME_SECS * MAX_RETENTION_BLOCKS,
-                ),
                 ..Default::default()
             })
             .await

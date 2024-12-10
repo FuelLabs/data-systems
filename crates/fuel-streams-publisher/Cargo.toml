@@ -37,7 +37,7 @@ num_cpus = "1.16"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand = { workspace = true }
-rayon = "1.10.0"
+rayon = { workspace = true }
 rust_decimal = { version = "1.13" }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -28,9 +28,8 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
-postcard = "1.1.1"
-rayon = "1.10.0"
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = "0.7.13"

@@ -6,23 +6,32 @@ use async_nats::jetstream::{
     Context,
 };
 use clap::Parser;
-use fuel_core_types::{blockchain::SealedBlock, fuel_tx::Transaction};
+use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::{
     blocks::BlocksSubject,
     nats::{NatsClient, NatsClientOpts},
-    types::{Block, FuelCoreBlock},
+    types::Block,
     Stream,
 };
 use futures::StreamExt;
-use postcard::to_allocvec;
-use serde::{Deserialize, Serialize};
 use sv_emitter::{
     cli::Cli,
     fuel_core_like::{FuelCore, FuelCoreLike},
     shutdown::ShutdownController,
+    BlockPayload,
+    PublishOpts,
 };
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
+
+#[derive(Error, Debug)]
+pub enum LiveBlockProcessingError {
+    #[error("Failed to publish block: {0}")]
+    PublishError(#[from] PublishError),
+
+    #[error("Processing was cancelled")]
+    Cancelled,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,47 +41,42 @@ async fn main() -> anyhow::Result<()> {
     fuel_core.start().await?;
 
     let nats_client = setup_nats(&cli.nats_url).await?;
-    let last_block_height = fuel_core.get_latest_block_height()?;
-    let last_published = find_last_published_height(&nats_client).await?;
+    let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
+    let last_published =
+        Arc::new(find_last_published_height(&nats_client).await?);
+
     let shutdown = Arc::new(ShutdownController::new());
+    shutdown.clone().spawn_signal_handler();
 
     tracing::info!("Last published height: {}", last_published);
     tracing::info!("Last block height: {}", last_block_height);
 
-    shutdown
-        .clone()
-        .spawn_signal_handler()
-        .run_with_cancellation(|token| {
-            let fuel_core = fuel_core.clone();
-            async move {
-                let historical = process_historical_blocks(
-                    &nats_client,
-                    fuel_core.clone(),
-                    last_block_height,
-                    last_published,
-                    token.clone(),
-                );
+    tokio::select! {
+        result = async {
+            let historical = process_historical_blocks(
+                &nats_client,
+                fuel_core.clone(),
+                last_block_height,
+                last_published,
+                shutdown.token().clone(),
+            );
 
-                let live = process_live_blocks(
-                    &nats_client.jetstream,
-                    fuel_core.clone(),
-                    token,
-                );
+            let live = process_live_blocks(
+                &nats_client.jetstream,
+                fuel_core.clone(),
+                shutdown.token().clone(),
+            );
 
-                let _ = tokio::join!(historical, live);
-                Ok(())
-            }
-        })
-        .await?;
-
-    shutdown.on_shutdown({
-        let fuel_core = fuel_core.clone();
-        move || {
-            tracing::info!("Stopping Fuel Core...");
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(fuel_core.stop());
+            tokio::join!(historical, live)
+        } => {
+            result.0?;
+            result.1?;
         }
-    });
+        _ = shutdown.wait_for_shutdown() => {
+            tracing::info!("Shutdown signal received, waiting for processing to complete...");
+            fuel_core.stop().await
+        }
+    }
 
     tracing::info!("Shutdown complete");
     Ok(())
@@ -111,9 +115,11 @@ async fn find_last_published_height(
 }
 
 fn get_historical_block_range(
-    last_published_height: u32,
-    last_block_height: u32,
+    last_published_height: Arc<u32>,
+    last_block_height: Arc<u32>,
 ) -> Option<Vec<u32>> {
+    let last_published_height = *last_published_height;
+    let last_block_height = *last_block_height;
     let start_height = last_published_height + 1;
     let end_height = last_block_height;
     if start_height > end_height {
@@ -122,6 +128,7 @@ fn get_historical_block_range(
     }
     let block_count = end_height - start_height + 1;
     let heights: Vec<u32> = (start_height..=end_height).collect();
+    dbg!(heights.len());
     tracing::info!(
         "Processing {block_count} historical blocks from height {start_height} to {end_height}"
     );
@@ -131,8 +138,8 @@ fn get_historical_block_range(
 fn process_historical_blocks(
     nats_client: &NatsClient,
     fuel_core: Arc<dyn FuelCoreLike>,
-    last_block_height: u32,
-    last_published_height: u32,
+    last_block_height: Arc<u32>,
+    last_published_height: Arc<u32>,
     token: CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
     let jetstream = nats_client.jetstream.clone();
@@ -143,42 +150,23 @@ fn process_historical_blocks(
         ) else {
             return;
         };
+        // token.cancel();
 
         futures::stream::iter(heights)
             .map(|height| {
                 let jetstream = jetstream.clone();
                 let fuel_core = fuel_core.clone();
                 let sealed_block = fuel_core.get_sealed_block_by_height(height);
+                let sealed_block = Arc::new(sealed_block);
                 async move {
-                    match publish_block(&jetstream, &sealed_block).await {
-                        Ok(_) => tracing::debug!(
-                            "Published historical block {}",
-                            height
-                        ),
-                        Err(e) => tracing::error!(
-                            "Failed to publish historical block {}: {}",
-                            height,
-                            e
-                        ),
-                    }
+                    publish_block(&jetstream, &fuel_core, &sealed_block).await
                 }
             })
             .buffer_unordered(100)
             .take_until(token.cancelled())
             .collect::<Vec<_>>()
             .await;
-
-        tracing::info!("Historical block processing complete");
     })
-}
-
-#[derive(Error, Debug)]
-pub enum LiveBlockProcessingError {
-    #[error("Failed to publish block: {0}")]
-    PublishError(#[from] PublishError),
-
-    #[error("Processing was cancelled")]
-    Cancelled,
 }
 
 async fn process_live_blocks(
@@ -191,23 +179,16 @@ async fn process_live_blocks(
         if token.is_cancelled() {
             break;
         }
-        if let Err(e) = publish_block(jetstream, &data.sealed_block).await {
-            tracing::error!("Failed to publish live block: {}", e);
-        }
+        let sealed_block = Arc::new(data.sealed_block.clone());
+        publish_block(jetstream, &fuel_core, &sealed_block).await?;
     }
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-struct BlockPayload {
-    block: FuelCoreBlock,
-    transactions: Vec<Transaction>,
-}
-
 #[derive(Error, Debug)]
 pub enum PublishError {
-    #[error("Failed to serialize block payload with postcard: {0}")]
-    Serialization(#[from] postcard::Error),
+    #[error("Failed to serialize block payload with serde_json: {0}")]
+    Serialization(#[from] serde_json::Error),
 
     #[error("Failed to publish to NATS: {0}")]
     NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
@@ -215,23 +196,17 @@ pub enum PublishError {
 
 async fn publish_block(
     jetstream: &Context,
-    sealed_block: &SealedBlock,
+    fuel_core: &Arc<dyn FuelCoreLike>,
+    sealed_block: &Arc<SealedBlock>,
 ) -> Result<(), PublishError> {
-    let block = sealed_block.entity.clone();
-    let height = *block.header().consensus().height;
-    let transactions = block.transactions_vec().clone();
-    let producer = sealed_block
-        .consensus
-        .block_producer(&block.id())
-        .unwrap_or_default();
-
-    let subject = format!("block_submitted.{}.{}", producer, height);
+    let opts = PublishOpts::new(fuel_core, sealed_block);
+    let producer = opts.block_producer.clone();
+    let height = opts.block_height.clone();
+    let subject = format!("block_submitted.{producer}.{height}");
     let message_id = format!("block_{height}");
-    let payload = to_allocvec(&BlockPayload {
-        block,
-        transactions,
-    })
-    .map_err(PublishError::Serialization)?;
+    let payload = BlockPayload::new(sealed_block, &opts)
+        .encode()
+        .map_err(PublishError::Serialization)?;
 
     let publish = Publish::build()
         .message_id(message_id)
