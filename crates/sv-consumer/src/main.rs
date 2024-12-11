@@ -96,7 +96,6 @@ async fn setup_nats(
     cli: &Cli,
 ) -> anyhow::Result<(Arc<NatsClient>, Consumer<ConsumerConfig>)> {
     let nats_url = &cli.nats_url;
-    let service_name = &cli.service_name;
     let opts = NatsClientOpts::admin_opts(None);
     let opts = opts.with_custom_url(nats_url.to_string());
     let nats_client = Arc::new(NatsClient::connect(&opts).await?);
@@ -113,8 +112,7 @@ async fn setup_nats(
         .await?;
 
     let consumer = stream
-        .get_or_create_consumer(service_name, ConsumerConfig {
-            durable_name: Some(service_name.to_string()),
+        .create_consumer(ConsumerConfig {
             filter_subject: "block_submitted.>".to_string(),
             ..Default::default()
         })

@@ -104,22 +104,22 @@ EXPOSE ${P2P_PORT}
 # https://stackoverflow.com/a/40454758
 # hadolint ignore=DL3025
 CMD exec ./sv-emitter \
+    --enable-relayer \
     --service-name "${SERVICE_NAME}" \
-    --nats-url $NATS_URL \
     --keypair $KEYPAIR \
     --relayer $RELAYER \
     --ip $IP \
     --port $PORT \
     --peering-port $P2P_PORT \
     --db-path "${DB_PATH}" \
+    --snapshot ./chain-config/${CHAIN_CONFIG} \
     --utxo-validation \
     --poa-instant $POA_INSTANT \
-    --snapshot ./chain-config/${CHAIN_CONFIG} \
     --enable-p2p \
     --reserved-nodes $RESERVED_NODES \
     --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
-    --enable-relayer \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30
+    --sync-block-stream-buffer-size 30 \
+    --nats-url $NATS_URL

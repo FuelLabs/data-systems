@@ -31,7 +31,7 @@ usage() {
 # Set default values from environment variables with fallbacks
 NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
-PORT=${PORT:-"4000"}
+PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
 PACKAGE=${PACKAGE:-"fuel-streams-publisher"}
 
@@ -101,24 +101,23 @@ echo -e "==========================================\n"
 # Define common arguments
 COMMON_ARGS=(
     "--enable-relayer"
+    "--service-name" "fuel-${NETWORK}-node"
     "--keypair" "${KEYPAIR}"
     "--relayer" "${RELAYER}"
     "--ip=0.0.0.0"
-    "--service-name" "fuel-${NETWORK}-node"
-    "--db-path" "./cluster/docker/db-${NETWORK}"
-    "--snapshot" "./cluster/chain-config/${NETWORK}"
-    "--nats-url" "nats://localhost:4222"
     "--port" "${PORT}"
     "--peering-port" "30333"
+    "--db-path" "./cluster/docker/db-${NETWORK}"
+    "--snapshot" "./cluster/chain-config/${NETWORK}"
     "--utxo-validation"
     "--poa-instant" "false"
     "--enable-p2p"
-    "--sync-header-batch-size" "${SYNC_HEADER_BATCH_SIZE}"
-    "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
-    "--sync-block-stream-buffer-size" "30"
-    "--bootstrap-nodes" "${RESERVED_NODES}"
+    "--reserved-nodes" "${RESERVED_NODES}"
     "--relayer-v2-listening-contracts=${RELAYER_V2_LISTENING_CONTRACTS}"
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
+    "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
+    "--sync-block-stream-buffer-size" "30"
+    "--nats-url" "nats://localhost:4222"
 )
 
 # Execute based on mode
