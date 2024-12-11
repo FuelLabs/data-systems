@@ -83,13 +83,8 @@ mod tests {
         let telemetry = Telemetry::new().await.unwrap();
 
         let fuel_core = FuelCore::from(fuel_service);
-        let publisher = Publisher::new(
-            fuel_core.arc(),
-            "nats://localhost:4222".to_string(),
-            telemetry,
-        )
-        .await
-        .unwrap();
+        let publisher =
+            Publisher::new(fuel_core.arc(), telemetry).await.unwrap();
         let state = ServerState::new(publisher).await;
         assert!(state.publisher.nats_client.is_connected());
 

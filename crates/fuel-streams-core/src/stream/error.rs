@@ -19,6 +19,9 @@ pub enum StreamError {
         source: error::Error<CreateErrorKind>,
     },
 
+    /// Failed to publish to S3
+    S3PublishError(#[from] fuel_streams_storage::s3::S3ClientError),
+
     /// Failed to retrieve last published message from stream
     GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
 

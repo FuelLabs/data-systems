@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use fuel_streams_core::prelude::*;
 
 use super::ClientError;
@@ -8,7 +10,8 @@ use super::ClientError;
 #[derive(Debug, Clone)]
 pub struct Client {
     /// The underlying NATS client connection.
-    pub conn: NatsClient,
+    pub nats_conn: Arc<NatsClient>,
+    pub s3_conn: Arc<S3Client>,
 }
 
 impl Client {
@@ -33,11 +36,20 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(network: FuelNetwork) -> Result<Self, crate::Error> {
-        let opts = NatsClientOpts::new(Some(network));
-        let conn = NatsClient::connect(&opts)
+        let nats_opts = NatsClientOpts::new(network);
+        let nats_client = NatsClient::connect(&nats_opts)
             .await
-            .map_err(ClientError::ConnectionFailed)?;
-        Ok(Self { conn })
+            .map_err(ClientError::NatsConnectionFailed)?;
+
+        let s3_client_opts = S3ClientOpts::new(network);
+        let s3_client = S3Client::new(&s3_client_opts)
+            .await
+            .map_err(ClientError::S3ConnectionFailed)?;
+
+        Ok(Self {
+            nats_conn: Arc::new(nats_client),
+            s3_conn: Arc::new(s3_client),
+        })
     }
 
     /// Connects to a NATS server using the provided options.
@@ -55,19 +67,29 @@ impl Client {
     /// ```no_run
     /// use fuel_streams::client::{Client, FuelNetwork};
     /// use fuel_streams_core::nats::NatsClientOpts;
+    /// use fuel_streams_core::s3::S3ClientOpts;
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let opts = NatsClientOpts::new(Some(FuelNetwork::Local));
-    /// let client = Client::with_opts(&opts).await?;
+    /// let nats_opts = NatsClientOpts::new(FuelNetwork::Local);
+    /// let s3_opts = S3ClientOpts::new(FuelNetwork::Local);
+    ///
+    /// let client = Client::with_opts(&nats_opts, &s3_opts).await?;
     /// # Ok(())
     /// # }
     /// ```
     pub async fn with_opts(
-        opts: &NatsClientOpts,
+        nats_opts: &NatsClientOpts,
+        s3_opts: &S3ClientOpts,
     ) -> Result<Self, crate::Error> {
-        let conn = NatsClient::connect(opts)
+        let nats_client = NatsClient::connect(nats_opts)
             .await
-            .map_err(ClientError::ConnectionFailed)?;
-        Ok(Self { conn })
+            .map_err(ClientError::NatsConnectionFailed)?;
+        let s3_client = S3Client::new(s3_opts)
+            .await
+            .map_err(ClientError::S3ConnectionFailed)?;
+        Ok(Self {
+            nats_conn: Arc::new(nats_client),
+            s3_conn: Arc::new(s3_client),
+        })
     }
 }
