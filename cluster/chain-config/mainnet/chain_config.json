@@ -1,7 +1,7 @@
 {
   "chain_name": "Ignition",
   "consensus_parameters": {
-    "V2": {
+    "V1": {
       "tx_params": {
         "V1": {
           "max_inputs": 255,
@@ -14,10 +14,10 @@
       },
       "predicate_params": {
         "V1": {
-          "max_predicate_length": 24576,
-          "max_predicate_data_length": 24576,
+          "max_predicate_length": 102400,
+          "max_predicate_data_length": 102400,
           "max_message_data_length": 102400,
-          "max_gas_per_predicate": 1000000
+          "max_gas_per_predicate": 30000000
         }
       },
       "script_params": {
@@ -28,14 +28,14 @@
       },
       "contract_params": {
         "V1": {
-          "contract_max_size": 112640,
+          "contract_max_size": 102400,
           "max_storage_slots": 1760
         }
       },
       "fee_params": {
         "V1": {
-          "gas_price_factor": 1150000,
-          "gas_per_byte": 63
+          "gas_price_factor": 92000,
+          "gas_per_byte": 233
         }
       },
       "chain_id": 9889,
@@ -93,8 +93,8 @@
           "ori": 2,
           "poph": 2,
           "popl": 2,
-          "pshh": 5,
-          "pshl": 5,
+          "pshh": 3073,
+          "pshl": 3016,
           "ret_contract": 43,
           "rvrt_contract": 39,
           "sb": 2,
@@ -282,7 +282,7 @@
               "gas_per_unit": 96
             }
           },
-          "new_storage_per_byte": 63,
+          "new_storage_per_byte": 233,
           "vm_initialization": {
             "LightOperation": {
               "base": 3127,
@@ -291,9 +291,8 @@
           }
         }
       },
-      "base_asset_id": "f8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
+      "base_asset_id": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
       "block_gas_limit": 30000000,
-      "block_transaction_size_limit": 260096,
       "privileged_address": "eb42c979046d091f4f524e1efd8d4ffad92629b9a506b268a511861b0dbf2366"
     }
   },
