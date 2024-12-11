@@ -406,7 +406,7 @@ impl Transaction {
             tx_pointer,
             upgrade_purpose,
             witnesses,
-            receipts: receipts.iter().map(Into::into).collect(),
+            receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
         }
     }
 }

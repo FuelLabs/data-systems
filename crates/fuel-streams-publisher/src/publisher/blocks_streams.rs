@@ -8,12 +8,10 @@ use futures::{
 };
 use tokio_stream::wrappers::BroadcastStream;
 
-use crate::{fuel_core_like::FuelCoreLike, fuel_streams::FuelStreamsExt};
-
 pub fn build_blocks_stream<'a>(
     fuel_streams: &'a Arc<dyn FuelStreamsExt>,
     fuel_core: &'a Arc<dyn FuelCoreLike>,
-    max_retained_blocks: u64,
+    max_retained_blocks: u32,
 ) -> BoxStream<'a, anyhow::Result<FuelCoreSealedBlock>> {
     #[derive(Debug, Default, Clone)]
     struct State {
@@ -51,7 +49,7 @@ pub fn build_blocks_stream<'a>(
                         let fuel_core = fuel_core.clone();
 
                         move |height| {
-                            fuel_core.get_sealed_block_by_height(height as u32)
+                            fuel_core.get_sealed_block_by_height(height)
                         }
                     })
                     .map(Ok)
@@ -90,17 +88,17 @@ pub fn build_blocks_stream<'a>(
 
 async fn get_last_published_block_height(
     fuel_streams: Arc<dyn FuelStreamsExt>,
-    latest_block_height: u64,
-    max_retained_blocks: u64,
-) -> anyhow::Result<u64> {
+    latest_block_height: u32,
+    max_retained_blocks: u32,
+) -> anyhow::Result<u32> {
     let max_last_published_block_height =
-        max(0, latest_block_height as i64 - max_retained_blocks as i64) as u64;
+        max(0, latest_block_height as i32 - max_retained_blocks as i32) as u32;
 
     Ok(fuel_streams
         .get_last_published_block()
         .await?
-        .map(|block| block.height.into())
-        .map(|block_height: u64| {
+        .map(|block| block.height)
+        .map(|block_height: u32| {
             max(block_height, max_last_published_block_height)
         })
         .unwrap_or(max_last_published_block_height))
@@ -322,7 +320,7 @@ mod tests {
 
         #[async_trait::async_trait]
         impl FuelCoreLike for FuelCoreLike {
-            fn get_latest_block_height(&self) -> anyhow::Result<u64>;
+            fn get_latest_block_height(&self) -> anyhow::Result<u32>;
             fn get_sealed_block_by_height(&self, height: u32) -> FuelCoreSealedBlock;
             fn blocks_subscription(&self) -> broadcast::Receiver<FuelCoreImporterResult>;
             async fn start(&self) -> anyhow::Result<()>;

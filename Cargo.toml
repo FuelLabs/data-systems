@@ -66,6 +66,9 @@ fuel-streams-core = { version = "0.0.13", path = "crates/fuel-streams-core" }
 fuel-streams-publisher = { version = "0.0.13", path = "crates/fuel-streams-publisher" }
 fuel-streams-macros = { version = "0.0.13", path = "crates/fuel-streams-macros" }
 subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
+fuel-streams-packets = { version = "0.0.13", path = "crates/fuel-streams-packets" }
+sv-emitter = { version = "0.0.13", path = "crates/sv-emitter" }
+sv-consumer = { version = "0.0.13", path = "crates/sv-consumer" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

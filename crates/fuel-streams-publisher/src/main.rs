@@ -4,13 +4,12 @@ use std::{
 };
 
 use clap::Parser;
+use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
     cli::Cli,
     publisher::shutdown::ShutdownController,
     server::{http::create_web_server, state::ServerState},
     telemetry::Telemetry,
-    FuelCore,
-    FuelCoreLike,
 };
 
 #[tokio::main]

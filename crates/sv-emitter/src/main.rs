@@ -1,26 +1,15 @@
 use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
-    context::{Publish, PublishErrorKind},
+    context::PublishErrorKind,
     stream::RetentionPolicy,
     Context,
 };
 use clap::Parser;
 use fuel_core_types::blockchain::SealedBlock;
-use fuel_streams_core::{
-    blocks::BlocksSubject,
-    nats::{NatsClient, NatsClientOpts},
-    types::Block,
-    Stream,
-};
+use fuel_streams_core::prelude::*;
 use futures::StreamExt;
-use sv_emitter::{
-    cli::Cli,
-    fuel_core_like::{FuelCore, FuelCoreLike},
-    shutdown::ShutdownController,
-    BlockPayload,
-    PublishOpts,
-};
+use sv_emitter::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
@@ -187,11 +176,14 @@ async fn process_live_blocks(
 
 #[derive(Error, Debug)]
 pub enum PublishError {
-    #[error("Failed to serialize block payload with serde_json: {0}")]
-    Serialization(#[from] serde_json::Error),
-
-    #[error("Failed to publish to NATS: {0}")]
+    #[error("Failed to publish block to NATS server: {0}")]
     NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
+
+    #[error("Failed to create block payload due to: {0}")]
+    BlockPayload(#[from] ExecutorError),
+
+    #[error("Failed to access offchain database: {0}")]
+    OffchainDatabase(String),
 }
 
 async fn publish_block(
@@ -199,26 +191,16 @@ async fn publish_block(
     fuel_core: &Arc<dyn FuelCoreLike>,
     sealed_block: &Arc<SealedBlock>,
 ) -> Result<(), PublishError> {
-    let opts = PublishOpts::new(fuel_core, sealed_block);
-    let producer = opts.block_producer.clone();
-    let height = opts.block_height.clone();
-    let subject = format!("block_submitted.{producer}.{height}");
-    let message_id = format!("block_{height}");
-    let payload = BlockPayload::new(sealed_block, &opts)
-        .encode()
-        .map_err(PublishError::Serialization)?;
-
-    let publish = Publish::build()
-        .message_id(message_id)
-        .payload(payload.into());
-
+    let metadata = Metadata::new(fuel_core, sealed_block);
+    let fuel_core = Arc::clone(fuel_core);
+    let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
     jetstream
-        .send_publish(subject, publish)
+        .send_publish(payload.subject(), payload.to_owned().try_into()?)
         .await
         .map_err(PublishError::NatsPublish)?
         .await
         .map_err(PublishError::NatsPublish)?;
 
-    tracing::info!("New block submitted: {}", height);
+    tracing::info!("New block submitted: {}", payload.block_height());
     Ok(())
 }

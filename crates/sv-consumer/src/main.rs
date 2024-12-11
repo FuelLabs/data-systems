@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
     consumer::{
@@ -8,16 +8,10 @@ use async_nats::jetstream::{
     stream::RetentionPolicy,
 };
 use clap::Parser;
-use fuel_core_client::client::FuelClient;
 use fuel_streams_core::prelude::*;
-use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::{
-    cli::Cli,
-    fuel_streams::FuelStreams,
-    payloads,
-    publisher::PublishOpts,
-};
-use sv_emitter::{shutdown::ShutdownController, BlockPayload};
+use futures::StreamExt;
+use sv_consumer::cli::Cli;
+use sv_emitter::shutdown::ShutdownController;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::fmt::time;
 
@@ -33,16 +27,10 @@ pub enum ConsumerError {
     Deserialization(#[from] serde_json::Error),
 
     #[error("Failed to publish block to stream: {0}")]
-    Publish(#[from] fuel_streams_core::StreamError),
+    Publish(#[from] ExecutorError),
 
     #[error("Failed to decode UTF-8: {0}")]
     Utf8(#[from] std::str::Utf8Error),
-
-    #[error("Failed to connect to Fuel Core client: {0}")]
-    ClientConnect(#[from] anyhow::Error),
-
-    #[error("Failed to join all tasks: {0}")]
-    Join(#[from] tokio::task::JoinError),
 }
 
 #[tokio::main]
@@ -61,14 +49,12 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let (nats_client, consumer) = setup_nats(&cli).await?;
     let shutdown = Arc::new(ShutdownController::new());
-    let fuel_client =
-        Arc::new(FuelClient::from_str("0.0.0.0:4000/v1/graphql")?);
     shutdown.clone().spawn_signal_handler();
 
     tracing::info!("Consumer started. Waiting for messages...");
     tokio::select! {
         result = async {
-            process_messages(&fuel_client, &nats_client, consumer, shutdown.token()).await
+            process_messages(&nats_client, consumer, shutdown.token()).await
         } => {
             result?;
             tracing::info!("Processing complete");
@@ -84,51 +70,22 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn process_messages(
-    fuel_client: &Arc<FuelClient>,
     nats_client: &Arc<NatsClient>,
     consumer: Consumer<ConsumerConfig>,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let fuel_streams = FuelStreams::new(nats_client).await;
-    let block_stream = Arc::new(fuel_streams.clone().blocks);
+    let fuel_streams: Arc<dyn FuelStreamsExt> =
+        Arc::new(FuelStreams::new(nats_client).await);
 
     while !token.is_cancelled() {
         let messages = consumer.fetch().max_messages(100).messages().await?;
-        let fuel_client = Arc::clone(fuel_client);
         let fuel_streams = fuel_streams.clone();
         tokio::pin!(messages);
         while let Some(msg) = messages.next().await {
-            let start_time = std::time::Instant::now();
             let msg = msg?;
             let msg_str = std::str::from_utf8(&msg.payload)?;
-            let payload = BlockPayload::decode(msg_str)?;
-            let opts: PublishOpts = payload.opts.clone().into();
-            let opts = Arc::new(opts);
-            let txs = payload.transactions.clone();
-            let publish_tasks = payloads::transactions::publish_all_tasks(
-                &txs,
-                &fuel_streams,
-                &opts,
-                &fuel_client,
-            )
-            .await?
-            .into_iter()
-            .chain(std::iter::once(payloads::blocks::publish_task(
-                &payload.block,
-                block_stream.clone(),
-                &opts,
-                payload.tx_ids(),
-            )))
-            .collect::<FuturesUnordered<_>>();
-            try_join_all(publish_tasks).await?;
-
-            let elapsed = start_time.elapsed();
-            let height = payload.opts.block_height;
-            tracing::info!(
-                "Published streams for BlockHeight: {height} in {:?}",
-                elapsed
-            );
-
+            let payload = Arc::new(BlockPayload::decode(msg_str)?);
+            Executor::<Block>::process_all(payload, &fuel_streams).await?;
             msg.ack().await?;
         }
     }

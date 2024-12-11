@@ -1,5 +1,6 @@
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
-use fuel_streams_core::{prelude::*, types::Log};
+
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct FuelStreams {
@@ -69,7 +70,7 @@ pub trait FuelStreamsExt: Sync + Send {
         &self,
     ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind>;
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     async fn is_empty(&self) -> bool;
 }
 
@@ -98,10 +99,10 @@ impl FuelStreamsExt for FuelStreams {
     }
 
     async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>> {
-        Ok(self
-            .blocks
+        self.blocks
             .get_last_published(BlocksSubject::WILDCARD)
-            .await?)
+            .await
+            .map_err(|e| e.into())
     }
 
     async fn get_consumers_and_state(
@@ -118,7 +119,7 @@ impl FuelStreamsExt for FuelStreams {
         ])
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     async fn is_empty(&self) -> bool {
         self.blocks.is_empty(BlocksSubject::WILDCARD).await
             && self

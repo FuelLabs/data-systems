@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use fuel_core::combined_database::CombinedDatabase;
 use fuel_core_importer::ImporterResult;
@@ -9,7 +6,6 @@ use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
     publisher::shutdown::ShutdownController,
-    FuelCoreLike,
     Publisher,
 };
 use futures::StreamExt;
@@ -240,9 +236,40 @@ async fn publishes_receipts() {
         .await
         .unwrap();
 
-    let receipts: HashSet<Receipt> = receipts.iter().map(Into::into).collect();
+    let expected_receipts: Vec<Receipt> =
+        receipts.iter().map(Into::into).collect();
+    let mut found_receipts = Vec::new();
+
     while let Some(Some(receipt)) = receipts_stream.next().await {
-        assert!(receipts.contains(&receipt));
+        found_receipts.push(receipt);
+    }
+
+    assert_eq!(found_receipts.len(), expected_receipts.len());
+    for expected in expected_receipts {
+        assert!(found_receipts.iter().any(|found| {
+            match (found, &expected) {
+                (Receipt::Call(f), Receipt::Call(e)) => f.id == e.id,
+                (Receipt::Return(f), Receipt::Return(e)) => f.id == e.id,
+                (Receipt::ReturnData(f), Receipt::ReturnData(e)) => {
+                    f.id == e.id
+                }
+                (Receipt::Revert(f), Receipt::Revert(e)) => f.id == e.id,
+                (Receipt::Log(f), Receipt::Log(e)) => f.id == e.id,
+                (Receipt::LogData(f), Receipt::LogData(e)) => f.id == e.id,
+                (Receipt::Transfer(f), Receipt::Transfer(e)) => f.id == e.id,
+                (Receipt::TransferOut(f), Receipt::TransferOut(e)) => {
+                    f.id == e.id
+                }
+                (Receipt::Mint(f), Receipt::Mint(e)) => {
+                    f.sub_id == e.sub_id && f.contract_id == e.contract_id
+                }
+                (Receipt::Burn(f), Receipt::Burn(e)) => {
+                    f.sub_id == e.sub_id && f.contract_id == e.contract_id
+                }
+                // If the variants don't match, they're different receipts
+                _ => false,
+            }
+        }));
     }
 }
 

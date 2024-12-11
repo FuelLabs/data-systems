@@ -274,25 +274,6 @@ async fn stream_contract(
         ReceiptsMintSubject::new().with_contract_id(Some(contract_id.into())),
     );
 
-    let mut sub = receipt_stream.subscribe().await?;
-
-    while let Some(bytes) = sub.next().await {
-        let decoded_msg = Receipt::decode_raw(bytes.unwrap().to_vec()).await;
-        let receipt = decoded_msg.payload;
-
-        // Check if the receipt has a contract_id and if it matches our target
-        if let Some(receipt_contract_id) = &receipt.contract_id {
-            if *receipt_contract_id == contract_id.into() {
-                let receipt_subject = decoded_msg.subject;
-                let receipt_published_at = decoded_msg.timestamp;
-                println!(
-                    "Received contract receipt: data={:?}, subject={}, published_at={}",
-                    receipt, receipt_subject, receipt_published_at
-                );
-            }
-        }
-    }
-
     Ok(())
 }
 

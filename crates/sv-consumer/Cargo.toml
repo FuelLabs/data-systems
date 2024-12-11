@@ -18,18 +18,13 @@ path = "src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-async-trait = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
-fuel-core-client = { workspace = true }
-fuel-core-types = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 num_cpus = "1.16"
-rayon = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { workspace = true }
-sv-emitter = { path = "../sv-emitter" }
+sv-emitter = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = "0.7.13"

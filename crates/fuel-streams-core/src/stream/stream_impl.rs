@@ -288,7 +288,6 @@ impl<S: Streamable> Stream<S> {
         wildcard: &str,
     ) -> Result<Option<S>, StreamError> {
         let subject_name = &Self::prefix_filter_subject(wildcard);
-
         let message = self
             .store
             .stream
@@ -298,7 +297,6 @@ impl<S: Streamable> Stream<S> {
         match message {
             Ok(message) => {
                 let payload = S::decode(message.payload.to_vec()).await;
-
                 Ok(Some(payload))
             }
             Err(error) => match &error.kind() {
@@ -341,6 +339,10 @@ impl<S: Streamable> Stream<S> {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn store(&self) -> &kv::Store {
         &self.store
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.to_owned())
     }
 }
 
