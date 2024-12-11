@@ -56,33 +56,9 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ARG IP=0.0.0.0
-ARG PORT=4000
-ARG P2P_PORT=30333
-ARG DB_PATH=/mnt/db/
-ARG POA_INSTANT=false
-ARG RELAYER_LOG_PAGE_SIZE=2000
-ARG SERVICE_NAME="NATS Publisher Node"
-ARG SYNC_HEADER_BATCH_SIZE=100
-ARG RESERVED_NODES=/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf
-
-ENV IP=$IP
 ENV PORT=$PORT
-ENV DB_PATH=$DB_PATH
-ENV POA_INSTANT=false
-ENV RELAYER_LOG_PAGE_SIZE=$RELAYER_LOG_PAGE_SIZE
-ENV SERVICE_NAME=$SERVICE_NAME
-ENV SYNC_HEADER_BATCH_SIZE=$SYNC_HEADER_BATCH_SIZE
-ENV RESERVED_NODES=$RESERVED_NODES
-
-ENV KEYPAIR=
-ENV RELAYER=
-ENV RELAYER_V2_LISTENING_CONTRACTS=
-ENV RELAYER_DA_DEPLOY_HEIGHT=
-ENV CHAIN_CONFIG=
-ENV NATS_URL=
-ENV USE_PUBLISHER_METRICS=
-ENV USE_ELASTIC_LOGGING=
+ENV ARGS=""
+ENV NETWORK_ARGS=""
 
 WORKDIR /usr/src
 
@@ -98,32 +74,8 @@ COPY --from=builder /root/sv-emitter.d .
 
 COPY /cluster/chain-config ./chain-config
 EXPOSE ${PORT}
-EXPOSE ${P2P_PORT}
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758
 # hadolint ignore=DL3025
-CMD exec ./sv-emitter \
-    --enable-relayer \
-    --service-name "${SERVICE_NAME}" \
-    --keypair $KEYPAIR \
-    --relayer $RELAYER \
-    --ip $IP \
-    --port $PORT \
-    --peering-port $P2P_PORT \
-    --db-path "${DB_PATH}" \
-    --snapshot ./chain-config/${CHAIN_CONFIG} \
-    --utxo-validation \
-    --poa-instant $POA_INSTANT \
-    --enable-p2p \
-    --reserved-nodes $RESERVED_NODES \
-    --sync-header-batch-size $SYNC_HEADER_BATCH_SIZE \
-    --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
-    --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
-    --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 50 \
-    --nats-url $NATS_URL \
-    --max-database-cache-size 17179869184 \
-    --state-rewind-duration 136y \
-    --request-timeout 60 \
-    --graphql-max-complexity 1000000000
+CMD exec ./sv-emitter $ARGS $NETWORK_ARGS

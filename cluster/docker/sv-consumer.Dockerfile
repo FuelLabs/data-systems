@@ -73,5 +73,4 @@ COPY --from=builder /root/sv-consumer .
 COPY --from=builder /root/sv-consumer.d .
 
 EXPOSE ${PORT}
-CMD exec ./sv-consumer \
-    --nats-url $NATS_URL
+CMD exec ./sv-consumer --nats-url $NATS_URL

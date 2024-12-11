@@ -112,8 +112,8 @@ async fn setup_nats(
         .await?;
 
     let consumer = stream
-        .create_consumer(ConsumerConfig {
-            filter_subject: "block_submitted.>".to_string(),
+        .get_or_create_consumer("block_importer", ConsumerConfig {
+            ack_policy: AckPolicy::Explicit,
             ..Default::default()
         })
         .await?;
