@@ -202,6 +202,13 @@ impl DataParser {
         })
     }
 
+    pub fn encode_json<T: DataParseable>(
+        &self,
+        data: &T,
+    ) -> Result<Vec<u8>, Error> {
+        self.serialize_json(data)
+    }
+
     /// Serializes the provided data according to the selected `SerializationType`.
     ///
     /// # Arguments
@@ -224,6 +231,14 @@ impl DataParser {
             SerializationType::Json => serde_json::to_vec(&raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Json(e))),
         }
+    }
+
+    fn serialize_json<T: DataParseable>(
+        &self,
+        raw_data: &T,
+    ) -> Result<Vec<u8>, Error> {
+        serde_json::to_vec(&raw_data)
+            .map_err(|e| Error::Serde(SerdeError::Json(e)))
     }
 
     /// Decodes the provided data by deserializing and optionally decompressing it.
@@ -265,8 +280,15 @@ impl DataParser {
             Some(strategy) => strategy.decompress(data).await?,
             None => data.to_vec(),
         };
-        let decoded_data = self.deserialize(&data[..]).await?;
+        let decoded_data = self.deserialize(&data[..])?;
         Ok(decoded_data)
+    }
+
+    pub fn decode_json<T: DataParseable>(
+        &self,
+        data: &[u8],
+    ) -> Result<T, Error> {
+        self.deserialize_json(data)
     }
 
     /// Deserializes the provided data according to the selected `SerializationType`.
@@ -279,7 +301,7 @@ impl DataParser {
     ///
     /// A `Result` containing either the deserialized data structure,
     /// or an `Error` if deserialization fails.
-    pub async fn deserialize<'a, T: serde::Deserialize<'a>>(
+    pub fn deserialize<'a, T: serde::Deserialize<'a>>(
         &self,
         raw_data: &'a [u8],
     ) -> Result<T, Error> {
@@ -288,9 +310,16 @@ impl DataParser {
                 .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
             SerializationType::Postcard => postcard::from_bytes(raw_data)
                 .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
-            SerializationType::Json => serde_json::from_slice(raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Json(e))),
+            SerializationType::Json => self.deserialize_json(raw_data),
         }
+    }
+
+    pub fn deserialize_json<'a, T: serde::Deserialize<'a>>(
+        &self,
+        raw_data: &'a [u8],
+    ) -> Result<T, Error> {
+        serde_json::from_slice(raw_data)
+            .map_err(|e| Error::Serde(SerdeError::Json(e)))
     }
 }
 

@@ -97,14 +97,13 @@ async fn main() -> Result<()> {
     };
 
     // Subscribe to the receipt stream
-    let mut sub = receipt_stream.subscribe_with_config(config).await?;
+    let mut sub = receipt_stream.subscribe_raw_with_config(config).await?;
 
     println!("Listening for receipts...");
 
     // Process incoming receipts
     while let Some(bytes) = sub.next().await {
-        let message = bytes.unwrap();
-        let decoded_msg = Receipt::decode_raw(message.payload.to_vec()).await;
+        let decoded_msg = Receipt::decode_raw(bytes).unwrap();
         let receipt = decoded_msg.payload;
         let receipt_subject = decoded_msg.subject;
         let receipt_published_at = decoded_msg.timestamp;

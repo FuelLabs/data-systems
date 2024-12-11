@@ -12,6 +12,7 @@ use blocks_streams::build_blocks_stream;
 pub use fuel_core_like::{FuelCore, FuelCoreLike};
 pub use fuel_streams::{FuelStreams, FuelStreamsExt};
 use fuel_streams_core::prelude::*;
+use fuel_streams_storage::S3Client;
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
 use tokio::sync::Semaphore;
 
@@ -28,18 +29,22 @@ pub struct Publisher {
     pub nats_client: NatsClient,
     pub fuel_streams: Arc<dyn FuelStreamsExt>,
     pub telemetry: Arc<Telemetry>,
+    pub s3_client: Arc<S3Client>,
 }
 
 impl Publisher {
     pub async fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
-        nats_url: String,
         telemetry: Arc<Telemetry>,
     ) -> anyhow::Result<Self> {
-        let nats_client_opts =
-            NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
+        let nats_client_opts = NatsClientOpts::admin_opts();
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let fuel_streams = Arc::new(FuelStreams::new(&nats_client).await);
+
+        let s3_client_opts = S3ClientOpts::admin_opts();
+        let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+
+        let fuel_streams =
+            Arc::new(FuelStreams::new(&nats_client, &s3_client).await);
 
         telemetry.record_streams_count(
             fuel_core.chain_id(),
@@ -51,6 +56,7 @@ impl Publisher {
             fuel_streams,
             nats_client,
             telemetry,
+            s3_client,
         })
     }
 
@@ -60,15 +66,19 @@ impl Publisher {
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn default(
+    pub async fn new_for_testing(
         nats_client: &NatsClient,
+        s3_client: &Arc<S3Client>,
         fuel_core: Arc<dyn FuelCoreLike>,
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
             fuel_core,
-            fuel_streams: Arc::new(FuelStreams::new(nats_client).await),
+            fuel_streams: Arc::new(
+                FuelStreams::new(nats_client, s3_client).await,
+            ),
             nats_client: nats_client.clone(),
             telemetry: Telemetry::new().await?,
+            s3_client: Arc::clone(s3_client),
         })
     }
 
@@ -185,6 +195,7 @@ impl Publisher {
 
         let fuel_streams = &*self.fuel_streams;
         let blocks_stream = Arc::new(fuel_streams.blocks().to_owned());
+
         let opts = &Arc::new(PublishOpts {
             semaphore,
             chain_id,
@@ -246,15 +257,15 @@ pub fn publish<S: Streamable + 'static>(
     opts: &Arc<PublishOpts>,
 ) -> JoinHandle<anyhow::Result<()>> {
     let opts = Arc::clone(opts);
-    let payload = Arc::clone(&packet.payload);
-    let subject = Arc::clone(&packet.subject);
+    let packet = packet.clone();
     let telemetry = Arc::clone(&opts.telemetry);
     let wildcard = packet.subject.wildcard();
 
     tokio::spawn(async move {
         let _permit = opts.semaphore.acquire().await?;
 
-        match stream.publish(&*subject, &payload).await {
+        // Publish to NATS
+        match stream.publish(&packet).await {
             Ok(published_data_size) => {
                 telemetry.log_info(&format!(
                     "Successfully published for stream: {}",

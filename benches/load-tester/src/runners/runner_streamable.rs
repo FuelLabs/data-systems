@@ -21,21 +21,17 @@ pub async fn run_streamable_consumer<S: Streamable>(
     };
 
     // Subscribe to the block stream with the specified configuration
-    let mut sub = stream.subscribe_with_config(config).await?;
+    let mut sub = stream.subscribe_raw_with_config(config).await?;
 
     // Process incoming blocks
     while let Some(bytes) = sub.next().await {
-        match bytes.as_ref() {
-            Err(_) => load_test_tracker.increment_error_count(),
-            Ok(message) => {
-                load_test_tracker.increment_message_count();
-                let decoded_msg = S::decode_raw(message.payload.to_vec()).await;
-                let ts_millis = decoded_msg.ts_as_millis();
-                load_test_tracker
-                    .add_publish_time(ts_millis)
-                    .increment_message_count();
-            }
-        }
+        load_test_tracker.increment_message_count();
+        let decoded_msg = S::decode_raw(bytes).unwrap();
+
+        let ts_millis = decoded_msg.ts_as_millis();
+        load_test_tracker
+            .add_publish_time(ts_millis)
+            .increment_message_count();
     }
 
     Ok(())

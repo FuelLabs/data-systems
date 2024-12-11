@@ -37,13 +37,13 @@ pub struct WebSocketClient {
 
 impl WebSocketClient {
     pub async fn new(
-        newtork: FuelNetwork,
+        network: FuelNetwork,
         username: &str,
         password: &str,
     ) -> anyhow::Result<Self> {
-        let jwt_token = Self::fetch_jwt(newtork, username, password).await?;
+        let jwt_token = Self::fetch_jwt(network, username, password).await?;
 
-        let ws_url = get_ws_url(newtork)
+        let ws_url = get_ws_url(network)
             .join("/api/v1/ws")
             .expect("valid relative path");
 
@@ -55,7 +55,7 @@ impl WebSocketClient {
     }
 
     async fn fetch_jwt(
-        newtork: FuelNetwork,
+        network: FuelNetwork,
         username: &str,
         password: &str,
     ) -> anyhow::Result<String> {
@@ -65,7 +65,7 @@ impl WebSocketClient {
             password: password.to_string(),
         })?;
 
-        let api_url = get_web_url(newtork)
+        let api_url = get_web_url(network)
             .join("/api/v1/jwt")
             .expect("valid relative path");
 

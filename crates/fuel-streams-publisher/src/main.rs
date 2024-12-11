@@ -27,7 +27,6 @@ async fn main() -> anyhow::Result<()> {
 
     let publisher = fuel_streams_publisher::Publisher::new(
         Arc::clone(&fuel_core),
-        cli.nats_url,
         telemetry.clone(),
     )
     .await?;

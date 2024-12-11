@@ -59,7 +59,6 @@ fn bench_deserialize(c: &mut Criterion) {
                 let result = runtime.block_on(async {
                     data_parser
                         .deserialize::<Block<Transaction>>(&serialized)
-                        .await
                         .expect("deserialization failed")
                 });
                 // Use black_box to make sure 'result' is considered used by the compiler

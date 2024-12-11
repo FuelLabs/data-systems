@@ -1,5 +1,3 @@
-use std::error::Error;
-
 pub use crate::{
     blocks::types::*,
     fuel_core_types::*,
@@ -16,4 +14,4 @@ pub use crate::{
 // ------------------------------------------------------------------------
 // General
 // ------------------------------------------------------------------------
-pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
+pub type BoxedResult<T> = Result<T, Box<dyn std::error::Error>>;

@@ -75,8 +75,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
     let stream = fuel_streams::Stream::<Block>::new(&client).await;
 
     let mut subscription = stream.subscribe().await?;
-    while let Some(bytes) = subscription.next().await {
-        let block = Block::decode(bytes.unwrap()).await;
+    while let Some(block) = subscription.next().await {
         println!("Received block: {:?}", block);
     }
 
@@ -107,9 +106,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
         .subscribe_with_config(StreamConfig::default())
         .await?;
 
-    while let Some(message) = subscription.next().await {
-        let payload = message?.payload.clone();
-        let transaction = Transaction::decode(payload.into()).await;
+    while let Some(transaction) = subscription.next().await {
         println!("Received transaction: {:?}", transaction);
     }
 
@@ -146,9 +143,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
         })
         .await?;
 
-    while let Some(message) = subscription.next().await {
-        let payload = message?.payload.clone();
-        let block = Block::decode(payload.into()).await;
+    while let Some(block) = subscription.next().await {
         println!("Received block: {:?}", block);
     }
 
@@ -195,9 +190,7 @@ async fn main() -> Result<(), fuel_streams::Error> {
         .subscribe_with_config(StreamConfig::default())
         .await?;
 
-    while let Some(message) = subscription.next().await {
-        let payload = message?.payload.clone();
-        let transaction = Transaction::decode(payload.into()).await;
+    while let Some(transaction) = subscription.next().await {
         println!("Received filtered transaction: {:?}", transaction);
     }
 
