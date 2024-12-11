@@ -385,7 +385,6 @@ nats-core:
       jetstream:
         max_file_store: << 500GiB >>
         max_memory_store: << 7168MiB >>
-        domain: "central"
       max_payload: << 8MiB >>
 
 # -------------------------------------------------------------------------------------------------
@@ -450,8 +449,6 @@ nats-client:
           enabled: true
           size: 20Gi
           storageClassName: standard
-      merge:
-        domain: "client"
 
     leafnodes:
       enabled: true
@@ -556,8 +553,6 @@ nats-publisher:
           enabled: true
           size: 50Gi
           storageClassName: standard
-      merge:
-        domain: "publisher"
 
     leafnodes:
       enabled: true
