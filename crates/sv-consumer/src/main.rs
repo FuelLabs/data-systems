@@ -37,7 +37,7 @@ pub enum ConsumerError {
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
-        .with_env_filter("sv_consumer=trace")
+        .with_env_filter("sv_consumer=trace,fuel_streams_core=trace")
         .with_timer(time::LocalTime::rfc_3339())
         .with_target(false)
         .with_thread_ids(false)
