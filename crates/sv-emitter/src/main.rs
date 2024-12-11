@@ -8,6 +8,7 @@ use async_nats::jetstream::{
 use clap::Parser;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
+use fuel_streams_executors::*;
 use futures::StreamExt;
 use sv_emitter::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;

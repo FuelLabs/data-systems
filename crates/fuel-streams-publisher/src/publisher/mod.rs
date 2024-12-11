@@ -7,6 +7,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use blocks_streams::build_blocks_stream;
 use fuel_streams_core::prelude::*;
+use fuel_streams_executors::*;
 use futures::StreamExt;
 
 use super::{

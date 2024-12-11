@@ -1,7 +1,8 @@
+use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::prelude::*;
+use crate::*;
 
 impl Executor<Log> {
     pub fn process(

@@ -9,6 +9,7 @@ use async_nats::jetstream::{
 };
 use clap::Parser;
 use fuel_streams_core::prelude::*;
+use fuel_streams_executors::*;
 use futures::StreamExt;
 use sv_consumer::cli::Cli;
 use sv_emitter::shutdown::ShutdownController;

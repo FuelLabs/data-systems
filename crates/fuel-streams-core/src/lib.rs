@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 
 pub mod blocks;
-pub mod executors;
 pub mod inputs;
 pub mod logs;
 pub mod outputs;
@@ -26,7 +25,6 @@ pub mod prelude {
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{
-        executors::*,
         fuel_core_like::*,
         nats::*,
         stream::*,

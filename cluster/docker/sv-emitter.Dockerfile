@@ -56,15 +56,19 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ENV PORT=$PORT
-ENV ARGS=""
-ENV NETWORK_ARGS=""
+ARG IP=0.0.0.0
+ARG PORT=4000
+ARG P2P_PORT=30333
+ARG DB_PATH=./mnt/db/
+
+ENV IP="${IP}"
+ENV PORT="${PORT}"
+ENV DB_PATH="${DB_PATH}"
 
 WORKDIR /usr/src
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl \
-    # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
@@ -74,8 +78,6 @@ COPY --from=builder /root/sv-emitter.d .
 
 COPY /cluster/chain-config ./chain-config
 EXPOSE ${PORT}
+EXPOSE ${P2P_PORT}
 
-# https://stackoverflow.com/a/44671685
-# https://stackoverflow.com/a/40454758
-# hadolint ignore=DL3025
-CMD exec ./sv-emitter $ARGS $NETWORK_ARGS
+ENTRYPOINT ["./sv-emitter"]

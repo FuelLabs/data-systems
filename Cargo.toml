@@ -46,6 +46,7 @@ mockall = "0.13"
 mockall_double = "0.3.1"
 hex = "0.4"
 pretty_assertions = "1.4"
+num_cpus = "1.16"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 rayon = "1.10.0"
@@ -66,7 +67,7 @@ fuel-streams-core = { version = "0.0.13", path = "crates/fuel-streams-core" }
 fuel-streams-publisher = { version = "0.0.13", path = "crates/fuel-streams-publisher" }
 fuel-streams-macros = { version = "0.0.13", path = "crates/fuel-streams-macros" }
 subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
-fuel-streams-packets = { version = "0.0.13", path = "crates/fuel-streams-packets" }
+fuel-streams-executors = { version = "0.0.13", path = "crates/fuel-streams-executors" }
 sv-emitter = { version = "0.0.13", path = "crates/sv-emitter" }
 sv-consumer = { version = "0.0.13", path = "crates/sv-consumer" }
 

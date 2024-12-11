@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
-use crate::prelude::*;
+use crate::*;
 
 impl Executor<Output> {
     pub fn process(

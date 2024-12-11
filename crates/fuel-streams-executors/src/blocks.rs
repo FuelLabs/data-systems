@@ -1,9 +1,10 @@
 use std::{sync::Arc, time::Instant};
 
+use fuel_streams_core::prelude::*;
 use futures::{future::try_join_all, stream::FuturesUnordered};
 use tokio::task::JoinHandle;
 
-use crate::prelude::*;
+use crate::*;
 
 impl Executor<Block> {
     pub fn process(&self) -> JoinHandle<Result<(), ExecutorError>> {

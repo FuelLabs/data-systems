@@ -13,11 +13,10 @@ use std::{
 };
 
 use async_nats::jetstream::context::Publish;
+use fuel_streams_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::task::JoinHandle;
-
-use crate::prelude::*;
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
