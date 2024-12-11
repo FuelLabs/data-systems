@@ -69,4 +69,6 @@ spec:
             {{- with $webserver.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+
+{{- include "k8s.hpa" (dict "context" . "service" (dict "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
 {{- end }}

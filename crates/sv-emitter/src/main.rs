@@ -117,7 +117,6 @@ fn get_historical_block_range(
     }
     let block_count = end_height - start_height + 1;
     let heights: Vec<u32> = (start_height..=end_height).collect();
-    dbg!(heights.len());
     tracing::info!(
         "Processing {block_count} historical blocks from height {start_height} to {end_height}"
     );

@@ -1,0 +1,78 @@
+{{- $consumer := .Values.consumer -}}
+{{- if $consumer.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- include "k8s.metadata" (dict "context" . "suffix" "-consumer") | nindent 2 }}
+  annotations:
+    {{- include "set-value" (dict "context" $consumer "path" "config.annotations") | nindent 4 }}
+  labels:
+    {{- include "fuel-streams.labels" . | nindent 4 }}
+    {{- include "set-value" (dict "context" $consumer "path" "config.labels") | nindent 4 }}
+    app.kubernetes.io/component: consumer
+    app.kubernetes.io/service: external-service
+
+spec:
+  {{- if not $consumer.autoscaling.enabled }}
+  replicas: {{ $consumer.config.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
+      {{- include "set-value" (dict "context" $consumer "path" "config.selectorLabels") | nindent 6 }}
+      app.kubernetes.io/component: consumer
+      app.kubernetes.io/service: external-service
+
+  template:
+    metadata:
+      annotations:
+        {{- include "set-value" (dict "context" $consumer "path" "config.podAnnotations") | nindent 8 }}
+      labels:
+        {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
+        {{- include "set-value" (dict "context" $consumer "path" "config.labels") | nindent 8 }}
+        app.kubernetes.io/component: consumer
+        app.kubernetes.io/service: external-service
+
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "fuel-streams.serviceAccountName" . }}
+      {{- end }}
+
+      {{- include "set-field-and-value" (dict "context" $consumer "field" "imagePullSecrets" "path" "config.imagePullSecrets") | nindent 6 }}
+      {{- include "set-field-and-value" (dict "context" $consumer "field" "nodeSelector" "path" "config.nodeSelector") | nindent 6 }}
+      {{- include "set-field-and-value" (dict "context" $consumer "field" "affinity" "path" "config.affinity") | nindent 6 }}
+      {{- include "set-field-and-value" (dict "context" $consumer "field" "tolerations" "path" "config.tolerations") | nindent 6 }}
+      {{- include "k8s.security-context" (dict "context" . "service" "consumer") | nindent 6 }}
+
+      containers:
+        - name: consumer
+          image: "{{ $consumer.image.repository }}:{{ $consumer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $consumer.image.pullPolicy }}
+
+          ports:
+            - name: consumer
+              containerPort: {{ $consumer.port }}
+              protocol: TCP
+          {{- if $consumer.ports }}
+            {{- toYaml $consumer.ports | nindent 12 }}
+          {{- end }}
+
+          {{- include "set-field-and-value" (dict "context" $consumer "field" "resources" "path" "config.resources") | nindent 10 }}
+          {{- include "k8s.probes" (dict "context" . "service" "consumer") | nindent 10 }}
+          {{- include "k8s.container-security-context" (dict "context" . "service" "consumer") | nindent 10 }}
+
+          env:
+            - name: SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- range $key, $value := $consumer.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- with $consumer.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+{{- include "k8s.hpa" (dict "context" . "service" (dict "name" "consumer" "autoscaling" $consumer.autoscaling)) }}
+{{- end }}
