@@ -12,7 +12,7 @@ pub struct Cli {
     )]
     pub nats_url: String,
     #[arg(
-        short,
+        long,
         value_name = "SERVICE_NAME",
         env = "SERVICE_NAME",
         default_value = "sv-emitter"
