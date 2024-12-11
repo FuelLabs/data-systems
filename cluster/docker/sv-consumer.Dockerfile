@@ -59,7 +59,6 @@ FROM ubuntu:22.04 AS run
 ARG PORT=8080
 ENV PORT=$PORT
 ENV NATS_URL=
-ENV SERVICE_NAME=
 
 WORKDIR /usr/src
 
@@ -75,5 +74,4 @@ COPY --from=builder /root/sv-consumer.d .
 
 EXPOSE ${PORT}
 CMD exec ./sv-consumer \
-    --service-name "${SERVICE_NAME}" \
     --nats-url $NATS_URL

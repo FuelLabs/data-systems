@@ -121,5 +121,9 @@ CMD exec ./sv-emitter \
     --relayer-v2-listening-contracts $RELAYER_V2_LISTENING_CONTRACTS \
     --relayer-da-deploy-height $RELAYER_DA_DEPLOY_HEIGHT \
     --relayer-log-page-size $RELAYER_LOG_PAGE_SIZE \
-    --sync-block-stream-buffer-size 30 \
-    --nats-url $NATS_URL
+    --sync-block-stream-buffer-size 50 \
+    --nats-url $NATS_URL \
+    --max-database-cache-size 17179869184 \
+    --state-rewind-duration 136y \
+    --request-timeout 60 \
+    --graphql-max-complexity 1000000000
