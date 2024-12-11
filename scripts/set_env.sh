@@ -40,11 +40,11 @@ cleanup_env() {
     fi
 }
 
-# Load initial environment
-load_env
-
 # Clean up previous auto-generated content
 cleanup_env
+
+# Load initial environment
+load_env
 
 # Set and export network-specific variables
 export RESERVED_NODES=$(eval echo "\$${NETWORK_UPPER}_RESERVED_NODES")

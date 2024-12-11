@@ -18,7 +18,7 @@ RUST_VERSION := 1.81.0
         clean clean-build cleanup-artifacts test-watch test bench helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
-        audit audit-fix-test audit-fix load-test run-publisher \
+        audit audit-fix-test audit-fix load-test run-publisher run-consumer \
         run-mainnet-dev run-mainnet-profiling run-testnet-dev run-testnet-profiling \
         start-nats stop-nats restart-nats clean-nats minikube-setup minikube-start \
         minikube-delete k8s-setup helm-setup cluster-setup pre-cluster \
@@ -202,12 +202,13 @@ load-test:
 # ------------------------------------------------------------
 
 run-publisher: check-network
-	@./scripts/run_publisher.sh \
-		--network $(NETWORK) \
-		--mode $(MODE) \
-		$(if $(PORT),--port $(PORT),) \
-		$(if $(TELEMETRY_PORT),--telemetry-port $(TELEMETRY_PORT),) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+	@NETWORK=$(NETWORK) \
+	PACKAGE=$(PACKAGE) \
+	MODE=$(MODE) \
+	PORT=$(PORT) \
+	TELEMETRY_PORT=$(TELEMETRY_PORT) \
+	EXTRA_ARGS="$(extra_args)" \
+	./scripts/run_publisher.sh
 
 run-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
@@ -220,6 +221,9 @@ run-testnet-dev:
 
 run-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
+
+run-consumer:
+	cargo run --package sv-consumer --profile dev
 
 # ------------------------------------------------------------
 #  Docker Compose
@@ -240,6 +244,8 @@ restart-nats:
 
 clean-nats:
 	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
+
+reset-nats: clean-nats start-nats
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

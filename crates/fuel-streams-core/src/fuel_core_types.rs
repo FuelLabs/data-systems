@@ -1,5 +1,7 @@
-/// FuelCore Types
-/// Allows flexilibity of aggregating and transforming them for different payload types
+use fuel_core::state::{
+    generic_database::GenericDatabase,
+    iterable_key_value_view::IterableKeyValueViewWrapper,
+};
 pub use fuel_core_client::client::schema::Tai64Timestamp as FuelCoreTai64Timestamp;
 pub use fuel_core_importer::ImporterResult as FuelCoreImporterResult;
 pub use fuel_core_types::{
@@ -29,7 +31,9 @@ pub use fuel_core_types::{
         Input as FuelCoreInput,
         MessageId as FuelCoreMessageId,
         Output as FuelCoreOutput,
+        PanicInstruction as FuelCorePanicInstruction,
         Receipt as FuelCoreReceipt,
+        ScriptExecutionResult as FuelCoreScriptExecutionResult,
         StorageSlot as FuelCoreStorageSlot,
         Transaction as FuelCoreTransaction,
         TxId as FuelCoreTxId,
@@ -52,3 +56,9 @@ pub use fuel_core_types::{
     },
     tai64::Tai64 as FuelCoreTai64,
 };
+
+pub type OffchainDatabase = GenericDatabase<
+    IterableKeyValueViewWrapper<
+        fuel_core::fuel_core_graphql_api::storage::Column,
+    >,
+>;

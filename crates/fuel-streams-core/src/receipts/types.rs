@@ -1,106 +1,365 @@
+use fuel_core_types::fuel_asm::Word;
+use serde::{self, Deserialize, Serialize};
+
 use crate::types::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Receipt {
-    pub amount: Option<u64>,
-    pub asset_id: Option<AssetId>,
-    pub contract_id: Option<ContractId>,
-    pub data: Option<HexString>,
-    pub digest: Option<Bytes32>,
-    pub gas: Option<u64>,
-    pub gas_used: Option<u64>,
-    pub id: Option<ContractId>,
-    pub is: Option<u64>,
-    pub len: Option<u64>,
-    pub nonce: Option<Nonce>,
-    pub param1: Option<u64>,
-    pub param2: Option<u64>,
-    pub pc: Option<u64>,
-    pub ptr: Option<u64>,
-    pub ra: Option<u64>,
-    pub rb: Option<u64>,
-    pub rc: Option<u64>,
-    pub rd: Option<u64>,
-    pub reason: Option<u64>,
-    pub receipt_type: ReceiptType,
-    pub recipient: Option<Address>,
-    pub result: Option<u64>,
-    pub sender: Option<Address>,
-    pub sub_id: Option<Bytes32>,
-    pub to: Option<ContractId>,
-    pub to_address: Option<Address>,
-    pub val: Option<u64>,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Receipt {
+    Call(CallReceipt),
+    Return(ReturnReceipt),
+    ReturnData(ReturnDataReceipt),
+    Panic(PanicReceipt),
+    Revert(RevertReceipt),
+    Log(LogReceipt),
+    LogData(LogDataReceipt),
+    Transfer(TransferReceipt),
+    TransferOut(TransferOutReceipt),
+    ScriptResult(ScriptResultReceipt),
+    MessageOut(MessageOutReceipt),
+    Mint(MintReceipt),
+    Burn(BurnReceipt),
 }
 
-impl From<&FuelCoreReceipt> for Receipt {
-    fn from(r: &FuelCoreReceipt) -> Self {
-        Receipt {
-            amount: r.amount().map(Into::into),
-            asset_id: r.asset_id().copied().map(Into::into),
-            contract_id: r.contract_id().map(Into::into),
-            data: r.data().map(Into::into),
-            digest: r.digest().copied().map(Into::into),
-            gas: r.gas().map(Into::into),
-            gas_used: r.gas_used().map(Into::into),
-            id: r.id().map(Into::into),
-            is: r.is().map(Into::into),
-            len: r.len().map(Into::into),
-            nonce: r.nonce().copied().map(Into::into),
-            param1: r.param1().map(Into::into),
-            param2: r.param2().map(Into::into),
-            pc: r.pc().map(Into::into),
-            ptr: r.ptr().map(Into::into),
-            ra: r.ra().map(Into::into),
-            rb: r.rb().map(Into::into),
-            rc: r.rc().map(Into::into),
-            rd: r.rd().map(Into::into),
-            reason: r.reason().map(Into::into),
-            receipt_type: r.into(),
-            recipient: r.recipient().copied().map(Into::into),
-            result: r.result().map(|r| FuelCoreWord::from(*r)),
-            sender: r.sender().copied().map(Into::into),
-            sub_id: r.sub_id().copied().map(Into::into),
-            to: r.to().copied().map(Into::into),
-            to_address: r.to_address().copied().map(Into::into),
-            val: r.val().map(Into::into),
+// Individual Receipt Types
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CallReceipt {
+    pub id: ContractId,
+    pub to: ContractId,
+    pub amount: Word,
+    pub asset_id: AssetId,
+    pub gas: Word,
+    pub param1: Word,
+    pub param2: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReturnReceipt {
+    pub id: ContractId,
+    pub val: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReturnDataReceipt {
+    pub id: ContractId,
+    pub ptr: Word,
+    pub len: Word,
+    pub digest: Bytes32,
+    pub pc: Word,
+    pub is: Word,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PanicReceipt {
+    pub id: ContractId,
+    pub reason: PanicInstruction,
+    pub pc: Word,
+    pub is: Word,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contract_id: Option<ContractId>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertReceipt {
+    pub id: ContractId,
+    pub ra: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogReceipt {
+    pub id: ContractId,
+    pub ra: Word,
+    pub rb: Word,
+    pub rc: Word,
+    pub rd: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogDataReceipt {
+    pub id: ContractId,
+    pub ra: Word,
+    pub rb: Word,
+    pub ptr: Word,
+    pub len: Word,
+    pub digest: Bytes32,
+    pub pc: Word,
+    pub is: Word,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferReceipt {
+    pub id: ContractId,
+    pub to: ContractId,
+    pub amount: Word,
+    pub asset_id: AssetId,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferOutReceipt {
+    pub id: ContractId,
+    pub to: Address,
+    pub amount: Word,
+    pub asset_id: AssetId,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptResultReceipt {
+    pub result: ScriptExecutionResult,
+    pub gas_used: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageOutReceipt {
+    pub sender: Address,
+    pub recipient: Address,
+    pub amount: Word,
+    pub nonce: Nonce,
+    pub len: Word,
+    pub digest: Bytes32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MintReceipt {
+    pub sub_id: Bytes32,
+    pub contract_id: ContractId,
+    pub val: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BurnReceipt {
+    pub sub_id: Bytes32,
+    pub contract_id: ContractId,
+    pub val: Word,
+    pub pc: Word,
+    pub is: Word,
+}
+
+impl From<FuelCoreReceipt> for Receipt {
+    fn from(value: FuelCoreReceipt) -> Self {
+        match value {
+            FuelCoreReceipt::Call {
+                id,
+                to,
+                amount,
+                asset_id,
+                gas,
+                param1,
+                param2,
+                pc,
+                is,
+            } => Self::Call(CallReceipt {
+                id: id.into(),
+                to: to.into(),
+                amount,
+                asset_id: asset_id.into(),
+                gas,
+                param1,
+                param2,
+                pc,
+                is,
+            }),
+            FuelCoreReceipt::Return { id, val, pc, is } => {
+                Self::Return(ReturnReceipt {
+                    id: id.into(),
+                    val,
+                    pc,
+                    is,
+                })
+            }
+            FuelCoreReceipt::ReturnData {
+                id,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => Self::ReturnData(ReturnDataReceipt {
+                id: id.into(),
+                ptr,
+                len,
+                digest: digest.into(),
+                pc,
+                is,
+                data,
+            }),
+            FuelCoreReceipt::Panic {
+                id,
+                reason,
+                pc,
+                is,
+                contract_id,
+            } => Self::Panic(PanicReceipt {
+                id: id.into(),
+                reason: reason.into(),
+                pc,
+                is,
+                contract_id: contract_id.map(|id| id.into()),
+            }),
+            FuelCoreReceipt::Revert { id, ra, pc, is } => {
+                Self::Revert(RevertReceipt {
+                    id: id.into(),
+                    ra,
+                    pc,
+                    is,
+                })
+            }
+            FuelCoreReceipt::Log {
+                id,
+                ra,
+                rb,
+                rc,
+                rd,
+                pc,
+                is,
+            } => Self::Log(LogReceipt {
+                id: id.into(),
+                ra,
+                rb,
+                rc,
+                rd,
+                pc,
+                is,
+            }),
+            FuelCoreReceipt::LogData {
+                id,
+                ra,
+                rb,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => Self::LogData(LogDataReceipt {
+                id: id.into(),
+                ra,
+                rb,
+                ptr,
+                len,
+                digest: digest.into(),
+                pc,
+                is,
+                data,
+            }),
+            FuelCoreReceipt::Transfer {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => Self::Transfer(TransferReceipt {
+                id: id.into(),
+                to: to.into(),
+                amount,
+                asset_id: asset_id.into(),
+                pc,
+                is,
+            }),
+            FuelCoreReceipt::TransferOut {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => Self::TransferOut(TransferOutReceipt {
+                id: id.into(),
+                to: to.into(),
+                amount,
+                asset_id: asset_id.into(),
+                pc,
+                is,
+            }),
+            FuelCoreReceipt::ScriptResult { result, gas_used } => {
+                Self::ScriptResult(ScriptResultReceipt {
+                    result: result.into(),
+                    gas_used,
+                })
+            }
+            FuelCoreReceipt::MessageOut {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                len,
+                digest,
+                data,
+            } => Self::MessageOut(MessageOutReceipt {
+                sender: sender.into(),
+                recipient: recipient.into(),
+                amount,
+                nonce: nonce.into(),
+                len,
+                digest: digest.into(),
+                data,
+            }),
+            FuelCoreReceipt::Mint {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => Self::Mint(MintReceipt {
+                sub_id: sub_id.into(),
+                contract_id: contract_id.into(),
+                val,
+                pc,
+                is,
+            }),
+            FuelCoreReceipt::Burn {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => Self::Burn(BurnReceipt {
+                sub_id: sub_id.into(),
+                contract_id: contract_id.into(),
+                val,
+                pc,
+                is,
+            }),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ReceiptType {
-    Burn,
-    Call,
-    Log,
-    LogData,
-    MessageOut,
-    Mint,
-    Panic,
-    Return,
-    ReturnData,
-    Revert,
-    ScriptResult,
-    Transfer,
-    TransferOut,
-}
-
-impl From<&FuelCoreReceipt> for ReceiptType {
-    fn from(r: &FuelCoreReceipt) -> Self {
-        match r {
-            FuelCoreReceipt::Call { .. } => ReceiptType::Call,
-            FuelCoreReceipt::Return { .. } => ReceiptType::Return,
-            FuelCoreReceipt::ReturnData { .. } => ReceiptType::ReturnData,
-            FuelCoreReceipt::Panic { .. } => ReceiptType::Panic,
-            FuelCoreReceipt::Revert { .. } => ReceiptType::Revert,
-            FuelCoreReceipt::Log { .. } => ReceiptType::Log,
-            FuelCoreReceipt::LogData { .. } => ReceiptType::LogData,
-            FuelCoreReceipt::Transfer { .. } => ReceiptType::Transfer,
-            FuelCoreReceipt::TransferOut { .. } => ReceiptType::TransferOut,
-            FuelCoreReceipt::ScriptResult { .. } => ReceiptType::ScriptResult,
-            FuelCoreReceipt::MessageOut { .. } => ReceiptType::MessageOut,
-            FuelCoreReceipt::Mint { .. } => ReceiptType::Mint,
-            FuelCoreReceipt::Burn { .. } => ReceiptType::Burn,
-        }
+impl From<&FuelCoreReceipt> for Receipt {
+    fn from(value: &FuelCoreReceipt) -> Self {
+        value.clone().into()
     }
 }

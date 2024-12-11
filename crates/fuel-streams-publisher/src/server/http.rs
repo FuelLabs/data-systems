@@ -66,11 +66,11 @@ mod tests {
     use fuel_core::service::Config;
     use fuel_core_bin::FuelService;
     use fuel_core_services::State;
+    use fuel_streams_core::prelude::*;
 
     use crate::{
         server::state::{HealthResponse, ServerState},
         telemetry::Telemetry,
-        FuelCore,
         Publisher,
     };
 

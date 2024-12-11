@@ -3687,23 +3687,31 @@ dependencies = [
 name = "fuel-streams-core"
 version = "0.0.13"
 dependencies = [
+ "anyhow",
  "async-nats",
  "async-trait",
  "chrono",
  "clap 4.5.23",
  "displaydoc",
  "dotenvy",
+ "fuel-core",
+ "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-importer",
+ "fuel-core-services",
+ "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "fuel-data-parser",
  "fuel-streams-macros",
  "futures",
  "hex",
+ "num_cpus",
  "pretty_assertions",
  "rand",
+ "rayon",
  "serde",
  "serde_json",
+ "sha2 0.10.8",
  "thiserror 2.0.4",
  "tokio",
  "tracing",
@@ -3746,26 +3754,19 @@ dependencies = [
  "elasticsearch",
  "fuel-core",
  "fuel-core-bin",
- "fuel-core-importer",
  "fuel-core-services",
- "fuel-core-storage",
- "fuel-core-types 0.40.2",
- "fuel-streams",
  "fuel-streams-core",
  "futures",
  "mockall 0.13.1",
  "mockall_double",
- "num_cpus",
  "openssl",
  "parking_lot",
  "prometheus",
  "rand",
- "rayon",
  "rust_decimal",
  "serde",
  "serde_json",
  "serde_prometheus",
- "sha2 0.10.8",
  "sysinfo",
  "thiserror 2.0.4",
  "tokio",
@@ -6425,6 +6426,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_threads"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8728,6 +8738,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
+name = "sv-consumer"
+version = "0.0.13"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "clap 4.5.23",
+ "fuel-core",
+ "fuel-streams-core",
+ "futures",
+ "openssl",
+ "serde_json",
+ "sv-emitter",
+ "thiserror 2.0.4",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "sv-emitter"
+version = "0.0.13"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "clap 4.5.23",
+ "fuel-core",
+ "fuel-core-bin",
+ "fuel-core-types 0.40.2",
+ "fuel-streams-core",
+ "futures",
+ "openssl",
+ "thiserror 2.0.4",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "symbolic-common"
 version = "12.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9125,7 +9174,9 @@ checksum = "35e7868883861bd0e56d9ac6efcaaca0d6d5d82a2a7ec8209ff492c07cf37b21"
 dependencies = [
  "deranged",
  "itoa",
+ "libc",
  "num-conv",
+ "num_threads",
  "powerfmt",
  "serde",
  "time-core",
@@ -9602,6 +9653,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time",
  "tracing",
  "tracing-core",
  "tracing-log",

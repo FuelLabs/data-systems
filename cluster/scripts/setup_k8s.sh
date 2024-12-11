@@ -4,13 +4,13 @@
 set -euo pipefail
 
 # Parse command line arguments
-NAMESPACE="${1:-fuel-streams}"  # Use first argument, default to "fuel-streams" if not provided
+NAMESPACE="${1:-fuel-streams}" # Use first argument, default to "fuel-streams" if not provided
 
 # Configure namespace and context
 echo -e "\n\033[1;33mConfiguring ${NAMESPACE} namespace and context:\033[0m"
 
 # Check if namespace exists
-if kubectl get namespace ${NAMESPACE} &>/dev/null; then
+if kubectl get namespace ${NAMESPACE} &> /dev/null; then
     echo "Namespace ${NAMESPACE} already exists"
 else
     echo "Creating namespace ${NAMESPACE}..."

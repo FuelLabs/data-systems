@@ -4,12 +4,12 @@
 set -euo pipefail
 
 # Check if minikube is installed
-if ! command -v minikube &>/dev/null; then
+if ! command -v minikube &> /dev/null; then
     echo "Installing minikube..."
-    sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 &&
-        sudo chmod +x minikube &&
-        sudo cp minikube /usr/local/bin/ &&
-        sudo rm minikube
+    sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+        && sudo chmod +x minikube \
+        && sudo cp minikube /usr/local/bin/ \
+        && sudo rm minikube
 else
     echo "minikube is already installed"
 fi

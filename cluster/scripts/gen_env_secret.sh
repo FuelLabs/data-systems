@@ -4,7 +4,7 @@
 source .env
 
 # Generate the YAML configuration
-cat <<EOF >cluster/charts/fuel-streams/values-publisher-secrets.yaml
+cat << EOF > cluster/charts/fuel-streams/values-publisher-secrets.yaml
 publisher:
   extraEnv:
     - name: RELAYER

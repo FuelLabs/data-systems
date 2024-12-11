@@ -16,4 +16,5 @@ pub use crate::{
 // ------------------------------------------------------------------------
 // General
 // ------------------------------------------------------------------------
-pub type BoxedResult<T> = Result<T, Box<dyn Error>>;
+pub type BoxedError = Box<dyn Error + Send + Sync>;
+pub type BoxedResult<T> = Result<T, BoxedError>;

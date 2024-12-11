@@ -10,35 +10,54 @@ version_settings(True)   # Enable 'new version' banner
 # Load environment variables from .env file
 dotenv()
 
-# Build publisher image with proper configuration for Minikube
-custom_build(
-    ref='fuel-streams-publisher:latest',
-    command=['./cluster/scripts/build_publisher.sh'],
-    deps=[
-        './src',
-        './Cargo.toml',
-        './Cargo.lock',
-        './cluster/docker/fuel-streams-publisher.Dockerfile'
-    ],
-    live_update=[
-        sync('./src', '/usr/src'),
-        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-    ],
-    skips_local_docker=True,
-    ignore=['./target']
-)
+# Build images with proper configuration for Minikube
+IMAGES = {
+    # 'fuel-streams-publisher': 'fuel-streams-publisher',
+    'sv-emitter': 'sv-emitter',
+    'sv-consumer': 'sv-consumer'
+}
+
+for ref, image_name in IMAGES.items():
+    custom_build(
+        ref=f'{ref}:latest',
+        command=[f'IMAGE_NAME={image_name}', './cluster/scripts/build_docker.sh'],
+        deps=[
+            './src',
+            './Cargo.toml',
+            './Cargo.lock',
+            f'./cluster/docker/{image_name}.Dockerfile'
+        ],
+        live_update=[
+            sync('./src', '/usr/src'),
+            sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+            sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+            run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+        ],
+        skips_local_docker=True,
+        ignore=['./target']
+    )
 
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
 
 # Resource configurations
 RESOURCES = {
-    'publisher': {
-        'name': 'fuel-streams-publisher',
-        'ports': ['4000:4000', '8080:8080'],
-        'labels': 'publisher',
+    # 'publisher': {
+    #     'name': 'fuel-streams-publisher',
+    #     'ports': ['4000:4000', '8080:8080'],
+    #     'labels': 'publisher',
+    #     'config_mode': ['minimal', 'full']
+    # },
+    'emitter': {
+        'name': 'sv-emitter',
+        'ports': ['8081:8081'],
+        'labels': 'emitter',
+        'config_mode': ['minimal', 'full']
+    },
+    'consumer': {
+        'name': 'sv-consumer',
+        'ports': ['8082:8082'],
+        'labels': 'consumer',
         'config_mode': ['minimal', 'full']
     },
     'nats-core': {

@@ -1,3 +1,5 @@
+use fuel_core_types::fuel_crypto;
+
 use crate::types::*;
 
 // Input enum
@@ -170,4 +172,25 @@ pub struct InputMessage {
     pub recipient: Address,
     pub sender: Address,
     pub witness_index: u16,
+}
+
+impl InputMessage {
+    pub fn compute_message_id(&self) -> MessageId {
+        let hasher = fuel_crypto::Hasher::default()
+            .chain(self.sender.as_ref())
+            .chain(self.recipient.as_ref())
+            .chain(self.nonce.as_ref())
+            .chain(self.amount.to_be_bytes())
+            .chain(self.data.as_ref());
+
+        (*hasher.finalize()).into()
+    }
+
+    pub fn computed_utxo_id(&self) -> UtxoId {
+        let message_id = self.compute_message_id();
+        UtxoId {
+            tx_id: Bytes32::from(message_id),
+            output_index: 0,
+        }
+    }
 }

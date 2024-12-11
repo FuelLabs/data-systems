@@ -7,7 +7,7 @@ pub struct Utxo {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub nonce: Option<Nonce>,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<HexString>,
     pub amount: Option<u64>,
     pub tx_id: Bytes32,
 }
