@@ -44,26 +44,6 @@ spec:
       {{- include "set-field-and-value" (dict "context" $consumer "field" "tolerations" "path" "config.tolerations") | nindent 6 }}
       {{- include "k8s.security-context" (dict "context" . "service" "consumer") | nindent 6 }}
 
-      volumes:
-        - name: podinfo
-          emptyDir: {}
-
-      initContainers:
-        - name: pod-name-init
-          image: busybox
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-          command:
-            - /bin/sh
-            - -c
-            - echo $POD_NAME > /podinfo/pod-name
-          volumeMounts:
-            - name: podinfo
-              mountPath: /podinfo
-
       containers:
         - name: consumer
           image: "{{ $consumer.image.repository }}:{{ $consumer.image.tag | default .Chart.AppVersion }}"
@@ -84,8 +64,8 @@ spec:
           env:
             - name: SERVICE_NAME
               valueFrom:
-                execFrom:
-                  command: ['cat', '/podinfo/pod-name']
+                fieldRef:
+                  fieldPath: metadata.name
             {{- range $key, $value := $consumer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -93,10 +73,6 @@ spec:
             {{- with $consumer.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-
-          volumeMounts:
-            - name: podinfo
-              mountPath: /podinfo
 
 {{- include "k8s.hpa" (dict "context" . "service" (dict "name" "consumer" "autoscaling" $consumer.autoscaling)) }}
 {{- end }}
