@@ -264,7 +264,7 @@ impl AsRef<[u8]> for HexString {
 }
 impl HexString {
     pub fn zeroed() -> Self {
-        HexString(Vec::new())
+        HexString(vec![0u8; 32])
     }
 }
 

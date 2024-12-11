@@ -16,12 +16,12 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject {
-///     utxo_id: Some(HexString::from([1u8; 32])),
+///     utxo_id: Some(HexString::zeroed()),
 ///     utxo_type: Some(UtxoType::Message),
 /// };
 /// assert_eq!(
 ///     subject.parse(),
-///     "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101"
+///     "utxos.message.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
 /// ```
 ///
@@ -40,10 +40,10 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = UtxosSubject::wildcard(
-///     Some(HexString::from([1u8; 32])),
+///     Some(HexString::zeroed()),
 ///     None,
 /// );
-/// assert_eq!(wildcard, "utxos.*.0x0101010101010101010101010101010101010101010101010101010101010101");
+/// assert_eq!(wildcard, "utxos.*.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 ///
 /// Using the builder pattern:
@@ -53,9 +53,9 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject::new()
-///     .with_utxo_id(Some(HexString::from([1u8; 32])))
+///     .with_utxo_id(Some(HexString::zeroed()))
 ///     .with_utxo_type(Some(UtxoType::Message));
-/// assert_eq!(subject.parse(), "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101");
+/// assert_eq!(subject.parse(), "utxos.message.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 
 #[derive(Subject, Debug, Clone, Default)]

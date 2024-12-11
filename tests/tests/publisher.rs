@@ -1,6 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use fuel_core::combined_database::CombinedDatabase;
+use fuel_core::{
+    combined_database::CombinedDatabase,
+    service::{Config, FuelService},
+    ShutdownListener,
+};
 use fuel_core_importer::ImporterResult;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
@@ -13,6 +17,7 @@ use tokio::sync::broadcast::{self, Receiver, Sender};
 
 // TODO - Re-implement with `mockall` and `mock` macros
 struct TestFuelCore {
+    fuel_service: FuelService,
     chain_id: FuelCoreChainId,
     base_asset_id: FuelCoreAssetId,
     database: CombinedDatabase,
@@ -24,7 +29,15 @@ impl TestFuelCore {
     fn default(
         blocks_broadcaster: Sender<fuel_core_importer::ImporterResult>,
     ) -> Self {
+        let mut shutdown = ShutdownListener::spawn();
+        let service = FuelService::new(
+            Default::default(),
+            Config::local_node(),
+            &mut shutdown,
+        )
+        .unwrap();
         Self {
+            fuel_service: service,
             chain_id: FuelCoreChainId::default(),
             base_asset_id: FuelCoreAssetId::zeroed(),
             database: CombinedDatabase::default(),
@@ -48,6 +61,9 @@ impl FuelCoreLike for TestFuelCore {
     }
     fn is_started(&self) -> bool {
         true
+    }
+    fn fuel_service(&self) -> &FuelService {
+        &self.fuel_service
     }
     async fn await_synced_at_least_once(
         &self,
@@ -86,6 +102,20 @@ impl FuelCoreLike for TestFuelCore {
         _tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         Ok(self.receipts.clone())
+    }
+
+    fn get_tx_status(
+        &self,
+        _tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<FuelCoreTransactionStatus>> {
+        Ok(Some(FuelCoreTransactionStatus::Success {
+            receipts: self.receipts.clone().unwrap_or_default(),
+            block_height: 0.into(),
+            result: None,
+            time: FuelCoreTai64::now(),
+            total_gas: 0,
+            total_fee: 0,
+        }))
     }
 }
 
@@ -244,33 +274,53 @@ async fn publishes_receipts() {
         found_receipts.push(receipt);
     }
 
-    assert_eq!(found_receipts.len(), expected_receipts.len());
-    for expected in expected_receipts {
-        assert!(found_receipts.iter().any(|found| {
-            match (found, &expected) {
-                (Receipt::Call(f), Receipt::Call(e)) => f.id == e.id,
-                (Receipt::Return(f), Receipt::Return(e)) => f.id == e.id,
-                (Receipt::ReturnData(f), Receipt::ReturnData(e)) => {
-                    f.id == e.id
-                }
-                (Receipt::Revert(f), Receipt::Revert(e)) => f.id == e.id,
-                (Receipt::Log(f), Receipt::Log(e)) => f.id == e.id,
-                (Receipt::LogData(f), Receipt::LogData(e)) => f.id == e.id,
-                (Receipt::Transfer(f), Receipt::Transfer(e)) => f.id == e.id,
-                (Receipt::TransferOut(f), Receipt::TransferOut(e)) => {
-                    f.id == e.id
-                }
-                (Receipt::Mint(f), Receipt::Mint(e)) => {
-                    f.sub_id == e.sub_id && f.contract_id == e.contract_id
-                }
-                (Receipt::Burn(f), Receipt::Burn(e)) => {
-                    f.sub_id == e.sub_id && f.contract_id == e.contract_id
-                }
-                // If the variants don't match, they're different receipts
-                _ => false,
-            }
-        }));
-    }
+    assert_eq!(
+        found_receipts.len(),
+        expected_receipts.len(),
+        "Number of receipts doesn't match"
+    );
+
+    // Create sets of receipt identifiers
+    let found_ids: std::collections::HashSet<_> = found_receipts
+        .into_iter()
+        .map(|r| match r {
+            Receipt::Call(r) => r.id,
+            Receipt::Return(r) => r.id,
+            Receipt::ReturnData(r) => r.id,
+            Receipt::Revert(r) => r.id,
+            Receipt::Log(r) => r.id,
+            Receipt::LogData(r) => r.id,
+            Receipt::Transfer(r) => r.id,
+            Receipt::TransferOut(r) => r.id,
+            Receipt::Mint(r) => r.contract_id,
+            Receipt::Burn(r) => r.contract_id,
+            Receipt::Panic(r) => r.id,
+            _ => unreachable!(),
+        })
+        .collect();
+
+    let expected_ids: std::collections::HashSet<_> = expected_receipts
+        .into_iter()
+        .map(|r| match r {
+            Receipt::Call(r) => r.id,
+            Receipt::Return(r) => r.id,
+            Receipt::ReturnData(r) => r.id,
+            Receipt::Revert(r) => r.id,
+            Receipt::Log(r) => r.id,
+            Receipt::LogData(r) => r.id,
+            Receipt::Transfer(r) => r.id,
+            Receipt::TransferOut(r) => r.id,
+            Receipt::Mint(r) => r.contract_id,
+            Receipt::Burn(r) => r.contract_id,
+            Receipt::Panic(r) => r.id,
+            _ => unreachable!(),
+        })
+        .collect();
+
+    assert_eq!(
+        found_ids, expected_ids,
+        "Published receipt IDs don't match expected IDs"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

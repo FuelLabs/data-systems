@@ -327,6 +327,7 @@ mod tests {
             fn is_started(&self) -> bool;
             async fn await_synced_at_least_once(&self, historical: bool) -> anyhow::Result<()>;
             async fn stop(&self);
+            fn fuel_service(&self) -> &fuel_core_bin::FuelService;
             fn base_asset_id(&self) -> &FuelCoreAssetId;
             fn chain_id(&self) -> &FuelCoreChainId;
             fn database(&self) -> &CombinedDatabase;
@@ -338,6 +339,10 @@ mod tests {
                 &self,
                 tx_id: &FuelCoreBytes32,
             ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>>;
+            fn get_tx_status(
+                &self,
+                tx_id: &FuelCoreBytes32,
+            ) -> anyhow::Result<Option<FuelCoreTransactionStatus>>;
         }
     }
 

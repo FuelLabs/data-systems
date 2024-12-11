@@ -245,6 +245,8 @@ restart-nats:
 clean-nats:
 	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
 
+reset-nats: clean-nats start-nats
+
 # ------------------------------------------------------------
 #  Local cluster (Minikube)
 # ------------------------------------------------------------

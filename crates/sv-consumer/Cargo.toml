@@ -22,7 +22,6 @@ clap = { workspace = true }
 fuel-core = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
-num_cpus = "1.16"
 serde_json = { workspace = true }
 sv-emitter = { workspace = true }
 thiserror = { workspace = true }

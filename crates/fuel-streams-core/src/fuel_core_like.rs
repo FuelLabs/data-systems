@@ -30,6 +30,7 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn base_asset_id(&self) -> &FuelCoreAssetId;
     fn chain_id(&self) -> &FuelCoreChainId;
+    fn fuel_service(&self) -> &FuelService;
 
     fn database(&self) -> &CombinedDatabase;
     fn onchain_database(&self) -> &Database<OnChain> {
@@ -55,6 +56,11 @@ pub trait FuelCoreLike: Sync + Send {
             .map(|h| *h)
             .unwrap_or_default())
     }
+
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<FuelCoreTransactionStatus>>;
 
     fn get_receipts(
         &self,
@@ -186,6 +192,10 @@ impl FuelCoreLike for FuelCore {
         Ok(())
     }
 
+    fn fuel_service(&self) -> &FuelService {
+        &self.fuel_service
+    }
+
     async fn stop(&self) {
         if matches!(
             self.fuel_service.state(),
@@ -250,12 +260,18 @@ impl FuelCoreLike for FuelCore {
             .subscribe()
     }
 
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<FuelCoreTransactionStatus>> {
+        Ok(self.offchain_database()?.get_tx_status(tx_id)?)
+    }
+
     fn get_receipts(
         &self,
         tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         let receipts = self
-            .offchain_database()?
             .get_tx_status(tx_id)?
             .map(|status| match &status {
                 FuelCoreTransactionStatus::Success { receipts, .. }

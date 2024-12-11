@@ -160,25 +160,11 @@ impl BlockPayload {
         metadata: &Metadata,
     ) -> Result<Vec<Transaction>, ExecutorError> {
         let mut transactions: Vec<Transaction> = vec![];
-        let offchain_db = fuel_core.offchain_database()?;
         let blocks_txs = sealed_block.entity.transactions_vec();
-
         for tx_item in blocks_txs.iter() {
             let tx_id = tx_item.id(&metadata.chain_id);
-            let tx_status = offchain_db
-                .get_tx_status(&tx_id)
-                .map_err(|e| ExecutorError::TransactionStatus(e.to_string()))?;
-
-            let receipts = match &tx_status {
-                Some(FuelCoreTransactionStatus::Success {
-                    receipts, ..
-                }) => receipts.to_owned(),
-                Some(FuelCoreTransactionStatus::Failed {
-                    receipts, ..
-                }) => receipts.to_owned(),
-                _ => vec![],
-            };
-
+            let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
+            let tx_status = fuel_core.get_tx_status(&tx_id)?;
             let tx_status: TransactionStatus = match tx_status {
                 Some(status) => (&status).into(),
                 _ => TransactionStatus::None,
