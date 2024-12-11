@@ -26,7 +26,7 @@ jobs:
         package:
           # - fuel-streams-publisher
           - sv-consumer
-          # - sv-emitter
+          - sv-emitter
     steps:
       - uses: actions/checkout@v4
 
