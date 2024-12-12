@@ -1,4 +1,10 @@
-use fuel_streams::{subjects::IntoSubject, types::FuelNetwork};
+use fuel_streams::{
+    logs::Log,
+    subjects::IntoSubject,
+    types::{Block, FuelNetwork, Input, Output, Receipt, Transaction},
+    utxos::Utxo,
+    Streamable,
+};
 use reqwest::{
     header::{
         ACCEPT,
@@ -22,11 +28,14 @@ use url::Url;
 
 use crate::server::{
     http::models::{LoginRequest, LoginResponse},
-    ws::models::{
-        ClientMessage,
-        ServerMessage,
-        SubscriptionPayload,
-        SubscriptionType,
+    ws::{
+        errors::WsSubscriptionError,
+        models::{
+            ClientMessage,
+            ServerMessage,
+            SubscriptionPayload,
+            SubscriptionType,
+        },
     },
 };
 
@@ -165,6 +174,7 @@ impl WebSocketClient {
 
         let (tx, rx) = mpsc::unbounded_channel::<ServerMessage>();
         tokio::spawn(async move {
+            let mut subsciption_topic = String::new();
             loop {
                 let msg = socket.read();
                 match msg {
@@ -174,12 +184,51 @@ impl WebSocketClient {
                         }
                         Message::Binary(bin) => {
                             println!("Received binary: {:?} bytes", bin.len());
-                            let decoded =
+                            let server_message =
                                 serde_json::from_slice::<ServerMessage>(&bin)
                                     .unwrap();
-                            println!("Decoded server message: {:?}", decoded);
-                            if tx.send(decoded).is_err() {
-                                break;
+                            println!(
+                                "Decoded server message: {:?}",
+                                server_message
+                            );
+
+                            match &server_message {
+                                ServerMessage::Subscribed(sub) => {
+                                    println!(
+                                        "Subscribed to topic: {:?}",
+                                        sub.topic
+                                    );
+                                    let SubscriptionType::Stream(sub) =
+                                        &sub.topic;
+                                    subsciption_topic = sub.clone();
+                                }
+                                ServerMessage::Unsubscribed(sub) => {
+                                    println!(
+                                        "Unsubscribed from topic: {:?}",
+                                        sub.topic
+                                    );
+                                }
+                                ServerMessage::Update(update) => {
+                                    println!(
+                                        "Received update: {:?}",
+                                        update.len()
+                                    );
+                                    decode_print(
+                                        &subsciption_topic,
+                                        update.clone(),
+                                    )
+                                    .unwrap();
+                                    if tx.send(server_message).is_err() {
+                                        break;
+                                    }
+                                }
+                                ServerMessage::Error(err) => {
+                                    println!(
+                                        "Received error from ws: {:?}",
+                                        err
+                                    );
+                                    break;
+                                }
                             }
                         }
                         Message::Ping(ping) => {
@@ -215,4 +264,51 @@ impl WebSocketClient {
 
         Ok(rx)
     }
+}
+
+pub fn decode_print(
+    name: &str,
+    s3_payload: Vec<u8>,
+) -> Result<(), WsSubscriptionError> {
+    match name {
+        Transaction::NAME => {
+            let entity = serde_json::from_slice::<Transaction>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Transaction {:?}", entity);
+        }
+        Block::NAME => {
+            let entity = serde_json::from_slice::<Block>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Block {:?}", entity);
+        }
+        Input::NAME => {
+            let entity = serde_json::from_slice::<Input>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Input {:?}", entity);
+        }
+        Output::NAME => {
+            let entity = serde_json::from_slice::<Output>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Output {:?}", entity);
+        }
+        Receipt::NAME => {
+            let entity = serde_json::from_slice::<Receipt>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Receipt {:?}", entity);
+        }
+        Utxo::NAME => {
+            let entity = serde_json::from_slice::<Utxo>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Utxo {:?}", entity);
+        }
+        Log::NAME => {
+            let entity = serde_json::from_slice::<Log>(&s3_payload)
+                .map_err(WsSubscriptionError::UnparsablePayload)?;
+            println!("Log {:?}", entity);
+        }
+        _ => {
+            eprintln!("Unknown entity {:?}", name.to_string());
+        }
+    }
+    Ok(())
 }
