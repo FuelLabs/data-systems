@@ -11,31 +11,31 @@ version_settings(True)   # Enable 'new version' banner
 dotenv()
 
 # Build images with proper configuration for Minikube
-IMAGES = {
-    # 'fuel-streams-publisher': 'fuel-streams-publisher',
-    'sv-emitter': 'sv-emitter',
-    'sv-consumer': 'sv-consumer'
-}
+# IMAGES = {
+#     # 'fuel-streams-publisher': 'fuel-streams-publisher',
+#     'sv-emitter': 'sv-emitter',
+#     'sv-consumer': 'sv-consumer'
+# }
 
-for ref, image_name in IMAGES.items():
-    custom_build(
-        ref=f'{ref}:latest',
-        command=[f'IMAGE_NAME={image_name}', './cluster/scripts/build_docker.sh'],
-        deps=[
-            './src',
-            './Cargo.toml',
-            './Cargo.lock',
-            f'./cluster/docker/{image_name}.Dockerfile'
-        ],
-        live_update=[
-            sync('./src', '/usr/src'),
-            sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-            sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-            run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-        ],
-        skips_local_docker=True,
-        ignore=['./target']
-    )
+# for ref, image_name in IMAGES.items():
+#     custom_build(
+#         ref=f'{ref}:latest',
+#         command=[f'IMAGE_NAME={image_name}', './cluster/scripts/build_docker.sh'],
+#         deps=[
+#             './src',
+#             './Cargo.toml',
+#             './Cargo.lock',
+#             f'./cluster/docker/{image_name}.Dockerfile'
+#         ],
+#         live_update=[
+#             sync('./src', '/usr/src'),
+#             sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+#             sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+#             run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+#         ],
+#         skips_local_docker=True,
+#         ignore=['./target']
+#     )
 
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
@@ -48,33 +48,27 @@ RESOURCES = {
     #     'labels': 'publisher',
     #     'config_mode': ['minimal', 'full']
     # },
-    'emitter': {
-        'name': 'sv-emitter',
-        'ports': ['8081:8081'],
-        'labels': 'emitter',
-        'config_mode': ['minimal', 'full']
-    },
-    'consumer': {
-        'name': 'sv-consumer',
-        'ports': ['8082:8082'],
-        'labels': 'consumer',
-        'config_mode': ['minimal', 'full']
-    },
+    # 'consumer': {
+    #     'name': 'sv-consumer',
+    #     'ports': ['8082:8082'],
+    #     'labels': 'consumer',
+    #     'config_mode': ['minimal', 'full']
+    # },
     'nats-core': {
         'name': 'fuel-streams-nats-core',
-        'ports': ['4222:4222', '8222:8222'],
+        'ports': ['4222:4222', '6222:6222', '7422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
     'nats-client': {
         'name': 'fuel-streams-nats-client',
-        'ports': ['4223:4222', '8443:8443'],
+        'ports': ['14222:4222', '17422:7422', '8443:8443'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
     'nats-publisher': {
         'name': 'fuel-streams-nats-publisher',
-        'ports': ['4224:4222'],
+        'ports': ['24222:4222', '27422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },

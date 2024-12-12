@@ -126,7 +126,7 @@ publisher:
 
   storage:
     name: rocks-db
-    size: 10Gi
+    size: 1Gi
     storageClass: standard
     accessMode: ReadWriteOnce
     mountPath: /mnt/db
@@ -225,10 +225,10 @@ webserver:
     resources:
       requests:
         cpu: 100m
-        memory: 128Mi
+        memory: 64Mi
       limits:
         cpu: 500m
-        memory: 512Mi
+        memory: 256Mi
 
   autoscaling:
     enabled: false
@@ -281,10 +281,10 @@ consumer:
     resources:
       requests:
         cpu: 1
-        memory: 1Gi
+        memory: 256Mi
       limits:
         cpu: 2
-        memory: 2Gi
+        memory: 512Mi
 
   autoscaling:
     enabled: true
@@ -313,10 +313,8 @@ consumer:
 
 nats-core:
   enabled: true
-
   natsBox:
     enabled: false
-
   promExporter:
     enabled: false
     port: 6777
@@ -334,7 +332,7 @@ nats-core:
       repository: nats
       tag: 2.10.22-alpine
     env:
-      GOMEMLIMIT: 8GiB
+      GOMEMLIMIT: 2GiB
     startupProbe:
       initialDelaySeconds: 60
       periodSeconds: 10
@@ -342,7 +340,7 @@ nats-core:
     resources:
       requests:
         cpu: 8
-        memory: 8Gi
+        memory: 2Gi
 
   service:
     enabled: true
@@ -353,6 +351,8 @@ nats-core:
         enabled: true
       leafnodes:
         enabled: true
+      mqtt:
+        enabled: false
       monitor:
         enabled: false
 
@@ -361,8 +361,6 @@ nats-core:
       enabled: true
       port: 6222
       replicas: 3
-      routeURLs:
-        useFQDN: true
 
     jetstream:
       enabled: true
@@ -370,7 +368,7 @@ nats-core:
         dir: /data
         pvc:
           enabled: true
-          size: 500Gi
+          size: 20Gi
           storageClassName: standard
 
     leafnodes:
@@ -383,24 +381,30 @@ nats-core:
 
     merge:
       jetstream:
-        max_file_store: << 500GiB >>
-        max_memory_store: << 7168MiB >>
+        domain: CORE
+        max_file_store: << 20GiB >>
+        max_memory_store: << 1792MiB >>
       max_payload: << 8MiB >>
+      system_account: SYS
+      accounts:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
 
 # -------------------------------------------------------------------------------------------------
-# NATS Client configuration
+# NATS Publisher configuration
 # -------------------------------------------------------------------------------------------------
 
-nats-client:
+nats-publisher:
   enabled: true
-
-  global:
-    labels:
-      app.kubernetes.io/service: external-service
-
   natsBox:
     enabled: false
-
   promExporter:
     enabled: false
 
@@ -409,7 +413,99 @@ nats-client:
       repository: nats
       tag: 2.10.22-alpine
     env:
-      GOMEMLIMIT: 2GiB
+      GOMEMLIMIT: 1GiB
+    startupProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      failureThreshold: 1080
+    resources:
+      requests:
+        cpu: 4
+        memory: 1Gi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      monitor:
+        enabled: false
+      mqtt:
+        enabled: false
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 3
+
+  podTemplate:
+    topologySpreadConstraints:
+      kubernetes.io/hostname:
+        maxSkew: 1
+        whenUnsatisfiable: DoNotSchedule
+
+  config:
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 5Gi
+          storageClassName: standard
+
+    leafnodes:
+      enabled: true
+      port: 7422
+      merge:
+        remotes:
+          - urls: ["nats://sys:sys@fuel-streams-nats-core:7422"]
+            account: SYS
+          - urls: ["nats://admin:admin@fuel-streams-nats-core:7422"]
+            account: ADMIN
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      jetstream:
+        domain: PUBLISHER
+        max_file_store: << 5GiB >>
+        max_memory_store: << 768MiB >>
+      max_payload: << 8MiB >>
+      system_account: SYS
+      accounts:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
+
+# -------------------------------------------------------------------------------------------------
+# NATS Client configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-client:
+  enabled: true
+  global:
+    labels:
+      app.kubernetes.io/service: external-service
+  natsBox:
+    enabled: false
+  promExporter:
+    enabled: false
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.22-alpine
+    env:
+      GOMEMLIMIT: 512MiB
     startupProbe:
       initialDelaySeconds: 60
       periodSeconds: 10
@@ -417,7 +513,7 @@ nats-client:
     resources:
       requests:
         cpu: 2
-        memory: 2Gi
+        memory: 512Mi
 
   service:
     enabled: true
@@ -447,14 +543,16 @@ nats-client:
         dir: /data
         pvc:
           enabled: true
-          size: 20Gi
+          size: 2Gi
           storageClassName: standard
 
     leafnodes:
       enabled: true
       port: 7422
-      remotes:
-        - url: "nats://nats-core:7422"
+      merge:
+        remotes:
+          - urls: ["nats://admin:admin@fuel-streams-nats-core:7422"]
+            account: ADMIN
 
     websocket:
       enabled: true
@@ -469,103 +567,48 @@ nats-client:
 
     merge:
       jetstream:
-        max_file_store: << 20GiB >>
-        max_memory_store: << 2048MiB >>
+        domain: CLIENT
+        max_file_store: << 2GiB >>
+        max_memory_store: << 384MiB >>
       max_payload: << 8MiB >>
+      system_account: SYS
       accounts:
-        USERS:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
+        PUBLIC:
           jetstream: enabled
           users:
             - user: default_user
-              permissions:
-                subscribe: ">"
-                publish:
-                  deny:
-                    - "*.by_id.>"
-                    - "*.blocks.>"
-                    - "*.transactions.>"
-                    - "*.inputs.>"
-                    - "*.outputs.>"
-                    - "*.receipts.>"
-                    - "*.logs.>"
-                    - "*.utxos.>"
-                    - "$JS.API.STREAM.CREATE.>"
-                    - "$JS.API.STREAM.UPDATE.>"
-                    - "$JS.API.STREAM.DELETE.>"
-                    - "$JS.API.STREAM.PURGE.>"
-                    - "$JS.API.STREAM.RESTORE.>"
-                    - "$JS.API.STREAM.MSG.DELETE.>"
-                    - "$JS.API.CONSUMER.DURABLE.CREATE.>"
-
-# -------------------------------------------------------------------------------------------------
-# NATS Publisher configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-publisher:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  promExporter:
-    enabled: false
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.22-alpine
-    env:
-      GOMEMLIMIT: 3GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 4
-        memory: 4Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      monitor:
-        enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 3
-
-  podTemplate:
-    topologySpreadConstraints:
-      kubernetes.io/hostname:
-        maxSkew: 1
-        whenUnsatisfiable: DoNotSchedule
-
-  config:
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 50Gi
-          storageClassName: standard
-
-    leafnodes:
-      enabled: true
-      port: 7422
-      remotes:
-        - url: "nats://nats-core:7422"
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      jetstream:
-        max_file_store: << 50GiB >>
-        max_memory_store: << 3072MiB >>
-      max_payload: << 8MiB >>
+              password: ""
+      # TODO: Add users and permissions later
+      # accounts:
+      #   USERS:
+      #     jetstream: enabled
+      #     users:
+      #       - user: default_user
+      #         permissions:
+      #           subscribe: ">"
+      #           publish:
+      #             deny:
+      #               - "*.by_id.>"
+      #               - "*.blocks.>"
+      #               - "*.transactions.>"
+      #               - "*.inputs.>"
+      #               - "*.outputs.>"
+      #               - "*.receipts.>"
+      #               - "*.logs.>"
+      #               - "*.utxos.>"
+      #               - "$JS.API.STREAM.CREATE.>"
+      #               - "$JS.API.STREAM.UPDATE.>"
+      #               - "$JS.API.STREAM.DELETE.>"
+      #               - "$JS.API.STREAM.PURGE.>"
+      #               - "$JS.API.STREAM.RESTORE.>"
+      #               - "$JS.API.STREAM.MSG.DELETE.>"
+      #               - "$JS.API.CONSUMER.DURABLE.CREATE.>"

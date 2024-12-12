@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
     context::PublishErrorKind,
-    stream::RetentionPolicy,
+    stream::{Placement, RetentionPolicy},
     Context,
 };
 use clap::Parser;
@@ -73,8 +73,9 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
-    let opts = NatsClientOpts::admin_opts(None);
-    let opts = opts.with_custom_url(nats_url.to_string());
+    let opts = NatsClientOpts::admin_opts(None)
+        .with_custom_url(nats_url.to_string())
+        .with_domain("CORE".to_string());
     let nats_client = NatsClient::connect(&opts).await?;
     let stream_name = nats_client.namespace.stream_name("block_importer");
     nats_client
@@ -139,8 +140,6 @@ fn process_historical_blocks(
         ) else {
             return;
         };
-        // token.cancel();
-
         futures::stream::iter(heights)
             .map(|height| {
                 let jetstream = jetstream.clone();

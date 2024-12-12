@@ -113,9 +113,8 @@ async fn process_messages(
     cli: &Cli,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
-    let (_, fuel_streams) =
-        FuelStreams::setup_all(&core_client, &publisher_client).await;
+    let (_, publisher_client, consumer) = setup_nats(cli).await?;
+    let fuel_streams = FuelStreams::new(&publisher_client, None).await;
     let fuel_streams: Arc<dyn FuelStreamsExt> = fuel_streams.arc();
 
     while !token.is_cancelled() {

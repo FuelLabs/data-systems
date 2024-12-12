@@ -22,8 +22,10 @@ impl Client {
         &self,
         cli: &cli::Cli,
     ) -> Result<Arc<NatsClient>, NatsError> {
-        let opts = NatsClientOpts::admin_opts(None);
-        let opts = opts.with_custom_url(self.url(cli));
+        let url = self.url(cli);
+        let opts = NatsClientOpts::admin_opts(None)
+            .with_custom_url(url)
+            .with_domain("CORE".to_string());
         Ok(Arc::new(NatsClient::connect(&opts).await?))
     }
 }
