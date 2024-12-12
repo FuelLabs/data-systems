@@ -69,7 +69,7 @@ pub struct FuelConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct NatsConfig {
-    pub url: String,
+    pub network: FuelNetwork,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -92,7 +92,9 @@ impl Default for Config {
             auth: AuthConfig {
                 jwt_secret: String::new(),
             },
-            nats: NatsConfig { url: String::new() },
+            nats: NatsConfig {
+                network: FuelNetwork::Local,
+            },
             s3: S3Config { enabled: false },
             fuel: FuelConfig {
                 network: FuelNetwork::Local,
@@ -143,8 +145,9 @@ impl Config {
         }
 
         // ----------------------NATS--------------------------------
-        if let Ok(nats_url) = dotenvy::var("NATS_URL") {
-            config.nats.url = nats_url;
+        if let Ok(nats_network) = dotenvy::var("NETWORK") {
+            config.nats.network = FuelNetwork::from_str(&nats_network)
+                .map_err(|_| Error::UndecodableConfigElement("NETWORK"))?;
         }
 
         // ----------------------S3--------------------------------

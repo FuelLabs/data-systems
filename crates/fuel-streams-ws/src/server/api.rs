@@ -94,6 +94,7 @@ mod tests {
     use std::time::Duration;
 
     use actix_web::{http, test, web, App, HttpResponse};
+    use fuel_streams::types::FuelNetwork;
 
     use crate::{
         config::Config,
@@ -112,7 +113,7 @@ mod tests {
         telemetry.start().await.unwrap();
 
         let mut config = Config::default();
-        config.nats.url = "nats://localhost:4222".to_string();
+        config.nats.network = FuelNetwork::Local;
         let context = Context::new(&config).await.unwrap();
 
         let state = ServerState::new(context.clone()).await;

@@ -108,7 +108,9 @@ pub async fn get_ws(
 
                             // verify the subject name
                             let sub_subject =
-                                match verify_subject_name(&subject_wildcard) {
+                                match verify_and_extract_subject_name(
+                                    &subject_wildcard,
+                                ) {
                                     Ok(res) => res,
                                     Err(e) => {
                                         close_socket_with_error(
@@ -207,9 +209,9 @@ pub async fn get_ws(
                             let SubscriptionType::Stream(subject_wildcard) =
                                 payload.topic;
 
-                            if let Err(e) =
-                                verify_subject_name(&subject_wildcard)
-                            {
+                            if let Err(e) = verify_and_extract_subject_name(
+                                &subject_wildcard,
+                            ) {
                                 close_socket_with_error(
                                     e,
                                     user_id,
@@ -221,7 +223,9 @@ pub async fn get_ws(
                                 return;
                             }
 
-                            // send a message to the client about unsubscribing
+                            // TODO: implement unsubscribe and session management
+
+                            // send a message to the client to confirm unsubscribing
                             send_message_to_socket(
                                 &mut session,
                                 ServerMessage::Unsubscribed(
@@ -235,8 +239,7 @@ pub async fn get_ws(
                                 ),
                             )
                             .await;
-
-                            // TODO: implement unsubscribe and session management
+                            return;
                         }
                     }
                 }
@@ -296,7 +299,7 @@ fn stream_to_server_message(
     Ok(server_message)
 }
 
-fn verify_subject_name(
+pub fn verify_and_extract_subject_name(
     subject_wildcard: &str,
 ) -> Result<String, WsSubscriptionError> {
     let mut subject_parts = subject_wildcard.split('.');
@@ -339,10 +342,11 @@ async fn send_message_to_socket(session: &mut Session, message: ServerMessage) {
 }
 
 async fn decode(
-    name: &str,
+    subject_wildcard: &str,
     s3_payload: Vec<u8>,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    match name {
+    let subject = verify_and_extract_subject_name(subject_wildcard)?;
+    match subject.as_str() {
         Transaction::NAME => {
             let entity = Transaction::decode_or_panic(s3_payload);
             let serialized_data = serde_json::to_vec(&entity)
@@ -385,6 +389,6 @@ async fn decode(
                 .map_err(WsSubscriptionError::UnparsablePayload)?;
             stream_to_server_message(serialized_data)
         }
-        _ => Err(WsSubscriptionError::UnknownSubjectName(name.to_string())),
+        _ => Err(WsSubscriptionError::UnknownSubjectName(subject.to_string())),
     }
 }

@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::time::Duration;
+
 use fuel_streams::{
     blocks::BlocksSubject,
     subjects::SubjectBuildable,
@@ -21,7 +23,7 @@ use fuel_streams_ws::client::WebSocketClient;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut client =
-        WebSocketClient::new(FuelNetwork::Mainnet, "admin", "admin").await?;
+        WebSocketClient::new(FuelNetwork::Local, "admin", "admin").await?;
 
     client.connect()?;
 
@@ -29,13 +31,20 @@ async fn main() -> anyhow::Result<()> {
         .with_producer(Some(Address::zeroed()))
         .with_height(Some(23.into()));
 
-    client.subscribe(subject, None, None)?;
+    client.subscribe(subject.clone(), None, None)?;
 
     let mut receiver = client.listen()?;
 
-    while let Some(message) = receiver.recv().await {
-        println!("Received: {:?}", message);
-    }
+    tokio::spawn(async move {
+        while let Some(_message) = receiver.recv().await {
+            // println!("Received: {:?}", message);
+        }
+    });
+
+    tokio::time::sleep(Duration::from_secs(10)).await;
+
+    println!("Unsubscribing ...");
+    client.unsubscribe(subject, None, None)?;
 
     Ok(())
 }

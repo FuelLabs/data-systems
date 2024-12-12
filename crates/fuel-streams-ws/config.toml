@@ -2,10 +2,10 @@
 port = 9003
 
 [nats]
-url = "nats://localhost:4222"
+network = "local"
 
 [fuel]
-network = "testnet"
+network = "local"
 
 [s3]
 enabled = true
