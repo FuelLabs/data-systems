@@ -109,7 +109,6 @@ EXPOSE ${TELEMETRY_PORT}
 # hadolint ignore=DL3025
 CMD exec ./fuel-streams-publisher \
     --service-name "${SERVICE_NAME}" \
-    --nats-url $NATS_URL \
     --keypair $KEYPAIR \
     --relayer $RELAYER \
     --ip $IP \
