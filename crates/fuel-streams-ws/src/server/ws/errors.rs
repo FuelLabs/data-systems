@@ -1,4 +1,5 @@
 use displaydoc::Display as DisplayDoc;
+use fuel_streams_core::StreamError;
 use thiserror::Error;
 
 /// Ws Subscription-related errors
@@ -12,4 +13,8 @@ pub enum WsSubscriptionError {
     UnsupportedWildcardPattern(String),
     /// Unserializable message payload: `{0}`
     UnserializableMessagePayload(serde_json::Error),
+    /// Stream Error: `{0}`
+    Stream(#[from] StreamError),
+    /// Closed by client with reason: `{0}`
+    ClosedWithReason(String),
 }

@@ -15,10 +15,6 @@ publish = false
 name = "ws-streamer"
 path = "src/bin/ws-streamer.rs"
 
-[[bin]]
-name = "ws-client"
-path = "src/bin/ws-client.rs"
-
 [dependencies]
 actix-cors = { workspace = true }
 actix-server = { workspace = true }
@@ -27,8 +23,7 @@ actix-web = { workspace = true }
 actix-ws = "0.3.0"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-aws-config = "1.5.5"
-aws-sdk-s3 = "1.46.0"
+async-trait = { workspace = true }
 bytestring = "1.4.0"
 chrono = { workspace = true }
 clap = { workspace = true }
@@ -39,6 +34,7 @@ dotenvy = { workspace = true }
 elasticsearch = "8.15.0-alpha.1"
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 futures-util = { workspace = true }
 jsonwebtoken = "9.3.0"

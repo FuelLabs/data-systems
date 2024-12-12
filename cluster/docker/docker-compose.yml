@@ -19,11 +19,6 @@ services:
     env_file:
       - ./../../.env
   localstack:
-    profiles:
-      - all
-      - s3
-      - dev
-      - monitoring
     image: localstack/localstack:latest
     container_name: localstack
     restart: always

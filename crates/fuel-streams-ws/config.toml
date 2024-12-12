@@ -5,13 +5,10 @@ port = 9003
 url = "nats://localhost:4222"
 
 [fuel]
-network = "mainnet"
+network = "testnet"
 
 [s3]
-enabled = false
-region = "us-west-rack1"
-bucket = "data"
-endpoint = "http://192.168.50.249:9000"
+enabled = true
 
 [auth]
 jwt-secret = "secret"

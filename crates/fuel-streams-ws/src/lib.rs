@@ -2,7 +2,6 @@ pub mod cli;
 pub mod client;
 pub mod config;
 pub mod server;
-pub mod systems;
 pub mod telemetry;
 
 use std::{env, sync::LazyLock};

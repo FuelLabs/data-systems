@@ -3,9 +3,9 @@
     <a href="https://github.com/fuellabs/data-systems">
         <img src="https://global.discourse-cdn.com/business6/uploads/fuel/original/2X/5/57d5a345cc15a64b636e0d56e042857f8a0e80b1.png" alt="Logo" width="80" height="80">
     </a>
-    <h3 align="center">Fuel Streams Publisher</h3>
+    <h3 align="center">Fuel Streams Websockets</h3>
     <p align="center">
-        A binary that subscribes to events from a Fuel client or node and publishes streams consumable via the fuel-streams SDK
+        A binary webserver that consumes events published by fuel-streams and streams them further via websockets upon subscription
     </p>
     <p align="center">
         <a href="https://github.com/FuelLabs/data-systems/actions/workflows/ci.yaml" style="text-decoration: none;">
@@ -26,7 +26,7 @@
 
 ## 📝 About The Project
 
-The Fuel Streams Publisher is a binary that subscribes to events emitted from a Fuel client or node and publishes streams that can be consumed via the `fuel-streams` SDK.
+A binary that consumes events published by fuel-streams and streams them further via websockets.
 
 ## ⚡️ Getting Started
 
@@ -34,32 +34,6 @@ The Fuel Streams Publisher is a binary that subscribes to events emitted from a 
 
 - [Rust toolchain](https://www.rust-lang.org/tools/install)
 - [Docker](https://www.docker.com/get-started/) (optional)
-
-### Development
-
-1. Generate the `KEYPAIR` environment variable:
-
-    ```sh
-    fuel-core-keygen new --key-type peering -p
-    ```
-
-2. Generate an `INFURA_API_KEY` from [Infura](https://app.infura.io/)
-
-3. Copy `.env.sample` to `.env` and update the `KEYPAIR` and `INFURA_API_KEY` with the values generated above
-
-4. Run the binary:
-
-    - From the monorepo's root:
-
-        ```sh
-        ./scripts/start-publisher.sh
-        ```
-
-    - Or using `make` and `docker`:
-
-        ```sh
-        make start/publisher
-        ```
 
 ## 🤝 Contributing
 

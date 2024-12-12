@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicUsize;
+use std::sync::{atomic::AtomicUsize, Arc};
 
 use actix_web::{
     web::{self, Bytes},
@@ -7,17 +7,23 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{Message, Session};
-use fuel_streams::{types::Block, StreamData, Streamable};
+use futures::StreamExt;
 use uuid::Uuid;
 
 use super::{
     errors::WsSubscriptionError,
+    fuel_streams::FuelStreams,
     models::ClientMessage,
-    streams::Streams,
 };
-use crate::server::{
-    state::ServerState,
-    ws::models::{ServerMessage, SubscriptionType},
+use crate::{
+    server::{
+        state::ServerState,
+        ws::{
+            fuel_streams::FuelStreamsExt,
+            models::{ServerMessage, SubscriptionType},
+        },
+    },
+    telemetry::Telemetry,
 };
 
 static _NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
@@ -45,25 +51,23 @@ pub async fn get_ws(
     };
 
     // split the request into response, session, and message stream
-    let (response, mut session, mut msg_stream) = actix_ws::handle(&req, body)?;
-
-    // increase the maximum allowed frame size to 1MiB and aggregate continuation frames
-    // let mut msg_stream = msg_stream
-    //     .max_frame_size(1024 * 1024)
-    //     .aggregate_continuations();
+    let (response, session, mut msg_stream) = actix_ws::handle(&req, body)?;
 
     // record the new subscription
-    state.context.telemetry.record_subscriptions_count();
+    state.context.telemetry.increment_subscriptions_count();
 
     // spawm an actor handling the ws connection
+    let streams = state.context.fuel_streams.clone();
+    let telemetry = state.context.telemetry.clone();
     actix_web::rt::spawn(async move {
         tracing::info!("Ws opened for user id {:?}", user_id.to_string());
         while let Some(Ok(msg)) = msg_stream.recv().await {
+            let mut session = session.clone();
             match msg {
                 Message::Ping(bytes) => {
                     tracing::info!("Received ping, {:?}", bytes);
                     if session.pong(&bytes).await.is_err() {
-                        return;
+                        tracing::error!("Error sending pong, {:?}", bytes);
                     }
                 }
                 Message::Pong(bytes) => {
@@ -77,7 +81,10 @@ pub async fn get_ws(
                     let client_message = match parse_client_message(bytes) {
                         Ok(msg) => msg,
                         Err(e) => {
-                            close_socket_with_error(e, session).await;
+                            close_socket_with_error(
+                                e, user_id, session, None, telemetry,
+                            )
+                            .await;
                             return;
                         }
                     };
@@ -93,38 +100,64 @@ pub async fn get_ws(
                                 payload.topic;
 
                             // verify the subject name
-                            if let Err(e) =
-                                verify_subject_name(&subject_wildcard)
-                            {
-                                close_socket_with_error(e, session).await;
-                                return;
-                            }
+                            let sub_subject =
+                                match verify_subject_name(&subject_wildcard) {
+                                    Ok(res) => res,
+                                    Err(e) => {
+                                        close_socket_with_error(
+                                            e,
+                                            user_id,
+                                            session,
+                                            Some(subject_wildcard.clone()),
+                                            telemetry,
+                                        )
+                                        .await;
+                                        return;
+                                    }
+                                };
 
-                            // update metrics
-                            state
-                                .context
-                                .telemetry
-                                .update_streamer_success_metrics(
+                            // start the streamer async
+                            let mut stream_session = session.clone();
+
+                            // receive streaming in a background thread
+                            let streams = streams.clone();
+                            let telemetry = telemetry.clone();
+                            actix_web::rt::spawn(async move {
+                                // update metrics
+                                telemetry.update_user_subscription_metrics(
                                     user_id,
                                     &subject_wildcard,
                                 );
 
-                            // start the streamer async
-                            let mut stream_session = session.clone();
-                            let mut rx =
-                                Streams::run_streamable_consumer::<Block>(
-                                    state.context.client.clone(),
-                                )
-                                .await
-                                .unwrap();
+                                // subscribe to the stream
+                                let mut sub = match streams
+                                    .subscribe(&sub_subject, None)
+                                    .await
+                                {
+                                    Ok(sub) => sub,
+                                    Err(e) => {
+                                        close_socket_with_error(
+                                            WsSubscriptionError::Stream(e),
+                                            user_id,
+                                            session,
+                                            Some(subject_wildcard.clone()),
+                                            telemetry,
+                                        )
+                                        .await;
+                                        return;
+                                    }
+                                };
 
-                            // receive in a background thread
-                            actix_web::rt::spawn(async move {
-                                while let Some(res) = rx.recv().await {
+                                // consume and forward to the ws
+                                while let Some(res) = sub.next().await {
                                     let serialized_payload =
                                         match stream_to_server_message(res) {
                                             Ok(res) => res,
                                             Err(e) => {
+                                                telemetry.update_error_metrics(
+                                                    &subject_wildcard,
+                                                    &e.to_string(),
+                                                );
                                                 tracing::error!("Error serializing received stream message: {:?}", e);
                                                 continue;
                                             }
@@ -146,9 +179,18 @@ pub async fn get_ws(
                             if let Err(e) =
                                 verify_subject_name(&subject_wildcard)
                             {
-                                close_socket_with_error(e, session).await;
+                                close_socket_with_error(
+                                    e,
+                                    user_id,
+                                    session,
+                                    Some(subject_wildcard.clone()),
+                                    telemetry,
+                                )
+                                .await;
                                 return;
                             }
+
+                            // TODO: implement unsubscribe and session management
                         }
                     }
                 }
@@ -157,12 +199,32 @@ pub async fn get_ws(
                         "Got close event, terminating session with reason {:?}",
                         reason
                     );
-                    let _ = session.close(reason).await;
+                    let reason_str =
+                        reason.and_then(|r| r.description).unwrap_or_default();
+                    close_socket_with_error(
+                        WsSubscriptionError::ClosedWithReason(
+                            reason_str.to_string(),
+                        ),
+                        user_id,
+                        session,
+                        None,
+                        telemetry,
+                    )
+                    .await;
                     return;
                 }
                 _ => {
                     tracing::error!("Received unknown message type");
-                    let _ = session.close(None).await;
+                    close_socket_with_error(
+                        WsSubscriptionError::ClosedWithReason(
+                            "Unknown message type".to_string(),
+                        ),
+                        user_id,
+                        session,
+                        None,
+                        telemetry,
+                    )
+                    .await;
                     return;
                 }
             };
@@ -180,14 +242,11 @@ fn parse_client_message(
     Ok(msg)
 }
 
-fn stream_to_server_message<S: Streamable>(
-    msg: StreamData<S>,
+fn stream_to_server_message(
+    msg: Vec<u8>,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    let serialized_data = serde_json::to_vec::<StreamData<S>>(&msg)
+    let server_message = serde_json::to_vec(&ServerMessage::Update(msg))
         .map_err(WsSubscriptionError::UnserializableMessagePayload)?;
-    let server_message =
-        serde_json::to_vec(&ServerMessage::Update(serialized_data))
-            .map_err(WsSubscriptionError::UnserializableMessagePayload)?;
     Ok(server_message)
 }
 
@@ -202,7 +261,7 @@ fn verify_subject_name(
         ));
     }
     let subject_name = subject_parts.next().unwrap_or_default();
-    if !Streams::is_within_subject_names(subject_name) {
+    if !FuelStreams::is_within_subject_names(subject_name) {
         return Err(WsSubscriptionError::UnknownSubjectName(
             subject_wildcard.to_string(),
         ));
@@ -210,8 +269,19 @@ fn verify_subject_name(
     Ok(subject_name.to_string())
 }
 
-async fn close_socket_with_error(e: WsSubscriptionError, mut session: Session) {
-    tracing::error!("Ws subscription error: {:?}", e.to_string());
+async fn close_socket_with_error(
+    e: WsSubscriptionError,
+    user_id: uuid::Uuid,
+    mut session: Session,
+    subject_wildcard: Option<String>,
+    telemetry: Arc<Telemetry>,
+) {
+    tracing::error!("ws subscription error: {:?}", e.to_string());
+    if let Some(subject_wildcard) = subject_wildcard {
+        telemetry.update_error_metrics(&subject_wildcard, &e.to_string());
+        telemetry.update_unsubscribed(user_id, &subject_wildcard);
+    }
+    telemetry.decrement_subscriptions_count();
     let err = serde_json::to_vec(&ServerMessage::Error(e.to_string()))
         .ok()
         .unwrap_or_default();

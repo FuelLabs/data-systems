@@ -1,13 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
-use aws_sdk_s3::Client as S3Client;
 use fuel_streams::client::Client;
 use fuel_streams_core::prelude::*;
+use fuel_streams_storage::S3Client;
 
 use crate::{
     config::Config,
-    server::ws::streams::Streams,
-    systems::s3::s3_connect,
+    server::ws::fuel_streams::FuelStreams,
     telemetry::Telemetry,
 };
 
@@ -18,7 +17,7 @@ pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
 pub struct Context {
     pub client: Client,
     pub nats_client: NatsClient,
-    pub streams: Arc<Streams>,
+    pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry>,
     pub s3_client: Option<Arc<S3Client>>,
     pub jwt_secret: String,
@@ -26,21 +25,26 @@ pub struct Context {
 
 impl Context {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::default_opts(None)
-            .with_custom_url(config.nats.url.clone());
+        let nats_client_opts = NatsClientOpts::new(config.fuel.network);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let streams = Arc::new(Streams::new(&nats_client).await);
+
+        let s3_client_opts = S3ClientOpts::admin_opts();
+        let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+
+        let fuel_streams =
+            Arc::new(FuelStreams::new(&nats_client, &s3_client).await);
+
         let client = Client::connect(config.fuel.network).await?;
         let telemetry = Telemetry::new(None).await?;
         telemetry.start().await?;
 
         Ok(Context {
-            streams,
+            fuel_streams,
             nats_client,
             client,
             telemetry,
             s3_client: if config.s3.enabled {
-                Some(Arc::new(s3_connect(config.s3.clone()).await))
+                Some(s3_client)
             } else {
                 None
             },
@@ -48,13 +52,18 @@ impl Context {
         })
     }
 
-    pub async fn default(
-        nats_client: &NatsClient,
+    pub async fn new_for_testing(
         fuel_network: FuelNetwork,
     ) -> anyhow::Result<Self> {
+        let nats_client_opts = NatsClientOpts::new(fuel_network);
+        let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let client = Client::connect(fuel_network).await?;
+        let s3_client_opts = S3ClientOpts::admin_opts();
+        let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
         Ok(Context {
-            streams: Arc::new(Streams::new(nats_client).await),
+            fuel_streams: Arc::new(
+                FuelStreams::new(&nats_client, &s3_client).await,
+            ),
             nats_client: nats_client.clone(),
             telemetry: Telemetry::new(None).await?,
             s3_client: None,
@@ -63,8 +72,8 @@ impl Context {
         })
     }
 
-    pub fn get_streams(&self) -> &Streams {
-        &self.streams
+    pub fn get_streams(&self) -> &FuelStreams {
+        &self.fuel_streams
     }
 
     #[allow(dead_code)]

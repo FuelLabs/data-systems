@@ -1,4 +1,4 @@
-use fuel_streams::types::FuelNetwork;
+use fuel_streams::{subjects::IntoSubject, types::FuelNetwork};
 use reqwest::{
     header::{
         ACCEPT,
@@ -19,14 +19,16 @@ use tungstenite::{
     stream::MaybeTlsStream,
 };
 use url::Url;
-use urls::{get_web_url, get_ws_url};
 
 use crate::server::{
     http::models::{LoginRequest, LoginResponse},
-    ws::models::{ClientMessage, ServerMessage},
+    ws::models::{
+        ClientMessage,
+        ServerMessage,
+        SubscriptionPayload,
+        SubscriptionType,
+    },
 };
-
-pub mod urls;
 
 #[derive(Debug)]
 pub struct WebSocketClient {
@@ -43,7 +45,8 @@ impl WebSocketClient {
     ) -> anyhow::Result<Self> {
         let jwt_token = Self::fetch_jwt(network, username, password).await?;
 
-        let ws_url = get_ws_url(network)
+        let ws_url = network
+            .to_ws_url()
             .join("/api/v1/ws")
             .expect("valid relative path");
 
@@ -65,7 +68,8 @@ impl WebSocketClient {
             password: password.to_string(),
         })?;
 
-        let api_url = get_web_url(network)
+        let api_url = network
+            .to_web_url()
             .join("/api/v1/jwt")
             .expect("valid relative path");
 
@@ -89,7 +93,10 @@ impl WebSocketClient {
     }
 
     pub fn connect(&mut self) -> anyhow::Result<()> {
-        let host = self.ws_url.host_str().expect("Invalid host");
+        let host = self
+            .ws_url
+            .host_str()
+            .ok_or(anyhow::anyhow!("Unparsable ws host url"))?;
         let request = tungstenite::handshake::client::Request::builder()
             .uri(self.ws_url.as_str())
             .header(AUTHORIZATION, format!("Bearer {}", self.jwt_token))
@@ -107,7 +114,7 @@ impl WebSocketClient {
         Ok(())
     }
 
-    pub fn send_message(
+    fn send_client_message(
         &mut self,
         message: ClientMessage,
     ) -> anyhow::Result<()> {
@@ -118,6 +125,34 @@ impl WebSocketClient {
         let serialized = serde_json::to_vec(&message)?;
         socket.send(Message::Binary(serialized))?;
         Ok(())
+    }
+
+    pub fn subscribe(
+        &mut self,
+        subject: impl IntoSubject,
+        from: Option<u64>,
+        to: Option<u64>,
+    ) -> anyhow::Result<()> {
+        let message = ClientMessage::Subscribe(SubscriptionPayload {
+            topic: SubscriptionType::Stream(subject.parse()),
+            from,
+            to,
+        });
+        self.send_client_message(message)
+    }
+
+    pub fn unsubscribe(
+        &mut self,
+        subject: impl IntoSubject,
+        from: Option<u64>,
+        to: Option<u64>,
+    ) -> anyhow::Result<()> {
+        let message = ClientMessage::Unsubscribe(SubscriptionPayload {
+            topic: SubscriptionType::Stream(subject.parse()),
+            from,
+            to,
+        });
+        self.send_client_message(message)
     }
 
     pub fn listen(

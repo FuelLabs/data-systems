@@ -4181,6 +4181,8 @@ name = "fuel-networks"
 version = "0.0.13"
 dependencies = [
  "clap 4.5.23",
+ "serde",
+ "url",
 ]
 
 [[package]]
@@ -4250,6 +4252,7 @@ dependencies = [
  "anyhow",
  "fuel-core-types 0.40.2",
  "fuel-streams",
+ "fuel-streams-ws",
  "futures",
  "tokio",
 ]
@@ -4341,8 +4344,7 @@ dependencies = [
  "actix-ws",
  "anyhow",
  "async-nats",
- "aws-config",
- "aws-sdk-s3",
+ "async-trait",
  "bytestring",
  "chrono",
  "clap 4.5.23",
@@ -4353,6 +4355,7 @@ dependencies = [
  "elasticsearch",
  "fuel-streams",
  "fuel-streams-core",
+ "fuel-streams-storage",
  "futures",
  "futures-util",
  "jsonwebtoken 9.3.0",

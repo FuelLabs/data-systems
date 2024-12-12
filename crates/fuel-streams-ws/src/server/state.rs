@@ -8,6 +8,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
 use super::context::Context;
+use crate::server::ws::fuel_streams::FuelStreamsExt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamInfo {
@@ -86,7 +87,7 @@ impl ServerState {
     pub async fn get_health(&self) -> HealthResponse {
         let streams_info = self
             .context
-            .streams
+            .fuel_streams
             .get_consumers_and_state()
             .await
             .unwrap_or_default()

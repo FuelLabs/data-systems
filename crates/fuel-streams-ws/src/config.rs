@@ -38,9 +38,6 @@ pub enum Error {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct S3Config {
     pub enabled: bool,
-    pub region: String,
-    pub bucket: String,
-    pub endpoint: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -96,12 +93,7 @@ impl Default for Config {
                 jwt_secret: String::new(),
             },
             nats: NatsConfig { url: String::new() },
-            s3: S3Config {
-                enabled: false,
-                region: String::new(),
-                bucket: String::new(),
-                endpoint: String::new(),
-            },
+            s3: S3Config { enabled: false },
             fuel: FuelConfig {
                 network: FuelNetwork::Local,
             },
@@ -156,18 +148,9 @@ impl Config {
         }
 
         // ----------------------S3--------------------------------
-        if let Ok(s3_enabled) = dotenvy::var("S3_ENABLED") {
+        if let Ok(s3_enabled) = dotenvy::var("AWS_S3_ENABLED") {
             config.s3.enabled =
                 s3_enabled.parse::<bool>().map_err(Error::ParseBool)?;
-        }
-        if let Ok(s3_region) = dotenvy::var("S3_REGION") {
-            config.s3.region = s3_region;
-        }
-        if let Ok(s3_bucket) = dotenvy::var("S3_BUCKET") {
-            config.s3.bucket = s3_bucket;
-        }
-        if let Ok(s3_endpoint) = dotenvy::var("S3_ENDPOINT") {
-            config.s3.endpoint = s3_endpoint;
         }
 
         // ----------------------AUTH--------------------------------

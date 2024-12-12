@@ -11,7 +11,7 @@ use rand::{distributions::Alphanumeric, Rng};
 pub struct Metrics {
     pub registry: Registry,
     pub total_ws_subs: IntGaugeVec,
-    pub user_subscribed_messages: IntCounterVec,
+    pub user_subscribed_messages: IntGaugeVec,
     pub subs_messages_throughput: IntCounterVec,
     pub subs_messages_error_rates: IntCounterVec,
 }
@@ -49,7 +49,7 @@ impl Metrics {
         )
         .expect("metric must be created");
 
-        let user_subscribed_messages = register_int_counter_vec!(
+        let user_subscribed_messages = register_int_gauge_vec!(
             format!(
                 "{}ws_streamer_metrics_user_subscribed_messages",
                 metric_prefix
@@ -111,7 +111,7 @@ mod tests {
         metrics
             .user_subscribed_messages
             .with_label_values(&["user_id_1", "subject_wildcard_1"])
-            .inc_by(5);
+            .set(5);
 
         let metric_families = gather();
         let mut buffer = Vec::new();

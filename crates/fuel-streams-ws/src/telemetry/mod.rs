@@ -97,7 +97,7 @@ impl Telemetry {
         }
     }
 
-    pub fn update_streamer_success_metrics(
+    pub fn update_user_subscription_metrics(
         &self,
         user_id: uuid::Uuid,
         subject_wildcard: &str,
@@ -120,7 +120,7 @@ impl Telemetry {
         });
     }
 
-    pub fn update_streamer_error_metrics(
+    pub fn update_error_metrics(
         &self,
         subject_wildcard: &str,
         error_type: &str,
@@ -133,9 +133,28 @@ impl Telemetry {
         });
     }
 
-    pub fn record_subscriptions_count(&self) {
+    pub fn increment_subscriptions_count(&self) {
         self.maybe_use_metrics(|metrics| {
             metrics.total_ws_subs.with_label_values(&[]).inc();
+        });
+    }
+
+    pub fn decrement_subscriptions_count(&self) {
+        self.maybe_use_metrics(|metrics| {
+            metrics.total_ws_subs.with_label_values(&[]).inc();
+        });
+    }
+
+    pub fn update_unsubscribed(
+        &self,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
+    ) {
+        self.maybe_use_metrics(|metrics| {
+            metrics
+                .user_subscribed_messages
+                .with_label_values(&[&user_id.to_string(), subject_wildcard])
+                .dec();
         });
     }
 
