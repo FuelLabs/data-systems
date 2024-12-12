@@ -66,5 +66,5 @@ Run it with `k9s --context=<your kubectl context> --namespace=<namespace you wan
 -   Kubernetes [concepts](https://kubernetes.io/docs/concepts/)
 -   Kubectl [overview](https://kubernetes.io/docs/reference/kubectl/overview/)
 -   Kubectl [cheat sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
--   Helm [chart tutorial](https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/), then examine the helm charts in this repository, and the values yaml files that are used to template them. The defults values are in the charts themselves as `values.yaml`, and the values for specific configurations are at `values/<name>.yaml`.
+-   Helm [chart tutorial](https://docs.bitnami.com/kubernetes/how-to/create-your-first-helm-chart/), then examine the helm charts in this repository, and the values yaml files that are used to template them. The defaults values are in the charts themselves as `values.yaml`, and the values for specific configurations are at `values/<name>.yaml`.
 -   Tilt [tutorial](https://docs.tilt.dev/tutorial.html)
