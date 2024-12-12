@@ -284,6 +284,7 @@ pub fn publish<S: Streamable + 'static>(
                 Ok(())
             }
             Err(e) => {
+                tracing::error!("Failed to publish: {:?}", e);
                 telemetry.log_error(&e.to_string());
                 telemetry.update_publisher_error_metrics(
                     wildcard,

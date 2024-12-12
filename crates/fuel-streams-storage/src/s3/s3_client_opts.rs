@@ -56,16 +56,14 @@ impl S3ClientOpts {
     }
 
     pub fn bucket(&self) -> String {
-        let bucket = match self.role {
+        match self.role {
             FuelNetworkUserRole::Admin => dotenvy::var("AWS_S3_BUCKET_NAME")
                 .expect("AWS_S3_BUCKET_NAME must be set for admin role"),
-            FuelNetworkUserRole::Default => self.fuel_network.to_s3_bucket(),
-        };
-
-        format!(
-            "{}-{}",
-            bucket,
-            self.namespace.to_owned().unwrap_or_default()
-        )
+            FuelNetworkUserRole::Default => format!(
+                "{}-{}",
+                self.fuel_network.to_s3_bucket(),
+                self.namespace.to_owned().unwrap_or_default()
+            ),
+        }
     }
 }
