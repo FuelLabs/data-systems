@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use tokio::{
     signal::unix::{signal, SignalKind},
@@ -10,53 +10,25 @@ use tokio::{
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
 
 // First, let's create a ShutdownToken that can be shared
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ShutdownToken {
-    receiver: Arc<broadcast::Receiver<()>>,
+    receiver: broadcast::Receiver<()>,
 }
 
 impl ShutdownToken {
-    pub async fn wait_for_shutdown(&self) -> bool {
-        let mut rx = self.receiver.resubscribe();
-        rx.recv().await.is_ok()
+    pub async fn wait_for_shutdown(&mut self) -> bool {
+        self.receiver.recv().await.is_ok()
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ShutdownController {
     sender: broadcast::Sender<()>,
-    token: ShutdownToken,
     shutdown_initiated: OnceCell<()>,
 }
 
-impl Default for ShutdownController {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ShutdownController {
-    pub fn new() -> Self {
-        let (sender, receiver) = broadcast::channel(1);
-        let token = ShutdownToken {
-            receiver: Arc::new(receiver),
-        };
-
-        Self {
-            sender,
-            token,
-            shutdown_initiated: OnceCell::new(),
-        }
-    }
-    pub fn arc(self) -> Arc<Self> {
-        Arc::new(self)
-    }
-
-    pub fn get_token(&self) -> ShutdownToken {
-        self.token.clone()
-    }
-
-    pub fn spawn_signal_listener(self: Arc<Self>) {
+    pub fn spawn_signal_listener(&self) {
         let sender = self.sender.clone();
         tokio::spawn(async move {
             let mut sigint =
@@ -86,4 +58,16 @@ impl ShutdownController {
             Ok(0) // Shutdown already initiated
         }
     }
+}
+
+pub fn get_controller_and_token() -> (ShutdownController, ShutdownToken) {
+    let (sender, receiver) = broadcast::channel(1);
+
+    (
+        ShutdownController {
+            sender,
+            shutdown_initiated: OnceCell::new(),
+        },
+        ShutdownToken { receiver },
+    )
 }

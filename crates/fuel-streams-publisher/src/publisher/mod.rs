@@ -115,7 +115,7 @@ impl Publisher {
     const MAX_RETAINED_BLOCKS: u64 = 100;
     pub async fn run(
         &self,
-        shutdown_token: ShutdownToken,
+        mut shutdown_token: ShutdownToken,
         historical: bool,
     ) -> anyhow::Result<()> {
         tracing::info!("Awaiting FuelCore Sync...");
