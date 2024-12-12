@@ -1,6 +1,6 @@
 [package]
 name = "fuel-networks"
-description = "Networks for the Fuel blockchain and utilities for tranforming them for different apps"
+description = "Networks for the Fuel blockchain and utilities for transforming them for different apps"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
