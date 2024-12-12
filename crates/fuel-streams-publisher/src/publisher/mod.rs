@@ -42,6 +42,9 @@ impl Publisher {
 
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+        if let Err(e) = s3_client.create_bucket().await {
+            tracing::error!("Failed to create S3 bucket: {:?}", e);
+        }
 
         let fuel_streams =
             Arc::new(FuelStreams::new(&nats_client, &s3_client).await);
