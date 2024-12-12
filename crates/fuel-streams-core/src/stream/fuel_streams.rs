@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
 
 use crate::prelude::*;
@@ -14,16 +16,45 @@ pub struct FuelStreams {
 }
 
 impl FuelStreams {
-    pub async fn new(nats_client: &NatsClient) -> Self {
+    pub async fn new(
+        nats_client: &NatsClient,
+        config: Option<StreamConfig>,
+    ) -> Self {
         Self {
-            transactions: Stream::<Transaction>::new(nats_client).await,
-            blocks: Stream::<Block>::new(nats_client).await,
-            inputs: Stream::<Input>::new(nats_client).await,
-            outputs: Stream::<Output>::new(nats_client).await,
-            receipts: Stream::<Receipt>::new(nats_client).await,
-            utxos: Stream::<Utxo>::new(nats_client).await,
-            logs: Stream::<Log>::new(nats_client).await,
+            transactions: Stream::<Transaction>::new(
+                nats_client,
+                config.to_owned(),
+            )
+            .await,
+            blocks: Stream::<Block>::new(nats_client, config.to_owned()).await,
+            inputs: Stream::<Input>::new(nats_client, config.to_owned()).await,
+            outputs: Stream::<Output>::new(nats_client, config.to_owned())
+                .await,
+            receipts: Stream::<Receipt>::new(nats_client, config.to_owned())
+                .await,
+            utxos: Stream::<Utxo>::new(nats_client, config.to_owned()).await,
+            logs: Stream::<Log>::new(nats_client, config.to_owned()).await,
         }
+    }
+
+    pub async fn setup_all(
+        core_client: &NatsClient,
+        publisher_client: &NatsClient,
+    ) -> (Self, Self) {
+        let core_stream = Self::new(core_client, None).await;
+        let publisher_stream = Self::new(
+            publisher_client,
+            Some(StreamConfig {
+                mirror: true,
+                ..Default::default()
+            }),
+        )
+        .await;
+        (core_stream, publisher_stream)
+    }
+
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }
 

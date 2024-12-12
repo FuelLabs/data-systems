@@ -207,7 +207,8 @@ run-publisher: check-network
 	MODE=$(MODE) \
 	PORT=$(PORT) \
 	TELEMETRY_PORT=$(TELEMETRY_PORT) \
-	EXTRA_ARGS="$(extra_args)" \
+	EXTRA_ARGS="$(EXTRA_ARGS)" \
+	NATS_URL=$(NATS_URL) \
 	./scripts/run_publisher.sh
 
 run-mainnet-dev:
@@ -222,8 +223,11 @@ run-testnet-dev:
 run-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
+run-consumer: NATS_CORE_URL=localhost:4222 NATS_PUBLISHER_URL=localhost:4223
 run-consumer:
-	cargo run --package sv-consumer --profile dev
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-core-url $(NATS_CORE_URL) \
+		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------
 #  Docker Compose

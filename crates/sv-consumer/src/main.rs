@@ -5,13 +5,14 @@ use async_nats::jetstream::{
         pull::{BatchErrorKind, Config as ConsumerConfig},
         Consumer,
     },
-    stream::RetentionPolicy,
+    context::CreateStreamErrorKind,
+    stream::{ConsumerErrorKind, RetentionPolicy},
 };
 use clap::Parser;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
 use futures::StreamExt;
-use sv_consumer::cli::Cli;
+use sv_consumer::{cli::Cli, Client};
 use sv_emitter::shutdown::ShutdownController;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::fmt::time;
@@ -19,7 +20,16 @@ use tracing_subscriber::fmt::time;
 #[derive(thiserror::Error, Debug)]
 pub enum ConsumerError {
     #[error("Failed to receive batch of messages from NATS: {0}")]
-    Batch(#[from] async_nats::error::Error<BatchErrorKind>),
+    BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
+
+    #[error("Failed to create stream: {0}")]
+    CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
+
+    #[error("Failed to create consumer: {0}")]
+    CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
+
+    #[error("Failed to connect to NATS client: {0}")]
+    NatsClient(#[from] NatsError),
 
     #[error("Failed to communicate with NATS server: {0}")]
     Nats(#[from] async_nats::Error),
@@ -38,7 +48,7 @@ pub enum ConsumerError {
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
-        .with_env_filter("sv_consumer=trace,fuel_streams_core=trace")
+        .with_env_filter("sv_consumer=trace,fuel_streams_executors=trace")
         .with_timer(time::LocalTime::rfc_3339())
         .with_target(false)
         .with_thread_ids(false)
@@ -48,21 +58,20 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let (nats_client, consumer) = setup_nats(&cli).await?;
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
     tracing::info!("Consumer started. Waiting for messages...");
     tokio::select! {
         result = async {
-            process_messages(&nats_client, consumer, shutdown.token()).await
+            process_messages(&cli, shutdown.token())
+                .await
         } => {
             result?;
             tracing::info!("Processing complete");
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received");
-            nats_client.nats_client.flush().await?
         }
     };
 
@@ -70,38 +79,16 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn process_messages(
-    nats_client: &Arc<NatsClient>,
-    consumer: Consumer<ConsumerConfig>,
-    token: &CancellationToken,
-) -> Result<(), ConsumerError> {
-    let fuel_streams: Arc<dyn FuelStreamsExt> =
-        Arc::new(FuelStreams::new(nats_client).await);
-
-    while !token.is_cancelled() {
-        let messages = consumer.fetch().max_messages(100).messages().await?;
-        let fuel_streams = fuel_streams.clone();
-        tokio::pin!(messages);
-        while let Some(msg) = messages.next().await {
-            let msg = msg?;
-            let msg_str = std::str::from_utf8(&msg.payload)?;
-            let payload = Arc::new(BlockPayload::decode(msg_str)?);
-            Executor::<Block>::process_all(payload, &fuel_streams).await?;
-            msg.ack().await?;
-        }
-    }
-    Ok(())
-}
-
 async fn setup_nats(
     cli: &Cli,
-) -> anyhow::Result<(Arc<NatsClient>, Consumer<ConsumerConfig>)> {
-    let nats_url = &cli.nats_url;
-    let opts = NatsClientOpts::admin_opts(None);
-    let opts = opts.with_custom_url(nats_url.to_string());
-    let nats_client = Arc::new(NatsClient::connect(&opts).await?);
-    let stream_name = nats_client.namespace.stream_name("block_importer");
-    let stream = nats_client
+) -> Result<
+    (Arc<NatsClient>, Arc<NatsClient>, Consumer<ConsumerConfig>),
+    ConsumerError,
+> {
+    let core_client = Client::Core.new(cli).await?;
+    let publisher_client = Client::Publisher.new(cli).await?;
+    let stream_name = core_client.namespace.stream_name("block_importer");
+    let stream = core_client
         .jetstream
         .get_or_create_stream(async_nats::jetstream::stream::Config {
             name: stream_name,
@@ -119,5 +106,29 @@ async fn setup_nats(
         })
         .await?;
 
-    Ok((nats_client, consumer))
+    Ok((core_client, publisher_client, consumer))
+}
+
+async fn process_messages(
+    cli: &Cli,
+    token: &CancellationToken,
+) -> Result<(), ConsumerError> {
+    let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
+    let (_, fuel_streams) =
+        FuelStreams::setup_all(&core_client, &publisher_client).await;
+    let fuel_streams: Arc<dyn FuelStreamsExt> = fuel_streams.arc();
+
+    while !token.is_cancelled() {
+        let messages = consumer.fetch().max_messages(100).messages().await?;
+        let fuel_streams = fuel_streams.clone();
+        tokio::pin!(messages);
+        while let Some(msg) = messages.next().await {
+            let msg = msg?;
+            let msg_str = std::str::from_utf8(&msg.payload)?;
+            let payload = Arc::new(BlockPayload::decode(msg_str)?);
+            Executor::<Block>::process_all(payload, &fuel_streams).await?;
+            msg.ack().await?;
+        }
+    }
+    Ok(())
 }
