@@ -31,6 +31,7 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - DEFAULT_REGION=us-east-1
+      - DEFAULT_BUCKETS=fuel-streams-local
     volumes:
       - ./localstack-data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
