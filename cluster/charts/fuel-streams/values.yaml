@@ -257,11 +257,20 @@ webserver:
 consumer:
   enabled: true
   port: 8081
-
   image:
     repository: sv-consumer
     pullPolicy: Never
     tag: "latest"
+    args:
+      - --nats-core-url
+      - $(NATS_CORE_URL)
+      - --nats-publisher-url
+      - $(NATS_PUBLISHER_URL)
+
+  env:
+    PORT: 8081
+    NATS_CORE_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
 
   config:
     replicaCount: 1
@@ -302,10 +311,6 @@ consumer:
         percentValue: 100
         podValue: 4
         periodSeconds: 15
-
-  env:
-    PORT: 8081
-    NATS_URL: "fuel-streams-nats-core:4222"
 
 # -------------------------------------------------------------------------------------------------
 # NATS Core configuration

@@ -56,14 +56,10 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ARG IP=0.0.0.0
 ARG PORT=4000
 ARG P2P_PORT=30333
-ARG DB_PATH=./mnt/db/
-
 ENV IP="${IP}"
 ENV PORT="${PORT}"
-ENV DB_PATH="${DB_PATH}"
 
 WORKDIR /usr/src
 

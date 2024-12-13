@@ -58,8 +58,6 @@ FROM ubuntu:22.04 AS run
 
 ARG PORT=8080
 ENV PORT=$PORT
-ENV NATS_URL=
-
 WORKDIR /usr/src
 
 RUN apt-get update -y \
@@ -73,4 +71,3 @@ COPY --from=builder /root/sv-consumer .
 COPY --from=builder /root/sv-consumer.d .
 
 EXPOSE ${PORT}
-CMD exec ./sv-consumer --nats-url $NATS_URL

@@ -48,6 +48,8 @@ spec:
         - name: consumer
           image: "{{ $consumer.image.repository }}:{{ $consumer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $consumer.image.pullPolicy }}
+          args:
+            {{- toYaml $consumer.image.args | nindent 12 }}
 
           ports:
             - name: consumer
@@ -62,15 +64,22 @@ spec:
           {{- include "k8s.container-security-context" (dict "context" . "service" "consumer") | nindent 10 }}
 
           env:
-            - name: SERVICE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
             {{- range $key, $value := $consumer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
             {{- with $consumer.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          envFrom:
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-consumer
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-consumer
+                optional: true
+            {{- with $consumer.envFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
