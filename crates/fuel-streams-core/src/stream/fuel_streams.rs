@@ -18,7 +18,7 @@ pub struct FuelStreams {
 impl FuelStreams {
     pub async fn new(
         nats_client: &NatsClient,
-        config: Option<StreamConfig>,
+        config: Option<StreamOpts>,
     ) -> Self {
         Self {
             transactions: Stream::<Transaction>::new(
@@ -42,14 +42,9 @@ impl FuelStreams {
         publisher_client: &NatsClient,
     ) -> (Self, Self) {
         let core_stream = Self::new(core_client, None).await;
-        let publisher_stream = Self::new(
-            publisher_client,
-            Some(StreamConfig {
-                mirror: true,
-                ..Default::default()
-            }),
-        )
-        .await;
+        let publisher_stream =
+            Self::new(publisher_client, Some(StreamOpts { mirror: true }))
+                .await;
         (core_stream, publisher_stream)
     }
 

@@ -18,7 +18,7 @@ impl Client {
             Client::Publisher => cli.nats_publisher_url.clone(),
         }
     }
-    pub async fn new(
+    pub async fn create(
         &self,
         cli: &cli::Cli,
     ) -> Result<Arc<NatsClient>, NatsError> {

@@ -85,8 +85,8 @@ async fn setup_nats(
     (Arc<NatsClient>, Arc<NatsClient>, Consumer<ConsumerConfig>),
     ConsumerError,
 > {
-    let core_client = Client::Core.new(cli).await?;
-    let publisher_client = Client::Publisher.new(cli).await?;
+    let core_client = Client::Core.create(cli).await?;
+    let publisher_client = Client::Publisher.create(cli).await?;
     let stream_name = core_client.namespace.stream_name("block_importer");
     let stream = core_client
         .jetstream

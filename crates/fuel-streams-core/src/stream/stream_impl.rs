@@ -11,7 +11,6 @@ use async_nats::{
     RequestErrorKind,
 };
 use async_trait::async_trait;
-use fuel_core::chain_config::config;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::{StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
@@ -116,7 +115,7 @@ pub struct Stream<S: Streamable> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct StreamConfig {
+pub struct StreamOpts {
     pub mirror: bool,
 }
 
@@ -131,10 +130,7 @@ impl<S: Streamable> Stream<S> {
             .to_owned()
     }
 
-    pub async fn new(
-        client: &NatsClient,
-        config: Option<StreamConfig>,
-    ) -> Self {
+    pub async fn new(client: &NatsClient, config: Option<StreamOpts>) -> Self {
         let is_mirror = config.unwrap_or_default().mirror;
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);

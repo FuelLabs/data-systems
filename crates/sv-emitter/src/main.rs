@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
     context::PublishErrorKind,
-    stream::{Placement, RetentionPolicy},
+    stream::RetentionPolicy,
     Context,
 };
 use clap::Parser;
