@@ -8,9 +8,6 @@ metadata:
     {{- include "fuel-streams.labels" . | nindent 4 }}
     {{- include "set-value" (dict "context" $service "path" "labels") | nindent 4 }}
     app.kubernetes.io/service: external-ws
-    app.kubernetes.io/component: {{ include "fuel-streams.fullname" . }}-nats-client
-    app.kubernetes.io/instance: {{ include "fuel-streams.fullname" . }}-nats-client
-    app.kubernetes.io/name: {{ include "fuel-streams.fullname" . }}-nats-client
   annotations:
     external-dns.alpha.kubernetes.io/hostname: {{ $service.dns | quote }}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
@@ -40,8 +37,5 @@ spec:
   selector:
     {{- include "fuel-streams.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/service: external-ws
-    app.kubernetes.io/component: {{ include "fuel-streams.fullname" . }}-nats-client
-    app.kubernetes.io/instance: {{ include "fuel-streams.fullname" . }}-nats-client
-    app.kubernetes.io/name: {{ include "fuel-streams.fullname" . }}-nats-client
 {{- end }}
 
