@@ -11,12 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
-
 use fuel_streams::{
     blocks::BlocksSubject,
     subjects::SubjectBuildable,
-    types::{Address, FuelNetwork},
+    types::{DeliverPolicy, FuelNetwork},
 };
 use fuel_streams_ws::client::WebSocketClient;
 
@@ -27,11 +25,11 @@ async fn main() -> anyhow::Result<()> {
 
     client.connect()?;
 
-    let subject = BlocksSubject::new()
-        .with_producer(Some(Address::zeroed()))
-        .with_height(Some(23.into()));
+    let subject = BlocksSubject::new();
+    // .with_producer(Some(Address::zeroed()))
+    // .with_height(Some(23.into()));
 
-    client.subscribe(subject.clone(), None, None)?;
+    client.subscribe(subject.clone(), DeliverPolicy::All)?;
 
     let mut receiver = client.listen()?;
 
@@ -39,12 +37,8 @@ async fn main() -> anyhow::Result<()> {
         while let Some(_message) = receiver.recv().await {
             // println!("Received: {:?}", message);
         }
-    });
-
-    tokio::time::sleep(Duration::from_secs(10)).await;
-
-    println!("Unsubscribing ...");
-    client.unsubscribe(subject, None, None)?;
+    })
+    .await?;
 
     Ok(())
 }

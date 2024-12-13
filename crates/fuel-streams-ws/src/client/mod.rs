@@ -5,6 +5,7 @@ use fuel_streams::{
     utxos::Utxo,
     Streamable,
 };
+use fuel_streams_storage::DeliverPolicy;
 use reqwest::{
     header::{
         ACCEPT,
@@ -134,13 +135,11 @@ impl WebSocketClient {
     pub fn subscribe(
         &mut self,
         subject: impl IntoSubject,
-        from: Option<u64>,
-        to: Option<u64>,
+        deliver_policy: DeliverPolicy,
     ) -> anyhow::Result<()> {
         let message = ClientMessage::Subscribe(SubscriptionPayload {
             topic: SubscriptionType::Stream(subject.parse()),
-            from,
-            to,
+            deliver_policy,
         });
         self.send_client_message(message)
     }
@@ -148,13 +147,11 @@ impl WebSocketClient {
     pub fn unsubscribe(
         &mut self,
         subject: impl IntoSubject,
-        from: Option<u64>,
-        to: Option<u64>,
+        deliver_policy: DeliverPolicy,
     ) -> anyhow::Result<()> {
         let message = ClientMessage::Unsubscribe(SubscriptionPayload {
             topic: SubscriptionType::Stream(subject.parse()),
-            from,
-            to,
+            deliver_policy,
         });
         self.send_client_message(message)
     }

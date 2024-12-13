@@ -1,3 +1,4 @@
+use fuel_streams_storage::DeliverPolicy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
@@ -10,10 +11,7 @@ pub enum SubscriptionType {
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
     pub topic: SubscriptionType,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<u64>,
+    pub deliver_policy: DeliverPolicy,
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
@@ -34,6 +32,8 @@ pub enum ServerMessage {
 
 #[cfg(test)]
 mod tests {
+    use fuel_streams_storage::DeliverPolicy;
+
     use super::{ClientMessage, SubscriptionPayload, SubscriptionType};
 
     #[test]
@@ -41,15 +41,15 @@ mod tests {
         let stream_topic_wildcard = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
             topic: SubscriptionType::Stream(stream_topic_wildcard.clone()),
-            from: None,
-            to: None,
+            deliver_policy: DeliverPolicy::All,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
         println!("Ser value {:?}", ser_str_value);
         let expected_value = serde_json::json!({
             "subscribe": {
                 "topic": {
-                    "stream": stream_topic_wildcard
+                    "stream": stream_topic_wildcard,
+                    "deliver_policy": "all"
                 }
             }
         });

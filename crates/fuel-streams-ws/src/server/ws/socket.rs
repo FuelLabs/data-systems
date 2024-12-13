@@ -107,6 +107,7 @@ pub async fn get_ws(
                             );
                             let SubscriptionType::Stream(subject_wildcard) =
                                 payload.topic;
+                            let deliver_policy = payload.deliver_policy;
 
                             // verify the subject name
                             let sub_subject =
@@ -138,8 +139,7 @@ pub async fn get_ws(
                                         topic: SubscriptionType::Stream(
                                             subject_wildcard.clone(),
                                         ),
-                                        from: None,
-                                        to: None,
+                                        deliver_policy,
                                     },
                                 ),
                             )
@@ -217,6 +217,8 @@ pub async fn get_ws(
                             let SubscriptionType::Stream(subject_wildcard) =
                                 payload.topic;
 
+                            let deliver_policy = payload.deliver_policy;
+
                             if let Err(e) = verify_and_extract_subject_name(
                                 &subject_wildcard,
                             ) {
@@ -241,8 +243,7 @@ pub async fn get_ws(
                                         topic: SubscriptionType::Stream(
                                             subject_wildcard,
                                         ),
-                                        from: None,
-                                        to: None,
+                                        deliver_policy,
                                     },
                                 ),
                             )
