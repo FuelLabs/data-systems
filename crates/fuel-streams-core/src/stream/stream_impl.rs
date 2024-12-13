@@ -6,7 +6,7 @@ use async_nats::{
     jetstream::{
         consumer::AckPolicy,
         kv::{self, CreateErrorKind},
-        stream::{self, LastRawMessageErrorKind, Source, State},
+        stream::{self, LastRawMessageErrorKind, State},
     },
     RequestErrorKind,
 };
@@ -114,49 +114,27 @@ pub struct Stream<S: Streamable> {
     _marker: std::marker::PhantomData<S>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct StreamOpts {
-    pub mirror: bool,
-}
-
 impl<S: Streamable> Stream<S> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
     pub async fn get_or_init(client: &NatsClient) -> Self {
         let cell = Self::INSTANCE;
-        cell.get_or_init(|| async { Self::new(client, None).await.to_owned() })
+        cell.get_or_init(|| async { Self::new(client).await.to_owned() })
             .await
             .to_owned()
     }
 
-    pub async fn new(client: &NatsClient, config: Option<StreamOpts>) -> Self {
-        let is_mirror = config.unwrap_or_default().mirror;
+    pub async fn new(client: &NatsClient) -> Self {
         let namespace = &client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
-        let mirror_name = format!("{bucket_name}_mirrored");
 
-        let config = match is_mirror {
-            false => kv::Config {
-                bucket: bucket_name.to_owned(),
-                storage: stream::StorageType::File,
-                history: 1,
-                compression: true,
-                ..Default::default()
-            },
-            true => kv::Config {
-                bucket: mirror_name.to_owned(),
-                storage: stream::StorageType::File,
-                history: 1,
-                compression: true,
-                mirror_direct: true,
-                mirror: Some(Source {
-                    name: bucket_name.to_owned(),
-                    domain: Some("core".into()),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
+        let config = kv::Config {
+            bucket: bucket_name.to_owned(),
+            storage: stream::StorageType::File,
+            history: 1,
+            compression: true,
+            ..Default::default()
         };
 
         let store = client

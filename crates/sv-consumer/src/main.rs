@@ -87,20 +87,22 @@ async fn setup_nats(
 > {
     let core_client = Client::Core.create(cli).await?;
     let publisher_client = Client::Publisher.create(cli).await?;
-    let stream_name = core_client.namespace.stream_name("block_importer");
-    let stream = core_client
+    let stream_name = publisher_client.namespace.stream_name("block_importer");
+    let stream = publisher_client
         .jetstream
         .get_or_create_stream(async_nats::jetstream::stream::Config {
             name: stream_name,
             subjects: vec!["block_submitted.>".to_string()],
             retention: RetentionPolicy::WorkQueue,
             duplicate_window: Duration::from_secs(1),
+            allow_rollup: true,
             ..Default::default()
         })
         .await?;
 
     let consumer = stream
         .get_or_create_consumer("block_importer", ConsumerConfig {
+            durable_name: Some("block_importer".to_string()),
             ack_policy: AckPolicy::Explicit,
             ..Default::default()
         })
@@ -113,13 +115,12 @@ async fn process_messages(
     cli: &Cli,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let (_, publisher_client, consumer) = setup_nats(cli).await?;
-    let fuel_streams = FuelStreams::new(&publisher_client, None).await;
-    let fuel_streams: Arc<dyn FuelStreamsExt> = fuel_streams.arc();
-
+    let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
+    let (_, publisher_stream) =
+        FuelStreams::setup_all(&core_client, &publisher_client).await;
+    let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
     while !token.is_cancelled() {
         let messages = consumer.fetch().max_messages(100).messages().await?;
-        let fuel_streams = fuel_streams.clone();
         tokio::pin!(messages);
         while let Some(msg) = messages.next().await {
             let msg = msg?;

@@ -32,7 +32,7 @@ impl Publisher {
         let nats_client_opts =
             NatsClientOpts::admin_opts(None).with_custom_url(nats_url);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let fuel_streams = Arc::new(FuelStreams::new(&nats_client, None).await);
+        let fuel_streams = Arc::new(FuelStreams::new(&nats_client).await);
 
         telemetry.record_streams_count(
             fuel_core.chain_id(),
@@ -59,7 +59,7 @@ impl Publisher {
     ) -> anyhow::Result<Self> {
         Ok(Publisher {
             fuel_core,
-            fuel_streams: Arc::new(FuelStreams::new(nats_client, None).await),
+            fuel_streams: Arc::new(FuelStreams::new(nats_client).await),
             nats_client: nats_client.clone(),
             telemetry: Telemetry::new().await?,
         })
