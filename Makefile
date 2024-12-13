@@ -225,9 +225,6 @@ run-publisher-testnet-profiling:
 #  Streamer Run Commands
 # ------------------------------------------------------------
 
-run-streamer-local:
-	cargo run --package fuel-streams-ws --bin ws-streamer -- --config-path crates/fuel-streams-ws/config.toml
-
 run-streamer: check-network
 	@./scripts/run_streamer.sh \
 		--mode $(MODE) \

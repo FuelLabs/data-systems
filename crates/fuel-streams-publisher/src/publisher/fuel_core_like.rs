@@ -193,7 +193,7 @@ impl FuelCoreLike for FuelCore {
         historical: bool,
     ) -> anyhow::Result<()> {
         if !historical {
-            // self.fuel_service.await_relayer_synced().await?;
+            self.fuel_service.await_relayer_synced().await?;
         }
         Ok(())
     }

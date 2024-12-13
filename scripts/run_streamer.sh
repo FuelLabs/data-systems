@@ -87,8 +87,8 @@ COMMON_ARGS=(
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p fuel-streams-ws --bin ws-streamer -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p fuel-streams-ws -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package fuel-streams-ws --bin ws-streamer
+    cargo build --profile profiling --package fuel-streams-ws
     samply record ./target/profiling/fuel-streams-ws "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

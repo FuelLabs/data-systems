@@ -69,10 +69,12 @@ impl FuelNetwork {
                 Url::parse("http://0.0.0.0:9003").expect("working url")
             }
             FuelNetwork::Testnet => {
-                Url::parse("http://0.0.0.0:9003").expect("working url")
+                Url::parse("http://stream-testnet.fuel.network:9003")
+                    .expect("working url")
             }
             FuelNetwork::Mainnet => {
-                Url::parse("http://0.0.0.0:9003").expect("working url")
+                Url::parse("http://stream.fuel.network:9003")
+                    .expect("working url")
             }
         }
     }
@@ -83,11 +85,11 @@ impl FuelNetwork {
                 Url::parse("ws://0.0.0.0:9003").expect("working url")
             }
             FuelNetwork::Testnet => {
-                Url::parse("ws://0.0.0.0:9003").expect("working url")
+                Url::parse("ws://stream-testnet.fuel.network:9003")
+                    .expect("working url")
             }
-            FuelNetwork::Mainnet => {
-                Url::parse("ws://0.0.0.0:9003").expect("working url")
-            }
+            FuelNetwork::Mainnet => Url::parse("ws://stream.fuel.network:9003")
+                .expect("working url"),
         }
     }
 

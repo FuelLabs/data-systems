@@ -11,10 +11,6 @@ version = { workspace = true }
 rust-version = { workspace = true }
 publish = false
 
-[[bin]]
-name = "ws-streamer"
-path = "src/bin/ws-streamer.rs"
-
 [dependencies]
 actix-cors = { workspace = true }
 actix-server = { workspace = true }
