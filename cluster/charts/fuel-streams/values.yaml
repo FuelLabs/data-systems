@@ -582,7 +582,7 @@ nats-client:
 # -------------------------------------------------------------------------------------------------
 
 natsExternalService:
-  enabled: false
+  enabled: true
   certificate:
     issuer: "letsencrypt-prod"
     duration: "2160h"

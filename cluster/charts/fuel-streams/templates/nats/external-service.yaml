@@ -37,10 +37,7 @@ spec:
       port: 8443
       protocol: TCP
       targetPort: websocket
-    # - name: webserver
-    #   port: 8082
-    #   targetPort: http
-    #   protocol: TCPselector:
+  selector:
     {{- include "fuel-streams.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/service: external-ws
     app.kubernetes.io/component: {{ include "fuel-streams.fullname" . }}-nats-client
