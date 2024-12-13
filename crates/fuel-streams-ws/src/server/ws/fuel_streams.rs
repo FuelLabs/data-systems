@@ -5,7 +5,7 @@ use async_nats::{
     RequestErrorKind,
 };
 use fuel_streams::types::Log;
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{prelude::*, SubscriptionConfig};
 use futures::stream::BoxStream;
 
 #[derive(Clone)]
@@ -39,10 +39,10 @@ impl FuelStreams {
 
     pub async fn subscribe(
         &self,
-        name: &str,
+        sub_subject: &str,
         subscription_config: Option<SubscriptionConfig>,
     ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
-        match name {
+        match sub_subject {
             Transaction::NAME => {
                 self.transactions.subscribe_raw(subscription_config).await
             }

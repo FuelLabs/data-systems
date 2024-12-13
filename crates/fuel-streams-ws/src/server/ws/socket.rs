@@ -14,6 +14,8 @@ use fuel_streams::{
     StreamEncoder,
     Streamable,
 };
+use fuel_streams_core::SubscriptionConfig;
+use fuel_streams_storage::DeliverPolicy;
 use futures::StreamExt;
 use uuid::Uuid;
 
@@ -154,8 +156,14 @@ pub async fn get_ws(
                                 );
 
                                 // subscribe to the stream
+                                let config = SubscriptionConfig {
+                                    deliver_policy: DeliverPolicy::All,
+                                    filter_subjects: vec![
+                                        subject_wildcard.clone()
+                                    ],
+                                };
                                 let mut sub = match streams
-                                    .subscribe(&sub_subject, None)
+                                    .subscribe(&sub_subject, Some(config))
                                     .await
                                 {
                                     Ok(sub) => sub,
