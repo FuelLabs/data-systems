@@ -72,29 +72,6 @@ startupProbe:
   failureThreshold: 6
   successThreshold: 1
 
-tls:
-  enabled: false
-  issuer: "letsencrypt-prod"
-  duration: "2160h"
-  renewBefore: "360h"
-  annotations: {}
-  labels: {}
-
-externalService:
-  enabled: false
-  dns: "streams.svc.cluster.local"
-  labels: {}
-  annotations: {}
-  ports:
-    - name: websocket
-      port: 8443
-      targetPort: websocket
-      protocol: TCP
-    - name: webserver
-      port: 8082
-      targetPort: http
-      protocol: TCP
-
 # -------------------------------------------------------------------------------------------------
 # Monitoring
 # -------------------------------------------------------------------------------------------------
@@ -195,63 +172,7 @@ publisher:
   #       name: additional-secrets
 
 # -------------------------------------------------------------------------------------------------
-# WebServer configuration
-# -------------------------------------------------------------------------------------------------
-
-webserver:
-  enabled: false
-  port: 8082
-
-  image:
-    repository: fuel-streams-webserver
-    pullPolicy: Never
-    tag: "latest"
-
-  config:
-    replicaCount: 1
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    ports: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
-    securityContext: {}
-    containerSecurityContext: {}
-    resources:
-      requests:
-        cpu: 100m
-        memory: 64Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
-
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        percentValue: 100
-        periodSeconds: 15
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        percentValue: 100
-        podValue: 4
-        periodSeconds: 15
-
-  env:
-    PORT: 8082
-
-# -------------------------------------------------------------------------------------------------
-# WebServer configuration
+# Consumer configuration
 # -------------------------------------------------------------------------------------------------
 
 consumer:
@@ -366,6 +287,12 @@ nats-core:
       enabled: true
       port: 6222
       replicas: 3
+    
+    websocket:
+      enabled: true
+      port: 8443
+      merge:
+        no_tls: true
 
     jetstream:
       enabled: true
@@ -408,6 +335,7 @@ nats-core:
 
 nats-publisher:
   enabled: true
+
   natsBox:
     enabled: false
   promExporter:
@@ -497,9 +425,10 @@ nats-publisher:
 
 nats-client:
   enabled: true
+
   global:
     labels:
-      app.kubernetes.io/service: external-service
+      app.kubernetes.io/service: external-ws
   natsBox:
     enabled: false
   promExporter:
@@ -556,7 +485,7 @@ nats-client:
       port: 7422
       merge:
         remotes:
-          - urls: ["nats://admin:admin@fuel-streams-nats-core:7422"]
+          - urls: ["ws://admin:admin@fuel-streams-nats-core:8443"]
             account: ADMIN
 
     websocket:
@@ -564,7 +493,7 @@ nats-client:
       port: 8443
       merge:
         no_tls: true
-        no_auth_user: default_user
+        # no_auth_user: default_user
 
     monitor:
       enabled: false
@@ -617,3 +546,85 @@ nats-client:
       #               - "$JS.API.STREAM.RESTORE.>"
       #               - "$JS.API.STREAM.MSG.DELETE.>"
       #               - "$JS.API.CONSUMER.DURABLE.CREATE.>"
+      
+# -------------------------------------------------------------------------------------------------
+# NATS External Service configuration (WebSocket)
+# -------------------------------------------------------------------------------------------------
+
+natsExternalService:
+  enabled: false
+  certificate:
+    issuer: "letsencrypt-prod"
+    duration: "2160h"
+    renewBefore: "360h"
+    annotations: {}
+    labels: {}
+  service:
+    dns: "stream.fuel.network"
+    labels: {}
+    annotations: {}
+    ports:
+      - name: websocket
+        port: 8443
+        targetPort: websocket
+        protocol: TCP
+      - name: webserver
+        port: 8082
+        targetPort: http
+        protocol: TCP
+
+# -------------------------------------------------------------------------------------------------
+# WebServer configuration
+# -------------------------------------------------------------------------------------------------
+
+webserver:
+  enabled: false
+  port: 8082
+
+  image:
+    repository: fuel-streams-webserver
+    pullPolicy: Never
+    tag: "latest"
+
+  config:
+    replicaCount: 1
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+  env:
+    PORT: 8082

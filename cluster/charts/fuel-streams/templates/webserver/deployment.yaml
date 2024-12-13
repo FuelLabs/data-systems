@@ -10,7 +10,7 @@ metadata:
     {{- include "fuel-streams.labels" . | nindent 4 }}
     {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 4 }}
     app.kubernetes.io/component: webserver
-    app.kubernetes.io/service: external-service
+    app.kubernetes.io/service: external-ws
 
 spec:
   {{- if not $webserver.autoscaling.enabled }}
@@ -21,7 +21,7 @@ spec:
       {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
       {{- include "set-value" (dict "context" $webserver "path" "config.selectorLabels") | nindent 6 }}
       app.kubernetes.io/component: webserver
-      app.kubernetes.io/service: external-service
+      app.kubernetes.io/service: external-ws
 
   template:
     metadata:
@@ -31,7 +31,7 @@ spec:
         {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
         {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 8 }}
         app.kubernetes.io/component: webserver
-        app.kubernetes.io/service: external-service
+        app.kubernetes.io/service: external-ws
 
     spec:
       {{- if .Values.serviceAccount.create }}
