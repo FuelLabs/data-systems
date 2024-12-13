@@ -8,6 +8,9 @@ metadata:
     {{- include "fuel-streams.labels" . | nindent 4 }}
     {{- include "set-value" (dict "context" $service "path" "labels") | nindent 4 }}
     app.kubernetes.io/service: external-ws
+    app.kubernetes.io/component: {{ include "fuel-streams.fullname" . }}-nats-client
+    app.kubernetes.io/instance: {{ include "fuel-streams.fullname" . }}-nats-client
+    app.kubernetes.io/name: {{ include "fuel-streams.fullname" . }}-nats-client
   annotations:
     external-dns.alpha.kubernetes.io/hostname: {{ $service.dns | quote }}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
@@ -24,12 +27,24 @@ spec:
   loadBalancerClass: service.k8s.aws/nlb
   externalTrafficPolicy: Local
   ports:
-    - name: http-acme
-      port: 80
-      targetPort: 8082
+    - appProtocol: tcp
+      name: nats
+      port: 4222
       protocol: TCP
-    {{- toYaml $service.ports | nindent 4 }}
-  selector:
+      targetPort: nats
+    - appProtocol: tcp
+      name: wss
+      port: 8443
+      protocol: TCP
+      targetPort: websocket
+    # - name: webserver
+    #   port: 8082
+    #   targetPort: http
+    #   protocol: TCPselector:
     {{- include "fuel-streams.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/service: external-ws
+    app.kubernetes.io/component: {{ include "fuel-streams.fullname" . }}-nats-client
+    app.kubernetes.io/instance: {{ include "fuel-streams.fullname" . }}-nats-client
+    app.kubernetes.io/name: {{ include "fuel-streams.fullname" . }}-nats-client
 {{- end }}
+

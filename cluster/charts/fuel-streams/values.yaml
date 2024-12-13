@@ -291,8 +291,18 @@ nats-core:
     websocket:
       enabled: true
       port: 8443
+      tls:
+        enabled: false
+        # secretName: fuel-streams-nats-tls
+        # dir: /etc/nats-certs/websocket
+        # cert: tls.crt
+        # key: tls.key
       merge:
         no_tls: true
+        # same_origin: false
+        # compression: false
+        # handshake_timeout: "20s"
+        # no_auth_user: default_user
 
     jetstream:
       enabled: true
@@ -328,6 +338,11 @@ nats-core:
           users:
             - user: admin
               password: admin
+        PUBLIC:
+          jetstream: enabled
+          users:
+            - user: default_user
+              password: ""
 
 # -------------------------------------------------------------------------------------------------
 # NATS Publisher configuration
@@ -418,6 +433,11 @@ nats-publisher:
           users:
             - user: admin
               password: admin
+        PUBLIC:
+          jetstream: enabled
+          users:
+            - user: default_user
+              password: ""
 
 # -------------------------------------------------------------------------------------------------
 # NATS Client configuration
@@ -491,8 +511,17 @@ nats-client:
     websocket:
       enabled: true
       port: 8443
+      tls:
+        enabled: false
+        # secretName: fuel-streams-nats-tls
+        # dir: /etc/nats-certs/websocket
+        # cert: tls.crt
+        # key: tls.key
       merge:
         no_tls: true
+        # same_origin: false
+        # compression: false
+        # handshake_timeout: "20s"
         # no_auth_user: default_user
 
     monitor:
@@ -521,6 +550,7 @@ nats-client:
           users:
             - user: default_user
               password: ""
+
       # TODO: Add users and permissions later
       # accounts:
       #   USERS:
@@ -560,18 +590,9 @@ natsExternalService:
     annotations: {}
     labels: {}
   service:
-    dns: "stream.fuel.network"
+    dns: "stream-dev.fuel.network"
     labels: {}
     annotations: {}
-    ports:
-      - name: websocket
-        port: 8443
-        targetPort: websocket
-        protocol: TCP
-      - name: webserver
-        port: 8082
-        targetPort: http
-        protocol: TCP
 
 # -------------------------------------------------------------------------------------------------
 # WebServer configuration
@@ -579,7 +600,7 @@ natsExternalService:
 
 webserver:
   enabled: false
-  port: 8082
+  port: 8443
 
   image:
     repository: fuel-streams-webserver
@@ -627,4 +648,4 @@ webserver:
         periodSeconds: 15
 
   env:
-    PORT: 8082
+    PORT: 8443
