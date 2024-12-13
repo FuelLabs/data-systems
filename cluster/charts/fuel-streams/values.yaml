@@ -111,7 +111,7 @@ publisher:
   network: mainnet
 
   image:
-    repository: fuel-streams-publisher
+    repository: sv-emitter
     pullPolicy: Never
     tag: "latest"
 
@@ -260,7 +260,7 @@ consumer:
   image:
     repository: sv-consumer
     pullPolicy: Never
-    tag: "latest"
+    tag: latest
     args:
       - --nats-core-url
       - $(NATS_CORE_URL)

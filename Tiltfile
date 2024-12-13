@@ -10,50 +10,71 @@ version_settings(True)   # Enable 'new version' banner
 # Load environment variables from .env file
 dotenv()
 
-# Build images with proper configuration for Minikube
-# IMAGES = {
-#     # 'fuel-streams-publisher': 'fuel-streams-publisher',
-#     'sv-emitter': 'sv-emitter',
-#     'sv-consumer': 'sv-consumer'
-# }
+allow_k8s_contexts('minikube')
 
-# for ref, image_name in IMAGES.items():
-#     custom_build(
-#         ref=f'{ref}:latest',
-#         command=[f'IMAGE_NAME={image_name}', './cluster/scripts/build_docker.sh'],
-#         deps=[
-#             './src',
-#             './Cargo.toml',
-#             './Cargo.lock',
-#             f'./cluster/docker/{image_name}.Dockerfile'
-#         ],
-#         live_update=[
-#             sync('./src', '/usr/src'),
-#             sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-#             sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-#             run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-#         ],
-#         skips_local_docker=True,
-#         ignore=['./target']
-#     )
+# Build sv-emitter
+custom_build(
+    ref='sv-emitter:latest',
+    command=[
+        './cluster/scripts/build_docker.sh',
+        'sv-emitter',
+    ],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './cluster/docker/sv-emitter.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    skips_local_docker=True,
+    ignore=['./target']
+)
+
+# Build sv-consumer
+custom_build(
+    ref='sv-consumer:latest',
+    command=[
+        './cluster/scripts/build_docker.sh',
+        'sv-consumer',
+    ],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './cluster/docker/sv-consumer.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    skips_local_docker=True,
+    ignore=['./target']
+)
 
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
 
 # Resource configurations
 RESOURCES = {
-    # 'publisher': {
-    #     'name': 'fuel-streams-publisher',
-    #     'ports': ['4000:4000', '8080:8080'],
-    #     'labels': 'publisher',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'consumer': {
-    #     'name': 'sv-consumer',
-    #     'ports': ['8082:8082'],
-    #     'labels': 'consumer',
-    #     'config_mode': ['minimal', 'full']
-    # },
+    'publisher': {
+        'name': 'fuel-streams-publisher',
+        'ports': ['4000:4000', '8080:8080'],
+        'labels': 'publisher',
+        'config_mode': ['minimal', 'full']
+    },
+    'consumer': {
+        'name': 'fuel-streams-sv-consumer',
+        'ports': ['8082:8082'],
+        'labels': 'consumer',
+        'config_mode': ['minimal', 'full']
+    },
     'nats-core': {
         'name': 'fuel-streams-nats-core',
         'ports': ['4222:4222', '6222:6222', '7422:7422'],
@@ -71,28 +92,7 @@ RESOURCES = {
         'ports': ['24222:4222', '27422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
-    },
-    # 'grafana': {
-    #     'name': 'fuel-streams-grafana',
-    #     'ports': ['3000:3000'],
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'prometheus-operator': {
-    #     'name': 'fuel-streams-prometheus-operator',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'kube-state-metrics': {
-    #     'name': 'fuel-streams-kube-state-metrics',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'node-exporter': {
-    #     'name': 'fuel-streams-prometheus-node-exporter',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # }
+    }
 }
 
 k8s_yaml(helm(

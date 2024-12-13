@@ -71,3 +71,5 @@ COPY --from=builder /root/sv-consumer .
 COPY --from=builder /root/sv-consumer.d .
 
 EXPOSE ${PORT}
+
+ENTRYPOINT ["./sv-consumer"]
