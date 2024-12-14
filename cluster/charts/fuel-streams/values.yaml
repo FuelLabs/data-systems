@@ -208,13 +208,7 @@ consumer:
     startupProbe: {}
     securityContext: {}
     containerSecurityContext: {}
-    resources:
-      requests:
-        cpu: 1
-        memory: 256Mi
-      limits:
-        cpu: 2
-        memory: 512Mi
+    resources: {}
 
   autoscaling:
     enabled: true
@@ -259,14 +253,15 @@ nats-core:
       tag: 2.10.22-alpine
     env:
       GOMEMLIMIT: 2GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 8
-        memory: 2Gi
+    merge:
+      startupProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        failureThreshold: 1080
+      resources:
+        requests:
+          cpu: 8
+          memory: 2Gi
 
   service:
     enabled: true
@@ -287,6 +282,8 @@ nats-core:
       enabled: true
       port: 6222
       replicas: 3
+      routeURLs:
+        useFQDN: true
     
     websocket:
       enabled: true
@@ -362,14 +359,15 @@ nats-publisher:
       tag: 2.10.22-alpine
     env:
       GOMEMLIMIT: 1GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 4
-        memory: 1Gi
+    merge:
+      startupProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        failureThreshold: 1080
+      resources:
+        requests:
+          cpu: 4
+          memory: 1Gi
 
   service:
     enabled: true
@@ -393,6 +391,9 @@ nats-publisher:
         whenUnsatisfiable: DoNotSchedule
 
   config:
+    cluster:
+      enabled: false
+
     jetstream:
       enabled: true
       fileStore:
@@ -460,14 +461,11 @@ nats-client:
       tag: 2.10.22-alpine
     env:
       GOMEMLIMIT: 512MiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 2
-        memory: 512Mi
+    merge:
+      resources:
+        requests:
+          cpu: 2
+          memory: 512Mi
 
   service:
     enabled: true
@@ -491,6 +489,9 @@ nats-client:
         whenUnsatisfiable: DoNotSchedule
 
   config:
+    cluster:
+      enabled: false
+
     jetstream:
       enabled: true
       fileStore:
