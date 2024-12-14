@@ -24,6 +24,10 @@ spec:
   loadBalancerClass: service.k8s.aws/nlb
   externalTrafficPolicy: Local
   ports:
+    - name: http-acme
+      port: 80
+      targetPort: 8089
+      protocol: TCP
     - appProtocol: tcp
       name: nats
       port: 4222
