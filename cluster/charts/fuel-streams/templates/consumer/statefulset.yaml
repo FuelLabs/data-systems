@@ -47,7 +47,8 @@ spec:
             - /bin/sh
             - -c
             - |
-              until kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=nats--timeout=300s; do
+              until kubectl wait --for=condition=ready statefulset -l app.kubernetes.io/name=nats-core --timeout=300s \
+                && kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=nats-publisher --timeout=300s; do
                 echo "Waiting for NATS services to be ready"
                 sleep 2
               done
