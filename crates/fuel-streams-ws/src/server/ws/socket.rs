@@ -233,7 +233,7 @@ pub async fn get_ws(
                                 return;
                             }
 
-                            // TODO: implement unsubscribe and session management
+                            // TODO: implement session management for the same user_id
 
                             // send a message to the client to confirm unsubscribing
                             send_message_to_socket(

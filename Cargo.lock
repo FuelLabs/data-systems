@@ -3307,7 +3307,7 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.20.1",
  "tracing",
  "tracing-futures",
  "url",
@@ -4373,11 +4373,11 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.4",
  "tokio",
+ "tokio-tungstenite 0.24.0",
  "toml",
  "tracing",
  "tracing-actix-web",
  "tracing-subscriber",
- "tungstenite 0.24.0",
  "url",
  "urlencoding",
  "uuid",
@@ -10014,6 +10014,18 @@ dependencies = [
  "tokio-rustls 0.24.1",
  "tungstenite 0.20.1",
  "webpki-roots 0.25.4",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite 0.24.0",
 ]
 
 [[package]]
