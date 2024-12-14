@@ -254,10 +254,10 @@ nats-core:
     env:
       GOMEMLIMIT: 2GiB
     merge:
-      startupProbe:
-        initialDelaySeconds: 60
-        periodSeconds: 10
-        failureThreshold: 1080
+      # startupProbe:
+      #   initialDelaySeconds: 60
+      #   periodSeconds: 10
+      #   failureThreshold: 1080
       resources:
         requests:
           cpu: 8
@@ -269,6 +269,8 @@ nats-core:
       nats:
         enabled: true
       cluster:
+        enabled: true
+      websocket:
         enabled: true
       leafnodes:
         enabled: true
@@ -360,10 +362,10 @@ nats-publisher:
     env:
       GOMEMLIMIT: 1GiB
     merge:
-      startupProbe:
-        initialDelaySeconds: 60
-        periodSeconds: 10
-        failureThreshold: 1080
+      # startupProbe:
+      #   initialDelaySeconds: 60
+      #   periodSeconds: 10
+      #   failureThreshold: 1080
       resources:
         requests:
           cpu: 4
@@ -374,6 +376,8 @@ nats-publisher:
     ports:
       nats:
         enabled: true
+      websocket:
+        enabled: false
       monitor:
         enabled: false
       mqtt:
@@ -392,6 +396,9 @@ nats-publisher:
 
   config:
     cluster:
+      enabled: false
+
+    websocket:
       enabled: false
 
     jetstream:
@@ -476,6 +483,8 @@ nats-client:
         enabled: true
       monitor:
         enabled: false
+      mqtt:
+        enabled: false 
 
   statefulSet:
     merge:
