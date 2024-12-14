@@ -378,6 +378,8 @@ nats-publisher:
         enabled: true
       websocket:
         enabled: false
+      leafnodes:
+        enabled: true
       monitor:
         enabled: false
       mqtt:
@@ -480,6 +482,8 @@ nats-client:
       nats:
         enabled: true
       websocket:
+        enabled: true
+      leafnodes:
         enabled: true
       monitor:
         enabled: false
