@@ -4372,6 +4372,7 @@ dependencies = [
  "serde_prometheus",
  "sysinfo",
  "thiserror 2.0.4",
+ "time",
  "tokio",
  "tokio-tungstenite 0.24.0",
  "toml",

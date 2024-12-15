@@ -189,11 +189,11 @@ publisher:
 # -------------------------------------------------------------------------------------------------
 
 webserver:
-  enabled: false
-  port: 8082
+  enabled: true
+  port: 9003
 
   image:
-    repository: fuel-streams-webserver
+    repository: fuel-streams-ws
     pullPolicy: Never
     tag: "latest"
 
@@ -227,6 +227,49 @@ webserver:
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
 
+  env:
+    STREAMER_MAX_WORKERS: "10"
+    STREAMER_API_PORT: 9003
+    JWT_AUTH_SECRET: "secret"
+    USE_ELASTIC_LOGGING: false
+    USE_METRICS: true
+    AWS_S3_ENABLED: true
+    NATS_URL: "fuel-streams-nats-publisher:4222"
+    NETWORK: testnet
+
+  # Additional environment variables with complex structures
+  # extraEnv: []
+  #   - name: AWS_ACCESS_KEY_ID
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-webserver
+  #         key: AWS_ACCESS_KEY_ID
+  #   - name: AWS_SECRET_ACCESS_KEY
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-webserver
+  #         key: AWS_SECRET_ACCESS_KEY
+  #   - name: AWS_REGION
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-webserver
+  #         key: AWS_REGION
+  #   - name: AWS_S3_BUCKET_NAME
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-webserver
+  #         key: AWS_S3_BUCKET_NAME
+  #   - name: AWS_ENDPOINT_URL
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: fuel-streams-webserver
+  #         key: AWS_ENDPOINT_URL
+  # Optional: Bulk environment references
+  # envFrom: {}
+  #   - configMapRef:
+  #       name: additional-config
+  #   - secretRef:
+  #       name: additional-secrets
 # -------------------------------------------------------------------------------------------------
 # NATS Core configuration
 # -------------------------------------------------------------------------------------------------

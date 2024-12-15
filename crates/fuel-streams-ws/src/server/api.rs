@@ -17,9 +17,7 @@ use super::{
     state::ServerState,
     ws::socket::get_ws,
 };
-use crate::config::Config;
-
-const MAX_WORKERS: usize = 10;
+use crate::{config::Config, STREAMER_MAX_WORKERS};
 
 const API_VERSION: &str = "v1";
 
@@ -82,7 +80,7 @@ pub fn create_api(
             )
     })
     .bind(server_addr)?
-    .workers(MAX_WORKERS)
+    .workers(*STREAMER_MAX_WORKERS)
     .shutdown_timeout(20)
     .run();
 

@@ -29,7 +29,7 @@ use crate::{
         state::ServerState,
         ws::{
             fuel_streams::FuelStreamsExt,
-            models::{ServerMessage, SubscriptionPayload, SubscriptionType},
+            models::{ServerMessage, SubscriptionPayload},
         },
     },
     telemetry::Telemetry,
@@ -105,8 +105,7 @@ pub async fn get_ws(
                                 "Received subscribe message: {:?}",
                                 payload
                             );
-                            let SubscriptionType::Stream(subject_wildcard) =
-                                payload.topic;
+                            let subject_wildcard = payload.wildcard;
                             let deliver_policy = payload.deliver_policy;
 
                             // verify the subject name
@@ -136,9 +135,7 @@ pub async fn get_ws(
                                 &mut session,
                                 ServerMessage::Subscribed(
                                     SubscriptionPayload {
-                                        topic: SubscriptionType::Stream(
-                                            subject_wildcard.clone(),
-                                        ),
+                                        wildcard: subject_wildcard.clone(),
                                         deliver_policy,
                                     },
                                 ),
@@ -214,8 +211,7 @@ pub async fn get_ws(
                                 "Received unsubscribe message: {:?}",
                                 payload
                             );
-                            let SubscriptionType::Stream(subject_wildcard) =
-                                payload.topic;
+                            let subject_wildcard = payload.wildcard;
 
                             let deliver_policy = payload.deliver_policy;
 
@@ -240,9 +236,7 @@ pub async fn get_ws(
                                 &mut session,
                                 ServerMessage::Unsubscribed(
                                     SubscriptionPayload {
-                                        topic: SubscriptionType::Stream(
-                                            subject_wildcard,
-                                        ),
+                                        wildcard: subject_wildcard,
                                         deliver_policy,
                                     },
                                 ),

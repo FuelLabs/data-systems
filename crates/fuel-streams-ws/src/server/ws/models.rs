@@ -1,16 +1,62 @@
-use fuel_streams_storage::DeliverPolicy;
+use fuel_streams_storage::DeliverPolicy as NatsDeliverPolicy;
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 #[serde(rename_all = "camelCase")]
-pub enum SubscriptionType {
-    Stream(String),
+pub enum DeliverPolicy {
+    All,
+    Last,
+    New,
+    ByStartSequence {
+        #[serde(rename = "optStartSeq")]
+        start_sequence: u64,
+    },
+    ByStartTime {
+        #[serde(rename = "optStartTime")]
+        start_time: time::OffsetDateTime,
+    },
+    LastPerSubject,
+}
+
+impl From<DeliverPolicy> for NatsDeliverPolicy {
+    fn from(policy: DeliverPolicy) -> Self {
+        match policy {
+            DeliverPolicy::All => NatsDeliverPolicy::All,
+            DeliverPolicy::Last => NatsDeliverPolicy::Last,
+            DeliverPolicy::New => NatsDeliverPolicy::New,
+            DeliverPolicy::ByStartSequence { start_sequence } => {
+                NatsDeliverPolicy::ByStartSequence { start_sequence }
+            }
+            DeliverPolicy::ByStartTime { start_time } => {
+                NatsDeliverPolicy::ByStartTime { start_time }
+            }
+            DeliverPolicy::LastPerSubject => NatsDeliverPolicy::LastPerSubject,
+        }
+    }
+}
+
+impl From<NatsDeliverPolicy> for DeliverPolicy {
+    fn from(policy: NatsDeliverPolicy) -> Self {
+        match policy {
+            NatsDeliverPolicy::All => DeliverPolicy::All,
+            NatsDeliverPolicy::Last => DeliverPolicy::Last,
+            NatsDeliverPolicy::New => DeliverPolicy::New,
+            NatsDeliverPolicy::ByStartSequence { start_sequence } => {
+                DeliverPolicy::ByStartSequence { start_sequence }
+            }
+            NatsDeliverPolicy::ByStartTime { start_time } => {
+                DeliverPolicy::ByStartTime { start_time }
+            }
+            NatsDeliverPolicy::LastPerSubject => DeliverPolicy::LastPerSubject,
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
-    pub topic: SubscriptionType,
+    pub wildcard: String,
     pub deliver_policy: DeliverPolicy,
 }
 
@@ -32,25 +78,21 @@ pub enum ServerMessage {
 
 #[cfg(test)]
 mod tests {
-    use fuel_streams_storage::DeliverPolicy;
-
-    use super::{ClientMessage, SubscriptionPayload, SubscriptionType};
+    use super::{ClientMessage, DeliverPolicy, SubscriptionPayload};
 
     #[test]
     fn test_sub_ser() {
         let stream_topic_wildcard = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
-            topic: SubscriptionType::Stream(stream_topic_wildcard.clone()),
+            wildcard: stream_topic_wildcard.clone(),
             deliver_policy: DeliverPolicy::All,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
         println!("Ser value {:?}", ser_str_value);
         let expected_value = serde_json::json!({
             "subscribe": {
-                "topic": {
-                    "stream": stream_topic_wildcard,
-                    "deliver_policy": "all"
-                }
+                "wildcard": stream_topic_wildcard,
+                "deliverPolicy": "all"
             }
         });
         let deser_msg_val =

@@ -5,7 +5,6 @@ use fuel_streams::{
     utxos::Utxo,
     Streamable,
 };
-use fuel_streams_storage::DeliverPolicy;
 use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt,
@@ -42,9 +41,9 @@ use crate::server::{
         errors::WsSubscriptionError,
         models::{
             ClientMessage,
+            DeliverPolicy,
             ServerMessage,
             SubscriptionPayload,
-            SubscriptionType,
         },
         socket::verify_and_extract_subject_name,
     },
@@ -69,8 +68,11 @@ pub struct WebSocketClient {
             >,
         >,
     >,
-    jwt_token: String,
+    jwt_token: Option<String>,
     ws_url: Url,
+    network: FuelNetwork,
+    username: String,
+    password: String,
 }
 
 impl WebSocketClient {
@@ -86,8 +88,11 @@ impl WebSocketClient {
         Ok(Self {
             read_stream: None,
             write_sink: None,
-            jwt_token,
+            jwt_token: Some(jwt_token),
             ws_url,
+            network,
+            username: username.to_string(),
+            password: password.to_string(),
         })
     }
 
@@ -123,18 +128,29 @@ impl WebSocketClient {
         }
     }
 
+    pub async fn refresh_jwt(&mut self) -> anyhow::Result<()> {
+        let jwt_token =
+            Self::fetch_jwt(self.network, &self.username, &self.password)
+                .await?;
+        self.jwt_token = Some(jwt_token);
+        Ok(())
+    }
+
     pub async fn connect(&mut self) -> anyhow::Result<()> {
         let host = self
             .ws_url
             .host_str()
             .ok_or(anyhow::anyhow!("Unparsable ws host url"))?;
 
+        let jwt_token = self
+            .jwt_token
+            .clone()
+            .ok_or(anyhow::anyhow!("JWT token is missing"))?;
+
         let mut request = self.ws_url.as_str().into_client_request()?;
         let headers_map = request.headers_mut();
-        headers_map.insert(
-            AUTHORIZATION,
-            format!("Bearer {}", self.jwt_token).parse()?,
-        );
+        headers_map
+            .insert(AUTHORIZATION, format!("Bearer {}", jwt_token).parse()?);
         headers_map.insert(HOST, host.parse()?);
         headers_map.insert(UPGRADE, "websocket".parse()?);
         headers_map.insert(CONNECTION, "Upgrade".parse().unwrap());
@@ -166,11 +182,11 @@ impl WebSocketClient {
 
     pub async fn subscribe(
         &mut self,
-        subject: impl IntoSubject,
+        wildcard: impl IntoSubject,
         deliver_policy: DeliverPolicy,
     ) -> anyhow::Result<()> {
         let message = ClientMessage::Subscribe(SubscriptionPayload {
-            topic: SubscriptionType::Stream(subject.parse()),
+            wildcard: wildcard.parse(),
             deliver_policy,
         });
         self.send_client_message(message).await?;
@@ -179,11 +195,11 @@ impl WebSocketClient {
 
     pub async fn unsubscribe(
         &mut self,
-        subject: impl IntoSubject,
+        wildcard: impl IntoSubject,
         deliver_policy: DeliverPolicy,
     ) -> anyhow::Result<()> {
         let message = ClientMessage::Unsubscribe(SubscriptionPayload {
-            topic: SubscriptionType::Stream(subject.parse()),
+            wildcard: wildcard.parse(),
             deliver_policy,
         });
         self.send_client_message(message).await?;
@@ -224,16 +240,15 @@ impl WebSocketClient {
                         match &server_message {
                             ServerMessage::Subscribed(sub) => {
                                 println!(
-                                    "Subscribed to topic: {:?}",
-                                    sub.topic
+                                    "Subscribed to wildcard: {:?}",
+                                    sub.wildcard
                                 );
-                                let SubscriptionType::Stream(sub) = &sub.topic;
-                                subscription_topic = sub.clone();
+                                subscription_topic = sub.wildcard.clone();
                             }
                             ServerMessage::Unsubscribed(sub) => {
                                 println!(
-                                    "Unsubscribed from topic: {:?}",
-                                    sub.topic
+                                    "Unsubscribed from wildcard: {:?}",
+                                    sub.wildcard
                                 );
                             }
                             ServerMessage::Update(update) => {

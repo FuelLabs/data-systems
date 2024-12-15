@@ -16,9 +16,12 @@ use std::time::Duration;
 use fuel_streams::{
     blocks::BlocksSubject,
     subjects::SubjectBuildable,
-    types::{DeliverPolicy, FuelNetwork},
+    types::FuelNetwork,
 };
-use fuel_streams_ws::client::WebSocketClient;
+use fuel_streams_ws::{
+    client::WebSocketClient,
+    server::ws::models::DeliverPolicy,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
