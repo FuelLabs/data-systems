@@ -17,13 +17,9 @@ fi
 # Delete any existing minikube cluster
 minikube delete
 
-# Default values for resources
-DEFAULT_DISK_SIZE='50000mb'
-DEFAULT_MEMORY='12000mb'
-
-# Get parameters with defaults
-DISK_SIZE=${1:-$DEFAULT_DISK_SIZE}
-MEMORY=${2:-$DEFAULT_MEMORY}
+# Set disk and memory size, using defaults if not provided
+DISK_SIZE=${1:-'50000mb'}
+MEMORY=${2:-'12000mb'}
 
 # Start minikube with specified resources
 minikube start \

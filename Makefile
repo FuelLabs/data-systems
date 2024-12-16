@@ -112,6 +112,9 @@ clean-build:
 	rm -rf target/
 	rm -rf node_modules/
 
+cleanup-artifacts: REPO_OWNER="fuellabs"
+cleanup-artifacts: REPO_NAME="data-systems"
+cleanup-artifacts: DAYS_TO_KEEP=10
 cleanup-artifacts:
 	@echo "Running artifact cleanup..."
 	@./scripts/cleanup_artifacts.sh $(REPO_OWNER) $(REPO_NAME) $(DAYS_TO_KEEP)
@@ -120,10 +123,14 @@ cleanup-artifacts:
 #  Testing
 # ------------------------------------------------------------
 
+test-watch: PROFILE="all"
 test-watch:
 	cargo watch -x "test --profile $(PROFILE)"
 
+test: PACKAGE="all"
+test: PROFILE="dev"
 test:
+	@echo "Running tests for package $(PACKAGE) with profile $(PROFILE)"
 	@if [ "$(PACKAGE)" = "all" ] || [ -z "$(PACKAGE)" ]; then \
 		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --locked --no-tests=pass && \
 		cargo test --profile $(PROFILE) --doc --workspace; \
@@ -201,15 +208,15 @@ load-test:
 #  Publisher Run Commands
 # ------------------------------------------------------------
 
+run-publisher: NETWORK="testnet"
+run-publisher: PACKAGE="sv-emitter"
+run-publisher: MODE="dev"
+run-publisher: PORT="4000"
+run-publisher: TELEMETRY_PORT="8080"
+run-publisher: NATS_URL="localhost:4222"
+run-publisher: EXTRA_ARGS=""
 run-publisher: check-network
-	@NETWORK=$(NETWORK) \
-	PACKAGE=$(PACKAGE) \
-	MODE=$(MODE) \
-	PORT=$(PORT) \
-	TELEMETRY_PORT=$(TELEMETRY_PORT) \
-	EXTRA_ARGS="$(EXTRA_ARGS)" \
-	NATS_URL=$(NATS_URL) \
-	./scripts/run_publisher.sh
+	@./scripts/run_publisher.sh
 
 run-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
@@ -223,7 +230,8 @@ run-testnet-dev:
 run-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
-run-consumer: NATS_CORE_URL=localhost:4222 NATS_PUBLISHER_URL=localhost:4223
+run-consumer: NATS_CORE_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4223"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-core-url $(NATS_CORE_URL) \
