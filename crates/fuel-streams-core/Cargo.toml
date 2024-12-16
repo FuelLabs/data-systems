@@ -18,13 +18,22 @@ chrono = { workspace = true }
 clap = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
-fuel-core = { workspace = true }
-fuel-core-bin = { workspace = true }
-fuel-core-client = { workspace = true }
+fuel-core = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+    "test-helpers",
+] }
+fuel-core-bin = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+] }
+fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
 fuel-core-importer = { workspace = true }
-fuel-core-services = { workspace = true }
+fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
 fuel-core-storage = { workspace = true }
-fuel-core-types = { workspace = true }
+fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
 futures = { workspace = true }

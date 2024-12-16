@@ -2826,22 +2826,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eventsource-client"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43ddc25e1ad2cc0106d5e2d967397b4fb2068a66677ee9b0eea4600e5cfe8fb4"
-dependencies = [
- "futures",
- "hyper 0.14.31",
- "hyper-rustls 0.24.2",
- "hyper-timeout 0.4.1",
- "log",
- "pin-project",
- "rand",
- "tokio",
-]
-
-[[package]]
 name = "eyre"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3084,7 +3068,6 @@ dependencies = [
  "clap 4.5.23",
  "const_format",
  "dirs",
- "dotenvy",
  "fuel-core",
  "fuel-core-chain-config",
  "fuel-core-compression",
@@ -3129,14 +3112,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a10ccde16fd926137070d3baa77a1096c2ff6cdca26d14177139c16e59e697d"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
  "cynic",
  "derive_more 0.99.18",
- "eventsource-client",
  "fuel-core-types 0.40.2",
- "futures",
  "hex",
- "hyper-rustls 0.24.2",
  "itertools 0.12.1",
  "reqwest 0.11.27",
  "schemafy_lib",
@@ -4591,12 +4570,9 @@ dependencies = [
  "futures-util",
  "http 0.2.12",
  "hyper 0.14.31",
- "log",
  "rustls 0.21.12",
- "rustls-native-certs 0.6.3",
  "tokio",
  "tokio-rustls 0.24.1",
- "webpki-roots 0.25.4",
 ]
 
 [[package]]

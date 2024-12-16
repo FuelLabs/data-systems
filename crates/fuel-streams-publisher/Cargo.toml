@@ -24,9 +24,18 @@ derive_more = { version = "1.0", features = ["full"] }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 elasticsearch = "8.15.0-alpha.1"
-fuel-core = { workspace = true }
-fuel-core-bin = { workspace = true }
-fuel-core-services = { workspace = true }
+fuel-core = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+    "test-helpers",
+] }
+fuel-core-bin = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+] }
+fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
