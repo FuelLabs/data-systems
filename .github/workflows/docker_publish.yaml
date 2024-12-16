@@ -24,11 +24,11 @@ jobs:
       matrix:
         package:
           - name: fuel-streams-publisher
-            image: cluster/docker/publisher.Dockerfile
+            image: cluster/docker/fuel-core.Dockerfile
           - name: sv-emitter
-            image: cluster/docker/publisher.Dockerfile
+            image: cluster/docker/fuel-core.Dockerfile
           - name: sv-consumer
-            image: cluster/docker/consumer.Dockerfile
+            image: cluster/docker/sv-consumer.Dockerfile
     steps:
       - uses: actions/checkout@v4
 

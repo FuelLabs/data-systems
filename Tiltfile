@@ -17,16 +17,15 @@ custom_build(
     ref='sv-emitter:latest',
     command=[
         './cluster/scripts/build_docker.sh',
-        'sv-emitter',
-        '--build-arg', 'PACKAGE_NAME=sv-emitter',
-        '--build-arg', 'PORT=4000',
-        '--build-arg', 'P2P_PORT=30333'
+        '--image-name', 'sv-emitter',
+        '--dockerfile', './cluster/docker/fuel-core.Dockerfile',
+        '--build-args', '--build-arg PACKAGE_NAME=sv-emitter'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/publisher.Dockerfile'
+        './cluster/docker/fuel-core.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -43,7 +42,8 @@ custom_build(
     ref='sv-consumer:latest',
     command=[
         './cluster/scripts/build_docker.sh',
-        'sv-consumer',
+        '--image-name', 'sv-consumer',
+        '--dockerfile', './cluster/docker/sv-consumer.Dockerfile'
     ],
     deps=[
         './src',
