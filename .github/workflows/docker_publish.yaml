@@ -42,7 +42,7 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/${{ matrix.package }}
+          image: ghcr.io/fuellabs/${{ matrix.package.name }}
           dockerfile: ${{ matrix.package.image }}
           build-args: |-
             PACKAGE_NAME=${{ matrix.package.name }}
