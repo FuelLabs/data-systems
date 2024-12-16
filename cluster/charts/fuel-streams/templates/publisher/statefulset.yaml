@@ -136,6 +136,9 @@ spec:
             - "--relayer-da-deploy-height"
             - "5827607"
             {{- end }}
+            {{- if $publisher.image.extraArgs }}
+            {{- toYaml $publisher.image.extraArgs | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ int $publisher.service.port }}

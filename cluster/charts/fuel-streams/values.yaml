@@ -91,6 +91,7 @@ publisher:
     repository: sv-emitter
     pullPolicy: Never
     tag: "latest"
+    extraArgs: []
 
   service:
     type: ClusterIP

@@ -18,12 +18,15 @@ custom_build(
     command=[
         './cluster/scripts/build_docker.sh',
         'sv-emitter',
+        '--build-arg', 'PACKAGE_NAME=sv-emitter',
+        '--build-arg', 'PORT=4000',
+        '--build-arg', 'P2P_PORT=30333'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/sv-emitter.Dockerfile'
+        './cluster/docker/publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),

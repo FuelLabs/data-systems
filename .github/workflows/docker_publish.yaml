@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         package:
-          # - fuel-streams-publisher
+          - fuel-streams-publisher
           - sv-consumer
           - sv-emitter
     steps:
@@ -41,3 +41,5 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/${{ matrix.package }}
           dockerfile: cluster/docker/${{ matrix.package }}.Dockerfile
+          build-args: |-
+            PACKAGE_NAME=${{ matrix.package }}
