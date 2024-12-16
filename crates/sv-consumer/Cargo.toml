@@ -20,8 +20,8 @@ anyhow = { workspace = true }
 async-nats = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true }
-fuel-streams-core = { workspace = true }
-fuel-streams-executors = { workspace = true }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 serde_json = { workspace = true }
 sv-emitter = { workspace = true }
