@@ -16,12 +16,12 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject {
-///     hash: Some(MessageId::from([1u8; 32])),
+///     utxo_id: Some(HexString::zeroed()),
 ///     utxo_type: Some(UtxoType::Message),
 /// };
 /// assert_eq!(
 ///     subject.parse(),
-///     "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101"
+///     "utxos.message.0x0000000000000000000000000000000000000000000000000000000000000000"
 /// );
 /// ```
 ///
@@ -40,10 +40,10 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = UtxosSubject::wildcard(
-///     Some(MessageId::from([1u8; 32])),
+///     Some(HexString::zeroed()),
 ///     None,
 /// );
-/// assert_eq!(wildcard, "utxos.*.0x0101010101010101010101010101010101010101010101010101010101010101");
+/// assert_eq!(wildcard, "utxos.*.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 ///
 /// Using the builder pattern:
@@ -53,16 +53,16 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject::new()
-///     .with_hash(Some(MessageId::from([1u8; 32])))
+///     .with_utxo_id(Some(HexString::zeroed()))
 ///     .with_utxo_type(Some(UtxoType::Message));
-/// assert_eq!(subject.parse(), "utxos.message.0x0101010101010101010101010101010101010101010101010101010101010101");
+/// assert_eq!(subject.parse(), "utxos.message.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
 
 #[derive(Subject, Debug, Clone, Default)]
 #[subject_wildcard = "utxos.>"]
-#[subject_format = "utxos.{utxo_type}.{hash}"]
+#[subject_format = "utxos.{utxo_type}.{utxo_id}"]
 pub struct UtxosSubject {
-    pub hash: Option<MessageId>,
+    pub utxo_id: Option<HexString>,
     pub utxo_type: Option<UtxoType>,
 }
 
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_utxos_message_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_hash(Some(MessageId::zeroed()))
+            .with_utxo_id(Some(HexString::zeroed()))
             .with_utxo_type(Some(UtxoType::Message));
         assert_eq!(
             utxo_subject.to_string(),
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_utxos_coin_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_hash(Some(MessageId::zeroed()))
+            .with_utxo_id(Some(HexString::zeroed()))
             .with_utxo_type(Some(UtxoType::Coin));
         assert_eq!(
             utxo_subject.to_string(),
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_utxos_contract_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_hash(Some(MessageId::zeroed()))
+            .with_utxo_id(Some(HexString::zeroed()))
             .with_utxo_type(Some(UtxoType::Contract));
         assert_eq!(
             utxo_subject.to_string(),

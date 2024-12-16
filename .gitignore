@@ -21,3 +21,4 @@ coverage/
 docs/
 **/**/charts/**.tgz
 values-publisher-secrets.yaml
+.vscode/launch.json

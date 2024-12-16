@@ -64,7 +64,13 @@ impl NatsClient {
                     source: e,
                 }
             })?;
-        let jetstream = async_nats::jetstream::new(nats_client.to_owned());
+
+        let jetstream = match opts.domain.clone() {
+            None => async_nats::jetstream::new(nats_client.clone()),
+            Some(domain) => {
+                async_nats::jetstream::with_domain(nats_client.clone(), domain)
+            }
+        };
         info!("Connected to NATS server at {}", url);
 
         Ok(Self {

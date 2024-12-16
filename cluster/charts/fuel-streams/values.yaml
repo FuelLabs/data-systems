@@ -72,29 +72,6 @@ startupProbe:
   failureThreshold: 6
   successThreshold: 1
 
-tls:
-  enabled: false
-  issuer: "letsencrypt-prod"
-  duration: "2160h"
-  renewBefore: "360h"
-  annotations: {}
-  labels: {}
-
-externalService:
-  enabled: false
-  dns: "streams.svc.cluster.local"
-  labels: {}
-  annotations: {}
-  ports:
-    - name: websocket
-      port: 8443
-      targetPort: websocket
-      protocol: TCP
-    - name: webserver
-      port: 8082
-      targetPort: http
-      protocol: TCP
-
 # -------------------------------------------------------------------------------------------------
 # Monitoring
 # -------------------------------------------------------------------------------------------------
@@ -111,9 +88,10 @@ publisher:
   network: mainnet
 
   image:
-    repository: fuel-streams-publisher
+    repository: sv-emitter
     pullPolicy: Never
     tag: "latest"
+    extraArgs: []
 
   service:
     type: ClusterIP
@@ -126,7 +104,7 @@ publisher:
 
   storage:
     name: rocks-db
-    size: 10Gi
+    size: 1Gi
     storageClass: standard
     accessMode: ReadWriteOnce
     mountPath: /mnt/db
@@ -154,11 +132,21 @@ publisher:
     maxReplicas: 3
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
 
   env:
+    PORT: 8080
     PUBLISHER_MAX_THREADS: "32"
     NATS_URL: "fuel-streams-nats-publisher:4222"
-    HISTORICAL: "true"
 
   # Additional environment variables with complex structures
   # extraEnv: []
@@ -185,12 +173,449 @@ publisher:
   #       name: additional-secrets
 
 # -------------------------------------------------------------------------------------------------
+# Consumer configuration
+# -------------------------------------------------------------------------------------------------
+
+consumer:
+  enabled: true
+  port: 8081
+  image:
+    repository: sv-consumer
+    pullPolicy: Never
+    tag: latest
+    args:
+      - --nats-core-url
+      - $(NATS_CORE_URL)
+      - --nats-publisher-url
+      - $(NATS_PUBLISHER_URL)
+
+  env:
+    PORT: 8081
+    NATS_CORE_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
+
+  config:
+    replicaCount: 1
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+# -------------------------------------------------------------------------------------------------
+# NATS Core configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-core:
+  enabled: true
+  natsBox:
+    enabled: false
+  promExporter:
+    enabled: false
+    port: 6777
+    image:
+      repository: natsio/prometheus-nats-exporter
+      tag: 0.15.0
+    podMonitor:
+      enabled: false
+      metadata:
+        labels:
+          release: kube-prometheus-stack
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.22-alpine
+    env:
+      GOMEMLIMIT: 2GiB
+    merge:
+      # startupProbe:
+      #   initialDelaySeconds: 60
+      #   periodSeconds: 10
+      #   failureThreshold: 1080
+      resources:
+        requests:
+          cpu: 8
+          memory: 2Gi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      cluster:
+        enabled: true
+      websocket:
+        enabled: true
+      leafnodes:
+        enabled: true
+      mqtt:
+        enabled: false
+      monitor:
+        enabled: false
+
+  config:
+    cluster:
+      enabled: true
+      port: 6222
+      replicas: 3
+      routeURLs:
+        useFQDN: true
+    
+    websocket:
+      enabled: true
+      port: 8443
+      tls:
+        enabled: false
+        # secretName: fuel-streams-nats-tls
+        # dir: /etc/nats-certs/websocket
+        # cert: tls.crt
+        # key: tls.key
+      merge:
+        no_tls: true
+        # same_origin: false
+        # compression: false
+        # handshake_timeout: "20s"
+        # no_auth_user: default_user
+
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 20Gi
+          storageClassName: standard
+
+    leafnodes:
+      enabled: true
+      port: 7422
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      jetstream:
+        domain: CORE
+        max_file_store: << 20GiB >>
+        max_memory_store: << 1792MiB >>
+      max_payload: << 8MiB >>
+      system_account: SYS
+      accounts:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
+        PUBLIC:
+          jetstream: enabled
+          users:
+            - user: default_user
+              password: ""
+
+# -------------------------------------------------------------------------------------------------
+# NATS Publisher configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-publisher:
+  enabled: true
+
+  natsBox:
+    enabled: false
+  promExporter:
+    enabled: false
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.22-alpine
+    env:
+      GOMEMLIMIT: 1GiB
+    merge:
+      # startupProbe:
+      #   initialDelaySeconds: 60
+      #   periodSeconds: 10
+      #   failureThreshold: 1080
+      resources:
+        requests:
+          cpu: 4
+          memory: 1Gi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      websocket:
+        enabled: false
+      leafnodes:
+        enabled: true
+      monitor:
+        enabled: false
+      mqtt:
+        enabled: false
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 3
+
+  podTemplate:
+    topologySpreadConstraints:
+      kubernetes.io/hostname:
+        maxSkew: 1
+        whenUnsatisfiable: DoNotSchedule
+
+  config:
+    cluster:
+      enabled: false
+
+    websocket:
+      enabled: false
+
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 5Gi
+          storageClassName: standard
+
+    leafnodes:
+      enabled: true
+      port: 7422
+      merge:
+        remotes:
+          - urls: ["nats://sys:sys@fuel-streams-nats-core:7422"]
+            account: SYS
+          - urls: ["nats://admin:admin@fuel-streams-nats-core:7422"]
+            account: ADMIN
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      jetstream:
+        domain: PUBLISHER
+        max_file_store: << 5GiB >>
+        max_memory_store: << 768MiB >>
+      max_payload: << 8MiB >>
+      system_account: SYS
+      accounts:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
+        PUBLIC:
+          jetstream: enabled
+          users:
+            - user: default_user
+              password: ""
+
+# -------------------------------------------------------------------------------------------------
+# NATS Client configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-client:
+  enabled: true
+
+  global:
+    labels:
+      app.kubernetes.io/service: external-ws
+  natsBox:
+    enabled: false
+  promExporter:
+    enabled: false
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.22-alpine
+    env:
+      GOMEMLIMIT: 512MiB
+    merge:
+      resources:
+        requests:
+          cpu: 2
+          memory: 512Mi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      websocket:
+        enabled: true
+      leafnodes:
+        enabled: true
+      monitor:
+        enabled: false
+      mqtt:
+        enabled: false 
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 2
+
+  podTemplate:
+    topologySpreadConstraints:
+      kubernetes.io/hostname:
+        maxSkew: 1
+        whenUnsatisfiable: DoNotSchedule
+
+  config:
+    cluster:
+      enabled: false
+
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 2Gi
+          storageClassName: standard
+
+    leafnodes:
+      enabled: true
+      port: 7422
+      merge:
+        remotes:
+          - urls: ["ws://admin:admin@fuel-streams-nats-core:8443"]
+            account: ADMIN
+
+    websocket:
+      enabled: true
+      port: 8443
+      tls:
+        enabled: false
+        # secretName: fuel-streams-nats-tls
+        # dir: /etc/nats-certs/websocket
+        # cert: tls.crt
+        # key: tls.key
+      merge:
+        no_tls: true
+        # same_origin: false
+        # compression: false
+        # handshake_timeout: "20s"
+        # no_auth_user: default_user
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      jetstream:
+        domain: CLIENT
+        max_file_store: << 2GiB >>
+        max_memory_store: << 384MiB >>
+      max_payload: << 8MiB >>
+      system_account: SYS
+      accounts:
+        SYS:
+          users:
+            - user: sys
+              password: sys
+        ADMIN:
+          jetstream: enabled
+          users:
+            - user: admin
+              password: admin
+        PUBLIC:
+          jetstream: enabled
+          users:
+            - user: default_user
+              password: ""
+
+      # TODO: Add users and permissions later
+      # accounts:
+      #   USERS:
+      #     jetstream: enabled
+      #     users:
+      #       - user: default_user
+      #         permissions:
+      #           subscribe: ">"
+      #           publish:
+      #             deny:
+      #               - "*.by_id.>"
+      #               - "*.blocks.>"
+      #               - "*.transactions.>"
+      #               - "*.inputs.>"
+      #               - "*.outputs.>"
+      #               - "*.receipts.>"
+      #               - "*.logs.>"
+      #               - "*.utxos.>"
+      #               - "$JS.API.STREAM.CREATE.>"
+      #               - "$JS.API.STREAM.UPDATE.>"
+      #               - "$JS.API.STREAM.DELETE.>"
+      #               - "$JS.API.STREAM.PURGE.>"
+      #               - "$JS.API.STREAM.RESTORE.>"
+      #               - "$JS.API.STREAM.MSG.DELETE.>"
+      #               - "$JS.API.CONSUMER.DURABLE.CREATE.>"
+      
+# -------------------------------------------------------------------------------------------------
+# NATS External Service configuration (WebSocket)
+# -------------------------------------------------------------------------------------------------
+
+natsExternalService:
+  enabled: true
+  certificate:
+    issuer: "letsencrypt-prod"
+    duration: "2160h"
+    renewBefore: "360h"
+    annotations: {}
+    labels: {}
+  service:
+    dns: "stream-dev.fuel.network"
+    labels: {}
+    annotations: {}
+
+# -------------------------------------------------------------------------------------------------
 # WebServer configuration
 # -------------------------------------------------------------------------------------------------
 
 webserver:
   enabled: false
-  port: 8082
+  port: 8443
 
   image:
     repository: fuel-streams-webserver
@@ -215,282 +640,27 @@ webserver:
     resources:
       requests:
         cpu: 100m
-        memory: 128Mi
+        memory: 64Mi
       limits:
         cpu: 500m
-        memory: 512Mi
+        memory: 256Mi
 
   autoscaling:
     enabled: false
     minReplicas: 1
-    maxReplicas: 3
+    maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
 
-# -------------------------------------------------------------------------------------------------
-# NATS Core configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-core:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  promExporter:
-    enabled: false
-    port: 6777
-    image:
-      repository: natsio/prometheus-nats-exporter
-      tag: 0.15.0
-    podMonitor:
-      enabled: false
-      metadata:
-        labels:
-          release: kube-prometheus-stack
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.22-alpine
-    env:
-      GOMEMLIMIT: 8GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 8
-        memory: 8Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      cluster:
-        enabled: true
-      leafnodes:
-        enabled: true
-      monitor:
-        enabled: false
-
-  config:
-    cluster:
-      enabled: true
-      port: 6222
-      replicas: 3
-      routeURLs:
-        useFQDN: true
-
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 500Gi
-          storageClassName: standard
-
-    leafnodes:
-      enabled: true
-      port: 7422
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      jetstream:
-        max_file_store: << 500GiB >>
-        max_memory_store: << 7168MiB >>
-        domain: "central"
-      max_payload: << 8MiB >>
-
-# -------------------------------------------------------------------------------------------------
-# NATS Client configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-client:
-  enabled: true
-
-  global:
-    labels:
-      app.kubernetes.io/service: external-service
-
-  natsBox:
-    enabled: false
-
-  promExporter:
-    enabled: false
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.22-alpine
-    env:
-      GOMEMLIMIT: 2GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 2
-        memory: 2Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      websocket:
-        enabled: true
-      monitor:
-        enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 2
-
-  podTemplate:
-    topologySpreadConstraints:
-      kubernetes.io/hostname:
-        maxSkew: 1
-        whenUnsatisfiable: DoNotSchedule
-
-  config:
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 20Gi
-          storageClassName: standard
-      merge:
-        domain: "client"
-
-    leafnodes:
-      enabled: true
-      port: 7422
-      remotes:
-        - url: "nats://nats-core:7422"
-
-    websocket:
-      enabled: true
-      port: 8443
-      merge:
-        no_tls: true
-        no_auth_user: default_user
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      jetstream:
-        max_file_store: << 20GiB >>
-        max_memory_store: << 2048MiB >>
-      max_payload: << 8MiB >>
-      accounts:
-        USERS:
-          jetstream: enabled
-          users:
-            - user: default_user
-              permissions:
-                subscribe: ">"
-                publish:
-                  deny:
-                    - "*.by_id.>"
-                    - "*.blocks.>"
-                    - "*.transactions.>"
-                    - "*.inputs.>"
-                    - "*.outputs.>"
-                    - "*.receipts.>"
-                    - "*.logs.>"
-                    - "*.utxos.>"
-                    - "$JS.API.STREAM.CREATE.>"
-                    - "$JS.API.STREAM.UPDATE.>"
-                    - "$JS.API.STREAM.DELETE.>"
-                    - "$JS.API.STREAM.PURGE.>"
-                    - "$JS.API.STREAM.RESTORE.>"
-                    - "$JS.API.STREAM.MSG.DELETE.>"
-                    - "$JS.API.CONSUMER.DURABLE.CREATE.>"
-
-# -------------------------------------------------------------------------------------------------
-# NATS Publisher configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-publisher:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  promExporter:
-    enabled: false
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.22-alpine
-    env:
-      GOMEMLIMIT: 3GiB
-    startupProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      failureThreshold: 1080
-    resources:
-      requests:
-        cpu: 4
-        memory: 4Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      monitor:
-        enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 3
-
-  podTemplate:
-    topologySpreadConstraints:
-      kubernetes.io/hostname:
-        maxSkew: 1
-        whenUnsatisfiable: DoNotSchedule
-
-  config:
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 50Gi
-          storageClassName: standard
-      merge:
-        domain: "publisher"
-
-    leafnodes:
-      enabled: true
-      port: 7422
-      remotes:
-        - url: "nats://nats-core:7422"
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      jetstream:
-        max_file_store: << 50GiB >>
-        max_memory_store: << 3072MiB >>
-      max_payload: << 8MiB >>
+  env:
+    PORT: 8443

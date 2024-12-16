@@ -2,15 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use fuel_core::{
     combined_database::CombinedDatabase,
-    database::{
-        database_description::{on_chain::OnChain, DatabaseHeight},
-        Database,
-    },
+    database::{database_description::on_chain::OnChain, Database},
     fuel_core_graphql_api::ports::DatabaseBlocks,
-    state::{
-        generic_database::GenericDatabase,
-        iterable_key_value_view::IterableKeyValueViewWrapper,
-    },
 };
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
@@ -19,14 +12,9 @@ use fuel_core_types::{
     blockchain::consensus::{Consensus, Sealed},
     fuel_types::BlockHeight,
 };
-use fuel_streams_core::types::*;
 use tokio::{sync::broadcast::Receiver, time::sleep};
 
-pub type OffchainDatabase = GenericDatabase<
-    IterableKeyValueViewWrapper<
-        fuel_core::fuel_core_graphql_api::storage::Column,
-    >,
->;
+use crate::types::*;
 
 /// Interface for `fuel-core` related logic.
 /// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
@@ -42,6 +30,7 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn base_asset_id(&self) -> &FuelCoreAssetId;
     fn chain_id(&self) -> &FuelCoreChainId;
+    fn fuel_service(&self) -> &FuelService;
 
     fn database(&self) -> &CombinedDatabase;
     fn onchain_database(&self) -> &Database<OnChain> {
@@ -60,13 +49,18 @@ pub trait FuelCoreLike: Sync + Send {
         &self,
     ) -> Receiver<fuel_core_importer::ImporterResult>;
 
-    fn get_latest_block_height(&self) -> anyhow::Result<u64> {
+    fn get_latest_block_height(&self) -> anyhow::Result<u32> {
         Ok(self
             .onchain_database()
             .latest_block_height()?
-            .map(|h| h.as_u64())
+            .map(|h| *h)
             .unwrap_or_default())
     }
+
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<FuelCoreTransactionStatus>>;
 
     fn get_receipts(
         &self,
@@ -198,6 +192,10 @@ impl FuelCoreLike for FuelCore {
         Ok(())
     }
 
+    fn fuel_service(&self) -> &FuelService {
+        &self.fuel_service
+    }
+
     async fn stop(&self) {
         if matches!(
             self.fuel_service.state(),
@@ -262,12 +260,18 @@ impl FuelCoreLike for FuelCore {
             .subscribe()
     }
 
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> anyhow::Result<Option<FuelCoreTransactionStatus>> {
+        Ok(self.offchain_database()?.get_tx_status(tx_id)?)
+    }
+
     fn get_receipts(
         &self,
         tx_id: &FuelCoreBytes32,
     ) -> anyhow::Result<Option<Vec<FuelCoreReceipt>>> {
         let receipts = self
-            .offchain_database()?
             .get_tx_status(tx_id)?
             .map(|status| match &status {
                 FuelCoreTransactionStatus::Success { receipts, .. }

@@ -13,6 +13,7 @@ pub mod stream;
 
 pub mod subjects;
 
+pub mod fuel_core_like;
 mod fuel_core_types;
 mod primitive_types;
 pub mod types;
@@ -20,7 +21,14 @@ pub mod types;
 pub use stream::*;
 
 pub mod prelude {
+    #[allow(unused_imports)]
     pub use fuel_streams_macros::subject::*;
 
-    pub use crate::{nats::*, stream::*, subjects::*, types::*};
+    pub use crate::{
+        fuel_core_like::*,
+        nats::*,
+        stream::*,
+        subjects::*,
+        types::*,
+    };
 }

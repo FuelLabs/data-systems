@@ -2826,22 +2826,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eventsource-client"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43ddc25e1ad2cc0106d5e2d967397b4fb2068a66677ee9b0eea4600e5cfe8fb4"
-dependencies = [
- "futures",
- "hyper 0.14.31",
- "hyper-rustls 0.24.2",
- "hyper-timeout 0.4.1",
- "log",
- "pin-project",
- "rand",
- "tokio",
-]
-
-[[package]]
 name = "eyre"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3084,7 +3068,6 @@ dependencies = [
  "clap 4.5.23",
  "const_format",
  "dirs",
- "dotenvy",
  "fuel-core",
  "fuel-core-chain-config",
  "fuel-core-compression",
@@ -3129,14 +3112,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a10ccde16fd926137070d3baa77a1096c2ff6cdca26d14177139c16e59e697d"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
  "cynic",
  "derive_more 0.99.18",
- "eventsource-client",
  "fuel-core-types 0.40.2",
- "futures",
  "hex",
- "hyper-rustls 0.24.2",
  "itertools 0.12.1",
  "reqwest 0.11.27",
  "schemafy_lib",
@@ -3687,14 +3666,19 @@ dependencies = [
 name = "fuel-streams-core"
 version = "0.0.13"
 dependencies = [
+ "anyhow",
  "async-nats",
  "async-trait",
  "chrono",
  "clap 4.5.23",
  "displaydoc",
  "dotenvy",
+ "fuel-core",
+ "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-importer",
+ "fuel-core-services",
+ "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "fuel-data-parser",
  "fuel-streams-macros",
@@ -3718,6 +3702,25 @@ dependencies = [
  "fuel-streams",
  "futures",
  "tokio",
+]
+
+[[package]]
+name = "fuel-streams-executors"
+version = "0.0.13"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "fuel-core",
+ "fuel-streams-core",
+ "futures",
+ "num_cpus",
+ "rayon",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror 2.0.4",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3746,26 +3749,20 @@ dependencies = [
  "elasticsearch",
  "fuel-core",
  "fuel-core-bin",
- "fuel-core-importer",
  "fuel-core-services",
- "fuel-core-storage",
- "fuel-core-types 0.40.2",
- "fuel-streams",
  "fuel-streams-core",
+ "fuel-streams-executors",
  "futures",
  "mockall 0.13.1",
  "mockall_double",
- "num_cpus",
  "openssl",
  "parking_lot",
  "prometheus",
  "rand",
- "rayon",
  "rust_decimal",
  "serde",
  "serde_json",
  "serde_prometheus",
- "sha2 0.10.8",
  "sysinfo",
  "thiserror 2.0.4",
  "tokio",
@@ -4573,12 +4570,9 @@ dependencies = [
  "futures-util",
  "http 0.2.12",
  "hyper 0.14.31",
- "log",
  "rustls 0.21.12",
- "rustls-native-certs 0.6.3",
  "tokio",
  "tokio-rustls 0.24.1",
- "webpki-roots 0.25.4",
 ]
 
 [[package]]
@@ -6422,6 +6416,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.90",
+]
+
+[[package]]
+name = "num_threads"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -8728,6 +8731,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
+name = "sv-consumer"
+version = "0.0.13"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "clap 4.5.23",
+ "fuel-core",
+ "fuel-streams-core",
+ "fuel-streams-executors",
+ "futures",
+ "openssl",
+ "serde_json",
+ "sv-emitter",
+ "thiserror 2.0.4",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "sv-emitter"
+version = "0.0.13"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "clap 4.5.23",
+ "fuel-core",
+ "fuel-core-bin",
+ "fuel-core-types 0.40.2",
+ "fuel-streams-core",
+ "fuel-streams-executors",
+ "futures",
+ "openssl",
+ "thiserror 2.0.4",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "symbolic-common"
 version = "12.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9125,7 +9169,9 @@ checksum = "35e7868883861bd0e56d9ac6efcaaca0d6d5d82a2a7ec8209ff492c07cf37b21"
 dependencies = [
  "deranged",
  "itoa",
+ "libc",
  "num-conv",
+ "num_threads",
  "powerfmt",
  "serde",
  "time-core",
@@ -9602,6 +9648,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time",
  "tracing",
  "tracing-core",
  "tracing-log",

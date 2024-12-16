@@ -18,7 +18,7 @@ RUST_VERSION := 1.81.0
         clean clean-build cleanup-artifacts test-watch test bench helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
-        audit audit-fix-test audit-fix load-test run-publisher \
+        audit audit-fix-test audit-fix load-test run-publisher run-consumer \
         run-mainnet-dev run-mainnet-profiling run-testnet-dev run-testnet-profiling \
         start-nats stop-nats restart-nats clean-nats minikube-setup minikube-start \
         minikube-delete k8s-setup helm-setup cluster-setup pre-cluster \
@@ -112,6 +112,9 @@ clean-build:
 	rm -rf target/
 	rm -rf node_modules/
 
+cleanup-artifacts: REPO_OWNER="fuellabs"
+cleanup-artifacts: REPO_NAME="data-systems"
+cleanup-artifacts: DAYS_TO_KEEP=10
 cleanup-artifacts:
 	@echo "Running artifact cleanup..."
 	@./scripts/cleanup_artifacts.sh $(REPO_OWNER) $(REPO_NAME) $(DAYS_TO_KEEP)
@@ -120,16 +123,20 @@ cleanup-artifacts:
 #  Testing
 # ------------------------------------------------------------
 
+test-watch: PROFILE="all"
 test-watch:
 	cargo watch -x "test --profile $(PROFILE)"
 
+test: PACKAGE="all"
+test: PROFILE="dev"
 test:
+	@echo "Running tests for package $(PACKAGE) with profile $(PROFILE)"
 	@if [ "$(PACKAGE)" = "all" ] || [ -z "$(PACKAGE)" ]; then \
-		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --locked --no-tests=pass && \
-		cargo test --profile $(PROFILE) --doc --workspace; \
+		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --no-tests=pass --all-features && \
+		cargo test --profile $(PROFILE) --doc --workspace --all-features; \
 	else \
-		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --locked --no-tests=pass && \
-		cargo test --profile $(PROFILE) --doc -p $(PACKAGE); \
+		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --no-tests=pass --all-features && \
+		cargo test --profile $(PROFILE) --doc -p $(PACKAGE) --all-features; \
 	fi
 
 bench:
@@ -201,13 +208,15 @@ load-test:
 #  Publisher Run Commands
 # ------------------------------------------------------------
 
+run-publisher: NETWORK="testnet"
+run-publisher: PACKAGE="sv-emitter"
+run-publisher: MODE="dev"
+run-publisher: PORT="4000"
+run-publisher: TELEMETRY_PORT="8080"
+run-publisher: NATS_URL="localhost:4222"
+run-publisher: EXTRA_ARGS=""
 run-publisher: check-network
-	@./scripts/run_publisher.sh \
-		--network $(NETWORK) \
-		--mode $(MODE) \
-		$(if $(PORT),--port $(PORT),) \
-		$(if $(TELEMETRY_PORT),--telemetry-port $(TELEMETRY_PORT),) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+	@./scripts/run_publisher.sh
 
 run-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
@@ -220,6 +229,13 @@ run-testnet-dev:
 
 run-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
+
+run-consumer: NATS_CORE_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4223"
+run-consumer:
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-core-url $(NATS_CORE_URL) \
+		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------
 #  Docker Compose
@@ -240,6 +256,8 @@ restart-nats:
 
 clean-nats:
 	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
+
+reset-nats: clean-nats start-nats
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

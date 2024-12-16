@@ -4,12 +4,12 @@
 set -euo pipefail
 
 # Check if minikube is installed
-if ! command -v minikube &>/dev/null; then
+if ! command -v minikube &> /dev/null; then
     echo "Installing minikube..."
-    sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 &&
-        sudo chmod +x minikube &&
-        sudo cp minikube /usr/local/bin/ &&
-        sudo rm minikube
+    sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+        && sudo chmod +x minikube \
+        && sudo cp minikube /usr/local/bin/ \
+        && sudo rm minikube
 else
     echo "minikube is already installed"
 fi
@@ -17,13 +17,9 @@ fi
 # Delete any existing minikube cluster
 minikube delete
 
-# Default values for resources
-DEFAULT_DISK_SIZE='50000mb'
-DEFAULT_MEMORY='12000mb'
-
-# Get parameters with defaults
-DISK_SIZE=${1:-$DEFAULT_DISK_SIZE}
-MEMORY=${2:-$DEFAULT_MEMORY}
+# Set disk and memory size, using defaults if not provided
+DISK_SIZE=${1:-'50000mb'}
+MEMORY=${2:-'12000mb'}
 
 # Start minikube with specified resources
 minikube start \

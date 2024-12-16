@@ -572,26 +572,20 @@ mod tests {
                     kernel_version: "kernel-version".to_string(),
                     uptime: 123456,
                 },
-                disk: vec![(
-                    PathBuf::from("disk1"),
-                    Disk {
-                        size: 1000,
-                        free: 877,
-                        usage: Decimal::new(1234, 2),
-                    },
-                )]
+                disk: vec![(PathBuf::from("disk1"), Disk {
+                    size: 1000,
+                    free: 877,
+                    usage: Decimal::new(1234, 2),
+                })]
                 .into_iter()
                 .collect(),
                 cpu_physical_core_count: 1,
                 cpu_count: 1,
-                cpu: vec![(
-                    1,
-                    Cpu {
-                        name: "cpu1".to_string(),
-                        frequency: 12345,
-                        usage: Decimal::new(1234, 2),
-                    },
-                )]
+                cpu: vec![(1, Cpu {
+                    name: "cpu1".to_string(),
+                    frequency: 12345,
+                    usage: Decimal::new(1234, 2),
+                })]
                 .into_iter()
                 .collect(),
             },
@@ -600,35 +594,32 @@ mod tests {
         let output = serde_prometheus::to_string(&metrics, None, &[])
             .expect("prometheus");
 
-        assert_eq!(
-            output.trim_end().split('\n').collect::<Vec<&str>>(),
-            vec![
-                r#"system_application_pid 0"#,
-                r#"system_application_name{path = "process"} 1"#,
-                r#"system_application_cpu_usage 12.34"#,
-                r#"system_application_size{type = "memory"} 1000"#,
-                r#"system_application_free{type = "memory"} 877"#,
-                r#"system_application_usage{type = "memory"} 12.34"#,
-                r#"system_memory_size{type = "system"} 1000"#,
-                r#"system_memory_free{type = "system"} 877"#,
-                r#"system_memory_usage{type = "system"} 12.34"#,
-                r#"system_memory_size{type = "swap"} 1000"#,
-                r#"system_memory_free{type = "swap"} 877"#,
-                r#"system_memory_usage{type = "swap"} 12.34"#,
-                r#"system_load_average_1 1.2"#,
-                r#"system_load_average_5 2.3"#,
-                r#"system_load_average_15 3.4"#,
-                r#"system_host_os_version{path = "os-version"} 1"#,
-                r#"system_host_kernel_version{path = "kernel-version"} 1"#,
-                r#"system_host_uptime 123456"#,
-                r#"system_disk_size{path = "disk1"} 1000"#,
-                r#"system_disk_free{path = "disk1"} 877"#,
-                r#"system_disk_usage{path = "disk1"} 12.34"#,
-                r#"system_cpu_physical_core_count 1"#,
-                r#"system_cpu_count 1"#,
-                r#"system_cpu_frequency{id = "1"} 12345"#,
-                r#"system_cpu_usage{id = "1"} 12.34"#,
-            ]
-        )
+        assert_eq!(output.trim_end().split('\n').collect::<Vec<&str>>(), vec![
+            r#"system_application_pid 0"#,
+            r#"system_application_name{path = "process"} 1"#,
+            r#"system_application_cpu_usage 12.34"#,
+            r#"system_application_size{type = "memory"} 1000"#,
+            r#"system_application_free{type = "memory"} 877"#,
+            r#"system_application_usage{type = "memory"} 12.34"#,
+            r#"system_memory_size{type = "system"} 1000"#,
+            r#"system_memory_free{type = "system"} 877"#,
+            r#"system_memory_usage{type = "system"} 12.34"#,
+            r#"system_memory_size{type = "swap"} 1000"#,
+            r#"system_memory_free{type = "swap"} 877"#,
+            r#"system_memory_usage{type = "swap"} 12.34"#,
+            r#"system_load_average_1 1.2"#,
+            r#"system_load_average_5 2.3"#,
+            r#"system_load_average_15 3.4"#,
+            r#"system_host_os_version{path = "os-version"} 1"#,
+            r#"system_host_kernel_version{path = "kernel-version"} 1"#,
+            r#"system_host_uptime 123456"#,
+            r#"system_disk_size{path = "disk1"} 1000"#,
+            r#"system_disk_free{path = "disk1"} 877"#,
+            r#"system_disk_usage{path = "disk1"} 12.34"#,
+            r#"system_cpu_physical_core_count 1"#,
+            r#"system_cpu_count 1"#,
+            r#"system_cpu_frequency{id = "1"} 12345"#,
+            r#"system_cpu_usage{id = "1"} 12.34"#,
+        ])
     }
 }

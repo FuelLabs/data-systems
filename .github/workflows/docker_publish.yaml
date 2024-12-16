@@ -20,11 +20,15 @@ concurrency:
 jobs:
   build-and-publish-image:
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'release' && github.event.action == 'published') ||
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        package:
+          - name: fuel-streams-publisher
+            image: cluster/docker/fuel-core.Dockerfile
+          - name: sv-emitter
+            image: cluster/docker/fuel-core.Dockerfile
+          - name: sv-consumer
+            image: cluster/docker/sv-consumer.Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -38,5 +42,7 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-streams-publisher
-          dockerfile: cluster/docker/fuel-streams-publisher.Dockerfile
+          image: ghcr.io/fuellabs/${{ matrix.package.name }}
+          dockerfile: ${{ matrix.package.image }}
+          build-args: |-
+            PACKAGE_NAME=${{ matrix.package.name }}

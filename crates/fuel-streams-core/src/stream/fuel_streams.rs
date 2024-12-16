@@ -1,9 +1,10 @@
+use std::sync::Arc;
+
 use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
-use fuel_streams::types::Log;
-use fuel_streams_core::prelude::*;
+
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
-/// Streams we currently support publishing to.
 pub struct FuelStreams {
     pub transactions: Stream<Transaction>,
     pub blocks: Stream<Block>,
@@ -14,7 +15,6 @@ pub struct FuelStreams {
     pub logs: Stream<Log>,
 }
 
-#[cfg_attr(test, mockall::automock)]
 impl FuelStreams {
     pub async fn new(nats_client: &NatsClient) -> Self {
         Self {
@@ -26,6 +26,19 @@ impl FuelStreams {
             utxos: Stream::<Utxo>::new(nats_client).await,
             logs: Stream::<Log>::new(nats_client).await,
         }
+    }
+
+    pub async fn setup_all(
+        core_client: &NatsClient,
+        publisher_client: &NatsClient,
+    ) -> (Self, Self) {
+        let core_stream = Self::new(core_client).await;
+        let publisher_stream = Self::new(publisher_client).await;
+        (core_stream, publisher_stream)
+    }
+
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }
 
@@ -72,7 +85,7 @@ pub trait FuelStreamsExt: Sync + Send {
         &self,
     ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind>;
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     async fn is_empty(&self) -> bool;
 }
 
@@ -101,10 +114,10 @@ impl FuelStreamsExt for FuelStreams {
     }
 
     async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>> {
-        Ok(self
-            .blocks
+        self.blocks
             .get_last_published(BlocksSubject::WILDCARD)
-            .await?)
+            .await
+            .map_err(|e| e.into())
     }
 
     async fn get_consumers_and_state(
@@ -121,7 +134,7 @@ impl FuelStreamsExt for FuelStreams {
         ])
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     async fn is_empty(&self) -> bool {
         self.blocks.is_empty(BlocksSubject::WILDCARD).await
             && self

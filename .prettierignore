@@ -1,3 +1,2 @@
-helm
-cluster
+cluster/charts
 pnpm-lock.yaml
