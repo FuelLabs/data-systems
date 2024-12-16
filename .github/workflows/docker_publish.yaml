@@ -23,9 +23,12 @@ jobs:
     strategy:
       matrix:
         package:
-          - fuel-streams-publisher
-          - sv-consumer
-          - sv-emitter
+          - name: fuel-streams-publisher
+            image: cluster/docker/publisher.Dockerfile
+          - name: sv-emitter
+            image: cluster/docker/publisher.Dockerfile
+          - name: sv-consumer
+            image: cluster/docker/consumer.Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +43,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/${{ matrix.package }}
-          dockerfile: cluster/docker/${{ matrix.package }}.Dockerfile
+          dockerfile: ${{ matrix.package.image }}
           build-args: |-
-            PACKAGE_NAME=${{ matrix.package }}
+            PACKAGE_NAME=${{ matrix.package.name }}
