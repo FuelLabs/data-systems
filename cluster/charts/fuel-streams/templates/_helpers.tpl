@@ -3,6 +3,16 @@ Expand the name of the chart.
 If nameOverride is provided in Values.config, use that instead of .Chart.Name.
 The result is truncated to 63 chars and has any trailing "-" removed to comply with Kubernetes naming rules.
 Returns: String - The chart name, truncated and cleaned
+Example:
+  Given:
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = "custom-name"
+  Result: "custom-name"
+
+  Given:
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+  Result: "fuel-streams"
 */}}
 {{- define "fuel-streams.name" -}}
 {{- default .Chart.Name .Values.config.nameOverride | trunc 63 | trimSuffix "-" }}
@@ -17,6 +27,24 @@ This template follows these rules:
    - If not, concatenate release name and chart name with a hyphen
 The result is truncated to 63 chars and has any trailing "-" removed to comply with Kubernetes naming rules.
 Returns: String - The fully qualified app name, truncated and cleaned
+Example:
+  Given:
+    .Values.config.fullnameOverride = "override-name"
+  Result: "override-name"
+
+  Given:
+    .Release.Name = "my-release"
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+    .Values.config.fullnameOverride = null
+  Result: "my-release-fuel-streams"
+
+  Given:
+    .Release.Name = "fuel-streams-prod"
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+    .Values.config.fullnameOverride = null
+  Result: "fuel-streams-prod"
 */}}
 {{- define "fuel-streams.fullname" -}}
 {{- if .Values.config.fullnameOverride }}

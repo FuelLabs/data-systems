@@ -493,9 +493,7 @@ nats-client:
         dir: /etc/nats-certs/websocket
         cert: tls.crt
         key: tls.key
-        secretName: 
-          $tplYaml: >-
-            {{- include "fuel-streams.fullname" . }}-nats-tls
+        secretName: fuel-streams-nats-tls
       merge:
         no_tls: false
         same_origin: false
