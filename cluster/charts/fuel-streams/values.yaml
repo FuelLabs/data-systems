@@ -1,6 +1,3 @@
-docker:
-  registry: registry.dev.svc.cluster.local:5000
-
 config:
   # Override the name and fullname of the chart
   nameOverride: ""
@@ -88,8 +85,8 @@ publisher:
   network: mainnet
 
   image:
-    repository: sv-emitter
-    pullPolicy: Never
+    repository: ghcr.io/fuellabs/sv-emitter
+    pullPolicy: Always
     tag: "latest"
     extraArgs: []
 
@@ -104,8 +101,8 @@ publisher:
 
   storage:
     name: rocks-db
-    size: 1Gi
-    storageClass: standard
+    size: 500Gi
+    storageClass: "gp3-generic"
     accessMode: ReadWriteOnce
     mountPath: /mnt/db
 
@@ -178,11 +175,11 @@ publisher:
 
 consumer:
   enabled: true
-  port: 8081
+  port: 8080
   image:
-    repository: sv-consumer
-    pullPolicy: Never
-    tag: latest
+    repository: ghcr.io/fuellabs/sv-consumer
+    pullPolicy: Always
+    tag: "latest"
     args:
       - --nats-core-url
       - $(NATS_CORE_URL)
@@ -190,12 +187,12 @@ consumer:
       - $(NATS_PUBLISHER_URL)
 
   env:
-    PORT: 8081
+    PORT: 8080
     NATS_CORE_URL: "fuel-streams-nats-core:4222"
     NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
 
   config:
-    replicaCount: 1
+    replicaCount: 3
     labels: {}
     annotations: {}
     podAnnotations: {}
@@ -234,8 +231,10 @@ consumer:
 
 nats-core:
   enabled: true
+
   natsBox:
     enabled: false
+
   promExporter:
     enabled: false
     port: 6777
@@ -253,16 +252,12 @@ nats-core:
       repository: nats
       tag: 2.10.22-alpine
     env:
-      GOMEMLIMIT: 2GiB
+      GOMEMLIMIT: 7GiB
     merge:
-      # startupProbe:
-      #   initialDelaySeconds: 60
-      #   periodSeconds: 10
-      #   failureThreshold: 1080
       resources:
         requests:
-          cpu: 8
-          memory: 2Gi
+          cpu: 2
+          memory: 8Gi
 
   service:
     enabled: true
@@ -284,25 +279,13 @@ nats-core:
     cluster:
       enabled: true
       port: 6222
-      replicas: 3
+      replicas: 5
       routeURLs:
         useFQDN: true
     
     websocket:
       enabled: true
       port: 8443
-      tls:
-        enabled: false
-        # secretName: fuel-streams-nats-tls
-        # dir: /etc/nats-certs/websocket
-        # cert: tls.crt
-        # key: tls.key
-      merge:
-        no_tls: true
-        # same_origin: false
-        # compression: false
-        # handshake_timeout: "20s"
-        # no_auth_user: default_user
 
     jetstream:
       enabled: true
@@ -310,8 +293,8 @@ nats-core:
         dir: /data
         pvc:
           enabled: true
-          size: 20Gi
-          storageClassName: standard
+          size: 2000Gi
+          storageClassName: "gp3-generic"
 
     leafnodes:
       enabled: true
@@ -322,27 +305,18 @@ nats-core:
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: CORE
-        max_file_store: << 20GiB >>
-        max_memory_store: << 1792MiB >>
-      max_payload: << 8MiB >>
+        max_file_store: << 2000GiB >>
+        max_memory_store: << 7GiB >>
       system_account: SYS
-      accounts:
-        SYS:
-          users:
-            - user: sys
-              password: sys
-        ADMIN:
-          jetstream: enabled
-          users:
-            - user: admin
-              password: admin
-        PUBLIC:
-          jetstream: enabled
-          users:
-            - user: default_user
-              password: ""
+      $include: auth.conf
+  
+  configMap:
+    merge:
+      $tplYaml: |
+        {{- include "nats-accounts" . | nindent 8 }}
 
 # -------------------------------------------------------------------------------------------------
 # NATS Publisher configuration
@@ -353,24 +327,26 @@ nats-publisher:
 
   natsBox:
     enabled: false
+
   promExporter:
     enabled: false
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 5
 
   container:
     image:
       repository: nats
       tag: 2.10.22-alpine
     env:
-      GOMEMLIMIT: 1GiB
+      GOMEMLIMIT: 7GiB
     merge:
-      # startupProbe:
-      #   initialDelaySeconds: 60
-      #   periodSeconds: 10
-      #   failureThreshold: 1080
       resources:
         requests:
-          cpu: 4
-          memory: 1Gi
+          cpu: 2
+          memory: 8Gi
 
   service:
     enabled: true
@@ -385,11 +361,6 @@ nats-publisher:
         enabled: false
       mqtt:
         enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 3
 
   podTemplate:
     topologySpreadConstraints:
@@ -410,8 +381,8 @@ nats-publisher:
         dir: /data
         pvc:
           enabled: true
-          size: 5Gi
-          storageClassName: standard
+          size: 100Gi
+          storageClassName: "gp3-generic"
 
     leafnodes:
       enabled: true
@@ -428,27 +399,18 @@ nats-publisher:
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: PUBLISHER
-        max_file_store: << 5GiB >>
-        max_memory_store: << 768MiB >>
-      max_payload: << 8MiB >>
+        max_file_store: << 100GiB >>
+        max_memory_store: << 7GiB >>
       system_account: SYS
-      accounts:
-        SYS:
-          users:
-            - user: sys
-              password: sys
-        ADMIN:
-          jetstream: enabled
-          users:
-            - user: admin
-              password: admin
-        PUBLIC:
-          jetstream: enabled
-          users:
-            - user: default_user
-              password: ""
+      $include: auth.conf
+
+  configMap:
+    merge:
+      $tplYaml: |
+        {{- include "nats-accounts" . | nindent 8 }}
 
 # -------------------------------------------------------------------------------------------------
 # NATS Client configuration
@@ -457,25 +419,28 @@ nats-publisher:
 nats-client:
   enabled: true
 
-  global:
-    labels:
-      app.kubernetes.io/service: external-ws
   natsBox:
     enabled: false
+
   promExporter:
     enabled: false
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 3
 
   container:
     image:
       repository: nats
       tag: 2.10.22-alpine
     env:
-      GOMEMLIMIT: 512MiB
+      GOMEMLIMIT: 7GiB
     merge:
       resources:
         requests:
           cpu: 2
-          memory: 512Mi
+          memory: 8Gi
 
   service:
     enabled: true
@@ -490,11 +455,6 @@ nats-client:
         enabled: false
       mqtt:
         enabled: false 
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 2
 
   podTemplate:
     topologySpreadConstraints:
@@ -512,8 +472,8 @@ nats-client:
         dir: /data
         pvc:
           enabled: true
-          size: 2Gi
-          storageClassName: standard
+          size: 100Gi
+          storageClassName: "gp3-generic"
 
     leafnodes:
       enabled: true
@@ -526,72 +486,39 @@ nats-client:
     websocket:
       enabled: true
       port: 8443
+      # This is just enable if the natsExternalService is enabled
+      # and the DNS is set to the correct value
       tls:
-        enabled: false
-        # secretName: fuel-streams-nats-tls
-        # dir: /etc/nats-certs/websocket
-        # cert: tls.crt
-        # key: tls.key
+        enabled: true
+        dir: /etc/nats-certs/websocket
+        cert: tls.crt
+        key: tls.key
+        secretName: fuel-streams-nats-tls
       merge:
-        no_tls: true
-        # same_origin: false
-        # compression: false
-        # handshake_timeout: "20s"
-        # no_auth_user: default_user
+        no_tls: false
+        same_origin: false
+        compression: false
+        handshake_timeout: "20s"
+        no_auth_user: default_user
 
     monitor:
       enabled: false
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: CLIENT
-        max_file_store: << 2GiB >>
-        max_memory_store: << 384MiB >>
-      max_payload: << 8MiB >>
+        max_file_store: << 100GiB >>
+        max_memory_store: << 7GiB >>
       system_account: SYS
-      accounts:
-        SYS:
-          users:
-            - user: sys
-              password: sys
-        ADMIN:
-          jetstream: enabled
-          users:
-            - user: admin
-              password: admin
-        PUBLIC:
-          jetstream: enabled
-          users:
-            - user: default_user
-              password: ""
+      $include: auth.conf
 
-      # TODO: Add users and permissions later
-      # accounts:
-      #   USERS:
-      #     jetstream: enabled
-      #     users:
-      #       - user: default_user
-      #         permissions:
-      #           subscribe: ">"
-      #           publish:
-      #             deny:
-      #               - "*.by_id.>"
-      #               - "*.blocks.>"
-      #               - "*.transactions.>"
-      #               - "*.inputs.>"
-      #               - "*.outputs.>"
-      #               - "*.receipts.>"
-      #               - "*.logs.>"
-      #               - "*.utxos.>"
-      #               - "$JS.API.STREAM.CREATE.>"
-      #               - "$JS.API.STREAM.UPDATE.>"
-      #               - "$JS.API.STREAM.DELETE.>"
-      #               - "$JS.API.STREAM.PURGE.>"
-      #               - "$JS.API.STREAM.RESTORE.>"
-      #               - "$JS.API.STREAM.MSG.DELETE.>"
-      #               - "$JS.API.CONSUMER.DURABLE.CREATE.>"
-      
+  configMap:
+    merge:
+      $tplYaml: |
+        {{- include "nats-accounts" . | nindent 8 }}
+
 # -------------------------------------------------------------------------------------------------
 # NATS External Service configuration (WebSocket)
 # -------------------------------------------------------------------------------------------------
@@ -608,6 +535,12 @@ natsExternalService:
     dns: "stream-dev.fuel.network"
     labels: {}
     annotations: {}
+
+# This is just need to run locally, for production you need to
+# create a secret with the correct values named fuel-streams-nats-accounts
+natsAccountsSecret:
+  enabled: false
+  data: []
 
 # -------------------------------------------------------------------------------------------------
 # WebServer configuration

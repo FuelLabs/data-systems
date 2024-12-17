@@ -3,6 +3,16 @@ Expand the name of the chart.
 If nameOverride is provided in Values.config, use that instead of .Chart.Name.
 The result is truncated to 63 chars and has any trailing "-" removed to comply with Kubernetes naming rules.
 Returns: String - The chart name, truncated and cleaned
+Example:
+  Given:
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = "custom-name"
+  Result: "custom-name"
+
+  Given:
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+  Result: "fuel-streams"
 */}}
 {{- define "fuel-streams.name" -}}
 {{- default .Chart.Name .Values.config.nameOverride | trunc 63 | trimSuffix "-" }}
@@ -17,6 +27,24 @@ This template follows these rules:
    - If not, concatenate release name and chart name with a hyphen
 The result is truncated to 63 chars and has any trailing "-" removed to comply with Kubernetes naming rules.
 Returns: String - The fully qualified app name, truncated and cleaned
+Example:
+  Given:
+    .Values.config.fullnameOverride = "override-name"
+  Result: "override-name"
+
+  Given:
+    .Release.Name = "my-release"
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+    .Values.config.fullnameOverride = null
+  Result: "my-release-fuel-streams"
+
+  Given:
+    .Release.Name = "fuel-streams-prod"
+    .Chart.Name = "fuel-streams"
+    .Values.config.nameOverride = null
+    .Values.config.fullnameOverride = null
+  Result: "fuel-streams-prod"
 */}}
 {{- define "fuel-streams.fullname" -}}
 {{- if .Values.config.fullnameOverride }}
@@ -49,26 +77,43 @@ Includes:
 - Selector labels (app name and instance)
 - App version (if defined)
 - Managed-by label indicating Helm management
+Parameters:
+  - name: Optional custom name to use instead of the default name
+  - .: Full context (passed automatically or as "context")
 Returns: Map - A set of key-value pairs representing Kubernetes labels
+Example:
+  {{- include "fuel-streams.labels" . }}
+  # Or with custom name:
+  {{- include "fuel-streams.labels" (dict "name" "custom-name" "context" $) }}
 */}}
 {{- define "fuel-streams.labels" -}}
-helm.sh/chart: {{ include "fuel-streams.chart" . }}
-{{ include "fuel-streams.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- $context := default . .context -}}
+helm.sh/chart: {{ include "fuel-streams.chart" $context }}
+{{ include "fuel-streams.selectorLabels" (dict "name" .name "context" $context) }}
+{{- if $context.Chart.AppVersion }}
+app.kubernetes.io/version: {{ $context.Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: {{ $context.Release.Service }}
 {{- end }}
 
 {{/*
 Selector labels
 Core identifying labels used for object selection and service discovery.
 These labels should be used consistently across all related resources.
+Parameters:
+  - name: Optional custom name to use instead of the default name
+  - .: Full context (passed automatically or as "context")
 Returns: Map - A set of key-value pairs for Kubernetes selector labels
+Example:
+  {{- include "fuel-streams.selectorLabels" . }}
+  # Or with custom name:
+  {{- include "fuel-streams.selectorLabels" (dict "name" "custom-name" "context" $) }}
 */}}
 {{- define "fuel-streams.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "fuel-streams.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- $context := default . .context -}}
+{{- $name := default (include "fuel-streams.name" $context) .name -}}
+app.kubernetes.io/name: {{ $name }}
+app.kubernetes.io/instance: {{ $context.Release.Name }}
 {{- end }}
 
 {{/*

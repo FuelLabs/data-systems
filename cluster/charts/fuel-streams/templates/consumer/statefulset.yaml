@@ -7,9 +7,8 @@ metadata:
   annotations:
     {{- include "set-value" (dict "context" $consumer "path" "config.annotations") | nindent 4 }}
   labels:
-    {{- include "fuel-streams.labels" . | nindent 4 }}
+    {{- include "fuel-streams.labels" (dict "name" "consumer" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $consumer "path" "config.labels") | nindent 4 }}
-    app.kubernetes.io/component: consumer
 spec:
   serviceName: {{ include "fuel-streams.fullname" . }}-consumer
   {{- if not $consumer.autoscaling.enabled }}
@@ -17,18 +16,15 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
-      {{- include "set-value" (dict "context" $consumer "path" "config.selectorLabels") | nindent 6 }}
-      app.kubernetes.io/component: consumer
+      {{- include "fuel-streams.selectorLabels" (dict "name" "consumer" "context" .) | nindent 6 }}
 
   template:
     metadata:
       annotations:
         {{- include "set-value" (dict "context" $consumer "path" "config.podAnnotations") | nindent 8 }}
       labels:
-        {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
+        {{- include "fuel-streams.labels" (dict "name" "consumer" "context" .) | nindent 8 }}
         {{- include "set-value" (dict "context" $consumer "path" "config.labels") | nindent 8 }}
-        app.kubernetes.io/component: consumer
 
     spec:
       {{- if .Values.serviceAccount.create }}
@@ -78,7 +74,6 @@ spec:
             {{- with $consumer.envFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-
 
 {{- include "k8s.hpa" (dict "context" . "service" (dict "name" "consumer" "autoscaling" $consumer.autoscaling)) }}
 {{- end }}
