@@ -42,6 +42,9 @@ impl Publisher {
 
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+        if let Err(e) = s3_client.create_bucket().await {
+            tracing::error!("Failed to create S3 bucket: {:?}", e);
+        }
 
         let fuel_streams =
             Arc::new(FuelStreams::new(&nats_client, &s3_client).await);
@@ -112,7 +115,7 @@ impl Publisher {
     const MAX_RETAINED_BLOCKS: u64 = 100;
     pub async fn run(
         &self,
-        shutdown_token: ShutdownToken,
+        mut shutdown_token: ShutdownToken,
         historical: bool,
     ) -> anyhow::Result<()> {
         tracing::info!("Awaiting FuelCore Sync...");

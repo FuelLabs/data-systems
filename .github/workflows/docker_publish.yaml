@@ -34,7 +34,7 @@ jobs:
 
       - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
         uses: ./.github/actions/docker-publish
-        id: publish
+        id: publish-fuel-streams-nats
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}

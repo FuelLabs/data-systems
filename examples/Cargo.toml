@@ -8,6 +8,7 @@ edition = "2021"
 anyhow = { workspace = true }
 fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-ws = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
@@ -42,3 +43,7 @@ path = "logs.rs"
 [[example]]
 name = "multiple-streams"
 path = "multiple-streams.rs"
+
+[[example]]
+name = "websockets"
+path = "websockets.rs"

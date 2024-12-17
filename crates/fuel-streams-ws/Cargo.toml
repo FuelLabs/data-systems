@@ -1,0 +1,76 @@
+[package]
+name = "fuel-streams-ws"
+description = "Fuel library for streaming data from nats and storage"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[dependencies]
+actix-cors = { workspace = true }
+actix-server = { workspace = true }
+actix-service = "2.0.2"
+actix-web = { workspace = true }
+actix-ws = "0.3.0"
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+async-trait = { workspace = true }
+bytestring = "1.4.0"
+chrono = { workspace = true }
+clap = { workspace = true }
+confy = "0.6"
+derive_more = { version = "1.0", features = ["full"] }
+displaydoc = { workspace = true }
+dotenvy = { workspace = true }
+elasticsearch = "8.15.0-alpha.1"
+fuel-streams = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
+futures-util = { workspace = true }
+jsonwebtoken = "9.3.0"
+num_cpus = "1.16"
+parking_lot = { version = "0.12", features = ["serde"] }
+prometheus = { version = "0.13", features = ["process"] }
+rand = { workspace = true }
+reqwest = { version = "^0.12.9", features = ["json", "blocking"] }
+rust_decimal = { version = "1.13" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_prometheus = { version = "0.2" }
+sysinfo = { version = "0.29" }
+thiserror = "2.0"
+time = { version = "0.3", features = ["serde"] }
+tokio = { workspace = true }
+tokio-tungstenite = "0.24.0"
+toml = "0.8.19"
+tracing = { workspace = true }
+tracing-actix-web = { workspace = true }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+url = "2.5"
+urlencoding = "2.1"
+uuid = { version = "1.11.0", features = ["serde", "v4"] }
+validator = { version = "0.19.0", features = ["derive"] }
+
+[dev-dependencies]
+
+[features]
+default = []
+test-helpers = []
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.x86_64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.aarch64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }

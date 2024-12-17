@@ -58,7 +58,7 @@ impl<T: Streamable> PublishPacket<T> {
 /// }
 /// ```
 #[async_trait]
-pub trait Streamable: StreamEncoder {
+pub trait Streamable: StreamEncoder + std::marker::Sized {
     const NAME: &'static str;
     const WILDCARD_LIST: &'static [&'static str];
 

@@ -1,4 +1,8 @@
+use std::str::FromStr;
+
 /// FuelStreamsNetworks; shortened to FuelNetworks for brievity and public familiarity
+use serde::{Deserialize, Serialize};
+use url::Url;
 
 #[derive(Debug, Clone, Default)]
 pub enum FuelNetworkUserRole {
@@ -7,12 +11,28 @@ pub enum FuelNetworkUserRole {
     Default,
 }
 
-#[derive(Debug, Copy, Clone, Default, clap::ValueEnum)]
+#[derive(
+    Debug, Copy, Clone, Default, clap::ValueEnum, Deserialize, Serialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum FuelNetwork {
     #[default]
     Local,
     Testnet,
     Mainnet,
+}
+
+impl FromStr for FuelNetwork {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "local" => Ok(FuelNetwork::Local),
+            "testnet" => Ok(FuelNetwork::Testnet),
+            "mainnet" => Ok(FuelNetwork::Mainnet),
+            _ => Err(format!("unknown network: {}", s)),
+        }
+    }
 }
 
 impl std::fmt::Display for FuelNetwork {
@@ -41,6 +61,36 @@ impl FuelNetwork {
             FuelNetwork::Mainnet => "nats://stream.fuel.network:4222",
         }
         .to_string()
+    }
+
+    pub fn to_web_url(&self) -> Url {
+        match self {
+            FuelNetwork::Local => {
+                Url::parse("http://0.0.0.0:9003").expect("working url")
+            }
+            FuelNetwork::Testnet => {
+                Url::parse("http://stream-testnet.fuel.network:9003")
+                    .expect("working url")
+            }
+            FuelNetwork::Mainnet => {
+                Url::parse("http://stream.fuel.network:9003")
+                    .expect("working url")
+            }
+        }
+    }
+
+    pub fn to_ws_url(&self) -> Url {
+        match self {
+            FuelNetwork::Local => {
+                Url::parse("ws://0.0.0.0:9003").expect("working url")
+            }
+            FuelNetwork::Testnet => {
+                Url::parse("ws://stream-testnet.fuel.network:9003")
+                    .expect("working url")
+            }
+            FuelNetwork::Mainnet => Url::parse("ws://stream.fuel.network:9003")
+                .expect("working url"),
+        }
     }
 
     pub fn to_s3_url(&self) -> String {

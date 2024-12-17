@@ -66,10 +66,10 @@ tests:
   - it: should configure ports correctly
     set:
       webserver.enabled: true
-      webserver.service.port: 8082
+      webserver.service.port: 9003
       webserver.ports:
         - name: metrics
-          containerPort: 9090
+          containerPort: 9003
           protocol: TCP
     asserts:
       - lengthEqual:
@@ -79,13 +79,13 @@ tests:
           path: spec.template.spec.containers[0].ports
           content:
             name: webserver
-            containerPort: 8082
+            containerPort: 9003
             protocol: TCP
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
             name: metrics
-            containerPort: 9090
+            containerPort: 9003
             protocol: TCP
 
   - it: should set replicas when autoscaling is disabled

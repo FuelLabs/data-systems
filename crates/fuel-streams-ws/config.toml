@@ -1,0 +1,14 @@
+[api]
+port = 9003
+
+[nats]
+network = "local"
+
+[fuel]
+network = "local"
+
+[s3]
+enabled = true
+
+[auth]
+jwt-secret = "secret"

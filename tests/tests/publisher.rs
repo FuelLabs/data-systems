@@ -9,6 +9,7 @@ use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_publisher::{
     publisher::shutdown::ShutdownController,
+    shutdown::get_controller_and_token,
     FuelCoreLike,
     Publisher,
 };
@@ -291,9 +292,8 @@ async fn publish_block(
     stop_publisher(shutdown_controller).await;
 }
 
-async fn start_publisher(publisher: &Publisher) -> Arc<ShutdownController> {
-    let shutdown_controller = ShutdownController::new().arc();
-    let shutdown_token = shutdown_controller.get_token();
+async fn start_publisher(publisher: &Publisher) -> ShutdownController {
+    let (shutdown_controller, shutdown_token) = get_controller_and_token();
     tokio::spawn({
         let publisher = publisher.clone();
         async move {
@@ -303,7 +303,7 @@ async fn start_publisher(publisher: &Publisher) -> Arc<ShutdownController> {
     wait_for_publisher_to_start().await;
     shutdown_controller
 }
-async fn stop_publisher(shutdown_controller: Arc<ShutdownController>) {
+async fn stop_publisher(shutdown_controller: ShutdownController) {
     wait_for_publisher_to_process_block().await;
 
     assert!(shutdown_controller.initiate_shutdown().is_ok());

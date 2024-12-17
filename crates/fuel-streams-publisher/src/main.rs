@@ -8,6 +8,7 @@ use fuel_streams_publisher::{
     cli::Cli,
     publisher::shutdown::ShutdownController,
     server::{http::create_web_server, state::ServerState},
+    shutdown,
     telemetry::Telemetry,
     FuelCore,
     FuelCoreLike,
@@ -48,9 +49,9 @@ async fn main() -> anyhow::Result<()> {
     });
     tracing::info!("Publisher started.");
 
-    let shutdown_controller = ShutdownController::new().arc();
-    let shutdown_token = shutdown_controller.get_token();
-    ShutdownController::spawn_signal_listener(shutdown_controller);
+    let (shutdown_controller, shutdown_token) =
+        shutdown::get_controller_and_token();
+    ShutdownController::spawn_signal_listener(&shutdown_controller);
 
     // run publisher until shutdown signal intercepted
     if let Err(err) = publisher.run(shutdown_token, historical).await {
