@@ -331,9 +331,10 @@ nats-publisher:
   promExporter:
     enabled: false
 
-  statefulset:
+  statefulSet:
     merge:
-      replicas: 5
+      spec:
+        replicas: 5
 
   container:
     image:
@@ -424,9 +425,10 @@ nats-client:
   promExporter:
     enabled: false
 
-  statefulset:
+  statefulSet:
     merge:
-      replicas: 3
+      spec:
+        replicas: 3
 
   container:
     image:
