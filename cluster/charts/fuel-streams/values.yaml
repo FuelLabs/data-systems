@@ -305,11 +305,11 @@ nats-core:
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: CORE
         max_file_store: << 2000GiB >>
         max_memory_store: << 7GiB >>
-        max_payload: << 32MiB >>
       system_account: SYS
       $include: auth.conf
   
@@ -398,11 +398,11 @@ nats-publisher:
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: PUBLISHER
         max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
-        max_payload: << 32MiB >>
       system_account: SYS
       $include: auth.conf
 
@@ -506,11 +506,11 @@ nats-client:
       port: 8222
 
     merge:
+      max_payload: << 32MiB >>
       jetstream:
         domain: CLIENT
         max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
-        max_payload: << 32MiB >>
       system_account: SYS
       $include: auth.conf
 
