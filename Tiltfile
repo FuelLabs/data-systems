@@ -104,7 +104,8 @@ k8s_yaml(helm(
     namespace='fuel-streams',
     values=[
         'cluster/charts/fuel-streams/values-publisher-secrets.yaml',
-        'cluster/charts/fuel-streams/values.yaml'
+        'cluster/charts/fuel-streams/values.yaml',
+        'cluster/charts/fuel-streams/values-local.yaml'
     ]
 ))
 

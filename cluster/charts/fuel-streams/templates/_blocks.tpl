@@ -58,3 +58,55 @@ startupProbe:
   {{- include "merge" (dict "context" .context "service" .service "defaultKey" "startupProbe" "path" "config.startupProbe") | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Configure nats accounts
+*/}}
+{{- define "nats-accounts" -}}
+data:
+  auth.conf: |
+    accounts {
+      SYS: {
+        users: [
+          {user: $NATS_SYS_USER, password: $NATS_SYS_PASSWORD}
+        ]
+      }
+      ADMIN: {
+        jetstream: enabled
+        users: [
+          {user: $NATS_ADMIN_USER, password: $NATS_ADMIN_PASSWORD}
+        ]
+      }
+      PUBLIC: {
+        jetstream: enabled
+        users: [
+          {
+            user: $NATS_PUBLIC_USER
+            password: $NATS_PUBLIC_PASSWORD
+            permissions: {
+              subscribe: ">"
+              publish: {
+                deny: [
+                  "*.by_id.>"
+                  "*.blocks.>"
+                  "*.transactions.>"
+                  "*.inputs.>"
+                  "*.outputs.>"
+                  "*.receipts.>"
+                  "*.logs.>"
+                  "*.utxos.>"
+                  "$JS.API.STREAM.CREATE.>"
+                  "$JS.API.STREAM.UPDATE.>"
+                  "$JS.API.STREAM.DELETE.>"
+                  "$JS.API.STREAM.PURGE.>"
+                  "$JS.API.STREAM.RESTORE.>"
+                  "$JS.API.STREAM.MSG.DELETE.>"
+                  "$JS.API.CONSUMER.DURABLE.CREATE.>"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+{{- end }}
