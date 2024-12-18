@@ -5,17 +5,17 @@ name: fuel-streams
 version: 0.5.6
 dependencies:
   - name: nats
-    version: 1.2.6
+    version: 1.2.8
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats-core
     condition: nats-core.enabled
   - name: nats
-    version: 1.2.6
+    version: 1.2.8
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats-publisher
     condition: nats-publisher.enabled
   - name: nats
-    version: 1.2.6
+    version: 1.2.8
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats-client
     condition: nats-client.enabled
