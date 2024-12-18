@@ -32,7 +32,7 @@ jobs:
         id: sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
+      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }}) for publisher
         uses: ./.github/actions/docker-publish
         id: publish-fuel-streams-nats
         with:
@@ -40,3 +40,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/fuel-streams-publisher
           dockerfile: cluster/docker/fuel-streams-publisher.Dockerfile
+
+      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }}) for webserver
+        uses: ./.github/actions/docker-publish
+        id: publish-fuel-webserver-nats
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          image: ghcr.io/fuellabs/fuel-streams-ws
+          dockerfile: cluster/docker/fuel-streams-ws.Dockerfile
