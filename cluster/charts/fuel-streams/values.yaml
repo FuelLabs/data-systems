@@ -140,11 +140,6 @@ publisher:
         podValue: 4
         periodSeconds: 15
 
-  env:
-    PORT: 8080
-    PUBLISHER_MAX_THREADS: "32"
-    NATS_URL: "fuel-streams-nats-publisher:4222"
-
   # Additional environment variables with complex structures
   # extraEnv: []
   #   - name: RELAYER
@@ -168,6 +163,11 @@ publisher:
   #       name: additional-config
   #   - secretRef:
   #       name: additional-secrets
+
+  env:
+    PORT: 8080
+    PUBLISHER_MAX_THREADS: "32"
+    NATS_URL: "fuel-streams-nats-publisher:4222"
 
 # -------------------------------------------------------------------------------------------------
 # Consumer configuration
@@ -226,6 +226,29 @@ consumer:
         periodSeconds: 15
 
 # -------------------------------------------------------------------------------------------------
+# NATS Common Configuration
+# -------------------------------------------------------------------------------------------------
+
+natsExternalService:
+  enabled: true
+  certificate:
+    issuer: "letsencrypt-prod"
+    duration: "2160h"
+    renewBefore: "360h"
+    annotations: {}
+    labels: {}
+  service:
+    dns: "stream-dev.fuel.network"
+    labels: {}
+    annotations: {}
+
+# This is just need to run locally, for production you need to
+# create a secret with the correct values named fuel-streams-nats-accounts
+natsAccountsSecret:
+  enabled: false
+  data: []
+
+# -------------------------------------------------------------------------------------------------
 # NATS Core configuration
 # -------------------------------------------------------------------------------------------------
 
@@ -250,7 +273,7 @@ nats-core:
   container:
     image:
       repository: nats
-      tag: 2.10.22-alpine
+      tag: 2.10.24-alpine
     env:
       GOMEMLIMIT: 7GiB
     merge:
@@ -270,8 +293,6 @@ nats-core:
         enabled: true
       leafnodes:
         enabled: true
-      mqtt:
-        enabled: false
       monitor:
         enabled: false
 
@@ -282,7 +303,7 @@ nats-core:
       replicas: 5
       routeURLs:
         useFQDN: true
-    
+
     websocket:
       enabled: true
       port: 8443
@@ -308,11 +329,13 @@ nats-core:
       max_payload: << 32MiB >>
       jetstream:
         domain: CORE
+        sync_interval: << 30s >>
+        max_outstanding_catchup: << 512MiB >>
         max_file_store: << 2000GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
       $include: auth.conf
-  
+
   configMap:
     merge:
       $tplYaml: |
@@ -339,7 +362,7 @@ nats-publisher:
   container:
     image:
       repository: nats
-      tag: 2.10.22-alpine
+      tag: 2.10.24-alpine
     env:
       GOMEMLIMIT: 7GiB
     merge:
@@ -353,28 +376,12 @@ nats-publisher:
     ports:
       nats:
         enabled: true
-      websocket:
-        enabled: false
       leafnodes:
         enabled: true
       monitor:
         enabled: false
-      mqtt:
-        enabled: false
-
-  podTemplate:
-    topologySpreadConstraints:
-      kubernetes.io/hostname:
-        maxSkew: 1
-        whenUnsatisfiable: DoNotSchedule
 
   config:
-    cluster:
-      enabled: false
-
-    websocket:
-      enabled: false
-
     jetstream:
       enabled: true
       fileStore:
@@ -389,9 +396,7 @@ nats-publisher:
       port: 7422
       merge:
         remotes:
-          - urls: ["nats://sys:sys@fuel-streams-nats-core:7422"]
-            account: SYS
-          - urls: ["nats://admin:admin@fuel-streams-nats-core:7422"]
+          - urls: ["nats-leaf://admin:admin@fuel-streams-nats-core:7422"]
             account: ADMIN
 
     monitor:
@@ -402,6 +407,8 @@ nats-publisher:
       max_payload: << 32MiB >>
       jetstream:
         domain: PUBLISHER
+        sync_interval: << 30s >>
+        max_outstanding_catchup: << 512MiB >>
         max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
@@ -422,9 +429,6 @@ nats-client:
   natsBox:
     enabled: false
 
-  promExporter:
-    enabled: false
-
   statefulSet:
     merge:
       spec:
@@ -433,7 +437,7 @@ nats-client:
   container:
     image:
       repository: nats
-      tag: 2.10.22-alpine
+      tag: 2.10.24-alpine
     env:
       GOMEMLIMIT: 7GiB
     merge:
@@ -454,18 +458,9 @@ nats-client:
       monitor:
         enabled: false
       mqtt:
-        enabled: false 
-
-  podTemplate:
-    topologySpreadConstraints:
-      kubernetes.io/hostname:
-        maxSkew: 1
-        whenUnsatisfiable: DoNotSchedule
+        enabled: false
 
   config:
-    cluster:
-      enabled: false
-
     jetstream:
       enabled: true
       fileStore:
@@ -480,7 +475,7 @@ nats-client:
       port: 7422
       merge:
         remotes:
-          - urls: ["ws://admin:admin@fuel-streams-nats-core:8443"]
+          - urls: ["nats-leaf://admin:admin@fuel-streams-nats-core:7422"]
             account: ADMIN
 
     websocket:
@@ -509,6 +504,8 @@ nats-client:
       max_payload: << 32MiB >>
       jetstream:
         domain: CLIENT
+        sync_interval: << 30s >>
+        max_outstanding_catchup: << 512MiB >>
         max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
@@ -518,29 +515,6 @@ nats-client:
     merge:
       $tplYaml: |
         {{- include "nats-accounts" . | nindent 8 }}
-
-# -------------------------------------------------------------------------------------------------
-# NATS External Service configuration (WebSocket)
-# -------------------------------------------------------------------------------------------------
-
-natsExternalService:
-  enabled: true
-  certificate:
-    issuer: "letsencrypt-prod"
-    duration: "2160h"
-    renewBefore: "360h"
-    annotations: {}
-    labels: {}
-  service:
-    dns: "stream-dev.fuel.network"
-    labels: {}
-    annotations: {}
-
-# This is just need to run locally, for production you need to
-# create a secret with the correct values named fuel-streams-nats-accounts
-natsAccountsSecret:
-  enabled: false
-  data: []
 
 # -------------------------------------------------------------------------------------------------
 # WebServer configuration

@@ -6,8 +6,8 @@ config:
 publisher:
   storage:
     size: 10Gi
-    storageClass: "standard"  # Use default storage class
-  
+    storageClass: "standard" # Use default storage class
+
   config:
     replicaCount: 1
     resources:
@@ -50,7 +50,7 @@ nats-core:
 
   config:
     cluster:
-      replicas: 1  # Single replica for local development
+      replicas: 1 # Single replica for local development
 
     jetstream:
       fileStore:
@@ -121,7 +121,7 @@ natsExternalService:
 
 # Use simple passwords for local development
 natsAccountsSecret:
-  enabled: true 
+  enabled: true
   data:
     - name: NATS_SYS_USER
       value: sys
@@ -132,6 +132,6 @@ natsAccountsSecret:
     - name: NATS_ADMIN_PASS
       value: admin
     - name: NATS_PUBLISHER_USER
-      value: default_user 
+      value: default_user
     - name: NATS_PUBLISHER_PASS
       value: ""
