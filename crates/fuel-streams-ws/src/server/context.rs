@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use fuel_streams::client::Client;
 use fuel_streams_core::prelude::*;
 use fuel_streams_storage::S3Client;
 
@@ -15,7 +14,6 @@ pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Context {
-    pub client: Client,
     pub nats_client: NatsClient,
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry>,
@@ -25,23 +23,19 @@ pub struct Context {
 
 impl Context {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::new(config.fuel.network);
+        let nats_client_opts = NatsClientOpts::new(config.nats.network);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
-
         let fuel_streams =
             Arc::new(FuelStreams::new(&nats_client, &s3_client).await);
-
-        let client = Client::connect(config.fuel.network).await?;
         let telemetry = Telemetry::new(None).await?;
         telemetry.start().await?;
 
         Ok(Context {
             fuel_streams,
             nats_client,
-            client,
+            // client,
             telemetry,
             s3_client: if config.s3.enabled {
                 Some(s3_client)
@@ -57,7 +51,6 @@ impl Context {
     ) -> anyhow::Result<Self> {
         let nats_client_opts = NatsClientOpts::new(fuel_network);
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let client = Client::connect(fuel_network).await?;
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
         Ok(Context {
@@ -68,7 +61,6 @@ impl Context {
             telemetry: Telemetry::new(None).await?,
             s3_client: None,
             jwt_secret: String::new(),
-            client,
         })
     }
 

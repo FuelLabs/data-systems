@@ -49,10 +49,13 @@ jobs:
             deps
             release
             core
-            publisher
             data-parser
+            networks
             fuel-streams
             macros
+            publisher
+            storage
+            ws
 
   lockfile:
     name: Validate Lockfile

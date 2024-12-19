@@ -23,16 +23,6 @@ pub struct Cli {
     )]
     pub nats_url: String,
 
-    /// Fuel network configuration
-    #[arg(
-        long,
-        value_name = "NETWORK",
-        env = "NETWORK",
-        default_value = "local",
-        help = "Fuel network configuration (local, etc.)"
-    )]
-    pub network: String,
-
     /// Enable S3
     #[arg(
         long,

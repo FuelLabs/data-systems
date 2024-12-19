@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
 use clap::Parser;
 use displaydoc::Display as DisplayDoc;
@@ -34,11 +34,6 @@ pub struct AuthConfig {
 }
 
 #[derive(Clone, Debug)]
-pub struct FuelConfig {
-    pub network: FuelNetwork,
-}
-
-#[derive(Clone, Debug)]
 pub struct NatsConfig {
     pub network: FuelNetwork,
 }
@@ -49,7 +44,6 @@ pub struct Config {
     pub auth: AuthConfig,
     pub s3: S3Config,
     pub nats: NatsConfig,
-    pub fuel: FuelConfig,
 }
 
 impl Config {
@@ -72,10 +66,6 @@ impl Config {
             },
             s3: S3Config {
                 enabled: cli.s3_enabled,
-            },
-            fuel: FuelConfig {
-                network: FuelNetwork::from_str(&cli.network)
-                    .map_err(|_| Error::UndecodableConfigElement("NETWORK"))?,
             },
         })
     }
