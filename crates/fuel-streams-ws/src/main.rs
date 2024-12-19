@@ -1,7 +1,4 @@
-use anyhow::Context as _;
-use clap::Parser;
 use fuel_streams_ws::{
-    cli::Cli,
     config::Config,
     server::{api::create_api, context::Context, state::ServerState},
 };
@@ -20,36 +17,14 @@ async fn main() -> anyhow::Result<()> {
         .with_span_events(FmtSpan::CLOSE)
         .init();
 
-    // load envs
-    dotenvy::dotenv().context("Failed to env values")?;
+    if let Err(err) = dotenvy::dotenv() {
+        tracing::error!("File .env not found: {:?}", err);
+    }
 
-    // read cli args
-    let cli = Cli::parse();
-
-    // load config
-    let config = match cli.config_path {
-        Some(path) => {
-            tracing::info!("Using config file: {}", path);
-            Config::from_path(path)
-                .await
-                .context("Failed to load toml config")?
-        }
-        None => {
-            tracing::info!("Using envs to load config");
-            Config::from_envs().context("Failed to load toml config")?
-        }
-    };
-
-    // init context
+    let config = Config::load()?;
     let context = Context::new(&config).await?;
-
-    // init server shared state
     let state = ServerState::new(context).await;
-
-    // create the actix webserver
     let server = create_api(&config, state)?;
-
-    // get server handle
     let server_handle = server.handle();
 
     // spawn the server in the background

@@ -2,6 +2,16 @@ name: Build and publish Docker image
 
 on:
   workflow_dispatch:
+    inputs:
+      image_type:
+        description: "Choose which image to build (publisher/webserver/both)"
+        required: true
+        type: choice
+        options:
+          - publisher
+          - webserver
+          - both
+        default: "both"
   push:
     branches:
       - main
@@ -32,7 +42,9 @@ jobs:
         id: sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }}) for publisher
+      - name: Build and push Docker for publisher
+        if: github.event.inputs.image_type == 'publisher' || github.event.inputs.image_type == 'both'
+          || github.event_name != 'workflow_dispatch'
         uses: ./.github/actions/docker-publish
         id: publish-fuel-streams-nats
         with:
@@ -41,7 +53,9 @@ jobs:
           image: ghcr.io/fuellabs/fuel-streams-publisher
           dockerfile: cluster/docker/fuel-streams-publisher.Dockerfile
 
-      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }}) for webserver
+      - name: Build and push Docker for webserver
+        if: github.event.inputs.image_type == 'webserver' || github.event.inputs.image_type == 'both'
+          || github.event_name != 'workflow_dispatch'
         uses: ./.github/actions/docker-publish
         id: publish-fuel-webserver-nats
         with:
