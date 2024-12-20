@@ -68,13 +68,13 @@ data:
     accounts {
       SYS: {
         users: [
-          {user: $NATS_SYS_USER, password: $NATS_SYS_PASSWORD}
+          {user: $NATS_SYS_USER, password: $NATS_SYS_PASS}
         ]
       }
       ADMIN: {
         jetstream: enabled
         users: [
-          {user: $NATS_ADMIN_USER, password: $NATS_ADMIN_PASSWORD}
+          {user: $NATS_ADMIN_USER, password: $NATS_ADMIN_PASS}
         ]
       }
       PUBLIC: {
@@ -82,7 +82,7 @@ data:
         users: [
           {
             user: $NATS_PUBLIC_USER
-            password: $NATS_PUBLIC_PASSWORD
+            password: $NATS_PUBLIC_PASS
             permissions: {
               subscribe: ">"
               publish: {
