@@ -90,6 +90,9 @@ publisher:
     tag: "latest"
     args: []
 
+  env:
+    NATS_URL: "fuel-streams-nats-core:4222"
+
   service:
     type: ClusterIP
     port: 8080
@@ -175,7 +178,15 @@ consumer:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
     tag: "latest"
-    args: []
+    args:
+      - --nats-core-url
+      - $(NATS_CORE_URL)
+      - --nats-publisher-url
+      - $(NATS_PUBLISHER_URL)
+
+  env:
+    NATS_CORE_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
 
   config:
     replicaCount: 3
@@ -228,6 +239,9 @@ webserver:
     repository: fuel-streams-webserver
     pullPolicy: Never
     tag: "latest"
+
+  env:
+    NATS_URL: "fuel-streams-nats-publisher:4222"
 
   config:
     replicaCount: 1

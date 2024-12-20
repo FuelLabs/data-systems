@@ -152,8 +152,6 @@ spec:
               value: "/var/fuel-streams/tmp"
             - name: DB_PATH
               value: {{ $publisher.storage.mountPath | default "/mnt/db" | quote }}
-            - name: NATS_URL
-              value: "{{ include "fuel-streams.fullname" . }}-nats-publisher:4222"
             {{- range $key, $value := $publisher.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
