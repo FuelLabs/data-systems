@@ -217,8 +217,8 @@ impl<S: Streamable> Executor<S> {
         let permit = Arc::clone(&semaphore);
 
         // TODO: add telemetry back again
+        let packet = packet.clone();
         tokio::spawn({
-            let packet = packet.clone();
             async move {
                 let _permit = permit.acquire().await?;
                 match stream.publish(&packet).await {
@@ -228,7 +228,10 @@ impl<S: Streamable> Executor<S> {
                         );
                         Ok(())
                     }
-                    Err(e) => Err(ExecutorError::PublishFailed(e.to_string())),
+                    Err(e) => {
+                        tracing::error!("Failed to publish for stream: {wildcard}, error: {e}");
+                        Err(ExecutorError::PublishFailed(e.to_string()))
+                    }
                 }
             }
         })

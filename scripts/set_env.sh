@@ -64,7 +64,7 @@ export AWS_REGION="$(echo "$AWS_REGION")"
 export AWS_ENDPOINT_URL="$(echo "$AWS_ENDPOINT_URL")"
 export AWS_S3_BUCKET_NAME="$(echo "$AWS_S3_BUCKET_NAME")"
 export JWT_AUTH_SECRET="$(echo "$JWT_AUTH_SECRET")"
-export NATS_URL="$(echo "$NATS_URL")"
+# export NATS_URL="$(echo "$NATS_URL")"
 
 # Append network-specific variables to .env file
 {
@@ -88,5 +88,5 @@ export NATS_URL="$(echo "$NATS_URL")"
     echo "AWS_ENDPOINT_URL=$AWS_ENDPOINT_URL"
     echo "AWS_S3_BUCKET_NAME=$AWS_S3_BUCKET_NAME"
     echo "JWT_AUTH_SECRET=$JWT_AUTH_SECRET"
-    echo "NATS_URL=$NATS_URL"
+    # echo "NATS_URL=$NATS_URL"
 } >> .env

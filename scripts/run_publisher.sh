@@ -109,10 +109,6 @@ COMMON_ARGS=(
     "--peering-port" "30333"
     "--db-path" "./cluster/docker/db-${NETWORK}"
     "--snapshot" "./cluster/chain-config/${NETWORK}"
-    "--nats-url" "nats://localhost:4222"
-    "--port" "${PORT}"
-    "--telemetry-port" "${TELEMETRY_PORT}"
-    "--peering-port" "30333"
     "--utxo-validation"
     "--poa-instant" "false"
     "--enable-p2p"
@@ -121,11 +117,13 @@ COMMON_ARGS=(
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
     "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
     "--sync-block-stream-buffer-size" "50"
-    "--nats-url" "nats://localhost:4222"
     "--max-database-cache-size" "17179869184"
     "--state-rewind-duration" "136y"
     "--request-timeout" "60"
     "--graphql-max-complexity" "1000000000"
+    # Application specific
+    "--nats-url" "nats://localhost:4222"
+    # "--telemetry-port" "${TELEMETRY_PORT}"
 )
 
 # Execute based on mode

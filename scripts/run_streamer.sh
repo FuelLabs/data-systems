@@ -9,16 +9,18 @@ set -e
 usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  --mode        : Specify the run mode (dev|profiling)"
-    echo "  --config-path : Specify the toml config path"
-    echo "                  Default: config.toml"
-    echo "  --extra-args  : Optional additional arguments to append (in quotes)"
+    echo "  --mode         : Specify the run mode (dev|profiling)"
+    echo "  --api-port     : Port number for the API server (default: 9003)"
+    echo "  --nats-url     : NATS URL (default: nats://localhost:4222)"
+    echo "  --s3-enabled   : Enable S3 integration (default: true)"
+    echo "  --jwt-secret   : Secret key for JWT authentication (default: secret)"
+    echo "  --use-metrics  : Enable metrics (flag)"
+    echo "  --extra-args   : Optional additional arguments to append (in quotes)"
     echo ""
     echo "Examples:"
-    echo "  $0                                              # Runs with all defaults"
-    echo "  $0 --config-path                                # Runs with default config.toml"
-    echo "  $0 --mode dev                                   # Runs with dev mode"
-    echo "  $0 --config-path ../config.toml --mode dev      # Custom config toml path and mode"
+    echo "  $0                                         # Runs with all defaults"
+    echo "  $0 --mode dev --api-port 8080             # Custom port"
+    echo "  $0 --mode dev --use-metrics               # Enable metrics"
     exit 1
 }
 
@@ -28,9 +30,25 @@ while [[ "$#" -gt 0 ]]; do
             MODE="$2"
             shift 2
             ;;
-        --config-path)
-            CONFIG_PATH="$2"
+        --api-port)
+            API_PORT="$2"
             shift 2
+            ;;
+        --nats-url)
+            NATS_URL="$2"
+            shift 2
+            ;;
+        --s3-enabled)
+            S3_ENABLED="$2"
+            shift 2
+            ;;
+        --jwt-secret)
+            JWT_SECRET="$2"
+            shift 2
+            ;;
+        --use-metrics)
+            USE_METRICS="true"
+            shift
             ;;
         --extra-args)
             EXTRA_ARGS="$2"
@@ -46,6 +64,14 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+# Load environment variables with defaults
+API_PORT=${API_PORT:-9003}
+NATS_URL=${NATS_URL:-nats://localhost:4222}
+S3_ENABLED=${S3_ENABLED:-true}
+JWT_SECRET=${JWT_SECRET:-secret}
+USE_METRICS=${USE_METRICS:-false}
+MODE=${MODE:-dev}
+
 # ------------------------------
 # Load Environment
 # ------------------------------
@@ -58,35 +84,36 @@ echo -e "=========================================="
 
 # Runtime Configuration
 echo "Runtime Settings:"
-echo "→ Mode: $MODE"
-if [ -n "$CONFIG_PATH" ]; then
-    echo "→ Config path: $CONFIG_PATH"
-fi
+echo "→ Mode: ${MODE:-dev}"
+echo "→ API Port: ${API_PORT:-9003}"
+echo "→ NATS URL: ${NATS_URL:-nats://localhost:4222}"
+echo "→ S3 Enabled: ${S3_ENABLED:-true}"
+echo "→ JWT Secret: ${JWT_SECRET:-secret}"
+echo "→ Use Metrics: ${USE_METRICS:-false}"
 if [ -n "$EXTRA_ARGS" ]; then
     echo "→ Extra Arguments: $EXTRA_ARGS"
 fi
 
-# Environment Variables
-echo -e "\nEnvironment Variables:"
-echo "  → Use Metrics: ${USE_METRICS}"
-echo "  → Use Elastic Logging: $USE_ELASTIC_LOGGING"
-echo "  → AWS S3 Enabled: $AWS_S3_ENABLED"
-echo "  → AWS Access Key Id: $AWS_ACCESS_KEY_ID"
-echo "  → AWS Secret Access Key: $AWS_SECRET_ACCESS_KEY"
-echo "  → AWS Region: $AWS_REGION"
-echo "  → AWS Bucket: $AWS_S3_BUCKET_NAME"
-echo "  → AWS Endpoint: $AWS_ENDPOINT_URL"
-echo "  → Jwt Auth Secret: $JWT_AUTH_SECRET"
-echo "  → Nats Url: $NATS_URL"
 echo -e "==========================================\n"
 
 # Define common arguments
 COMMON_ARGS=(
-    "--config-path" "${CONFIG_PATH}"
+    "--api-port" "${API_PORT:-9003}"
+    "--nats-url" "${NATS_URL:-nats://localhost:4222}"
+    "--jwt-secret" "${JWT_SECRET:-secret}"
 )
 
+# Add boolean flags if enabled
+if [ "${S3_ENABLED:-true}" = "true" ]; then
+    COMMON_ARGS+=("--s3-enabled")
+fi
+
+if [ "${USE_METRICS:-false}" = "true" ]; then
+    COMMON_ARGS+=("--use-metrics")
+fi
+
 # Execute based on mode
-if [ "$MODE" == "dev" ]; then
+if [ "${MODE:-dev}" == "dev" ]; then
     cargo run -p fuel-streams-ws -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
     cargo build --profile profiling --package fuel-streams-ws

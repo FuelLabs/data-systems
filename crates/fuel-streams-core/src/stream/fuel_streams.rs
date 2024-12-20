@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use async_nats::{jetstream::stream::State as StreamState, RequestErrorKind};
+use async_nats::{
+    jetstream::{context::CreateStreamErrorKind, stream::State as StreamState},
+    RequestErrorKind,
+};
+use futures::stream::BoxStream;
 
 use crate::prelude::*;
 
@@ -13,6 +17,41 @@ pub struct FuelStreams {
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
     pub logs: Stream<Log>,
+}
+
+pub struct FuelStreamsUtils;
+impl FuelStreamsUtils {
+    pub fn is_within_subject_names(subject_name: &str) -> bool {
+        let subject_names = Self::subjects_names();
+        subject_names.contains(&subject_name)
+    }
+
+    pub fn subjects_names() -> &'static [&'static str] {
+        &[
+            Transaction::NAME,
+            Block::NAME,
+            Input::NAME,
+            Receipt::NAME,
+            Utxo::NAME,
+            Log::NAME,
+        ]
+    }
+
+    pub fn wildcards() -> Vec<&'static str> {
+        let nested_wildcards = [
+            Transaction::WILDCARD_LIST,
+            Block::WILDCARD_LIST,
+            Input::WILDCARD_LIST,
+            Receipt::WILDCARD_LIST,
+            Utxo::WILDCARD_LIST,
+            Log::WILDCARD_LIST,
+        ];
+        nested_wildcards
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>()
+    }
 }
 
 impl FuelStreams {
@@ -42,6 +81,31 @@ impl FuelStreams {
         (core_stream, publisher_stream)
     }
 
+    pub async fn subscribe(
+        &self,
+        sub_subject: &str,
+        subscription_config: Option<SubscriptionConfig>,
+    ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
+        match sub_subject {
+            Transaction::NAME => {
+                self.transactions.subscribe_raw(subscription_config).await
+            }
+            Block::NAME => self.blocks.subscribe_raw(subscription_config).await,
+            Input::NAME => self.inputs.subscribe_raw(subscription_config).await,
+            Output::NAME => {
+                self.outputs.subscribe_raw(subscription_config).await
+            }
+            Receipt::NAME => {
+                self.receipts.subscribe_raw(subscription_config).await
+            }
+            Utxo::NAME => self.utxos.subscribe_raw(subscription_config).await,
+            Log::NAME => self.logs.subscribe_raw(subscription_config).await,
+            _ => Err(StreamError::StreamCreation(
+                CreateStreamErrorKind::InvalidStreamName.into(),
+            )),
+        }
+    }
+
     pub fn arc(self) -> Arc<Self> {
         Arc::new(self)
     }
@@ -58,33 +122,6 @@ pub trait FuelStreamsExt: Sync + Send {
     fn logs(&self) -> &Stream<Log>;
 
     async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>>;
-
-    fn subjects_wildcards(&self) -> &[&'static str] {
-        &[
-            TransactionsSubject::WILDCARD,
-            BlocksSubject::WILDCARD,
-            InputsByIdSubject::WILDCARD,
-            InputsCoinSubject::WILDCARD,
-            InputsMessageSubject::WILDCARD,
-            InputsContractSubject::WILDCARD,
-            ReceiptsLogSubject::WILDCARD,
-            ReceiptsBurnSubject::WILDCARD,
-            ReceiptsByIdSubject::WILDCARD,
-            ReceiptsCallSubject::WILDCARD,
-            ReceiptsMintSubject::WILDCARD,
-            ReceiptsPanicSubject::WILDCARD,
-            ReceiptsReturnSubject::WILDCARD,
-            ReceiptsRevertSubject::WILDCARD,
-            ReceiptsLogDataSubject::WILDCARD,
-            ReceiptsTransferSubject::WILDCARD,
-            ReceiptsMessageOutSubject::WILDCARD,
-            ReceiptsReturnDataSubject::WILDCARD,
-            ReceiptsTransferOutSubject::WILDCARD,
-            ReceiptsScriptResultSubject::WILDCARD,
-            UtxosSubject::WILDCARD,
-            LogsSubject::WILDCARD,
-        ]
-    }
 
     async fn get_consumers_and_state(
         &self,

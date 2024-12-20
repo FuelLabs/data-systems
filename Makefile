@@ -230,6 +230,10 @@ run-publisher-testnet-dev:
 run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
+# ------------------------------------------------------------
+#  Consumer Run Commands
+# ------------------------------------------------------------
+
 run-consumer: NATS_CORE_URL="localhost:4222"
 run-consumer: NATS_PUBLISHER_URL="localhost:4223"
 run-consumer:
@@ -241,45 +245,66 @@ run-consumer:
 #  Streamer Run Commands
 # ------------------------------------------------------------
 
+run-streamer: NETWORK="testnet"
+run-streamer: MODE="dev"
+run-streamer: API_PORT="9003"
+run-streamer: NATS_URL="nats://localhost:4222"
+run-streamer: S3_ENABLED="true"
+run-streamer: JWT_SECRET="secret"
+run-streamer: USE_METRICS="false"
 run-streamer: check-network
 	@./scripts/run_streamer.sh \
 		--mode $(MODE) \
-		$(if $(CONFIG_PATH),--config-path $(CONFIG_PATH),) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+		--api-port $(API_PORT) \
+		--nats-url $(NATS_URL) \
+		--s3-enabled $(S3_ENABLED) \
+		--jwt-secret $(JWT_SECRET) \
+		$(if $(USE_METRICS),--use-metrics,) \
+		$(if $(extra_args),$(extra_args),)
 
 run-streamer-mainnet-dev:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=mainnet MODE=dev
 
 run-streamer-mainnet-profiling:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling
 
 run-streamer-testnet-dev:
-	$(MAKE) run-streamer NETWORK=testnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=testnet MODE=dev
 
 run-streamer-testnet-profiling:
-	$(MAKE) run-streamer NETWORK=testnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
 #  Docker Compose
 # ------------------------------------------------------------
 
+# Define service profiles
+DOCKER_SERVICES := nats localstack docker
+
+run-docker-compose: PROFILE="all"
 run-docker-compose:
 	@./scripts/set_env.sh
-	@docker compose -f cluster/docker/docker-compose.yml --env-file .env $(COMMAND)
+	@docker compose -f cluster/docker/docker-compose.yml --profile $(PROFILE) --env-file .env $(COMMAND)
 
-start-nats:
-	$(MAKE) run-docker-compose COMMAND="up -d"
+# Common docker-compose commands
+define make-docker-commands
+start-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="up -d"
 
-stop-nats:
-	$(MAKE) run-docker-compose COMMAND="down"
+stop-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down"
 
-restart-nats:
-	$(MAKE) run-docker-compose COMMAND="restart"
+restart-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="restart"
 
-clean-nats:
-	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
+clean-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down -v --remove-orphans"
 
-reset-nats: clean-nats start-nats
+reset-$(1): clean-$(1) start-$(1)
+endef
+
+# Generate targets for each service
+$(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

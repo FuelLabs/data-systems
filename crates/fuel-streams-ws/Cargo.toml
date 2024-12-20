@@ -19,7 +19,6 @@ actix-web = { workspace = true }
 actix-ws = "0.3.0"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-async-trait = { workspace = true }
 bytestring = "1.4.0"
 chrono = { workspace = true }
 clap = { workspace = true }

@@ -51,7 +51,9 @@ pub enum ConsumerError {
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
-        .with_env_filter("sv_consumer=trace,fuel_streams_executors=trace")
+        .with_env_filter(
+            "sv_consumer=trace,fuel_streams_executors=trace,fuel_streams_core=trace,fuel-streams-nats=trace,fuel-streams-storage=trace",
+        )
         .with_timer(time::LocalTime::rfc_3339())
         .with_target(false)
         .with_thread_ids(false)
@@ -59,6 +61,10 @@ async fn main() -> anyhow::Result<()> {
         .with_line_number(true)
         .with_level(true)
         .init();
+
+    if let Err(err) = dotenvy::dotenv() {
+        tracing::warn!("File .env not found: {:?}", err);
+    }
 
     let cli = Cli::parse();
     let shutdown = Arc::new(ShutdownController::new());
@@ -129,6 +135,7 @@ async fn process_messages(
     let (_, publisher_stream) =
         FuelStreams::setup_all(&core_client, &publisher_client, &s3_client)
             .await;
+
     let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
     while !token.is_cancelled() {
         let messages = consumer.fetch().max_messages(100).messages().await?;

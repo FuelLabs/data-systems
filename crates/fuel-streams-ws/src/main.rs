@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     if let Err(err) = dotenvy::dotenv() {
-        tracing::error!("File .env not found: {:?}", err);
+        tracing::warn!("File .env not found: {:?}", err);
     }
 
     let config = Config::load()?;

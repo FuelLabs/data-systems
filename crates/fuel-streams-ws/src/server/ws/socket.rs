@@ -14,23 +14,16 @@ use fuel_streams::{
     StreamEncoder,
     Streamable,
 };
-use fuel_streams_core::SubscriptionConfig;
+use fuel_streams_core::prelude::*;
 use fuel_streams_nats::DeliverPolicy;
 use futures::StreamExt;
 use uuid::Uuid;
 
-use super::{
-    errors::WsSubscriptionError,
-    fuel_streams::FuelStreams,
-    models::ClientMessage,
-};
+use super::{errors::WsSubscriptionError, models::ClientMessage};
 use crate::{
     server::{
         state::ServerState,
-        ws::{
-            fuel_streams::FuelStreamsExt,
-            models::{ServerMessage, SubscriptionPayload},
-        },
+        ws::models::{ServerMessage, SubscriptionPayload},
     },
     telemetry::Telemetry,
 };
@@ -84,167 +77,25 @@ pub async fn get_ws(
                 }
                 Message::Text(string) => {
                     tracing::info!("Received text, {string}");
+                    let bytes = Bytes::from(string.as_bytes().to_vec());
+                    let _ = handle_binary_message(
+                        bytes,
+                        user_id,
+                        session,
+                        Arc::clone(&telemetry),
+                        Arc::clone(&streams),
+                    )
+                    .await;
                 }
                 Message::Binary(bytes) => {
-                    tracing::info!("Received binary {:?}", bytes);
-                    let client_message = match parse_client_message(bytes) {
-                        Ok(msg) => msg,
-                        Err(e) => {
-                            close_socket_with_error(
-                                e, user_id, session, None, telemetry,
-                            )
-                            .await;
-                            return;
-                        }
-                    };
-
-                    // handle the client message
-                    match client_message {
-                        ClientMessage::Subscribe(payload) => {
-                            tracing::info!(
-                                "Received subscribe message: {:?}",
-                                payload
-                            );
-                            let subject_wildcard = payload.wildcard;
-                            let deliver_policy = payload.deliver_policy;
-
-                            // verify the subject name
-                            let sub_subject =
-                                match verify_and_extract_subject_name(
-                                    &subject_wildcard,
-                                ) {
-                                    Ok(res) => res,
-                                    Err(e) => {
-                                        close_socket_with_error(
-                                            e,
-                                            user_id,
-                                            session,
-                                            Some(subject_wildcard.clone()),
-                                            telemetry,
-                                        )
-                                        .await;
-                                        return;
-                                    }
-                                };
-
-                            // start the streamer async
-                            let mut stream_session = session.clone();
-
-                            // reply to socket with subscription
-                            send_message_to_socket(
-                                &mut session,
-                                ServerMessage::Subscribed(
-                                    SubscriptionPayload {
-                                        wildcard: subject_wildcard.clone(),
-                                        deliver_policy,
-                                    },
-                                ),
-                            )
-                            .await;
-
-                            // receive streaming in a background thread
-                            let streams = streams.clone();
-                            let telemetry = telemetry.clone();
-                            actix_web::rt::spawn(async move {
-                                // update metrics
-                                telemetry.update_user_subscription_metrics(
-                                    user_id,
-                                    &subject_wildcard,
-                                );
-
-                                // subscribe to the stream
-                                let config = SubscriptionConfig {
-                                    deliver_policy: DeliverPolicy::All,
-                                    filter_subjects: vec![
-                                        subject_wildcard.clone()
-                                    ],
-                                };
-                                let mut sub = match streams
-                                    .subscribe(&sub_subject, Some(config))
-                                    .await
-                                {
-                                    Ok(sub) => sub,
-                                    Err(e) => {
-                                        close_socket_with_error(
-                                            WsSubscriptionError::Stream(e),
-                                            user_id,
-                                            session,
-                                            Some(subject_wildcard.clone()),
-                                            telemetry,
-                                        )
-                                        .await;
-                                        return;
-                                    }
-                                };
-
-                                // consume and forward to the ws
-                                while let Some(s3_serialized_payload) =
-                                    sub.next().await
-                                {
-                                    // decode and serialize back to ws payload
-                                    let serialized_ws_payload = match decode(
-                                        &subject_wildcard,
-                                        s3_serialized_payload,
-                                    )
-                                    .await
-                                    {
-                                        Ok(res) => res,
-                                        Err(e) => {
-                                            telemetry.update_error_metrics(
-                                                &subject_wildcard,
-                                                &e.to_string(),
-                                            );
-                                            tracing::error!("Error serializing received stream message: {:?}", e);
-                                            continue;
-                                        }
-                                    };
-
-                                    // send the payload over the stream
-                                    let _ = stream_session
-                                        .binary(serialized_ws_payload)
-                                        .await;
-                                }
-                            });
-                        }
-                        ClientMessage::Unsubscribe(payload) => {
-                            tracing::info!(
-                                "Received unsubscribe message: {:?}",
-                                payload
-                            );
-                            let subject_wildcard = payload.wildcard;
-
-                            let deliver_policy = payload.deliver_policy;
-
-                            if let Err(e) = verify_and_extract_subject_name(
-                                &subject_wildcard,
-                            ) {
-                                close_socket_with_error(
-                                    e,
-                                    user_id,
-                                    session,
-                                    Some(subject_wildcard.clone()),
-                                    telemetry,
-                                )
-                                .await;
-                                return;
-                            }
-
-                            // TODO: implement session management for the same user_id
-
-                            // send a message to the client to confirm unsubscribing
-                            send_message_to_socket(
-                                &mut session,
-                                ServerMessage::Unsubscribed(
-                                    SubscriptionPayload {
-                                        wildcard: subject_wildcard,
-                                        deliver_policy,
-                                    },
-                                ),
-                            )
-                            .await;
-                            return;
-                        }
-                    }
+                    let _ = handle_binary_message(
+                        bytes,
+                        user_id,
+                        session,
+                        Arc::clone(&telemetry),
+                        Arc::clone(&streams),
+                    )
+                    .await;
                 }
                 Message::Close(reason) => {
                     tracing::info!(
@@ -286,6 +137,150 @@ pub async fn get_ws(
     Ok(response)
 }
 
+async fn handle_binary_message(
+    msg: Bytes,
+    user_id: uuid::Uuid,
+    mut session: Session,
+    telemetry: Arc<Telemetry>,
+    streams: Arc<FuelStreams>,
+) -> Result<(), WsSubscriptionError> {
+    tracing::info!("Received binary {:?}", msg);
+    let client_message = match parse_client_message(msg) {
+        Ok(msg) => msg,
+        Err(e) => {
+            close_socket_with_error(e, user_id, session, None, telemetry).await;
+            return Ok(());
+        }
+    };
+
+    tracing::info!("Message parsed: {:?}", client_message);
+    // handle the client message
+    match client_message {
+        ClientMessage::Subscribe(payload) => {
+            tracing::info!("Received subscribe message: {:?}", payload);
+            let subject_wildcard = payload.wildcard;
+            let deliver_policy = payload.deliver_policy;
+
+            // verify the subject name
+            let sub_subject =
+                match verify_and_extract_subject_name(&subject_wildcard) {
+                    Ok(res) => res,
+                    Err(e) => {
+                        close_socket_with_error(
+                            e,
+                            user_id,
+                            session,
+                            Some(subject_wildcard.clone()),
+                            telemetry,
+                        )
+                        .await;
+                        return Ok(());
+                    }
+                };
+
+            // start the streamer async
+            let mut stream_session = session.clone();
+
+            // reply to socket with subscription
+            send_message_to_socket(
+                &mut session,
+                ServerMessage::Subscribed(SubscriptionPayload {
+                    wildcard: subject_wildcard.clone(),
+                    deliver_policy,
+                }),
+            )
+            .await;
+
+            // receive streaming in a background thread
+            let streams = streams.clone();
+            let telemetry = telemetry.clone();
+            actix_web::rt::spawn(async move {
+                // update metrics
+                telemetry.update_user_subscription_metrics(
+                    user_id,
+                    &subject_wildcard,
+                );
+
+                // subscribe to the stream
+                let config = SubscriptionConfig {
+                    deliver_policy: DeliverPolicy::All,
+                    filter_subjects: vec![subject_wildcard.clone()],
+                };
+                let mut sub =
+                    match streams.subscribe(&sub_subject, Some(config)).await {
+                        Ok(sub) => sub,
+                        Err(e) => {
+                            close_socket_with_error(
+                                WsSubscriptionError::Stream(e),
+                                user_id,
+                                session,
+                                Some(subject_wildcard.clone()),
+                                telemetry,
+                            )
+                            .await;
+                            return;
+                        }
+                    };
+
+                // consume and forward to the ws
+                while let Some(s3_serialized_payload) = sub.next().await {
+                    // decode and serialize back to ws payload
+                    let serialized_ws_payload = match decode(
+                        &subject_wildcard,
+                        s3_serialized_payload,
+                    )
+                    .await
+                    {
+                        Ok(res) => res,
+                        Err(e) => {
+                            telemetry.update_error_metrics(
+                                &subject_wildcard,
+                                &e.to_string(),
+                            );
+                            tracing::error!("Error serializing received stream message: {:?}", e);
+                            continue;
+                        }
+                    };
+
+                    // send the payload over the stream
+                    let _ = stream_session.binary(serialized_ws_payload).await;
+                }
+            });
+            Ok(())
+        }
+        ClientMessage::Unsubscribe(payload) => {
+            tracing::info!("Received unsubscribe message: {:?}", payload);
+            let subject_wildcard = payload.wildcard;
+
+            let deliver_policy = payload.deliver_policy;
+
+            if let Err(e) = verify_and_extract_subject_name(&subject_wildcard) {
+                close_socket_with_error(
+                    e,
+                    user_id,
+                    session,
+                    Some(subject_wildcard.clone()),
+                    telemetry,
+                )
+                .await;
+                return Ok(());
+            }
+
+            // TODO: implement session management for the same user_id
+            // send a message to the client to confirm unsubscribing
+            send_message_to_socket(
+                &mut session,
+                ServerMessage::Unsubscribed(SubscriptionPayload {
+                    wildcard: subject_wildcard,
+                    deliver_policy,
+                }),
+            )
+            .await;
+            return Ok(());
+        }
+    }
+}
+
 fn parse_client_message(
     msg: Bytes,
 ) -> Result<ClientMessage, WsSubscriptionError> {
@@ -313,7 +308,7 @@ pub fn verify_and_extract_subject_name(
         ));
     }
     let subject_name = subject_parts.next().unwrap_or_default();
-    if !FuelStreams::is_within_subject_names(subject_name) {
+    if !FuelStreamsUtils::is_within_subject_names(subject_name) {
         return Err(WsSubscriptionError::UnknownSubjectName(
             subject_wildcard.to_string(),
         ));

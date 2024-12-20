@@ -190,9 +190,9 @@ impl<S: Streamable> Stream<S> {
         subject_name: &str,
         s3_path: &str,
     ) -> Result<usize, StreamError> {
+        println!("publish_s3_path_to_nats: {:?}", s3_path.to_string());
         let data = s3_path.to_string().into_bytes();
         let data_size = data.len();
-
         let result = self.store.create(subject_name, data.into()).await;
 
         match result {

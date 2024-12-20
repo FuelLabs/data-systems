@@ -3,11 +3,7 @@ use std::{sync::Arc, time::Duration};
 use fuel_streams_core::prelude::*;
 use fuel_streams_storage::S3Client;
 
-use crate::{
-    config::Config,
-    server::ws::fuel_streams::FuelStreams,
-    telemetry::Telemetry,
-};
+use crate::{config::Config, telemetry::Telemetry};
 
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -23,8 +19,9 @@ pub struct Context {
 
 impl Context {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts =
-            NatsClientOpts::admin_opts().with_url(config.nats.url.clone());
+        let nats_client_opts = NatsClientOpts::admin_opts()
+            .with_url(config.nats.url.clone())
+            .with_domain("CORE");
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);

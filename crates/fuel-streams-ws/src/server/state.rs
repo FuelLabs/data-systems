@@ -4,11 +4,11 @@ use std::{
 };
 
 use async_nats::jetstream::stream::State;
+use fuel_streams_core::prelude::FuelStreamsExt;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
 use super::context::Context;
-use crate::server::ws::fuel_streams::FuelStreamsExt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamInfo {
