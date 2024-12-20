@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        type: string
+        type: choice
         description: "Package to build and publish"
         default: "sv-emitter"
         required: true
