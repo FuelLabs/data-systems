@@ -167,7 +167,6 @@ publisher:
   env:
     PORT: 8080
     PUBLISHER_MAX_THREADS: "32"
-    NATS_URL: "fuel-streams-nats-publisher:4222"
 
 # -------------------------------------------------------------------------------------------------
 # Consumer configuration
@@ -185,11 +184,6 @@ consumer:
       - $(NATS_CORE_URL)
       - --nats-publisher-url
       - $(NATS_PUBLISHER_URL)
-
-  env:
-    PORT: 8080
-    NATS_CORE_URL: "fuel-streams-nats-core:4222"
-    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
 
   config:
     replicaCount: 3
@@ -212,6 +206,65 @@ consumer:
     enabled: true
     minReplicas: 1
     maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+# -------------------------------------------------------------------------------------------------
+# WebServer configuration
+# -------------------------------------------------------------------------------------------------
+
+webserver:
+  enabled: false
+  port: 9003
+
+  service:
+    enabled: true
+    dns: "stream-dev.fuel.network"
+
+  image:
+    repository: fuel-streams-webserver
+    pullPolicy: Never
+    tag: "latest"
+
+  app:
+    network: testnet
+    streamerMaxWorkers: 10
+    useElasticLogging: false
+    useMetrics: true
+    awsS3Enabled: true
+    jwtAuthSecret: "secret"
+
+  config:
+    replicaCount: 1
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
     behavior:
@@ -515,68 +568,3 @@ nats-client:
     merge:
       $tplYaml: |
         {{- include "nats-accounts" . | nindent 8 }}
-
-# -------------------------------------------------------------------------------------------------
-# WebServer configuration
-# -------------------------------------------------------------------------------------------------
-
-webserver:
-  enabled: false
-  port: 9003
-
-  service:
-    enabled: true
-    dns: "stream-dev.fuel.network"
-
-  image:
-    repository: fuel-streams-webserver
-    pullPolicy: Never
-    tag: "latest"
-
-  app:
-    network: testnet
-    streamerMaxWorkers: 10
-    useElasticLogging: false
-    useMetrics: true
-    awsS3Enabled: true
-    jwtAuthSecret: "secret"
-
-  config:
-    replicaCount: 1
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    ports: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
-    securityContext: {}
-    containerSecurityContext: {}
-    resources:
-      requests:
-        cpu: 100m
-        memory: 64Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
-
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        percentValue: 100
-        periodSeconds: 15
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        percentValue: 100
-        podValue: 4
-        periodSeconds: 15

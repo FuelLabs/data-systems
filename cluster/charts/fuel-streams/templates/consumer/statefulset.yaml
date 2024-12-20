@@ -56,6 +56,12 @@ spec:
           {{- include "k8s.container-security-context" (dict "context" . "service" "consumer") | nindent 10 }}
 
           env:
+            - name: NATS_CORE_URL
+              value: "{{ include "fuel-streams.fullname" . }}-nats-core:4222"
+            - name: NATS_PUBLISHER_URL
+              value: "{{ include "fuel-streams.fullname" . }}-nats-publisher:4222"
+            - name: PORT
+              value: "{{ $consumer.port }}" 
             {{- range $key, $value := $consumer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -66,10 +72,10 @@ spec:
 
           envFrom:
             - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-consumer
+                name: {{ include "fuel-streams.fullname" $ }}
                 optional: true
             - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-consumer
+                name: {{ include "fuel-streams.fullname" $ }}
                 optional: true
             {{- with $consumer.envFrom }}
             {{- toYaml . | nindent 12 }}

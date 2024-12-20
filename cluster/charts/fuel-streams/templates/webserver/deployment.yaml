@@ -53,6 +53,17 @@ spec:
           {{- include "k8s.probes" (dict "context" . "service" "webserver") | nindent 10 }}
           {{- include "k8s.container-security-context" (dict "context" . "service" "webserver") | nindent 10 }}
 
+          envFrom:
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}
+                optional: true
+            {{- with $webserver.envFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
           env:
             {{- range $key, $value := $webserver.env }}
             - name: {{ $key }}
@@ -77,6 +88,8 @@ spec:
               value: "{{ include "fuel-streams.fullname" . }}-nats-publisher:4222"
             - name: NETWORK
               value: "{{ .Values.app.network }}"
+            - name: PORT
+              value: "{{ $webserver.port }}"
 
 {{- include "k8s.hpa" (dict "context" . "service" (dict "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
 {{- end }}
