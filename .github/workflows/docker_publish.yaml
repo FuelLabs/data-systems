@@ -2,17 +2,6 @@ name: Build and publish Docker image
 
 on:
   workflow_dispatch:
-    inputs:
-      service:
-        description: "Choose which service to build"
-        required: true
-        type: choice
-        options:
-          - sv-emitter
-          - sv-consumer
-          - fuel-streams-ws
-          - all
-        default: "all"
   push:
     branches:
       - main
@@ -34,19 +23,22 @@ jobs:
     strategy:
       matrix:
         package:
+          - name: fuel-streams-ws
+            image: cluster/docker/fuel-streams-ws.Dockerfile
           - name: sv-emitter
             image: cluster/docker/fuel-core.Dockerfile
           - name: sv-consumer
             image: cluster/docker/sv-consumer.Dockerfile
-          - name: fuel-streams-ws
-            image: cluster/docker/fuel-streams-ws.Dockerfile
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and push Docker for ${{ matrix.package.name }}
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
         uses: ./.github/actions/docker-publish
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.service == 'all' || github.event.inputs.service
-          == matrix.package.name
+        id: publish
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
