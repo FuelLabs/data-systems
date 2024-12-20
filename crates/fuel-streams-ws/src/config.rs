@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use displaydoc::Display as DisplayDoc;
-use fuel_streams::types::FuelNetwork;
 use thiserror::Error;
 
 #[derive(Debug, DisplayDoc, Error)]
@@ -35,7 +34,7 @@ pub struct AuthConfig {
 
 #[derive(Clone, Debug)]
 pub struct NatsConfig {
-    pub network: FuelNetwork,
+    pub url: String,
 }
 
 #[derive(Clone, Debug)]
@@ -62,7 +61,7 @@ impl Config {
                 jwt_secret: cli.jwt_secret.clone(),
             },
             nats: NatsConfig {
-                network: FuelNetwork::Local,
+                url: cli.nats_url.clone(),
             },
             s3: S3Config {
                 enabled: cli.s3_enabled,

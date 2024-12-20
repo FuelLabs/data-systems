@@ -23,7 +23,8 @@ pub struct Context {
 
 impl Context {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::new(config.nats.network);
+        let nats_client_opts =
+            NatsClientOpts::admin_opts().with_url(config.nats.url.clone());
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let s3_client_opts = S3ClientOpts::admin_opts();
         let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);

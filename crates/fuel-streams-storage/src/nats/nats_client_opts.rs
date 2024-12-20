@@ -46,6 +46,8 @@ pub struct NatsClientOpts {
     pub(crate) namespace: NatsNamespace,
     /// The timeout in seconds for NATS operations.
     pub(crate) timeout_secs: u64,
+    /// URL of the NATS server.
+    pub(crate) url: Option<String>,
 }
 
 impl NatsClientOpts {
@@ -55,6 +57,7 @@ impl NatsClientOpts {
             role: FuelNetworkUserRole::default(),
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
+            url: None,
         }
     }
 
@@ -67,11 +70,21 @@ impl NatsClientOpts {
         Self { role, ..self }
     }
 
+    pub fn with_url(self, url: String) -> Self {
+        Self {
+            url: Some(url),
+            ..self
+        }
+    }
+
     pub fn get_url(&self) -> String {
-        match self.role {
-            FuelNetworkUserRole::Admin => dotenvy::var("NATS_URL")
-                .expect("NATS_URL must be set for admin role"),
-            FuelNetworkUserRole::Default => self.network.to_nats_url(),
+        match self.url.clone() {
+            Some(url) => url,
+            None => match self.role {
+                FuelNetworkUserRole::Admin => dotenvy::var("NATS_URL")
+                    .expect("NATS_URL must be set for admin role"),
+                FuelNetworkUserRole::Default => self.network.to_nats_url(),
+            },
         }
     }
 
