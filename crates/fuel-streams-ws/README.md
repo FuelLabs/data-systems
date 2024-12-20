@@ -16,7 +16,7 @@
         </a>
     </p>
     <p align="center">
-        <a href="https://github.com/fuellabs/data-systems/tree/main/crates/fuel-streams-publisher">📚 Documentation</a>
+        <a href="https://github.com/fuellabs/data-systems/tree/main/crates/fuel-streams-ws">📚 Documentation</a>
         <span>&nbsp;</span>
         <a href="https://github.com/fuellabs/data-systems/issues/new?labels=bug&template=bug-report---.md">🐛 Report Bug</a>
         <span>&nbsp;</span>

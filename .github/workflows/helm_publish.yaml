@@ -4,74 +4,55 @@ on:
   workflow_dispatch:
     inputs:
       chart:
-        description: "Select the Helm chart to deploy"
+        description: "Choose which chart to build"
         required: true
         type: choice
         options:
           - fuel-streams-publisher
           - fuel-streams
+          - all
+        default: "all"
   push:
     branches:
       - main
-    paths:
-      - cluster/charts/fuel-streams-publisher/Chart.yaml
-      - cluster/charts/fuel-streams/Chart.yaml
+  release:
+    types:
+      - published
 
 permissions:
   contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   helm-release:
-    name: Build Helm Charts
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'release' && github.event.action == 'published') ||
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      packages: write
+    strategy:
+      matrix:
+        chart:
+          - name: fuel-streams-publisher
+            path: cluster/charts/fuel-streams-publisher
+          - name: fuel-streams
+            path: cluster/charts/fuel-streams
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Determine charts to process
-        id: charts
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "charts=${{ github.event.inputs.chart }}" >> $GITHUB_OUTPUT
-          else
-            echo "charts=fuel-streams-publisher fuel-streams" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Validate Chart Names
-        run: |
-          for chart in ${{ steps.charts.outputs.charts }}; do
-            if [ ! -d "cluster/charts/$chart" ]; then
-              echo "Error: Chart '$chart' does not exist."
-              exit 1
-            fi
-          done
+      - uses: actions/checkout@v4
 
       - name: Helm Dependencies Update
         run: |
-          set -e
-          for chart in ${{ steps.charts.outputs.charts }}; do
-            echo "Updating dependencies for $chart"
-            helm dependency update cluster/charts/$chart
-          done
+          cd ${{ matrix.chart.path }} && helm dependency update
 
-      - name: Get chart versions
-        id: versions
+      - name: Get chart version
+        id: version
         run: |
-          publisher_version=$(awk '/^version:/ {print $2}' cluster/charts/fuel-streams-publisher/Chart.yaml)
-          streams_version=$(awk '/^version:/ {print $2}' cluster/charts/fuel-streams/Chart.yaml)
-          echo "publisher_version=$publisher_version" >> $GITHUB_OUTPUT
-          echo "streams_version=$streams_version" >> $GITHUB_OUTPUT
+          version=$(awk '/^version:/ {print $2}' ${{ matrix.chart.path }}/Chart.yaml)
+          echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: "Build chart: [fuel-streams-publisher v${{ steps.versions.outputs.publisher_version }}]"
-        if: contains(steps.charts.outputs.charts, 'fuel-streams-publisher')
+      - name: "Build chart: [${{ matrix.chart.name }} v${{ steps.version.outputs.version }}]"
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.chart == 'all' || github.event.inputs.chart
+          == matrix.chart.name
         uses: bsord/helm-push@v4.1.0
         with:
           useOCIRegistry: true
@@ -79,31 +60,11 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./cluster/charts/fuel-streams-publisher
-
-      - name: "Build chart: [fuel-streams v${{ steps.versions.outputs.streams_version }}]"
-        if: contains(steps.charts.outputs.charts, 'fuel-streams')
-        uses: bsord/helm-push@v4.1.0
-        with:
-          useOCIRegistry: true
-          registry-url: oci://ghcr.io/fuellabs/helmcharts
-          username: ${{ github.repository_owner }}
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          force: true
-          chart-folder: ./cluster/charts/fuel-streams
+          chart-folder: ${{ matrix.chart.path }}
 
       - name: Build Summary
         run: |-
           echo "### Helm Charts Build Summary 📊" >> $GITHUB_STEP_SUMMARY
           echo "| Chart | Version | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|---------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          for chart in ${{ steps.charts.outputs.charts }}; do
-            version=""
-            if [ "$chart" = "fuel-streams-publisher" ]; then
-              version="${{ steps.versions.outputs.publisher_version }}"
-            elif [ "$chart" = "fuel-streams" ]; then
-              version="${{ steps.versions.outputs.streams_version }}"
-            fi
-            echo "| $chart | $version | ✅ Published |" >> $GITHUB_STEP_SUMMARY
-          done
+          echo "| ${{ matrix.chart.name }} | ${{ steps.version.outputs.version }} | ✅ Published |" >> $GITHUB_STEP_SUMMARY

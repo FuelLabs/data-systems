@@ -240,6 +240,7 @@ async fn stream_contract(
 ) -> anyhow::Result<()> {
     let mut receipt_stream = fuel_streams::Stream::<Receipt>::new(client).await;
 
+    // Set up filters for all receipt types that can be associated with a contract
     receipt_stream.with_filter(
         ReceiptsBurnSubject::new().with_contract_id(Some(contract_id.into())),
     );
@@ -275,21 +276,37 @@ async fn stream_contract(
     );
 
     let mut sub = receipt_stream.subscribe_raw().await?;
-
     while let Some(bytes) = sub.next().await {
         let decoded_msg = Receipt::decode_raw(bytes).unwrap();
         let receipt = decoded_msg.payload;
 
-        // Check if the receipt has a contract_id and if it matches our target
-        if let Some(receipt_contract_id) = &receipt.contract_id {
-            if *receipt_contract_id == contract_id.into() {
-                let receipt_subject = decoded_msg.subject;
-                let receipt_published_at = decoded_msg.timestamp;
-                println!(
-                    "Received contract receipt: data={:?}, subject={}, published_at={}",
-                    receipt, receipt_subject, receipt_published_at
-                );
+        // Check if this is a contract-related receipt and matches our target
+        let should_process = match &receipt {
+            Receipt::Call(r) => {
+                r.id == contract_id.into() || r.to == contract_id.into()
             }
+            Receipt::Return(r) => r.id == contract_id.into(),
+            Receipt::ReturnData(r) => r.id == contract_id.into(),
+            Receipt::Panic(r) => r.id == contract_id.into(),
+            Receipt::Revert(r) => r.id == contract_id.into(),
+            Receipt::Log(r) => r.id == contract_id.into(),
+            Receipt::LogData(r) => r.id == contract_id.into(),
+            Receipt::Transfer(r) => {
+                r.id == contract_id.into() || r.to == contract_id.into()
+            }
+            Receipt::TransferOut(r) => r.id == contract_id.into(),
+            Receipt::Mint(r) => r.contract_id == contract_id.into(),
+            Receipt::Burn(r) => r.contract_id == contract_id.into(),
+            Receipt::ScriptResult(_) | Receipt::MessageOut(_) => false,
+        };
+
+        if should_process {
+            let receipt_subject = decoded_msg.subject;
+            let receipt_published_at = decoded_msg.timestamp;
+            println!(
+                "Received contract receipt: data={:?}, subject={}, published_at={}",
+                receipt, receipt_subject, receipt_published_at
+            );
         }
     }
 

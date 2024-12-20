@@ -150,13 +150,16 @@ impl<S: Streamable> Stream<S> {
     ) -> Self {
         let namespace = &nats_client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
+        let config = kv::Config {
+            bucket: bucket_name.to_owned(),
+            storage: stream::StorageType::File,
+            history: 1,
+            compression: true,
+            ..Default::default()
+        };
+
         let store = nats_client
-            .get_or_create_kv_store(kv::Config {
-                bucket: bucket_name.to_owned(),
-                storage: stream::StorageType::File,
-                history: 1,
-                ..Default::default()
-            })
+            .get_or_create_kv_store(config)
             .await
             .expect("Streams must be created");
 
@@ -377,7 +380,6 @@ impl<S: Streamable> Stream<S> {
         wildcard: &str,
     ) -> Result<Option<S>, StreamError> {
         let subject_name = &Self::prefix_filter_subject(wildcard);
-
         let message = self
             .store
             .stream
@@ -443,6 +445,10 @@ impl<S: Streamable> Stream<S> {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn store(&self) -> &kv::Store {
         &self.store
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.to_owned())
     }
 }
 

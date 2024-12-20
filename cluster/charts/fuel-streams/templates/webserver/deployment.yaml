@@ -7,31 +7,23 @@ metadata:
   annotations:
     {{- include "set-value" (dict "context" $webserver "path" "config.annotations") | nindent 4 }}
   labels:
-    {{- include "fuel-streams.labels" . | nindent 4 }}
+    {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 4 }}
-    app.kubernetes.io/component: webserver
-    app.kubernetes.io/service: external-service
-
 spec:
   {{- if not $webserver.autoscaling.enabled }}
   replicas: {{ $webserver.config.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
-      {{- include "set-value" (dict "context" $webserver "path" "config.selectorLabels") | nindent 6 }}
-      app.kubernetes.io/component: webserver
-      app.kubernetes.io/service: external-service
+      {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 6 }}
 
   template:
     metadata:
       annotations:
         {{- include "set-value" (dict "context" $webserver "path" "config.podAnnotations") | nindent 8 }}
       labels:
-        {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
+        {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 8 }}
         {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 8 }}
-        app.kubernetes.io/component: webserver
-        app.kubernetes.io/service: external-service
 
     spec:
       {{- if .Values.serviceAccount.create }}
@@ -69,30 +61,22 @@ spec:
             {{- with $webserver.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-{{- end }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver") | nindent 2 }}
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    {{- include "set-value" (dict "context" $webserver "path" "config.annotations") | nindent 4 }}
-  labels:
-    {{- include "fuel-streams.labels" . | nindent 4 }}
-    {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 4 }}
-    app.kubernetes.io/component: webserver
-    app.kubernetes.io/service: external-service
+            - name: STREAMER_MAX_WORKERS
+              value: "{{ .Values.app.streamerMaxWorkers }}"
+            - name: STREAMER_API_PORT 
+              value: "{{ .Values.webserver.port }}"
+            - name: JWT_AUTH_SECRET
+              value: "{{ .Values.app.jwtAuthSecret }}"
+            - name: USE_ELASTIC_LOGGING
+              value: "{{ .Values.app.useElasticLogging }}"
+            - name: USE_METRICS
+              value: "{{ .Values.app.useMetrics }}"
+            - name: AWS_S3_ENABLED
+              value: "true"
+            - name: NATS_URL
+              value: "{{ include "fuel-streams.fullname" . }}-nats-publisher:4222"
+            - name: NETWORK
+              value: "{{ .Values.app.network }}"
 
-spec:
-  type: LoadBalancer
-  ports:
-    - name: webserver
-      port: {{ $webserver.port }}
-      targetPort: {{ $webserver.port }}
-      protocol: TCP
-  selector:
-    {{- include "fuel-streams.selectorLabels" . | nindent 4 }}
-    {{- include "set-value" (dict "context" $webserver "path" "config.selectorLabels") | nindent 4 }}
-    app.kubernetes.io/component: webserver
-    app.kubernetes.io/service: external-service
+{{- include "k8s.hpa" (dict "context" . "service" (dict "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
+{{- end }}

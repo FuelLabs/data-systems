@@ -7,9 +7,8 @@ metadata:
   annotations:
     {{- include "set-value" (dict "context" $publisher "path" "config.annotations") | nindent 4 }}
   labels:
-    {{- include "fuel-streams.labels" . | nindent 4 }}
+    {{- include "fuel-streams.labels" (dict "name" "publisher" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 4 }}
-    app.kubernetes.io/component: publisher
 spec:
   serviceName: {{ include "fuel-streams.fullname" . }}-publisher
   {{- if not $publisher.autoscaling.enabled }}
@@ -17,18 +16,15 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "fuel-streams.selectorLabels" . | nindent 6 }}
-      {{- include "set-value" (dict "context" $publisher "path" "config.selectorLabels") | nindent 6 }}
-      app.kubernetes.io/component: publisher 
+      {{- include "fuel-streams.selectorLabels" (dict "name" "publisher" "context" .) | nindent 6 }}
 
   template:
     metadata:
       annotations:
         {{- include "set-value" (dict "context" $publisher "path" "config.podAnnotations") | nindent 8 }}
       labels:
-        {{- include "fuel-streams.selectorLabels" . | nindent 8 }}
+        {{- include "fuel-streams.labels" (dict "name" "publisher" "context" .) | nindent 8 }}
         {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 8 }}
-        app.kubernetes.io/component: publisher
 
     spec:
       {{- if .Values.serviceAccount.create }}
@@ -45,7 +41,7 @@ spec:
           emptyDir: {}
         - name: var-dir
           emptyDir: {}
-      
+
       initContainers:
         - name: update-{{ $publisher.storage.name }}
           image: alpine:latest
@@ -81,6 +77,64 @@ spec:
         - name: publisher
           image: "{{ $publisher.image.repository }}:{{ $publisher.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $publisher.image.pullPolicy }}
+          args:
+            # Common arguments
+            - "--enable-relayer"
+            - "--enable-p2p"
+            - "--keypair"
+            - "$(KEYPAIR)"
+            - "--relayer"
+            - "$(RELAYER)"
+            - "--ip"
+            - "0.0.0.0"
+            - "--port"
+            - "$(PORT)"
+            - "--db-path"
+            - "$(DB_PATH)"
+            - "--nats-url"
+            - "$(NATS_URL)"
+            - "--sync-header-batch-size"
+            - "100"
+            - "--relayer-log-page-size"
+            - "2000"
+            - "--sync-block-stream-buffer-size"
+            - "50"
+            - "--max-database-cache-size"
+            - "17179869184"
+            - "--state-rewind-duration"
+            - "136y"
+            - "--request-timeout"
+            - "60"
+            - "--graphql-max-complexity"
+            - "1000000000"
+            {{- if eq $publisher.network "mainnet" }}
+            # Mainnet specific args
+            - "--service-name"
+            - "Publisher Node (Mainnet)"
+            - "--snapshot"
+            - "./chain-config/mainnet"
+            - "--reserved-nodes"
+            - "/dnsaddr/mainnet.fuel.network"
+            - "--relayer-v2-listening-contracts"
+            - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+            - "--relayer-da-deploy-height"
+            - "20620434"
+            {{- else if eq $publisher.network "testnet" }}
+            # Testnet specific args
+            - "--service-name"
+            - "Publisher Node (Testnet)"
+            - "--snapshot"
+            - "./chain-config/testnet"
+            - "--reserved-nodes"
+            - "/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
+            - "--relayer-v2-listening-contracts"
+            - "0x01855B78C1f8868DE70e84507ec735983bf262dA"
+            - "--relayer-da-deploy-height"
+            - "5827607"
+            {{- end }}
+            {{- if $publisher.image.extraArgs }}
+            {{- toYaml $publisher.image.extraArgs | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ int $publisher.service.port }}
@@ -96,6 +150,8 @@ spec:
           env:
             - name: TMPDIR
               value: "/var/fuel-streams/tmp"
+            - name: DB_PATH
+              value: {{ $publisher.storage.mountPath | default "/mnt/db" | quote }}
             {{- range $key, $value := $publisher.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -105,8 +161,6 @@ spec:
             {{- end }}
 
           envFrom:
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-network-config
             - configMapRef:
                 name: {{ include "fuel-streams.fullname" $ }}-publisher
                 optional: true

@@ -1,0 +1,137 @@
+config:
+  createRoles: true
+  healthChecks: true
+
+# Reduce storage requirements for local development
+publisher:
+  storage:
+    size: 10Gi
+    storageClass: "standard" # Use default storage class
+
+  config:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  env:
+    PORT: 8080
+    PUBLISHER_MAX_THREADS: "12"
+    NATS_URL: "fuel-streams-nats-publisher:4222"
+
+consumer:
+  config:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# NATS Core configuration for local development
+nats-core:
+  container:
+    env:
+      GOMEMLIMIT: 1GiB
+    merge:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
+  config:
+    cluster:
+      replicas: 1 # Single replica for local development
+
+    jetstream:
+      fileStore:
+        pvc:
+          size: 10Gi
+          storageClassName: "standard"
+
+    merge:
+      jetstream:
+        max_file_store: << 10GiB >>
+        max_memory_store: << 1GiB >>
+
+# NATS Publisher configuration for local development
+nats-publisher:
+  container:
+    env:
+      GOMEMLIMIT: 1GiB
+    merge:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
+  config:
+    jetstream:
+      fileStore:
+        pvc:
+          size: 10Gi
+          storageClassName: "standard"
+
+    merge:
+      jetstream:
+        max_file_store: << 10GiB >>
+        max_memory_store: << 1GiB >>
+
+# NATS Client configuration for local development
+nats-client:
+  container:
+    env:
+      GOMEMLIMIT: 1GiB
+    merge:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
+  config:
+    jetstream:
+      fileStore:
+        pvc:
+          size: 10Gi
+          storageClassName: "standard"
+
+    merge:
+      jetstream:
+        max_file_store: << 10GiB >>
+        max_memory_store: << 1GiB >>
+
+# Disable external service for local development
+natsExternalService:
+  enabled: false
+
+# Use simple passwords for local development
+natsAccountsSecret:
+  enabled: true
+  data:
+    - name: NATS_SYS_USER
+      value: sys
+    - name: NATS_SYS_PASS
+      value: sys
+    - name: NATS_ADMIN_USER
+      value: admin
+    - name: NATS_ADMIN_PASS
+      value: admin
+    - name: NATS_PUBLISHER_USER
+      value: default_user
+    - name: NATS_PUBLISHER_PASS
+      value: ""

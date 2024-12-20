@@ -1,4 +1,8 @@
-use fuel_core_types::fuel_types;
+use fuel_core_types::{
+    fuel_asm::RawInstruction,
+    fuel_tx::PanicReason,
+    fuel_types,
+};
 pub use serde::{Deserialize, Serialize};
 
 use crate::fuel_core_types::*;
@@ -158,22 +162,62 @@ generate_byte_type_wrapper!(Salt, fuel_types::Salt, 32);
 generate_byte_type_wrapper!(MessageId, fuel_types::MessageId, 32);
 generate_byte_type_wrapper!(BlockId, fuel_types::Bytes32, 32);
 generate_byte_type_wrapper!(Signature, fuel_types::Bytes64, 64);
+generate_byte_type_wrapper!(TxId, fuel_types::TxId, 32);
+
+/// Implements bidirectional conversions between `Bytes32` and a given type.
+///
+/// This macro generates implementations of the `From` trait to convert:
+/// - From `Bytes32` to the target type
+/// - From a reference to `Bytes32` to the target type
+/// - From the target type to `Bytes32`
+/// - From a reference of the target type to `Bytes32`
+///
+/// The target type must be a 32-byte type that can be converted to/from `[u8; 32]`.
+///
+/// # Example
+/// ```ignore
+/// impl_bytes32_conversions!(ContractId);
+/// ```
+macro_rules! impl_bytes32_conversions {
+    ($type:ty) => {
+        impl From<Bytes32> for $type {
+            fn from(value: Bytes32) -> Self {
+                let bytes: [u8; 32] = value.0.into();
+                <$type>::from(bytes)
+            }
+        }
+        impl From<&Bytes32> for $type {
+            fn from(value: &Bytes32) -> Self {
+                value.clone().into()
+            }
+        }
+        impl From<$type> for Bytes32 {
+            fn from(value: $type) -> Self {
+                let bytes: [u8; 32] = value.0.into();
+                Bytes32::from(bytes)
+            }
+        }
+        impl From<&$type> for Bytes32 {
+            fn from(value: &$type) -> Self {
+                value.clone().into()
+            }
+        }
+    };
+}
+
+impl_bytes32_conversions!(MessageId);
+impl_bytes32_conversions!(ContractId);
+impl_bytes32_conversions!(AssetId);
+impl_bytes32_conversions!(Address);
+impl_bytes32_conversions!(BlobId);
+impl_bytes32_conversions!(Nonce);
+impl_bytes32_conversions!(Salt);
+impl_bytes32_conversions!(BlockId);
+impl_bytes32_conversions!(TxId);
 
 impl From<FuelCoreBlockId> for BlockId {
     fn from(value: FuelCoreBlockId) -> Self {
         Self(FuelCoreBytes32::from(value))
-    }
-}
-
-impl From<Bytes32> for MessageId {
-    fn from(value: Bytes32) -> Self {
-        let bytes: [u8; 32] = value.0.into();
-        MessageId::from(bytes)
-    }
-}
-impl From<&Bytes32> for MessageId {
-    fn from(value: &Bytes32) -> Self {
-        value.clone().into()
     }
 }
 
@@ -186,18 +230,41 @@ impl From<&[u8]> for HexString {
         HexString(value.to_vec())
     }
 }
-
+impl From<Bytes32> for HexString {
+    fn from(value: Bytes32) -> Self {
+        Self::from(value.0.as_ref())
+    }
+}
+impl TryFrom<HexString> for Bytes32 {
+    type Error = String;
+    fn try_from(value: HexString) -> Result<Self, Self::Error> {
+        let bytes: [u8; 32] = value
+            .0
+            .try_into()
+            .map_err(|_| "Invalid length for Bytes32".to_string())?;
+        Ok(Bytes32::from(bytes))
+    }
+}
 impl std::fmt::Display for HexString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "0x{}", hex::encode(&self.0))
     }
 }
-
 impl std::str::FromStr for HexString {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.strip_prefix("0x").unwrap_or(s);
         hex::decode(s).map(HexString).map_err(|e| e.to_string())
+    }
+}
+impl AsRef<[u8]> for HexString {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl HexString {
+    pub fn zeroed() -> Self {
+        HexString(vec![0u8; 32])
     }
 }
 
@@ -230,22 +297,17 @@ impl From<FuelCoreTxPointer> for TxPointer {
 }
 
 #[derive(
-    Debug,
-    Default,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
+    Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct UtxoId {
-    tx_id: FuelCoreTxId,
-    output_index: u16,
+    pub tx_id: Bytes32,
+    pub output_index: u16,
+}
+impl From<&UtxoId> for HexString {
+    fn from(value: &UtxoId) -> Self {
+        value.to_owned().into()
+    }
 }
 impl From<FuelCoreUtxoId> for UtxoId {
     fn from(value: FuelCoreUtxoId) -> Self {
@@ -255,8 +317,64 @@ impl From<FuelCoreUtxoId> for UtxoId {
 impl From<&FuelCoreUtxoId> for UtxoId {
     fn from(value: &FuelCoreUtxoId) -> Self {
         Self {
-            tx_id: *value.tx_id(),
+            tx_id: value.tx_id().into(),
             output_index: value.output_index(),
+        }
+    }
+}
+impl From<UtxoId> for HexString {
+    fn from(value: UtxoId) -> Self {
+        let mut bytes = Vec::with_capacity(34);
+        bytes.extend_from_slice(value.tx_id.0.as_ref());
+        bytes.extend_from_slice(&value.output_index.to_be_bytes());
+        HexString(bytes)
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PanicInstruction {
+    pub reason: PanicReason,
+    pub instruction: RawInstruction,
+}
+impl From<FuelCorePanicInstruction> for PanicInstruction {
+    fn from(value: FuelCorePanicInstruction) -> Self {
+        Self {
+            reason: value.reason().to_owned(),
+            instruction: value.instruction().to_owned(),
+        }
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+#[repr(u64)]
+pub enum ScriptExecutionResult {
+    Success,
+    Revert,
+    Panic,
+    // Generic failure case since any u64 is valid here
+    GenericFailure(u64),
+    #[default]
+    Unknown,
+}
+impl From<FuelCoreScriptExecutionResult> for ScriptExecutionResult {
+    fn from(value: FuelCoreScriptExecutionResult) -> Self {
+        match value {
+            FuelCoreScriptExecutionResult::Success => Self::Success,
+            FuelCoreScriptExecutionResult::Revert => Self::Revert,
+            FuelCoreScriptExecutionResult::Panic => Self::Panic,
+            FuelCoreScriptExecutionResult::GenericFailure(value) => {
+                Self::GenericFailure(value)
+            }
         }
     }
 }

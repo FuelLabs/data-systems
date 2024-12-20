@@ -48,6 +48,12 @@ pub struct NatsClientOpts {
     pub(crate) timeout_secs: u64,
     /// URL of the NATS server.
     pub(crate) url: Option<String>,
+    /// The domain to use for the NATS client.
+    pub(crate) domain: Option<String>,
+    /// The user to use for the NATS client.
+    pub(crate) user: Option<String>,
+    /// The password to use for the NATS client.
+    pub(crate) password: Option<String>,
 }
 
 impl NatsClientOpts {
@@ -58,6 +64,9 @@ impl NatsClientOpts {
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
             url: None,
+            user: None,
+            password: None,
+            domain: None,
         }
     }
 
@@ -85,6 +94,27 @@ impl NatsClientOpts {
                     .expect("NATS_URL must be set for admin role"),
                 FuelNetworkUserRole::Default => self.network.to_nats_url(),
             },
+        }
+    }
+
+    pub fn with_domain(self, domain: String) -> Self {
+        Self {
+            domain: Some(domain),
+            ..self
+        }
+    }
+
+    pub fn with_user(self, user: String) -> Self {
+        Self {
+            user: Some(user),
+            ..self
+        }
+    }
+
+    pub fn with_password(self, password: String) -> Self {
+        Self {
+            password: Some(password),
+            ..self
         }
     }
 
@@ -119,6 +149,11 @@ impl NatsClientOpts {
             FuelNetworkUserRole::Default => {
                 (Some("default_user".to_string()), Some("".to_string()))
             }
+        };
+
+        let (user, pass) = match (self.user.clone(), self.password.clone()) {
+            (Some(user), Some(pass)) => (Some(user), Some(pass)),
+            _ => (user, pass),
         };
 
         match (user, pass) {

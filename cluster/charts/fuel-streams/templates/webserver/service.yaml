@@ -1,0 +1,34 @@
+{{- $service := $webserver.service }}
+{{- if and $webserver.enabled $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver") | nindent 2 }}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    {{- if $service.dns }}
+    external-dns.alpha.kubernetes.io/hostname: {{ $service.dns }}
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    {{- end }}
+    {{- include "set-value" (dict "context" $service "path" "annotations") | nindent 4 }}
+  labels:
+    {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 4 }}
+    {{- include "set-value" (dict "context" $service "path" "labels") | nindent 4 }}
+spec:
+  type: LoadBalancer
+  loadBalancerClass: service.k8s.aws/nlb
+  externalTrafficPolicy: Local
+  ports:
+    - name: webserver
+      port: {{ $webserver.port }}
+      targetPort: {{ $webserver.port }}
+      protocol: TCP
+      appProtocol: tcp
+  selector:
+    {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 4 }}
+{{- end }}

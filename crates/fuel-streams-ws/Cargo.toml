@@ -23,7 +23,6 @@ async-trait = { workspace = true }
 bytestring = "1.4.0"
 chrono = { workspace = true }
 clap = { workspace = true }
-confy = "0.6"
 derive_more = { version = "1.0", features = ["full"] }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
@@ -48,7 +47,6 @@ thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio = { workspace = true }
 tokio-tungstenite = "0.24.0"
-toml = "0.8.19"
 tracing = { workspace = true }
 tracing-actix-web = { workspace = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
