@@ -41,6 +41,10 @@ spec:
           image: "{{ $consumer.image.repository }}:{{ $consumer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $consumer.image.pullPolicy }}
           args:
+            - --nats-core-url
+            - $(NATS_CORE_URL)
+            - --nats-publisher-url
+            - $(NATS_PUBLISHER_URL)v
             {{- toYaml $consumer.image.args | nindent 12 }}
 
           ports:
@@ -72,10 +76,22 @@ spec:
 
           envFrom:
             - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-config
                 optional: true
             - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-consumer-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-consumer-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-aws-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
                 optional: true
             {{- with $consumer.envFrom }}
             {{- toYaml . | nindent 12 }}

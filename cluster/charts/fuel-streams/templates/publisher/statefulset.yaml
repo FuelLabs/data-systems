@@ -132,8 +132,8 @@ spec:
             - "--relayer-da-deploy-height"
             - "5827607"
             {{- end }}
-            {{- if $publisher.image.extraArgs }}
-            {{- toYaml $publisher.image.extraArgs | nindent 12 }}
+            {{- if $publisher.image.args }}
+            {{- toYaml $publisher.image.args | nindent 12 }}
             {{- end }}
           ports:
             - name: http
@@ -164,10 +164,22 @@ spec:
 
           envFrom:
             - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-config
                 optional: true
             - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-publisher-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-publisher-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-aws-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
                 optional: true
             {{- with $publisher.envFrom }}
             {{- toYaml . | nindent 12 }}

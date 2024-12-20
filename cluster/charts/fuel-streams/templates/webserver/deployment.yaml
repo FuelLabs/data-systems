@@ -55,10 +55,22 @@ spec:
 
           envFrom:
             - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-config
                 optional: true
             - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}
+                name: {{ include "fuel-streams.fullname" $ }}-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-webserver-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-webserver-keys
+                optional: true
+            - configMapRef:
+                name: {{ include "fuel-streams.fullname" $ }}-aws-config
+                optional: true
+            - secretRef:
+                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
                 optional: true
             {{- with $webserver.envFrom }}
             {{- toYaml . | nindent 12 }}
@@ -72,22 +84,10 @@ spec:
             {{- with $webserver.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-            - name: STREAMER_MAX_WORKERS
-              value: "{{ .Values.app.streamerMaxWorkers }}"
-            - name: STREAMER_API_PORT 
-              value: "{{ .Values.webserver.port }}"
-            - name: JWT_AUTH_SECRET
-              value: "{{ .Values.app.jwtAuthSecret }}"
-            - name: USE_ELASTIC_LOGGING
-              value: "{{ .Values.app.useElasticLogging }}"
-            - name: USE_METRICS
-              value: "{{ .Values.app.useMetrics }}"
-            - name: AWS_S3_ENABLED
-              value: "true"
+            - name: NETWORK
+              value: "{{ $webserver.network }}"
             - name: NATS_URL
               value: "{{ include "fuel-streams.fullname" . }}-nats-publisher:4222"
-            - name: NETWORK
-              value: "{{ .Values.app.network }}"
             - name: PORT
               value: "{{ $webserver.port }}"
 

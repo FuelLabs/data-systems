@@ -88,7 +88,7 @@ publisher:
     repository: ghcr.io/fuellabs/sv-emitter
     pullPolicy: Always
     tag: "latest"
-    extraArgs: []
+    args: []
 
   service:
     type: ClusterIP
@@ -164,10 +164,6 @@ publisher:
   #   - secretRef:
   #       name: additional-secrets
 
-  env:
-    PORT: 8080
-    PUBLISHER_MAX_THREADS: "32"
-
 # -------------------------------------------------------------------------------------------------
 # Consumer configuration
 # -------------------------------------------------------------------------------------------------
@@ -179,11 +175,7 @@ consumer:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
     tag: "latest"
-    args:
-      - --nats-core-url
-      - $(NATS_CORE_URL)
-      - --nats-publisher-url
-      - $(NATS_PUBLISHER_URL)
+    args: []
 
   config:
     replicaCount: 3
@@ -226,6 +218,7 @@ consumer:
 webserver:
   enabled: false
   port: 9003
+  network: mainnet
 
   service:
     enabled: true
@@ -235,14 +228,6 @@ webserver:
     repository: fuel-streams-webserver
     pullPolicy: Never
     tag: "latest"
-
-  app:
-    network: testnet
-    streamerMaxWorkers: 10
-    useElasticLogging: false
-    useMetrics: true
-    awsS3Enabled: true
-    jwtAuthSecret: "secret"
 
   config:
     replicaCount: 1
