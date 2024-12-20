@@ -10,15 +10,12 @@ usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  --mode        : Specify the run mode (dev|profiling)"
-    echo "  --config-path : Specify the toml config path"
-    echo "                  Default: config.toml"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
     echo ""
     echo "Examples:"
-    echo "  $0                                              # Runs with all defaults"
-    echo "  $0 --config-path                                # Runs with default config.toml"
-    echo "  $0 --mode dev                                   # Runs with dev mode"
-    echo "  $0 --config-path ../config.toml --mode dev      # Custom config toml path and mode"
+    echo "  $0                  # Runs with all defaults"
+    echo "  $0 --mode dev       # Runs with dev mode"
+    echo "  $0 --mode dev       # Custom config toml path and mode"
     exit 1
 }
 
@@ -26,10 +23,6 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --mode)
             MODE="$2"
-            shift 2
-            ;;
-        --config-path)
-            CONFIG_PATH="$2"
             shift 2
             ;;
         --extra-args)
@@ -59,9 +52,6 @@ echo -e "=========================================="
 # Runtime Configuration
 echo "Runtime Settings:"
 echo "→ Mode: $MODE"
-if [ -n "$CONFIG_PATH" ]; then
-    echo "→ Config path: $CONFIG_PATH"
-fi
 if [ -n "$EXTRA_ARGS" ]; then
     echo "→ Extra Arguments: $EXTRA_ARGS"
 fi
@@ -81,9 +71,7 @@ echo "  → Nats Url: $NATS_URL"
 echo -e "==========================================\n"
 
 # Define common arguments
-COMMON_ARGS=(
-    "--config-path" "${CONFIG_PATH}"
-)
+COMMON_ARGS=()
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then

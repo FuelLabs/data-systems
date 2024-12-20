@@ -56,9 +56,9 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ARG STREAMER_API_PORT=9003
+ARG API_PORT=9003
 
-ENV STREAMER_API_PORT=$STREAMER_API_PORT
+ENV API_PORT=$API_PORT
 ENV NATS_URL=
 ENV NETWORK=
 ENV USE_METRICS=
@@ -83,7 +83,7 @@ RUN apt-get update -y \
 COPY --from=builder /root/fuel-streams-ws .
 COPY --from=builder /root/fuel-streams-ws.d .
 
-EXPOSE ${STREAMER_API_PORT}
+EXPOSE ${API_PORT}
 
 # https://stackoverflow.com/a/44671685
 # https://stackoverflow.com/a/40454758

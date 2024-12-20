@@ -229,7 +229,7 @@ webserver:
 
   env:
     STREAMER_MAX_WORKERS: "10"
-    STREAMER_API_PORT: 9003
+    API_PORT: 9003
     JWT_AUTH_SECRET: "secret"
     USE_ELASTIC_LOGGING: false
     USE_METRICS: true

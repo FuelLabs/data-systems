@@ -228,20 +228,19 @@ run-publisher-testnet-profiling:
 run-streamer: check-network
 	@./scripts/run_streamer.sh \
 		--mode $(MODE) \
-		$(if $(CONFIG_PATH),--config-path $(CONFIG_PATH),) \
 		$(if $(extra_args),--extra-args "$(extra_args)",)
 
 run-streamer-mainnet-dev:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=mainnet MODE=dev
 
 run-streamer-mainnet-profiling:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling
 
 run-streamer-testnet-dev:
-	$(MAKE) run-streamer NETWORK=testnet MODE=dev CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=testnet MODE=dev
 
 run-streamer-testnet-profiling:
-	$(MAKE) run-streamer NETWORK=testnet MODE=profiling CONFIG_PATH=crates/fuel-streams-ws/config.toml
+	$(MAKE) run-streamer NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
 #  Docker Compose
