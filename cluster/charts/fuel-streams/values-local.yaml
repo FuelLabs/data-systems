@@ -2,12 +2,29 @@ config:
   createRoles: true
   healthChecks: true
 
+commonConfigMap:
+  enabled: true
+  data:
+    AWS_S3_BUCKET_NAME: "fuel-streams-staging"
+    AWS_ENDPOINT_URL: "https://localhost:9000"
+    AWS_REGION: "us-east-1"
+    AWS_S3_ENABLED: "false"
+    USE_METRICS: "false"
+    NATS_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
+    NATS_SYSTEM_USER: "sys"
+    NATS_SYSTEM_PASS: "sys"
+    NATS_ADMIN_USER: "admin"
+    NATS_ADMIN_PASS: "admin"
+    NATS_PUBLIC_USER: "default_user"
+    NATS_PUBLIC_PASS: ""
+
 # Reduce storage requirements for local development
 publisher:
   image:
-    repository: "sv-emitter"
-    tag: "latest"
-    pullPolicy: "Always"
+    repository: sv-emitter
+    pullPolicy: IfNotPresent
+    tag: latest
 
   storage:
     size: 10Gi
@@ -24,7 +41,12 @@ publisher:
         memory: 512Mi
 
 consumer:
-  enabled: false
+  enabled: true
+  image:
+    repository: sv-consumer
+    pullPolicy: IfNotPresent
+    tag: latest
+
   config:
     replicaCount: 1
     resources:
@@ -35,13 +57,30 @@ consumer:
         cpu: 500m
         memory: 512Mi
 
+webserver:
+  enabled: true
+  image:
+    repository: fuel-streams-ws
+    pullPolicy: IfNotPresent
+    tag: latest
+
+  service:
+    enabled: true
+    port: 9003
+
+  tls:
+    enabled: false
+
 # NATS Core configuration for local development
 nats-core:
-  enabled: false
+  enabled: true
   container:
     env:
       GOMEMLIMIT: 1GiB
     merge:
+      envFrom:
+        - configMapRef:
+            name: fuel-streams-config
       resources:
         requests:
           cpu: 100m
@@ -67,11 +106,14 @@ nats-core:
 
 # NATS Publisher configuration for local development
 nats-publisher:
-  enabled: false
+  enabled: true
   container:
     env:
       GOMEMLIMIT: 1GiB
     merge:
+      envFrom:
+        - configMapRef:
+            name: fuel-streams-config
       resources:
         requests:
           cpu: 100m
@@ -91,34 +133,3 @@ nats-publisher:
       jetstream:
         max_file_store: << 10GiB >>
         max_memory_store: << 1GiB >>
-
-# NATS Client configuration for local development
-nats-client:
-  enabled: false
-  container:
-    env:
-      GOMEMLIMIT: 1GiB
-    merge:
-      resources:
-        requests:
-          cpu: 100m
-          memory: 512Mi
-        limits:
-          cpu: 500m
-          memory: 1Gi
-
-  config:
-    jetstream:
-      fileStore:
-        pvc:
-          size: 10Gi
-          storageClassName: "standard"
-
-    merge:
-      jetstream:
-        max_file_store: << 10GiB >>
-        max_memory_store: << 1GiB >>
-
-# Disable external service for local development
-natsExternalService:
-  enabled: false

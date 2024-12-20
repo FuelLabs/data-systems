@@ -56,20 +56,8 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ARG STREAMER_API_PORT=9003
-
-ENV STREAMER_API_PORT=$STREAMER_API_PORT
-ENV NATS_URL=
-ENV NETWORK=
-ENV USE_METRICS=
-ENV USE_ELASTIC_LOGGING=
-ENV AWS_S3_ENABLED=
-ENV AWS_ACCESS_KEY_ID=
-ENV AWS_SECRET_ACCESS_KEY=
-ENV AWS_REGION=
-ENV AWS_ENDPOINT_URL=
-ENV AWS_S3_BUCKET_NAME=
-ENV JWT_AUTH_SECRET=
+ARG PORT=9003
+ENV PORT=$PORT
 
 WORKDIR /usr/src
 
@@ -83,9 +71,5 @@ RUN apt-get update -y \
 COPY --from=builder /root/fuel-streams-ws .
 COPY --from=builder /root/fuel-streams-ws.d .
 
-EXPOSE ${STREAMER_API_PORT}
-
-# https://stackoverflow.com/a/44671685
-# https://stackoverflow.com/a/40454758
-# hadolint ignore=DL3025
+EXPOSE ${PORT}
 CMD ["./fuel-streams-ws"]

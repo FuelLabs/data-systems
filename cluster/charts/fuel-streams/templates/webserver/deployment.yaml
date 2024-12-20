@@ -1,4 +1,5 @@
 {{- $webserver := .Values.webserver -}}
+{{- $service := $webserver.service -}}
 {{- if $webserver.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -9,6 +10,7 @@ metadata:
   labels:
     {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 4 }}
+    app.kubernetes.io/component: webserver
 spec:
   {{- if not $webserver.autoscaling.enabled }}
   replicas: {{ $webserver.config.replicaCount }}
@@ -24,6 +26,7 @@ spec:
       labels:
         {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 8 }}
         {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 8 }}
+        app.kubernetes.io/component: webserver
 
     spec:
       {{- if .Values.serviceAccount.create }}
@@ -43,21 +46,12 @@ spec:
 
           ports:
             - name: webserver
-              containerPort: {{ $webserver.port }}
+              containerPort: {{ $service.port }}
               protocol: TCP
 
           {{- include "set-field-and-value" (dict "context" $webserver "field" "resources" "path" "config.resources") | nindent 10 }}
           {{- include "k8s.probes" (dict "context" . "service" "webserver") | nindent 10 }}
           {{- include "k8s.container-security-context" (dict "context" . "service" "webserver") | nindent 10 }}
-
-          env:
-            - name: NETWORK
-              value: {{ $webserver.network | quote }}
-            - name: PORT
-              value: {{ $webserver.port | quote }}
-            {{- with $webserver.env }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
 
           envFrom:
             - configMapRef:
@@ -67,6 +61,15 @@ spec:
                 name: {{ include "fuel-streams.fullname" $ }}-keys
                 optional: true
             {{- with $webserver.envFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          env:
+            - name: NETWORK
+              value: {{ $webserver.network | quote }}
+            - name: PORT
+              value: {{ $service.port | quote }}
+            {{- with $webserver.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 

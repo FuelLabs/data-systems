@@ -54,7 +54,7 @@ impl Config {
     fn from_cli(cli: &crate::cli::Cli) -> Result<Self, Error> {
         Ok(Config {
             api: ApiConfig {
-                port: cli.api_port,
+                port: cli.port,
                 tls: None,
             },
             auth: AuthConfig {

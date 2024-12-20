@@ -7,11 +7,11 @@ pub struct Cli {
     #[arg(
         long,
         value_name = "PORT",
-        env = "API_PORT",
+        env = "PORT",
         default_value = "9003",
         help = "Port number for the API server"
     )]
-    pub api_port: u16,
+    pub port: u16,
 
     /// NATS URL
     #[arg(

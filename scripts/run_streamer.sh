@@ -10,7 +10,7 @@ usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  --mode         : Specify the run mode (dev|profiling)"
-    echo "  --api-port     : Port number for the API server (default: 9003)"
+    echo "  --port     : Port number for the API server (default: 9003)"
     echo "  --nats-url     : NATS URL (default: nats://localhost:4222)"
     echo "  --s3-enabled   : Enable S3 integration (default: true)"
     echo "  --jwt-secret   : Secret key for JWT authentication (default: secret)"
@@ -19,7 +19,7 @@ usage() {
     echo ""
     echo "Examples:"
     echo "  $0                                         # Runs with all defaults"
-    echo "  $0 --mode dev --api-port 8080             # Custom port"
+    echo "  $0 --mode dev --port 8080             # Custom port"
     echo "  $0 --mode dev --use-metrics               # Enable metrics"
     exit 1
 }
@@ -30,8 +30,8 @@ while [[ "$#" -gt 0 ]]; do
             MODE="$2"
             shift 2
             ;;
-        --api-port)
-            API_PORT="$2"
+        --port)
+            PORT="$2"
             shift 2
             ;;
         --nats-url)
@@ -65,7 +65,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Load environment variables with defaults
-API_PORT=${API_PORT:-9003}
+PORT=${PORT:-9003}
 NATS_URL=${NATS_URL:-nats://localhost:4222}
 S3_ENABLED=${S3_ENABLED:-true}
 JWT_SECRET=${JWT_SECRET:-secret}
@@ -85,7 +85,7 @@ echo -e "=========================================="
 # Runtime Configuration
 echo "Runtime Settings:"
 echo "→ Mode: ${MODE:-dev}"
-echo "→ API Port: ${API_PORT:-9003}"
+echo "→ API Port: ${PORT:-9003}"
 echo "→ NATS URL: ${NATS_URL:-"nats://localhost:4222"}"
 echo "→ S3 Enabled: ${S3_ENABLED:-true}"
 echo "→ JWT Secret: ${JWT_SECRET:-secret}"
@@ -98,7 +98,7 @@ echo -e "==========================================\n"
 
 # Define common arguments
 COMMON_ARGS=(
-    "--api-port" "${API_PORT:-9003}"
+    "--port" "${PORT:-9003}"
     "--nats-url" "${NATS_URL:-"nats://localhost:4222"}"
     "--jwt-secret" "${JWT_SECRET:-secret}"
 )

@@ -247,7 +247,7 @@ run-consumer:
 
 run-streamer: NETWORK="testnet"
 run-streamer: MODE="dev"
-run-streamer: API_PORT="9003"
+run-streamer: PORT="9003"
 run-streamer: NATS_URL="nats://localhost:4222"
 run-streamer: S3_ENABLED="true"
 run-streamer: JWT_SECRET="secret"
@@ -255,7 +255,7 @@ run-streamer: USE_METRICS="false"
 run-streamer: check-network
 	@./scripts/run_streamer.sh \
 		--mode $(MODE) \
-		--api-port $(API_PORT) \
+		--port $(PORT) \
 		--nats-url $(NATS_URL) \
 		--s3-enabled $(S3_ENABLED) \
 		--jwt-secret $(JWT_SECRET) \

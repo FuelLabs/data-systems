@@ -87,8 +87,8 @@ commonConfigMap:
     NATS_SYSTEM_PASS: "sys"
     NATS_ADMIN_USER: "admin"
     NATS_ADMIN_PASS: "admin"
-    NATS_PUBLISHER_USER: "default_user"
-    NATS_PUBLISHER_PASS: ""
+    NATS_PUBLIC_USER: "default_user"
+    NATS_PUBLIC_PASS: ""
 
 # This is a secret that is used for local development
 # It is not used in production
@@ -115,7 +115,7 @@ publisher:
   image:
     repository: ghcr.io/fuellabs/sv-emitter
     pullPolicy: Always
-    tag: "latest"
+    tag: latest
     args: []
 
   # You can override the env variables for the container here
@@ -179,7 +179,7 @@ consumer:
   image:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
-    tag: "latest"
+    tag: latest
     args: []
 
   # You can override the env variables for the container here
@@ -230,15 +230,25 @@ webserver:
   network: mainnet
 
   image:
-    repository: fuel-streams-webserver
-    pullPolicy: Never
-    tag: "latest"
+    repository: ghcr.io/fuellabs/fuel-streams-ws
+    pullPolicy: Always
+    tag: latest
 
   service:
     enabled: true
     type: LoadBalancer
     port: 9003
     dns: "stream-dev.fuel.network"
+    annotations: {}
+    labels: {}
+
+  tls:
+    enabled: true
+    issuer: "letsencrypt-prod"
+    duration: "2160h"
+    renewBefore: "360h"
+    annotations: {}
+    labels: {}
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
@@ -278,23 +288,6 @@ webserver:
         percentValue: 100
         podValue: 4
         periodSeconds: 15
-
-# -------------------------------------------------------------------------------------------------
-# NATS Common Configuration
-# -------------------------------------------------------------------------------------------------
-
-natsExternalService:
-  enabled: true
-  certificate:
-    issuer: "letsencrypt-prod"
-    duration: "2160h"
-    renewBefore: "360h"
-    annotations: {}
-    labels: {}
-  service:
-    dns: "stream-dev.fuel.network"
-    labels: {}
-    annotations: {}
 
 # -------------------------------------------------------------------------------------------------
 # NATS Core configuration
@@ -455,103 +448,6 @@ nats-publisher:
       max_payload: << 32MiB >>
       jetstream:
         domain: PUBLISHER
-        sync_interval: << 30s >>
-        max_outstanding_catchup: << 512MiB >>
-        max_file_store: << 100GiB >>
-        max_memory_store: << 7GiB >>
-      system_account: SYS
-      $include: auth.conf
-
-  configMap:
-    merge:
-      $tplYaml: |
-        {{- include "nats-accounts" . | nindent 8 }}
-
-# -------------------------------------------------------------------------------------------------
-# NATS Client configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-client:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 3
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.24-alpine
-    env:
-      GOMEMLIMIT: 7GiB
-    merge:
-      resources:
-        requests:
-          cpu: 2
-          memory: 8Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      websocket:
-        enabled: true
-      leafnodes:
-        enabled: true
-      monitor:
-        enabled: false
-      mqtt:
-        enabled: false
-
-  config:
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 100Gi
-          storageClassName: "gp3-generic"
-
-    leafnodes:
-      enabled: true
-      port: 7422
-      merge:
-        remotes:
-          - urls: ["nats-leaf://admin:admin@fuel-streams-nats-core:7422"]
-            account: ADMIN
-
-    websocket:
-      enabled: true
-      port: 8443
-      # This is just enable if the natsExternalService is enabled
-      # and the DNS is set to the correct value
-      tls:
-        enabled: true
-        dir: /etc/nats-certs/websocket
-        cert: tls.crt
-        key: tls.key
-        secretName: fuel-streams-nats-tls
-      merge:
-        no_tls: false
-        same_origin: false
-        compression: false
-        handshake_timeout: "20s"
-        no_auth_user: default_user
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      max_payload: << 32MiB >>
-      jetstream:
-        domain: CLIENT
         sync_interval: << 30s >>
         max_outstanding_catchup: << 512MiB >>
         max_file_store: << 100GiB >>

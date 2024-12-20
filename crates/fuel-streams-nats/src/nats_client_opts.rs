@@ -23,10 +23,10 @@ impl NatsAuth {
                     .expect("NATS_ADMIN_PASS must be set"),
             ),
             NatsAuth::System => (
-                dotenvy::var("NATS_SYS_USER")
-                    .expect("NATS_SYS_USER must be set"),
-                dotenvy::var("NATS_SYS_PASS")
-                    .expect("NATS_SYS_PASS must be set"),
+                dotenvy::var("NATS_SYSTEM_USER")
+                    .expect("NATS_SYSTEM_USER must be set"),
+                dotenvy::var("NATS_SYSTEM_PASS")
+                    .expect("NATS_SYSTEM_PASS must be set"),
             ),
             NatsAuth::Public => ("default_user".to_string(), "".to_string()),
             NatsAuth::Custom(user, pass) => {

@@ -68,7 +68,7 @@ data:
     accounts {
       SYS: {
         users: [
-          {user: $NATS_SYS_USER, password: $NATS_SYS_PASS}
+          {user: $NATS_SYSTEM_USER, password: $NATS_SYSTEM_PASS}
         ]
       }
       ADMIN: {
