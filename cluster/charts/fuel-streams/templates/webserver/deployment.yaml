@@ -45,9 +45,6 @@ spec:
             - name: webserver
               containerPort: {{ $webserver.port }}
               protocol: TCP
-          {{- if $webserver.ports }}
-            {{- toYaml $webserver.ports | nindent 12 }}
-          {{- end }}
 
           {{- include "set-field-and-value" (dict "context" $webserver "field" "resources" "path" "config.resources") | nindent 10 }}
           {{- include "k8s.probes" (dict "context" . "service" "webserver") | nindent 10 }}

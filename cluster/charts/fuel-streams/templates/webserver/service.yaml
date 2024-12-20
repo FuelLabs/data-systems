@@ -26,8 +26,8 @@ spec:
   externalTrafficPolicy: Local
   ports:
     - name: webserver
-      port: {{ $service.port }}
-      targetPort: {{ $service.port }}
+      port: {{ $webserver.port }}
+      targetPort: {{ $webserver.port }}
       protocol: TCP
       appProtocol: tcp
   selector:
