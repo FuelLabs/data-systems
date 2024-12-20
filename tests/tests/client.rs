@@ -73,7 +73,9 @@ async fn multiple_client_connections() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_streams() -> BoxedResult<()> {
-    let opts = NatsClientOpts::new(FuelNetwork::Local)
+    let network = FuelNetwork::Local;
+    let opts = NatsClientOpts::public_opts()
+        .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -95,7 +97,9 @@ async fn public_user_cannot_create_streams() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_create_stores() -> BoxedResult<()> {
-    let opts = NatsClientOpts::new(FuelNetwork::Local)
+    let network = FuelNetwork::Local;
+    let opts = NatsClientOpts::public_opts()
+        .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
 
@@ -116,7 +120,9 @@ async fn public_user_cannot_create_stores() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
+    let network = FuelNetwork::Local;
     let opts = NatsClientOpts::admin_opts()
+        .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
 
@@ -131,7 +137,8 @@ async fn public_user_cannot_delete_stores() -> BoxedResult<()> {
         })
         .await?;
 
-    let opts = NatsClientOpts::new(FuelNetwork::Local)
+    let opts = NatsClientOpts::public_opts()
+        .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
     let client = NatsClient::connect(&opts).await?;
@@ -164,7 +171,9 @@ async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
         })
         .await?;
 
-    let public_opts = opts.clone().with_role(FuelNetworkUserRole::Default);
+    let network = FuelNetwork::Local;
+    let public_opts =
+        NatsClientOpts::public_opts().with_url(network.to_nats_url());
     let public_client = NatsClient::connect(&public_opts).await?;
 
     assert!(
@@ -181,21 +190,29 @@ async fn public_user_cannot_delete_stream() -> BoxedResult<()> {
 
 #[tokio::test]
 async fn public_user_can_access_streams_after_created() {
-    let opts = NatsClientOpts::new(FuelNetwork::Local)
+    let network = FuelNetwork::Local;
+    let admin_opts = NatsClientOpts::admin_opts()
+        .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
 
-    let admin_opts = opts.clone().with_role(FuelNetworkUserRole::Admin);
-    assert!(NatsClient::connect(&admin_opts).await.is_ok());
+    let public_opts = NatsClientOpts::public_opts()
+        .with_url(network.to_nats_url())
+        .with_rdn_namespace()
+        .with_timeout(1);
 
-    let public_opts = opts.clone().with_role(FuelNetworkUserRole::Default);
+    assert!(NatsClient::connect(&admin_opts).await.is_ok());
     assert!(NatsClient::connect(&public_opts).await.is_ok());
 }
 
 #[tokio::test]
 async fn public_and_admin_user_can_access_streams_after_created(
 ) -> BoxedResult<()> {
-    let admin_opts = NatsClientOpts::admin_opts();
+    let network = FuelNetwork::Local;
+    let admin_opts = NatsClientOpts::admin_opts()
+        .with_url(network.to_nats_url())
+        .with_rdn_namespace()
+        .with_timeout(1);
     let s3_opts = Arc::new(S3ClientOpts::admin_opts());
     let admin_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
         .map(|_| {
@@ -210,7 +227,10 @@ async fn public_and_admin_user_can_access_streams_after_created(
         })
         .collect();
 
-    let public_opts = NatsClientOpts::new(FuelNetwork::Local);
+    let public_opts = NatsClientOpts::public_opts()
+        .with_url(network.to_nats_url())
+        .with_rdn_namespace()
+        .with_timeout(1);
     let s3_public_opts = Arc::new(S3ClientOpts::new(FuelNetwork::Local));
     let public_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
         .map(|_| {

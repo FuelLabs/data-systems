@@ -1,53 +1,49 @@
 use std::time::Duration;
 
 use async_nats::ConnectOptions;
-use fuel_networks::{FuelNetwork, FuelNetworkUserRole};
 
 use super::NatsNamespace;
 
-/// Represents options for configuring a NATS client.
-///
-/// # Examples
-///
-/// Creating a new `NatsClientOpts` instance:
-///
-/// ```
-/// use fuel_streams_storage::nats::NatsClientOpts;
-/// use fuel_networks::FuelNetwork;
-///
-/// let opts = NatsClientOpts::new(FuelNetwork::Local);
-/// ```
-///
-/// Creating a public `NatsClientOpts`:
-///
-/// ```
-/// use fuel_streams_storage::nats::NatsClientOpts;
-/// use fuel_networks::FuelNetwork;
-///
-/// let opts = NatsClientOpts::new(FuelNetwork::Local);
-/// ```
-///
-/// Modifying `NatsClientOpts`:
-///
-/// ```
-/// use fuel_streams_storage::nats::NatsClientOpts;
-/// use fuel_networks::{FuelNetwork, FuelNetworkUserRole};
-///
-/// let opts = NatsClientOpts::new(FuelNetwork::Local)
-///     .with_role(FuelNetworkUserRole::Admin)
-///     .with_timeout(10);
-/// ```
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub enum NatsAuth {
+    Admin,
+    System,
+    #[default]
+    Public,
+    Custom(String, String),
+}
+
+impl NatsAuth {
+    fn credentials_from_env(&self) -> (String, String) {
+        match self {
+            NatsAuth::Admin => (
+                dotenvy::var("NATS_ADMIN_USER")
+                    .expect("NATS_ADMIN_USER must be set"),
+                dotenvy::var("NATS_ADMIN_PASS")
+                    .expect("NATS_ADMIN_PASS must be set"),
+            ),
+            NatsAuth::System => (
+                dotenvy::var("NATS_SYS_USER")
+                    .expect("NATS_SYS_USER must be set"),
+                dotenvy::var("NATS_SYS_PASS")
+                    .expect("NATS_SYS_PASS must be set"),
+            ),
+            NatsAuth::Public => ("default_user".to_string(), "".to_string()),
+            NatsAuth::Custom(user, pass) => {
+                (user.to_string(), pass.to_string())
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NatsClientOpts {
-    pub network: FuelNetwork,
-    /// The role of the user connecting to the NATS server (Admin or Public).
-    pub(crate) role: FuelNetworkUserRole,
+    /// The URL of the NATS server.
+    pub(crate) url: String,
     /// The namespace used as a prefix for NATS streams, consumers, and subject names.
     pub(crate) namespace: NatsNamespace,
     /// The timeout in seconds for NATS operations.
     pub(crate) timeout_secs: u64,
-    /// URL of the NATS server.
-    pub(crate) url: Option<String>,
     /// The domain to use for the NATS client.
     pub(crate) domain: Option<String>,
     /// The user to use for the NATS client.
@@ -57,44 +53,39 @@ pub struct NatsClientOpts {
 }
 
 impl NatsClientOpts {
-    pub fn new(network: FuelNetwork) -> Self {
+    pub fn new(url: String) -> Self {
         Self {
-            network,
-            role: FuelNetworkUserRole::default(),
+            url,
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
-            url: None,
+            domain: None,
             user: None,
             password: None,
-            domain: None,
         }
     }
 
     pub fn admin_opts() -> Self {
-        Self::new(FuelNetwork::load_from_env())
-            .with_role(FuelNetworkUserRole::Admin)
+        Self::from_env(Some(NatsAuth::Admin))
+    }
+    pub fn system_opts() -> Self {
+        Self::from_env(Some(NatsAuth::System))
+    }
+    pub fn public_opts() -> Self {
+        Self::from_env(Some(NatsAuth::Public))
     }
 
-    pub fn with_role(self, role: FuelNetworkUserRole) -> Self {
-        Self { role, ..self }
-    }
-
-    pub fn with_url(self, url: String) -> Self {
-        Self {
-            url: Some(url),
-            ..self
-        }
+    pub fn from_env(auth: Option<NatsAuth>) -> Self {
+        let url = dotenvy::var("NATS_URL").expect("NATS_URL must be set");
+        let (user, pass) = auth.unwrap_or_default().credentials_from_env();
+        Self::new(url).with_user(user).with_password(pass)
     }
 
     pub fn get_url(&self) -> String {
-        match self.url.clone() {
-            Some(url) => url,
-            None => match self.role {
-                FuelNetworkUserRole::Admin => dotenvy::var("NATS_URL")
-                    .expect("NATS_URL must be set for admin role"),
-                FuelNetworkUserRole::Default => self.network.to_nats_url(),
-            },
-        }
+        self.url.clone()
+    }
+
+    pub fn with_url(self, url: String) -> Self {
+        Self { url, ..self }
     }
 
     pub fn with_domain(self, domain: String) -> Self {
@@ -138,36 +129,16 @@ impl NatsClientOpts {
     }
 
     pub(super) fn connect_opts(&self) -> ConnectOptions {
-        let (user, pass) = match self.role {
-            FuelNetworkUserRole::Admin => (
-                Some("admin".to_string()),
-                Some(
-                    dotenvy::var("NATS_ADMIN_PASS")
-                        .expect("`NATS_ADMIN_PASS` env must be set"),
-                ),
-            ),
-            FuelNetworkUserRole::Default => {
-                (Some("default_user".to_string()), Some("".to_string()))
-            }
-        };
-
-        let (user, pass) = match (self.user.clone(), self.password.clone()) {
-            (Some(user), Some(pass)) => (Some(user), Some(pass)),
-            _ => (user, pass),
-        };
-
-        match (user, pass) {
+        let opts = match (self.user.clone(), self.password.clone()) {
             (Some(user), Some(pass)) => {
                 ConnectOptions::with_user_and_password(user, pass)
-                    .connection_timeout(Duration::from_secs(self.timeout_secs))
-                    .max_reconnects(1)
-                    .name(Self::conn_id())
             }
-            _ => ConnectOptions::new()
-                .connection_timeout(Duration::from_secs(self.timeout_secs))
-                .max_reconnects(1)
-                .name(Self::conn_id()),
-        }
+            _ => ConnectOptions::new(),
+        };
+
+        opts.connection_timeout(Duration::from_secs(self.timeout_secs))
+            .max_reconnects(1)
+            .name(Self::conn_id())
     }
 
     // This will be useful for debugging and monitoring connections
@@ -178,5 +149,46 @@ impl NatsClientOpts {
     fn random_int() -> u32 {
         use rand::Rng;
         rand::thread_rng().gen()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use super::*;
+
+    #[test]
+    fn test_role_credentials() {
+        // Setup
+        env::set_var("NATS_ADMIN_USER", "admin");
+        env::set_var("NATS_ADMIN_PASS", "admin_pass");
+
+        // Test Admin role credentials
+        let (user, pass) = NatsAuth::Admin.credentials_from_env();
+        assert_eq!(user, "admin");
+        assert_eq!(pass, "admin_pass");
+
+        // Cleanup
+        env::remove_var("NATS_ADMIN_USER");
+        env::remove_var("NATS_ADMIN_PASS");
+    }
+
+    #[test]
+    fn test_from_env_with_role() {
+        // Setup
+        env::set_var("NATS_URL", "nats://localhost:4222");
+        env::set_var("NATS_ADMIN_USER", "admin");
+        env::set_var("NATS_ADMIN_PASS", "admin_pass");
+
+        // Test Admin role
+        let opts = NatsClientOpts::from_env(Some(NatsAuth::Admin));
+        assert_eq!(opts.user, Some("admin".to_string()));
+        assert_eq!(opts.password, Some("admin_pass".to_string()));
+
+        // Cleanup
+        env::remove_var("NATS_URL");
+        env::remove_var("NATS_ADMIN_USER");
+        env::remove_var("NATS_ADMIN_PASS");
     }
 }

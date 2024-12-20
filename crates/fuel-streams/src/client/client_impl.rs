@@ -36,7 +36,8 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(network: FuelNetwork) -> Result<Self, crate::Error> {
-        let nats_opts = NatsClientOpts::new(network);
+        let nats_opts =
+            NatsClientOpts::public_opts().with_url(network.to_nats_url());
         let nats_client = NatsClient::connect(&nats_opts)
             .await
             .map_err(ClientError::NatsConnectionFailed)?;
