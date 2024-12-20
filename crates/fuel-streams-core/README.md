@@ -61,7 +61,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> BoxedResult<()> {
     // Connect to NATS server
-    let nats_opts = NatsClientOpts::new(FuelNetwork::Local);
+    let nats_opts = NatsClientOpts::admin_opts();
     let nats_client = NatsClient::connect(&nats_opts).await?;
 
     let s3_opts = S3ClientOpts::new(FuelNetwork::Local);

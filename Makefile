@@ -140,7 +140,7 @@ test:
 	fi
 
 bench:
-	cargo bench -p data-parser -p nats-publisher -p bench-consumers
+	cargo bench -p data-parser
 
 helm-test:
 	helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams

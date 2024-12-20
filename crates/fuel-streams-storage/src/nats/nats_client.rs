@@ -15,10 +15,9 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 ///
 /// ```no_run
 /// use fuel_streams_storage::nats::*;
-/// use fuel_networks::FuelNetwork;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
-///     let opts = NatsClientOpts::new(FuelNetwork::Local);
+///     let opts = NatsClientOpts::public_opts();
 ///     let client = NatsClient::connect(&opts).await?;
 ///     Ok(())
 /// }
@@ -28,11 +27,10 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 ///
 /// ```no_run
 /// use fuel_streams_storage::nats::*;
-/// use fuel_networks::FuelNetwork;
 /// use async_nats::jetstream::kv;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
-///     let opts = NatsClientOpts::new(FuelNetwork::Local);
+///     let opts = NatsClientOpts::public_opts();
 ///     let client = NatsClient::connect(&opts).await?;
 ///     let kv_config = kv::Config {
 ///         bucket: "my-bucket".into(),
