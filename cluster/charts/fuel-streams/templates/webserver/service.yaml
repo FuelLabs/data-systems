@@ -1,3 +1,4 @@
+{{- $webserver := .Values.webserver }}
 {{- $service := $webserver.service }}
 {{- if and $webserver.enabled $service.enabled }}
 ---
@@ -25,8 +26,8 @@ spec:
   externalTrafficPolicy: Local
   ports:
     - name: webserver
-      port: {{ $webserver.port }}
-      targetPort: {{ $webserver.port }}
+      port: {{ $service.port }}
+      targetPort: {{ $service.port }}
       protocol: TCP
       appProtocol: tcp
   selector:
