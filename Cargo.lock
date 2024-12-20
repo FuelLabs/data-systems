@@ -4148,6 +4148,7 @@ dependencies = [
  "fuel-data-parser",
  "fuel-networks",
  "fuel-streams-macros",
+ "fuel-streams-nats",
  "fuel-streams-storage",
  "futures",
  "hex",
@@ -4199,23 +4200,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-streams-storage"
+name = "fuel-streams-nats"
 version = "0.0.13"
 dependencies = [
  "async-nats",
- "aws-config",
- "aws-sdk-s3",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
  "displaydoc",
  "dotenvy",
- "fuel-networks",
  "pretty_assertions",
  "rand",
  "serde_json",
  "thiserror 2.0.8",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "fuel-streams-storage"
+version = "0.0.13"
+dependencies = [
+ "aws-config",
+ "aws-sdk-s3",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "dotenvy",
+ "pretty_assertions",
+ "rand",
+ "serde_json",
+ "thiserror 2.0.8",
+ "tokio",
 ]
 
 [[package]]
@@ -4239,6 +4251,7 @@ dependencies = [
  "elasticsearch",
  "fuel-streams",
  "fuel-streams-core",
+ "fuel-streams-nats",
  "fuel-streams-storage",
  "futures",
  "futures-util",
@@ -9039,11 +9052,7 @@ checksum = "d7beae5182595e9a8b683fa98c4317f956c9a2dec3b9716990d20023cc60c766"
 name = "streams-tests"
 version = "0.0.13"
 dependencies = [
- "anyhow",
- "async-trait",
  "fuel-core",
- "fuel-core-importer",
- "fuel-core-types 0.40.2",
  "fuel-streams",
  "fuel-streams-core",
  "futures",

@@ -231,7 +231,8 @@ async fn public_and_admin_user_can_access_streams_after_created(
         .with_url(network.to_nats_url())
         .with_rdn_namespace()
         .with_timeout(1);
-    let s3_public_opts = Arc::new(S3ClientOpts::new(FuelNetwork::Local));
+    let s3_public_opts =
+        Arc::new(S3ClientOpts::new(S3Env::Local, S3Role::Public));
     let public_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
         .map(|_| {
             let opts: NatsClientOpts = public_opts.clone();

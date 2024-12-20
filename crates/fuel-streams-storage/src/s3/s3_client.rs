@@ -48,18 +48,12 @@ impl S3Client {
     pub async fn new(opts: &S3ClientOpts) -> Result<Self, S3ClientError> {
         // Load AWS configuration
         let mut aws_config = aws_config::from_env();
+        aws_config = aws_config.endpoint_url(opts.endpoint_url());
+        let region_provider =
+            RegionProviderChain::first_try(Region::new(opts.region()));
+        let region = region_provider.region().await.unwrap();
 
-        if let Some(endpoint_url) = opts.endpoint_url() {
-            aws_config = aws_config.endpoint_url(endpoint_url);
-        }
-
-        if let Some(region) = opts.region() {
-            let region_provider =
-                RegionProviderChain::first_try(Region::new(region));
-            let region = region_provider.region().await.unwrap();
-
-            aws_config = aws_config.region(region);
-        }
+        aws_config = aws_config.region(region);
 
         let s3_config =
             aws_sdk_s3::config::Builder::from(&aws_config.load().await)
@@ -135,13 +129,12 @@ impl S3Client {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub async fn new_for_testing() -> Self {
-        use fuel_networks::FuelNetwork;
-
         dotenvy::dotenv().expect(".env file not found");
 
-        let s3_client = Self::new(
-            &S3ClientOpts::new(FuelNetwork::Local).with_random_namespace(),
-        )
+        let s3_client = Self::new(&S3ClientOpts::new(
+            crate::S3Env::Local,
+            crate::S3Role::Admin,
+        ))
         .await
         .expect(
             "S3Client creation failed. Check AWS Env vars and Localstack setup",

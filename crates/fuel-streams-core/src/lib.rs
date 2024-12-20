@@ -9,7 +9,7 @@ pub mod transactions;
 pub mod utxos;
 
 pub mod nats {
-    pub use fuel_streams_storage::nats::*;
+    pub use fuel_streams_nats::*;
 }
 
 pub mod s3 {

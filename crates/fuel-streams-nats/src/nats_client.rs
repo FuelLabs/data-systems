@@ -14,7 +14,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// Creating a new `NatsClient`:
 ///
 /// ```no_run
-/// use fuel_streams_storage::nats::*;
+/// use fuel_streams_nats::*;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
 ///     let opts = NatsClientOpts::public_opts();
@@ -26,7 +26,7 @@ use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
 /// Creating a key-value store:
 ///
 /// ```no_run
-/// use fuel_streams_storage::nats::*;
+/// use fuel_streams_nats::*;
 /// use async_nats::jetstream::kv;
 ///
 /// async fn example() -> Result<(), Box<dyn std::error::Error>> {

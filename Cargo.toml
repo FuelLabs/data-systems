@@ -75,6 +75,7 @@ fuel-data-parser = { version = "0.0.13", path = "crates/fuel-data-parser" }
 fuel-streams-core = { version = "0.0.13", path = "crates/fuel-streams-core" }
 fuel-streams-ws = { version = "0.0.13", path = "crates/fuel-streams-ws" }
 fuel-streams-macros = { version = "0.0.13", path = "crates/fuel-streams-macros" }
+fuel-streams-nats = { version = "0.0.13", path = "crates/fuel-streams-nats" }
 fuel-streams-storage = { version = "0.0.13", path = "crates/fuel-streams-storage" }
 subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
 fuel-streams-executors = { version = "0.0.13", path = "crates/fuel-streams-executors" }

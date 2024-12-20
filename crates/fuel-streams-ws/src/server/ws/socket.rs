@@ -15,7 +15,7 @@ use fuel_streams::{
     Streamable,
 };
 use fuel_streams_core::SubscriptionConfig;
-use fuel_streams_storage::DeliverPolicy;
+use fuel_streams_nats::DeliverPolicy;
 use futures::StreamExt;
 use uuid::Uuid;
 

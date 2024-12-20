@@ -35,6 +35,7 @@ fuel-core-types = { workspace = true, default-features = false, features = ["std
 fuel-data-parser = { workspace = true }
 fuel-networks = { workspace = true }
 fuel-streams-macros = { workspace = true }
+fuel-streams-nats = { workspace = true }
 fuel-streams-storage = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }

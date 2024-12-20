@@ -36,6 +36,37 @@ impl NatsAuth {
     }
 }
 
+/// Configuration options for connecting to NATS
+///
+/// # Examples
+///
+/// ```no_run
+/// use fuel_streams_nats::*;
+///
+/// // Create with URL
+/// let opts = NatsClientOpts::new("nats://localhost:4222".to_string(), Some(NatsAuth::Admin));
+///
+/// // Create with admin credentials from environment
+/// let opts = NatsClientOpts::admin_opts();
+///
+/// // Create with system credentials from environment
+/// let opts = NatsClientOpts::system_opts();
+///
+/// // Create with public credentials
+/// let opts = NatsClientOpts::public_opts();
+/// ```
+///
+/// Customize options:
+///
+/// ```no_run
+/// use fuel_streams_nats::*;
+///
+/// let opts = NatsClientOpts::new("nats://localhost:4222".to_string(), Some(NatsAuth::Admin))
+///     .with_domain("mydomain")
+///     .with_user("myuser")
+///     .with_password("mypass")
+///     .with_timeout(10);
+/// ```
 #[derive(Debug, Clone)]
 pub struct NatsClientOpts {
     /// The URL of the NATS server.
@@ -53,17 +84,22 @@ pub struct NatsClientOpts {
 }
 
 impl NatsClientOpts {
-    pub fn new(url: String) -> Self {
+    pub fn new(url: String, auth: Option<NatsAuth>) -> Self {
+        let (user, pass) = auth.unwrap_or_default().credentials_from_env();
         Self {
             url,
             namespace: NatsNamespace::default(),
             timeout_secs: 5,
             domain: None,
-            user: None,
-            password: None,
+            user: Some(user),
+            password: Some(pass),
         }
     }
 
+    pub fn from_env(auth: Option<NatsAuth>) -> Self {
+        let url = dotenvy::var("NATS_URL").expect("NATS_URL must be set");
+        Self::new(url, auth)
+    }
     pub fn admin_opts() -> Self {
         Self::from_env(Some(NatsAuth::Admin))
     }
@@ -74,37 +110,34 @@ impl NatsClientOpts {
         Self::from_env(Some(NatsAuth::Public))
     }
 
-    pub fn from_env(auth: Option<NatsAuth>) -> Self {
-        let url = dotenvy::var("NATS_URL").expect("NATS_URL must be set");
-        let (user, pass) = auth.unwrap_or_default().credentials_from_env();
-        Self::new(url).with_user(user).with_password(pass)
-    }
-
     pub fn get_url(&self) -> String {
         self.url.clone()
     }
 
-    pub fn with_url(self, url: String) -> Self {
-        Self { url, ..self }
-    }
-
-    pub fn with_domain(self, domain: String) -> Self {
+    pub fn with_url<S: Into<String>>(self, url: S) -> Self {
         Self {
-            domain: Some(domain),
+            url: url.into(),
             ..self
         }
     }
 
-    pub fn with_user(self, user: String) -> Self {
+    pub fn with_domain<S: Into<String>>(self, domain: S) -> Self {
         Self {
-            user: Some(user),
+            domain: Some(domain.into()),
             ..self
         }
     }
 
-    pub fn with_password(self, password: String) -> Self {
+    pub fn with_user<S: Into<String>>(self, user: S) -> Self {
         Self {
-            password: Some(password),
+            user: Some(user.into()),
+            ..self
+        }
+    }
+
+    pub fn with_password<S: Into<String>>(self, password: S) -> Self {
+        Self {
+            password: Some(password.into()),
             ..self
         }
     }

@@ -64,7 +64,7 @@ async fn main() -> BoxedResult<()> {
     let nats_opts = NatsClientOpts::admin_opts();
     let nats_client = NatsClient::connect(&nats_opts).await?;
 
-    let s3_opts = S3ClientOpts::new(FuelNetwork::Local);
+    let s3_opts = S3ClientOpts::new(S3Env::Local, S3Role::Admin);
     let s3_client = Arc::new(S3Client::new(&s3_opts).await?);
 
     // Create a stream for blocks

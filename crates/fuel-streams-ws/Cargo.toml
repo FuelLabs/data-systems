@@ -29,6 +29,7 @@ dotenvy = { workspace = true }
 elasticsearch = "8.15.0-alpha.1"
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
 fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 futures-util = { workspace = true }

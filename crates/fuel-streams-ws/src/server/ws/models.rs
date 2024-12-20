@@ -1,4 +1,4 @@
-use fuel_streams_storage::DeliverPolicy as NatsDeliverPolicy;
+use fuel_streams_nats::DeliverPolicy as NatsDeliverPolicy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]

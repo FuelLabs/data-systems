@@ -7,7 +7,7 @@ static DEFAULT_NAMESPACE: &str = "fuel";
 /// # Examples
 ///
 /// ```
-/// use fuel_streams_storage::nats::NatsNamespace;
+/// use fuel_streams_nats::NatsNamespace;
 ///
 /// let default_namespace = NatsNamespace::default();
 /// assert_eq!(default_namespace.to_string(), "fuel");
@@ -44,7 +44,7 @@ impl NatsNamespace {
     /// # Examples
     ///
     /// ```
-    /// use fuel_streams_storage::nats::NatsNamespace;
+    /// use fuel_streams_nats::NatsNamespace;
     ///
     /// let namespace = NatsNamespace::default();
     /// assert_eq!(namespace.subject_name("test"), "fuel.test");
@@ -61,7 +61,7 @@ impl NatsNamespace {
     /// # Examples
     ///
     /// ```
-    /// use fuel_streams_storage::nats::NatsNamespace;
+    /// use fuel_streams_nats::NatsNamespace;
     ///
     /// let namespace = NatsNamespace::default();
     /// assert_eq!(namespace.stream_name("test"), "fuel_test");
