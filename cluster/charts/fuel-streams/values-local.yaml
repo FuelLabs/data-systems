@@ -4,6 +4,11 @@ config:
 
 # Reduce storage requirements for local development
 publisher:
+  image:
+    repository: "sv-emitter"
+    tag: "latest"
+    pullPolicy: "Always"
+
   storage:
     size: 10Gi
     storageClass: "standard" # Use default storage class
@@ -18,12 +23,8 @@ publisher:
         cpu: 500m
         memory: 512Mi
 
-  env:
-    PORT: 8080
-    PUBLISHER_MAX_THREADS: "12"
-    NATS_URL: "fuel-streams-nats-publisher:4222"
-
 consumer:
+  enabled: false
   config:
     replicaCount: 1
     resources:
@@ -36,6 +37,7 @@ consumer:
 
 # NATS Core configuration for local development
 nats-core:
+  enabled: false
   container:
     env:
       GOMEMLIMIT: 1GiB
@@ -65,6 +67,7 @@ nats-core:
 
 # NATS Publisher configuration for local development
 nats-publisher:
+  enabled: false
   container:
     env:
       GOMEMLIMIT: 1GiB
@@ -91,6 +94,7 @@ nats-publisher:
 
 # NATS Client configuration for local development
 nats-client:
+  enabled: false
   container:
     env:
       GOMEMLIMIT: 1GiB
@@ -118,20 +122,3 @@ nats-client:
 # Disable external service for local development
 natsExternalService:
   enabled: false
-
-# Use simple passwords for local development
-natsAccountsSecret:
-  enabled: true
-  data:
-    - name: NATS_SYS_USER
-      value: sys
-    - name: NATS_SYS_PASS
-      value: sys
-    - name: NATS_ADMIN_USER
-      value: admin
-    - name: NATS_ADMIN_PASS
-      value: admin
-    - name: NATS_PUBLISHER_USER
-      value: default_user
-    - name: NATS_PUBLISHER_PASS
-      value: ""

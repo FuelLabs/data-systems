@@ -40,15 +40,22 @@ spec:
         - name: consumer
           image: "{{ $consumer.image.repository }}:{{ $consumer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $consumer.image.pullPolicy }}
+          command: ["/usr/src/sv-consumer"]
           args:
-            {{- toYaml $consumer.args | nindent 12 }}
+          - "--nats-url"
+          - "$(NATS_URL)"
+          - "--nats-publisher-url"
+          - "$(NATS_PUBLISHER_URL)"
+          {{- with $consumer.image.args }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
 
           ports:
             - name: consumer
               containerPort: {{ $consumer.port }}
               protocol: TCP
-          {{- if $consumer.ports }}
-            {{- toYaml $consumer.ports | nindent 12 }}
+          {{- with $consumer.config.ports }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
 
           {{- include "set-field-and-value" (dict "context" $consumer "field" "resources" "path" "config.resources") | nindent 10 }}
@@ -57,12 +64,8 @@ spec:
 
           env:
             - name: PORT
-              value: "{{ $consumer.port }}" 
-            {{- range $key, $value := $consumer.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-            {{- with $consumer.extraEnv }}
+              value: {{ $consumer.port | quote }}
+            {{- with $consumer.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
@@ -72,18 +75,6 @@ spec:
                 optional: true
             - secretRef:
                 name: {{ include "fuel-streams.fullname" $ }}-keys
-                optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-consumer-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-consumer-keys
-                optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-aws-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
                 optional: true
             {{- with $consumer.envFrom }}
             {{- toYaml . | nindent 12 }}

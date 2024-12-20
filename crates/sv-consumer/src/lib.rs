@@ -14,7 +14,7 @@ pub enum Client {
 impl Client {
     pub fn url(&self, cli: &cli::Cli) -> String {
         match self {
-            Client::Core => cli.nats_core_url.clone(),
+            Client::Core => cli.nats_url.clone(),
             Client::Publisher => cli.nats_publisher_url.clone(),
         }
     }

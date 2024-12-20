@@ -234,11 +234,11 @@ run-publisher-testnet-profiling:
 #  Consumer Run Commands
 # ------------------------------------------------------------
 
-run-consumer: NATS_CORE_URL="localhost:4222"
-run-consumer: NATS_PUBLISHER_URL="localhost:4223"
+run-consumer: NATS_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4333"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
-		--nats-core-url $(NATS_CORE_URL) \
+		--nats-url $(NATS_URL) \
 		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------
@@ -334,15 +334,10 @@ minikube-delete:
 	@echo "Deleting minikube..."
 	@minikube delete
 
-k8s-setup:
-	@echo "Setting up k8s..."
-	@./cluster/scripts/setup_k8s.sh $(NAMESPACE)
-
 helm-setup:
 	@cd cluster/charts/fuel-streams && helm dependency update
-	@cd cluster/charts/fuel-streams-publisher && helm dependency update
 
-cluster-setup: minikube-setup k8s-setup helm-setup
+cluster-setup: minikube-setup helm-setup
 
 pre-cluster:
 	@./scripts/set_env.sh
@@ -355,5 +350,4 @@ cluster-up: pre-cluster
 cluster-down: pre-cluster
 	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile down
 
-cluster-reset: pre-cluster
-	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile reset
+cluster-reset: cluster-down cluster-up

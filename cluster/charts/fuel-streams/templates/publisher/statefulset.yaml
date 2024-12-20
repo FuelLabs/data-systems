@@ -77,70 +77,74 @@ spec:
         - name: publisher
           image: "{{ $publisher.image.repository }}:{{ $publisher.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $publisher.image.pullPolicy }}
+          command: ["/usr/src/sv-emitter"]
           args:
-            # Common arguments
-            - "--enable-relayer"
-            - "--enable-p2p"
-            - "--keypair"
-            - "$(KEYPAIR)"
-            - "--relayer"
-            - "$(RELAYER)"
-            - "--ip"
-            - "0.0.0.0"
-            - "--port"
-            - "$(PORT)"
-            - "--db-path"
-            - "$(DB_PATH)"
-            - "--nats-url"
-            - "$(NATS_URL)"
-            - "--sync-header-batch-size"
-            - "100"
-            - "--relayer-log-page-size"
-            - "2000"
-            - "--sync-block-stream-buffer-size"
-            - "50"
-            - "--max-database-cache-size"
-            - "17179869184"
-            - "--state-rewind-duration"
-            - "136y"
-            - "--request-timeout"
-            - "60"
-            - "--graphql-max-complexity"
-            - "1000000000"
-            {{- if eq $publisher.network "mainnet" }}
-            # Mainnet specific args
-            - "--service-name"
-            - "Publisher Node (Mainnet)"
-            - "--snapshot"
-            - "./chain-config/mainnet"
-            - "--reserved-nodes"
-            - "/dnsaddr/mainnet.fuel.network"
-            - "--relayer-v2-listening-contracts"
-            - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
-            - "--relayer-da-deploy-height"
-            - "20620434"
-            {{- else if eq $publisher.network "testnet" }}
-            # Testnet specific args
-            - "--service-name"
-            - "Publisher Node (Testnet)"
-            - "--snapshot"
-            - "./chain-config/testnet"
-            - "--reserved-nodes"
-            - "/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
-            - "--relayer-v2-listening-contracts"
-            - "0x01855B78C1f8868DE70e84507ec735983bf262dA"
-            - "--relayer-da-deploy-height"
-            - "5827607"
-            {{- end }}
-            {{- if $publisher.image.args }}
-            {{- toYaml $publisher.image.args | nindent 12 }}
-            {{- end }}
+          # Common arguments
+          - "--enable-relayer"
+          - "--enable-p2p"
+          - "--keypair"
+          - "$(KEYPAIR)"
+          - "--relayer"
+          - "$(RELAYER)"
+          - "--ip"
+          - "0.0.0.0"
+          - "--port"
+          - "$(PORT)"
+          - "--peering-port"
+          - "30333"
+          - "--utxo-validation"
+          - "--poa-instant"
+          - "false"
+          - "--db-path"
+          - "$(DB_PATH)"
+          - "--nats-url"
+          - "$(NATS_URL)"
+          - "--sync-header-batch-size"
+          - "100"
+          - "--relayer-log-page-size"
+          - "2000"
+          - "--sync-block-stream-buffer-size"
+          - "50"
+          - "--max-database-cache-size"
+          - "17179869184"
+          - "--state-rewind-duration"
+          - "136y"
+          - "--request-timeout"
+          - "60"
+          - "--graphql-max-complexity"
+          - "1000000000"
+          {{- if eq $publisher.network "mainnet" }}
+          # Mainnet specific args
+          - "--service-name"
+          - "Publisher Node (Mainnet)"
+          - "--snapshot"
+          - "./chain-config/mainnet"
+          - "--reserved-nodes"
+          - "/dnsaddr/mainnet.fuel.network"
+          - "--relayer-v2-listening-contracts"
+          - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+          - "--relayer-da-deploy-height"
+          - "20620434"
+          {{- else if eq $publisher.network "testnet" }}
+          # Testnet specific args
+          - "--service-name"
+          - "Publisher Node (Testnet)"
+          - "--snapshot"
+          - "./chain-config/testnet"
+          - "--reserved-nodes"
+          - "/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
+          - "--relayer-v2-listening-contracts"
+          - "0x01855B78C1f8868DE70e84507ec735983bf262dA"
+          - "--relayer-da-deploy-height"
+          - "5827607"
+          {{- end }}
+
           ports:
             - name: http
-              containerPort: {{ int $publisher.service.port }}
+              containerPort: {{ int $publisher.port }}
               protocol: TCP
-          {{- if $publisher.ports }}
-            {{- toYaml $publisher.ports | nindent 12 }}
+          {{- with $publisher.config.ports }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
 
           {{- include "set-field-and-value" (dict "context" $publisher "field" "resources" "path" "config.resources") | nindent 10 }}
@@ -152,11 +156,9 @@ spec:
               value: "/var/fuel-streams/tmp"
             - name: DB_PATH
               value: {{ $publisher.storage.mountPath | default "/mnt/db" | quote }}
-            {{- range $key, $value := $publisher.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-            {{- with $publisher.extraEnv }}
+            - name: PORT
+              value: {{ $publisher.port | quote }}
+            {{- with $publisher.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
@@ -166,18 +168,6 @@ spec:
                 optional: true
             - secretRef:
                 name: {{ include "fuel-streams.fullname" $ }}-keys
-                optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-publisher-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-publisher-keys
-                optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-aws-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
                 optional: true
             {{- with $publisher.envFrom }}
             {{- toYaml . | nindent 12 }}

@@ -61,7 +61,7 @@ FROM ubuntu:22.04 AS run
 
 ARG PORT=4000
 ARG P2P_PORT=30333
-ENV IP="${IP}"
+ARG DB_PATH=/mnt/db
 ENV PORT="${PORT}"
 
 WORKDIR /usr/src
@@ -72,11 +72,12 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /root/sv-emitter /usr/local/bin/
-COPY --from=builder /root/sv-emitter.d /usr/local/bin/
+COPY --from=builder /root/sv-emitter .
+COPY --from=builder /root/sv-emitter.d .
 
 COPY /cluster/chain-config ./chain-config
 EXPOSE ${PORT}
 EXPOSE ${P2P_PORT}
 
-ENTRYPOINT /usr/local/bin/sv-emitter
+WORKDIR /usr/src
+CMD ["./sv-emitter", "--port", "${PORT}", "--peering-port", "${P2P_PORT}", "--db-path", "${DB_PATH}"]

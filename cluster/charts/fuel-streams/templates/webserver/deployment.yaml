@@ -50,6 +50,15 @@ spec:
           {{- include "k8s.probes" (dict "context" . "service" "webserver") | nindent 10 }}
           {{- include "k8s.container-security-context" (dict "context" . "service" "webserver") | nindent 10 }}
 
+          env:
+            - name: NETWORK
+              value: {{ $webserver.network | quote }}
+            - name: PORT
+              value: {{ $webserver.port | quote }}
+            {{- with $webserver.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
           envFrom:
             - configMapRef:
                 name: {{ include "fuel-streams.fullname" $ }}-config
@@ -57,34 +66,9 @@ spec:
             - secretRef:
                 name: {{ include "fuel-streams.fullname" $ }}-keys
                 optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-webserver-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-webserver-keys
-                optional: true
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-aws-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-nats-keys
-                optional: true
             {{- with $webserver.envFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-
-          env:
-            {{- range $key, $value := $webserver.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-            {{- with $webserver.extraEnv }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-            - name: NETWORK
-              value: "{{ $webserver.network }}"
-            - name: PORT
-              value: "{{ $webserver.port }}"
 
 {{- include "k8s.hpa" (dict "context" . "service" (dict "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
 {{- end }}

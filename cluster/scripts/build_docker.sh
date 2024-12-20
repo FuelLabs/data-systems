@@ -33,10 +33,10 @@ if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
 fi
 
 # Default values
-IMAGE_NAME="sv-emitter"
 DOCKERFILE="cluster/docker/sv-emitter.Dockerfile"
+IMAGE_NAME=${EXPECTED_IMAGE:-"sv-emitter"}
+TAG=${EXPECTED_TAG:-"latest"}
 BUILD_ARGS=""
-TAG=${TAG:-"latest"} # From environment variable with default
 
 # Parse named arguments
 while [[ $# -gt 0 ]]; do

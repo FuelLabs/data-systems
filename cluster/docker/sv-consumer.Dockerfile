@@ -72,4 +72,5 @@ COPY --from=builder /root/sv-consumer.d .
 
 EXPOSE ${PORT}
 
-ENTRYPOINT ["./sv-consumer"]
+WORKDIR /usr/src
+CMD ["./sv-consumer"]

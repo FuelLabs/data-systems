@@ -18,7 +18,7 @@ pub struct Cli {
         long,
         value_name = "NATS_URL",
         env = "NATS_URL",
-        default_value = "nats://localhost:4111",
+        default_value = "nats://localhost:4222",
         help = "NATS URL"
     )]
     pub nats_url: String,

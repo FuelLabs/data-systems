@@ -7,7 +7,7 @@ services:
     container_name: nats-core
     restart: always
     ports:
-      - 4111:4222
+      - 4222:4222
     volumes:
       - ./nats-config/core.conf:/etc/nats/nats.conf
       - ./nats-config/accounts.conf:/etc/nats/accounts.conf
@@ -19,28 +19,6 @@ services:
     env_file:
       - ./../../.env
 
-  nats-client:
-    profiles:
-      - all
-      - nats
-    image: nats:latest
-    container_name: nats-client
-    restart: always
-    ports:
-      - 4333:4222
-    volumes:
-      - ./nats-config/client.conf:/etc/nats/nats.conf
-      - ./nats-config/accounts.conf:/etc/nats/accounts.conf
-    command:
-      - --name=fuel-streams-nats-client
-      - --js
-      - --config=/etc/nats/nats.conf
-      - -D
-    env_file:
-      - ./../../.env
-    depends_on:
-      - nats-core
-
   nats-publisher:
     profiles:
       - all
@@ -49,7 +27,7 @@ services:
     container_name: nats-publisher
     restart: always
     ports:
-      - 4222:4222
+      - 4333:4222
     volumes:
       - ./nats-config/publisher.conf:/etc/nats/nats.conf
       - ./nats-config/accounts.conf:/etc/nats/accounts.conf

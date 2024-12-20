@@ -70,6 +70,33 @@ startupProbe:
   successThreshold: 1
 
 # -------------------------------------------------------------------------------------------------
+# Global ConfigMap
+# -------------------------------------------------------------------------------------------------
+
+commonConfigMap:
+  enabled: true
+  data:
+    AWS_S3_BUCKET_NAME: "fuel-streams-staging"
+    AWS_ENDPOINT_URL: "https://s3.us-east-1.amazonaws.com"
+    AWS_REGION: "us-east-1"
+    AWS_S3_ENABLED: "true"
+    USE_METRICS: "false"
+    NATS_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
+    NATS_SYSTEM_USER: "sys"
+    NATS_SYSTEM_PASS: "sys"
+    NATS_ADMIN_USER: "admin"
+    NATS_ADMIN_PASS: "admin"
+    NATS_PUBLISHER_USER: "default_user"
+    NATS_PUBLISHER_PASS: ""
+
+# This is a secret that is used for local development
+# It is not used in production
+localSecrets:
+  enabled: false
+  data: {}
+
+# -------------------------------------------------------------------------------------------------
 # Monitoring
 # -------------------------------------------------------------------------------------------------
 
@@ -83,6 +110,7 @@ monitoring:
 publisher:
   enabled: true
   network: mainnet
+  port: 8080
 
   image:
     repository: ghcr.io/fuellabs/sv-emitter
@@ -90,12 +118,10 @@ publisher:
     tag: "latest"
     args: []
 
-  env:
-    NATS_URL: "fuel-streams-nats-core:4222"
-
-  service:
-    type: ClusterIP
-    port: 8080
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
 
   prometheus:
     enabled: false
@@ -143,30 +169,6 @@ publisher:
         podValue: 4
         periodSeconds: 15
 
-  # Additional environment variables with complex structures
-  # extraEnv: []
-  #   - name: RELAYER
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: fuel-streams-publisher
-  #         key: RELAYER
-  #   - name: KEYPAIR
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: fuel-streams-publisher
-  #         key: KEYPAIR
-  #   - name: NATS_ADMIN_PASS
-  #     valueFrom:
-  #       secretKeyRef:
-  #         name: fuel-streams-publisher
-  #         key: NATS_ADMIN_PASS
-  # Optional: Bulk environment references
-  # envFrom: {}
-  #   - configMapRef:
-  #       name: additional-config
-  #   - secretRef:
-  #       name: additional-secrets
-
 # -------------------------------------------------------------------------------------------------
 # Consumer configuration
 # -------------------------------------------------------------------------------------------------
@@ -178,15 +180,12 @@ consumer:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
     tag: "latest"
-    args:
-      - --nats-core-url
-      - $(NATS_CORE_URL)
-      - --nats-publisher-url
-      - $(NATS_PUBLISHER_URL)
+    args: []
 
-  env:
-    NATS_CORE_URL: "fuel-streams-nats-core:4222"
-    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
 
   config:
     replicaCount: 3
@@ -206,7 +205,7 @@ consumer:
     resources: {}
 
   autoscaling:
-    enabled: true
+    enabled: false
     minReplicas: 1
     maxReplicas: 3
     targetCPUUtilizationPercentage: 80
@@ -228,20 +227,23 @@ consumer:
 
 webserver:
   enabled: false
-  port: 9003
   network: mainnet
-
-  service:
-    enabled: true
-    dns: "stream-dev.fuel.network"
 
   image:
     repository: fuel-streams-webserver
     pullPolicy: Never
     tag: "latest"
 
-  env:
-    NATS_URL: "fuel-streams-nats-publisher:4222"
+  service:
+    enabled: true
+    type: LoadBalancer
+    port: 9003
+    dns: "stream-dev.fuel.network"
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
 
   config:
     replicaCount: 1
@@ -293,12 +295,6 @@ natsExternalService:
     dns: "stream-dev.fuel.network"
     labels: {}
     annotations: {}
-
-# This is just need to run locally, for production you need to
-# create a secret with the correct values named fuel-streams-nats-accounts
-natsAccountsSecret:
-  enabled: false
-  data: []
 
 # -------------------------------------------------------------------------------------------------
 # NATS Core configuration

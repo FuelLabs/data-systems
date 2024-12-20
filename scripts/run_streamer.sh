@@ -86,7 +86,7 @@ echo -e "=========================================="
 echo "Runtime Settings:"
 echo "→ Mode: ${MODE:-dev}"
 echo "→ API Port: ${API_PORT:-9003}"
-echo "→ NATS URL: ${NATS_URL:-nats://localhost:4222}"
+echo "→ NATS URL: ${NATS_URL:-"nats://localhost:4222"}"
 echo "→ S3 Enabled: ${S3_ENABLED:-true}"
 echo "→ JWT Secret: ${JWT_SECRET:-secret}"
 echo "→ Use Metrics: ${USE_METRICS:-false}"
@@ -99,7 +99,7 @@ echo -e "==========================================\n"
 # Define common arguments
 COMMON_ARGS=(
     "--api-port" "${API_PORT:-9003}"
-    "--nats-url" "${NATS_URL:-nats://localhost:4222}"
+    "--nats-url" "${NATS_URL:-"nats://localhost:4222"}"
     "--jwt-secret" "${JWT_SECRET:-secret}"
 )
 
