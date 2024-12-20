@@ -12,7 +12,7 @@ Build a Docker image using specified parameters.
 
 Options:
     --image-name     Name for the Docker image (default: sv-emitter)
-    --dockerfile     Path to Dockerfile (default: cluster/docker/fuel-core.Dockerfile)
+    --dockerfile     Path to Dockerfile (default: cluster/docker/sv-emitter.Dockerfile)
     --build-args     Additional Docker build arguments (optional)
     -h, --help       Show this help message
 
@@ -34,7 +34,7 @@ fi
 
 # Default values
 IMAGE_NAME="sv-emitter"
-DOCKERFILE="cluster/docker/fuel-core.Dockerfile"
+DOCKERFILE="cluster/docker/sv-emitter.Dockerfile"
 BUILD_ARGS=""
 TAG=${TAG:-"latest"} # From environment variable with default
 

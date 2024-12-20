@@ -26,7 +26,7 @@ jobs:
           - name: fuel-streams-ws
             image: cluster/docker/fuel-streams-ws.Dockerfile
           - name: sv-emitter
-            image: cluster/docker/fuel-core.Dockerfile
+            image: cluster/docker/sv-emitter.Dockerfile
           - name: sv-consumer
             image: cluster/docker/sv-consumer.Dockerfile
     steps:
@@ -36,7 +36,7 @@ jobs:
         id: sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker (${{ steps.sha.outputs.short_sha }})
+      - name: Build and push Docker for ${matrix.package.name} (${{ steps.sha.outputs.short_sha }})
         uses: ./.github/actions/docker-publish
         id: publish
         with:
@@ -44,5 +44,3 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           image: ghcr.io/fuellabs/${{ matrix.package.name }}
           dockerfile: ${{ matrix.package.image }}
-          build-args: |-
-            PACKAGE_NAME=${{ matrix.package.name }}

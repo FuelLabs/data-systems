@@ -18,14 +18,14 @@ custom_build(
     command=[
         './cluster/scripts/build_docker.sh',
         '--image-name', 'sv-emitter',
-        '--dockerfile', './cluster/docker/fuel-core.Dockerfile',
+        '--dockerfile', './cluster/docker/sv-emitter.Dockerfile',
         '--build-args', '--build-arg PACKAGE_NAME=sv-emitter'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/fuel-core.Dockerfile'
+        './cluster/docker/sv-emitter.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
