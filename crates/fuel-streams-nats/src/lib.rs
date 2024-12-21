@@ -1,6 +1,6 @@
-/// Houses shared APIs for interacting with NATS for fuel-streams-publisher and fuel-streams crates
+/// Houses shared APIs for interacting with NATS for sv-publisher and fuel-streams crates
 /// As much as possible, the public interface/APIS should be agnostic of NATS. These can then be extended
-/// in the fuel-streams-publisher and fuel-streams crates to provide a more opinionated API towards
+/// in the sv-publisher and fuel-streams crates to provide a more opinionated API towards
 /// their specific use-cases.
 pub mod error;
 pub mod nats_client;

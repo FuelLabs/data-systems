@@ -87,7 +87,7 @@ config_mode = os.getenv('CLUSTER_MODE', 'full')
 # Resource configurations
 RESOURCES = {
     'publisher': {
-        'name': 'fuel-streams-publisher',
+        'name': 'fuel-streams-sv-publisher',
         'ports': ['8080:8080'],
         'labels': 'publisher',
         'config_mode': ['minimal', 'full'],
@@ -98,10 +98,10 @@ RESOURCES = {
         'ports': ['8081:8080'],
         'labels': 'consumer',
         'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher', 'fuel-streams-publisher']
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher', 'fuel-streams-sv-publisher']
     },
     'sv-webserver': {
-        'name': 'sv-webserver',
+        'name': 'fuel-streams-sv-webserver',
         'ports': ['9003:9003'],
         'labels': 'ws',
         'config_mode': ['minimal', 'full'],
