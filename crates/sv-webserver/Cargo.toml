@@ -1,5 +1,5 @@
 [package]
-name = "fuel-streams-ws"
+name = "sv-webserver"
 description = "Fuel library for streaming data from nats and storage"
 authors = { workspace = true }
 keywords = { workspace = true }

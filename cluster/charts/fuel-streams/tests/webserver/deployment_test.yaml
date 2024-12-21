@@ -19,7 +19,7 @@ tests:
           of: apps/v1
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-webserver
+          value: RELEASE-NAME-sv-webserver
       - equal:
           path: metadata.labels["app.kubernetes.io/component"]
           value: webserver
@@ -40,13 +40,13 @@ tests:
   - it: should set image configuration correctly
     set:
       webserver.enabled: true
-      webserver.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      webserver.image.repository: ghcr.io/fuellabs/sv-webserver
       webserver.image.tag: latest
       webserver.image.pullPolicy: Always
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-webserver:latest
+          value: ghcr.io/fuellabs/sv-webserver:latest
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
@@ -54,14 +54,14 @@ tests:
   - it: should use chart version when tag is not specified
     set:
       webserver.enabled: true
-      webserver.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      webserver.image.repository: ghcr.io/fuellabs/sv-webserver
       webserver.image.tag: null
       Chart:
         Version: "1.0"
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-webserver:1.0
+          value: ghcr.io/fuellabs/sv-webserver:1.0
 
   - it: should configure ports correctly
     set:

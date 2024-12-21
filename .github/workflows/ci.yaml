@@ -234,8 +234,8 @@ jobs:
           - fuel-streams
           - fuel-streams-core
           - fuel-streams-macros
-          - fuel-streams-ws
-          - sv-emitter
+          - sv-webserver
+          - sv-publisher
     steps:
       - uses: actions/checkout@v4
 
@@ -270,8 +270,8 @@ jobs:
       matrix:
         package:
           - sv-consumer
-          - sv-emitter
-          - fuel-streams-ws
+          - sv-publisher
+          - sv-webserver
         is_release:
           - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:

@@ -1,7 +1,7 @@
 [files]
 extend-exclude = [
     "pnpm-lock.yaml",
-    "crates/fuel-streams-ws/README.md",
+    "crates/sv-webserver/README.md",
     "docker/chain-config",
     "docker/monitoring",
     "cluster",

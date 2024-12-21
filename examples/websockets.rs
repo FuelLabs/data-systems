@@ -18,7 +18,7 @@ use fuel_streams::{
     subjects::SubjectBuildable,
     types::FuelNetwork,
 };
-use fuel_streams_ws::{
+use sv_webserver::{
     client::WebSocketClient,
     server::ws::models::DeliverPolicy,
 };

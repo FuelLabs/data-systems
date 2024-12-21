@@ -1,4 +1,4 @@
-use fuel_streams_ws::{
+use sv_webserver::{
     config::Config,
     server::{api::create_api, context::Context, state::ServerState},
 };

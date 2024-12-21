@@ -113,7 +113,7 @@ publisher:
   port: 8080
 
   image:
-    repository: ghcr.io/fuellabs/sv-emitter
+    repository: ghcr.io/fuellabs/sv-publisher
     pullPolicy: Always
     tag: latest
     args: []
@@ -230,7 +230,7 @@ webserver:
   network: mainnet
 
   image:
-    repository: ghcr.io/fuellabs/fuel-streams-ws
+    repository: ghcr.io/fuellabs/sv-webserver
     pullPolicy: Always
     tag: latest
 

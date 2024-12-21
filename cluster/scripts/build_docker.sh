@@ -11,7 +11,7 @@ Usage: $(basename "$0") [OPTIONS]
 Build a Docker image using specified parameters.
 
 Options:
-    --dockerfile     Path to Dockerfile (default: cluster/docker/sv-emitter.Dockerfile)
+    --dockerfile     Path to Dockerfile (default: cluster/docker/sv-publisher.Dockerfile)
     --build-args     Additional Docker build arguments (optional)
     -h, --help       Show this help message
 
@@ -32,8 +32,8 @@ if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
 fi
 
 # Default values
-DOCKERFILE="cluster/docker/sv-emitter.Dockerfile"
-IMAGE_NAME=${EXPECTED_IMAGE:-"sv-emitter"}
+DOCKERFILE="cluster/docker/sv-publisher.Dockerfile"
+IMAGE_NAME=${EXPECTED_IMAGE:-"sv-publisher"}
 TAG=${EXPECTED_TAG:-"latest"}
 BUILD_ARGS=""
 

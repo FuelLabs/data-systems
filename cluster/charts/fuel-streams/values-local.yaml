@@ -22,7 +22,7 @@ commonConfigMap:
 # Reduce storage requirements for local development
 publisher:
   image:
-    repository: sv-emitter
+    repository: sv-publisher
     pullPolicy: IfNotPresent
     tag: latest
 
@@ -60,7 +60,7 @@ consumer:
 webserver:
   enabled: true
   image:
-    repository: fuel-streams-ws
+    repository: sv-webserver
     pullPolicy: IfNotPresent
     tag: latest
 

@@ -209,7 +209,7 @@ load-test:
 # ------------------------------------------------------------
 
 run-publisher: NETWORK="testnet"
-run-publisher: PACKAGE="sv-emitter"
+run-publisher: PACKAGE="sv-publisher"
 run-publisher: MODE="dev"
 run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="8080"

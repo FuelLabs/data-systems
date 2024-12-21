@@ -12,18 +12,18 @@ dotenv()
 
 allow_k8s_contexts('minikube')
 
-# Build sv-emitter
+# Build sv-publisher
 custom_build(
-    ref='sv-emitter:latest',
+    ref='sv-publisher:latest',
     command=[
         './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/sv-emitter.Dockerfile'
+        '--dockerfile', './cluster/docker/sv-publisher.Dockerfile'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/sv-emitter.Dockerfile'
+        './cluster/docker/sv-publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -37,7 +37,7 @@ custom_build(
 # Build sv-consumer
 custom_build(
     ref='sv-consumer:latest',
-    image_deps=['sv-emitter:latest'],
+    image_deps=['sv-publisher:latest'],
     command=[
         './cluster/scripts/build_docker.sh',
         '--dockerfile', './cluster/docker/sv-consumer.Dockerfile'
@@ -59,17 +59,17 @@ custom_build(
 
 # Build streamer ws image with proper configuration for Minikube
 custom_build(
-    ref='fuel-streams-ws:latest',
-    image_deps=['sv-consumer:latest', 'sv-emitter:latest'],
+    ref='sv-webserver:latest',
+    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
     command=[
         './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/fuel-streams-ws.Dockerfile'
+        '--dockerfile', './cluster/docker/sv-webserver.Dockerfile'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/fuel-streams-ws.Dockerfile'
+        './cluster/docker/sv-webserver.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -100,8 +100,8 @@ RESOURCES = {
         'config_mode': ['minimal', 'full'],
         'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher', 'fuel-streams-publisher']
     },
-    'fuel-streams-ws': {
-        'name': 'fuel-streams-ws',
+    'sv-webserver': {
+        'name': 'sv-webserver',
         'ports': ['9003:9003'],
         'labels': 'ws',
         'config_mode': ['minimal', 'full'],

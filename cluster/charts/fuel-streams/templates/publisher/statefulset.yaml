@@ -77,7 +77,7 @@ spec:
         - name: publisher
           image: "{{ $publisher.image.repository }}:{{ $publisher.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $publisher.image.pullPolicy }}
-          command: ["/usr/src/sv-emitter"]
+          command: ["/usr/src/sv-publisher"]
           args:
           # Common arguments
           - "--enable-relayer"

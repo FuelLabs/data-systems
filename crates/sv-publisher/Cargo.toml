@@ -1,5 +1,5 @@
 [package]
-name = "sv-emitter"
+name = "sv-publisher"
 description = "Service that emitts new blocks using fuel-core block subscription"
 authors = { workspace = true }
 keywords = { workspace = true }
@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 publish = false
 
 [[bin]]
-name = "sv-emitter"
+name = "sv-publisher"
 path = "src/main.rs"
 
 [dependencies]

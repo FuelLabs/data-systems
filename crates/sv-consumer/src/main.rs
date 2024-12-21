@@ -13,7 +13,7 @@ use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
 use futures::StreamExt;
 use sv_consumer::{cli::Cli, Client};
-use sv_emitter::shutdown::ShutdownController;
+use sv_publisher::shutdown::ShutdownController;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::fmt::time;
 

@@ -6,11 +6,11 @@ on:
       package:
         type: choice
         description: "Package to build and publish"
-        default: "sv-emitter"
+        default: "sv-publisher"
         required: true
         options:
-          - sv-emitter
-          - fuel-streams-ws
+          - sv-publisher
+          - sv-webserver
           - sv-consumer
           - all
   push:
@@ -34,10 +34,10 @@ jobs:
     strategy:
       matrix:
         package:
-          - name: fuel-streams-ws
-            image: cluster/docker/fuel-streams-ws.Dockerfile
-          - name: sv-emitter
-            image: cluster/docker/sv-emitter.Dockerfile
+          - name: sv-webserver
+            image: cluster/docker/sv-webserver.Dockerfile
+          - name: sv-publisher
+            image: cluster/docker/sv-publisher.Dockerfile
           - name: sv-consumer
             image: cluster/docker/sv-consumer.Dockerfile
     steps:

@@ -38,7 +38,7 @@ RUN \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/build/target \
-    xx-cargo chef cook --release --no-default-features -p fuel-streams-ws --recipe-path recipe.json
+    xx-cargo chef cook --release --no-default-features -p sv-webserver --recipe-path recipe.json
 # Up to this point, if our dependency tree stays the same,
 # all layers should be cached.
 COPY . .
@@ -48,10 +48,10 @@ RUN \
     --mount=type=cache,target=/usr/local/cargo/registry/cache \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/build/target \
-    xx-cargo build --release --no-default-features -p fuel-streams-ws \
-    && xx-verify ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-ws \
-    && cp ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-ws /root/fuel-streams-ws \
-    && cp ./target/$(xx-cargo --print-target-triple)/release/fuel-streams-ws.d /root/fuel-streams-ws.d
+    xx-cargo build --release --no-default-features -p sv-webserver \
+    && xx-verify ./target/$(xx-cargo --print-target-triple)/release/sv-webserver \
+    && cp ./target/$(xx-cargo --print-target-triple)/release/sv-webserver /root/sv-webserver \
+    && cp ./target/$(xx-cargo --print-target-triple)/release/sv-webserver.d /root/sv-webserver.d
 
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
@@ -68,8 +68,8 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /root/fuel-streams-ws .
-COPY --from=builder /root/fuel-streams-ws.d .
+COPY --from=builder /root/sv-webserver .
+COPY --from=builder /root/sv-webserver.d .
 
 EXPOSE ${PORT}
-CMD ["./fuel-streams-ws"]
+CMD ["./sv-webserver"]

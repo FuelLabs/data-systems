@@ -4168,8 +4168,8 @@ dependencies = [
  "anyhow",
  "fuel-core-types 0.40.2",
  "fuel-streams",
- "fuel-streams-ws",
  "futures",
+ "sv-webserver",
  "tokio",
 ]
 
@@ -4228,55 +4228,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.8",
  "tokio",
-]
-
-[[package]]
-name = "fuel-streams-ws"
-version = "0.0.13"
-dependencies = [
- "actix-cors",
- "actix-server",
- "actix-service",
- "actix-web",
- "actix-ws",
- "anyhow",
- "async-nats",
- "bytestring",
- "chrono",
- "clap 4.5.23",
- "derive_more 1.0.0",
- "displaydoc",
- "dotenvy",
- "elasticsearch",
- "fuel-streams",
- "fuel-streams-core",
- "fuel-streams-nats",
- "fuel-streams-storage",
- "futures",
- "futures-util",
- "jsonwebtoken 9.3.0",
- "num_cpus",
- "openssl",
- "parking_lot",
- "prometheus",
- "rand",
- "reqwest 0.12.9",
- "rust_decimal",
- "serde",
- "serde_json",
- "serde_prometheus",
- "sysinfo",
- "thiserror 2.0.8",
- "time",
- "tokio",
- "tokio-tungstenite 0.24.0",
- "tracing",
- "tracing-actix-web",
- "tracing-subscriber",
- "url",
- "urlencoding",
- "uuid",
- "validator",
 ]
 
 [[package]]
@@ -9182,7 +9133,7 @@ dependencies = [
  "futures",
  "openssl",
  "serde_json",
- "sv-emitter",
+ "sv-publisher",
  "thiserror 2.0.8",
  "tokio",
  "tokio-util",
@@ -9191,7 +9142,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sv-emitter"
+name = "sv-publisher"
 version = "0.0.13"
 dependencies = [
  "anyhow",
@@ -9208,6 +9159,55 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "sv-webserver"
+version = "0.0.13"
+dependencies = [
+ "actix-cors",
+ "actix-server",
+ "actix-service",
+ "actix-web",
+ "actix-ws",
+ "anyhow",
+ "async-nats",
+ "bytestring",
+ "chrono",
+ "clap 4.5.23",
+ "derive_more 1.0.0",
+ "displaydoc",
+ "dotenvy",
+ "elasticsearch",
+ "fuel-streams",
+ "fuel-streams-core",
+ "fuel-streams-nats",
+ "fuel-streams-storage",
+ "futures",
+ "futures-util",
+ "jsonwebtoken 9.3.0",
+ "num_cpus",
+ "openssl",
+ "parking_lot",
+ "prometheus",
+ "rand",
+ "reqwest 0.12.9",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "serde_prometheus",
+ "sysinfo",
+ "thiserror 2.0.8",
+ "time",
+ "tokio",
+ "tokio-tungstenite 0.24.0",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-subscriber",
+ "url",
+ "urlencoding",
+ "uuid",
+ "validator",
 ]
 
 [[package]]

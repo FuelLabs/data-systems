@@ -33,7 +33,7 @@ NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
-PACKAGE=${PACKAGE:-"sv-emitter"}
+PACKAGE=${PACKAGE:-"sv-publisher"}
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in

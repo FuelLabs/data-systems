@@ -114,8 +114,8 @@ fi
 
 # Execute based on mode
 if [ "${MODE:-dev}" == "dev" ]; then
-    cargo run -p fuel-streams-ws -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-webserver -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package fuel-streams-ws
-    samply record ./target/profiling/fuel-streams-ws "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo build --profile profiling --package sv-webserver
+    samply record ./target/profiling/sv-webserver "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi
