@@ -115,7 +115,7 @@ RESOURCES = {
     },
     'nats-publisher': {
         'name': 'fuel-streams-nats-publisher',
-        'ports': ['4333:4222', '6333:6222', '7433:7422'],
+        'ports': ['4333:4222', '6222:6222', '7433:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full'],
         'deps': ['fuel-streams-nats-core']

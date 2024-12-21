@@ -19,63 +19,6 @@ extra_changelog_sections = [
     ], name = "📝 Notes" },
 ]
 
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-Linux-aarch64-gnu.tar.gz"
-
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-Linux-aarch64-musl.tar.gz"
-
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-Linux-x86_64-gnu.tar.gz"
-
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-Linux-x86_64-musl.tar.gz"
-
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-macOS-aarch64.tar.gz"
-
-[[packages.fuel-streams.assets]]
-path = "artifacts/fuel-streams-macOS-x86_64.tar.gz"
-
-# ------------------------------------------------------------
-# Fuel-streams-ws package
-# ------------------------------------------------------------
-[packages.fuel-streams-ws]
-versioned_files = ["crates/fuel-streams-ws/Cargo.toml"]
-changelog = "CHANGELOG.md"
-extra_changelog_sections = [
-    { types = [
-        "major",
-    ], name = "⚠️ Breaking Change" },
-    { types = [
-        "minor",
-    ], name = "🚀 Features" },
-    { types = [
-        "patch",
-    ], name = "🐛 Fixes" },
-    { footers = [
-        "Changelog-Note",
-    ], name = "📝 Notes" },
-]
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-Linux-aarch64-gnu.tar.gz"
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-Linux-aarch64-musl.tar.gz"
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-Linux-x86_64-gnu.tar.gz"
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-Linux-x86_64-musl.tar.gz"
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-macOS-aarch64.tar.gz"
-
-[[packages.fuel-streams-ws.assets]]
-path = "artifacts/fuel-streams-ws-macOS-x86_64.tar.gz"
-
 # ------------------------------------------------------------
 # Workflow to get the current version
 # ------------------------------------------------------------

@@ -91,7 +91,7 @@ nats-core:
 
   config:
     cluster:
-      replicas: 1 # Single replica for local development
+      replicas: 3
 
     jetstream:
       fileStore:

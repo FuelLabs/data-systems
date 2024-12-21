@@ -238,7 +238,7 @@ webserver:
     enabled: true
     type: LoadBalancer
     port: 9003
-    dns: "stream-dev.fuel.network"
+    dns: "stream-staging.fuel.network"
     annotations: {}
     labels: {}
 

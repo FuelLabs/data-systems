@@ -276,7 +276,7 @@ async fn handle_binary_message(
                 }),
             )
             .await;
-            return Ok(());
+            Ok(())
         }
     }
 }
