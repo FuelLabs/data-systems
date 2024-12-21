@@ -54,7 +54,7 @@ pub struct S3Client {
 
 impl S3Client {
     pub async fn new(opts: &S3ClientOpts) -> Result<Self, S3ClientError> {
-        let config = aws_config::defaults(BehaviorVersion::v2024_03_28())
+        let config = aws_config::defaults(BehaviorVersion::latest())
             .endpoint_url(opts.endpoint_url().to_string())
             .region(Region::new(opts.region().to_string()))
             // TODO: Remove this once we have a proper S3 bucket created
@@ -66,6 +66,7 @@ impl S3Client {
         // Create S3 config without signing
         let s3_config = aws_sdk_s3::config::Builder::from(&config)
             .force_path_style(true)
+            .disable_s3_express_session_auth(true)
             .build();
 
         let client = aws_sdk_s3::Client::from_conf(s3_config);
@@ -94,15 +95,80 @@ impl S3Client {
         key: &str,
         object: Vec<u8>,
     ) -> Result<(), S3ClientError> {
-        self.client
+        match self
+            .client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
             .body(object.into())
             .send()
-            .await?;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(error) => match error {
+                SdkError::ServiceError(error) => {
+                    tracing::error!(
+                        "Failed to put object in S3 bucket={} key={}: {}",
+                        self.bucket,
+                        key,
+                        error.err()
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::ServiceError(
+                        error,
+                    )))
+                }
+                SdkError::ConstructionFailure(error) => {
+                    tracing::error!(
+                        "Failed to construct S3 request for bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(
+                        SdkError::ConstructionFailure(error),
+                    ))
+                }
+                SdkError::TimeoutError(error) => {
+                    tracing::error!(
+                        "Timeout putting object in S3 bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::TimeoutError(
+                        error,
+                    )))
+                }
+                SdkError::DispatchFailure(error) => {
+                    tracing::error!(
+                            "Failed to dispatch S3 request for bucket={} key={}: {}",
+                            self.bucket,
+                            key,
+                            error.as_connector_error().unwrap()
+                        );
+                    Err(S3ClientError::PutObjectError(
+                        SdkError::DispatchFailure(error),
+                    ))
+                }
+                SdkError::ResponseError(error) => {
+                    tracing::error!(
+                        "Invalid response from S3 for bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::ResponseError(
+                        error,
+                    )))
+                }
+                _ => {
+                    tracing::error!(
+                        "Failed to put object in S3 bucket={} key={}: {:?}",
+                        self.bucket,
+                        key,
+                        error
+                    );
+                    Err(S3ClientError::PutObjectError(error))
+                }
+            },
+        }
     }
 
     pub async fn get_object(

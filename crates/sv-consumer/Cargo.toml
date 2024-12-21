@@ -24,6 +24,7 @@ fuel-core = { workspace = true, default-features = false, features = ["p2p", "re
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
+num_cpus = { workspace = true }
 serde_json = { workspace = true }
 sv-publisher = { workspace = true }
 thiserror = { workspace = true }

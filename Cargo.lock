@@ -4227,6 +4227,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.8",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -9130,6 +9131,7 @@ dependencies = [
  "fuel-streams-core",
  "fuel-streams-executors",
  "futures",
+ "num_cpus",
  "openssl",
  "serde_json",
  "sv-publisher",

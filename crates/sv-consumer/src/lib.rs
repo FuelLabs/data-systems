@@ -25,7 +25,9 @@ impl Client {
         let url = self.url(cli);
         let opts = NatsClientOpts::admin_opts()
             .with_url(url)
-            .with_domain("CORE".to_string());
+            .with_domain("CORE".to_string())
+            .with_user("admin".to_string())
+            .with_password("admin".to_string());
         Ok(Arc::new(NatsClient::connect(&opts).await?))
     }
 }

@@ -20,12 +20,10 @@ use tokio::task::JoinHandle;
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
-    let default_threads = (available_cpus / 3).max(1); // Use 1/3 of CPUs, minimum 1
-
     env::var("PUBLISHER_MAX_THREADS")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(default_threads)
+        .unwrap_or(available_cpus)
 });
 
 pub fn sha256(bytes: &[u8]) -> Bytes32 {
@@ -194,14 +192,20 @@ impl TryFrom<BlockPayload> for Publish {
 pub struct Executor<S: Streamable + 'static> {
     pub stream: Arc<Stream<S>>,
     payload: Arc<BlockPayload>,
+    semaphore: Arc<tokio::sync::Semaphore>,
     __marker: PhantomData<S>,
 }
 
 impl<S: Streamable> Executor<S> {
-    pub fn new(payload: &Arc<BlockPayload>, stream: &Arc<Stream<S>>) -> Self {
+    pub fn new(
+        payload: &Arc<BlockPayload>,
+        stream: &Arc<Stream<S>>,
+        semaphore: &Arc<tokio::sync::Semaphore>,
+    ) -> Self {
         Self {
             payload: payload.to_owned(),
             stream: stream.to_owned(),
+            semaphore: semaphore.to_owned(),
             __marker: PhantomData,
         }
     }
@@ -212,9 +216,7 @@ impl<S: Streamable> Executor<S> {
     ) -> JoinHandle<Result<(), ExecutorError>> {
         let wildcard = packet.subject.parse();
         let stream = Arc::clone(&self.stream);
-        let max_threads = *PUBLISHER_MAX_THREADS;
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(max_threads));
-        let permit = Arc::clone(&semaphore);
+        let permit = Arc::clone(&self.semaphore);
 
         // TODO: add telemetry back again
         let packet = packet.clone();
@@ -223,7 +225,7 @@ impl<S: Streamable> Executor<S> {
                 let _permit = permit.acquire().await?;
                 match stream.publish(&packet).await {
                     Ok(_) => {
-                        tracing::info!(
+                        tracing::debug!(
                             "Successfully published for stream: {wildcard}"
                         );
                         Ok(())

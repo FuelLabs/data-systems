@@ -33,7 +33,7 @@ fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 futures-util = { workspace = true }
 jsonwebtoken = "9.3.0"
-num_cpus = "1.16"
+num_cpus = { workspace = true }
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand = { workspace = true }
