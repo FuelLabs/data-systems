@@ -209,7 +209,6 @@ load-test:
 # ------------------------------------------------------------
 
 run-publisher: NETWORK="testnet"
-run-publisher: PACKAGE="sv-publisher"
 run-publisher: MODE="dev"
 run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="8080"
@@ -245,15 +244,15 @@ run-consumer:
 #  Streamer Run Commands
 # ------------------------------------------------------------
 
-run-streamer: NETWORK="testnet"
-run-streamer: MODE="dev"
-run-streamer: PORT="9003"
-run-streamer: NATS_URL="nats://localhost:4222"
-run-streamer: S3_ENABLED="true"
-run-streamer: JWT_SECRET="secret"
-run-streamer: USE_METRICS="false"
-run-streamer: check-network
-	@./scripts/run_streamer.sh \
+run-webserver: NETWORK="testnet"
+run-webserver: MODE="dev"
+run-webserver: PORT="9003"
+run-webserver: NATS_URL="nats://localhost:4222"
+run-webserver: S3_ENABLED="true"
+run-webserver: JWT_SECRET="secret"
+run-webserver: USE_METRICS="false"
+run-webserver: check-network
+	@./scripts/run_webserver.sh \
 		--mode $(MODE) \
 		--port $(PORT) \
 		--nats-url $(NATS_URL) \
@@ -262,17 +261,17 @@ run-streamer: check-network
 		$(if $(USE_METRICS),--use-metrics,) \
 		$(if $(extra_args),$(extra_args),)
 
-run-streamer-mainnet-dev:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=dev
+run-webserver-mainnet-dev:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=dev
 
-run-streamer-mainnet-profiling:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling
+run-webserver-mainnet-profiling:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=profiling
 
-run-streamer-testnet-dev:
-	$(MAKE) run-streamer NETWORK=testnet MODE=dev
+run-webserver-testnet-dev:
+	$(MAKE) run-webserver NETWORK=testnet MODE=dev
 
-run-streamer-testnet-profiling:
-	$(MAKE) run-streamer NETWORK=testnet MODE=profiling
+run-webserver-testnet-profiling:
+	$(MAKE) run-webserver NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
 #  Docker Compose

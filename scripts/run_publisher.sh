@@ -33,7 +33,6 @@ NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
-PACKAGE=${PACKAGE:-"sv-publisher"}
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -128,8 +127,8 @@ COMMON_ARGS=(
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p ${PACKAGE} -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package ${PACKAGE}
-    samply record ./target/profiling/${PACKAGE} "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo build --profile profiling --package sv-publisher
+    samply record ./target/profiling/sv-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

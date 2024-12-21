@@ -11,7 +11,6 @@ use async_nats::{
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::{stream::BoxStream, StreamExt, TryStreamExt};
-use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
 
 use crate::prelude::*;
@@ -20,18 +19,19 @@ use crate::prelude::*;
 pub struct PublishPacket<T: Streamable> {
     pub subject: Arc<dyn IntoSubject>,
     pub payload: Arc<T>,
-    pub s3_path: String,
 }
 
 impl<T: Streamable> PublishPacket<T> {
     pub fn new(payload: T, subject: Arc<dyn IntoSubject>) -> Self {
-        let s3_path = payload.get_s3_path();
-
         Self {
             payload: Arc::new(payload),
             subject,
-            s3_path,
         }
+    }
+
+    pub fn get_s3_path(&self) -> String {
+        let subject = self.subject.parse();
+        subject.replace('.', "/").to_string()
     }
 }
 
@@ -63,19 +63,6 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 
     fn to_packet(&self, subject: Arc<dyn IntoSubject>) -> PublishPacket<Self> {
         PublishPacket::new(self.clone(), subject)
-    }
-
-    fn get_s3_path(&self) -> String {
-        format!("v1/{}/{}.json", Self::NAME, self.get_consistent_hash())
-    }
-
-    fn get_consistent_hash(&self) -> String {
-        let serialized = self.encode_self();
-
-        let mut hasher = Sha256::new();
-        hasher.update(serialized);
-
-        format!("{:x}", hasher.finalize())
     }
 }
 
@@ -174,15 +161,14 @@ impl<S: Streamable> Stream<S> {
         packet: &PublishPacket<S>,
     ) -> Result<usize, StreamError> {
         let payload = &packet.payload;
-        let s3_path = &packet.s3_path;
+        let s3_path = packet.get_s3_path();
         let subject_name = &packet.subject.parse();
 
-        // publish payload to S3
         self.s3_client
-            .put_object(s3_path, payload.encode(subject_name))
+            .put_object(&s3_path, payload.encode(subject_name))
             .await?;
 
-        self.publish_s3_path_to_nats(subject_name, s3_path).await
+        self.publish_s3_path_to_nats(subject_name, &s3_path).await
     }
 
     async fn publish_s3_path_to_nats(
@@ -401,7 +387,6 @@ impl<S: Streamable> Stream<S> {
         nats_payload: Vec<u8>,
     ) -> Result<S, StreamError> {
         let s3_path = String::from_utf8(nats_payload).expect("Must be S3 path");
-
         let s3_object = self
             .s3_client
             .get_object(&s3_path)
