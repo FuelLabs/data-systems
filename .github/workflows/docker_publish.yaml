@@ -6,13 +6,13 @@ on:
       package:
         type: choice
         description: "Package to build and publish"
-        default: "sv-publisher"
+        default: "all"
         required: true
         options:
+          - all
           - sv-publisher
           - sv-webserver
           - sv-consumer
-          - all
   push:
     branches:
       - main
