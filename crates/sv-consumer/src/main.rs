@@ -138,7 +138,7 @@ async fn process_messages(
 
     let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
     while !token.is_cancelled() {
-        let messages = consumer.fetch().max_messages(100).messages().await?;
+        let messages = consumer.fetch().messages().await?;
         tokio::pin!(messages);
         while let Some(msg) = messages.next().await {
             let msg = msg?;
