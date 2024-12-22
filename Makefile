@@ -248,18 +248,9 @@ run-webserver: NETWORK="testnet"
 run-webserver: MODE="dev"
 run-webserver: PORT="9003"
 run-webserver: NATS_URL="nats://localhost:4222"
-run-webserver: S3_ENABLED="true"
-run-webserver: JWT_SECRET="secret"
-run-webserver: USE_METRICS="false"
+run-webserver: EXTRA_ARGS=""
 run-webserver: check-network
-	@./scripts/run_webserver.sh \
-		--mode $(MODE) \
-		--port $(PORT) \
-		--nats-url $(NATS_URL) \
-		--s3-enabled $(S3_ENABLED) \
-		--jwt-secret $(JWT_SECRET) \
-		$(if $(USE_METRICS),--use-metrics,) \
-		$(if $(extra_args),$(extra_args),)
+	@./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
 
 run-webserver-mainnet-dev:
 	$(MAKE) run-webserver NETWORK=mainnet MODE=dev

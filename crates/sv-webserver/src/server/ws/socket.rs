@@ -289,14 +289,6 @@ fn parse_client_message(
     Ok(msg)
 }
 
-fn stream_to_server_message(
-    msg: Vec<u8>,
-) -> Result<Vec<u8>, WsSubscriptionError> {
-    let server_message = serde_json::to_vec(&ServerMessage::Update(msg))
-        .map_err(WsSubscriptionError::UnserializableMessagePayload)?;
-    Ok(server_message)
-}
-
 pub fn verify_and_extract_subject_name(
     subject_wildcard: &str,
 ) -> Result<String, WsSubscriptionError> {
@@ -347,45 +339,38 @@ async fn decode(
     match subject.as_str() {
         Transaction::NAME => {
             let entity = Transaction::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Block::NAME => {
             let entity = Block::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Input::NAME => {
             let entity = Input::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Output::NAME => {
             let entity = Output::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Receipt::NAME => {
             let entity = Receipt::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Utxo::NAME => {
             let entity = Utxo::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         Log::NAME => {
             let entity = Log::decode_or_panic(s3_payload);
-            let serialized_data = serde_json::to_vec(&entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?;
-            stream_to_server_message(serialized_data)
+            serde_json::to_vec(&entity)
+                .map_err(WsSubscriptionError::UnparsablePayload)
         }
         _ => Err(WsSubscriptionError::UnknownSubjectName(subject.to_string())),
     }
