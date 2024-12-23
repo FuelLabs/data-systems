@@ -25,28 +25,6 @@ use super::{
 };
 use crate::FuelNetwork;
 
-/// A client for connecting to the Fuel websocket server.
-///
-/// # Examples
-///
-/// ```no_run
-/// use fuel_streams::{Client, FuelNetwork};
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     // Basic usage with default credentials
-///     let mut client = Client::new(FuelNetwork::Local).await?;
-///     let connection = client.connect().await?;
-///
-///     // Or with custom connection options
-///     let client = Client::with_opts(ConnectionOpts {
-///         network: FuelNetwork::Local,
-///         username: "custom_user".to_string(),
-///         password: "custom_pass".to_string(),
-///     }).await?;
-///     Ok(())
-/// }
-/// ```
 #[derive(Debug, Clone)]
 pub struct Client {
     pub opts: ConnectionOpts,
@@ -54,7 +32,6 @@ pub struct Client {
 }
 
 impl Client {
-    /// Creates a new WebSocket client with default connection options for the specified network.
     pub async fn new(network: FuelNetwork) -> Result<Self, ClientError> {
         Self::with_opts(ConnectionOpts {
             network,
@@ -63,7 +40,6 @@ impl Client {
         .await
     }
 
-    /// Creates a new WebSocket client with custom connection options.
     pub async fn with_opts(opts: ConnectionOpts) -> Result<Self, ClientError> {
         let jwt_token =
             Self::fetch_jwt(opts.network, &opts.username, &opts.password)
@@ -74,20 +50,6 @@ impl Client {
         })
     }
 
-    /// Establishes a WebSocket connection using the client's configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use fuel_streams::{Client, FuelNetwork};
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut client = Client::new(FuelNetwork::Local).await?;
-    ///     let connection = client.connect().await?;
-    ///     Ok(())
-    /// }
-    /// ```
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
         let ws_url = self.opts.network.to_ws_url().join("/api/v1/ws")?;
         let host = ws_url
@@ -109,25 +71,6 @@ impl Client {
         Connection::new(request).await
     }
 
-    /// Fetches a JWT token from the server for authentication.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use fuel_streams::{Client, FuelNetwork};
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let jwt = Client::fetch_jwt(
-    ///         FuelNetwork::Local,
-    ///         "admin",
-    ///         "admin"
-    ///     ).await?;
-    ///
-    ///     assert!(!jwt.is_empty());
-    ///     Ok(())
-    /// }
-    /// ```
     async fn fetch_jwt(
         network: FuelNetwork,
         username: &str,
@@ -158,22 +101,6 @@ impl Client {
         }
     }
 
-    /// Refreshes the JWT token and establishes a new WebSocket connection.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use fuel_streams::{Client, FuelNetwork};
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let mut client = Client::new(FuelNetwork::Local).await?;
-    ///
-    ///     // Refresh token and reconnect
-    ///     let new_connection = client.refresh_jwt_and_connect().await?;
-    ///     Ok(())
-    /// }
-    /// ```
     pub async fn refresh_jwt_and_connect(
         &mut self,
     ) -> Result<Connection, ClientError> {

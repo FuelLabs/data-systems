@@ -442,7 +442,7 @@ impl<S: Streamable> Stream<S> {
 ///
 /// ```
 /// use fuel_streams_core::stream::SubscriptionConfig;
-/// use async_nats::jetstream::consumer::NatsDeliverPolicy;
+/// use async_nats::jetstream::consumer::DeliverPolicy as NatsDeliverPolicy;
 ///
 /// let config = SubscriptionConfig {
 ///     filter_subjects: vec!["example.*".to_string()],
