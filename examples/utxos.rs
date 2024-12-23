@@ -20,32 +20,22 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FuelNetwork::Testnet).await?;
-
-    // Create a new stream for UTXOs
-    let stream = fuel_streams::Stream::<Utxo>::new(&client).await;
-
-    // Configure the stream to start from the last published UTXO
-    let config = StreamConfig {
-        deliver_policy: DeliverPolicy::Last,
-    };
-
-    // Subscribe to the UTXO stream with the specified configuration
-    let mut sub = stream.subscribe_with_config(config).await?;
+    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut connection = client.connect().await?;
 
     println!("Listening for UTXOs...");
 
-    // Process incoming UTXOs
-    while let Some(bytes) = sub.next().await {
-        let message = bytes?;
-        let decoded_msg = Utxo::decode_raw(message.payload.to_vec()).await;
-        let utxo_subject = decoded_msg.subject;
-        let utxo_published_at = decoded_msg.timestamp;
+    // Create a subject for all UTXOs, optionally filter by type
+    let subject = UtxosSubject::new().with_utxo_type(Some(UtxoType::Message)); // Example: filter for message UTXOs
 
-        println!(
-            "Received UTXO:\n  Subject: {}\n  Published at: {}\n  UTXO: {:?}\n",
-            utxo_subject, utxo_published_at, decoded_msg.payload
-        );
+    // Subscribe to the UTXO stream with the specified configuration
+    let mut stream = connection
+        .subscribe::<Utxo>(subject, DeliverPolicy::Last)
+        .await?;
+
+    // Process incoming UTXOs
+    while let Some(utxo) = stream.next().await {
+        println!("Received UTXO: {:?}", utxo);
     }
 
     Ok(())

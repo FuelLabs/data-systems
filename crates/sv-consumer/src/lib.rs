@@ -14,7 +14,7 @@ pub enum Client {
 impl Client {
     pub fn url(&self, cli: &cli::Cli) -> String {
         match self {
-            Client::Core => cli.nats_core_url.clone(),
+            Client::Core => cli.nats_url.clone(),
             Client::Publisher => cli.nats_publisher_url.clone(),
         }
     }
@@ -23,9 +23,11 @@ impl Client {
         cli: &cli::Cli,
     ) -> Result<Arc<NatsClient>, NatsError> {
         let url = self.url(cli);
-        let opts = NatsClientOpts::admin_opts(None)
-            .with_custom_url(url)
-            .with_domain("CORE".to_string());
+        let opts = NatsClientOpts::admin_opts()
+            .with_url(url)
+            .with_domain("CORE".to_string())
+            .with_user("admin".to_string())
+            .with_password("admin".to_string());
         Ok(Arc::new(NatsClient::connect(&opts).await?))
     }
 }

@@ -12,20 +12,18 @@ dotenv()
 
 allow_k8s_contexts('minikube')
 
-# Build sv-emitter
+# Build sv-publisher
 custom_build(
-    ref='sv-emitter:latest',
+    ref='sv-publisher:latest',
     command=[
         './cluster/scripts/build_docker.sh',
-        '--image-name', 'sv-emitter',
-        '--dockerfile', './cluster/docker/fuel-core.Dockerfile',
-        '--build-args', '--build-arg PACKAGE_NAME=sv-emitter'
+        '--dockerfile', './cluster/docker/sv-publisher.Dockerfile'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/fuel-core.Dockerfile'
+        './cluster/docker/sv-publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -33,16 +31,15 @@ custom_build(
         sync('./Cargo.lock', '/usr/src/Cargo.lock'),
         run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
     ],
-    skips_local_docker=True,
     ignore=['./target']
 )
 
 # Build sv-consumer
 custom_build(
     ref='sv-consumer:latest',
+    image_deps=['sv-publisher:latest'],
     command=[
         './cluster/scripts/build_docker.sh',
-        '--image-name', 'sv-consumer',
         '--dockerfile', './cluster/docker/sv-consumer.Dockerfile'
     ],
     deps=[
@@ -57,20 +54,58 @@ custom_build(
         sync('./Cargo.lock', '/usr/src/Cargo.lock'),
         run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
     ],
-    skips_local_docker=True,
     ignore=['./target']
 )
 
+# Build streamer ws image with proper configuration for Minikube
+custom_build(
+    ref='sv-webserver:latest',
+    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
+    command=[
+        './cluster/scripts/build_docker.sh',
+        '--dockerfile', './cluster/docker/sv-webserver.Dockerfile'
+    ],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './cluster/docker/sv-webserver.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    ignore=['./target']
+)
+
+# Deploy the Helm chart with values from .env
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
 
 # Resource configurations
 RESOURCES = {
     'publisher': {
-        'name': 'fuel-streams-publisher',
-        'ports': ['4000:4000', '8080:8080'],
+        'name': 'fuel-streams-sv-publisher',
+        'ports': ['8080:8080'],
         'labels': 'publisher',
-        'config_mode': ['minimal', 'full']
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher']
+    },
+    'consumer': {
+        'name': 'fuel-streams-sv-consumer',
+        'ports': ['8081:8080'],
+        'labels': 'consumer',
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher', 'fuel-streams-sv-publisher']
+    },
+    'sv-webserver': {
+        'name': 'fuel-streams-sv-webserver',
+        'ports': ['9003:9003'],
+        'labels': 'ws',
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher']
     },
     'consumer': {
         'name': 'fuel-streams-sv-consumer',
@@ -84,18 +119,13 @@ RESOURCES = {
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
-    'nats-client': {
-        'name': 'fuel-streams-nats-client',
-        'ports': ['14222:4222', '17422:7422', '8443:8443'],
-        'labels': 'nats',
-        'config_mode': ['minimal', 'full']
-    },
     'nats-publisher': {
         'name': 'fuel-streams-nats-publisher',
-        'ports': ['24222:4222', '27422:7422'],
+        'ports': ['4333:4222', '6222:6222', '7433:7422'],
         'labels': 'nats',
-        'config_mode': ['minimal', 'full']
-    }
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core']
+    },
 }
 
 k8s_yaml(helm(
@@ -103,9 +133,9 @@ k8s_yaml(helm(
     name='fuel-streams',
     namespace='fuel-streams',
     values=[
-        'cluster/charts/fuel-streams/values-publisher-secrets.yaml',
         'cluster/charts/fuel-streams/values.yaml',
-        'cluster/charts/fuel-streams/values-local.yaml'
+        'cluster/charts/fuel-streams/values-local.yaml',
+        'cluster/charts/fuel-streams/values-secrets.yaml'
     ]
 ))
 

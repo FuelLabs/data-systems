@@ -73,8 +73,8 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
-    let opts = NatsClientOpts::admin_opts(None)
-        .with_custom_url(nats_url.to_string())
+    let opts = NatsClientOpts::admin_opts()
+        .with_url(nats_url.to_string())
         .with_domain("CORE".to_string());
     let nats_client = NatsClient::connect(&opts).await?;
     let stream_name = nats_client.namespace.stream_name("block_importer");
@@ -95,7 +95,10 @@ async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
 async fn find_last_published_height(
     nats_client: &NatsClient,
 ) -> anyhow::Result<u32> {
-    let block_stream = Stream::<Block>::get_or_init(nats_client).await;
+    let s3_client_opts = S3ClientOpts::admin_opts();
+    let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+    let block_stream =
+        Stream::<Block>::get_or_init(nats_client, &s3_client).await;
     let last_publish_height = block_stream
         .get_last_published(BlocksSubject::WILDCARD)
         .await?;

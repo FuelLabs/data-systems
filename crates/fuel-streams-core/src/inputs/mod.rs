@@ -13,5 +13,6 @@ impl Streamable for Input {
         InputsCoinSubject::WILDCARD,
         InputsContractSubject::WILDCARD,
         InputsMessageSubject::WILDCARD,
+        InputsByIdSubject::WILDCARD,
     ];
 }

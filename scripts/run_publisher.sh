@@ -9,7 +9,7 @@ set -e
 usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  --network     : Specify the network (mainnet|testnet)"
+    echo "  --network     : Specify the network (mainnet|testnet|local)"
     echo "                  Default: testnet"
     echo "  --mode        : Specify the run mode (dev|profiling)"
     echo "                  Default: profiling"
@@ -33,7 +33,6 @@ NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
-PACKAGE=${PACKAGE:-"fuel-streams-publisher"}
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -117,17 +116,19 @@ COMMON_ARGS=(
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
     "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
     "--sync-block-stream-buffer-size" "50"
-    "--nats-url" "nats://localhost:4222"
     "--max-database-cache-size" "17179869184"
     "--state-rewind-duration" "136y"
     "--request-timeout" "60"
     "--graphql-max-complexity" "1000000000"
+    # Application specific
+    "--nats-url" "nats://localhost:4222"
+    # "--telemetry-port" "${TELEMETRY_PORT}"
 )
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p ${PACKAGE} -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package ${PACKAGE}
-    samply record ./target/profiling/${PACKAGE} "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo build --profile profiling --package sv-publisher
+    samply record ./target/profiling/sv-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

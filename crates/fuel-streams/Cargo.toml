@@ -1,20 +1,27 @@
 [package]
 name = "fuel-streams"
 description = "A library for working with streams of Fuel blockchain data"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-keywords = ["data-stream", "blockchain", "cryptocurrencies"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.81"
-version = "0.0.13"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
 
 [dependencies]
 displaydoc = { workspace = true }
 fuel-streams-core = { workspace = true }
 futures = { workspace = true }
+reqwest = "0.12.9"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sv-webserver = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = "0.26.1"
+url = "2.5.4"
 
 [dev-dependencies]
 tokio = { workspace = true }

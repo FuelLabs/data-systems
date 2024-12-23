@@ -17,7 +17,7 @@ use tokio::{sync::broadcast::Receiver, time::sleep};
 use crate::types::*;
 
 /// Interface for `fuel-core` related logic.
-/// This was introduced to simplify mocking and testing the `fuel-streams-publisher` crate.
+/// This was introduced to simplify mocking and testing the `sv-publisher` crate.
 #[async_trait::async_trait]
 pub trait FuelCoreLike: Sync + Send {
     async fn start(&self) -> anyhow::Result<()>;

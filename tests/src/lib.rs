@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+use fuel_streams::{client::Client, Connection, FuelNetwork};
 use fuel_streams_core::{
     nats::NatsClient,
     prelude::*,
@@ -20,9 +21,13 @@ pub struct Streams {
 }
 
 impl Streams {
-    pub async fn new(client: &NatsClient) -> Self {
-        let blocks = Stream::<Block>::get_or_init(client).await;
-        let transactions = Stream::<Transaction>::get_or_init(client).await;
+    pub async fn new(
+        nats_client: &NatsClient,
+        s3_client: &Arc<S3Client>,
+    ) -> Self {
+        let blocks = Stream::<Block>::get_or_init(nats_client, s3_client).await;
+        let transactions =
+            Stream::<Transaction>::get_or_init(nats_client, s3_client).await;
         Self {
             transactions,
             blocks,
@@ -30,12 +35,20 @@ impl Streams {
     }
 }
 
-pub async fn server_setup() -> BoxedResult<(NatsClient, Streams)> {
-    let opts = NatsClientOpts::admin_opts(Some(FuelNetwork::Local))
-        .with_rdn_namespace();
-    let client = NatsClient::connect(&opts).await?;
-    let streams = Streams::new(&client).await;
-    Ok((client, streams))
+pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Connection)> {
+    let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
+    let nats_client = NatsClient::connect(&nats_client_opts).await?;
+
+    let s3_client_opts = S3ClientOpts::admin_opts().with_random_namespace();
+    let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
+    s3_client.create_bucket().await?;
+
+    let streams = Streams::new(&nats_client, &s3_client).await;
+
+    let mut client = Client::new(FuelNetwork::Local).await?;
+    let connection = client.connect().await?;
+
+    Ok((nats_client, streams, connection))
 }
 
 pub fn publish_items<T: Streamable + 'static>(
@@ -49,8 +62,10 @@ pub fn publish_items<T: Streamable + 'static>(
             for item in items {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 let payload = item.1.clone();
-                let subject = item.0;
-                stream.publish(&subject, &payload).await.unwrap();
+                let subject = Arc::new(item.0);
+                let packet = payload.to_packet(subject);
+
+                stream.publish(&packet).await.unwrap();
             }
         }
     })

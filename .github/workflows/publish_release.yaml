@@ -19,17 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set NATS environment variables
-        shell: bash
-        run: |
-          set_env_var() {
-            echo "$1=${!1:-$2}" >> $GITHUB_ENV
-            echo "$1=${!1:-$2}" >> .env
-          }
-          set_env_var "NATS_ADMIN_PASS" "null"
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_VERSION }}
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown

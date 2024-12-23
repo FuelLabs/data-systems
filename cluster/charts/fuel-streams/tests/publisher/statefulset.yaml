@@ -10,36 +10,36 @@ tests:
           of: StatefulSet
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-publisher
+          value: RELEASE-NAME-sv-publisher
 
   - it: should set correct image and tag
     set:
       publisher.enabled: true
-      publisher.image.repository: ghcr.io/fuellabs/fuel-streams-publisher
+      publisher.image.repository: ghcr.io/fuellabs/sv-publisher
       publisher.image.tag: latest
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-publisher:latest
+          value: ghcr.io/fuellabs/sv-publisher:latest
 
   - it: should use chart version when tag is not specified
     set:
       publisher.enabled: true
-      publisher.image.repository: ghcr.io/fuellabs/fuel-streams-publisher
+      publisher.image.repository: ghcr.io/fuellabs/sv-publisher
       publisher.image.tag: null
       Chart:
         Version: "1.0"
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-publisher:1.0
+          value: ghcr.io/fuellabs/sv-publisher:1.0
 
   - it: should merge environment variables correctly
     set:
       publisher.enabled: true
       publisher.env:
-        CHAIN_CONFIG: "testnet"  # Override default
-        NEW_VAR: "new-value"     # Add new var
+        CHAIN_CONFIG: "testnet" # Override default
+        NEW_VAR: "new-value" # Add new var
       publisher.extraEnv:
         - name: SIMPLE_VAR
           value: "simple-value"

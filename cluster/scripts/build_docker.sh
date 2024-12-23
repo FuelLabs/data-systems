@@ -11,8 +11,7 @@ Usage: $(basename "$0") [OPTIONS]
 Build a Docker image using specified parameters.
 
 Options:
-    --image-name     Name for the Docker image (default: fuel-streams-publisher)
-    --dockerfile     Path to Dockerfile (default: cluster/docker/fuel-core.Dockerfile)
+    --dockerfile     Path to Dockerfile (default: cluster/docker/sv-publisher.Dockerfile)
     --build-args     Additional Docker build arguments (optional)
     -h, --help       Show this help message
 
@@ -21,8 +20,8 @@ Environment variables:
     DOCKER_HOST     Docker daemon socket (optional)
 
 Examples:
-    $(basename "$0") --image-name my-image --dockerfile ./Dockerfile
-    $(basename "$0") --image-name my-image --dockerfile ./Dockerfile --build-args "--build-arg KEY=VALUE"
+    $(basename "$0") --dockerfile ./Dockerfile
+    $(basename "$0") --dockerfile ./Dockerfile --build-args "--build-arg KEY=VALUE"
 EOF
     exit 1
 }
@@ -33,18 +32,14 @@ if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
 fi
 
 # Default values
-IMAGE_NAME="fuel-streams-publisher"
-DOCKERFILE="cluster/docker/fuel-core.Dockerfile"
+DOCKERFILE="cluster/docker/sv-publisher.Dockerfile"
+IMAGE_NAME=${EXPECTED_IMAGE:-"sv-publisher"}
+TAG=${EXPECTED_TAG:-"latest"}
 BUILD_ARGS=""
-TAG=${TAG:-"latest"} # From environment variable with default
 
 # Parse named arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --image-name)
-            IMAGE_NAME="$2"
-            shift 2
-            ;;
         --dockerfile)
             DOCKERFILE="$2"
             shift 2

@@ -140,7 +140,7 @@ test:
 	fi
 
 bench:
-	cargo bench -p data-parser -p nats-publisher -p bench-consumers
+	cargo bench -p data-parser
 
 helm-test:
 	helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams
@@ -209,7 +209,6 @@ load-test:
 # ------------------------------------------------------------
 
 run-publisher: NETWORK="testnet"
-run-publisher: PACKAGE="sv-emitter"
 run-publisher: MODE="dev"
 run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="8080"
@@ -218,16 +217,16 @@ run-publisher: EXTRA_ARGS=""
 run-publisher: check-network
 	@./scripts/run_publisher.sh
 
-run-mainnet-dev:
+run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
 
-run-mainnet-profiling:
+run-publisher-mainnet-profiling:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling
 
-run-testnet-dev:
+run-publisher-testnet-dev:
 	$(MAKE) run-publisher NETWORK=testnet MODE=dev
 
-run-testnet-profiling:
+run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
 run-consumer: NATS_CORE_URL="localhost:4222"
@@ -238,24 +237,71 @@ run-consumer:
 		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------
+#  Consumer Run Commands
+# ------------------------------------------------------------
+
+run-consumer: NATS_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4333"
+run-consumer:
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-url $(NATS_URL) \
+		--nats-publisher-url $(NATS_PUBLISHER_URL)
+
+# ------------------------------------------------------------
+#  Streamer Run Commands
+# ------------------------------------------------------------
+
+run-webserver: NETWORK="testnet"
+run-webserver: MODE="dev"
+run-webserver: PORT="9003"
+run-webserver: NATS_URL="nats://localhost:4222"
+run-webserver: EXTRA_ARGS=""
+run-webserver: check-network
+	@./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
+
+run-webserver-mainnet-dev:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=dev
+
+run-webserver-mainnet-profiling:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=profiling
+
+run-webserver-testnet-dev:
+	$(MAKE) run-webserver NETWORK=testnet MODE=dev
+
+run-webserver-testnet-profiling:
+	$(MAKE) run-webserver NETWORK=testnet MODE=profiling
+
+# ------------------------------------------------------------
 #  Docker Compose
 # ------------------------------------------------------------
 
+# Define service profiles
+DOCKER_SERVICES := nats localstack docker
+
+run-docker-compose: PROFILE="all"
 run-docker-compose:
 	@./scripts/set_env.sh
-	@docker compose -f cluster/docker/docker-compose.yml --env-file .env $(COMMAND)
+	@docker compose -f cluster/docker/docker-compose.yml --profile $(PROFILE) --env-file .env $(COMMAND)
 
-start-nats:
-	$(MAKE) run-docker-compose COMMAND="up -d"
+# Common docker-compose commands
+define make-docker-commands
+start-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="up -d"
 
-stop-nats:
-	$(MAKE) run-docker-compose COMMAND="down"
+stop-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down"
 
-restart-nats:
-	$(MAKE) run-docker-compose COMMAND="restart"
+restart-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="restart"
 
-clean-nats:
-	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
+clean-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down -v --remove-orphans"
+
+reset-$(1): clean-$(1) start-$(1)
+endef
+
+# Generate targets for each service
+$(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
 
 reset-nats: clean-nats start-nats
 
@@ -287,15 +333,10 @@ minikube-delete:
 	@echo "Deleting minikube..."
 	@minikube delete
 
-k8s-setup:
-	@echo "Setting up k8s..."
-	@./cluster/scripts/setup_k8s.sh $(NAMESPACE)
-
 helm-setup:
 	@cd cluster/charts/fuel-streams && helm dependency update
-	@cd cluster/charts/fuel-streams-publisher && helm dependency update
 
-cluster-setup: minikube-setup k8s-setup helm-setup
+cluster-setup: minikube-setup helm-setup
 
 pre-cluster:
 	@./scripts/set_env.sh
@@ -308,5 +349,4 @@ cluster-up: pre-cluster
 cluster-down: pre-cluster
 	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile down
 
-cluster-reset: pre-cluster
-	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile reset
+cluster-reset: cluster-down cluster-up
