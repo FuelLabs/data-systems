@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use fuel_streams::client::Client;
+use fuel_streams::{client::Client, Connection, FuelNetwork};
 use fuel_streams_core::{
     nats::NatsClient,
     prelude::*,
@@ -35,7 +35,7 @@ impl Streams {
     }
 }
 
-pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Client)> {
+pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Connection)> {
     let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
@@ -45,11 +45,10 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Client)> {
 
     let streams = Streams::new(&nats_client, &s3_client).await;
 
-    let client = Client::with_opts(&nats_client_opts, &s3_client_opts)
-        .await
-        .unwrap();
+    let mut client = Client::new(FuelNetwork::Local).await?;
+    let connection = client.connect().await?;
 
-    Ok((nats_client, streams, client))
+    Ok((nats_client, streams, connection))
 }
 
 pub fn publish_items<T: Streamable + 'static>(

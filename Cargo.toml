@@ -70,17 +70,16 @@ tracing-actix-web = "0.7"
 thiserror = "2.0"
 
 fuel-streams = { path = "crates/fuel-streams" }
-fuel-networks = { path = "crates/fuel-networks" }
 fuel-data-parser = { version = "0.0.13", path = "crates/fuel-data-parser" }
 fuel-streams-core = { version = "0.0.13", path = "crates/fuel-streams-core" }
-sv-webserver = { version = "0.0.13", path = "crates/sv-webserver" }
 fuel-streams-macros = { version = "0.0.13", path = "crates/fuel-streams-macros" }
 fuel-streams-nats = { version = "0.0.13", path = "crates/fuel-streams-nats" }
 fuel-streams-storage = { version = "0.0.13", path = "crates/fuel-streams-storage" }
-subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
 fuel-streams-executors = { version = "0.0.13", path = "crates/fuel-streams-executors" }
+subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
 sv-publisher = { version = "0.0.13", path = "crates/sv-publisher" }
 sv-consumer = { version = "0.0.13", path = "crates/sv-consumer" }
+sv-webserver = { version = "0.0.13", path = "crates/sv-webserver" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

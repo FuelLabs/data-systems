@@ -20,32 +20,23 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FuelNetwork::Testnet).await?;
-
-    // Create a new stream for transactions
-    let stream = fuel_streams::Stream::<Transaction>::new(&client).await;
-
-    // Configure the stream to start from the last published transaction
-    let config = StreamConfig {
-        deliver_policy: DeliverPolicy::Last,
-    };
-
-    // Subscribe to the transaction stream with the specified configuration
-    let mut sub = stream.subscribe_raw_with_config(config).await?;
+    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut connection = client.connect().await?;
 
     println!("Listening for transactions...");
 
-    // Process incoming transactions
-    while let Some(bytes) = sub.next().await {
-        let decoded_msg = Transaction::decode_raw(bytes).unwrap();
-        let tx = decoded_msg.payload;
-        let tx_subject = decoded_msg.subject;
-        let tx_published_at = decoded_msg.timestamp;
+    // Create a subject for all transactions
+    let subject =
+        TransactionsSubject::new().with_kind(Some(TransactionKind::Script)); // Example: filter for script transactions
 
-        println!(
-            "Received transaction:\n  Subject: {}\n  Published at: {}\n  Data: {:?}\n",
-            tx_subject, tx_published_at, tx
-        );
+    // Subscribe to the transaction stream with the specified configuration
+    let mut stream = connection
+        .subscribe::<Transaction>(subject, DeliverPolicy::Last)
+        .await?;
+
+    // Process incoming transactions
+    while let Some(transaction) = stream.next().await {
+        println!("Received transaction: {:?}", transaction);
     }
 
     Ok(())

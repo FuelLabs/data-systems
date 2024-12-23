@@ -10,7 +10,7 @@ pub use async_nats::{
             AckPolicy,
             Config as ConsumerConfig,
             Consumer as NatsConsumer,
-            DeliverPolicy,
+            DeliverPolicy as NatsDeliverPolicy,
         },
         kv::Config as KvStoreConfig,
         stream::Config as NatsStreamConfig,

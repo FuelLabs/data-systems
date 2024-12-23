@@ -1,4 +1,4 @@
-use fuel_streams_nats::DeliverPolicy as NatsDeliverPolicy;
+use fuel_streams_nats::NatsDeliverPolicy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -72,7 +72,7 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Subscribed(SubscriptionPayload),
     Unsubscribed(SubscriptionPayload),
-    Update(Vec<u8>),
+    Response(serde_json::Value),
     Error(String),
 }
 

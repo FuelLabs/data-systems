@@ -20,31 +20,20 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FuelNetwork::Testnet).await?;
-
-    // Create a new stream for outputs
-    let stream = fuel_streams::Stream::<Output>::new(&client).await;
-
-    // Configure the stream to start from the last published output
-    let config = StreamConfig {
-        deliver_policy: DeliverPolicy::Last,
-    };
-
-    // Subscribe to the output stream with the specified configuration
-    let mut sub = stream.subscribe_raw_with_config(config).await?;
+    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut connection = client.connect().await?;
 
     println!("Listening for outputs...");
 
-    // Process incoming outputs
-    while let Some(bytes) = sub.next().await {
-        let decoded_msg = Output::decode_raw(bytes).unwrap();
-        let tx_subject = decoded_msg.subject;
-        let tx_published_at = decoded_msg.timestamp;
+    let subject = OutputsCoinSubject::new();
+    // Subscribe to the output stream with the specified configuration
+    let mut stream = connection
+        .subscribe::<Output>(subject, DeliverPolicy::Last)
+        .await?;
 
-        println!(
-            "Received output:\n  Subject: {}\n  Published at: {}\n  Output: {:?}\n",
-            tx_subject, tx_published_at, decoded_msg.payload
-        );
+    // Process incoming outputs
+    while let Some(output) = stream.next().await {
+        println!("Received output: {:?}", output);
     }
 
     Ok(())

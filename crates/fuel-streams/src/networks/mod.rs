@@ -11,9 +11,7 @@ pub enum FuelNetworkUserRole {
     Default,
 }
 
-#[derive(
-    Debug, Copy, Clone, Default, clap::ValueEnum, Deserialize, Serialize,
-)]
+#[derive(Debug, Copy, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FuelNetwork {
     #[default]
@@ -66,7 +64,7 @@ impl FuelNetwork {
     pub fn to_web_url(&self) -> Url {
         match self {
             FuelNetwork::Local => {
-                Url::parse("http://0.0.0.0:9003").expect("working url")
+                Url::parse("http://localhost:9003").expect("working url")
             }
             FuelNetwork::Testnet => {
                 Url::parse("http://stream-testnet.fuel.network:9003")
@@ -91,35 +89,5 @@ impl FuelNetwork {
             FuelNetwork::Mainnet => Url::parse("ws://stream.fuel.network:9003")
                 .expect("working url"),
         }
-    }
-
-    pub fn to_s3_url(&self) -> String {
-        match self {
-            FuelNetwork::Local => "http://localhost:4566".to_string(),
-            FuelNetwork::Testnet | FuelNetwork::Mainnet => {
-                let bucket = self.to_s3_bucket();
-                let region = self.to_s3_region();
-                // TODO: Update for client streaming
-                format!("https://{bucket}.s3-website-{region}.amazonaws.com")
-            }
-        }
-    }
-
-    pub fn to_s3_region(&self) -> String {
-        // TODO: Update correctly for client streaming
-        match self {
-            FuelNetwork::Local
-            | FuelNetwork::Testnet
-            | FuelNetwork::Mainnet => "us-east-1".to_string(),
-        }
-    }
-
-    pub fn to_s3_bucket(&self) -> String {
-        match self {
-            FuelNetwork::Local => "fuel-streams-local",
-            FuelNetwork::Testnet => "fuel-streams-testnet",
-            FuelNetwork::Mainnet => "fuel-streams",
-        }
-        .to_string()
     }
 }

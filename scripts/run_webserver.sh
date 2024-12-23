@@ -3,6 +3,12 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# Load environment variables with defaults
+PORT=${PORT:-9003}
+NATS_URL=${NATS_URL:-nats://localhost:4222}
+MODE=${MODE:-dev}
+EXTRA_ARGS=${EXTRA_ARGS:-""}
+
 # ------------------------------
 # Function to Display Usage
 # ------------------------------
@@ -49,16 +55,10 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Load environment variables with defaults
-PORT=${PORT:-9003}
-NATS_URL=${NATS_URL:-nats://localhost:4222}
-MODE=${MODE:-dev}
-EXTRA_ARGS=${EXTRA_ARGS:-""}
-
 # ------------------------------
 # Load Environment
 # ------------------------------
-source ./scripts/set_env.sh
+source ./scripts/set_env.sh NATS_URL=${NATS_URL}
 
 # Print the configuration being used
 echo -e "\n=========================================="

@@ -219,7 +219,7 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
         let mut config = PullConsumerConfig {
             filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
-            deliver_policy: DeliverPolicy::All,
+            deliver_policy: NatsDeliverPolicy::All,
             ack_policy: AckPolicy::None,
             ..Default::default()
         };
@@ -263,7 +263,7 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<BoxStream<'_, S>, StreamError> {
         let mut config = PullConsumerConfig {
             filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
-            deliver_policy: DeliverPolicy::All,
+            deliver_policy: NatsDeliverPolicy::All,
             ack_policy: AckPolicy::None,
             ..Default::default()
         };
@@ -309,7 +309,7 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<BoxStream<'_, Option<S>>, StreamError> {
         let config = PullConsumerConfig {
             filter_subjects: self.all_filter_subjects(),
-            deliver_policy: DeliverPolicy::All,
+            deliver_policy: NatsDeliverPolicy::All,
             ack_policy: AckPolicy::None,
             ..Default::default()
         };
@@ -442,15 +442,15 @@ impl<S: Streamable> Stream<S> {
 ///
 /// ```
 /// use fuel_streams_core::stream::SubscriptionConfig;
-/// use async_nats::jetstream::consumer::DeliverPolicy;
+/// use async_nats::jetstream::consumer::NatsDeliverPolicy;
 ///
 /// let config = SubscriptionConfig {
 ///     filter_subjects: vec!["example.*".to_string()],
-///     deliver_policy: DeliverPolicy::All,
+///     deliver_policy: NatsDeliverPolicy::All,
 /// };
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct SubscriptionConfig {
     pub filter_subjects: Vec<String>,
-    pub deliver_policy: DeliverPolicy,
+    pub deliver_policy: NatsDeliverPolicy,
 }

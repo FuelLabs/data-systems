@@ -20,31 +20,20 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let client = Client::connect(FuelNetwork::Testnet).await?;
-
-    // Create a new stream for logs
-    let stream = fuel_streams::Stream::<Log>::new(&client).await;
-
-    // Configure the stream to start from the last published log
-    let config = StreamConfig {
-        deliver_policy: DeliverPolicy::Last,
-    };
-
-    // Subscribe to the log stream with the specified configuration
-    let mut sub = stream.subscribe_raw_with_config(config).await?;
+    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut connection = client.connect().await?;
 
     println!("Listening for logs...");
 
-    // Process incoming logs
-    while let Some(bytes) = sub.next().await {
-        let decoded_msg = Log::decode_raw(bytes).unwrap();
-        let log_subject = decoded_msg.subject;
-        let log_published_at = decoded_msg.timestamp;
+    let subject = LogsSubject::new();
+    // Subscribe to the log stream with the specified configuration
+    let mut stream = connection
+        .subscribe::<Log>(subject, DeliverPolicy::Last)
+        .await?;
 
-        println!(
-            "Received log:\n  Subject: {}\n  Published at: {}\n  Log: {:?}\n",
-            log_subject, log_published_at, decoded_msg.payload
-        );
+    // Process incoming logs
+    while let Some(log) = stream.next().await {
+        println!("Received log: {:?}", log);
     }
 
     Ok(())

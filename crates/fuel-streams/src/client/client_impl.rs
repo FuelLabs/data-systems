@@ -1,107 +1,189 @@
-use std::sync::Arc;
+use reqwest::{
+    header::{
+        ACCEPT,
+        AUTHORIZATION,
+        CONNECTION,
+        CONTENT_TYPE,
+        HOST,
+        SEC_WEBSOCKET_KEY,
+        SEC_WEBSOCKET_VERSION,
+        UPGRADE,
+    },
+    Client as HttpClient,
+};
+use tokio_tungstenite::tungstenite::{
+    client::IntoClientRequest,
+    handshake::client::generate_key,
+};
 
-use fuel_streams_core::prelude::*;
+use super::{
+    error::ClientError,
+    Connection,
+    ConnectionOpts,
+    LoginRequest,
+    LoginResponse,
+};
+use crate::FuelNetwork;
 
-use super::ClientError;
-
-/// A client for connecting to a NATS server.
+/// A client for connecting to the Fuel websocket server.
 ///
-/// This struct represents a connected NATS client.
+/// # Examples
+///
+/// ```no_run
+/// use fuel_streams::{Client, FuelNetwork};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Basic usage with default credentials
+///     let mut client = Client::new(FuelNetwork::Local).await?;
+///     let connection = client.connect().await?;
+///
+///     // Or with custom connection options
+///     let client = Client::with_opts(ConnectionOpts {
+///         network: FuelNetwork::Local,
+///         username: "custom_user".to_string(),
+///         password: "custom_pass".to_string(),
+///     }).await?;
+///     Ok(())
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Client {
-    /// The underlying NATS client connection.
-    pub nats_conn: Arc<NatsClient>,
-    pub s3_conn: Arc<S3Client>,
+    pub opts: ConnectionOpts,
+    pub jwt_token: Option<String>,
 }
 
 impl Client {
-    /// Connects to a NATS server using the provided URL.
-    ///
-    /// # Parameters
-    ///
-    /// * `network`: An enum variant representing the fuel network we are connecting to.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `Result` containing the connected client on success, or an error on failure.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use fuel_streams::client::{Client, FuelNetwork};
-    ///
-    /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let client = Client::connect(FuelNetwork::Local).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn connect(network: FuelNetwork) -> Result<Self, crate::Error> {
-        let nats_opts =
-            NatsClientOpts::public_opts().with_url(network.to_nats_url());
-        let nats_client = NatsClient::connect(&nats_opts)
-            .await
-            .map_err(ClientError::NatsConnectionFailed)?;
+    /// Creates a new WebSocket client with default connection options for the specified network.
+    pub async fn new(network: FuelNetwork) -> Result<Self, ClientError> {
+        Self::with_opts(ConnectionOpts {
+            network,
+            ..Default::default()
+        })
+        .await
+    }
 
-        let s3_client_opts = match network {
-            FuelNetwork::Local => {
-                S3ClientOpts::new(S3Env::Local, S3Role::Admin)
-            }
-            FuelNetwork::Testnet => {
-                S3ClientOpts::new(S3Env::Testnet, S3Role::Public)
-            }
-            FuelNetwork::Mainnet => {
-                S3ClientOpts::new(S3Env::Mainnet, S3Role::Public)
-            }
-        };
-
-        let s3_client = S3Client::new(&s3_client_opts)
-            .await
-            .map_err(ClientError::S3ConnectionFailed)?;
-
+    /// Creates a new WebSocket client with custom connection options.
+    pub async fn with_opts(opts: ConnectionOpts) -> Result<Self, ClientError> {
+        let jwt_token =
+            Self::fetch_jwt(opts.network, &opts.username, &opts.password)
+                .await?;
         Ok(Self {
-            nats_conn: Arc::new(nats_client),
-            s3_conn: Arc::new(s3_client),
+            opts,
+            jwt_token: Some(jwt_token),
         })
     }
 
-    /// Connects to a NATS server using the provided options.
-    ///
-    /// # Parameters
-    ///
-    /// * `opts`: A reference to `NatsClientOpts` containing the connection options.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `ConnectionResult` containing the connected client on success, or an error on failure.
+    /// Establishes a WebSocket connection using the client's configuration.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use fuel_streams::client::{Client, FuelNetwork};
-    /// use fuel_streams_core::nats::NatsClientOpts;
-    /// use fuel_streams_core::s3::{S3ClientOpts, S3Env, S3Role};
+    /// use fuel_streams::{Client, FuelNetwork};
     ///
-    /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let nats_opts = NatsClientOpts::public_opts().with_url("nats://localhost:4222");
-    /// let s3_opts = S3ClientOpts::new(S3Env::Local, S3Role::Admin);
-    ///
-    /// let client = Client::with_opts(&nats_opts, &s3_opts).await?;
-    /// # Ok(())
-    /// # }
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let mut client = Client::new(FuelNetwork::Local).await?;
+    ///     let connection = client.connect().await?;
+    ///     Ok(())
+    /// }
     /// ```
-    pub async fn with_opts(
-        nats_opts: &NatsClientOpts,
-        s3_opts: &S3ClientOpts,
-    ) -> Result<Self, crate::Error> {
-        let nats_client = NatsClient::connect(nats_opts)
-            .await
-            .map_err(ClientError::NatsConnectionFailed)?;
-        let s3_client = S3Client::new(s3_opts)
-            .await
-            .map_err(ClientError::S3ConnectionFailed)?;
-        Ok(Self {
-            nats_conn: Arc::new(nats_client),
-            s3_conn: Arc::new(s3_client),
-        })
+    pub async fn connect(&mut self) -> Result<Connection, ClientError> {
+        let ws_url = self.opts.network.to_ws_url().join("/api/v1/ws")?;
+        let host = ws_url
+            .host_str()
+            .ok_or_else(|| ClientError::HostParseFailed)?;
+
+        let jwt_token =
+            self.jwt_token.clone().ok_or(ClientError::MissingJwtToken)?;
+
+        let bearer_token = format!("Bearer {}", jwt_token);
+        let mut request = ws_url.as_str().into_client_request()?;
+        let headers_map = request.headers_mut();
+        headers_map.insert(AUTHORIZATION, bearer_token.parse()?);
+        headers_map.insert(HOST, host.parse()?);
+        headers_map.insert(UPGRADE, "websocket".parse()?);
+        headers_map.insert(CONNECTION, "Upgrade".parse().unwrap());
+        headers_map.insert(SEC_WEBSOCKET_KEY, generate_key().parse()?);
+        headers_map.insert(SEC_WEBSOCKET_VERSION, "13".parse()?);
+        Connection::new(request).await
+    }
+
+    /// Fetches a JWT token from the server for authentication.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fuel_streams::{Client, FuelNetwork};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let jwt = Client::fetch_jwt(
+    ///         FuelNetwork::Local,
+    ///         "admin",
+    ///         "admin"
+    ///     ).await?;
+    ///
+    ///     assert!(!jwt.is_empty());
+    ///     Ok(())
+    /// }
+    /// ```
+    async fn fetch_jwt(
+        network: FuelNetwork,
+        username: &str,
+        password: &str,
+    ) -> Result<String, ClientError> {
+        let client = HttpClient::new();
+        let json_body = serde_json::to_string(&LoginRequest {
+            username: username.to_string(),
+            password: password.to_string(),
+        })?;
+
+        let api_url = network.to_web_url().join("/api/v1/jwt")?;
+        let response = client
+            .get(api_url)
+            .header(ACCEPT, "application/json")
+            .header(CONTENT_TYPE, "application/json")
+            .body(json_body)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let json_body = response.json::<LoginResponse>().await?;
+            Ok(json_body.jwt_token)
+        } else {
+            Err(ClientError::ApiResponse(
+                response.error_for_status_ref().unwrap_err(),
+            ))
+        }
+    }
+
+    /// Refreshes the JWT token and establishes a new WebSocket connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fuel_streams::{Client, FuelNetwork};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let mut client = Client::new(FuelNetwork::Local).await?;
+    ///
+    ///     // Refresh token and reconnect
+    ///     let new_connection = client.refresh_jwt_and_connect().await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn refresh_jwt_and_connect(
+        &mut self,
+    ) -> Result<Connection, ClientError> {
+        let jwt_token = Self::fetch_jwt(
+            self.opts.network,
+            &self.opts.username,
+            &self.opts.password,
+        )
+        .await?;
+        self.jwt_token = Some(jwt_token);
+        self.connect().await
     }
 }

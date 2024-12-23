@@ -4086,15 +4086,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-networks"
-version = "0.0.13"
-dependencies = [
- "clap 4.5.23",
- "serde",
- "url",
-]
-
-[[package]]
 name = "fuel-sequencer-proto"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4125,8 +4116,16 @@ dependencies = [
  "displaydoc",
  "fuel-streams-core",
  "futures",
+ "reqwest 0.12.9",
+ "serde",
+ "serde_json",
+ "sv-webserver",
  "thiserror 2.0.8",
  "tokio",
+ "tokio-stream",
+ "tokio-tungstenite 0.26.1",
+ "url",
+ "validator",
 ]
 
 [[package]]
@@ -4146,7 +4145,6 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "fuel-data-parser",
- "fuel-networks",
  "fuel-streams-macros",
  "fuel-streams-nats",
  "fuel-streams-storage",
@@ -9180,7 +9178,6 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "elasticsearch",
- "fuel-streams",
  "fuel-streams-core",
  "fuel-streams-nats",
  "fuel-streams-storage",
@@ -9797,6 +9794,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-tungstenite"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be4bf6fecd69fcdede0ec680aaf474cdab988f9de6bc73d3758f0160e3b7025a"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite 0.26.1",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10165,6 +10174,24 @@ dependencies = [
  "rand",
  "sha1",
  "thiserror 1.0.69",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413083a99c579593656008130e29255e54dcaae495be556cc26888f211648c24"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "data-encoding",
+ "http 1.2.0",
+ "httparse",
+ "log",
+ "rand",
+ "sha1",
+ "thiserror 2.0.8",
  "utf-8",
 ]
 

@@ -17,7 +17,6 @@ pub mod s3 {
 }
 
 pub mod stream;
-
 pub mod subjects;
 
 pub mod fuel_core_like;
@@ -28,7 +27,6 @@ pub mod types;
 pub use stream::*;
 
 pub mod prelude {
-    pub use fuel_networks::*;
     #[allow(unused_imports)]
     pub use fuel_streams_macros::subject::*;
 

@@ -39,11 +39,3 @@ path = "utxos.rs"
 [[example]]
 name = "logs"
 path = "logs.rs"
-
-[[example]]
-name = "multiple-streams"
-path = "multiple-streams.rs"
-
-[[example]]
-name = "websockets"
-path = "websockets.rs"

@@ -33,7 +33,6 @@ fuel-core-services = { workspace = true, default-features = false, features = ["
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-data-parser = { workspace = true }
-fuel-networks = { workspace = true }
 fuel-streams-macros = { workspace = true }
 fuel-streams-nats = { workspace = true }
 fuel-streams-storage = { workspace = true }
