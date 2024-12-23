@@ -40,23 +40,40 @@ where
 
 #[async_trait]
 pub trait StreamEncoder: DataParseable {
-    async fn encode(&self, subject: &str) -> Vec<u8> {
+    // TODO: Should we remove the `StreamData` type and encode/decode the raw data only
+    fn encode(&self, subject: &str) -> Vec<u8> {
         let data = StreamData::new(subject, self.clone());
 
         Self::data_parser()
-            .encode(&data)
-            .await
+            .encode_json(&data)
             .expect("Streamable must encode correctly")
     }
 
-    async fn decode(encoded: Vec<u8>) -> Self {
-        Self::decode_raw(encoded).await.payload
+    fn encode_self(&self) -> Vec<u8> {
+        Self::data_parser()
+            .encode_json(self)
+            .expect("Streamable must encode correctly")
     }
 
-    async fn decode_raw(encoded: Vec<u8>) -> StreamData<Self> {
+    fn decode(encoded: Vec<u8>) -> Result<Self, fuel_data_parser::Error> {
+        Ok(Self::decode_raw(encoded)?.payload)
+    }
+
+    fn decode_or_panic(encoded: Vec<u8>) -> Self {
+        Self::decode_raw(encoded)
+            .expect("Streamable must decode correctly")
+            .payload
+    }
+
+    fn decode_raw(
+        encoded: Vec<u8>,
+    ) -> Result<StreamData<Self>, fuel_data_parser::Error> {
+        Self::data_parser().decode_json(&encoded)
+    }
+
+    fn decode_raw_or_panic(encoded: Vec<u8>) -> StreamData<Self> {
         Self::data_parser()
-            .decode(&encoded)
-            .await
+            .decode_json(&encoded)
             .expect("Streamable must decode correctly")
     }
 

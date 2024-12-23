@@ -8,9 +8,15 @@ pub mod receipts;
 pub mod transactions;
 pub mod utxos;
 
-pub mod nats;
-pub mod stream;
+pub mod nats {
+    pub use fuel_streams_nats::*;
+}
 
+pub mod s3 {
+    pub use fuel_streams_storage::s3::*;
+}
+
+pub mod stream;
 pub mod subjects;
 
 pub mod fuel_core_like;
@@ -27,6 +33,7 @@ pub mod prelude {
     pub use crate::{
         fuel_core_like::*,
         nats::*,
+        s3::*,
         stream::*,
         subjects::*,
         types::*,

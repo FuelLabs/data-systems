@@ -48,13 +48,13 @@ tests:
   - it: should set image configuration correctly
     set:
       consumer.enabled: true
-      consumer.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      consumer.image.repository: ghcr.io/fuellabs/sv-webserver
       consumer.image.tag: latest
       consumer.image.pullPolicy: Always
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-webserver:latest
+          value: ghcr.io/fuellabs/sv-webserver:latest
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
@@ -64,14 +64,14 @@ tests:
   - it: should use chart version when tag is not specified
     set:
       consumer.enabled: true
-      consumer.image.repository: ghcr.io/fuellabs/fuel-streams-webserver
+      consumer.image.repository: ghcr.io/fuellabs/sv-webserver
       consumer.image.tag: null
       Chart:
         Version: "1.0"
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/fuellabs/fuel-streams-webserver:1.0
+          value: ghcr.io/fuellabs/sv-webserver:1.0
         documentIndex: 0
 
   - it: should configure ports correctly

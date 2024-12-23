@@ -1,20 +1,66 @@
 services:
-  nats:
+  nats-core:
+    profiles:
+      - all
+      - nats
     image: nats:latest
-    container_name: nats
+    container_name: nats-core
     restart: always
     ports:
       - 4222:4222
-      - 8222:8222
-      - 8443:8443
     volumes:
-      - ./nats.conf:/etc/nats/nats.conf
+      - ./nats-config/core.conf:/etc/nats/nats.conf
+      - ./nats-config/accounts.conf:/etc/nats/accounts.conf
     command:
-      - -m
-      - "8222"
-      - --name=fuel-streams-publisher-server
+      - --name=fuel-streams-nats-core
       - --js
       - --config=/etc/nats/nats.conf
       - -D
+    env_file:
+      - ./../../.env
+
+  nats-publisher:
+    profiles:
+      - all
+      - nats
+    image: nats:latest
+    container_name: nats-publisher
+    restart: always
+    ports:
+      - 4333:4222
+    volumes:
+      - ./nats-config/publisher.conf:/etc/nats/nats.conf
+      - ./nats-config/accounts.conf:/etc/nats/accounts.conf
+    command:
+      - --name=fuel-streams-nats-publisher
+      - --js
+      - --config=/etc/nats/nats.conf
+      - -D
+    env_file:
+      - ./../../.env
+    depends_on:
+      - nats-core
+
+  localstack:
+    profiles:
+      - all
+      - localstack
+    image: localstack/localstack:latest
+    container_name: localstack
+    restart: always
+    ports:
+      - "4566:4566" # LocalStack main gateway port
+      - "4572:4572" # S3 service port (optional)
+    environment:
+      - SERVICES=s3 # Enable just S3 service
+      - DEBUG=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DEFAULT_REGION=${AWS_REGION}
+      - DEFAULT_BUCKETS=${AWS_S3_BUCKET_NAME}
+    volumes:
+      - ./localstack-data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
     env_file:
       - ./../../.env

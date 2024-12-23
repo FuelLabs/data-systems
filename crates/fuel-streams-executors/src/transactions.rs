@@ -21,65 +21,47 @@ fn packets_from_tx(
     (index, tx): (usize, &Transaction),
     block_height: &BlockHeight,
 ) -> Vec<PublishPacket<Transaction>> {
+    let estimated_capacity =
+        1 + tx.inputs.len() + tx.outputs.len() + tx.receipts.len();
     let tx_id = tx.id.clone();
     let tx_status = tx.status.clone();
     let receipts = tx.receipts.clone();
-    let main_subject = TransactionsSubject {
-        block_height: Some(block_height.to_owned()),
-        index: Some(index),
-        tx_id: Some(tx_id.to_owned()),
-        status: Some(tx_status.to_owned()),
-        kind: Some(tx.kind.to_owned()),
-    }
-    .arc();
 
-    let mut packets = vec![tx.to_packet(main_subject)];
-    packets.extend(
-        identifiers(tx, &tx.kind, &tx_id, index as u8)
-            .into_par_iter()
-            .map(|identifier| identifier.into())
-            .map(|subject: TransactionsByIdSubject| subject.arc())
-            .map(|subject| tx.to_packet(subject))
-            .collect::<Vec<_>>(),
+    // Main subject
+    let mut packets = Vec::with_capacity(estimated_capacity);
+    packets.push(
+        tx.to_packet(
+            TransactionsSubject {
+                block_height: Some(block_height.to_owned()),
+                index: Some(index),
+                tx_id: Some(tx_id.to_owned()),
+                status: Some(tx_status),
+                kind: Some(tx.kind.to_owned()),
+            }
+            .arc(),
+        ),
     );
 
-    let packets_from_inputs: Vec<PublishPacket<Transaction>> = tx
-        .inputs
-        .par_iter()
-        .flat_map(|input| {
-            inputs::identifiers(input, &tx_id, index as u8)
-                .into_par_iter()
-                .map(|identifier| identifier.into())
-                .map(|subject: TransactionsByIdSubject| subject.arc())
-                .map(|subject| tx.to_packet(subject))
-        })
-        .collect();
-    packets.extend(packets_from_inputs);
+    let index_u8 = index as u8;
+    let mut additional_packets: Vec<PublishPacket<Transaction>> =
+        rayon::iter::once(&tx.kind)
+            .flat_map(|kind| identifiers(tx, kind, &tx_id, index_u8))
+            .chain(
+                tx.inputs.par_iter().flat_map(|input| {
+                    inputs::identifiers(input, &tx_id, index_u8)
+                }),
+            )
+            .chain(tx.outputs.par_iter().flat_map(|output| {
+                outputs::identifiers(output, tx, &tx_id, index_u8)
+            }))
+            .chain(receipts.par_iter().flat_map(|receipt| {
+                receipts::identifiers(receipt, &tx_id, index_u8)
+            }))
+            .map(|identifier| TransactionsByIdSubject::from(identifier).arc())
+            .map(|subject| tx.to_packet(subject))
+            .collect();
 
-    let packets_from_outputs: Vec<PublishPacket<Transaction>> = tx
-        .outputs
-        .par_iter()
-        .flat_map(|output| {
-            outputs::identifiers(output, tx, &tx_id, index as u8)
-                .into_par_iter()
-                .map(|identifier| identifier.into())
-                .map(|subject: TransactionsByIdSubject| subject.arc())
-                .map(|subject| tx.to_packet(subject))
-        })
-        .collect();
-    packets.extend(packets_from_outputs);
-
-    let packets_from_receipts: Vec<PublishPacket<Transaction>> = receipts
-        .par_iter()
-        .flat_map(|receipt| {
-            receipts::identifiers(receipt, &tx_id, index as u8)
-                .into_par_iter()
-                .map(|identifier| identifier.into())
-                .map(|subject: TransactionsByIdSubject| subject.arc())
-                .map(|subject| tx.to_packet(subject))
-        })
-        .collect();
-    packets.extend(packets_from_receipts);
+    packets.append(&mut additional_packets);
     packets
 }
 
