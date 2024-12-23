@@ -1,41 +1,42 @@
-name: Build and publish Helm Chart
+name: Build and Publish Helm Chart
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-    paths:
-      - cluster/charts/fuel-streams-publisher/Chart.yaml
-      - cluster/charts/fuel-nats/Chart.yaml
+  release:
+    types:
+      - published
+
+env:
+  CHART_NAME: fuel-streams
+  CHART_PATH: cluster/charts/fuel-streams
 
 permissions:
   contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   helm-release:
-    name: Build Helm Chart
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'release' && github.event.action == 'published') ||
-      github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        chart:
-          - fuel-streams-publisher
-          - fuel-nats
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Helm Dependencies Update For fuel-nats
+      - uses: actions/checkout@v4
+      - name: Helm Dependencies Update
         run: |
-          cd cluster/charts/${{ matrix.chart }} && helm dependency update
+          cd ${{ env.CHART_PATH }} && helm dependency update
 
-      - name: Package and Push Charts
+      - name: Get chart version
+        id: version
+        run: |
+          version=$(awk '/^version:/ {print $2}' ${{ env.CHART_PATH }}/Chart.yaml)
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: "Build chart: [${{ env.CHART_NAME }} v${{ steps.version.outputs.version }}]"
         uses: bsord/helm-push@v4.1.0
         with:
           useOCIRegistry: true
@@ -43,4 +44,11 @@ jobs:
           username: ${{ github.repository_owner }}
           access-token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-          chart-folder: ./cluster/charts/${{ matrix.chart }}
+          chart-folder: ${{ env.CHART_PATH }}
+
+      - name: Build Summary
+        run: |-
+          echo "### Helm Charts Build Summary 📊" >> $GITHUB_STEP_SUMMARY
+          echo "| Chart | Version | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ${{ env.CHART_NAME }} | ${{ steps.version.outputs.version }} | ✅ Published |" >> $GITHUB_STEP_SUMMARY

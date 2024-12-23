@@ -63,10 +63,10 @@ engine = "Llvm"
 
 # ==========================================
 # ignore due to wasm incompatibility
-# [cov_fuel_streams_publisher]
+# [cov_sv_publisher]
 # name = "Fuel Streams Publisher Coverage Analysis"
 # packages = [
-#     "fuel-streams-publisher"
+#     "sv-publisher"
 # ]
 # all-features = true
 # run-types = [

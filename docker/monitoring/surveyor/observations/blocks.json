@@ -1,6 +1,0 @@
-{
-  "name": "blocks",
-  "topic": "*.blocks.>",
-  "username": "admin",
-  "password": "secret"
-}

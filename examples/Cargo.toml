@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-fuel-core-types = { workspace = true }
 fuel-streams = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
@@ -38,7 +37,3 @@ path = "utxos.rs"
 [[example]]
 name = "logs"
 path = "logs.rs"
-
-[[example]]
-name = "multiple-streams"
-path = "multiple-streams.rs"

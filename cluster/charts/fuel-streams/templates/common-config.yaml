@@ -1,0 +1,21 @@
+{{- if .Values.commonConfigMap.enabled  }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: fuel-streams-config
+    labels:
+        app.kubernetes.io/instance: fuel-streams
+data:
+    {{ .Values.commonConfigMap.data | toYaml | nindent 2 }}
+{{- end }}
+{{- if .Values.localSecrets.enabled }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: fuel-streams-keys
+    labels:
+        app.kubernetes.io/instance: fuel-streams
+stringData:
+    {{ .Values.localSecrets.data | toYaml | nindent 2 }}
+{{- end }}

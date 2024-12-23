@@ -1,6 +1,4 @@
-#[cfg(any(test, feature = "test-helpers"))]
-use std::pin::Pin;
-use std::{fmt::Debug, sync::Arc, time::Duration};
+use std::{fmt::Debug, sync::Arc};
 
 use async_nats::{
     jetstream::{
@@ -12,16 +10,12 @@ use async_nats::{
 };
 use async_trait::async_trait;
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{StreamExt, TryStreamExt};
+use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
-use super::{error::StreamError, stream_encoding::StreamEncoder};
-use crate::{nats::types::*, prelude::NatsClient};
+use crate::prelude::*;
 
-pub const FUEL_BLOCK_TIME_SECS: u64 = 1;
-pub const MAX_RETENTION_BLOCKS: u64 = 100;
-
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PublishPacket<T: Streamable> {
     pub subject: Arc<dyn IntoSubject>,
     pub payload: Arc<T>,
@@ -33,6 +27,11 @@ impl<T: Streamable> PublishPacket<T> {
             payload: Arc::new(payload),
             subject,
         }
+    }
+
+    pub fn get_s3_path(&self) -> String {
+        let subject = self.subject.parse();
+        subject.replace('.', "/").to_string()
     }
 }
 
@@ -58,7 +57,7 @@ impl<T: Streamable> PublishPacket<T> {
 /// }
 /// ```
 #[async_trait]
-pub trait Streamable: StreamEncoder {
+pub trait Streamable: StreamEncoder + std::marker::Sized {
     const NAME: &'static str;
     const WILDCARD_LIST: &'static [&'static str];
 
@@ -72,6 +71,7 @@ pub trait Streamable: StreamEncoder {
 /// # Examples
 ///
 /// ```no_run
+/// use std::sync::Arc;
 /// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::IntoSubject;
 /// use futures::StreamExt;
@@ -89,17 +89,16 @@ pub trait Streamable: StreamEncoder {
 ///     const WILDCARD_LIST: &'static [&'static str] = &["*"];
 /// }
 ///
-/// async fn example(client: &NatsClient) {
-///     let stream = Stream::<MyStreamable>::new(client).await;
+/// async fn example(nats_client: &NatsClient, s3_client: &Arc<S3Client>) {
+///     let stream = Stream::<MyStreamable>::new(nats_client, s3_client).await;
 ///
 ///     // Publish
-///     let subject = BlocksSubject::new().with_height(Some(23.into()));
-///     let payload = MyStreamable { data: "foo".into() };
-///     stream.publish(&subject, &payload).await.unwrap();
+///     let subject = BlocksSubject::new().with_height(Some(23.into())).arc();
+///     let packet = MyStreamable { data: "foo".into() }.to_packet(subject);
+///     stream.publish(&packet).await.unwrap();
 ///
 ///     // Subscribe
-///     let wildcard = BlocksSubject::WILDCARD;
-///     let mut subscription = stream.subscribe(wildcard).await.unwrap();
+///     let mut subscription = stream.subscribe(None).await.unwrap();
 ///     while let Some(message) = subscription.next().await {
 ///         // Process message
 ///     }
@@ -110,7 +109,8 @@ pub trait Streamable: StreamEncoder {
 /// TODO: Rename as FuelStream?
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
-    store: kv::Store,
+    store: Arc<kv::Store>,
+    s3_client: Arc<S3Client>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -118,59 +118,72 @@ impl<S: Streamable> Stream<S> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
-    pub async fn get_or_init(client: &NatsClient) -> Self {
+    pub async fn get_or_init(
+        nats_client: &NatsClient,
+        s3_client: &Arc<S3Client>,
+    ) -> Self {
         let cell = Self::INSTANCE;
-        cell.get_or_init(|| async { Self::new(client).await.to_owned() })
-            .await
-            .to_owned()
+        cell.get_or_init(|| async {
+            Self::new(nats_client, s3_client).await.to_owned()
+        })
+        .await
+        .to_owned()
     }
 
-    pub async fn new(client: &NatsClient) -> Self {
-        let namespace = &client.namespace;
+    pub async fn new(
+        nats_client: &NatsClient,
+        s3_client: &Arc<S3Client>,
+    ) -> Self {
+        let namespace = &nats_client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
-        let store = client
-            .get_or_create_kv_store(kv::Config {
-                bucket: bucket_name.to_owned(),
-                storage: stream::StorageType::File,
-                history: 1,
-                compression: true,
-                max_age: Duration::from_secs(
-                    FUEL_BLOCK_TIME_SECS * MAX_RETENTION_BLOCKS,
-                ),
-                ..Default::default()
-            })
+        let config = kv::Config {
+            bucket: bucket_name.to_owned(),
+            storage: stream::StorageType::File,
+            history: 1,
+            compression: true,
+            ..Default::default()
+        };
+
+        let store = nats_client
+            .get_or_create_kv_store(config)
             .await
             .expect("Streams must be created");
 
         Self {
-            store,
+            store: Arc::new(store),
+            s3_client: Arc::clone(s3_client),
             _marker: std::marker::PhantomData,
         }
     }
 
     pub async fn publish(
         &self,
-        subject: &dyn IntoSubject,
-        payload: &S,
+        packet: &PublishPacket<S>,
     ) -> Result<usize, StreamError> {
-        let subject_name = &subject.parse();
-        self.publish_raw(subject_name, payload).await
+        let payload = &packet.payload;
+        let s3_path = packet.get_s3_path();
+        let subject_name = &packet.subject.parse();
+
+        self.s3_client
+            .put_object(&s3_path, payload.encode(subject_name))
+            .await?;
+
+        self.publish_s3_path_to_nats(subject_name, &s3_path).await
     }
 
-    /// Publish with subject name with no static guarantees of the subject
-    pub async fn publish_raw(
+    async fn publish_s3_path_to_nats(
         &self,
         subject_name: &str,
-        payload: &S,
+        s3_path: &str,
     ) -> Result<usize, StreamError> {
-        let data = payload.encode(subject_name).await;
+        tracing::debug!("S3 path published: {:?}", s3_path);
+        let data = s3_path.to_string().into_bytes();
         let data_size = data.len();
         let result = self.store.create(subject_name, data.into()).await;
 
         match result {
             Ok(_) => Ok(data_size),
             Err(e) if e.kind() == CreateErrorKind::AlreadyExists => {
-                // This is a workaround to avoid publish two times the same message
                 Ok(data_size)
             }
             Err(e) => Err(StreamError::PublishFailed {
@@ -199,17 +212,93 @@ impl<S: Streamable> Stream<S> {
         self.store.stream_name.as_str()
     }
 
-    // TODO: This should probably be `subscribe_raw` since it returns pure bytes
+    // Less performant due to our hybrid use of NATS and S3
+    pub async fn subscribe_raw(
+        &self,
+        subscription_config: Option<SubscriptionConfig>,
+    ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
+        let mut config = PullConsumerConfig {
+            filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
+            deliver_policy: NatsDeliverPolicy::All,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        };
+
+        if let Some(subscription_config) = subscription_config {
+            config.filter_subjects = subscription_config.filter_subjects;
+            config.deliver_policy = subscription_config.deliver_policy;
+        }
+
+        let config = self.prefix_filter_subjects(config);
+        let consumer = self.store.stream.create_consumer(config).await?;
+
+        Ok(consumer
+            .messages()
+            .await?
+            .then(|message| {
+                let s3_client = Arc::clone(&self.s3_client);
+
+                async move {
+                    let nats_payload = message
+                        .expect("Message must be valid")
+                        .payload
+                        .to_vec();
+
+                    // TODO: Bubble up the error to users
+                    let s3_path = String::from_utf8(nats_payload)
+                        .expect("Must be S3 path");
+
+                    s3_client
+                        .get_object(&s3_path)
+                        .await
+                        .expect("S3 object must exist")
+                }
+            })
+            .boxed())
+    }
+
     pub async fn subscribe(
         &self,
-        // TODO: Allow encapsulating Subject to return wildcard token type
-        wildcard: &str,
-    ) -> Result<impl futures::Stream<Item = Option<Vec<u8>>>, StreamError> {
-        Ok(self.store.watch(&wildcard).await.map(|stream| {
-            stream.map(|entry| {
-                entry.ok().map(|entry_item| entry_item.value.to_vec())
+        subscription_config: Option<SubscriptionConfig>,
+    ) -> Result<BoxStream<'_, S>, StreamError> {
+        let mut config = PullConsumerConfig {
+            filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
+            deliver_policy: NatsDeliverPolicy::All,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        };
+
+        if let Some(subscription_config) = subscription_config {
+            config.filter_subjects = subscription_config.filter_subjects;
+            config.deliver_policy = subscription_config.deliver_policy;
+        }
+
+        let config = self.prefix_filter_subjects(config);
+        let consumer = self.store.stream.create_consumer(config).await?;
+
+        Ok(consumer
+            .messages()
+            .await?
+            .map(|item| {
+                String::from_utf8(
+                    item.expect("Message must be valid").payload.to_vec(),
+                )
+                .expect("Must be S3 path")
             })
-        })?)
+            .then(|s3_path| {
+                let s3_client = Arc::clone(&self.s3_client);
+
+                async move {
+                    // TODO: Bubble up the error?
+                    S::decode_or_panic(
+                        s3_client
+                            .get_object(&s3_path)
+                            .await
+                            .expect("Could not get S3 object"),
+                    )
+                }
+            })
+            .boxed())
     }
 
     #[cfg(feature = "test-helpers")]
@@ -217,49 +306,34 @@ impl<S: Streamable> Stream<S> {
     pub async fn catchup(
         &self,
         number_of_messages: usize,
-    ) -> Result<
-        Pin<Box<dyn futures::Stream<Item = Option<S>> + Send>>,
-        StreamError,
-    > {
+    ) -> Result<BoxStream<'_, Option<S>>, StreamError> {
         let config = PullConsumerConfig {
             filter_subjects: self.all_filter_subjects(),
-            deliver_policy: DeliverPolicy::All,
+            deliver_policy: NatsDeliverPolicy::All,
             ack_policy: AckPolicy::None,
             ..Default::default()
         };
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
 
-        let stream = consumer.messages().await?.take(number_of_messages).then(
-            |message| async {
+        let stream = consumer
+            .messages()
+            .await?
+            .take(number_of_messages)
+            .then(|message| async {
                 if let Ok(message) = message {
-                    Some(S::decode(message.payload.to_vec()).await)
+                    Some(
+                        self.get_payload_from_s3(message.payload.to_vec())
+                            .await
+                            .unwrap(),
+                    )
                 } else {
                     None
                 }
-            },
-        );
+            })
+            .boxed();
 
-        // Use Box::pin to pin the stream on the heap
-        Ok(Box::pin(stream))
-    }
-
-    // TODO: Make this interface more Stream-like and Nats agnostic
-    // TODO: This should probably be removed in favor of `subscribe`
-    pub async fn subscribe_consumer(
-        &self,
-        config: SubscribeConsumerConfig,
-    ) -> Result<PullConsumerStream, StreamError> {
-        let config = PullConsumerConfig {
-            filter_subjects: config.filter_subjects,
-            deliver_policy: config.deliver_policy,
-            ack_policy: AckPolicy::None,
-            ..Default::default()
-        };
-
-        let config = self.prefix_filter_subjects(config);
-        let consumer = self.store.stream.create_consumer(config).await?;
-        Ok(consumer.messages().await?)
+        Ok(stream)
     }
 
     // TODO: Make this interface more Stream-like and Nats agnostic
@@ -291,7 +365,6 @@ impl<S: Streamable> Stream<S> {
         wildcard: &str,
     ) -> Result<Option<S>, StreamError> {
         let subject_name = &Self::prefix_filter_subject(wildcard);
-
         let message = self
             .store
             .stream
@@ -299,16 +372,28 @@ impl<S: Streamable> Stream<S> {
             .await;
 
         match message {
-            Ok(message) => {
-                let payload = S::decode(message.payload.to_vec()).await;
-
-                Ok(Some(payload))
-            }
+            Ok(message) => Ok(Some(
+                self.get_payload_from_s3(message.payload.to_vec()).await?,
+            )),
             Err(error) => match &error.kind() {
                 LastRawMessageErrorKind::NoMessageFound => Ok(None),
                 _ => Err(error.into()),
             },
         }
+    }
+
+    async fn get_payload_from_s3(
+        &self,
+        nats_payload: Vec<u8>,
+    ) -> Result<S, StreamError> {
+        let s3_path = String::from_utf8(nats_payload).expect("Must be S3 path");
+        let s3_object = self
+            .s3_client
+            .get_object(&s3_path)
+            .await
+            .expect("S3 object must exist");
+
+        Ok(S::decode_or_panic(s3_object))
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -345,6 +430,10 @@ impl<S: Streamable> Stream<S> {
     pub fn store(&self) -> &kv::Store {
         &self.store
     }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.to_owned())
+    }
 }
 
 /// Configuration for subscribing to a consumer.
@@ -352,16 +441,16 @@ impl<S: Streamable> Stream<S> {
 /// # Examples
 ///
 /// ```
-/// use fuel_streams_core::stream::SubscribeConsumerConfig;
-/// use async_nats::jetstream::consumer::DeliverPolicy;
+/// use fuel_streams_core::stream::SubscriptionConfig;
+/// use async_nats::jetstream::consumer::DeliverPolicy as NatsDeliverPolicy;
 ///
-/// let config = SubscribeConsumerConfig {
+/// let config = SubscriptionConfig {
 ///     filter_subjects: vec!["example.*".to_string()],
-///     deliver_policy: DeliverPolicy::All,
+///     deliver_policy: NatsDeliverPolicy::All,
 /// };
 /// ```
 #[derive(Debug, Clone, Default)]
-pub struct SubscribeConsumerConfig {
+pub struct SubscriptionConfig {
     pub filter_subjects: Vec<String>,
-    pub deliver_policy: DeliverPolicy,
+    pub deliver_policy: NatsDeliverPolicy,
 }

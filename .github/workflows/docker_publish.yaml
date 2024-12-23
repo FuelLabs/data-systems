@@ -2,6 +2,17 @@ name: Build and publish Docker image
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        description: "Package to build and publish"
+        default: "all"
+        required: true
+        options:
+          - all
+          - sv-publisher
+          - sv-webserver
+          - sv-consumer
   push:
     branches:
       - main
@@ -20,18 +31,30 @@ concurrency:
 jobs:
   build-and-publish-image:
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'release' && github.event.action == 'published') ||
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        package:
+          - name: sv-webserver
+            image: cluster/docker/sv-webserver.Dockerfile
+          - name: sv-publisher
+            image: cluster/docker/sv-publisher.Dockerfile
+          - name: sv-consumer
+            image: cluster/docker/sv-consumer.Dockerfile
     steps:
       - uses: actions/checkout@v4
-      - name: Build and push Fuel Core NATS image
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker for ${matrix.package.name} (${{ steps.sha.outputs.short_sha }})
+        if: |
+          (github.event_name == 'workflow_dispatch' && (github.event.inputs.package == 'all' || github.event.inputs.package == matrix.package.name)) ||
+          github.event_name != 'workflow_dispatch'
         uses: ./.github/actions/docker-publish
         id: publish
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          image: ghcr.io/fuellabs/fuel-streams-publisher
-          dockerfile: docker/fuel-streams-publisher.Dockerfile
+          image: ghcr.io/fuellabs/${{ matrix.package.name }}
+          dockerfile: ${{ matrix.package.image }}

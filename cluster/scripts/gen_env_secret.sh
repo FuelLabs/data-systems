@@ -4,15 +4,12 @@
 source .env
 
 # Generate the YAML configuration
-cat << EOF > cluster/charts/fuel-local/values-publisher-env.yaml
-fuel-streams-publisher:
-  extraEnv:
-    - name: RELAYER
-      value: "${RELAYER:-}"
-    - name: KEYPAIR
-      value: "${KEYPAIR:-}"
-    - name: NATS_ADMIN_PASS
-      value: "${NATS_ADMIN_PASS:-}"
+cat << EOF > cluster/charts/fuel-streams/values-secrets.yaml
+localSecrets:
+  enabled: true
+  data:
+    RELAYER: "${RELAYER:-}"
+    KEYPAIR: "${KEYPAIR:-}"
 EOF
 
-echo "Generated values-publisher-env.yaml with environment variables"
+echo "Generated values-secrets.yaml with environment variables"

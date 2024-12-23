@@ -1,0 +1,466 @@
+config:
+  # Override the name and fullname of the chart
+  nameOverride: ""
+  fullnameOverride: ""
+  # Create roles and rolebindings for the fuel-streams serviceaccount
+  createRoles: true
+  # Enable health checks for all services
+  healthChecks: true
+
+serviceAccount:
+  create: true
+  automount: true
+
+# -------------------------------------------------------------------------------------------------
+# Global configurations
+# -------------------------------------------------------------------------------------------------
+
+labels: {}
+annotations: {}
+
+securityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+containerSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 6
+  successThreshold: 1
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 6
+  successThreshold: 1
+
+# -------------------------------------------------------------------------------------------------
+# Global ConfigMap
+# -------------------------------------------------------------------------------------------------
+
+commonConfigMap:
+  enabled: true
+  data:
+    AWS_S3_BUCKET_NAME: "fuel-streams-staging"
+    AWS_ENDPOINT_URL: "https://s3.us-east-1.amazonaws.com"
+    AWS_REGION: "us-east-1"
+    AWS_S3_ENABLED: "true"
+    USE_METRICS: "false"
+    NATS_URL: "fuel-streams-nats-core:4222"
+    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
+    NATS_SYSTEM_USER: "sys"
+    NATS_SYSTEM_PASS: "sys"
+    NATS_ADMIN_USER: "admin"
+    NATS_ADMIN_PASS: "admin"
+    NATS_PUBLIC_USER: "default_user"
+    NATS_PUBLIC_PASS: ""
+
+# This is a secret that is used for local development
+# It is not used in production
+localSecrets:
+  enabled: false
+  data: {}
+
+# -------------------------------------------------------------------------------------------------
+# Monitoring
+# -------------------------------------------------------------------------------------------------
+
+monitoring:
+  enabled: false
+
+# -------------------------------------------------------------------------------------------------
+# Publisher configuration
+# -------------------------------------------------------------------------------------------------
+
+publisher:
+  enabled: true
+  network: mainnet
+  port: 8080
+
+  image:
+    repository: ghcr.io/fuellabs/sv-publisher
+    pullPolicy: Always
+    tag: latest
+    args: []
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
+
+  prometheus:
+    enabled: false
+    scrape: true
+    path: /metrics
+
+  storage:
+    name: rocks-db
+    size: 500Gi
+    storageClass: "gp3-generic"
+    accessMode: ReadWriteOnce
+    mountPath: /mnt/db
+
+  config:
+    replicaCount: 1
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+# -------------------------------------------------------------------------------------------------
+# Consumer configuration
+# -------------------------------------------------------------------------------------------------
+
+consumer:
+  enabled: true
+  port: 8080
+  image:
+    repository: ghcr.io/fuellabs/sv-consumer
+    pullPolicy: Always
+    tag: latest
+    args: []
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
+
+  config:
+    replicaCount: 3
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+  env:
+    PORT: 8080
+    PUBLISHER_MAX_THREADS: "32"
+    NATS_URL: "fuel-streams-nats-publisher:4222"
+
+# -------------------------------------------------------------------------------------------------
+# Consumer configuration
+# -------------------------------------------------------------------------------------------------
+
+webserver:
+  enabled: false
+  network: mainnet
+
+  image:
+    repository: ghcr.io/fuellabs/sv-webserver
+    pullPolicy: Always
+    tag: latest
+
+  service:
+    enabled: true
+    type: LoadBalancer
+    port: 9003
+    dns: "stream-staging.fuel.network"
+    annotations: {}
+    labels: {}
+
+  tls:
+    enabled: true
+    issuer: "letsencrypt-prod"
+    duration: "2160h"
+    renewBefore: "360h"
+    annotations: {}
+    labels: {}
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  env: []
+  envFrom: []
+
+  config:
+    replicaCount: 3
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    ports: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    securityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        percentValue: 100
+        periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        percentValue: 100
+        podValue: 4
+        periodSeconds: 15
+
+# -------------------------------------------------------------------------------------------------
+# NATS Core configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-core:
+  enabled: true
+
+  natsBox:
+    enabled: false
+
+  promExporter:
+    enabled: false
+    port: 6777
+    image:
+      repository: natsio/prometheus-nats-exporter
+      tag: 0.15.0
+    podMonitor:
+      enabled: false
+      metadata:
+        labels:
+          release: kube-prometheus-stack
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.24-alpine
+    env:
+      GOMEMLIMIT: 7GiB
+    merge:
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      cluster:
+        enabled: true
+      websocket:
+        enabled: true
+      leafnodes:
+        enabled: true
+      monitor:
+        enabled: false
+
+  config:
+    cluster:
+      enabled: true
+      port: 6222
+      replicas: 5
+      routeURLs:
+        useFQDN: true
+
+    websocket:
+      enabled: true
+      port: 8443
+
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 2000Gi
+          storageClassName: "gp3-generic"
+
+    leafnodes:
+      enabled: true
+      port: 7422
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      max_payload: << 32MiB >>
+      jetstream:
+        domain: CORE
+        sync_interval: << 30s >>
+        max_outstanding_catchup: << 512MiB >>
+        max_file_store: << 2000GiB >>
+        max_memory_store: << 7GiB >>
+      system_account: SYS
+      $include: auth.conf
+
+  configMap:
+    merge:
+      $tplYaml: |
+        {{- include "nats-accounts" . | nindent 8 }}
+
+# -------------------------------------------------------------------------------------------------
+# NATS Publisher configuration
+# -------------------------------------------------------------------------------------------------
+
+nats-publisher:
+  enabled: true
+
+  natsBox:
+    enabled: false
+
+  promExporter:
+    enabled: false
+
+  statefulSet:
+    merge:
+      spec:
+        replicas: 5
+
+  container:
+    image:
+      repository: nats
+      tag: 2.10.24-alpine
+    env:
+      GOMEMLIMIT: 7GiB
+    merge:
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+
+  service:
+    enabled: true
+    ports:
+      nats:
+        enabled: true
+      leafnodes:
+        enabled: true
+      monitor:
+        enabled: false
+
+  config:
+    jetstream:
+      enabled: true
+      fileStore:
+        dir: /data
+        pvc:
+          enabled: true
+          size: 100Gi
+          storageClassName: "gp3-generic"
+
+    leafnodes:
+      enabled: true
+      port: 7422
+      merge:
+        remotes:
+          - urls: ["nats-leaf://admin:admin@fuel-streams-nats-core:7422"]
+            account: ADMIN
+
+    monitor:
+      enabled: false
+      port: 8222
+
+    merge:
+      max_payload: << 32MiB >>
+      jetstream:
+        domain: PUBLISHER
+        sync_interval: << 30s >>
+        max_outstanding_catchup: << 512MiB >>
+        max_file_store: << 100GiB >>
+        max_memory_store: << 7GiB >>
+      system_account: SYS
+      $include: auth.conf
+
+  configMap:
+    merge:
+      $tplYaml: |
+        {{- include "nats-accounts" . | nindent 8 }}

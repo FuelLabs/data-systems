@@ -13,11 +13,15 @@ lcov.info
 node_modules/
 docker/db*
 tmp
-/docker/db*
+**/**/docker/db*
 build_rs_cov.profraw
 profile.json
 .rust-version
 coverage/
 docs/
 **/**/charts/**.tgz
+values-secrets.yaml
 values-publisher-env.yaml
+localstack-data
+.vscode
+**/Cargo.lock

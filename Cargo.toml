@@ -33,32 +33,31 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
+fuel-core-bin = { version = "0.40.2", default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
 ] }
-fuel-core = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
+fuel-core = { version = "0.40.2", default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
 ] }
-fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-importer = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-storage = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
-fuel-core-types = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2", features = [
-    "test-helpers",
-    "serde",
-] }
-fuel-core-services = { git = "https://github.com/fuellabs/fuel-core", branch = "release/v0.40.2" }
+fuel-core-client = { version = "0.40.2", default-features = false, features = ["std"] }
+fuel-core-importer = { version = "0.40.2" }
+fuel-core-storage = { version = "0.40.2" }
+fuel-core-types = { version = "0.40.2", default-features = false, features = ["std", "serde"] }
+fuel-core-services = { version = "0.40.2", default-features = false, features = ["test-helpers"] }
 futures-util = "0.3"
 itertools = "0.13"
 mockall = "0.13"
 mockall_double = "0.3.1"
 hex = "0.4"
 pretty_assertions = "1.4"
+num_cpus = "1.16"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
+rayon = "1.10.0"
 serde_json = "1.0"
 sha2 = "0.10"
 strum = "0.26"
@@ -70,12 +69,18 @@ tracing-subscriber = "0.3"
 tracing-actix-web = "0.7"
 thiserror = "2.0"
 
-fuel-streams = { path = "crates/fuel-streams" }
+fuel-streams = { version = "0.0.14", path = "crates/fuel-streams" }
 fuel-data-parser = { version = "0.0.14", path = "crates/fuel-data-parser" }
 fuel-streams-core = { version = "0.0.14", path = "crates/fuel-streams-core" }
-fuel-streams-publisher = { version = "0.0.14", path = "crates/fuel-streams-publisher" }
 fuel-streams-macros = { version = "0.0.14", path = "crates/fuel-streams-macros" }
+fuel-streams-nats = { version = "0.0.14", path = "crates/fuel-streams-nats" }
+fuel-streams-storage = { version = "0.0.14", path = "crates/fuel-streams-storage" }
+fuel-streams-executors = { version = "0.0.14", path = "crates/fuel-streams-executors" }
 subject-derive = { version = "0.0.14", path = "crates/fuel-streams-macros/subject-derive" }
+sv-publisher = { version = "0.0.14", path = "crates/sv-publisher" }
+sv-consumer = { version = "0.0.14", path = "crates/sv-consumer" }
+sv-emitter = { version = "0.0.14", path = "crates/sv-emitter" }
+sv-webserver = { version = "0.0.14", path = "crates/sv-webserver" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
