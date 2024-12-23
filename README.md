@@ -51,21 +51,26 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 2. Create a new Rust file (e.g., `src/main.rs`) with the following code to subscribe to new blocks:
 
     ```rust
-    use fuel_streams::client::Client;
-    use fuel_streams::types::FuelNetwork;
-    use fuel_streams::stream::{Stream, StreamEncoder};
-    use fuel_streams::blocks::Block;
+    use fuel_streams::prelude::*;
     use futures::StreamExt;
 
     #[tokio::main]
-    async fn main() -> Result<(), fuel_streams::Error> {
-        let client = Client::connect(FuelNetwork::Mainnet).await?;
-        let stream = fuel_streams::Stream::<Block>::new(&client).await;
+    async fn main() -> Result<(), Box<dyn std::error::Error>> {
+        // Create a client and establish connection
+        let mut client = Client::new(FuelNetwork::Local).await?;
+        let mut connection = client.connect().await?;
 
-        let mut subscription = stream.subscribe().await?;
-        while let Some(entry) = subscription.next().await {
-            let entry = entry.unwrap().clone();
-            let block = Block::decode(entry);
+        println!("Listening for blocks...");
+
+        // Create a subject for all blocks
+        let subject = BlocksSubject::new();
+
+        // Subscribe to blocks with last delivery policy
+        let mut stream = connection
+            .subscribe::<Block>(subject, DeliverPolicy::Last)
+            .await?;
+
+        while let Some(block) = stream.next().await {
             println!("Received block: {:?}", block);
         }
 
@@ -78,7 +83,7 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
     cargo run
     ```
 
-This example connects to the Fuel Network's NATS server and listens for new blocks. You can customize the data types or apply filters based on your specific requirements.
+This example connects to the Fuel Network and listens for new blocks. You can customize the data types or apply filters based on your specific requirements.
 
 For advanced usage, including custom filters and delivery policies, refer to the [`fuel-streams` documentation](https://docs.rs/fuel-streams).
 
