@@ -2,11 +2,6 @@ name: CI
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - edited
-      - reopened
   push:
     branches:
       - main

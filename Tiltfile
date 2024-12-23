@@ -107,6 +107,12 @@ RESOURCES = {
         'config_mode': ['minimal', 'full'],
         'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher']
     },
+    'consumer': {
+        'name': 'fuel-streams-sv-consumer',
+        'ports': ['8082:8082'],
+        'labels': 'consumer',
+        'config_mode': ['minimal', 'full']
+    },
     'nats-core': {
         'name': 'fuel-streams-nats-core',
         'ports': ['4222:4222', '6222:6222', '7422:7422'],

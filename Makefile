@@ -229,6 +229,13 @@ run-publisher-testnet-dev:
 run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
+run-consumer: NATS_CORE_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4223"
+run-consumer:
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-core-url $(NATS_CORE_URL) \
+		--nats-publisher-url $(NATS_PUBLISHER_URL)
+
 # ------------------------------------------------------------
 #  Consumer Run Commands
 # ------------------------------------------------------------
@@ -295,6 +302,8 @@ endef
 
 # Generate targets for each service
 $(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
+
+reset-nats: clean-nats start-nats
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)
