@@ -36,12 +36,24 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(network: FuelNetwork) -> Result<Self, crate::Error> {
-        let nats_opts = NatsClientOpts::new(network);
+        let nats_opts =
+            NatsClientOpts::public_opts().with_url(network.to_nats_url());
         let nats_client = NatsClient::connect(&nats_opts)
             .await
             .map_err(ClientError::NatsConnectionFailed)?;
 
-        let s3_client_opts = S3ClientOpts::new(network);
+        let s3_client_opts = match network {
+            FuelNetwork::Local => {
+                S3ClientOpts::new(S3Env::Local, S3Role::Admin)
+            }
+            FuelNetwork::Testnet => {
+                S3ClientOpts::new(S3Env::Testnet, S3Role::Public)
+            }
+            FuelNetwork::Mainnet => {
+                S3ClientOpts::new(S3Env::Mainnet, S3Role::Public)
+            }
+        };
+
         let s3_client = S3Client::new(&s3_client_opts)
             .await
             .map_err(ClientError::S3ConnectionFailed)?;
@@ -67,11 +79,11 @@ impl Client {
     /// ```no_run
     /// use fuel_streams::client::{Client, FuelNetwork};
     /// use fuel_streams_core::nats::NatsClientOpts;
-    /// use fuel_streams_core::s3::S3ClientOpts;
+    /// use fuel_streams_core::s3::{S3ClientOpts, S3Env, S3Role};
     ///
     /// # async fn example() -> Result<(), fuel_streams::Error> {
-    /// let nats_opts = NatsClientOpts::new(FuelNetwork::Local);
-    /// let s3_opts = S3ClientOpts::new(FuelNetwork::Local);
+    /// let nats_opts = NatsClientOpts::public_opts().with_url("nats://localhost:4222");
+    /// let s3_opts = S3ClientOpts::new(S3Env::Local, S3Role::Admin);
     ///
     /// let client = Client::with_opts(&nats_opts, &s3_opts).await?;
     /// # Ok(())

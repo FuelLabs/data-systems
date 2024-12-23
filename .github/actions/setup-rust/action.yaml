@@ -21,8 +21,16 @@ runs:
     - name: Create .env file with NATS environment variables
       shell: bash
       run: |
-        echo "NATS_ADMIN_PASS=${NATS_ADMIN_PASS:-default_pass}" >> .env
-        echo "NATS_PUBLIC_PASS=${NATS_PUBLIC_PASS:-temp-public-pass}" >> .env
+        set_env_var() {
+          echo "$1=${!1:-$2}" >> $GITHUB_ENV
+          echo "$1=${!1:-$2}" >> .env
+        }
+        set_env_var "NATS_SYSTEM_USER" "sys"
+        set_env_var "NATS_SYSTEM_PASS" "sys"
+        set_env_var "NATS_ADMIN_USER" "admin"
+        set_env_var "NATS_ADMIN_PASS" "admin"
+        set_env_var "NATS_PUBLIC_USER" "default_user"
+        set_env_var "NATS_PUBLIC_PASS" ""
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@master

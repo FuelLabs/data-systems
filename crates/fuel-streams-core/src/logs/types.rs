@@ -27,94 +27,30 @@ pub enum Log {
     },
 }
 
-impl From<FuelCoreReceipt> for Log {
-    fn from(value: FuelCoreReceipt) -> Self {
+impl From<Receipt> for Log {
+    fn from(value: Receipt) -> Self {
         match value {
-            FuelCoreReceipt::Log {
-                id,
-                ra,
-                rb,
-                rc,
-                rd,
-                pc,
-                is,
-            } => Log::WithoutData {
-                id: id.into(),
-                ra,
-                rb,
-                rc,
-                rd,
-                pc,
-                is,
+            Receipt::Log(log) => Log::WithoutData {
+                id: log.id,
+                ra: log.ra,
+                rb: log.rb,
+                rc: log.rc,
+                rd: log.rd,
+                pc: log.pc,
+                is: log.is,
             },
-            FuelCoreReceipt::LogData {
-                id,
-                ra,
-                rb,
-                ptr,
-                len,
-                digest,
-                pc,
-                is,
-                data,
-            } => Log::WithData {
-                id: id.into(),
-                ra,
-                rb,
-                ptr,
-                len,
-                digest: digest.into(),
-                pc,
-                is,
-                data,
+            Receipt::LogData(log) => Log::WithData {
+                id: log.id,
+                ra: log.ra,
+                rb: log.rb,
+                ptr: log.ptr,
+                len: log.len,
+                digest: log.digest,
+                pc: log.pc,
+                is: log.is,
+                data: log.data,
             },
             _ => panic!("Invalid receipt type"),
-        }
-    }
-}
-
-/// Introduced majorly allow delegating serialization and deserialization to `fuel-core`'s Receipt
-impl From<Log> for FuelCoreReceipt {
-    fn from(log: Log) -> FuelCoreReceipt {
-        match log {
-            Log::WithoutData {
-                id,
-                ra,
-                rb,
-                rc,
-                rd,
-                pc,
-                is,
-            } => FuelCoreReceipt::Log {
-                id: id.into(),
-                ra,
-                rb,
-                rc,
-                rd,
-                pc,
-                is,
-            },
-            Log::WithData {
-                id,
-                ra,
-                rb,
-                ptr,
-                len,
-                digest,
-                pc,
-                is,
-                data,
-            } => FuelCoreReceipt::LogData {
-                id: id.into(),
-                ra,
-                rb,
-                ptr,
-                len,
-                digest: digest.into(),
-                pc,
-                is,
-                data,
-            },
         }
     }
 }

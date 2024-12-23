@@ -1,6 +1,6 @@
 [package]
 name = "fuel-streams-storage"
-description = "strategies and adapters for storing fuel streams in transient and file storage systems (i.e. NATS and S3)"
+description = "Srategies and adapters for storing fuel streams in transient and file storage systems (i.e. NATS and S3)"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -11,14 +11,11 @@ version = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
-async-nats = { workspace = true }
 aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.65.0"
 aws-smithy-runtime-api = "1.7.3"
 aws-smithy-types = "=1.2.9"
-displaydoc = { workspace = true }
 dotenvy = { workspace = true }
-fuel-networks = { workspace = true }
 rand = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

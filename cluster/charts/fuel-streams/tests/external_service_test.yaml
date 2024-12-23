@@ -73,7 +73,7 @@ tests:
           path: spec.selector
           content:
             app.kubernetes.io/name: fuel-streams
-            app.kubernetes.io/service: external-service
+            app.kubernetes.io/service: external-ws
 
   - it: should set correct annotations
     set:

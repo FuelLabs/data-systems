@@ -4,11 +4,11 @@ use crate::types::*;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Output {
-    Coin(CoinOutput),
+    Coin(OutputCoin),
     Contract(OutputContract),
-    Change(ChangeOutput),
-    Variable(VariableOutput),
-    ContractCreated(ContractCreated),
+    Change(OutputChange),
+    Variable(OutputVariable),
+    ContractCreated(OutputContractCreated),
 }
 
 impl From<&FuelCoreOutput> for Output {
@@ -18,7 +18,7 @@ impl From<&FuelCoreOutput> for Output {
                 amount,
                 asset_id,
                 to,
-            } => Output::Coin(CoinOutput {
+            } => Output::Coin(OutputCoin {
                 amount: *amount,
                 asset_id: asset_id.into(),
                 to: to.into(),
@@ -30,7 +30,7 @@ impl From<&FuelCoreOutput> for Output {
                 amount,
                 asset_id,
                 to,
-            } => Output::Change(ChangeOutput {
+            } => Output::Change(OutputChange {
                 amount: *amount,
                 asset_id: asset_id.into(),
                 to: to.into(),
@@ -39,7 +39,7 @@ impl From<&FuelCoreOutput> for Output {
                 amount,
                 asset_id,
                 to,
-            } => Output::Variable(VariableOutput {
+            } => Output::Variable(OutputVariable {
                 amount: *amount,
                 asset_id: asset_id.into(),
                 to: to.into(),
@@ -47,7 +47,7 @@ impl From<&FuelCoreOutput> for Output {
             FuelCoreOutput::ContractCreated {
                 contract_id,
                 state_root,
-            } => Output::ContractCreated(ContractCreated {
+            } => Output::ContractCreated(OutputContractCreated {
                 contract_id: contract_id.into(),
                 state_root: state_root.into(),
             }),
@@ -57,7 +57,7 @@ impl From<&FuelCoreOutput> for Output {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CoinOutput {
+pub struct OutputCoin {
     pub amount: u64,
     pub asset_id: AssetId,
     pub to: Address,
@@ -65,7 +65,7 @@ pub struct CoinOutput {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ChangeOutput {
+pub struct OutputChange {
     pub amount: u64,
     pub asset_id: AssetId,
     pub to: Address,
@@ -73,7 +73,7 @@ pub struct ChangeOutput {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VariableOutput {
+pub struct OutputVariable {
     pub amount: u64,
     pub asset_id: AssetId,
     pub to: Address,
@@ -99,7 +99,7 @@ impl From<&FuelCoreOutputContract> for OutputContract {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ContractCreated {
-    contract_id: ContractId,
-    state_root: Bytes32,
+pub struct OutputContractCreated {
+    pub contract_id: ContractId,
+    pub state_root: Bytes32,
 }

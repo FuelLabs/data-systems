@@ -1,3 +1,4 @@
+pub use fuel_core_client::client::types::TransactionStatus as ClientTransactionStatus;
 use fuel_core_types::fuel_tx;
 
 use crate::types::*;
@@ -405,7 +406,7 @@ impl Transaction {
             tx_pointer,
             upgrade_purpose,
             witnesses,
-            receipts: receipts.iter().map(Into::into).collect(),
+            receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
         }
     }
 }
@@ -499,6 +500,31 @@ impl From<&FuelCoreTransactionStatus> for TransactionStatus {
                 TransactionStatus::Success
             }
         }
+    }
+}
+
+impl From<&ClientTransactionStatus> for TransactionStatus {
+    fn from(value: &ClientTransactionStatus) -> Self {
+        match value {
+            ClientTransactionStatus::Failure { .. } => {
+                TransactionStatus::Failed
+            }
+            ClientTransactionStatus::Submitted { .. } => {
+                TransactionStatus::Submitted
+            }
+            ClientTransactionStatus::SqueezedOut { .. } => {
+                TransactionStatus::SqueezedOut
+            }
+            ClientTransactionStatus::Success { .. } => {
+                TransactionStatus::Success
+            }
+        }
+    }
+}
+
+impl From<ClientTransactionStatus> for TransactionStatus {
+    fn from(value: ClientTransactionStatus) -> Self {
+        (&value).into()
     }
 }
 

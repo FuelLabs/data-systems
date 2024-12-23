@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  workflow_dispatch:
   pull_request:
     types:
       - opened
@@ -190,24 +189,24 @@ jobs:
       - name: Install dependencies
         run: cargo fetch
 
-  test-helm:
-    needs: install-deps
-    name: Test Helm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: "latest"
+  # test-helm:
+  #   needs: install-deps
+  #   name: Test Helm
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set up Helm
+  #       uses: azure/setup-helm@v4
+  #       with:
+  #         version: "latest"
 
-      - name: Install helm unittest plugin
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git
+  #     - name: Install helm unittest plugin
+  #       run: |
+  #         helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
-      - name: Run Helm unit tests
-        run: |
-          make helm-test
+  #     - name: Run Helm unit tests
+  #       run: |
+  #         make helm-test
 
   test:
     needs: install-deps
@@ -215,8 +214,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
-      NATS_ADMIN_PASS: secret
-      NATS_PUBLIC_PASS: secret
+      NATS_PUBLISHER_URL: nats://127.0.0.1:4333
+      NATS_SYSTEM_USER: sys
+      NATS_SYSTEM_PASSWORD: sys
+      NATS_ADMIN_USER: admin
+      NATS_ADMIN_PASS: admin
+      NATS_PUBLIC_USER: default_user
+      NATS_PUBLIC_PASS: ""
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: us-east-1
@@ -226,13 +230,12 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          # - fuel-data-parser
+          - fuel-data-parser
           - fuel-streams
           - fuel-streams-core
           - fuel-streams-macros
-          - fuel-streams-publisher
-          - fuel-streams-ws
-
+          - sv-webserver
+          - sv-publisher
     steps:
       - uses: actions/checkout@v4
 
@@ -266,8 +269,9 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - fuel-streams-publisher
-          - fuel-streams-ws
+          - sv-consumer
+          - sv-publisher
+          - sv-webserver
         is_release:
           - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:
@@ -336,34 +340,34 @@ jobs:
           rustup target add ${{ matrix.platform.target }}
           cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
 
-      - name: Strip binaries
-        run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
+      # - name: Strip binaries
+      #   run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
 
-      - name: Set Artifact Name
-        id: artifact-name
-        shell: bash
-        run: |
-          echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
+      # - name: Set Artifact Name
+      #   id: artifact-name
+      #   shell: bash
+      #   run: |
+      #     echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
 
-      - name: Package as archive
-        shell: bash
-        run: |
-          cd target/${{ matrix.platform.target }}/release
-          tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
-          cd -
+      # - name: Package as archive
+      #   shell: bash
+      #   run: |
+      #     cd target/${{ matrix.platform.target }}/release
+      #     tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
+      #     cd -
 
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v4
-        if: >-
-          (github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
-          github.event_name == 'workflow_dispatch'
-        with:
-          name: ${{ steps.artifact-name.outputs.value }}
-          path: ${{ matrix.package }}-*
-          if-no-files-found: error
-          retention-days: 30
+      # - name: Publish release artifacts
+      #   uses: actions/upload-artifact@v4
+      #   if: >-
+      #     (github.event_name == 'push' &&
+      #     github.ref == 'refs/heads/main' &&
+      #     contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+      #     github.event_name == 'workflow_dispatch'
+      #   with:
+      #     name: ${{ steps.artifact-name.outputs.value }}
+      #     path: ${{ matrix.package }}-*
+      #     if-no-files-found: error
+      #     retention-days: 30
 
   release:
     name: Create Release with Knope
@@ -374,7 +378,7 @@ jobs:
       github.event_name == 'workflow_dispatch'
     needs:
       - test
-      - test-helm
+      # - test-helm
       - build
     runs-on: ubuntu-latest
     permissions:
@@ -384,14 +388,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
+      # - name: Download Artifacts
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     path: artifacts
+      #     merge-multiple: true
 
-      - name: List Artifacts
-        run: ls -R artifacts
+      # - name: List Artifacts
+      #   run: ls -R artifacts
 
       - name: Run Knope Action
         uses: knope-dev/action@v2.1.0

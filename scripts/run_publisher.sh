@@ -28,6 +28,12 @@ usage() {
     exit 1
 }
 
+# Set default values from environment variables with fallbacks
+NETWORK=${NETWORK:-"testnet"}
+MODE=${MODE:-"profiling"}
+PORT=${PORT:-"4004"}
+TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --network)
@@ -63,7 +69,7 @@ done
 # ------------------------------
 # Load Environment
 # ------------------------------
-source ./scripts/set_env.sh
+source ./scripts/set_env.sh NETWORK=${NETWORK}
 
 # Print the configuration being used
 echo -e "\n=========================================="
@@ -94,30 +100,35 @@ echo -e "==========================================\n"
 # Define common arguments
 COMMON_ARGS=(
     "--enable-relayer"
+    "--service-name" "fuel-${NETWORK}-node"
     "--keypair" "${KEYPAIR}"
     "--relayer" "${RELAYER}"
     "--ip=0.0.0.0"
-    "--service-name" "fuel-${NETWORK}-node"
+    "--port" "${PORT}"
+    "--peering-port" "30333"
     "--db-path" "./cluster/docker/db-${NETWORK}"
     "--snapshot" "./cluster/chain-config/${NETWORK}"
-    "--port" "${PORT}"
-    "--telemetry-port" "${TELEMETRY_PORT}"
-    "--peering-port" "30333"
     "--utxo-validation"
     "--poa-instant" "false"
     "--enable-p2p"
-    "--sync-header-batch-size" "${SYNC_HEADER_BATCH_SIZE}"
-    "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
-    "--sync-block-stream-buffer-size" "30"
-    "--bootstrap-nodes" "${RESERVED_NODES}"
+    "--reserved-nodes" "${RESERVED_NODES}"
     "--relayer-v2-listening-contracts=${RELAYER_V2_LISTENING_CONTRACTS}"
     "--relayer-da-deploy-height=${RELAYER_DA_DEPLOY_HEIGHT}"
+    "--relayer-log-page-size=${RELAYER_LOG_PAGE_SIZE}"
+    "--sync-block-stream-buffer-size" "50"
+    "--max-database-cache-size" "17179869184"
+    "--state-rewind-duration" "136y"
+    "--request-timeout" "60"
+    "--graphql-max-complexity" "1000000000"
+    # Application specific
+    "--nats-url" "nats://localhost:4222"
+    # "--telemetry-port" "${TELEMETRY_PORT}"
 )
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p fuel-streams-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 else
-    cargo build --profile profiling --package fuel-streams-publisher
-    samply record ./target/profiling/fuel-streams-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo build --profile profiling --package sv-publisher
+    samply record ./target/profiling/sv-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
 fi

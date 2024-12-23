@@ -53,7 +53,7 @@ tests:
         documentIndex: 1
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-ws-cert
+          value: RELEASE-NAME-sv-webserver-cert
         documentIndex: 1
       - equal:
           path: spec.dnsNames[0]

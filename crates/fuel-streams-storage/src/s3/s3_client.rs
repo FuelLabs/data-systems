@@ -1,4 +1,4 @@
-use aws_config::{meta::region::RegionProviderChain, Region};
+use aws_config::{BehaviorVersion, Region};
 use aws_sdk_s3::{
     config::http::HttpResponse,
     operation::{
@@ -6,7 +6,9 @@ use aws_sdk_s3::{
         delete_bucket::DeleteBucketError,
         delete_object::DeleteObjectError,
         get_object::GetObjectError,
+        put_bucket_policy::PutBucketPolicyError,
         put_object::PutObjectError,
+        put_public_access_block::PutPublicAccessBlockError,
     },
     Client,
 };
@@ -34,6 +36,12 @@ pub enum S3ClientError {
     MissingEnvVar(String),
     #[error("Failed to stream objects because: {0}")]
     StreamingError(String),
+    #[error("Failed to put bucket policy: {0}")]
+    PutBucketPolicyError(#[from] SdkError<PutBucketPolicyError, HttpResponse>),
+    #[error("Failed to put public access block: {0}")]
+    PutPublicAccessBlockError(
+        #[from] SdkError<PutPublicAccessBlockError, HttpResponse>,
+    ),
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 }
@@ -46,36 +54,40 @@ pub struct S3Client {
 
 impl S3Client {
     pub async fn new(opts: &S3ClientOpts) -> Result<Self, S3ClientError> {
-        // Load AWS configuration
-        let mut aws_config = aws_config::from_env();
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .endpoint_url(opts.endpoint_url().to_string())
+            .region(Region::new(opts.region().to_string()))
+            // TODO: Remove this once we have a proper S3 bucket created
+            // for now this is a workaround to avoid signing requests
+            .no_credentials()
+            .load()
+            .await;
 
-        if let Some(endpoint_url) = opts.endpoint_url() {
-            aws_config = aws_config.endpoint_url(endpoint_url);
-        }
-
-        if let Some(region) = opts.region() {
-            let region_provider =
-                RegionProviderChain::first_try(Region::new(region));
-            let region = region_provider.region().await.unwrap();
-
-            aws_config = aws_config.region(region);
-        }
-
-        let s3_config =
-            aws_sdk_s3::config::Builder::from(&aws_config.load().await)
-                .force_path_style(true)
-                .build();
+        // Create S3 config without signing
+        let s3_config = aws_sdk_s3::config::Builder::from(&config)
+            .force_path_style(true)
+            .disable_s3_express_session_auth(true)
+            .build();
 
         let client = aws_sdk_s3::Client::from_conf(s3_config);
-
-        Ok(Self {
+        let s3_client = Self {
             client,
             bucket: opts.bucket(),
-        })
+        };
+
+        Ok(s3_client)
     }
 
     pub fn arc(self) -> std::sync::Arc<Self> {
         std::sync::Arc::new(self)
+    }
+
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+
+    pub fn bucket(&self) -> &str {
+        &self.bucket
     }
 
     pub async fn put_object(
@@ -83,15 +95,80 @@ impl S3Client {
         key: &str,
         object: Vec<u8>,
     ) -> Result<(), S3ClientError> {
-        self.client
+        match self
+            .client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
             .body(object.into())
             .send()
-            .await?;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(error) => match error {
+                SdkError::ServiceError(error) => {
+                    tracing::error!(
+                        "Failed to put object in S3 bucket={} key={}: {}",
+                        self.bucket,
+                        key,
+                        error.err()
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::ServiceError(
+                        error,
+                    )))
+                }
+                SdkError::ConstructionFailure(error) => {
+                    tracing::error!(
+                        "Failed to construct S3 request for bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(
+                        SdkError::ConstructionFailure(error),
+                    ))
+                }
+                SdkError::TimeoutError(error) => {
+                    tracing::error!(
+                        "Timeout putting object in S3 bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::TimeoutError(
+                        error,
+                    )))
+                }
+                SdkError::DispatchFailure(error) => {
+                    tracing::error!(
+                            "Failed to dispatch S3 request for bucket={} key={}: {}",
+                            self.bucket,
+                            key,
+                            error.as_connector_error().unwrap()
+                        );
+                    Err(S3ClientError::PutObjectError(
+                        SdkError::DispatchFailure(error),
+                    ))
+                }
+                SdkError::ResponseError(error) => {
+                    tracing::error!(
+                        "Invalid response from S3 for bucket={} key={}",
+                        self.bucket,
+                        key,
+                    );
+                    Err(S3ClientError::PutObjectError(SdkError::ResponseError(
+                        error,
+                    )))
+                }
+                _ => {
+                    tracing::error!(
+                        "Failed to put object in S3 bucket={} key={}: {:?}",
+                        self.bucket,
+                        key,
+                        error
+                    );
+                    Err(S3ClientError::PutObjectError(error))
+                }
+            },
+        }
     }
 
     pub async fn get_object(
@@ -135,13 +212,12 @@ impl S3Client {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub async fn new_for_testing() -> Self {
-        use fuel_networks::FuelNetwork;
-
         dotenvy::dotenv().expect(".env file not found");
 
-        let s3_client = Self::new(
-            &S3ClientOpts::new(FuelNetwork::Local).with_random_namespace(),
-        )
+        let s3_client = Self::new(&S3ClientOpts::new(
+            crate::S3Env::Local,
+            crate::S3Role::Admin,
+        ))
         .await
         .expect(
             "S3Client creation failed. Check AWS Env vars and Localstack setup",

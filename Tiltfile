@@ -10,15 +10,20 @@ version_settings(True)   # Enable 'new version' banner
 # Load environment variables from .env file
 dotenv()
 
-# Build publisher image with proper configuration for Minikube
+allow_k8s_contexts('minikube')
+
+# Build sv-publisher
 custom_build(
-    ref='fuel-streams-publisher:latest',
-    command=['./cluster/scripts/build_publisher.sh'],
+    ref='sv-publisher:latest',
+    command=[
+        './cluster/scripts/build_docker.sh',
+        '--dockerfile', './cluster/docker/sv-publisher.Dockerfile'
+    ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/fuel-streams-publisher.Dockerfile'
+        './cluster/docker/sv-publisher.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -26,19 +31,45 @@ custom_build(
         sync('./Cargo.lock', '/usr/src/Cargo.lock'),
         run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
     ],
-    skips_local_docker=True,
+    ignore=['./target']
+)
+
+# Build sv-consumer
+custom_build(
+    ref='sv-consumer:latest',
+    image_deps=['sv-publisher:latest'],
+    command=[
+        './cluster/scripts/build_docker.sh',
+        '--dockerfile', './cluster/docker/sv-consumer.Dockerfile'
+    ],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './cluster/docker/sv-consumer.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
     ignore=['./target']
 )
 
 # Build streamer ws image with proper configuration for Minikube
 custom_build(
-    ref='fuel-streams-ws:latest',
-    command=['./cluster/scripts/build_streamer.sh'],
+    ref='sv-webserver:latest',
+    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
+    command=[
+        './cluster/scripts/build_docker.sh',
+        '--dockerfile', './cluster/docker/sv-webserver.Dockerfile'
+    ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './docker/fuel-streams-ws.Dockerfile'
+        './cluster/docker/sv-webserver.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -46,7 +77,6 @@ custom_build(
         sync('./Cargo.lock', '/usr/src/Cargo.lock'),
         run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
     ],
-    skips_local_docker=True,
     ignore=['./target']
 )
 
@@ -57,50 +87,39 @@ config_mode = os.getenv('CLUSTER_MODE', 'full')
 # Resource configurations
 RESOURCES = {
     'publisher': {
-        'name': 'fuel-streams-publisher',
-        'ports': ['4000:4000', '8080:8080'],
+        'name': 'fuel-streams-sv-publisher',
+        'ports': ['8080:8080'],
         'labels': 'publisher',
-        'config_mode': ['minimal', 'full']
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher']
+    },
+    'consumer': {
+        'name': 'fuel-streams-sv-consumer',
+        'ports': ['8081:8080'],
+        'labels': 'consumer',
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher', 'fuel-streams-sv-publisher']
+    },
+    'sv-webserver': {
+        'name': 'fuel-streams-sv-webserver',
+        'ports': ['9003:9003'],
+        'labels': 'ws',
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core', 'fuel-streams-nats-publisher']
     },
     'nats-core': {
         'name': 'fuel-streams-nats-core',
-        'ports': ['4222:4222', '8222:8222'],
-        'labels': 'nats',
-        'config_mode': ['minimal', 'full']
-    },
-    'nats-client': {
-        'name': 'fuel-streams-nats-client',
-        'ports': ['4223:4222', '8443:8443'],
+        'ports': ['4222:4222', '6222:6222', '7422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
     'nats-publisher': {
         'name': 'fuel-streams-nats-publisher',
-        'ports': ['4224:4222'],
+        'ports': ['4333:4222', '6222:6222', '7433:7422'],
         'labels': 'nats',
-        'config_mode': ['minimal', 'full']
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-nats-core']
     },
-    # 'grafana': {
-    #     'name': 'fuel-streams-grafana',
-    #     'ports': ['3000:3000'],
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'prometheus-operator': {
-    #     'name': 'fuel-streams-prometheus-operator',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'kube-state-metrics': {
-    #     'name': 'fuel-streams-kube-state-metrics',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # },
-    # 'node-exporter': {
-    #     'name': 'fuel-streams-prometheus-node-exporter',
-    #     'labels': 'monitoring',
-    #     'config_mode': ['minimal', 'full']
-    # }
 }
 
 k8s_yaml(helm(
@@ -108,8 +127,9 @@ k8s_yaml(helm(
     name='fuel-streams',
     namespace='fuel-streams',
     values=[
-        'cluster/charts/fuel-streams/values-publisher-secrets.yaml',
-        'cluster/charts/fuel-streams/values.yaml'
+        'cluster/charts/fuel-streams/values.yaml',
+        'cluster/charts/fuel-streams/values-local.yaml',
+        'cluster/charts/fuel-streams/values-secrets.yaml'
     ]
 ))
 

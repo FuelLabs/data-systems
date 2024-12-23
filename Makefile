@@ -18,7 +18,7 @@ RUST_VERSION := 1.81.0
         clean clean-build cleanup-artifacts test-watch test bench helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
-        audit audit-fix-test audit-fix load-test run-publisher \
+        audit audit-fix-test audit-fix load-test run-publisher run-consumer \
         run-mainnet-dev run-mainnet-profiling run-testnet-dev run-testnet-profiling \
         start-nats stop-nats restart-nats clean-nats minikube-setup minikube-start \
         minikube-delete k8s-setup helm-setup cluster-setup pre-cluster \
@@ -112,6 +112,9 @@ clean-build:
 	rm -rf target/
 	rm -rf node_modules/
 
+cleanup-artifacts: REPO_OWNER="fuellabs"
+cleanup-artifacts: REPO_NAME="data-systems"
+cleanup-artifacts: DAYS_TO_KEEP=10
 cleanup-artifacts:
 	@echo "Running artifact cleanup..."
 	@./scripts/cleanup_artifacts.sh $(REPO_OWNER) $(REPO_NAME) $(DAYS_TO_KEEP)
@@ -120,20 +123,24 @@ cleanup-artifacts:
 #  Testing
 # ------------------------------------------------------------
 
+test-watch: PROFILE="all"
 test-watch:
 	cargo watch -x "test --profile $(PROFILE)"
 
+test: PACKAGE="all"
+test: PROFILE="dev"
 test:
+	@echo "Running tests for package $(PACKAGE) with profile $(PROFILE)"
 	@if [ "$(PACKAGE)" = "all" ] || [ -z "$(PACKAGE)" ]; then \
-		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --locked --no-tests=pass && \
-		cargo test --profile $(PROFILE) --doc --workspace; \
+		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --no-tests=pass --all-features && \
+		cargo test --profile $(PROFILE) --doc --workspace --all-features; \
 	else \
-		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --locked --no-tests=pass && \
-		cargo test --profile $(PROFILE) --doc -p $(PACKAGE); \
+		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --no-tests=pass --all-features && \
+		cargo test --profile $(PROFILE) --doc -p $(PACKAGE) --all-features; \
 	fi
 
 bench:
-	cargo bench -p data-parser -p nats-publisher -p bench-consumers
+	cargo bench -p data-parser
 
 helm-test:
 	helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams
@@ -201,13 +208,14 @@ load-test:
 #  Publisher Run Commands
 # ------------------------------------------------------------
 
+run-publisher: NETWORK="testnet"
+run-publisher: MODE="dev"
+run-publisher: PORT="4000"
+run-publisher: TELEMETRY_PORT="8080"
+run-publisher: NATS_URL="localhost:4222"
+run-publisher: EXTRA_ARGS=""
 run-publisher: check-network
-	@./scripts/run_publisher.sh \
-		--network $(NETWORK) \
-		--mode $(MODE) \
-		$(if $(PORT),--port $(PORT),) \
-		$(if $(TELEMETRY_PORT),--telemetry-port $(TELEMETRY_PORT),) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+	@./scripts/run_publisher.sh
 
 run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
@@ -222,45 +230,71 @@ run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
+#  Consumer Run Commands
+# ------------------------------------------------------------
+
+run-consumer: NATS_URL="localhost:4222"
+run-consumer: NATS_PUBLISHER_URL="localhost:4333"
+run-consumer:
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-url $(NATS_URL) \
+		--nats-publisher-url $(NATS_PUBLISHER_URL)
+
+# ------------------------------------------------------------
 #  Streamer Run Commands
 # ------------------------------------------------------------
 
-run-streamer: check-network
-	@./scripts/run_streamer.sh \
-		--mode $(MODE) \
-		$(if $(extra_args),--extra-args "$(extra_args)",)
+run-webserver: NETWORK="testnet"
+run-webserver: MODE="dev"
+run-webserver: PORT="9003"
+run-webserver: NATS_URL="nats://localhost:4222"
+run-webserver: EXTRA_ARGS=""
+run-webserver: check-network
+	@./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
 
-run-streamer-mainnet-dev:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=dev
+run-webserver-mainnet-dev:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=dev
 
-run-streamer-mainnet-profiling:
-	$(MAKE) run-streamer NETWORK=mainnet MODE=profiling
+run-webserver-mainnet-profiling:
+	$(MAKE) run-webserver NETWORK=mainnet MODE=profiling
 
-run-streamer-testnet-dev:
-	$(MAKE) run-streamer NETWORK=testnet MODE=dev
+run-webserver-testnet-dev:
+	$(MAKE) run-webserver NETWORK=testnet MODE=dev
 
-run-streamer-testnet-profiling:
-	$(MAKE) run-streamer NETWORK=testnet MODE=profiling
+run-webserver-testnet-profiling:
+	$(MAKE) run-webserver NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
 #  Docker Compose
 # ------------------------------------------------------------
 
+# Define service profiles
+DOCKER_SERVICES := nats localstack docker
+
+run-docker-compose: PROFILE="all"
 run-docker-compose:
 	@./scripts/set_env.sh
-	@docker compose -f cluster/docker/docker-compose.yml --env-file .env $(COMMAND)
+	@docker compose -f cluster/docker/docker-compose.yml --profile $(PROFILE) --env-file .env $(COMMAND)
 
-start-nats:
-	$(MAKE) run-docker-compose COMMAND="up -d"
+# Common docker-compose commands
+define make-docker-commands
+start-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="up -d"
 
-stop-nats:
-	$(MAKE) run-docker-compose COMMAND="down"
+stop-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down"
 
-restart-nats:
-	$(MAKE) run-docker-compose COMMAND="restart"
+restart-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="restart"
 
-clean-nats:
-	$(MAKE) run-docker-compose COMMAND="down -v --rmi all --remove-orphans"
+clean-$(1):
+	$(MAKE) run-docker-compose PROFILE="$(if $(filter docker,$(1)),all,$(1))" COMMAND="down -v --remove-orphans"
+
+reset-$(1): clean-$(1) start-$(1)
+endef
+
+# Generate targets for each service
+$(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)
@@ -290,15 +324,10 @@ minikube-delete:
 	@echo "Deleting minikube..."
 	@minikube delete
 
-k8s-setup:
-	@echo "Setting up k8s..."
-	@./cluster/scripts/setup_k8s.sh $(NAMESPACE)
-
 helm-setup:
 	@cd cluster/charts/fuel-streams && helm dependency update
-	@cd cluster/charts/fuel-streams-publisher && helm dependency update
 
-cluster-setup: minikube-setup k8s-setup helm-setup
+cluster-setup: minikube-setup helm-setup
 
 pre-cluster:
 	@./scripts/set_env.sh
@@ -311,5 +340,4 @@ cluster-up: pre-cluster
 cluster-down: pre-cluster
 	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile down
 
-cluster-reset: pre-cluster
-	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile reset
+cluster-reset: cluster-down cluster-up

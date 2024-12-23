@@ -20,10 +20,8 @@ profile.json
 coverage/
 docs/
 **/**/charts/**.tgz
-values-publisher-secrets.yaml
+values-secrets.yaml
 values-publisher-env.yaml
 localstack-data
 .vscode
-
 **/Cargo.lock
-!./Cargo.lock
