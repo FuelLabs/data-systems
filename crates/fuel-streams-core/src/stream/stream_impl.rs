@@ -217,18 +217,7 @@ impl<S: Streamable> Stream<S> {
         &self,
         subscription_config: Option<SubscriptionConfig>,
     ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
-        let mut config = PullConsumerConfig {
-            filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
-            deliver_policy: NatsDeliverPolicy::All,
-            ack_policy: AckPolicy::None,
-            ..Default::default()
-        };
-
-        if let Some(subscription_config) = subscription_config {
-            config.filter_subjects = subscription_config.filter_subjects;
-            config.deliver_policy = subscription_config.deliver_policy;
-        }
-
+        let config = self.get_consumer_config(subscription_config);
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
 
@@ -261,18 +250,7 @@ impl<S: Streamable> Stream<S> {
         &self,
         subscription_config: Option<SubscriptionConfig>,
     ) -> Result<BoxStream<'_, S>, StreamError> {
-        let mut config = PullConsumerConfig {
-            filter_subjects: vec![S::WILDCARD_LIST[0].to_string()],
-            deliver_policy: NatsDeliverPolicy::All,
-            ack_policy: AckPolicy::None,
-            ..Default::default()
-        };
-
-        if let Some(subscription_config) = subscription_config {
-            config.filter_subjects = subscription_config.filter_subjects;
-            config.deliver_policy = subscription_config.deliver_policy;
-        }
-
+        let config = self.get_consumer_config(subscription_config);
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
 
@@ -299,6 +277,26 @@ impl<S: Streamable> Stream<S> {
                 }
             })
             .boxed())
+    }
+
+    pub fn get_consumer_config(
+        &self,
+        subscription_config: Option<SubscriptionConfig>,
+    ) -> PullConsumerConfig {
+        let filter_subjects = match subscription_config.clone() {
+            Some(subscription_config) => subscription_config.filter_subjects,
+            None => vec![S::WILDCARD_LIST[0].to_string()],
+        };
+        let delivery_policy = match subscription_config.clone() {
+            Some(subscription_config) => subscription_config.deliver_policy,
+            None => NatsDeliverPolicy::New,
+        };
+        PullConsumerConfig {
+            filter_subjects,
+            deliver_policy: delivery_policy,
+            ack_policy: AckPolicy::None,
+            ..Default::default()
+        }
     }
 
     #[cfg(feature = "test-helpers")]

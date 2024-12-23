@@ -42,14 +42,16 @@ jobs:
             repo
             deps
             release
-            core
             data-parser
-            networks
             fuel-streams
+            core
+            executors
             macros
-            publisher
+            nats
             storage
-            ws
+            consumer
+            publisher
+            webserver
 
   lockfile:
     name: Validate Lockfile

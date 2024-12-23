@@ -78,24 +78,23 @@ create-env:
 version:
 	@echo "Current version: $(VERSION)"
 
+bump-version: VERSION=""
 bump-version:
-	@if [ -z "$(NEW_VERSION)" ]; then \
-		echo "Error: NEW_VERSION is required"; \
-		echo "Usage: make bump-version NEW_VERSION=X.Y.Z"; \
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make bump-version VERSION=X.Y.Z"; \
 		exit 1; \
 	fi
-	@echo "Bumping version to $(NEW_VERSION)..."
-	cargo set-version --workspace "$(NEW_VERSION)"
-	cargo update --workspace
-	$(MAKE) fmt
+	@echo "Bumping version to $(VERSION)..."
+	@./scripts/bump-version.sh "$(VERSION)"
 
 release: validate-env test lint
-	@if [ -z "$(NEW_VERSION)" ]; then \
-		echo "Error: NEW_VERSION is required"; \
-		echo "Usage: make release NEW_VERSION=X.Y.Z [dry_run=true]"; \
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make release VERSION=X.Y.Z [dry_run=true]"; \
 		exit 1; \
 	fi
-	$(MAKE) bump-version NEW_VERSION=$(NEW_VERSION)
+	$(MAKE) bump-version VERSION=$(VERSION)
 	knope prepare-release $(if $(filter true,$(dry_run)),--dry-run,)
 
 # ------------------------------------------------------------

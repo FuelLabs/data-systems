@@ -8,7 +8,6 @@ use actix_web::{
 };
 use actix_ws::{Message, Session};
 use fuel_streams_core::prelude::*;
-use fuel_streams_nats::NatsDeliverPolicy;
 use futures::StreamExt;
 use uuid::Uuid;
 
@@ -196,9 +195,11 @@ async fn handle_binary_message(
 
                 // subscribe to the stream
                 let config = SubscriptionConfig {
-                    deliver_policy: NatsDeliverPolicy::All,
+                    deliver_policy: deliver_policy.into(),
                     filter_subjects: vec![subject_wildcard.clone()],
                 };
+                dbg!(&config);
+
                 let mut sub =
                     match streams.subscribe(&sub_subject, Some(config)).await {
                         Ok(sub) => sub,
