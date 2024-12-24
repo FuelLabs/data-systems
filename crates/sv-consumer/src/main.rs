@@ -54,8 +54,8 @@ pub enum ConsumerError {
     #[error("Failed to acquire semaphore: {0}")]
     Semaphore(#[from] tokio::sync::AcquireError),
 
-    #[error("Failed to setup S3 client: {0}")]
-    S3(#[from] S3ClientError),
+    #[error("Failed to setup storage: {0}")]
+    Storage(#[from] fuel_streams_core::storage::StorageError),
 }
 
 #[tokio::main]
@@ -101,10 +101,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_s3() -> Result<Arc<S3Client>, ConsumerError> {
-    let s3_client_opts = S3ClientOpts::admin_opts();
-    let s3_client = S3Client::new(&s3_client_opts).await?;
-    Ok(Arc::new(s3_client))
+async fn setup_storage() -> Result<Arc<S3Storage>, ConsumerError> {
+    let storage_opts = S3StorageOpts::admin_opts();
+    let storage = S3Storage::new(storage_opts).await?;
+    Ok(Arc::new(storage))
 }
 
 async fn setup_nats(
@@ -152,10 +152,9 @@ async fn process_messages(
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
     let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
-    let s3_client = setup_s3().await?;
+    let storage = setup_storage().await?;
     let (_, publisher_stream) =
-        FuelStreams::setup_all(&core_client, &publisher_client, &s3_client)
-            .await;
+        FuelStreams::setup_all(&core_client, &publisher_client, &storage).await;
 
     let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));

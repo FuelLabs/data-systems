@@ -63,12 +63,11 @@ async fn main() -> BoxedResult<()> {
     // Connect to NATS server
     let nats_opts = NatsClientOpts::admin_opts();
     let nats_client = NatsClient::connect(&nats_opts).await?;
-
-    let s3_opts = S3ClientOpts::new(S3Env::Local, S3Role::Admin);
-    let s3_client = Arc::new(S3Client::new(&s3_opts).await?);
+    let storage_opts = S3StorageOpts::new(StorageEnv::Local, StorageRole::Admin);
+    let storage = Arc::new(S3Storage::new(storage_opts).await?);
 
     // Create a stream for blocks
-    let stream = Stream::<Block>::new(&nats_client, &s3_client).await;
+    let stream = Stream::<Block>::new(&nats_client, &storage).await;
 
     // Subscribe to the stream
     let wildcard = BlocksSubject::wildcard(None, None); // blocks.*.*

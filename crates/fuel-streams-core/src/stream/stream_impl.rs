@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::sync::Arc;
 
 use async_nats::{
     jetstream::{
@@ -89,8 +89,8 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 ///     const WILDCARD_LIST: &'static [&'static str] = &["*"];
 /// }
 ///
-/// async fn example(nats_client: &NatsClient, s3_client: &Arc<S3Client>) {
-///     let stream = Stream::<MyStreamable>::new(nats_client, s3_client).await;
+/// async fn example(nats_client: &NatsClient, storage: &Arc<S3Storage>) {
+///     let stream = Stream::<MyStreamable>::new(nats_client, storage).await;
 ///
 ///     // Publish
 ///     let subject = BlocksSubject::new().with_height(Some(23.into())).arc();
@@ -110,7 +110,7 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
     store: Arc<kv::Store>,
-    s3_client: Arc<S3Client>,
+    storage: Arc<S3Storage>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -120,11 +120,11 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn get_or_init(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
         let cell = Self::INSTANCE;
         cell.get_or_init(|| async {
-            Self::new(nats_client, s3_client).await.to_owned()
+            Self::new(nats_client, storage).await.to_owned()
         })
         .await
         .to_owned()
@@ -132,7 +132,7 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn new(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
         let namespace = &nats_client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
@@ -151,7 +151,7 @@ impl<S: Streamable> Stream<S> {
 
         Self {
             store: Arc::new(store),
-            s3_client: Arc::clone(s3_client),
+            storage: Arc::clone(storage),
             _marker: std::marker::PhantomData,
         }
     }
@@ -164,10 +164,9 @@ impl<S: Streamable> Stream<S> {
         let s3_path = packet.get_s3_path();
         let subject_name = &packet.subject.parse();
 
-        self.s3_client
-            .put_object(&s3_path, payload.encode(subject_name))
+        self.storage
+            .store(&s3_path, payload.encode(subject_name))
             .await?;
-
         self.publish_s3_path_to_nats(subject_name, &s3_path).await
     }
 
@@ -225,8 +224,7 @@ impl<S: Streamable> Stream<S> {
             .messages()
             .await?
             .then(|message| {
-                let s3_client = Arc::clone(&self.s3_client);
-
+                let storage = Arc::clone(&self.storage);
                 async move {
                     let nats_payload = message
                         .expect("Message must be valid")
@@ -237,8 +235,8 @@ impl<S: Streamable> Stream<S> {
                     let s3_path = String::from_utf8(nats_payload)
                         .expect("Must be S3 path");
 
-                    s3_client
-                        .get_object(&s3_path)
+                    storage
+                        .retrieve(&s3_path)
                         .await
                         .expect("S3 object must exist")
                 }
@@ -264,13 +262,13 @@ impl<S: Streamable> Stream<S> {
                 .expect("Must be S3 path")
             })
             .then(|s3_path| {
-                let s3_client = Arc::clone(&self.s3_client);
+                let storage = Arc::clone(&self.storage);
 
                 async move {
                     // TODO: Bubble up the error?
                     S::decode_or_panic(
-                        s3_client
-                            .get_object(&s3_path)
+                        storage
+                            .retrieve(&s3_path)
                             .await
                             .expect("Could not get S3 object"),
                     )
@@ -386,8 +384,8 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<S, StreamError> {
         let s3_path = String::from_utf8(nats_payload).expect("Must be S3 path");
         let s3_object = self
-            .s3_client
-            .get_object(&s3_path)
+            .storage
+            .retrieve(&s3_path)
             .await
             .expect("S3 object must exist");
 

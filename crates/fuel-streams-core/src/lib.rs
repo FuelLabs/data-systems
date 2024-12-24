@@ -12,8 +12,8 @@ pub mod nats {
     pub use fuel_streams_nats::*;
 }
 
-pub mod s3 {
-    pub use fuel_streams_storage::s3::*;
+pub mod storage {
+    pub use fuel_streams_storage::*;
 }
 
 pub mod stream;
@@ -33,7 +33,7 @@ pub mod prelude {
     pub use crate::{
         fuel_core_like::*,
         nats::*,
-        s3::*,
+        storage::*,
         stream::*,
         subjects::*,
         types::*,

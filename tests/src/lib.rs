@@ -23,11 +23,11 @@ pub struct Streams {
 impl Streams {
     pub async fn new(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
-        let blocks = Stream::<Block>::get_or_init(nats_client, s3_client).await;
+        let blocks = Stream::<Block>::get_or_init(nats_client, storage).await;
         let transactions =
-            Stream::<Transaction>::get_or_init(nats_client, s3_client).await;
+            Stream::<Transaction>::get_or_init(nats_client, storage).await;
         Self {
             transactions,
             blocks,
@@ -39,11 +39,11 @@ pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Connection)> {
     let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
     let nats_client = NatsClient::connect(&nats_client_opts).await?;
 
-    let s3_client_opts = S3ClientOpts::admin_opts().with_random_namespace();
-    let s3_client = Arc::new(S3Client::new(&s3_client_opts).await?);
-    s3_client.create_bucket().await?;
+    let storage_opts = S3StorageOpts::admin_opts().with_random_namespace();
+    let storage = Arc::new(S3Storage::new(storage_opts).await?);
+    storage.create_bucket().await?;
 
-    let streams = Streams::new(&nats_client, &s3_client).await;
+    let streams = Streams::new(&nats_client, &storage).await;
 
     let mut client = Client::new(FuelNetwork::Local).await?;
     let connection = client.connect().await?;
