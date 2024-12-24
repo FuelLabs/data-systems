@@ -1,17 +1,18 @@
 use async_trait::async_trait;
+use displaydoc::Display as DisplayDoc;
 use thiserror::Error;
 
 use crate::StorageConfig;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, DisplayDoc)]
 pub enum StorageError {
-    #[error("Failed to store object: {0}")]
+    /// Failed to store object: {0}
     StoreError(String),
-    #[error("Failed to retrieve object: {0}")]
+    /// Failed to retrieve object: {0}
     RetrieveError(String),
-    #[error("Failed to delete object: {0}")]
+    /// Failed to delete object: {0}
     DeleteError(String),
-    #[error("Failed to initialize storage: {0}")]
+    /// Failed to initialize storage: {0}
     InitError(String),
 }
 

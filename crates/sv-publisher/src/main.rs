@@ -6,6 +6,7 @@ use async_nats::jetstream::{
     Context,
 };
 use clap::Parser;
+use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
@@ -14,12 +15,11 @@ use sv_publisher::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, DisplayDoc)]
 pub enum LiveBlockProcessingError {
-    #[error("Failed to publish block: {0}")]
+    /// Failed to publish block: {0}
     PublishError(#[from] PublishError),
-
-    #[error("Processing was cancelled")]
+    /// Processing was cancelled
     Cancelled,
 }
 
@@ -180,15 +180,13 @@ async fn process_live_blocks(
     Ok(())
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, DisplayDoc)]
 pub enum PublishError {
-    #[error("Failed to publish block to NATS server: {0}")]
+    /// Failed to publish block to NATS server: {0}
     NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-
-    #[error("Failed to create block payload due to: {0}")]
+    /// Failed to create block payload due to: {0}
     BlockPayload(#[from] ExecutorError),
-
-    #[error("Failed to access offchain database: {0}")]
+    /// Failed to access offchain database: {0}
     OffchainDatabase(String),
 }
 

@@ -13,6 +13,7 @@ use async_nats::jetstream::{
     stream::{ConsumerErrorKind, RetentionPolicy},
 };
 use clap::Parser;
+use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
@@ -22,39 +23,29 @@ use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, DisplayDoc)]
 pub enum ConsumerError {
-    #[error("Failed to receive batch of messages from NATS: {0}")]
+    /// Failed to receive batch of messages from NATS: {0}
     BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
-
-    #[error("Failed to create stream: {0}")]
+    /// Failed to create stream: {0}
     CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-
-    #[error("Failed to create consumer: {0}")]
+    /// Failed to create consumer: {0}
     CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
-
-    #[error("Failed to connect to NATS client: {0}")]
+    /// Failed to connect to NATS client: {0}
     NatsClient(#[from] NatsError),
-
-    #[error("Failed to communicate with NATS server: {0}")]
+    /// Failed to communicate with NATS server: {0}
     Nats(#[from] async_nats::Error),
-
-    #[error("Failed to deserialize block payload from message: {0}")]
+    /// Failed to deserialize block payload from message: {0}
     Deserialization(#[from] serde_json::Error),
-
-    #[error("Failed to decode UTF-8: {0}")]
+    /// Failed to decode UTF-8: {0}
     Utf8(#[from] std::str::Utf8Error),
-
-    #[error("Failed to execute executor tasks: {0}")]
+    /// Failed to execute executor tasks: {0}
     Executor(#[from] ExecutorError),
-
-    #[error("Failed to join tasks: {0}")]
+    /// Failed to join tasks: {0}
     JoinTasks(#[from] tokio::task::JoinError),
-
-    #[error("Failed to acquire semaphore: {0}")]
+    /// Failed to acquire semaphore: {0}
     Semaphore(#[from] tokio::sync::AcquireError),
-
-    #[error("Failed to setup storage: {0}")]
+    /// Failed to setup storage: {0}
     Storage(#[from] fuel_streams_core::storage::StorageError),
 }
 

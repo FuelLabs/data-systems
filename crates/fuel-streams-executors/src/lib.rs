@@ -13,6 +13,7 @@ use std::{
 };
 
 use async_nats::jetstream::context::Publish;
+use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -38,19 +39,19 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
     bytes.into()
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, DisplayDoc)]
 pub enum ExecutorError {
-    #[error("Failed to publish: {0}")]
+    /// Failed to publish: {0}
     PublishFailed(String),
-    #[error("Failed to acquire semaphore: {0}")]
+    /// Failed to acquire semaphore: {0}
     SemaphoreError(#[from] tokio::sync::AcquireError),
-    #[error("Failed to serialize block payload: {0}")]
+    /// Failed to serialize block payload: {0}
     Serialization(#[from] serde_json::Error),
-    #[error("Failed to fetch transaction status: {0}")]
+    /// Failed to fetch transaction status: {0}
     TransactionStatus(String),
-    #[error("Failed to access offchain database")]
+    /// Failed to access offchain database: {0}
     OffchainDatabase(#[from] anyhow::Error),
-    #[error("Failed to join tasks: {0}")]
+    /// Failed to join tasks: {0}
     JoinError(#[from] tokio::task::JoinError),
 }
 

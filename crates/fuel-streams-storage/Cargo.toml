@@ -14,8 +14,7 @@ rust-version = { workspace = true }
 async-trait = "0.1.83"
 aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.65.0"
-aws-smithy-runtime-api = "1.7.3"
-aws-smithy-types = "=1.2.9"
+displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 rand = { workspace = true }
 thiserror = { workspace = true }
