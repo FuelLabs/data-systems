@@ -153,23 +153,41 @@ async fn process_messages(
         let mut messages =
             consumer.fetch().max_messages(100).messages().await?.fuse();
         let mut futs = FuturesUnordered::new();
+
         while let Some(msg) = messages.next().await {
             let msg = msg?;
             let fuel_streams = fuel_streams.clone();
             let semaphore = semaphore.clone();
+
+            tracing::debug!(
+                "Received message payload length: {}",
+                msg.payload.len()
+            );
+
             let future = async move {
-                let msg_str = std::str::from_utf8(&msg.payload)?;
-                let payload = Arc::new(BlockPayload::decode(msg_str)?);
-                let start_time = std::time::Instant::now();
-                let futures = Executor::<Block>::process_all(
-                    payload.clone(),
-                    &fuel_streams,
-                    &semaphore,
-                );
-                let results = try_join_all(futures).await?;
-                let end_time = std::time::Instant::now();
-                msg.ack().await?;
-                Ok::<_, ConsumerError>((results, start_time, end_time, payload))
+                match BlockPayload::decode(&msg.payload).await {
+                    Ok(payload) => {
+                        let payload = Arc::new(payload);
+                        let start_time = std::time::Instant::now();
+                        let futures = Executor::<Block>::process_all(
+                            payload.clone(),
+                            &fuel_streams,
+                            &semaphore,
+                        );
+                        let results = try_join_all(futures).await?;
+                        let end_time = std::time::Instant::now();
+                        msg.ack().await.expect("Failed to ack message");
+                        Ok((results, start_time, end_time, payload))
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to decode payload: {:?}", e);
+                        tracing::debug!(
+                            "Raw payload (hex): {:?}",
+                            hex::encode(&msg.payload)
+                        );
+                        Err(e)
+                    }
+                }
             };
             futs.push(future);
         }

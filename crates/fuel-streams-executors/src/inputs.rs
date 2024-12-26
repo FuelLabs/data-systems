@@ -115,7 +115,7 @@ pub fn identifiers(
     match input {
         Input::Coin(InputCoin { predicate, .. })
         | Input::Message(InputMessage { predicate, .. }) => {
-            let predicate_tag = super::sha256(&predicate.0);
+            let predicate_tag = super::sha256(&predicate.0 .0);
             identifiers.push(Identifier::PredicateID(
                 tx_id.to_owned(),
                 index,

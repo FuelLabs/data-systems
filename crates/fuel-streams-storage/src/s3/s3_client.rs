@@ -32,7 +32,6 @@ impl Storage for S3Storage {
             .build();
 
         let client = aws_sdk_s3::Client::from_conf(s3_config);
-
         Ok(Self { client, config })
     }
 
@@ -251,7 +250,7 @@ impl S3Storage {
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    async fn ensure_bucket(&self) -> Result<(), StorageError> {
+    pub async fn ensure_bucket(&self) -> Result<(), StorageError> {
         // Check if bucket exists
         let exists = self
             .client

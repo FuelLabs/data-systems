@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
-    context::PublishErrorKind,
+    context::{Publish, PublishErrorKind},
     stream::RetentionPolicy,
     Context,
 };
@@ -198,8 +198,12 @@ async fn publish_block(
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
+    let publish = Publish::build()
+        .message_id(payload.message_id())
+        .payload(payload.encode().await?.into());
+
     jetstream
-        .send_publish(payload.subject(), payload.to_owned().try_into()?)
+        .send_publish(payload.subject(), publish)
         .await
         .map_err(PublishError::NatsPublish)?
         .await

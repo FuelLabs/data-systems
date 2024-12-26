@@ -85,10 +85,10 @@ impl S3StorageOpts {
             StorageEnv::Mainnet => "fuel-streams",
         };
 
-        self.namespace
-            .as_ref()
-            .map(|ns| format!("{base_bucket}-{ns}"))
-            .unwrap_or(base_bucket.to_string())
+        match &self.namespace {
+            Some(ns) => format!("{base_bucket}-{ns}"),
+            None => base_bucket.to_string(),
+        }
     }
 
     pub fn credentials(&self) -> Option<aws_sdk_s3::config::Credentials> {

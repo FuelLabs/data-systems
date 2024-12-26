@@ -74,7 +74,7 @@ fn identifiers(
     match kind {
         TransactionKind::Script => {
             let script_data = &tx.script_data.to_owned().unwrap_or_default().0;
-            let script_tag = sha256(script_data);
+            let script_tag = sha256(&script_data.0);
             vec![Identifier::ScriptID(tx_id.to_owned(), index, script_tag)]
         }
         _ => Vec::new(),

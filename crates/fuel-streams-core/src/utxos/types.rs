@@ -6,9 +6,9 @@ pub struct Utxo {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub nonce: Option<Nonce>,
-    pub data: Option<HexString>,
+    pub data: Option<HexData>,
     pub amount: Option<u64>,
-    pub tx_id: Bytes32,
+    pub tx_id: TxId,
 }
 
 #[derive(Debug, Clone, Default)]

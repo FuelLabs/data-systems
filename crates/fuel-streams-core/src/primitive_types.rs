@@ -7,6 +7,42 @@ pub use serde::{Deserialize, Serialize};
 
 use crate::fuel_core_types::*;
 
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
+pub struct LongBytes(pub Vec<u8>);
+
+impl LongBytes {
+    pub fn zeroed() -> Self {
+        Self(vec![])
+    }
+}
+impl AsRef<[u8]> for LongBytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl AsMut<[u8]> for LongBytes {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+impl std::fmt::Display for LongBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
+impl From<Vec<u8>> for LongBytes {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+impl From<&[u8]> for LongBytes {
+    fn from(value: &[u8]) -> Self {
+        Self(value.to_vec())
+    }
+}
+
 /// Macro to generate a wrapper type for different byte-based types (including Address type).
 ///
 /// This macro creates a new struct that wraps the specified inner type,
@@ -28,9 +64,50 @@ use crate::fuel_core_types::*;
 /// Where `WrapperType` is the name of the new wrapper struct to be created,
 /// and `InnerType` is the type being wrapped.
 macro_rules! generate_byte_type_wrapper {
+    // Pattern with byte_size specified
     ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+        generate_byte_type_wrapper!($wrapper_type, $inner_type);
+
+        impl From<[u8; $byte_size]> for $wrapper_type {
+            fn from(value: [u8; $byte_size]) -> Self {
+                $wrapper_type(<$inner_type>::from(value))
+            }
+        }
+    };
+
+    // Pattern without byte_size
+    ($wrapper_type:ident, $inner_type:ty) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $wrapper_type(pub $inner_type);
+
+        // Custom serialization
+        impl Serialize for $wrapper_type {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                if serializer.is_human_readable() {
+                    serializer.serialize_str(&format!("0x{}", self.0))
+                } else {
+                    self.0.serialize(serializer)
+                }
+            }
+        }
+
+        // Custom deserialization using FromStr
+        impl<'de> Deserialize<'de> for $wrapper_type {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                if deserializer.is_human_readable() {
+                    let s = String::deserialize(deserializer)?;
+                    s.parse().map_err(serde::de::Error::custom)
+                } else {
+                    Ok($wrapper_type(<$inner_type>::deserialize(deserializer)?))
+                }
+            }
+        }
 
         impl From<$inner_type> for $wrapper_type {
             fn from(value: $inner_type) -> Self {
@@ -44,15 +121,9 @@ macro_rules! generate_byte_type_wrapper {
             }
         }
 
-        impl From<[u8; $byte_size]> for $wrapper_type {
-            fn from(value: [u8; $byte_size]) -> Self {
-                $wrapper_type(<$inner_type>::from(value))
-            }
-        }
-
         impl From<&$inner_type> for $wrapper_type {
             fn from(value: &$inner_type) -> Self {
-                $wrapper_type(*value)
+                $wrapper_type(value.clone())
             }
         }
 
@@ -64,21 +135,32 @@ macro_rules! generate_byte_type_wrapper {
 
         impl std::str::FromStr for $wrapper_type {
             type Err = String;
-
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.strip_prefix("0x").unwrap_or(s);
-                if s.len() != std::mem::size_of::<$inner_type>() * 2 {
-                    panic!("Invalid length for {}", stringify!($wrapper_type));
+                let expected_len = std::mem::size_of::<$inner_type>() * 2;
+                if s.len() != expected_len {
+                    return Err(format!(
+                        "Invalid length for {}: expected {} characters, got {}",
+                        stringify!($wrapper_type),
+                        expected_len,
+                        s.len()
+                    ));
                 }
+
                 let mut inner = <$inner_type>::zeroed();
-                for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
-                    let byte = u8::from_str_radix(
-                        std::str::from_utf8(chunk).unwrap(),
-                        16,
-                    )
-                    .unwrap();
-                    inner.as_mut()[i] = byte;
+                let bytes = hex::decode(s)
+                    .map_err(|e| format!("Failed to decode hex string: {}", e))?;
+
+                if bytes.len() != std::mem::size_of::<$inner_type>() {
+                    return Err(format!(
+                        "Invalid decoded length for {}: expected {} bytes, got {}",
+                        stringify!($wrapper_type),
+                        std::mem::size_of::<$inner_type>(),
+                        bytes.len()
+                    ));
                 }
+
+                inner.as_mut().copy_from_slice(&bytes);
                 Ok($wrapper_type(inner))
             }
         }
@@ -136,6 +218,7 @@ generate_byte_type_wrapper!(MessageId, fuel_types::MessageId, 32);
 generate_byte_type_wrapper!(BlockId, fuel_types::Bytes32, 32);
 generate_byte_type_wrapper!(Signature, fuel_types::Bytes64, 64);
 generate_byte_type_wrapper!(TxId, fuel_types::TxId, 32);
+generate_byte_type_wrapper!(HexData, LongBytes);
 
 /// Implements bidirectional conversions between `Bytes32` and a given type.
 ///
@@ -195,54 +278,6 @@ impl From<FuelCoreBlockId> for BlockId {
 }
 
 #[derive(
-    Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-pub struct HexString(pub Vec<u8>);
-
-impl From<&[u8]> for HexString {
-    fn from(value: &[u8]) -> Self {
-        HexString(value.to_vec())
-    }
-}
-impl From<Bytes32> for HexString {
-    fn from(value: Bytes32) -> Self {
-        Self::from(value.0.as_ref())
-    }
-}
-impl TryFrom<HexString> for Bytes32 {
-    type Error = String;
-    fn try_from(value: HexString) -> Result<Self, Self::Error> {
-        let bytes: [u8; 32] = value
-            .0
-            .try_into()
-            .map_err(|_| "Invalid length for Bytes32".to_string())?;
-        Ok(Bytes32::from(bytes))
-    }
-}
-impl std::fmt::Display for HexString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "0x{}", hex::encode(&self.0))
-    }
-}
-impl std::str::FromStr for HexString {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.strip_prefix("0x").unwrap_or(s);
-        hex::decode(s).map(HexString).map_err(|e| e.to_string())
-    }
-}
-impl AsRef<[u8]> for HexString {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl HexString {
-    pub fn zeroed() -> Self {
-        HexString(vec![0u8; 32])
-    }
-}
-
-#[derive(
     Debug,
     Default,
     Copy,
@@ -276,7 +311,7 @@ pub struct UtxoId {
     pub tx_id: Bytes32,
     pub output_index: u16,
 }
-impl From<&UtxoId> for HexString {
+impl From<&UtxoId> for HexData {
     fn from(value: &UtxoId) -> Self {
         value.to_owned().into()
     }
@@ -294,12 +329,12 @@ impl From<&FuelCoreUtxoId> for UtxoId {
         }
     }
 }
-impl From<UtxoId> for HexString {
+impl From<UtxoId> for HexData {
     fn from(value: UtxoId) -> Self {
         let mut bytes = Vec::with_capacity(34);
         bytes.extend_from_slice(value.tx_id.0.as_ref());
         bytes.extend_from_slice(&value.output_index.to_be_bytes());
-        HexString(bytes)
+        HexData(bytes.into())
     }
 }
 

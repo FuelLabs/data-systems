@@ -229,13 +229,10 @@ impl<S: Streamable> Stream<S> {
                 async move {
                     let s3_path = String::from_utf8(nats_payload)
                         .expect("Must be S3 path");
-                    println!("s3_path: {:?}", s3_path);
-                    let s3_object = storage
+                    storage
                         .retrieve(&s3_path)
                         .await
-                        .expect("S3 object must exist");
-                    println!("s3_object: {:?}", s3_object);
-                    s3_object
+                        .expect("S3 object must exist")
                 }
             })
             .boxed())

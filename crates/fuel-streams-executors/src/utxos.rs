@@ -28,7 +28,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
         Input::Contract(InputContract { utxo_id, .. }) => {
             let utxo = Utxo {
                 utxo_id: utxo_id.to_owned(),
-                tx_id: tx_id.to_owned(),
+                tx_id: tx_id.to_owned().into(),
                 ..Default::default()
             };
             let subject = UtxosSubject {
@@ -44,7 +44,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
             let utxo = Utxo {
                 utxo_id: utxo_id.to_owned(),
                 amount: Some(*amount),
-                tx_id: tx_id.to_owned(),
+                tx_id: tx_id.to_owned().into(),
                 ..Default::default()
             };
             let subject = UtxosSubject {
@@ -66,7 +66,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
         ) => {
             let utxo_id = input.computed_utxo_id();
             let utxo = Utxo {
-                tx_id: tx_id.to_owned(),
+                tx_id: tx_id.to_owned().into(),
                 utxo_id: utxo_id.to_owned(),
                 sender: Some(sender.to_owned()),
                 recipient: Some(recipient.to_owned()),
