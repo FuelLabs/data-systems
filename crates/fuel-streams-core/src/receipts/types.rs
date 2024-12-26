@@ -4,7 +4,6 @@ use serde::{self, Deserialize, Serialize};
 use crate::types::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
 pub enum Receipt {
     Call(CallReceipt),
     Return(ReturnReceipt),
@@ -23,7 +22,6 @@ pub enum Receipt {
 
 // Individual Receipt Types
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct CallReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -37,7 +35,6 @@ pub struct CallReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ReturnReceipt {
     pub id: ContractId,
     pub val: Word,
@@ -46,7 +43,6 @@ pub struct ReturnReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ReturnDataReceipt {
     pub id: ContractId,
     pub ptr: Word,
@@ -54,23 +50,19 @@ pub struct ReturnDataReceipt {
     pub digest: Bytes32,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct PanicReceipt {
     pub id: ContractId,
     pub reason: PanicInstruction,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub contract_id: Option<ContractId>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RevertReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -79,7 +71,6 @@ pub struct RevertReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LogReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -91,7 +82,6 @@ pub struct LogReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LogDataReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -101,12 +91,10 @@ pub struct LogDataReceipt {
     pub digest: Bytes32,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TransferReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -117,7 +105,6 @@ pub struct TransferReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TransferOutReceipt {
     pub id: ContractId,
     pub to: Address,
@@ -128,14 +115,12 @@ pub struct TransferOutReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ScriptResultReceipt {
     pub result: ScriptExecutionResult,
     pub gas_used: Word,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct MessageOutReceipt {
     pub sender: Address,
     pub recipient: Address,
@@ -143,12 +128,10 @@ pub struct MessageOutReceipt {
     pub nonce: Nonce,
     pub len: Word,
     pub digest: Bytes32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct MintReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -158,7 +141,6 @@ pub struct MintReceipt {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct BurnReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,

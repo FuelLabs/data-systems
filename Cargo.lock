@@ -490,10 +490,8 @@ checksum = "df895a515f70646414f4b45c0b79082783b80552b373a68283012928df56f522"
 dependencies = [
  "brotli 7.0.0",
  "bzip2",
- "deflate64",
  "flate2",
  "futures-core",
- "futures-io",
  "memchr",
  "pin-project-lite",
  "tokio",
@@ -2616,6 +2614,7 @@ dependencies = [
  "fuel-core-types 0.40.2",
  "fuel-data-parser",
  "rand",
+ "serde",
  "strum 0.26.3",
  "tokio",
 ]
@@ -2628,12 +2627,6 @@ checksum = "bef552e6f588e446098f6ba40d89ac146c8c7b64aade83c051ee00bb5d2bc18d"
 dependencies = [
  "uuid",
 ]
-
-[[package]]
-name = "deflate64"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "der"
@@ -4133,7 +4126,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "async-trait",
- "chrono",
  "displaydoc",
  "fuel-core",
  "fuel-core-bin",
@@ -4171,9 +4163,9 @@ name = "fuel-streams-executors"
 version = "0.0.13"
 dependencies = [
  "anyhow",
- "async-nats",
  "displaydoc",
  "fuel-core",
+ "fuel-data-parser",
  "fuel-streams-core",
  "futures",
  "num_cpus",

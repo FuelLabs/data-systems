@@ -3,7 +3,6 @@ use crate::types::*;
 /// A convenient aggregate type to represent a Fuel logs to allow users
 /// think about them agnostic of receipts.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
 pub enum Log {
     WithoutData {
         id: ContractId,

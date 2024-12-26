@@ -7,31 +7,6 @@ pub use serde::{Deserialize, Serialize};
 
 use crate::fuel_core_types::*;
 
-/// Implements hex-formatted serialization and deserialization for a type
-/// that implements Display and FromStr
-macro_rules! impl_hex_serde {
-    ($type:ty) => {
-        impl Serialize for $type {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                serializer.serialize_str(&self.to_string())
-            }
-        }
-
-        impl<'de> Deserialize<'de> for $type {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                let s = String::deserialize(deserializer)?;
-                s.parse().map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-
 /// Macro to generate a wrapper type for different byte-based types (including Address type).
 ///
 /// This macro creates a new struct that wraps the specified inner type,
@@ -54,10 +29,8 @@ macro_rules! impl_hex_serde {
 /// and `InnerType` is the type being wrapped.
 macro_rules! generate_byte_type_wrapper {
     ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
         pub struct $wrapper_type(pub $inner_type);
-
-        impl_hex_serde!($wrapper_type);
 
         impl From<$inner_type> for $wrapper_type {
             fn from(value: $inner_type) -> Self {
@@ -221,9 +194,10 @@ impl From<FuelCoreBlockId> for BlockId {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
 pub struct HexString(pub Vec<u8>);
-impl_hex_serde!(HexString);
 
 impl From<&[u8]> for HexString {
     fn from(value: &[u8]) -> Self {
@@ -281,7 +255,6 @@ impl HexString {
     Deserialize,
     Serialize,
 )]
-#[serde(rename_all = "camelCase")]
 pub struct TxPointer {
     block_height: FuelCoreBlockHeight,
     tx_index: u16,
@@ -299,7 +272,6 @@ impl From<FuelCoreTxPointer> for TxPointer {
 #[derive(
     Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
 )]
-#[serde(rename_all = "camelCase")]
 pub struct UtxoId {
     pub tx_id: Bytes32,
     pub output_index: u16,

@@ -25,10 +25,8 @@ impl From<&FuelCoreStorageSlot> for StorageSlot {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: Bytes32,
-    #[serde(rename = "type")]
     pub kind: TransactionKind,
     pub bytecode_root: Option<Bytes32>,
     pub bytecode_witness_index: Option<u16>,
@@ -412,7 +410,6 @@ impl Transaction {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
 pub enum TransactionKind {
     #[default]
     Create,

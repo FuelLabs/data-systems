@@ -13,9 +13,9 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = { workspace = true }
 displaydoc = { workspace = true }
 fuel-core = { workspace = true }
+fuel-data-parser = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 num_cpus = { workspace = true }

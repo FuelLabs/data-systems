@@ -81,7 +81,7 @@ impl FuelStreams {
         (core_stream, publisher_stream)
     }
 
-    pub async fn subscribe(
+    pub async fn subscribe_raw(
         &self,
         sub_subject: &str,
         subscription_config: Option<SubscriptionConfig>,

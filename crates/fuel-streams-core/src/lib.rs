@@ -16,6 +16,10 @@ pub mod storage {
     pub use fuel_streams_storage::*;
 }
 
+pub(crate) mod data_parser {
+    pub use fuel_data_parser::*;
+}
+
 pub mod stream;
 pub mod subjects;
 
@@ -24,6 +28,7 @@ mod fuel_core_types;
 mod primitive_types;
 pub mod types;
 
+pub(crate) use data_parser::*;
 pub use stream::*;
 
 pub mod prelude {
@@ -31,6 +36,7 @@ pub mod prelude {
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{
+        data_parser::*,
         fuel_core_like::*,
         nats::*,
         storage::*,
