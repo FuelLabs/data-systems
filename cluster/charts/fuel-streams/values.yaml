@@ -239,17 +239,21 @@ webserver:
     enabled: true
     port: 8080
     type: LoadBalancer
-    dns: "stream-staging.fuel.network"
+    host: "stream-staging.fuel.network"
     annotations: {}
     labels: {}
 
   tls:
     enabled: true
-    issuer: "letsencrypt-prod"
-    duration: "2160h"
-    renewBefore: "360h"
-    annotations: {}
-    labels: {}
+    certificate:
+      issuer: "letsencrypt-prod"
+      duration: "2160h"
+      renewBefore: "360h"
+      annotations: {}
+      labels: {}
+    ingress:
+      annotations: {}
+      labels: {}
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs

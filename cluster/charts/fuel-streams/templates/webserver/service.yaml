@@ -5,8 +5,8 @@ kind: Service
 metadata:
   {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver-nlb") | nindent 2 }}
   annotations:
-    {{- if $service.dns }}
-    external-dns.alpha.kubernetes.io/hostname: {{ $service.dns }}
+    {{- if $service.host }}
+    external-dns.alpha.kubernetes.io/hostname: {{ $service.host }}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     {{- end }}
     service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
