@@ -4,7 +4,6 @@ pub mod s3;
 pub mod storage;
 pub mod storage_config;
 
-pub(crate) use retry::*;
 pub use s3::*;
 pub use storage::*;
 pub use storage_config::*;
