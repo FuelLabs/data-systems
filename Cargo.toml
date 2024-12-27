@@ -72,6 +72,7 @@ fuel-streams-storage = { version = "0.0.14", path = "crates/fuel-streams-storage
 fuel-streams-executors = { version = "0.0.14", path = "crates/fuel-streams-executors" }
 subject-derive = { version = "0.0.14", path = "crates/fuel-streams-macros/subject-derive" }
 sv-publisher = { version = "0.0.14", path = "crates/sv-publisher" }
+sv-consumer = { version = "0.0.14", path = "crates/sv-consumer" }
 sv-webserver = { version = "0.0.14", path = "crates/sv-webserver" }
 
 # Workspace projects

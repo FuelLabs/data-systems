@@ -1,5 +1,4 @@
 use std::{
-    env,
     sync::{Arc, LazyLock},
     time::Duration,
 };
