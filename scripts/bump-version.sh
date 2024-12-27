@@ -1,5 +1,5 @@
 #!/bin/bash
 
-cargo set-version --workspace "$1"
+cargo set-version --locked --workspace "$1"
 cargo update --workspace
 make fmt
