@@ -54,10 +54,10 @@ services:
     environment:
       - SERVICES=s3 # Enable just S3 service
       - DEBUG=1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - DEFAULT_REGION=us-east-1
-      - DEFAULT_BUCKETS=fuel-streams-local
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - DEFAULT_REGION=${AWS_REGION:-us-east-1}
+      - DEFAULT_BUCKETS=${AWS_S3_BUCKET_NAME:-fuel-streams-local}
     volumes:
       - ./localstack-data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock

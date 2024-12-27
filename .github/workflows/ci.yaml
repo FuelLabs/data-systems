@@ -222,7 +222,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: us-east-1
       AWS_ENDPOINT_URL: http://localhost:4566
-      AWS_S3_BUCKET_NAME: fuel-streams-test
+      AWS_S3_BUCKET_NAME: fuel-streams-local
     strategy:
       fail-fast: false
       matrix:
