@@ -1,6 +1,6 @@
 [package]
 name = "fuel-streams-examples"
-version = "0.0.14"
+version = "0.0.15"
 publish = false
 edition = "2021"
 

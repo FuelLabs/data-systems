@@ -1,3 +1,9 @@
+## 0.0.15 (2024-12-27)
+
+### 🐛 Fixes
+
+- Use JWT on query string instead of header (#367)
+
 ## 0.0.14 (2024-12-27)
 
 ### 🚀 Features
