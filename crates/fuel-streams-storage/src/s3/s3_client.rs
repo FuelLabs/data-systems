@@ -4,6 +4,7 @@ use aws_sdk_s3::Client;
 
 use super::s3_client_opts::S3StorageOpts;
 use crate::{
+    retry::{with_retry, RetryConfig},
     storage::{Storage, StorageError},
     StorageConfig,
 };
@@ -12,6 +13,7 @@ use crate::{
 pub struct S3Storage {
     client: Client,
     config: S3StorageOpts,
+    retry_config: RetryConfig,
 }
 
 #[async_trait]
@@ -32,7 +34,11 @@ impl Storage for S3Storage {
             .build();
 
         let client = aws_sdk_s3::Client::from_conf(s3_config);
-        Ok(Self { client, config })
+        Ok(Self {
+            client,
+            config,
+            retry_config: RetryConfig::default(),
+        })
     }
 
     async fn store(
@@ -40,45 +46,59 @@ impl Storage for S3Storage {
         key: &str,
         data: Vec<u8>,
     ) -> Result<(), StorageError> {
-        #[allow(clippy::identity_op)]
-        const LARGE_FILE_THRESHOLD: usize = 1 * 1024 * 1024; // 1MB
-        if data.len() >= LARGE_FILE_THRESHOLD {
-            tracing::debug!("Uploading file to S3 using multipart_upload");
-            self.upload_multipart(key, data).await
-        } else {
-            tracing::debug!("Uploading file to S3 using put_object");
-            self.put_object(key, data).await
-        }
+        with_retry(&self.retry_config, "store", || {
+            let data = data.clone();
+            async move {
+                #[allow(clippy::identity_op)]
+                const LARGE_FILE_THRESHOLD: usize = 1 * 1024 * 1024; // 1MB
+                if data.len() >= LARGE_FILE_THRESHOLD {
+                    tracing::debug!(
+                        "Uploading file to S3 using multipart_upload"
+                    );
+                    self.upload_multipart(key, data).await
+                } else {
+                    tracing::debug!("Uploading file to S3 using put_object");
+                    self.put_object(key, data).await
+                }
+            }
+        })
+        .await
     }
 
     async fn retrieve(&self, key: &str) -> Result<Vec<u8>, StorageError> {
-        let result = self
-            .client
-            .get_object()
-            .bucket(self.config.bucket())
-            .key(key)
-            .send()
-            .await
-            .map_err(|e| StorageError::RetrieveError(e.to_string()))?;
+        with_retry(&self.retry_config, "retrieve", || async {
+            let result = self
+                .client
+                .get_object()
+                .bucket(self.config.bucket())
+                .key(key)
+                .send()
+                .await
+                .map_err(|e| StorageError::RetrieveError(e.to_string()))?;
 
-        Ok(result
-            .body
-            .collect()
-            .await
-            .map_err(|e| StorageError::RetrieveError(e.to_string()))?
-            .into_bytes()
-            .to_vec())
+            Ok(result
+                .body
+                .collect()
+                .await
+                .map_err(|e| StorageError::RetrieveError(e.to_string()))?
+                .into_bytes()
+                .to_vec())
+        })
+        .await
     }
 
     async fn delete(&self, key: &str) -> Result<(), StorageError> {
-        self.client
-            .delete_object()
-            .bucket(self.config.bucket())
-            .key(key)
-            .send()
-            .await
-            .map_err(|e| StorageError::DeleteError(e.to_string()))?;
-        Ok(())
+        with_retry(&self.retry_config, "delete", || async {
+            self.client
+                .delete_object()
+                .bucket(self.config.bucket())
+                .key(key)
+                .send()
+                .await
+                .map_err(|e| StorageError::DeleteError(e.to_string()))?;
+            Ok(())
+        })
+        .await
     }
 }
 
@@ -244,7 +264,11 @@ impl S3Storage {
         let client = aws_sdk_s3::Client::from_conf(s3_config);
 
         // Ensure bucket exists before running tests
-        let storage = Self { client, config };
+        let storage = Self {
+            client,
+            config,
+            retry_config: RetryConfig::default(),
+        };
         storage.ensure_bucket().await?;
         Ok(storage)
     }
@@ -265,6 +289,11 @@ impl S3Storage {
             self.create_bucket().await?;
         }
         Ok(())
+    }
+
+    pub fn with_retry_config(mut self, config: RetryConfig) -> Self {
+        self.retry_config = config;
+        self
     }
 }
 
