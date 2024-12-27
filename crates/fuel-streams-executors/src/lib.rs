@@ -7,7 +7,6 @@ pub mod transactions;
 pub mod utxos;
 
 use std::{
-    env,
     marker::PhantomData,
     sync::{Arc, LazyLock},
 };
@@ -21,7 +20,7 @@ use tokio::task::JoinHandle;
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
-    env::var("PUBLISHER_MAX_THREADS")
+    dotenvy::var("PUBLISHER_MAX_THREADS")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(available_cpus)

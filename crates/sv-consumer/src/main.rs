@@ -132,7 +132,7 @@ async fn setup_nats(
 
 pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
-    env::var("CONSUMER_MAX_THREADS")
+    dotenvy::var("CONSUMER_MAX_THREADS")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(available_cpus)

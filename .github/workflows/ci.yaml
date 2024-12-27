@@ -247,16 +247,16 @@ jobs:
           tool: cargo-nextest
           locked: true
 
-      - name: Start Nats
+      - name: Start Docker
         run: |
-          make start-nats
+          make start-docker
 
       - name: Run tests
         run: make test PACKAGE=${{ matrix.package }} PROFILE=ci
 
-      - name: Stop Nats
+      - name: Stop Docker
         if: always()
-        run: make stop-nats
+        run: make stop-docker
 
   build:
     needs: install-deps

@@ -1,6 +1,13 @@
-use std::{future::Future, time::Duration};
+use std::{future::Future, sync::LazyLock, time::Duration};
 
 use tracing;
+
+pub static STORAGE_MAX_RETRIES: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("STORAGE_MAX_RETRIES")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(5)
+});
 
 #[derive(Debug, Clone)]
 pub struct RetryConfig {
@@ -11,7 +18,7 @@ pub struct RetryConfig {
 impl Default for RetryConfig {
     fn default() -> Self {
         Self {
-            max_retries: 3,
+            max_retries: *STORAGE_MAX_RETRIES as u32,
             initial_backoff: Duration::from_millis(100),
         }
     }

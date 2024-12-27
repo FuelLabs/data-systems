@@ -4164,6 +4164,7 @@ version = "0.0.13"
 dependencies = [
  "anyhow",
  "displaydoc",
+ "dotenvy",
  "fuel-core",
  "fuel-data-parser",
  "fuel-streams-core",
