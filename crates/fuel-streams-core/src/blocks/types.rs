@@ -2,6 +2,7 @@ use crate::types::*;
 
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Block {
     pub consensus: Consensus,
     pub header: BlockHeader,
@@ -61,12 +62,14 @@ impl std::fmt::Display for BlockHeight {
 
 // Consensus enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Consensus {
     Genesis(Genesis),
     PoAConsensus(PoAConsensus),
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Genesis {
     pub chain_config_hash: Bytes32,
     pub coins_root: Bytes32,
@@ -126,12 +129,14 @@ impl From<FuelCoreConsensus> for Consensus {
 
 // BlockVersion enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockVersion {
     V1,
 }
 
 // Header type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockHeader {
     pub application_hash: Bytes32,
     pub consensus_parameters_version: u32,
@@ -177,6 +182,7 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 
 // BlockHeaderVersion enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockHeaderVersion {
     V1,
 }

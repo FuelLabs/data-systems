@@ -21,6 +21,14 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn test_block_encode() {
+        let block = MockBlock::build(42);
+        let encoded = block.encode().await.unwrap();
+        let decoded = Block::decode(&encoded).await.unwrap();
+        assert_eq!(decoded, block, "Decoded block should match original");
+    }
+
+    #[tokio::test]
     async fn test_serialization() {
         let header = BlockHeader {
             application_hash: [0u8; 32].into(),

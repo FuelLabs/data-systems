@@ -14,7 +14,7 @@ pub struct LongBytes(pub Vec<u8>);
 
 impl LongBytes {
     pub fn zeroed() -> Self {
-        Self(vec![])
+        Self(vec![0; 32])
     }
 }
 impl AsRef<[u8]> for LongBytes {
@@ -27,14 +27,14 @@ impl AsMut<[u8]> for LongBytes {
         &mut self.0
     }
 }
-impl std::fmt::Display for LongBytes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "0x{}", hex::encode(&self.0))
-    }
-}
 impl From<Vec<u8>> for LongBytes {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
+    }
+}
+impl std::fmt::Display for LongBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
     }
 }
 impl From<&[u8]> for LongBytes {
@@ -43,39 +43,7 @@ impl From<&[u8]> for LongBytes {
     }
 }
 
-/// Macro to generate a wrapper type for different byte-based types (including Address type).
-///
-/// This macro creates a new struct that wraps the specified inner type,
-/// typically used for various byte-based identifiers in the Fuel ecosystem.
-/// It automatically implements:
-///
-/// - `From<inner_type>` for easy conversion from the inner type
-/// - `Display` for formatting (prefixes the output with "0x")
-/// - `PartialEq` for equality comparison
-/// - A `zeroed()` method to create an instance filled with zeros
-///
-/// # Usage
-///
-/// ```no_compile
-/// # use fuel_streams_core::generate_byte_type_wrapper;
-/// generate_byte_type_wrapper!(AddressWrapped, fuel_core_types::fuel_tx::Address);
-/// ```
-///
-/// Where `WrapperType` is the name of the new wrapper struct to be created,
-/// and `InnerType` is the type being wrapped.
-macro_rules! generate_byte_type_wrapper {
-    // Pattern with byte_size specified
-    ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
-        generate_byte_type_wrapper!($wrapper_type, $inner_type);
-
-        impl From<[u8; $byte_size]> for $wrapper_type {
-            fn from(value: [u8; $byte_size]) -> Self {
-                $wrapper_type(<$inner_type>::from(value))
-            }
-        }
-    };
-
-    // Pattern without byte_size
+macro_rules! common_wrapper_type {
     ($wrapper_type:ident, $inner_type:ty) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $wrapper_type(pub $inner_type);
@@ -133,38 +101,6 @@ macro_rules! generate_byte_type_wrapper {
             }
         }
 
-        impl std::str::FromStr for $wrapper_type {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let s = s.strip_prefix("0x").unwrap_or(s);
-                let expected_len = std::mem::size_of::<$inner_type>() * 2;
-                if s.len() != expected_len {
-                    return Err(format!(
-                        "Invalid length for {}: expected {} characters, got {}",
-                        stringify!($wrapper_type),
-                        expected_len,
-                        s.len()
-                    ));
-                }
-
-                let mut inner = <$inner_type>::zeroed();
-                let bytes = hex::decode(s)
-                    .map_err(|e| format!("Failed to decode hex string: {}", e))?;
-
-                if bytes.len() != std::mem::size_of::<$inner_type>() {
-                    return Err(format!(
-                        "Invalid decoded length for {}: expected {} bytes, got {}",
-                        stringify!($wrapper_type),
-                        std::mem::size_of::<$inner_type>(),
-                        bytes.len()
-                    ));
-                }
-
-                inner.as_mut().copy_from_slice(&bytes);
-                Ok($wrapper_type(inner))
-            }
-        }
-
         impl From<&str> for $wrapper_type {
             fn from(s: &str) -> Self {
                 s.parse().unwrap_or_else(|e| {
@@ -202,6 +138,61 @@ macro_rules! generate_byte_type_wrapper {
         impl Default for $wrapper_type {
             fn default() -> Self {
                 $wrapper_type(<$inner_type>::zeroed())
+            }
+        }
+    };
+}
+
+macro_rules! generate_byte_type_wrapper {
+    // Pattern with byte_size specified
+    ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
+        common_wrapper_type!($wrapper_type, $inner_type);
+
+        impl From<[u8; $byte_size]> for $wrapper_type {
+            fn from(value: [u8; $byte_size]) -> Self {
+                $wrapper_type(<$inner_type>::from(value))
+            }
+        }
+
+        impl std::str::FromStr for $wrapper_type {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let s = s.strip_prefix("0x").unwrap_or(s);
+                if s.len() != std::mem::size_of::<$inner_type>() * 2 {
+                    return Err(format!(
+                        "Invalid length for {}, expected {} characters",
+                        stringify!($wrapper_type),
+                        std::mem::size_of::<$inner_type>() * 2
+                    ));
+                }
+                let bytes = hex::decode(s).map_err(|e| {
+                    format!("Failed to decode hex string: {}", e)
+                })?;
+                let array: [u8; $byte_size] = bytes
+                    .try_into()
+                    .map_err(|_| "Invalid byte length".to_string())?;
+                Ok($wrapper_type(<$inner_type>::from(array)))
+            }
+        }
+    };
+
+    ($wrapper_type:ident, $inner_type:ty) => {
+        common_wrapper_type!($wrapper_type, $inner_type);
+
+        impl From<Vec<u8>> for $wrapper_type {
+            fn from(value: Vec<u8>) -> Self {
+                $wrapper_type(<$inner_type>::from(value))
+            }
+        }
+        impl std::str::FromStr for $wrapper_type {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let s = s.strip_prefix("0x").unwrap_or(s);
+                let bytes = hex::decode(s).map_err(|e| {
+                    format!("Failed to decode hex string: {}", e)
+                })?;
+                Ok($wrapper_type(bytes.into()))
             }
         }
     };

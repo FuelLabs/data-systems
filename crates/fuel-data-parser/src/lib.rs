@@ -97,12 +97,16 @@ pub trait DataEncoder:
 /// # Examples
 ///
 /// ```
-/// use fuel_data_parser::{DataParser, SerializationType};
+/// use fuel_data_parser::*;
 /// use std::sync::Arc;
 ///
 /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 /// struct TestData {
 ///     field: String,
+/// }
+///
+/// impl DataEncoder for TestData {
+///     type Err = DataParserError;
 /// }
 ///
 /// #[tokio::main]
@@ -125,7 +129,7 @@ pub struct DataParser {
 
 impl Default for DataParser {
     /// Provides a default instance of `DataParser` with no compression strategy
-    /// and `SerializationType::Postcard`.
+    /// and `SerializationType::Json`.
     ///
     /// # Examples
     ///
@@ -133,12 +137,12 @@ impl Default for DataParser {
     /// use fuel_data_parser::{DataParser, SerializationType};
     ///
     /// let parser = DataParser::default();
-    /// assert!(matches!(parser.serialization_type, SerializationType::Postcard));
+    /// assert!(matches!(parser.serialization_type, SerializationType::Json));
     /// ```
     fn default() -> Self {
         Self {
             compression_strategy: Some(DEFAULT_COMPRESSION_STRATEGY.clone()),
-            serialization_type: SerializationType::Postcard,
+            serialization_type: SerializationType::Json,
         }
     }
 }
@@ -157,7 +161,7 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::{DataParser, DEFAULT_COMPRESSION_STRATEGY};
+    /// use fuel_data_parser::*;
     /// use std::sync::Arc;
     ///
     /// let parser = DataParser::default()
@@ -184,7 +188,7 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::{DataParser, SerializationType};
+    /// use fuel_data_parser::*;
     ///
     /// let parser = DataParser::default()
     ///     .with_serialization_type(SerializationType::Postcard);
@@ -211,11 +215,15 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::DataParser;
+    /// use fuel_data_parser::*;
     ///
     /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     /// struct TestData {
     ///     field: String,
+    /// }
+    ///
+    /// impl DataEncoder for TestData {
+    ///     type Err = DataParserError;
     /// }
     ///
     /// #[tokio::main]
@@ -313,11 +321,15 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::DataParser;
+    /// use fuel_data_parser::*;
     ///
     /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     /// struct TestData {
     ///     field: String,
+    /// }
+    ///
+    /// impl DataEncoder for TestData {
+    ///     type Err = DataParserError;
     /// }
     ///
     /// #[tokio::main]
@@ -368,7 +380,7 @@ impl DataParser {
     ///
     /// A `Result` containing either the deserialized data structure,
     /// or an `Error` if deserialization fails.
-    pub fn deserialize<'a, T: serde::Deserialize<'a>>(
+    pub fn deserialize<'a, T: DeserializeOwned>(
         &self,
         raw_data: &'a [u8],
     ) -> Result<T, DataParserError> {
@@ -385,7 +397,7 @@ impl DataParser {
     }
 
     #[cfg(feature = "json")]
-    fn deserialize_json<'a, T: serde::Deserialize<'a>>(
+    fn deserialize_json<'a, T: DeserializeOwned>(
         &self,
         raw_data: &'a [u8],
     ) -> Result<T, DataParserError> {
@@ -454,17 +466,10 @@ mod tests {
         let data = TestData {
             field: "test".to_string(),
         };
-        let compression_strategies: Vec<Arc<dyn CompressionStrategy>> = vec![
-            Arc::new(ZLibCompressionStrategy),
-            #[cfg(feature = "bench-helpers")]
-            Arc::new(GzipCompressionStrategy),
-            #[cfg(feature = "bench-helpers")]
-            Arc::new(BrotliCompressionStrategy),
-        ];
 
-        for strategy in compression_strategies {
+        for strategy in ALL_COMPRESSION_STRATEGIES.iter() {
             let parser =
-                DataParser::default().with_compression_strategy(&strategy);
+                DataParser::default().with_compression_strategy(strategy);
             let encoded = parser.encode(&data).await.unwrap();
             let decoded: TestData = parser.decode(&encoded).await.unwrap();
             assert_eq!(data, decoded);

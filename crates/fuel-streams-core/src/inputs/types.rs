@@ -4,6 +4,7 @@ use crate::types::*;
 
 // Input enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Input {
     Contract(InputContract),
     Coin(InputCoin),
@@ -124,6 +125,7 @@ impl Default for Input {
 
 // InputCoin type
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InputCoin {
     pub amount: u64,
     pub asset_id: AssetId,
@@ -138,6 +140,7 @@ pub struct InputCoin {
 
 // InputContract type
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
@@ -160,6 +163,7 @@ impl From<&FuelCoreInputContract> for InputContract {
 
 // InputMessage type
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InputMessage {
     pub amount: u64,
     pub data: HexData,

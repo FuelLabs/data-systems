@@ -31,7 +31,7 @@ impl<T: Streamable> PublishPacket<T> {
 
     pub fn get_s3_path(&self) -> String {
         let subject = self.subject.parse();
-        format!("{}.bin", subject.replace('.', "/"))
+        format!("{}.json.zstd", subject.replace('.', "/"))
     }
 }
 
@@ -45,13 +45,16 @@ impl<T: DataEncoder<Err = StreamError>> StreamEncoder for T {}
 /// ```no_run
 /// use async_trait::async_trait;
 /// use fuel_streams_core::prelude::*;
+/// use fuel_data_parser::*;
 ///
 /// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 /// struct MyStreamable {
 ///     data: String,
 /// }
 ///
-/// impl StreamEncoder for MyStreamable {}
+/// impl DataEncoder for MyStreamable {
+///     type Err = StreamError;
+/// }
 ///
 /// #[async_trait]
 /// impl Streamable for MyStreamable {
@@ -77,6 +80,7 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 /// use std::sync::Arc;
 /// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::IntoSubject;
+/// use fuel_data_parser::*;
 /// use futures::StreamExt;
 ///
 /// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -84,7 +88,9 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 ///     data: String,
 /// }
 ///
-/// impl StreamEncoder for MyStreamable {}
+/// impl DataEncoder for MyStreamable {
+///     type Err = StreamError;
+/// }
 ///
 /// #[async_trait::async_trait]
 /// impl Streamable for MyStreamable {

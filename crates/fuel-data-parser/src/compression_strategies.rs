@@ -111,68 +111,70 @@ macro_rules! define_compression_strategy {
     };
 }
 
+#[cfg(feature = "zlib")]
 #[derive(Clone)]
-pub struct ZLibCompressionStrategy;
+pub struct ZlibCompressionStrategy;
+#[cfg(feature = "zlib")]
 define_compression_strategy!(
-    ZLibCompressionStrategy,
+    ZlibCompressionStrategy,
     Zlib,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "gzip")]
 #[derive(Clone)]
 pub struct GzipCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "gzip")]
 define_compression_strategy!(
     GzipCompressionStrategy,
     Gzip,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "brotli")]
 #[derive(Clone)]
 pub struct BrotliCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "brotli")]
 define_compression_strategy!(
     BrotliCompressionStrategy,
     Brotli,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "bzip2")]
 #[derive(Clone)]
 pub struct BzCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "bzip2")]
 define_compression_strategy!(
     BzCompressionStrategy,
     Bz,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "lzma")]
 #[derive(Clone)]
 pub struct LzmaCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "lzma")]
 define_compression_strategy!(
     LzmaCompressionStrategy,
     Lzma,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "deflate")]
 #[derive(Clone)]
 pub struct DeflateCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "deflate")]
 define_compression_strategy!(
     DeflateCompressionStrategy,
     Deflate,
     CompressionLevel::Fastest
 );
 
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "zstd")]
 #[derive(Clone)]
 pub struct ZstdCompressionStrategy;
-#[cfg(feature = "bench-helpers")]
+#[cfg(feature = "zstd")]
 define_compression_strategy!(
     ZstdCompressionStrategy,
     Zstd,
@@ -182,19 +184,24 @@ define_compression_strategy!(
 use std::sync::Arc;
 
 lazy_static::lazy_static! {
-    pub static ref DEFAULT_COMPRESSION_STRATEGY: Arc<dyn CompressionStrategy> =  Arc::new(ZLibCompressionStrategy);
+    pub static ref DEFAULT_COMPRESSION_STRATEGY: Arc<dyn CompressionStrategy> = Arc::new(ZstdCompressionStrategy);
 }
 
-#[cfg(feature = "bench-helpers")]
 lazy_static::lazy_static! {
-    pub static ref ALL_COMPRESSION_STRATEGIES: [Arc<dyn CompressionStrategy>; 7] = [
-        Arc::new(ZLibCompressionStrategy),
+    pub static ref ALL_COMPRESSION_STRATEGIES: Vec<Arc<dyn CompressionStrategy>> = vec![
+        #[cfg(feature = "zlib")]
+        Arc::new(ZlibCompressionStrategy),
+        #[cfg(feature = "gzip")]
         Arc::new(GzipCompressionStrategy),
+        #[cfg(feature = "brotli")]
         Arc::new(BrotliCompressionStrategy),
+        #[cfg(feature = "bzip2")]
         Arc::new(BzCompressionStrategy),
+        #[cfg(feature = "lzma")]
         Arc::new(LzmaCompressionStrategy),
+        #[cfg(feature = "deflate")]
         Arc::new(DeflateCompressionStrategy),
+        #[cfg(feature = "zstd")]
         Arc::new(ZstdCompressionStrategy),
     ];
-
 }

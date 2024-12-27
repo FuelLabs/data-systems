@@ -42,12 +42,16 @@ The `DataParser` struct provides functionality for encoding and decoding data th
 This library is intended for internal use within the Fuel Data Systems project. This is an example of usage outside of this crate within the project:
 
 ```rust
-use fuel_data_parser::{DataParser, SerializationType, DataParseable};
+use fuel_data_parser::{DataEncoder, DataParser, SerializationType, DataParserError};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct YourDataType {
     // Your data fields here
+}
+
+impl DataEncoder for YourDataType {
+    type Err = DataParserError;
 }
 
 async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {

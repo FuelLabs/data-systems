@@ -26,7 +26,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 
 [features]
-default = ["postcard", "zlib"]
+default = ["json", "zstd"]
 all = ["bincode", "postcard", "json", "zlib", "gzip", "brotli", "bzip2", "lzma", "deflate", "zstd"]
 
 # Serialization formats
