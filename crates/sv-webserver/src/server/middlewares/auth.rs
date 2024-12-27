@@ -74,7 +74,6 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let jwt_secret = self.jwt_secret.clone();
-        let headers = req.headers().clone();
         let query_map: HashMap<String, String> = req
             .query_string()
             .split('&')
@@ -92,6 +91,7 @@ where
             .collect();
 
         // Validate the JWT
+        let headers = req.headers().clone();
         match authorize_request((jwt_secret, headers, query_map)) {
             Ok((user_id, _jwt)) => {
                 req.extensions_mut().insert(user_id);

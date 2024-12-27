@@ -46,7 +46,7 @@ spec:
 
           ports:
             - name: webserver
-              containerPort: {{ $service.port }}
+              containerPort: {{ $webserver.port }}
               protocol: TCP
 
           {{- include "set-field-and-value" (dict "context" $webserver "field" "resources" "path" "config.resources") | nindent 10 }}
@@ -68,7 +68,7 @@ spec:
             - name: NETWORK
               value: {{ $webserver.network | quote }}
             - name: PORT
-              value: {{ $service.port | quote }}
+              value: {{ $webserver.port | quote }}
             {{- with $webserver.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

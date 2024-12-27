@@ -280,30 +280,41 @@ pub fn create_jwt(
         .map_err(|_| AuthError::JWTTokenCreationError)
 }
 
-fn jwt_from_header(headers: &HeaderMap) -> Result<String, AuthError> {
-    let header = match headers.get(AUTHORIZATION) {
-        Some(v) => v,
-        None => return Err(AuthError::NoAuthHeaderError),
+fn jwt_from_query_string(headers: &HeaderMap) -> Result<String, AuthError> {
+    let token = headers
+        .get(AUTHORIZATION)
+        .ok_or(AuthError::NoAuthHeaderError)?;
+
+    let token = match token.to_str() {
+        Ok(token) => token,
+        Err(_) => return Err(AuthError::InvalidAuthHeaderError),
     };
-    let auth_header = match std::str::from_utf8(header.as_bytes()) {
-        Ok(v) => v,
-        Err(_) => return Err(AuthError::NoAuthHeaderError),
-    };
-    if !auth_header.starts_with(BEARER) {
+
+    if !token.starts_with(BEARER) {
         return Err(AuthError::InvalidAuthHeaderError);
     }
-    let decoded_jwt =
-        urlencoding::decode(auth_header.trim_start_matches(BEARER))
-            .unwrap()
-            .trim()
-            .to_string();
-    Ok(decoded_jwt)
+
+    urlencoding::decode(token.trim_start_matches(BEARER))
+        .map_err(|_| AuthError::NoAuthHeaderError)
+        .map(|decoded| decoded.trim().to_string())
 }
 
-fn authorize(
-    (jwt_secret, headers): (String, actix_web::http::header::HeaderMap),
+pub fn authorize_request(
+    (jwt_secret, mut headers, query_map): (
+        String,
+        actix_web::http::header::HeaderMap,
+        HashMap<String, String>,
+    ),
 ) -> Result<(Uuid, String), AuthError> {
-    match jwt_from_header(&headers) {
+    for (key, value) in query_map.iter() {
+        if key.eq_ignore_ascii_case("token") {
+            let token = format!("Bearer {}", value);
+            headers
+                .insert(AUTHORIZATION, HeaderValue::from_str(&token).unwrap());
+        }
+    }
+
+    match jwt_from_query_string(&headers) {
         Ok(jwt) => {
             let decoded = decode::<Claims>(
                 &jwt,
@@ -317,15 +328,14 @@ fn authorize(
                 Uuid::parse_str(&decoded.claims.sub).map_err(|_| {
                     AuthError::UnparsableUuid(decoded.claims.sub.to_string())
                 })?;
+
             // check token expiration
             let now = Utc::now().timestamp();
-
             if (decoded.claims.exp as i64).lt(&now) {
                 return Err(AuthError::ExpiredToken);
             }
 
             // TODO: check for user in the db by user_id
-
             // get the user's role
             let _token_role = UserRole::try_from(decoded.claims.role.as_str())
                 .map_err(|_| {
@@ -337,21 +347,4 @@ fn authorize(
         }
         Err(e) => Err(e),
     }
-}
-
-pub fn authorize_request(
-    (jwt_secret, mut headers, query_map): (
-        String,
-        actix_web::http::header::HeaderMap,
-        HashMap<String, String>,
-    ),
-) -> Result<(Uuid, String), AuthError> {
-    // move all query values to the headers
-    for (key, value) in query_map.iter() {
-        if AUTHORIZATION.as_str().eq_ignore_ascii_case(key) {
-            headers
-                .insert(AUTHORIZATION, HeaderValue::from_str(value).unwrap());
-        }
-    }
-    authorize((jwt_secret, headers))
 }

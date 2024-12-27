@@ -228,6 +228,7 @@ consumer:
 webserver:
   enabled: false
   network: mainnet
+  port: 9003
 
   image:
     repository: ghcr.io/fuellabs/sv-webserver
@@ -236,8 +237,8 @@ webserver:
 
   service:
     enabled: true
+    port: 8080
     type: LoadBalancer
-    port: 9003
     dns: "stream-staging.fuel.network"
     annotations: {}
     labels: {}
