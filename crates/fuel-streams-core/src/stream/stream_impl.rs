@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::sync::Arc;
 
 use async_nats::{
     jetstream::{
@@ -31,9 +31,12 @@ impl<T: Streamable> PublishPacket<T> {
 
     pub fn get_s3_path(&self) -> String {
         let subject = self.subject.parse();
-        subject.replace('.', "/").to_string()
+        format!("{}.json.zstd", subject.replace('.', "/"))
     }
 }
+
+pub trait StreamEncoder: DataEncoder<Err = StreamError> {}
+impl<T: DataEncoder<Err = StreamError>> StreamEncoder for T {}
 
 /// Trait for types that can be streamed.
 ///
@@ -42,13 +45,16 @@ impl<T: Streamable> PublishPacket<T> {
 /// ```no_run
 /// use async_trait::async_trait;
 /// use fuel_streams_core::prelude::*;
+/// use fuel_data_parser::*;
 ///
 /// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 /// struct MyStreamable {
 ///     data: String,
 /// }
 ///
-/// impl StreamEncoder for MyStreamable {}
+/// impl DataEncoder for MyStreamable {
+///     type Err = StreamError;
+/// }
 ///
 /// #[async_trait]
 /// impl Streamable for MyStreamable {
@@ -74,6 +80,7 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 /// use std::sync::Arc;
 /// use fuel_streams_core::prelude::*;
 /// use fuel_streams_macros::subject::IntoSubject;
+/// use fuel_data_parser::*;
 /// use futures::StreamExt;
 ///
 /// #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -81,7 +88,9 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 ///     data: String,
 /// }
 ///
-/// impl StreamEncoder for MyStreamable {}
+/// impl DataEncoder for MyStreamable {
+///     type Err = StreamError;
+/// }
 ///
 /// #[async_trait::async_trait]
 /// impl Streamable for MyStreamable {
@@ -89,8 +98,8 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 ///     const WILDCARD_LIST: &'static [&'static str] = &["*"];
 /// }
 ///
-/// async fn example(nats_client: &NatsClient, s3_client: &Arc<S3Client>) {
-///     let stream = Stream::<MyStreamable>::new(nats_client, s3_client).await;
+/// async fn example(nats_client: &NatsClient, storage: &Arc<S3Storage>) {
+///     let stream = Stream::<MyStreamable>::new(nats_client, storage).await;
 ///
 ///     // Publish
 ///     let subject = BlocksSubject::new().with_height(Some(23.into())).arc();
@@ -110,7 +119,7 @@ pub trait Streamable: StreamEncoder + std::marker::Sized {
 #[derive(Debug, Clone)]
 pub struct Stream<S: Streamable> {
     store: Arc<kv::Store>,
-    s3_client: Arc<S3Client>,
+    storage: Arc<S3Storage>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -120,11 +129,11 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn get_or_init(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
         let cell = Self::INSTANCE;
         cell.get_or_init(|| async {
-            Self::new(nats_client, s3_client).await.to_owned()
+            Self::new(nats_client, storage).await.to_owned()
         })
         .await
         .to_owned()
@@ -132,7 +141,7 @@ impl<S: Streamable> Stream<S> {
 
     pub async fn new(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
         let namespace = &nats_client.namespace;
         let bucket_name = namespace.stream_name(S::NAME);
@@ -140,7 +149,6 @@ impl<S: Streamable> Stream<S> {
             bucket: bucket_name.to_owned(),
             storage: stream::StorageType::File,
             history: 1,
-            compression: true,
             ..Default::default()
         };
 
@@ -151,7 +159,7 @@ impl<S: Streamable> Stream<S> {
 
         Self {
             store: Arc::new(store),
-            s3_client: Arc::clone(s3_client),
+            storage: Arc::clone(storage),
             _marker: std::marker::PhantomData,
         }
     }
@@ -163,11 +171,8 @@ impl<S: Streamable> Stream<S> {
         let payload = &packet.payload;
         let s3_path = packet.get_s3_path();
         let subject_name = &packet.subject.parse();
-
-        self.s3_client
-            .put_object(&s3_path, payload.encode(subject_name))
-            .await?;
-
+        let encoded = payload.encode().await?;
+        self.storage.store(&s3_path, encoded).await?;
         self.publish_s3_path_to_nats(subject_name, &s3_path).await
     }
 
@@ -212,7 +217,6 @@ impl<S: Streamable> Stream<S> {
         self.store.stream_name.as_str()
     }
 
-    // Less performant due to our hybrid use of NATS and S3
     pub async fn subscribe_raw(
         &self,
         subscription_config: Option<SubscriptionConfig>,
@@ -220,25 +224,19 @@ impl<S: Streamable> Stream<S> {
         let config = self.get_consumer_config(subscription_config);
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
+        let messages = consumer.messages().await?;
+        let storage = Arc::clone(&self.storage);
 
-        Ok(consumer
-            .messages()
-            .await?
-            .then(|message| {
-                let s3_client = Arc::clone(&self.s3_client);
-
+        Ok(messages
+            .then(move |message| {
+                let nats_payload =
+                    message.expect("Message must be valid").payload.to_vec();
+                let storage = storage.clone();
                 async move {
-                    let nats_payload = message
-                        .expect("Message must be valid")
-                        .payload
-                        .to_vec();
-
-                    // TODO: Bubble up the error to users
                     let s3_path = String::from_utf8(nats_payload)
                         .expect("Must be S3 path");
-
-                    s3_client
-                        .get_object(&s3_path)
+                    storage
+                        .retrieve(&s3_path)
                         .await
                         .expect("S3 object must exist")
                 }
@@ -250,31 +248,10 @@ impl<S: Streamable> Stream<S> {
         &self,
         subscription_config: Option<SubscriptionConfig>,
     ) -> Result<BoxStream<'_, S>, StreamError> {
-        let config = self.get_consumer_config(subscription_config);
-        let config = self.prefix_filter_subjects(config);
-        let consumer = self.store.stream.create_consumer(config).await?;
-
-        Ok(consumer
-            .messages()
-            .await?
-            .map(|item| {
-                String::from_utf8(
-                    item.expect("Message must be valid").payload.to_vec(),
-                )
-                .expect("Must be S3 path")
-            })
-            .then(|s3_path| {
-                let s3_client = Arc::clone(&self.s3_client);
-
-                async move {
-                    // TODO: Bubble up the error?
-                    S::decode_or_panic(
-                        s3_client
-                            .get_object(&s3_path)
-                            .await
-                            .expect("Could not get S3 object"),
-                    )
-                }
+        let raw_stream = self.subscribe_raw(subscription_config).await?;
+        Ok(raw_stream
+            .then(|s3_data| async move {
+                S::decode(&s3_data).await.expect("Failed to decode")
             })
             .boxed())
     }
@@ -386,12 +363,11 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<S, StreamError> {
         let s3_path = String::from_utf8(nats_payload).expect("Must be S3 path");
         let s3_object = self
-            .s3_client
-            .get_object(&s3_path)
+            .storage
+            .retrieve(&s3_path)
             .await
             .expect("S3 object must exist");
-
-        Ok(S::decode_or_panic(s3_object))
+        Ok(S::decode(&s3_object).await.expect("Failed to decode"))
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -451,4 +427,87 @@ impl<S: Streamable> Stream<S> {
 pub struct SubscriptionConfig {
     pub filter_subjects: Vec<String>,
     pub deliver_policy: NatsDeliverPolicy,
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+mod tests {
+    use serde::{Deserialize, Serialize};
+
+    use super::*;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    struct TestStreamable {
+        data: String,
+    }
+
+    impl DataEncoder for TestStreamable {
+        type Err = StreamError;
+    }
+
+    #[async_trait]
+    impl Streamable for TestStreamable {
+        const NAME: &'static str = "test_streamable";
+        const WILDCARD_LIST: &'static [&'static str] = &["*"];
+    }
+
+    #[tokio::test]
+    async fn test_stream_item_s3_encoding_flow() {
+        let (stream, _, test_data, subject) = setup_test().await;
+        let packet = test_data.to_packet(subject);
+
+        // Publish (this will encode and store in S3)
+        stream.publish(&packet).await.unwrap();
+
+        // Get the S3 path that was used
+        let s3_path = packet.get_s3_path();
+
+        // Retrieve directly from S3 and verify encoding
+        let raw_s3_data = stream.storage.retrieve(&s3_path).await.unwrap();
+        let decoded = TestStreamable::decode(&raw_s3_data).await.unwrap();
+        assert_eq!(decoded, test_data, "Retrieved data should match original");
+    }
+
+    #[tokio::test]
+    async fn test_stream_item_json_encoding_flow() {
+        use fuel_data_parser::DataParser;
+        let (_, _, test_data, _) = setup_test().await;
+        let encoded = test_data.encode().await.unwrap();
+        let decoded = TestStreamable::decode(&encoded).await.unwrap();
+        assert_eq!(decoded, test_data, "Decoded data should match original");
+
+        let json = DataParser::default().encode_json(&test_data).unwrap();
+        let json_str = String::from_utf8(json).unwrap();
+        let expected_json = r#"{"data":"test content"}"#;
+        assert_eq!(
+            json_str, expected_json,
+            "JSON structure should exactly match expected format"
+        );
+    }
+
+    #[cfg(test)]
+    async fn setup_test() -> (
+        Stream<TestStreamable>,
+        Arc<S3Storage>,
+        TestStreamable,
+        Arc<dyn IntoSubject>,
+    ) {
+        let storage = S3Storage::new_for_testing().await.unwrap();
+        let nats_client_opts =
+            NatsClientOpts::admin_opts().with_rdn_namespace();
+        let nats_client = NatsClient::connect(&nats_client_opts).await.unwrap();
+        let stream = Stream::<TestStreamable>::new(
+            &nats_client,
+            &Arc::new(storage.clone()),
+        )
+        .await;
+        let test_data = TestStreamable {
+            data: "test content".to_string(),
+        };
+        let subject = Arc::new(
+            BlocksSubject::new()
+                .with_producer(Some(Address::zeroed()))
+                .with_height(Some(1.into())),
+        );
+        (stream, Arc::new(storage), test_data, subject)
+    }
 }

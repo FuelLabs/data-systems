@@ -1,5 +1,4 @@
 use std::{
-    env,
     sync::{Arc, LazyLock},
     time::Duration,
 };
@@ -13,6 +12,7 @@ use async_nats::jetstream::{
     stream::{ConsumerErrorKind, RetentionPolicy},
 };
 use clap::Parser;
+use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
@@ -22,40 +22,30 @@ use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, DisplayDoc)]
 pub enum ConsumerError {
-    #[error("Failed to receive batch of messages from NATS: {0}")]
+    /// Failed to receive batch of messages from NATS: {0}
     BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
-
-    #[error("Failed to create stream: {0}")]
+    /// Failed to create stream: {0}
     CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-
-    #[error("Failed to create consumer: {0}")]
+    /// Failed to create consumer: {0}
     CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
-
-    #[error("Failed to connect to NATS client: {0}")]
+    /// Failed to connect to NATS client: {0}
     NatsClient(#[from] NatsError),
-
-    #[error("Failed to communicate with NATS server: {0}")]
+    /// Failed to communicate with NATS server: {0}
     Nats(#[from] async_nats::Error),
-
-    #[error("Failed to deserialize block payload from message: {0}")]
+    /// Failed to deserialize block payload from message: {0}
     Deserialization(#[from] serde_json::Error),
-
-    #[error("Failed to decode UTF-8: {0}")]
+    /// Failed to decode UTF-8: {0}
     Utf8(#[from] std::str::Utf8Error),
-
-    #[error("Failed to execute executor tasks: {0}")]
+    /// Failed to execute executor tasks: {0}
     Executor(#[from] ExecutorError),
-
-    #[error("Failed to join tasks: {0}")]
+    /// Failed to join tasks: {0}
     JoinTasks(#[from] tokio::task::JoinError),
-
-    #[error("Failed to acquire semaphore: {0}")]
+    /// Failed to acquire semaphore: {0}
     Semaphore(#[from] tokio::sync::AcquireError),
-
-    #[error("Failed to setup S3 client: {0}")]
-    S3(#[from] S3ClientError),
+    /// Failed to setup storage: {0}
+    Storage(#[from] fuel_streams_core::storage::StorageError),
 }
 
 #[tokio::main]
@@ -101,10 +91,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_s3() -> Result<Arc<S3Client>, ConsumerError> {
-    let s3_client_opts = S3ClientOpts::admin_opts();
-    let s3_client = S3Client::new(&s3_client_opts).await?;
-    Ok(Arc::new(s3_client))
+async fn setup_storage() -> Result<Arc<S3Storage>, ConsumerError> {
+    let storage_opts = S3StorageOpts::admin_opts();
+    let storage = S3Storage::new(storage_opts).await?;
+    Ok(Arc::new(storage))
 }
 
 async fn setup_nats(
@@ -141,7 +131,7 @@ async fn setup_nats(
 
 pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
-    env::var("CONSUMER_MAX_THREADS")
+    dotenvy::var("CONSUMER_MAX_THREADS")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(available_cpus)
@@ -152,10 +142,9 @@ async fn process_messages(
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
     let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
-    let s3_client = setup_s3().await?;
+    let storage = setup_storage().await?;
     let (_, publisher_stream) =
-        FuelStreams::setup_all(&core_client, &publisher_client, &s3_client)
-            .await;
+        FuelStreams::setup_all(&core_client, &publisher_client, &storage).await;
 
     let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
@@ -163,23 +152,41 @@ async fn process_messages(
         let mut messages =
             consumer.fetch().max_messages(100).messages().await?.fuse();
         let mut futs = FuturesUnordered::new();
+
         while let Some(msg) = messages.next().await {
             let msg = msg?;
             let fuel_streams = fuel_streams.clone();
             let semaphore = semaphore.clone();
+
+            tracing::debug!(
+                "Received message payload length: {}",
+                msg.payload.len()
+            );
+
             let future = async move {
-                let msg_str = std::str::from_utf8(&msg.payload)?;
-                let payload = Arc::new(BlockPayload::decode(msg_str)?);
-                let start_time = std::time::Instant::now();
-                let futures = Executor::<Block>::process_all(
-                    payload.clone(),
-                    &fuel_streams,
-                    &semaphore,
-                );
-                let results = try_join_all(futures).await?;
-                let end_time = std::time::Instant::now();
-                msg.ack().await?;
-                Ok::<_, ConsumerError>((results, start_time, end_time, payload))
+                match BlockPayload::decode(&msg.payload).await {
+                    Ok(payload) => {
+                        let payload = Arc::new(payload);
+                        let start_time = std::time::Instant::now();
+                        let futures = Executor::<Block>::process_all(
+                            payload.clone(),
+                            &fuel_streams,
+                            &semaphore,
+                        );
+                        let results = try_join_all(futures).await?;
+                        let end_time = std::time::Instant::now();
+                        msg.ack().await.expect("Failed to ack message");
+                        Ok((results, start_time, end_time, payload))
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to decode payload: {:?}", e);
+                        tracing::debug!(
+                            "Raw payload (hex): {:?}",
+                            hex::encode(&msg.payload)
+                        );
+                        Err(e)
+                    }
+                }
             };
             futs.push(future);
         }

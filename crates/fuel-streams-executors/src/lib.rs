@@ -7,12 +7,12 @@ pub mod transactions;
 pub mod utxos;
 
 use std::{
-    env,
     marker::PhantomData,
     sync::{Arc, LazyLock},
 };
 
-use async_nats::jetstream::context::Publish;
+use displaydoc::Display as DisplayDoc;
+use fuel_data_parser::DataParserError;
 use fuel_streams_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 
 pub static PUBLISHER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
-    env::var("PUBLISHER_MAX_THREADS")
+    dotenvy::var("PUBLISHER_MAX_THREADS")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(available_cpus)
@@ -38,20 +38,22 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
     bytes.into()
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, DisplayDoc)]
 pub enum ExecutorError {
-    #[error("Failed to publish: {0}")]
+    /// Failed to publish: {0}
     PublishFailed(String),
-    #[error("Failed to acquire semaphore: {0}")]
+    /// Failed to acquire semaphore: {0}
     SemaphoreError(#[from] tokio::sync::AcquireError),
-    #[error("Failed to serialize block payload: {0}")]
+    /// Failed to serialize block payload: {0}
     Serialization(#[from] serde_json::Error),
-    #[error("Failed to fetch transaction status: {0}")]
+    /// Failed to fetch transaction status: {0}
     TransactionStatus(String),
-    #[error("Failed to access offchain database")]
+    /// Failed to access offchain database: {0}
     OffchainDatabase(#[from] anyhow::Error),
-    #[error("Failed to join tasks: {0}")]
+    /// Failed to join tasks: {0}
     JoinError(#[from] tokio::task::JoinError),
+    /// Failed to encode or decode data: {0}
+    Encoder(#[from] DataParserError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +92,10 @@ pub struct BlockPayload {
     metadata: Metadata,
 }
 
+impl DataEncoder for BlockPayload {
+    type Err = ExecutorError;
+}
+
 impl BlockPayload {
     pub fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
@@ -111,14 +117,6 @@ impl BlockPayload {
             transactions: txs,
             metadata: metadata.to_owned(),
         })
-    }
-
-    pub fn encode(&self) -> Result<String, ExecutorError> {
-        serde_json::to_string(self).map_err(ExecutorError::from)
-    }
-
-    pub fn decode(json: &str) -> Result<Self, ExecutorError> {
-        serde_json::from_str(json).map_err(ExecutorError::from)
     }
 
     pub fn tx_ids(&self) -> Vec<Bytes32> {
@@ -176,16 +174,6 @@ impl BlockPayload {
             transactions.push(new_transaction);
         }
         Ok(transactions)
-    }
-}
-
-impl TryFrom<BlockPayload> for Publish {
-    type Error = ExecutorError;
-    fn try_from(payload: BlockPayload) -> Result<Self, Self::Error> {
-        let message_id = payload.message_id();
-        Ok(Publish::build()
-            .message_id(message_id)
-            .payload(payload.encode()?.into()))
     }
 }
 

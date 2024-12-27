@@ -25,8 +25,8 @@ impl From<&FuelCoreInput> for Input {
                 amount: input.amount,
                 asset_id: input.asset_id.into(),
                 owner: input.owner.into(),
-                predicate: HexString::default(),
-                predicate_data: HexString::default(),
+                predicate: HexData::default(),
+                predicate_data: HexData::default(),
                 predicate_gas_used: 0,
                 tx_pointer: input.tx_pointer.into(),
                 utxo_id: input.utxo_id.into(),
@@ -36,8 +36,8 @@ impl From<&FuelCoreInput> for Input {
                 amount: input.amount,
                 asset_id: input.asset_id.into(),
                 owner: input.owner.into(),
-                predicate: input.predicate.as_slice().into(),
-                predicate_data: input.predicate_data.as_slice().into(),
+                predicate: HexData(input.predicate.as_slice().into()),
+                predicate_data: HexData(input.predicate_data.as_slice().into()),
                 predicate_gas_used: input.predicate_gas_used,
                 tx_pointer: input.tx_pointer.into(),
                 utxo_id: input.utxo_id.into(),
@@ -46,11 +46,11 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageCoinSigned(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount,
-                    data: HexString::default(),
+                    data: HexData::default(),
                     nonce: input.nonce.into(),
-                    predicate: HexString::default(),
+                    predicate: HexData::default(),
                     predicate_length: 0,
-                    predicate_data: HexString::default(),
+                    predicate_data: HexData::default(),
                     predicate_data_length: 0,
                     predicate_gas_used: 0,
                     recipient: input.recipient.into(),
@@ -61,11 +61,13 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageCoinPredicate(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount,
-                    data: HexString::default(),
+                    data: HexData::default(),
                     nonce: input.nonce.into(),
-                    predicate: input.predicate.as_slice().into(),
+                    predicate: HexData(input.predicate.as_slice().into()),
                     predicate_length: input.predicate.as_slice().len(),
-                    predicate_data: input.predicate_data.as_slice().into(),
+                    predicate_data: HexData(
+                        input.predicate_data.as_slice().into(),
+                    ),
                     predicate_data_length: input
                         .predicate_data
                         .as_slice()
@@ -79,11 +81,11 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageDataSigned(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount,
-                    data: input.data.as_slice().into(),
+                    data: HexData(input.data.as_slice().into()),
                     nonce: input.nonce.into(),
-                    predicate: HexString::default(),
+                    predicate: HexData::default(),
                     predicate_length: 0,
-                    predicate_data: HexString::default(),
+                    predicate_data: HexData::default(),
                     predicate_data_length: 0,
                     predicate_gas_used: 0,
                     recipient: input.recipient.into(),
@@ -94,11 +96,13 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageDataPredicate(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount,
-                    data: input.data.as_slice().into(),
+                    data: HexData(input.data.as_slice().into()),
                     nonce: input.nonce.into(),
-                    predicate: input.predicate.as_slice().into(),
+                    predicate: HexData(input.predicate.as_slice().into()),
                     predicate_length: input.predicate.as_slice().len(),
-                    predicate_data: input.predicate_data.as_slice().into(),
+                    predicate_data: HexData(
+                        input.predicate_data.as_slice().into(),
+                    ),
                     predicate_data_length: input
                         .predicate_data
                         .as_slice()
@@ -126,8 +130,8 @@ pub struct InputCoin {
     pub amount: u64,
     pub asset_id: AssetId,
     pub owner: Address,
-    pub predicate: HexString,
-    pub predicate_data: HexString,
+    pub predicate: HexData,
+    pub predicate_data: HexData,
     pub predicate_gas_used: u64,
     pub tx_pointer: TxPointer,
     pub utxo_id: UtxoId,
@@ -162,11 +166,11 @@ impl From<&FuelCoreInputContract> for InputContract {
 #[serde(rename_all = "camelCase")]
 pub struct InputMessage {
     pub amount: u64,
-    pub data: HexString,
+    pub data: HexData,
     pub nonce: Nonce,
-    pub predicate: HexString,
+    pub predicate: HexData,
     pub predicate_length: usize,
-    pub predicate_data: HexString,
+    pub predicate_data: HexData,
     pub predicate_gas_used: u64,
     pub predicate_data_length: usize,
     pub recipient: Address,
@@ -181,7 +185,7 @@ impl InputMessage {
             .chain(self.recipient.as_ref())
             .chain(self.nonce.as_ref())
             .chain(self.amount.to_be_bytes())
-            .chain(self.data.as_ref());
+            .chain(self.data.0.as_ref());
 
         (*hasher.finalize()).into()
     }

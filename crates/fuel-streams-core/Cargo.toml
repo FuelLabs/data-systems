@@ -14,7 +14,6 @@ rust-version = { workspace = true }
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-trait = { workspace = true }
-chrono = { workspace = true }
 displaydoc = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = [
     "p2p",
@@ -34,8 +33,8 @@ fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
-fuel-streams-nats = { workspace = true }
-fuel-streams-storage = { workspace = true }
+fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
+fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 hex = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }

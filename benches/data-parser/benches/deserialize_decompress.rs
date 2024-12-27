@@ -1,6 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use data_parser::generate_test_block;
-use fuel_core_types::{blockchain::block::Block, fuel_tx::Transaction};
+use data_parser::{generate_test_block, TestBlock};
 use fuel_data_parser::{
     DataParser,
     SerializationType,
@@ -56,7 +55,7 @@ fn bench_decompress_deserialize(c: &mut Criterion) {
 
             b.to_async(&runtime).iter(|| async {
                 let deserialized_and_decompressed = data_parser
-                    .decode::<Block<Transaction>>(serialized_and_compressed)
+                    .decode::<TestBlock>(serialized_and_compressed)
                     .await
                     .expect("decompresison and deserialization");
 

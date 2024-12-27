@@ -54,7 +54,6 @@ pub struct ReturnDataReceipt {
     pub digest: Bytes32,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 
@@ -65,7 +64,6 @@ pub struct PanicReceipt {
     pub reason: PanicInstruction,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub contract_id: Option<ContractId>,
 }
 
@@ -101,7 +99,6 @@ pub struct LogDataReceipt {
     pub digest: Bytes32,
     pub pc: Word,
     pub is: Word,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 
@@ -143,7 +140,6 @@ pub struct MessageOutReceipt {
     pub nonce: Nonce,
     pub len: Word,
     pub digest: Bytes32,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
 

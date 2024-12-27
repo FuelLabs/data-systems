@@ -57,31 +57,31 @@ impl FuelStreamsUtils {
 impl FuelStreams {
     pub async fn new(
         nats_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> Self {
         Self {
-            transactions: Stream::<Transaction>::new(nats_client, s3_client)
+            transactions: Stream::<Transaction>::new(nats_client, storage)
                 .await,
-            blocks: Stream::<Block>::new(nats_client, s3_client).await,
-            inputs: Stream::<Input>::new(nats_client, s3_client).await,
-            outputs: Stream::<Output>::new(nats_client, s3_client).await,
-            receipts: Stream::<Receipt>::new(nats_client, s3_client).await,
-            utxos: Stream::<Utxo>::new(nats_client, s3_client).await,
-            logs: Stream::<Log>::new(nats_client, s3_client).await,
+            blocks: Stream::<Block>::new(nats_client, storage).await,
+            inputs: Stream::<Input>::new(nats_client, storage).await,
+            outputs: Stream::<Output>::new(nats_client, storage).await,
+            receipts: Stream::<Receipt>::new(nats_client, storage).await,
+            utxos: Stream::<Utxo>::new(nats_client, storage).await,
+            logs: Stream::<Log>::new(nats_client, storage).await,
         }
     }
 
     pub async fn setup_all(
         core_client: &NatsClient,
         publisher_client: &NatsClient,
-        s3_client: &Arc<S3Client>,
+        storage: &Arc<S3Storage>,
     ) -> (Self, Self) {
-        let core_stream = Self::new(core_client, s3_client).await;
-        let publisher_stream = Self::new(publisher_client, s3_client).await;
+        let core_stream = Self::new(core_client, storage).await;
+        let publisher_stream = Self::new(publisher_client, storage).await;
         (core_stream, publisher_stream)
     }
 
-    pub async fn subscribe(
+    pub async fn subscribe_raw(
         &self,
         sub_subject: &str,
         subscription_config: Option<SubscriptionConfig>,
@@ -122,7 +122,6 @@ pub trait FuelStreamsExt: Sync + Send {
     fn logs(&self) -> &Stream<Log>;
 
     async fn get_last_published_block(&self) -> anyhow::Result<Option<Block>>;
-
     async fn get_consumers_and_state(
         &self,
     ) -> Result<Vec<(String, Vec<String>, StreamState)>, RequestErrorKind>;
