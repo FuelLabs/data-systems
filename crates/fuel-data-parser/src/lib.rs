@@ -380,9 +380,9 @@ impl DataParser {
     ///
     /// A `Result` containing either the deserialized data structure,
     /// or an `Error` if deserialization fails.
-    pub fn deserialize<'a, T: DeserializeOwned>(
+    pub fn deserialize<T: DeserializeOwned>(
         &self,
-        raw_data: &'a [u8],
+        raw_data: &[u8],
     ) -> Result<T, DataParserError> {
         match self.serialization_type {
             #[cfg(feature = "bincode")]
@@ -397,9 +397,9 @@ impl DataParser {
     }
 
     #[cfg(feature = "json")]
-    fn deserialize_json<'a, T: DeserializeOwned>(
+    fn deserialize_json<T: DeserializeOwned>(
         &self,
-        raw_data: &'a [u8],
+        raw_data: &[u8],
     ) -> Result<T, DataParserError> {
         serde_json::from_slice(raw_data)
             .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
