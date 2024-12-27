@@ -8,9 +8,17 @@ use fuel_core_types::{
     fuel_types::BlockHeight,
     tai64::Tai64,
 };
+use fuel_data_parser::{DataEncoder, DataParserError};
 use rand::Rng;
 
-pub fn generate_test_block() -> Block<Transaction> {
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TestBlock(Block<Transaction>);
+
+impl DataEncoder for TestBlock {
+    type Err = DataParserError;
+}
+
+pub fn generate_test_block() -> TestBlock {
     let mut rng = rand::thread_rng();
     let block_height: u32 = rng.gen_range(1..100);
     let block_txs: u32 = rng.gen_range(1..100);
@@ -40,7 +48,7 @@ pub fn generate_test_block() -> Block<Transaction> {
     block
         .header_mut()
         .set_transaction_root(Bytes32::new(tx_root));
-    block
+    TestBlock(block)
 }
 
 pub fn generate_test_tx() -> Transaction {

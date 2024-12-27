@@ -198,23 +198,24 @@ async fn handle_binary_message(
                     deliver_policy: deliver_policy.into(),
                     filter_subjects: vec![subject_wildcard.clone()],
                 };
-                dbg!(&config);
 
-                let mut sub =
-                    match streams.subscribe(&sub_subject, Some(config)).await {
-                        Ok(sub) => sub,
-                        Err(e) => {
-                            close_socket_with_error(
-                                WsSubscriptionError::Stream(e),
-                                user_id,
-                                session,
-                                Some(subject_wildcard.clone()),
-                                telemetry,
-                            )
-                            .await;
-                            return;
-                        }
-                    };
+                let mut sub = match streams
+                    .subscribe_raw(&sub_subject, Some(config))
+                    .await
+                {
+                    Ok(sub) => sub,
+                    Err(e) => {
+                        close_socket_with_error(
+                            WsSubscriptionError::Stream(e),
+                            user_id,
+                            session,
+                            Some(subject_wildcard.clone()),
+                            telemetry,
+                        )
+                        .await;
+                        return;
+                    }
+                };
 
                 // consume and forward to the ws
                 while let Some(s3_serialized_payload) = sub.next().await {
@@ -245,9 +246,7 @@ async fn handle_binary_message(
         ClientMessage::Unsubscribe(payload) => {
             tracing::info!("Received unsubscribe message: {:?}", payload);
             let subject_wildcard = payload.wildcard;
-
             let deliver_policy = payload.deliver_policy;
-
             if let Err(e) = verify_and_extract_subject_name(&subject_wildcard) {
                 close_socket_with_error(
                     e,
@@ -279,7 +278,7 @@ fn parse_client_message(
     msg: Bytes,
 ) -> Result<ClientMessage, WsSubscriptionError> {
     let msg = serde_json::from_slice::<ClientMessage>(&msg)
-        .map_err(WsSubscriptionError::UnparsablePayload)?;
+        .map_err(WsSubscriptionError::UnserializablePayload)?;
     Ok(msg)
 }
 
@@ -330,50 +329,40 @@ async fn decode(
     s3_payload: Vec<u8>,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
     let subject = verify_and_extract_subject_name(subject_wildcard)?;
-    let entity = match subject.as_str() {
-        Transaction::NAME => {
-            let entity = Transaction::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
-        }
+    let payload = match subject.as_str() {
         Block::NAME => {
-            let entity = Block::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Block::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
+        }
+        Transaction::NAME => {
+            let entity = Transaction::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
         Input::NAME => {
-            let entity = Input::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Input::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
         Output::NAME => {
-            let entity = Output::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Output::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
         Receipt::NAME => {
-            let entity = Receipt::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Receipt::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
         Utxo::NAME => {
-            let entity = Utxo::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Utxo::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
         Log::NAME => {
-            let entity = Log::decode_or_panic(s3_payload);
-            serde_json::to_value(entity)
-                .map_err(WsSubscriptionError::UnparsablePayload)?
+            let entity = Log::decode(&s3_payload).await?;
+            Ok(entity.encode_json_value()?)
         }
-        _ => {
-            return Err(WsSubscriptionError::UnknownSubjectName(
-                subject.to_string(),
-            ))
-        }
+        _ => Err(WsSubscriptionError::UnknownSubjectName(
+            subject_wildcard.to_string(),
+        )),
     };
 
-    // Wrap the entity in ServerMessage::Response and serialize once
-    serde_json::to_vec(&ServerMessage::Response(entity))
-        .map_err(WsSubscriptionError::UnserializableMessagePayload)
+    serde_json::to_vec(&ServerMessage::Response(payload?))
+        .map_err(WsSubscriptionError::UnserializablePayload)
 }

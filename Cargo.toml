@@ -26,8 +26,6 @@ actix-web = "4.9"
 anyhow = "1.0"
 async-nats = "0.38"
 async-trait = "0.1"
-assert_matches = "1.5.0"
-bytes = "1.9"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
@@ -49,9 +47,6 @@ fuel-core-storage = { version = "0.40.2" }
 fuel-core-types = { version = "0.40.2", default-features = false, features = ["std", "serde"] }
 fuel-core-services = { version = "0.40.2", default-features = false, features = ["test-helpers"] }
 futures-util = "0.3"
-itertools = "0.13"
-mockall = "0.13"
-mockall_double = "0.3.1"
 hex = "0.4"
 pretty_assertions = "1.4"
 num_cpus = "1.16"
@@ -63,7 +58,6 @@ sha2 = "0.10"
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1.41", features = ["full"] }
-tokio-stream = "0.1.16"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-actix-web = "0.7"
@@ -78,7 +72,6 @@ fuel-streams-storage = { version = "0.0.13", path = "crates/fuel-streams-storage
 fuel-streams-executors = { version = "0.0.13", path = "crates/fuel-streams-executors" }
 subject-derive = { version = "0.0.13", path = "crates/fuel-streams-macros/subject-derive" }
 sv-publisher = { version = "0.0.13", path = "crates/sv-publisher" }
-sv-consumer = { version = "0.0.13", path = "crates/sv-consumer" }
 sv-webserver = { version = "0.0.13", path = "crates/sv-webserver" }
 
 # Workspace projects

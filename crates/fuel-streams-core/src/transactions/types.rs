@@ -5,8 +5,8 @@ use crate::types::*;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StorageSlot {
-    pub key: HexString,
-    pub value: HexString,
+    pub key: HexData,
+    pub value: HexData,
 }
 
 impl From<FuelCoreStorageSlot> for StorageSlot {
@@ -18,8 +18,8 @@ impl From<FuelCoreStorageSlot> for StorageSlot {
 impl From<&FuelCoreStorageSlot> for StorageSlot {
     fn from(slot: &FuelCoreStorageSlot) -> Self {
         Self {
-            key: slot.key().as_slice().into(),
-            value: slot.value().as_slice().into(),
+            key: HexData(slot.key().as_slice().into()),
+            value: HexData(slot.value().as_slice().into()),
         }
     }
 }
@@ -50,11 +50,11 @@ pub struct Transaction {
     pub mint_gas_price: Option<u64>,
     pub policies: Option<FuelCorePolicies>,
     pub proof_set: Vec<Bytes32>,
-    pub raw_payload: HexString,
+    pub raw_payload: HexData,
     pub receipts_root: Option<Bytes32>,
     pub salt: Option<Salt>,
-    pub script: Option<HexString>,
-    pub script_data: Option<HexString>,
+    pub script: Option<HexData>,
+    pub script_data: Option<HexData>,
     pub script_gas_limit: Option<u64>,
     pub status: TransactionStatus,
     pub storage_slots: Vec<StorageSlot>,
@@ -62,7 +62,7 @@ pub struct Transaction {
     pub subsections_number: Option<u16>,
     pub tx_pointer: Option<FuelCoreTxPointer>,
     pub upgrade_purpose: Option<FuelCoreUpgradePurpose>,
-    pub witnesses: Vec<HexString>,
+    pub witnesses: Vec<HexData>,
     pub receipts: Vec<Receipt>,
 }
 
@@ -238,7 +238,7 @@ impl Transaction {
 
         let raw_payload = {
             use fuel_core_types::fuel_types::canonical::Serialize;
-            HexString(transaction.to_bytes())
+            HexData(transaction.to_bytes().into())
         };
 
         let receipts_root = {
@@ -265,7 +265,7 @@ impl Transaction {
             use fuel_core_types::fuel_tx::field::Script;
             match transaction {
                 FuelCoreTransaction::Script(script) => {
-                    Some(HexString(script.script().clone()))
+                    Some(HexData(script.script().clone().into()))
                 }
                 _ => None,
             }
@@ -275,7 +275,7 @@ impl Transaction {
             use fuel_core_types::fuel_tx::field::ScriptData;
             match transaction {
                 FuelCoreTransaction::Script(script) => {
-                    Some(HexString(script.script_data().clone()))
+                    Some(HexData(script.script_data().clone().into()))
                 }
                 _ => None,
             }
@@ -337,35 +337,35 @@ impl Transaction {
             }
         };
 
-        // hexstring encode should be HexString(data)
+        // hexstring encode should be HexData(data)
         let witnesses = {
             use fuel_core_types::fuel_tx::field::Witnesses;
             match transaction {
                 FuelCoreTransaction::Script(tx) => tx
                     .witnesses()
                     .iter()
-                    .map(|w| HexString(w.clone().into_inner()))
+                    .map(|w| HexData(w.clone().into_inner().into()))
                     .collect(),
                 FuelCoreTransaction::Create(tx) => tx
                     .witnesses()
                     .iter()
-                    .map(|w| HexString(w.clone().into_inner()))
+                    .map(|w| HexData(w.clone().into_inner().into()))
                     .collect(),
                 FuelCoreTransaction::Mint(_) => vec![],
                 FuelCoreTransaction::Upgrade(tx) => tx
                     .witnesses()
                     .iter()
-                    .map(|w| HexString(w.clone().into_inner()))
+                    .map(|w| HexData(w.clone().into_inner().into()))
                     .collect(),
                 FuelCoreTransaction::Upload(tx) => tx
                     .witnesses()
                     .iter()
-                    .map(|w| HexString(w.clone().into_inner()))
+                    .map(|w| HexData(w.clone().into_inner().into()))
                     .collect(),
                 FuelCoreTransaction::Blob(tx) => tx
                     .witnesses()
                     .iter()
-                    .map(|w| HexString(w.clone().into_inner()))
+                    .map(|w| HexData(w.clone().into_inner().into()))
                     .collect(),
             }
         };
@@ -412,7 +412,7 @@ impl Transaction {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(tag = "type")]
 pub enum TransactionKind {
     #[default]
     Create,
@@ -462,6 +462,7 @@ impl MockTransaction {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "status")]
 pub enum TransactionStatus {
     Failed,
     Submitted,

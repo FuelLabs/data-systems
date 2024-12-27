@@ -4,9 +4,11 @@ pub mod types;
 pub use subjects::*;
 
 use super::types::*;
-use crate::{StreamEncoder, Streamable};
+use crate::{DataEncoder, StreamError, Streamable};
 
-impl StreamEncoder for Log {}
+impl DataEncoder for Log {
+    type Err = StreamError;
+}
 impl Streamable for Log {
     const NAME: &'static str = "logs";
     const WILDCARD_LIST: &'static [&'static str] = &[LogsSubject::WILDCARD];

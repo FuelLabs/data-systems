@@ -1,77 +1,45 @@
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Default)]
-pub enum S3Role {
-    Admin,
-    #[default]
-    Public,
-}
+use aws_config::Region;
+
+use crate::{StorageConfig, StorageEnv, StorageRole};
 
 #[derive(Debug, Clone, Default)]
-pub enum S3Env {
-    #[default]
-    Local,
-    Testnet,
-    Mainnet,
-}
-
-impl FromStr for S3Env {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "local" => Ok(S3Env::Local),
-            "testnet" => Ok(S3Env::Testnet),
-            "mainnet" => Ok(S3Env::Mainnet),
-            _ => Err(format!("unknown S3 type: {}", s)),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct S3ClientOpts {
-    pub s3_env: S3Env,
-    pub role: S3Role,
+pub struct S3StorageOpts {
+    pub env: StorageEnv,
+    pub role: StorageRole,
     pub namespace: Option<String>,
 }
 
-impl S3ClientOpts {
-    pub fn new(s3_env: S3Env, role: S3Role) -> Self {
+impl StorageConfig for S3StorageOpts {
+    fn new(env: StorageEnv, role: StorageRole) -> Self {
         Self {
-            s3_env,
+            env,
             role,
             namespace: None,
         }
     }
 
-    pub fn from_env(role: Option<S3Role>) -> Self {
-        let s3_env = std::env::var("NETWORK")
-            .map(|s| S3Env::from_str(&s).unwrap_or_default())
+    fn from_env(role: Option<StorageRole>) -> Self {
+        let env = std::env::var("NETWORK")
+            .map(|s| StorageEnv::from_str(&s).unwrap_or_default())
             .unwrap_or_default();
 
         Self {
-            s3_env,
+            env,
             role: role.unwrap_or_default(),
             namespace: None,
         }
     }
 
-    pub fn admin_opts() -> Self {
-        Self::from_env(Some(S3Role::Admin))
-    }
-
-    pub fn public_opts() -> Self {
-        Self::from_env(Some(S3Role::Public))
-    }
-
-    pub fn endpoint_url(&self) -> String {
+    fn endpoint_url(&self) -> String {
         match self.role {
-            S3Role::Admin => dotenvy::var("AWS_ENDPOINT_URL")
+            StorageRole::Admin => dotenvy::var("AWS_ENDPOINT_URL")
                 .expect("AWS_ENDPOINT_URL must be set for admin role"),
-            S3Role::Public => {
-                match self.s3_env {
-                    S3Env::Local => "http://localhost:4566".to_string(),
-                    S3Env::Testnet | S3Env::Mainnet => {
+            StorageRole::Public => {
+                match self.env {
+                    StorageEnv::Local => "http://localhost:4566".to_string(),
+                    StorageEnv::Testnet | StorageEnv::Mainnet => {
                         let bucket = self.bucket();
                         let region = self.region();
                         format!("https://{bucket}.s3-website-{region}.amazonaws.com")
@@ -81,11 +49,60 @@ impl S3ClientOpts {
         }
     }
 
-    pub fn region(&self) -> String {
-        match &self.role {
-            S3Role::Admin => dotenvy::var("AWS_REGION")
+    fn environment(&self) -> &StorageEnv {
+        &self.env
+    }
+
+    fn role(&self) -> &StorageRole {
+        &self.role
+    }
+}
+
+impl S3StorageOpts {
+    pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
+        self.namespace = Some(namespace.into());
+        self
+    }
+
+    pub fn region(&self) -> Region {
+        let region = match &self.role {
+            StorageRole::Admin => dotenvy::var("AWS_REGION")
                 .expect("AWS_REGION must be set for admin role"),
-            S3Role::Public => "us-east-1".to_string(),
+            StorageRole::Public => "us-east-1".to_string(),
+        };
+        Region::new(region)
+    }
+
+    pub fn bucket(&self) -> String {
+        if matches!(self.role, StorageRole::Admin) {
+            return dotenvy::var("AWS_S3_BUCKET_NAME")
+                .expect("AWS_S3_BUCKET_NAME must be set for admin role");
+        }
+
+        let base_bucket = match self.env {
+            StorageEnv::Local => "fuel-streams-local",
+            StorageEnv::Testnet => "fuel-streams-testnet",
+            StorageEnv::Mainnet => "fuel-streams",
+        };
+
+        match &self.namespace {
+            Some(ns) => format!("{base_bucket}-{ns}"),
+            None => base_bucket.to_string(),
+        }
+    }
+
+    pub fn credentials(&self) -> Option<aws_sdk_s3::config::Credentials> {
+        match self.role {
+            StorageRole::Admin => Some(aws_sdk_s3::config::Credentials::new(
+                dotenvy::var("AWS_ACCESS_KEY_ID")
+                    .expect("AWS_ACCESS_KEY_ID must be set for admin role"),
+                dotenvy::var("AWS_SECRET_ACCESS_KEY")
+                    .expect("AWS_SECRET_ACCESS_KEY must be set for admin role"),
+                None,
+                None,
+                "static",
+            )),
+            StorageRole::Public => None,
         }
     }
 
@@ -99,22 +116,42 @@ impl S3ClientOpts {
         self.namespace = Some(random_namespace);
         self
     }
+}
 
-    pub fn bucket(&self) -> String {
-        if matches!(self.role, S3Role::Admin) {
-            return dotenvy::var("AWS_S3_BUCKET_NAME")
-                .expect("AWS_S3_BUCKET_NAME must be set for admin role");
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        let base_bucket = match self.s3_env {
-            S3Env::Local => "fuel-streams-local",
-            S3Env::Testnet => "fuel-streams-testnet",
-            S3Env::Mainnet => "fuel-streams",
-        };
+    #[test]
+    fn test_bucket_names() {
+        let opts = S3StorageOpts::new(StorageEnv::Local, StorageRole::Public);
+        assert_eq!(opts.bucket(), "fuel-streams-local");
 
-        self.namespace
-            .as_ref()
-            .map(|ns| format!("{base_bucket}-{ns}"))
-            .unwrap_or(base_bucket.to_string())
+        let opts = opts.with_namespace("test");
+        assert_eq!(opts.bucket(), "fuel-streams-local-test");
+
+        let opts = S3StorageOpts::new(StorageEnv::Testnet, StorageRole::Public);
+        assert_eq!(opts.bucket(), "fuel-streams-testnet");
+
+        let opts = S3StorageOpts::new(StorageEnv::Mainnet, StorageRole::Public);
+        assert_eq!(opts.bucket(), "fuel-streams");
+    }
+
+    #[test]
+    fn test_public_endpoint_urls() {
+        let opts = S3StorageOpts::new(StorageEnv::Local, StorageRole::Public);
+        assert_eq!(opts.endpoint_url(), "http://localhost:4566");
+
+        let opts = S3StorageOpts::new(StorageEnv::Testnet, StorageRole::Public);
+        assert_eq!(
+            opts.endpoint_url(),
+            "https://fuel-streams-testnet.s3-website-us-east-1.amazonaws.com"
+        );
+
+        let opts = S3StorageOpts::new(StorageEnv::Mainnet, StorageRole::Public);
+        assert_eq!(
+            opts.endpoint_url(),
+            "https://fuel-streams.s3-website-us-east-1.amazonaws.com"
+        );
     }
 }

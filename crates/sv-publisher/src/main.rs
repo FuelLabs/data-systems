@@ -1,11 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
-    context::PublishErrorKind,
+    context::{Publish, PublishErrorKind},
     stream::RetentionPolicy,
     Context,
 };
 use clap::Parser;
+use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
@@ -14,12 +15,11 @@ use sv_publisher::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, DisplayDoc)]
 pub enum LiveBlockProcessingError {
-    #[error("Failed to publish block: {0}")]
+    /// Failed to publish block: {0}
     PublishError(#[from] PublishError),
-
-    #[error("Processing was cancelled")]
+    /// Processing was cancelled
     Cancelled,
 }
 
@@ -30,11 +30,11 @@ async fn main() -> anyhow::Result<()> {
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
     fuel_core.start().await?;
 
-    let s3_client = setup_s3().await?;
+    let storage = setup_storage().await?;
     let nats_client = setup_nats(&cli.nats_url).await?;
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
     let last_published =
-        Arc::new(find_last_published_height(&nats_client, &s3_client).await?);
+        Arc::new(find_last_published_height(&nats_client, &storage).await?);
 
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
@@ -72,10 +72,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_s3() -> anyhow::Result<Arc<S3Client>> {
-    let s3_client_opts = S3ClientOpts::admin_opts();
-    let s3_client = S3Client::new(&s3_client_opts).await?;
-    Ok(Arc::new(s3_client))
+async fn setup_storage() -> anyhow::Result<Arc<S3Storage>> {
+    let storage_opts = S3StorageOpts::admin_opts();
+    let storage = S3Storage::new(storage_opts).await?;
+    Ok(Arc::new(storage))
 }
 
 async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
@@ -100,10 +100,9 @@ async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
 
 async fn find_last_published_height(
     nats_client: &NatsClient,
-    s3_client: &Arc<S3Client>,
+    storage: &Arc<S3Storage>,
 ) -> anyhow::Result<u32> {
-    let block_stream =
-        Stream::<Block>::get_or_init(nats_client, s3_client).await;
+    let block_stream = Stream::<Block>::get_or_init(nats_client, storage).await;
     let last_publish_height = block_stream
         .get_last_published(BlocksSubject::WILDCARD)
         .await?;
@@ -181,15 +180,13 @@ async fn process_live_blocks(
     Ok(())
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, DisplayDoc)]
 pub enum PublishError {
-    #[error("Failed to publish block to NATS server: {0}")]
+    /// Failed to publish block to NATS server: {0}
     NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-
-    #[error("Failed to create block payload due to: {0}")]
+    /// Failed to create block payload due to: {0}
     BlockPayload(#[from] ExecutorError),
-
-    #[error("Failed to access offchain database: {0}")]
+    /// Failed to access offchain database: {0}
     OffchainDatabase(String),
 }
 
@@ -201,8 +198,12 @@ async fn publish_block(
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
+    let publish = Publish::build()
+        .message_id(payload.message_id())
+        .payload(payload.encode().await?.into());
+
     jetstream
-        .send_publish(payload.subject(), payload.to_owned().try_into()?)
+        .send_publish(payload.subject(), publish)
         .await
         .map_err(PublishError::NatsPublish)?
         .await

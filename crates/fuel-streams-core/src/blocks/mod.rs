@@ -4,9 +4,11 @@ pub mod types;
 pub use subjects::*;
 
 use super::types::*;
-use crate::{StreamEncoder, Streamable};
+use crate::{DataEncoder, StreamError, Streamable};
 
-impl StreamEncoder for Block {}
+impl DataEncoder for Block {
+    type Err = StreamError;
+}
 impl Streamable for Block {
     const NAME: &'static str = "blocks";
     const WILDCARD_LIST: &'static [&'static str] = &[BlocksSubject::WILDCARD];
@@ -17,6 +19,14 @@ mod tests {
     use serde_json::{self, json};
 
     use super::*;
+
+    #[tokio::test]
+    async fn test_block_encode() {
+        let block = MockBlock::build(42);
+        let encoded = block.encode().await.unwrap();
+        let decoded = Block::decode(&encoded).await.unwrap();
+        assert_eq!(decoded, block, "Decoded block should match original");
+    }
 
     #[tokio::test]
     async fn test_serialization() {

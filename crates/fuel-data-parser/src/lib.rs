@@ -6,25 +6,30 @@ mod error;
 use std::{fmt::Debug, sync::Arc};
 
 pub use compression_strategies::*;
+#[cfg(feature = "json")]
+use serde::de::DeserializeOwned;
 
-pub use crate::error::{CompressionError, Error, SerdeError};
+pub use crate::error::{CompressionError, DataParserError, SerdeError};
 
 /// Serialization types supported for data parsing
 #[derive(Debug, Clone, strum::EnumIter, strum_macros::Display)]
 pub enum SerializationType {
     /// Bincode serialization
+    #[cfg(feature = "bincode")]
     #[strum(serialize = "bincode")]
     Bincode,
-    /// Postcard serialization
-    #[strum(serialize = "postcard")]
-    Postcard,
     /// json serialization
+    #[cfg(feature = "json")]
     #[strum(serialize = "json")]
     Json,
+    /// Postcard serialization
+    #[cfg(feature = "postcard")]
+    #[strum(serialize = "postcard")]
+    Postcard,
 }
 
-/// Traits required for a data type to be parseable
-pub trait DataParseable:
+#[async_trait::async_trait]
+pub trait DataEncoder:
     serde::Serialize
     + serde::de::DeserializeOwned
     + Clone
@@ -33,17 +38,48 @@ pub trait DataParseable:
     + Debug
     + std::marker::Sized
 {
-}
+    type Err: std::error::Error + From<DataParserError>;
 
-impl<
-        T: serde::Serialize
-            + serde::de::DeserializeOwned
-            + Clone
-            + Send
-            + Sync
-            + Debug,
-    > DataParseable for T
-{
+    fn data_parser() -> DataParser {
+        DataParser::default()
+    }
+
+    async fn encode(&self) -> Result<Vec<u8>, Self::Err> {
+        Self::data_parser().encode(self).await.map_err(Into::into)
+    }
+
+    #[cfg(feature = "json")]
+    fn encode_json(&self) -> Result<Vec<u8>, Self::Err> {
+        Self::data_parser().encode_json(self).map_err(Into::into)
+    }
+
+    #[cfg(feature = "json")]
+    fn encode_json_value(&self) -> Result<serde_json::Value, Self::Err> {
+        Self::data_parser()
+            .encode_json_value(self)
+            .map_err(Into::into)
+    }
+
+    async fn decode(encoded: &[u8]) -> Result<Self, Self::Err> {
+        Self::data_parser()
+            .decode(encoded)
+            .await
+            .map_err(Into::into)
+    }
+
+    #[cfg(feature = "json")]
+    fn decode_json(encoded: &[u8]) -> Result<Self, Self::Err> {
+        Self::data_parser().decode_json(encoded).map_err(Into::into)
+    }
+
+    #[cfg(feature = "json")]
+    fn decode_json_value(
+        encoded: &serde_json::Value,
+    ) -> Result<Self, Self::Err> {
+        Self::data_parser()
+            .decode_json_value(encoded)
+            .map_err(Into::into)
+    }
 }
 
 /// `DataParser` is a utility struct for encoding (serializing and optionally compressing)
@@ -61,12 +97,16 @@ impl<
 /// # Examples
 ///
 /// ```
-/// use fuel_data_parser::{DataParser, SerializationType};
+/// use fuel_data_parser::*;
 /// use std::sync::Arc;
 ///
 /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 /// struct TestData {
 ///     field: String,
+/// }
+///
+/// impl DataEncoder for TestData {
+///     type Err = DataParserError;
 /// }
 ///
 /// #[tokio::main]
@@ -101,7 +141,7 @@ impl Default for DataParser {
     /// ```
     fn default() -> Self {
         Self {
-            compression_strategy: None,
+            compression_strategy: Some(DEFAULT_COMPRESSION_STRATEGY.clone()),
             serialization_type: SerializationType::Json,
         }
     }
@@ -121,7 +161,7 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::{DataParser, DEFAULT_COMPRESSION_STRATEGY};
+    /// use fuel_data_parser::*;
     /// use std::sync::Arc;
     ///
     /// let parser = DataParser::default()
@@ -148,10 +188,10 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::{DataParser, SerializationType};
+    /// use fuel_data_parser::*;
     ///
     /// let parser = DataParser::default()
-    ///     .with_serialization_type(SerializationType::Json);
+    ///     .with_serialization_type(SerializationType::Postcard);
     /// ```
     pub fn with_serialization_type(
         mut self,
@@ -175,11 +215,15 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::DataParser;
+    /// use fuel_data_parser::*;
     ///
     /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     /// struct TestData {
     ///     field: String,
+    /// }
+    ///
+    /// impl DataEncoder for TestData {
+    ///     type Err = DataParserError;
     /// }
     ///
     /// #[tokio::main]
@@ -191,10 +235,10 @@ impl DataParser {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn encode<T: DataParseable>(
+    pub async fn encode<T: DataEncoder>(
         &self,
         data: &T,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, DataParserError> {
         let serialized_data = self.serialize(data).await?;
         Ok(match &self.compression_strategy {
             Some(strategy) => strategy.compress(&serialized_data[..]).await?,
@@ -202,11 +246,20 @@ impl DataParser {
         })
     }
 
-    pub fn encode_json<T: DataParseable>(
+    #[cfg(feature = "json")]
+    pub fn encode_json<T: DataEncoder>(
         &self,
         data: &T,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, DataParserError> {
         self.serialize_json(data)
+    }
+
+    #[cfg(feature = "json")]
+    pub fn encode_json_value<T: serde::Serialize>(
+        &self,
+        data: &T,
+    ) -> Result<serde_json::Value, DataParserError> {
+        self.serialize_json_value(data)
     }
 
     /// Serializes the provided data according to the selected `SerializationType`.
@@ -219,26 +272,39 @@ impl DataParser {
     ///
     /// A `Result` containing either a `Vec<u8>` of the serialized data,
     /// or an `Error` if serialization fails.
-    pub async fn serialize<T: DataParseable>(
+    pub async fn serialize<T: DataEncoder>(
         &self,
         raw_data: &T,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, DataParserError> {
         match self.serialization_type {
+            #[cfg(feature = "bincode")]
             SerializationType::Bincode => bincode::serialize(&raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
-            SerializationType::Postcard => postcard::to_allocvec(&raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
+                .map_err(|e| DataParserError::Encode(SerdeError::Bincode(*e))),
+            #[cfg(feature = "json")]
             SerializationType::Json => serde_json::to_vec(&raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Json(e))),
+                .map_err(|e| DataParserError::EncodeJson(SerdeError::Json(e))),
+            #[cfg(feature = "postcard")]
+            SerializationType::Postcard => postcard::to_allocvec(&raw_data)
+                .map_err(|e| DataParserError::Encode(SerdeError::Postcard(e))),
         }
     }
 
-    fn serialize_json<T: DataParseable>(
+    #[cfg(feature = "json")]
+    fn serialize_json<T: DataEncoder>(
         &self,
         raw_data: &T,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, DataParserError> {
         serde_json::to_vec(&raw_data)
-            .map_err(|e| Error::Serde(SerdeError::Json(e)))
+            .map_err(|e| DataParserError::EncodeJson(SerdeError::Json(e)))
+    }
+
+    #[cfg(feature = "json")]
+    fn serialize_json_value<T: serde::Serialize>(
+        &self,
+        raw_data: &T,
+    ) -> Result<serde_json::Value, DataParserError> {
+        serde_json::to_value(raw_data)
+            .map_err(|e| DataParserError::EncodeJson(SerdeError::Json(e)))
     }
 
     /// Decodes the provided data by deserializing and optionally decompressing it.
@@ -255,11 +321,15 @@ impl DataParser {
     /// # Examples
     ///
     /// ```
-    /// use fuel_data_parser::DataParser;
+    /// use fuel_data_parser::*;
     ///
     /// #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     /// struct TestData {
     ///     field: String,
+    /// }
+    ///
+    /// impl DataEncoder for TestData {
+    ///     type Err = DataParserError;
     /// }
     ///
     /// #[tokio::main]
@@ -272,10 +342,10 @@ impl DataParser {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn decode<T: DataParseable>(
+    pub async fn decode<T: DataEncoder>(
         &self,
         data: &[u8],
-    ) -> Result<T, Error> {
+    ) -> Result<T, DataParserError> {
         let data = match &self.compression_strategy {
             Some(strategy) => strategy.decompress(data).await?,
             None => data.to_vec(),
@@ -284,11 +354,20 @@ impl DataParser {
         Ok(decoded_data)
     }
 
-    pub fn decode_json<T: DataParseable>(
+    #[cfg(feature = "json")]
+    pub fn decode_json<T: DataEncoder>(
         &self,
         data: &[u8],
-    ) -> Result<T, Error> {
+    ) -> Result<T, DataParserError> {
         self.deserialize_json(data)
+    }
+
+    #[cfg(feature = "json")]
+    pub fn decode_json_value<T: DeserializeOwned>(
+        &self,
+        data: &serde_json::Value,
+    ) -> Result<T, DataParserError> {
+        self.deserialize_json_value(data)
     }
 
     /// Deserializes the provided data according to the selected `SerializationType`.
@@ -301,25 +380,38 @@ impl DataParser {
     ///
     /// A `Result` containing either the deserialized data structure,
     /// or an `Error` if deserialization fails.
-    pub fn deserialize<'a, T: serde::Deserialize<'a>>(
+    pub fn deserialize<T: DeserializeOwned>(
         &self,
-        raw_data: &'a [u8],
-    ) -> Result<T, Error> {
+        raw_data: &[u8],
+    ) -> Result<T, DataParserError> {
         match self.serialization_type {
+            #[cfg(feature = "bincode")]
             SerializationType::Bincode => bincode::deserialize(raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Bincode(*e))),
-            SerializationType::Postcard => postcard::from_bytes(raw_data)
-                .map_err(|e| Error::Serde(SerdeError::Postcard(e))),
+                .map_err(|e| DataParserError::Decode(SerdeError::Bincode(*e))),
+            #[cfg(feature = "json")]
             SerializationType::Json => self.deserialize_json(raw_data),
+            #[cfg(feature = "postcard")]
+            SerializationType::Postcard => postcard::from_bytes(raw_data)
+                .map_err(|e| DataParserError::Decode(SerdeError::Postcard(e))),
         }
     }
 
-    pub fn deserialize_json<'a, T: serde::Deserialize<'a>>(
+    #[cfg(feature = "json")]
+    fn deserialize_json<T: DeserializeOwned>(
         &self,
-        raw_data: &'a [u8],
-    ) -> Result<T, Error> {
+        raw_data: &[u8],
+    ) -> Result<T, DataParserError> {
         serde_json::from_slice(raw_data)
-            .map_err(|e| Error::Serde(SerdeError::Json(e)))
+            .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
+    }
+
+    #[cfg(feature = "json")]
+    fn deserialize_json_value<T: DeserializeOwned>(
+        &self,
+        raw_data: &serde_json::Value,
+    ) -> Result<T, DataParserError> {
+        serde_json::from_value(raw_data.clone())
+            .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
     }
 }
 
@@ -330,6 +422,10 @@ mod tests {
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     struct TestData {
         field: String,
+    }
+
+    impl DataEncoder for TestData {
+        type Err = DataParserError;
     }
 
     #[tokio::test]
@@ -350,8 +446,11 @@ mod tests {
         };
 
         for serialization_type in [
+            #[cfg(feature = "bincode")]
             SerializationType::Bincode,
+            #[cfg(feature = "postcard")]
             SerializationType::Postcard,
+            #[cfg(feature = "json")]
             SerializationType::Json,
         ] {
             let parser = DataParser::default()
@@ -367,17 +466,10 @@ mod tests {
         let data = TestData {
             field: "test".to_string(),
         };
-        let compression_strategies: Vec<Arc<dyn CompressionStrategy>> = vec![
-            Arc::new(ZLibCompressionStrategy),
-            #[cfg(feature = "bench-helpers")]
-            Arc::new(GzipCompressionStrategy),
-            #[cfg(feature = "bench-helpers")]
-            Arc::new(BrotliCompressionStrategy),
-        ];
 
-        for strategy in compression_strategies {
+        for strategy in ALL_COMPRESSION_STRATEGIES.iter() {
             let parser =
-                DataParser::default().with_compression_strategy(&strategy);
+                DataParser::default().with_compression_strategy(strategy);
             let encoded = parser.encode(&data).await.unwrap();
             let decoded: TestData = parser.decode(&encoded).await.unwrap();
             assert_eq!(data, decoded);

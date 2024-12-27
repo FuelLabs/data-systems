@@ -16,7 +16,7 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject {
-///     utxo_id: Some(HexString::zeroed()),
+///     utxo_id: Some(HexData::zeroed()),
 ///     utxo_type: Some(UtxoType::Message),
 /// };
 /// assert_eq!(
@@ -40,7 +40,7 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let wildcard = UtxosSubject::wildcard(
-///     Some(HexString::zeroed()),
+///     Some(HexData::zeroed()),
 ///     None,
 /// );
 /// assert_eq!(wildcard, "utxos.*.0x0000000000000000000000000000000000000000000000000000000000000000");
@@ -53,7 +53,7 @@ use crate::types::*;
 /// # use fuel_streams_core::types::*;
 /// # use fuel_streams_macros::subject::*;
 /// let subject = UtxosSubject::new()
-///     .with_utxo_id(Some(HexString::zeroed()))
+///     .with_utxo_id(Some(HexData::zeroed()))
 ///     .with_utxo_type(Some(UtxoType::Message));
 /// assert_eq!(subject.parse(), "utxos.message.0x0000000000000000000000000000000000000000000000000000000000000000");
 /// ```
@@ -62,7 +62,7 @@ use crate::types::*;
 #[subject_wildcard = "utxos.>"]
 #[subject_format = "utxos.{utxo_type}.{utxo_id}"]
 pub struct UtxosSubject {
-    pub utxo_id: Option<HexString>,
+    pub utxo_id: Option<HexData>,
     pub utxo_type: Option<UtxoType>,
 }
 
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_utxos_message_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_utxo_id(Some(HexString::zeroed()))
+            .with_utxo_id(Some(HexData::zeroed()))
             .with_utxo_type(Some(UtxoType::Message));
         assert_eq!(
             utxo_subject.to_string(),
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_utxos_coin_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_utxo_id(Some(HexString::zeroed()))
+            .with_utxo_id(Some(HexData::zeroed()))
             .with_utxo_type(Some(UtxoType::Coin));
         assert_eq!(
             utxo_subject.to_string(),
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_utxos_contract_subject_creation() {
         let utxo_subject = UtxosSubject::new()
-            .with_utxo_id(Some(HexString::zeroed()))
+            .with_utxo_id(Some(HexData::zeroed()))
             .with_utxo_type(Some(UtxoType::Contract));
         assert_eq!(
             utxo_subject.to_string(),

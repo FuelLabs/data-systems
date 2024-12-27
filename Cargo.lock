@@ -490,10 +490,8 @@ checksum = "df895a515f70646414f4b45c0b79082783b80552b373a68283012928df56f522"
 dependencies = [
  "brotli 7.0.0",
  "bzip2",
- "deflate64",
  "flate2",
  "futures-core",
- "futures-io",
  "memchr",
  "pin-project-lite",
  "tokio",
@@ -2616,6 +2614,7 @@ dependencies = [
  "fuel-core-types 0.40.2",
  "fuel-data-parser",
  "rand",
+ "serde",
  "strum 0.26.3",
  "tokio",
 ]
@@ -2628,12 +2627,6 @@ checksum = "bef552e6f588e446098f6ba40d89ac146c8c7b64aade83c051ee00bb5d2bc18d"
 dependencies = [
  "uuid",
 ]
-
-[[package]]
-name = "deflate64"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "der"
@@ -4133,7 +4126,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "async-trait",
- "chrono",
  "displaydoc",
  "fuel-core",
  "fuel-core-bin",
@@ -4171,8 +4163,10 @@ name = "fuel-streams-executors"
 version = "0.0.13"
 dependencies = [
  "anyhow",
- "async-nats",
+ "displaydoc",
+ "dotenvy",
  "fuel-core",
+ "fuel-data-parser",
  "fuel-streams-core",
  "futures",
  "num_cpus",
@@ -4211,10 +4205,10 @@ dependencies = [
 name = "fuel-streams-storage"
 version = "0.0.13"
 dependencies = [
+ "async-trait",
  "aws-config",
  "aws-sdk-s3",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
+ "displaydoc",
  "dotenvy",
  "pretty_assertions",
  "rand",
@@ -4222,6 +4216,7 @@ dependencies = [
  "thiserror 2.0.9",
  "tokio",
  "tracing",
+ "tracing-test",
 ]
 
 [[package]]
@@ -8719,9 +8714,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e28bdad6db2b8340e449f7108f020b3b092e8583a9e3fb82713e1d4e71fe817"
+checksum = "d6b6f7f2fcb69f747921f79f3926bd1e203fce4fef62c268dd3abfb6d86029aa"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -8737,9 +8732,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d846214a9854ef724f3da161b426242d8de7c1fc7de2f89bb1efcb154dca79d"
+checksum = "8d00caa5193a3c8362ac2b73be6b9e768aa5a4b2f721d8f4b339600c3cb51f8e"
 dependencies = [
  "darling 0.20.10",
  "proc-macro2",
@@ -9117,11 +9112,13 @@ dependencies = [
  "anyhow",
  "async-nats",
  "clap 4.5.23",
+ "displaydoc",
  "dotenvy",
  "fuel-core",
  "fuel-streams-core",
  "fuel-streams-executors",
  "futures",
+ "hex",
  "num_cpus",
  "openssl",
  "serde_json",
@@ -9140,6 +9137,7 @@ dependencies = [
  "anyhow",
  "async-nats",
  "clap 4.5.23",
+ "displaydoc",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-types 0.40.2",
@@ -9171,6 +9169,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "elasticsearch",
+ "fuel-data-parser",
  "fuel-streams-core",
  "fuel-streams-nats",
  "fuel-streams-storage",
@@ -10093,6 +10092,27 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "tracing-test"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
+dependencies = [
+ "tracing-core",
+ "tracing-subscriber",
+ "tracing-test-macro",
+]
+
+[[package]]
+name = "tracing-test-macro"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
+dependencies = [
+ "quote",
+ "syn 2.0.91",
 ]
 
 [[package]]

@@ -44,7 +44,7 @@
 //     let nats_opts = NatsClientOpts::admin_opts();
 //     let client = NatsClient::connect(&nats_opts).await?;
 //     assert!(client.is_connected());
-//     let s3_opts = Arc::new(S3ClientOpts::admin_opts());
+//     let s3_opts = Arc::new(S3StorageOpts::admin_opts());
 //     let client = Client::with_opts(&nats_opts, &s3_opts).await?;
 //     assert!(client.nats_conn.is_connected());
 //     Ok(())
@@ -53,7 +53,7 @@
 // #[tokio::test]
 // async fn multiple_client_connections() -> BoxedResult<()> {
 //     let nats_opts = NatsClientOpts::admin_opts();
-//     let s3_opts = Arc::new(S3ClientOpts::admin_opts());
+//     let s3_opts = Arc::new(S3StorageOpts::admin_opts());
 //     let tasks: Vec<_> = (0..100)
 //         .map(|_| {
 //             let nats_opts = nats_opts.clone();
@@ -213,7 +213,7 @@
 //         .with_url(network.to_nats_url())
 //         .with_rdn_namespace()
 //         .with_timeout(1);
-//     let s3_opts = Arc::new(S3ClientOpts::admin_opts());
+//     let s3_opts = Arc::new(S3StorageOpts::admin_opts());
 //     let admin_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
 //         .map(|_| {
 //             let opts: NatsClientOpts = admin_opts.clone();
@@ -232,7 +232,7 @@
 //         .with_rdn_namespace()
 //         .with_timeout(1);
 //     let s3_public_opts =
-//         Arc::new(S3ClientOpts::new(S3Env::Local, S3Role::Public));
+//         Arc::new(S3StorageOpts::new(S3Env::Local, S3Role::Public));
 //     let public_tasks: Vec<BoxFuture<'_, Result<(), NatsError>>> = (0..100)
 //         .map(|_| {
 //             let opts: NatsClientOpts = public_opts.clone();

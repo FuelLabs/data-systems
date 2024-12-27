@@ -4,9 +4,11 @@ pub mod types;
 pub use subjects::*;
 
 use super::types::*;
-use crate::{StreamEncoder, Streamable};
+use crate::{DataEncoder, StreamError, Streamable};
 
-impl StreamEncoder for Receipt {}
+impl DataEncoder for Receipt {
+    type Err = StreamError;
+}
 impl Streamable for Receipt {
     const NAME: &'static str = "receipts";
     const WILDCARD_LIST: &'static [&'static str] = &[
