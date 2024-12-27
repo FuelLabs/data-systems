@@ -1,7 +1,6 @@
 use reqwest::{
     header::{
         ACCEPT,
-        AUTHORIZATION,
         CONNECTION,
         CONTENT_TYPE,
         HOST,
@@ -10,6 +9,7 @@ use reqwest::{
         UPGRADE,
     },
     Client as HttpClient,
+    StatusCode,
 };
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest,
@@ -51,18 +51,17 @@ impl Client {
     }
 
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
-        let ws_url = self.opts.network.to_ws_url().join("/api/v1/ws")?;
+        let jwt_token =
+            self.jwt_token.clone().ok_or(ClientError::MissingJwtToken)?;
+
+        let subdirectory = format!("/api/v1/ws?token={}", jwt_token);
+        let ws_url = self.opts.network.to_ws_url().join(&subdirectory)?;
         let host = ws_url
             .host_str()
             .ok_or_else(|| ClientError::HostParseFailed)?;
 
-        let jwt_token =
-            self.jwt_token.clone().ok_or(ClientError::MissingJwtToken)?;
-
-        let bearer_token = format!("Bearer {}", jwt_token);
         let mut request = ws_url.as_str().into_client_request()?;
         let headers_map = request.headers_mut();
-        headers_map.insert(AUTHORIZATION, bearer_token.parse()?);
         headers_map.insert(HOST, host.parse()?);
         headers_map.insert(UPGRADE, "websocket".parse()?);
         headers_map.insert(CONNECTION, "Upgrade".parse().unwrap());
@@ -84,20 +83,21 @@ impl Client {
 
         let api_url = network.to_web_url().join("/api/v1/jwt")?;
         let response = client
-            .get(api_url)
+            .post(api_url)
             .header(ACCEPT, "application/json")
             .header(CONTENT_TYPE, "application/json")
             .body(json_body)
             .send()
             .await?;
 
-        if response.status().is_success() {
-            let json_body = response.json::<LoginResponse>().await?;
-            Ok(json_body.jwt_token)
-        } else {
-            Err(ClientError::ApiResponse(
+        match response.status() {
+            StatusCode::OK => {
+                let json_body = response.json::<LoginResponse>().await?;
+                Ok(json_body.jwt_token)
+            }
+            _ => Err(ClientError::ApiResponse(
                 response.error_for_status_ref().unwrap_err(),
-            ))
+            )),
         }
     }
 

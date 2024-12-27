@@ -71,7 +71,7 @@ pub fn create_api(
             )
             .service(
                 web::resource(with_prefixed_route("jwt"))
-                    .route(web::get().to(request_jwt)),
+                    .route(web::post().to(request_jwt)),
             )
             .service(
                 web::resource(with_prefixed_route("ws"))
