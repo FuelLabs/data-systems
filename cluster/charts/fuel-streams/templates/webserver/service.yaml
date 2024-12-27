@@ -30,7 +30,7 @@ spec:
       name: websocket
       port: {{ $service.port }}
       protocol: TCP
-      targetPort: {{ $service.port }}
+      targetPort: webserver
   selector:
     {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 4 }}
     app.kubernetes.io/component: webserver
