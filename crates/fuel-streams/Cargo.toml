@@ -1,13 +1,13 @@
 [package]
 name = "fuel-streams"
 description = "A library for working with streams of Fuel blockchain data"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-keywords = ["data-stream", "blockchain", "cryptocurrencies"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.81.0"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
 version = "0.0.14"
 
 [dependencies]

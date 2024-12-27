@@ -2,7 +2,11 @@
 # Fuel-streams package
 # ------------------------------------------------------------
 [packages.fuel-streams]
-versioned_files = ["crates/fuel-streams/Cargo.toml"]
+versioned_files = [
+    "crates/fuel-streams/Cargo.toml",
+    "Cargo.lock",
+    { path = "Cargo.toml", dependency = "fuel-streams" },
+]
 changelog = "CHANGELOG.md"
 extra_changelog_sections = [
     { types = [
