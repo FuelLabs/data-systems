@@ -15,6 +15,7 @@ pub use async_nats::{
         kv::Config as KvStoreConfig,
         stream::Config as NatsStreamConfig,
         Context as JetStreamContext,
+        Message as NatsMessage,
     },
     Client as AsyncNatsClient,
     ConnectOptions as NatsConnectOpts,

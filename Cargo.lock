@@ -4127,6 +4127,7 @@ dependencies = [
  "async-nats",
  "async-trait",
  "displaydoc",
+ "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-client",

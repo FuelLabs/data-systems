@@ -218,7 +218,9 @@ async fn handle_binary_message(
                 };
 
                 // consume and forward to the ws
-                while let Some(s3_serialized_payload) = sub.next().await {
+                while let Some((s3_serialized_payload, message)) =
+                    sub.next().await
+                {
                     // decode and serialize back to ws payload
                     let serialized_ws_payload = match decode(
                         &subject_wildcard,
@@ -239,6 +241,7 @@ async fn handle_binary_message(
 
                     // send the payload over the stream
                     let _ = stream_session.binary(serialized_ws_payload).await;
+                    let _ = message.ack().await;
                 }
             });
             Ok(())

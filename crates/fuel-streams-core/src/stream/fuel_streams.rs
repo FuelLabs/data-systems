@@ -85,7 +85,7 @@ impl FuelStreams {
         &self,
         sub_subject: &str,
         subscription_config: Option<SubscriptionConfig>,
-    ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
+    ) -> Result<BoxStream<'_, (Vec<u8>, NatsMessage)>, StreamError> {
         match sub_subject {
             Transaction::NAME => {
                 self.transactions.subscribe_raw(subscription_config).await

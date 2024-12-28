@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use async_nats::{
     jetstream::{
@@ -14,6 +14,13 @@ use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 use tokio::sync::OnceCell;
 
 use crate::prelude::*;
+
+pub static MAX_ACK_PENDING: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("MAX_ACK_PENDING")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(5)
+});
 
 #[derive(Debug, Clone)]
 pub struct PublishPacket<T: Streamable> {
@@ -34,7 +41,6 @@ impl<T: Streamable> PublishPacket<T> {
         format!("{}.json.zstd", subject.replace('.', "/"))
     }
 }
-
 pub trait StreamEncoder: DataEncoder<Err = StreamError> {}
 impl<T: DataEncoder<Err = StreamError>> StreamEncoder for T {}
 
@@ -220,7 +226,7 @@ impl<S: Streamable> Stream<S> {
     pub async fn subscribe_raw(
         &self,
         subscription_config: Option<SubscriptionConfig>,
-    ) -> Result<BoxStream<'_, Vec<u8>>, StreamError> {
+    ) -> Result<BoxStream<'_, (Vec<u8>, NatsMessage)>, StreamError> {
         let config = self.get_consumer_config(subscription_config);
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
@@ -229,16 +235,19 @@ impl<S: Streamable> Stream<S> {
 
         Ok(messages
             .then(move |message| {
-                let nats_payload =
-                    message.expect("Message must be valid").payload.to_vec();
+                let message = message.expect("Message must be valid");
+                let nats_payload = message.payload.to_vec();
                 let storage = storage.clone();
                 async move {
                     let s3_path = String::from_utf8(nats_payload)
                         .expect("Must be S3 path");
-                    storage
-                        .retrieve(&s3_path)
-                        .await
-                        .expect("S3 object must exist")
+                    (
+                        storage
+                            .retrieve(&s3_path)
+                            .await
+                            .expect("S3 object must exist"),
+                        message,
+                    )
                 }
             })
             .boxed())
@@ -250,8 +259,10 @@ impl<S: Streamable> Stream<S> {
     ) -> Result<BoxStream<'_, S>, StreamError> {
         let raw_stream = self.subscribe_raw(subscription_config).await?;
         Ok(raw_stream
-            .then(|s3_data| async move {
-                S::decode(&s3_data).await.expect("Failed to decode")
+            .then(|(s3_data, message)| async move {
+                let item = S::decode(&s3_data).await.expect("Failed to decode");
+                let _ = message.ack().await;
+                item
             })
             .boxed())
     }
@@ -271,7 +282,8 @@ impl<S: Streamable> Stream<S> {
         PullConsumerConfig {
             filter_subjects,
             deliver_policy: delivery_policy,
-            ack_policy: AckPolicy::None,
+            ack_policy: AckPolicy::Explicit,
+            max_ack_pending: *MAX_ACK_PENDING as i64,
             ..Default::default()
         }
     }
