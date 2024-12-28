@@ -2608,7 +2608,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "criterion",
  "fuel-core-types 0.40.2",
@@ -3997,7 +3997,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "async-compression",
  "async-trait",
@@ -4104,7 +4104,7 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "displaydoc",
  "fuel-streams-core",
@@ -4121,7 +4121,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -4151,7 +4151,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-examples"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "anyhow",
  "fuel-streams",
@@ -4161,7 +4161,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-executors"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "anyhow",
  "displaydoc",
@@ -4182,14 +4182,14 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "subject-derive",
 ]
 
 [[package]]
 name = "fuel-streams-nats"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "async-nats",
  "displaydoc",
@@ -4204,7 +4204,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-storage"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -8989,7 +8989,7 @@ checksum = "d7beae5182595e9a8b683fa98c4317f956c9a2dec3b9716990d20023cc60c766"
 
 [[package]]
 name = "streams-tests"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "fuel-core",
  "fuel-streams",
@@ -9078,7 +9078,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9108,7 +9108,7 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "sv-consumer"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -9133,7 +9133,7 @@ dependencies = [
 
 [[package]]
 name = "sv-publisher"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -9154,7 +9154,7 @@ dependencies = [
 
 [[package]]
 name = "sv-webserver"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "actix-cors",
  "actix-server",

@@ -17,7 +17,7 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.81.0"
-version = "0.0.15"
+version = "0.0.16"
 
 [workspace.dependencies]
 actix-cors = "0.7"
@@ -63,17 +63,17 @@ tracing-subscriber = "0.3"
 tracing-actix-web = "0.7"
 thiserror = "2.0"
 
-fuel-streams = { version = "0.0.15", path = "crates/fuel-streams" }
-fuel-data-parser = { version = "0.0.15", path = "crates/fuel-data-parser" }
-fuel-streams-core = { version = "0.0.15", path = "crates/fuel-streams-core" }
-fuel-streams-macros = { version = "0.0.15", path = "crates/fuel-streams-macros" }
-fuel-streams-nats = { version = "0.0.15", path = "crates/fuel-streams-nats" }
-fuel-streams-storage = { version = "0.0.15", path = "crates/fuel-streams-storage" }
-fuel-streams-executors = { version = "0.0.15", path = "crates/fuel-streams-executors" }
-subject-derive = { version = "0.0.15", path = "crates/fuel-streams-macros/subject-derive" }
-sv-publisher = { version = "0.0.15", path = "crates/sv-publisher" }
-sv-consumer = { version = "0.0.15", path = "crates/sv-consumer" }
-sv-webserver = { version = "0.0.15", path = "crates/sv-webserver" }
+fuel-streams = { version = "0.0.16", path = "crates/fuel-streams" }
+fuel-data-parser = { version = "0.0.16", path = "crates/fuel-data-parser" }
+fuel-streams-core = { version = "0.0.16", path = "crates/fuel-streams-core" }
+fuel-streams-macros = { version = "0.0.16", path = "crates/fuel-streams-macros" }
+fuel-streams-nats = { version = "0.0.16", path = "crates/fuel-streams-nats" }
+fuel-streams-storage = { version = "0.0.16", path = "crates/fuel-streams-storage" }
+fuel-streams-executors = { version = "0.0.16", path = "crates/fuel-streams-executors" }
+subject-derive = { version = "0.0.16", path = "crates/fuel-streams-macros/subject-derive" }
+sv-publisher = { version = "0.0.16", path = "crates/sv-publisher" }
+sv-consumer = { version = "0.0.16", path = "crates/sv-consumer" }
+sv-webserver = { version = "0.0.16", path = "crates/sv-webserver" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
