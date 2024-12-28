@@ -3,7 +3,8 @@
 {{- $tls := $webserver.tls }}
 {{- $certificate := $tls.certificate }}
 {{- $ingress := $tls.ingress }}
-{{- if and $webserver.enabled $service.host $tls.enabled }}
+{{- if and $webserver.enabled $service.host }}
+{{- if $tls.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -23,6 +24,7 @@ spec:
   issuerRef:
     name: {{ $certificate.issuer }}
     kind: ClusterIssuer
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -34,24 +36,27 @@ metadata:
     app.kubernetes.io/component: webserver
   annotations:
     kubernetes.io/ingress.class: nginx
-    ingress.kubernetes.io/ssl-redirect: "true"
-    ingress.kubernetes.io/proxy-body-size: "0"
-    acme.cert-manager.io/http01-ingress-class: nginx
-    cert-manager.io/common-name: {{ $service.host }}
-    cert-manager.io/cluster-issuer: {{ $certificate.issuer }}
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/websocket-services: {{ include "fuel-streams.fullname" . }}-webserver
     external-dns.alpha.kubernetes.io/hostname: {{ $service.host }}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    {{- if $tls.enabled }}
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    acme.cert-manager.io/http01-ingress-class: nginx
+    cert-manager.io/common-name: {{ $service.host }}
+    cert-manager.io/cluster-issuer: {{ $certificate.issuer }}
+    {{- end }}
     {{- include "set-value" (dict "context" $ingress "path" "annotations") | nindent 4 }}
 spec:
   ingressClassName: nginx
+  {{- if $tls.enabled }}
   tls:
     - hosts:
         - {{ $service.host }}
       secretName: {{ include "fuel-streams.fullname" . }}-webserver-tls
+  {{- end }}
   rules:
     - host: {{ $service.host }}
       http:
