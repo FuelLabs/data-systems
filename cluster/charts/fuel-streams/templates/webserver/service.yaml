@@ -1,30 +1,18 @@
-{{- $service := .Values.webserver.service }}
-{{- if and .Values.webserver.enabled $service.enabled }}
+{{- $webserver := .Values.webserver }}
+{{- $service := $webserver.service }}
+{{- if and $webserver.enabled $service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver-nlb") | nindent 2 }}
+  {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver") | nindent 2 }}
   annotations:
-    {{- if $service.dns }}
-    external-dns.alpha.kubernetes.io/hostname: {{ $service.dns }}
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
-    {{- end }}
-    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-    service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: preserve_client_ip.enabled=true,stickiness.enabled=true,stickiness.type=source_ip,load_balancing.cross_zone.enabled=true
-    service.beta.kubernetes.io/aws-load-balancer-type: external
-    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "WebSocket=true"
-    {{- include "set-value" (dict "context" $service "path" "annotations") | nindent 2 }}
+    {{- include "set-value" (dict "context" $service "path" "annotations") | nindent 4 }}
   labels:
     {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $service "path" "labels") | nindent 4 }}
     app.kubernetes.io/component: webserver
 spec:
-  type: {{ $service.type }}
-  loadBalancerClass: service.k8s.aws/nlb
-  externalTrafficPolicy: Local
+  type: ClusterIP
   ports:
     - appProtocol: tcp
       name: websocket
