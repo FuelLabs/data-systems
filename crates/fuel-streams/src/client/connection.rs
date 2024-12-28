@@ -8,7 +8,7 @@ use futures::{
 use tokio::sync::RwLock;
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{http::Request, protocol::Message},
+    tungstenite::{http::Request, protocol::Message as TungsteniteMessage},
     MaybeTlsStream,
 };
 
@@ -43,9 +43,15 @@ type WriteSink = RwLock<
         tokio_tungstenite::WebSocketStream<
             MaybeTlsStream<tokio::net::TcpStream>,
         >,
-        Message,
+        TungsteniteMessage,
     >,
 >;
+
+#[derive(Debug, Clone)]
+pub struct Message<T> {
+    pub subject: String,
+    pub payload: T,
+}
 
 #[derive(Debug)]
 pub struct Connection {
@@ -70,7 +76,9 @@ impl Connection {
     ) -> Result<(), ClientError> {
         let mut write_guard = self.write_sink.write().await;
         let serialized = serde_json::to_vec(&message)?;
-        write_guard.send(Message::Binary(serialized.into())).await?;
+        write_guard
+            .send(TungsteniteMessage::Binary(serialized.into()))
+            .await?;
         Ok(())
     }
 
@@ -78,7 +86,8 @@ impl Connection {
         &mut self,
         subject: impl IntoSubject,
         deliver_policy: DeliverPolicy,
-    ) -> Result<impl Stream<Item = T> + '_ + Send + Unpin, ClientError> {
+    ) -> Result<impl Stream<Item = Message<T>> + '_ + Send + Unpin, ClientError>
+    {
         let message = ClientMessage::Subscribe(SubscriptionPayload {
             wildcard: subject.parse(),
             deliver_policy,
@@ -87,11 +96,14 @@ impl Connection {
 
         let stream = self.read_stream.by_ref().filter_map(|msg| async move {
             match msg {
-                Ok(Message::Binary(bin)) => {
+                Ok(TungsteniteMessage::Binary(bin)) => {
                     match serde_json::from_slice::<ServerMessage>(&bin) {
                         Ok(ServerMessage::Response(value)) => {
-                            match serde_json::from_value::<T>(value) {
-                                Ok(parsed) => Some(parsed),
+                            match serde_json::from_value::<T>(value.payload) {
+                                Ok(parsed) => Some(Message {
+                                    subject: value.subject,
+                                    payload: parsed,
+                                }),
                                 Err(e) => {
                                     eprintln!("Failed to parse value: {:?}", e);
                                     None
@@ -109,7 +121,7 @@ impl Connection {
                         }
                     }
                 }
-                Ok(Message::Close(_)) => None,
+                Ok(TungsteniteMessage::Close(_)) => None,
                 Ok(msg) => {
                     println!("Received message: {:?}", msg);
                     None

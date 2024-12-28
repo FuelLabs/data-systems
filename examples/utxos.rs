@@ -21,8 +21,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     // Process incoming UTXOs
-    while let Some(utxo) = stream.next().await {
-        println!("Received UTXO: {:?}", utxo);
+    while let Some(msg) = stream.next().await {
+        println!("Received UTXO: {:?}", msg.payload);
     }
 
     Ok(())

@@ -11,7 +11,10 @@ use fuel_streams_core::prelude::*;
 use futures::StreamExt;
 use uuid::Uuid;
 
-use super::{errors::WsSubscriptionError, models::ClientMessage};
+use super::{
+    errors::WsSubscriptionError,
+    models::{ClientMessage, ResponseMessage},
+};
 use crate::{
     server::{
         state::ServerState,
@@ -218,13 +221,14 @@ async fn handle_binary_message(
                 };
 
                 // consume and forward to the ws
-                while let Some((s3_serialized_payload, message)) =
+                while let Some((s3_serialized_payload, s3_path, message)) =
                     sub.next().await
                 {
                     // decode and serialize back to ws payload
                     let serialized_ws_payload = match decode(
                         &subject_wildcard,
                         s3_serialized_payload,
+                        s3_path,
                     )
                     .await
                     {
@@ -330,6 +334,7 @@ async fn send_message_to_socket(session: &mut Session, message: ServerMessage) {
 async fn decode(
     subject_wildcard: &str,
     s3_payload: Vec<u8>,
+    s3_path: String,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
     let subject = verify_and_extract_subject_name(subject_wildcard)?;
     let payload = match subject.as_str() {
@@ -366,6 +371,17 @@ async fn decode(
         )),
     };
 
-    serde_json::to_vec(&ServerMessage::Response(payload?))
-        .map_err(WsSubscriptionError::UnserializablePayload)
+    let subject = s3_path_to_subject(s3_path);
+    serde_json::to_vec(&ServerMessage::Response(ResponseMessage {
+        subject,
+        payload: payload?,
+    }))
+    .map_err(WsSubscriptionError::UnserializablePayload)
+}
+
+fn s3_path_to_subject(s3_path: String) -> String {
+    s3_path
+        .replace("/", ".")
+        .replace(".json.zstd", "")
+        .replace(".json", "")
 }

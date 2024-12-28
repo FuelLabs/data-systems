@@ -22,8 +22,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     // Process incoming transactions
-    while let Some(transaction) = stream.next().await {
-        println!("Received transaction: {:?}", transaction);
+    while let Some(msg) = stream.next().await {
+        println!("Received transaction: {:?}", msg.payload);
     }
 
     Ok(())

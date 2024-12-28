@@ -72,8 +72,14 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Subscribed(SubscriptionPayload),
     Unsubscribed(SubscriptionPayload),
-    Response(serde_json::Value),
+    Response(ResponseMessage),
     Error(String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseMessage {
+    pub subject: String,
+    pub payload: serde_json::Value,
 }
 
 #[cfg(test)]

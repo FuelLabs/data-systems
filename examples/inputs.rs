@@ -19,8 +19,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     // Process incoming inputs
-    while let Some(input) = stream.next().await {
-        println!("Received input: {:?}", input);
+    while let Some(msg) = stream.next().await {
+        println!("Received input: {:?}", msg.payload);
     }
 
     Ok(())

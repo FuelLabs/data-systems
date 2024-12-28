@@ -226,7 +226,8 @@ impl<S: Streamable> Stream<S> {
     pub async fn subscribe_raw(
         &self,
         subscription_config: Option<SubscriptionConfig>,
-    ) -> Result<BoxStream<'_, (Vec<u8>, NatsMessage)>, StreamError> {
+    ) -> Result<BoxStream<'_, (Vec<u8>, String, NatsMessage)>, StreamError>
+    {
         let config = self.get_consumer_config(subscription_config);
         let config = self.prefix_filter_subjects(config);
         let consumer = self.store.stream.create_consumer(config).await?;
@@ -246,6 +247,7 @@ impl<S: Streamable> Stream<S> {
                             .retrieve(&s3_path)
                             .await
                             .expect("S3 object must exist"),
+                        s3_path,
                         message,
                     )
                 }
@@ -256,13 +258,13 @@ impl<S: Streamable> Stream<S> {
     pub async fn subscribe(
         &self,
         subscription_config: Option<SubscriptionConfig>,
-    ) -> Result<BoxStream<'_, S>, StreamError> {
+    ) -> Result<BoxStream<'_, (S, String)>, StreamError> {
         let raw_stream = self.subscribe_raw(subscription_config).await?;
         Ok(raw_stream
-            .then(|(s3_data, message)| async move {
+            .then(|(s3_data, s3_path, message)| async move {
                 let item = S::decode(&s3_data).await.expect("Failed to decode");
                 let _ = message.ack().await;
-                item
+                (item, s3_path)
             })
             .boxed())
     }
