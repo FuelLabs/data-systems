@@ -1,7 +1,7 @@
 {{- $consumer := .Values.consumer -}}
 {{- if $consumer.enabled -}}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   {{- include "k8s.metadata" (dict "context" . "suffix" "-consumer") | nindent 2 }}
   annotations:
@@ -10,7 +10,6 @@ metadata:
     {{- include "fuel-streams.labels" (dict "name" "consumer" "context" .) | nindent 4 }}
     {{- include "set-value" (dict "context" $consumer "path" "config.labels") | nindent 4 }}
 spec:
-  serviceName: {{ include "fuel-streams.fullname" . }}-consumer
   {{- if not $consumer.autoscaling.enabled }}
   replicas: {{ $consumer.config.replicaCount }}
   {{- end }}

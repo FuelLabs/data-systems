@@ -1,5 +1,5 @@
 {{- $webserver := .Values.webserver -}}
-{{- $service := $webserver.service -}}
+{{- $tls := $webserver.tls -}}
 {{- if $webserver.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
