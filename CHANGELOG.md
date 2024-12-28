@@ -1,3 +1,14 @@
+## 0.0.16 (2024-12-28)
+
+### 🚀 Features
+
+- Add TLS configuration for WebServer (#371)
+- Add subject at response payload
+
+### 🐛 Fixes
+
+- Add ack_policy for historical data consumers
+
 ## 0.0.15 (2024-12-27)
 
 ### 🐛 Fixes
