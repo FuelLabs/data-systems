@@ -43,6 +43,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/websocket-services: {{ include "fuel-streams.fullname" . }}-webserver
+    external-dns.alpha.kubernetes.io/hostname: {{ $service.host }}
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     {{- include "set-value" (dict "context" $ingress "path" "annotations") | nindent 4 }}
 spec:
   ingressClassName: nginx
