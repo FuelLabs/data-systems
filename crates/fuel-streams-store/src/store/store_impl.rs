@@ -1,29 +1,23 @@
 use std::sync::Arc;
 
-use super::{
-    CacheConfig,
-    CacheStats,
-    Recordable,
-    StoreCache,
-    StoreError,
-    StoreRecord,
-    StoreResult,
-};
+use super::{CacheConfig, CacheStats, StoreCache, StoreError};
 use crate::{
-    db::{CockroachConnectionOpts, CockroachDb, Db},
+    db::{Db, DbConnectionOpts, DbRecord, Record},
     subject_validator::SubjectValidator,
 };
 
+pub type StoreResult<T> = Result<T, StoreError>;
+
 #[derive(Clone)]
-pub struct Store<S: Recordable> {
-    pub db: Arc<dyn Db>,
-    cache: Arc<StoreCache<S>>,
-    _marker: std::marker::PhantomData<S>,
+pub struct Store<R: Record> {
+    pub db: Arc<Db>,
+    pub cache: Arc<StoreCache<R>>,
+    _marker: std::marker::PhantomData<R>,
 }
 
-impl<S: Recordable> Store<S> {
-    pub async fn new(opts: CockroachConnectionOpts) -> StoreResult<Self> {
-        let db = CockroachDb::new(opts).await?;
+impl<R: Record> Store<R> {
+    pub async fn new(opts: DbConnectionOpts) -> StoreResult<Self> {
+        let db = Db::new(opts).await?;
         Ok(Self {
             db: Arc::new(db),
             cache: Arc::new(StoreCache::new(CacheConfig::default())),
@@ -32,10 +26,10 @@ impl<S: Recordable> Store<S> {
     }
 
     pub async fn with_cache_config(
-        opts: CockroachConnectionOpts,
+        opts: DbConnectionOpts,
         cache_config: CacheConfig,
     ) -> StoreResult<Self> {
-        let db = CockroachDb::new(opts).await?;
+        let db = Db::new(opts).await?;
         Ok(Self {
             db: Arc::new(db),
             cache: Arc::new(StoreCache::new(cache_config)),
@@ -48,41 +42,48 @@ impl<S: Recordable> Store<S> {
     }
 }
 
-impl<S: Recordable> Store<S> {
-    pub async fn add_record(&self, record: &StoreRecord<S>) -> StoreResult<()> {
-        let bytes = Recordable::serialize(&*record.payload);
-        self.db.insert(&record.subject, &bytes).await?;
-        self.cache.insert(&record.subject, &*record.payload);
-        Ok(())
+impl<S: Record> Store<S> {
+    pub async fn add_record(
+        &self,
+        record: &S,
+        subject: &str,
+    ) -> StoreResult<DbRecord> {
+        let db_record = record.insert(&self.db, subject).await?;
+        self.cache.insert(&db_record.subject, record);
+        Ok(db_record)
     }
 
     pub async fn update_record(
         &self,
-        record: &StoreRecord<S>,
-    ) -> StoreResult<()> {
-        let bytes = Recordable::serialize(&*record.payload);
-        self.db.update(&record.subject, &bytes).await?;
-        self.cache.insert(&record.subject, &*record.payload);
-        Ok(())
+        record: &S,
+        subject: &str,
+    ) -> StoreResult<DbRecord> {
+        let db_record = record.update(&self.db, subject).await?;
+        self.cache.insert(&db_record.subject, record);
+        Ok(db_record)
     }
 
     pub async fn upsert_record(
         &self,
-        record: &StoreRecord<S>,
-    ) -> StoreResult<()> {
-        let bytes = Recordable::serialize(&*record.payload);
-        self.db.upsert(&record.subject, &bytes).await?;
-        self.cache.insert(&record.subject, &*record.payload);
-        Ok(())
+        record: &S,
+        subject: &str,
+    ) -> StoreResult<DbRecord> {
+        let db_record = record.upsert(&self.db, subject).await?;
+        self.cache.insert(&db_record.subject, record);
+        Ok(db_record)
     }
 
-    pub async fn delete_record(&self, subject: &str) -> StoreResult<()> {
-        self.db.delete(subject).await?;
-        self.cache.delete(subject);
-        Ok(())
+    pub async fn delete_record(
+        &self,
+        record: &S,
+        subject: &str,
+    ) -> StoreResult<DbRecord> {
+        let db_record = record.delete(&self.db, subject).await?;
+        self.cache.delete(&db_record.subject);
+        Ok(db_record)
     }
 
-    pub async fn find_by_subject(
+    pub async fn find_many_by_subject(
         &self,
         subject_pattern: &str,
     ) -> StoreResult<Vec<S>> {
@@ -93,17 +94,16 @@ impl<S: Recordable> Store<S> {
             });
         }
 
-        // Try cache first for exact matches (no wildcards)
         if !subject_pattern.contains(['*', '>']) {
             if let Some(msg) = self.cache.get(subject_pattern) {
                 return Ok(vec![msg]);
             }
         }
 
-        let items = self.db.find_by_pattern(subject_pattern).await?;
+        let items = S::find_many_by_pattern(&self.db, subject_pattern).await?;
         let mut messages = Vec::with_capacity(items.len());
         for item in items {
-            let payload: S = Recordable::deserialize(&item.value);
+            let payload: S = S::from_db_record(&item);
             if item.subject == subject_pattern {
                 self.cache.insert(&item.subject, &payload);
             }

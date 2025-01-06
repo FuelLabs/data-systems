@@ -275,7 +275,7 @@ run-webserver-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats localstack docker
+DOCKER_SERVICES := nats localstack docker cockroach
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:
@@ -303,6 +303,9 @@ endef
 $(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
 
 reset-nats: clean-nats start-nats
+
+setup-db:
+	cd crates/fuel-streams-store && cargo sqlx migrate run && cargo sqlx prepare
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

@@ -1,11 +1,5 @@
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
-    #[error("Cockroach db error: {0}")]
-    Cockroach(#[from] CockroachDbError),
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum CockroachDbError {
     #[error("Failed to open database")]
     Open(#[source] sqlx::Error),
     #[error("Failed to insert data")]
@@ -20,6 +14,8 @@ pub enum CockroachDbError {
     Delete(#[source] sqlx::Error),
     #[error("Record not found: {0}")]
     NotFound(String),
+    #[error("Failed to find record")]
+    Find(#[source] sqlx::Error),
     #[error("Failed to query data")]
     Query(#[source] sqlx::Error),
 }

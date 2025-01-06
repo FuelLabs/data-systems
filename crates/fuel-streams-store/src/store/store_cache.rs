@@ -18,7 +18,7 @@ impl Default for CacheConfig {
         Self {
             capacity: 1000,
             ttl: Duration::from_secs(300), // 5 minutes
-            enabled: true,
+            enabled: false,
         }
     }
 }
@@ -52,9 +52,6 @@ impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
         }
     }
 
-    /// Returns whether the cache is enabled.
-    /// This can be used to conditionally bypass the cache for testing or debugging purposes.
-    #[allow(dead_code)]
     pub fn is_enabled(&self) -> bool {
         self.config.enabled
     }
@@ -91,11 +88,7 @@ impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
         self.cache.run_pending_tasks();
     }
 
-    /// Invalidates all entries in the cache.
-    /// This can be useful when you need to force a refresh of all cached data,
-    /// for example during testing or when the underlying data source has changed significantly.
-    #[allow(dead_code)]
-    pub fn invalidate_all(&self) {
+    pub fn clean(&self) {
         if !self.config.enabled {
             return;
         }
@@ -189,5 +182,41 @@ mod tests {
         cache.get("nonexistent");
         let stats = cache.stats();
         assert_eq!(stats.misses, 1);
+    }
+
+    #[tokio::test]
+    async fn test_cache_clean() {
+        let config = CacheConfig::default();
+        let cache = StoreCache::new(config);
+
+        // Insert multiple entries
+        let entries = vec![
+            ("subject1", "value1"),
+            ("subject2", "value2"),
+            ("subject3", "value3"),
+        ];
+
+        for (subject, value) in entries.clone() {
+            cache.insert(subject, &value.to_string());
+        }
+
+        // Verify entries are present
+        let stats = cache.stats();
+        assert_eq!(stats.size, 3, "Cache should contain 3 entries");
+
+        // Clean the cache
+        cache.clean();
+
+        // Verify cache is empty
+        let stats = cache.stats();
+        assert_eq!(stats.size, 0, "Cache should be empty after cleaning");
+
+        // Verify entries are no longer accessible
+        for (subject, _) in entries {
+            assert!(
+                cache.get(subject).is_none(),
+                "Entry should not exist after cleaning"
+            );
+        }
     }
 }

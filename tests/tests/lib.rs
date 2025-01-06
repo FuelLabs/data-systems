@@ -1,2 +1,1 @@
-mod db;
 mod store;

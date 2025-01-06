@@ -21,7 +21,12 @@ rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sqlx = { workspace = true }
+sqlx = { workspace = true, default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-native-tls",
+    "macros",
+] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 

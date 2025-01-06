@@ -66,6 +66,9 @@ services:
       - ./../../.env
 
   cockroach:
+    profiles:
+      - all
+      - cockroach
     image: cockroachdb/cockroach:v23.2.2
     ports:
       - "26257:26257"
