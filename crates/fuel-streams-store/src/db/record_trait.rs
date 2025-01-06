@@ -168,8 +168,16 @@ pub trait Record:
         bincode::serialize(&self).unwrap()
     }
 
+    fn serialize_value_json(&self) -> Vec<u8> {
+        serde_json::to_vec(&self).unwrap()
+    }
+
     fn deserialize_value(bytes: &[u8]) -> Self {
         bincode::deserialize(bytes).unwrap()
+    }
+
+    fn deserialize_value_json(bytes: &[u8]) -> Self {
+        serde_json::from_slice(bytes).unwrap()
     }
 
     fn from_db_record(record: &DbRecord) -> Self {
