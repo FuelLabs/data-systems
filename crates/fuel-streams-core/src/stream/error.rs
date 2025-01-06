@@ -6,9 +6,10 @@ use async_nats::{
         kv::{CreateError, CreateErrorKind, PutError, WatchErrorKind},
         stream::{ConsumerErrorKind, LastRawMessageErrorKind},
     },
+    PublishError,
+    SubscribeError,
 };
 use displaydoc::Display as DisplayDoc;
-use fuel_data_parser::DataParserError;
 use thiserror::Error;
 
 #[derive(Error, DisplayDoc, Debug)]
@@ -19,8 +20,6 @@ pub enum StreamError {
         #[source]
         source: error::Error<CreateErrorKind>,
     },
-    /// Failed to publish to storage: {0}
-    Storage(#[from] fuel_streams_storage::StorageError),
     /// Failed to retrieve last published message from stream: {0}
     GetLastPublishedFailed(#[from] error::Error<LastRawMessageErrorKind>),
     /// Failed to create Key-Value Store: {0}
@@ -37,6 +36,12 @@ pub enum StreamError {
     ConsumerCreate(#[from] error::Error<ConsumerErrorKind>),
     /// Failed to consume messages from stream: {0}
     ConsumerMessages(#[from] error::Error<StreamErrorKind>),
-    /// Failed to encode or decode data: {0}
-    Encoder(#[from] DataParserError),
+    /// Database error: {0}
+    Db(#[from] fuel_streams_store::db::DbError),
+    /// Store error: {0}
+    Store(#[from] fuel_streams_store::store::StoreError),
+    /// Failed to publish to NATS: {0}
+    NatsPublish(#[from] PublishError),
+    /// Failed to subscribe to NATS: {0}
+    NatsSubscribe(#[from] SubscribeError),
 }

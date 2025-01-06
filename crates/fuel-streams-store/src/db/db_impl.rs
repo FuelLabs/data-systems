@@ -16,6 +16,7 @@ impl Default for DbConnectionOpts {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Db {
     pub pool: Pool<Postgres>,
 }

@@ -300,11 +300,6 @@ pub fn verify_and_extract_subject_name(
         ));
     }
     let subject_name = subject_parts.next().unwrap_or_default();
-    if !FuelStreamsUtils::is_within_subject_names(subject_name) {
-        return Err(WsSubscriptionError::UnknownSubjectName(
-            subject_wildcard.to_string(),
-        ));
-    }
     Ok(subject_name.to_string())
 }
 

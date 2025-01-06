@@ -26,4 +26,3 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"
 [features]
 default = []
 test-helpers = []
-bench-helpers = []

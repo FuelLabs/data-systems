@@ -15,7 +15,7 @@ RUST_VERSION := 1.81.0
 
 .PHONY: install validate-env check-commands check-network check-versions \
         check-dev-env setup create-env version bump-version release dev-watch \
-        clean clean-build cleanup-artifacts test-watch test bench helm-test \
+        clean clean-build cleanup-artifacts test-watch test helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
         audit audit-fix-test audit-fix load-test run-publisher run-consumer \
@@ -137,9 +137,6 @@ test:
 		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --no-tests=pass --all-features && \
 		cargo test --profile $(PROFILE) --doc -p $(PACKAGE) --all-features; \
 	fi
-
-bench:
-	cargo bench -p data-parser
 
 helm-test:
 	helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams

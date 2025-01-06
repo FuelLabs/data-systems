@@ -32,10 +32,9 @@ fuel-core-importer = { workspace = true }
 fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
-fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
 fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
-fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
+fuel-streams-store = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }
@@ -52,4 +51,3 @@ serde_json = { workspace = true }
 [features]
 default = []
 test-helpers = ["dep:pretty_assertions"]
-bench-helpers = ["dep:pretty_assertions"]

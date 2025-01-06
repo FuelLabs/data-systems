@@ -1,25 +1,13 @@
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
-use super::{Db, DbError};
+use super::{Db, DbError, RecordEntity};
 use crate::subject_validator::SubjectValidator;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "record_entity", rename_all = "lowercase")]
-pub enum DbRecordEntity {
-    Block,
-    Transaction,
-    Input,
-    Output,
-    Receipt,
-    Log,
-    Utxo,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbRecord {
     pub subject: String,
-    pub entity: DbRecordEntity,
+    pub entity: RecordEntity,
     pub sequence_order: i32,
     pub value: Vec<u8>,
 }
@@ -28,24 +16,34 @@ pub type DbResult<T> = Result<T, DbError>;
 
 #[async_trait]
 pub trait Record:
-    Clone + Send + Sync + Sized + Serialize + DeserializeOwned + 'static
+    std::fmt::Debug
+    + Clone
+    + Send
+    + Sync
+    + Sized
+    + Serialize
+    + DeserializeOwned
+    + 'static
 {
-    fn order(&self) -> i32;
-    const ENTITY: DbRecordEntity;
+    const ENTITY: RecordEntity;
 
-    async fn insert(&self, db: &Db, subject: &str) -> DbResult<DbRecord> {
+    async fn insert(
+        &self,
+        db: &Db,
+        subject: &str,
+        order: i32,
+    ) -> DbResult<DbRecord> {
         let entity = Self::ENTITY;
-        let sequence_order = self.order();
-        let value = self.serialize_value();
+        let value = self.encode();
         let record = sqlx::query_as!(
             DbRecord,
             r#"
             INSERT INTO records (entity, sequence_order, subject, value)
             VALUES ($1, $2, $3, $4)
-            RETURNING entity as "entity: DbRecordEntity", sequence_order, subject, value
+            RETURNING entity as "entity: RecordEntity", sequence_order, subject, value
             "#,
             entity as _,
-            sequence_order,
+            order,
             subject,
             value,
         )
@@ -64,20 +62,24 @@ pub trait Record:
         Ok(record)
     }
 
-    async fn update(&self, db: &Db, subject: &str) -> DbResult<DbRecord> {
+    async fn update(
+        &self,
+        db: &Db,
+        subject: &str,
+        order: i32,
+    ) -> DbResult<DbRecord> {
         let entity = Self::ENTITY;
-        let sequence_order = self.order();
-        let value = self.serialize_value();
+        let value = self.encode();
         let record = sqlx::query_as!(
             DbRecord,
             r#"
             UPDATE records
             SET entity = $1, sequence_order = $2, subject = $3, value = $4
             WHERE subject = $5
-            RETURNING entity as "entity: DbRecordEntity", sequence_order, subject, value
+            RETURNING entity as "entity: RecordEntity", sequence_order, subject, value
             "#,
             entity as _,
-            sequence_order,
+            order,
             subject,
             value,
             subject
@@ -90,10 +92,14 @@ pub trait Record:
         Ok(record)
     }
 
-    async fn upsert(&self, db: &Db, subject: &str) -> DbResult<DbRecord> {
+    async fn upsert(
+        &self,
+        db: &Db,
+        subject: &str,
+        order: i32,
+    ) -> DbResult<DbRecord> {
         let entity = Self::ENTITY;
-        let sequence_order = self.order();
-        let value = self.serialize_value();
+        let value = self.encode();
         let record = sqlx::query_as!(
             DbRecord,
             r#"
@@ -104,10 +110,10 @@ pub trait Record:
                 entity = EXCLUDED.entity,
                 sequence_order = EXCLUDED.sequence_order,
                 value = EXCLUDED.value
-            RETURNING entity as "entity: DbRecordEntity", sequence_order, subject, value
+            RETURNING entity as "entity: RecordEntity", sequence_order, subject, value
             "#,
             entity as _,
-            sequence_order,
+            order,
             subject,
             value,
         )
@@ -124,7 +130,7 @@ pub trait Record:
             r#"
             DELETE FROM records
             WHERE subject = $1
-            RETURNING entity as "entity: DbRecordEntity", sequence_order, subject, value
+            RETURNING entity as "entity: RecordEntity", sequence_order, subject, value
             "#,
             subject,
         )
@@ -144,7 +150,7 @@ pub trait Record:
         let records = if pattern.contains('>') {
             sqlx::query_as!(
                 DbRecord,
-                r#"SELECT entity as "entity: DbRecordEntity", subject, sequence_order, value FROM records WHERE subject LIKE $1"#,
+                r#"SELECT entity as "entity: RecordEntity", subject, sequence_order, value FROM records WHERE subject LIKE $1"#,
                 pg_pattern
             )
                 .fetch_all(&db.pool)
@@ -153,7 +159,7 @@ pub trait Record:
         } else {
             sqlx::query_as!(
                 DbRecord,
-                r#"SELECT entity as "entity: DbRecordEntity", subject, sequence_order, value FROM records WHERE subject ~ $1"#,
+                r#"SELECT entity as "entity: RecordEntity", subject, sequence_order, value FROM records WHERE subject ~ $1"#,
                 pg_pattern
             )
                 .fetch_all(&db.pool)
@@ -164,23 +170,23 @@ pub trait Record:
         Ok(records)
     }
 
-    fn serialize_value(&self) -> Vec<u8> {
+    fn encode(&self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
 
-    fn serialize_value_json(&self) -> Vec<u8> {
+    fn encode_json(&self) -> Vec<u8> {
         serde_json::to_vec(&self).unwrap()
     }
 
-    fn deserialize_value(bytes: &[u8]) -> Self {
+    fn decode(bytes: &[u8]) -> Self {
         bincode::deserialize(bytes).unwrap()
     }
 
-    fn deserialize_value_json(bytes: &[u8]) -> Self {
+    fn decode_json(bytes: &[u8]) -> Self {
         serde_json::from_slice(bytes).unwrap()
     }
 
     fn from_db_record(record: &DbRecord) -> Self {
-        Self::deserialize_value(&record.value)
+        Self::decode(&record.value)
     }
 }

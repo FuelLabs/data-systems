@@ -19,7 +19,8 @@ async fn test_cache_operations() -> StoreResult<()> {
     // Add a record
     let subject = format!("{}.test.subject", create_random_db_name());
     let record = TestRecord::new("test payload");
-    store.add_record(&record, &subject).await?;
+    let packet = record.to_packet(&subject);
+    store.add_record(&packet).await?;
 
     // First query should cache the result
     let initial_stats = store.cache_stats();
@@ -51,16 +52,17 @@ async fn test_cache_update_operations() -> StoreResult<()> {
 
     // Add initial record
     let subject = format!("{}.test.subject", create_random_db_name());
-    let record = TestRecord::new("initial payload");
-    store.add_record(&record, &subject).await?;
+    let packet = TestRecord::new("initial payload").to_packet(&subject);
+    store.add_record(&packet).await?;
 
     // Cache the record
     let _ = store.find_many_by_subject(&subject).await?;
-    assert_eq!(store.cache.get(&subject).unwrap(), record);
+    assert_eq!(store.cache.get(&subject).unwrap(), packet.record);
 
     // Update the record
     let updated_record = TestRecord::new("updated payload");
-    store.update_record(&updated_record, &subject).await?;
+    let packet = updated_record.to_packet(&subject);
+    store.update_record(&packet).await?;
 
     // Cache should be updated
     assert_eq!(store.cache.get(&subject).unwrap(), updated_record);
@@ -84,15 +86,15 @@ async fn test_cache_delete_operations() -> StoreResult<()> {
 
     // Add initial record
     let subject = format!("{}.test.subject", create_random_db_name());
-    let record = TestRecord::new("test payload");
-    store.add_record(&record, &subject).await?;
+    let packet = TestRecord::new("test payload").to_packet(&subject);
+    store.add_record(&packet).await?;
 
     // Cache the record
     let _ = store.find_many_by_subject(&subject).await?;
     assert!(store.cache.get(&subject).is_some());
 
     // Delete the record
-    store.delete_record(&record, &subject).await?;
+    store.delete_record(&packet).await?;
 
     // Cache should no longer have the record
     assert!(store.cache.get(&subject).is_none());

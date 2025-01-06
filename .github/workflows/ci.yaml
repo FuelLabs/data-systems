@@ -38,17 +38,15 @@ jobs:
             refactor
             test
           scopes: |
-            benches
             repo
             deps
             release
-            data-parser
             fuel-streams
             core
             executors
             macros
             nats
-            storage
+            store
             consumer
             publisher
             webserver
@@ -227,10 +225,10 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - fuel-data-parser
           - fuel-streams
           - fuel-streams-core
           - fuel-streams-macros
+          - fuel-streams-store
           - sv-webserver
           - sv-publisher
     steps:

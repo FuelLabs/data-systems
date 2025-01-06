@@ -12,7 +12,6 @@ use std::{
 };
 
 use displaydoc::Display as DisplayDoc;
-use fuel_data_parser::DataParserError;
 use fuel_streams_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

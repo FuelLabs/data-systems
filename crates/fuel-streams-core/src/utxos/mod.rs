@@ -1,15 +1,11 @@
 pub mod subjects;
 pub mod types;
 
+use fuel_streams_store::db::{Record, RecordEntity};
 pub use subjects::*;
 
 use super::types::*;
-use crate::{DataEncoder, StreamError, Streamable};
 
-impl DataEncoder for Utxo {
-    type Err = StreamError;
-}
-impl Streamable for Utxo {
-    const NAME: &'static str = "utxos";
-    const WILDCARD_LIST: &'static [&'static str] = &[UtxosSubject::WILDCARD];
+impl Record for Utxo {
+    const ENTITY: RecordEntity = RecordEntity::Utxo;
 }

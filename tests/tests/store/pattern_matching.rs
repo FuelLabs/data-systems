@@ -97,10 +97,9 @@ async fn test_empty_pattern() -> StoreResult<()> {
     let store = setup_store().await?;
     let prefix = create_random_db_name();
     let with_prefix = |s: &str| format!("{}.{}", prefix, s);
-
-    store
-        .add_record(&TestRecord::new("Order 1"), &with_prefix("orders.new.1"))
-        .await?;
+    let subject = with_prefix("orders.new.1");
+    let packet = TestRecord::new("Order 1").to_packet(&subject);
+    store.add_record(&packet).await?;
 
     let err = store.find_many_by_subject("").await.unwrap_err();
     assert!(matches!(

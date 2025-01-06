@@ -1,6 +1,6 @@
 use fuel_streams_store::{
-    db::{Db, DbConnectionOpts, DbRecordEntity, DbResult, Record},
-    store::{Store, StoreResult},
+    db::{Db, DbConnectionOpts, DbResult, Record, RecordEntity},
+    store::{Store, StorePacket, StoreResult},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -8,14 +8,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestRecord(pub String);
 impl Record for TestRecord {
-    const ENTITY: DbRecordEntity = DbRecordEntity::Block;
-    fn order(&self) -> i32 {
-        0
-    }
+    const ENTITY: RecordEntity = RecordEntity::Block;
 }
 impl TestRecord {
     pub fn new(payload: impl Into<String>) -> Self {
         Self(payload.into())
+    }
+    pub fn to_packet(&self, subject: impl Into<String>) -> StorePacket<Self> {
+        StorePacket::new(self, subject.into())
     }
 }
 
@@ -29,14 +29,14 @@ pub async fn setup_store<R: Record>() -> StoreResult<Store<R>> {
     Store::new(opts).await
 }
 
-pub async fn add_test_records<R: Record>(
-    store: &Store<R>,
+pub async fn add_test_records(
+    store: &Store<TestRecord>,
     prefix: &str,
-    records: &[(impl AsRef<str>, R)],
+    records: &[(impl AsRef<str>, TestRecord)],
 ) -> StoreResult<()> {
     for (suffix, payload) in records {
         let subject = format!("{}.{}", prefix, suffix.as_ref());
-        store.add_record(payload, &subject).await?;
+        store.add_record(&payload.to_packet(&subject)).await?;
     }
     Ok(())
 }

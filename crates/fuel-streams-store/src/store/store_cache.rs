@@ -1,7 +1,4 @@
-use std::{
-    sync::atomic::{AtomicU64, Ordering},
-    time::Duration,
-};
+use std::time::Duration;
 
 use moka::sync::Cache;
 use serde::{Deserialize, Serialize};
@@ -25,16 +22,13 @@ impl Default for CacheConfig {
 
 #[derive(Debug, Clone)]
 pub struct CacheStats {
-    pub hits: u64,
-    pub misses: u64,
     pub size: u64,
 }
 
+#[derive(Debug, Clone)]
 pub struct StoreCache<T: Clone + Send + Sync + 'static> {
     cache: Cache<String, T>,
     config: CacheConfig,
-    hits: AtomicU64,
-    misses: AtomicU64,
 }
 
 impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
@@ -44,12 +38,7 @@ impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
             .time_to_live(config.ttl)
             .build();
 
-        Self {
-            cache,
-            config,
-            hits: AtomicU64::new(0),
-            misses: AtomicU64::new(0),
-        }
+        Self { cache, config }
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -60,16 +49,7 @@ impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
         if !self.config.enabled {
             return None;
         }
-        match self.cache.get(subject) {
-            Some(value) => {
-                self.hits.fetch_add(1, Ordering::Relaxed);
-                Some(value)
-            }
-            None => {
-                self.misses.fetch_add(1, Ordering::Relaxed);
-                None
-            }
-        }
+        self.cache.get(subject)
     }
 
     pub fn insert(&self, subject: &str, value: &T) {
@@ -98,8 +78,6 @@ impl<T: Clone + Send + Sync + 'static> StoreCache<T> {
 
     pub fn stats(&self) -> CacheStats {
         CacheStats {
-            hits: self.hits.load(Ordering::Relaxed),
-            misses: self.misses.load(Ordering::Relaxed),
             size: self.cache.entry_count(),
         }
     }
@@ -164,24 +142,12 @@ mod tests {
 
         // Initial stats
         let stats = cache.stats();
-        assert_eq!(stats.hits, 0);
-        assert_eq!(stats.misses, 0);
         assert_eq!(stats.size, 0);
 
         // Add entry and check stats
         cache.insert(&subject, &value);
         let stats = cache.stats();
         assert_eq!(stats.size, 1);
-
-        // Get entry and check hits
-        cache.get(&subject).unwrap();
-        let stats = cache.stats();
-        assert_eq!(stats.hits, 1);
-
-        // Try getting non-existent entry
-        cache.get("nonexistent");
-        let stats = cache.stats();
-        assert_eq!(stats.misses, 1);
     }
 
     #[tokio::test]

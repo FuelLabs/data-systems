@@ -57,7 +57,6 @@ You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is b
 Here's an overview of the project's directory structure:
 
 - `crates/`: Contains the main Rust crates for the project
-- `benches/`: Benchmarking code and performance tests
 - `tests/`: Integration and end-to-end tests
 - `examples/`: Example code and usage demonstrations
 - `cluster/`: Kubernetes cluster configuration and deployment files
@@ -91,9 +90,7 @@ This is a general rule used for commits. When you are creating a PR, ensure that
 - `core`: Changes that affect the core package.
 - `publisher`: Changes that affect the publisher package.
 - `fuel-streams`: Changes that affect the fuel-streams package.
-- `benches`: Changes related to benchmarks.
 - `deps`: Changes related to dependencies.
-- `data-parser`: Changes that affect the data-parser package.
 - `macros`: Changes that affect the macros package.
 
 ## 📜 Useful Commands
@@ -111,7 +108,6 @@ To make your life easier, here are some commands to run common tasks in this pro
 | `make test-watch`        | Run tests in watch mode                               |
 | `make clean`             | Clean the build artifacts                             |
 | `make dev-watch`         | Run the project in development mode with auto-reload  |
-| `make bench`             | Run benchmarks for the project                        |
 | `make audit`             | Run security audit on dependencies                    |
 | `make audit-fix`         | Fix security vulnerabilities in dependencies          |
 | `make version`           | Show current version                                  |
