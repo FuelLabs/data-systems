@@ -64,3 +64,20 @@ services:
       - ./init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
     env_file:
       - ./../../.env
+
+  cockroach:
+    image: cockroachdb/cockroach:v23.2.2
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    command: start-single-node --insecure
+    volumes:
+      - cockroach_data:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cockroach_data:

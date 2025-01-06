@@ -1,112 +1,57 @@
-use std::{sync::Arc, time::Duration};
-
-use fuel_streams::{client::Client, Connection, FuelNetwork};
-use fuel_streams_core::{
-    nats::NatsClient,
-    prelude::*,
-    types::Transaction,
-    Stream,
+use fuel_streams_store::{
+    storage::{CockroachConnectionOpts, CockroachStorage, StorageResult},
+    store::{Recordable, Store, StoreRecord, StoreResult},
 };
-use tokio::task::JoinHandle;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
-type PublishedBlocksResult =
-    BoxedResult<(Vec<(BlocksSubject, Block)>, JoinHandle<()>)>;
-type PublishedTxsResult =
-    BoxedResult<(Vec<(TransactionsSubject, Transaction)>, JoinHandle<()>)>;
-
-#[derive(Debug, Clone)]
-pub struct Streams {
-    pub blocks: Stream<Block>,
-    pub transactions: Stream<Transaction>,
-}
-
-impl Streams {
-    pub async fn new(
-        nats_client: &NatsClient,
-        storage: &Arc<S3Storage>,
-    ) -> Self {
-        let blocks = Stream::<Block>::get_or_init(nats_client, storage).await;
-        let transactions =
-            Stream::<Transaction>::get_or_init(nats_client, storage).await;
-        Self {
-            transactions,
-            blocks,
-        }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TestRecord(pub String);
+impl Recordable for TestRecord {}
+impl TestRecord {
+    pub fn new(payload: impl Into<String>) -> Self {
+        Self(payload.into())
     }
 }
 
-pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Connection)> {
-    let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
-    let nats_client = NatsClient::connect(&nats_client_opts).await?;
-
-    let storage_opts = S3StorageOpts::admin_opts().with_random_namespace();
-    let storage = Arc::new(S3Storage::new(storage_opts).await?);
-    storage.create_bucket().await?;
-
-    let streams = Streams::new(&nats_client, &storage).await;
-
-    let mut client = Client::new(FuelNetwork::Local).await?;
-    let connection = client.connect().await?;
-
-    Ok((nats_client, streams, connection))
+pub async fn create_test_storage() -> StorageResult<CockroachStorage> {
+    let opts = CockroachConnectionOpts::default();
+    CockroachStorage::new(opts).await
 }
 
-pub fn publish_items<T: Streamable + 'static>(
-    stream: &Stream<T>,
-    items: Vec<(impl IntoSubject + Clone + 'static, T)>,
-) -> JoinHandle<()> {
-    tokio::task::spawn({
-        let stream = stream.clone();
-        let items = items.clone();
-        async move {
-            for item in items {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-                let payload = item.1.clone();
-                let subject = Arc::new(item.0);
-                let packet = payload.to_packet(subject);
-
-                stream.publish(&packet).await.unwrap();
-            }
-        }
-    })
+pub async fn setup_store<T: Recordable>() -> StoreResult<Store<T>> {
+    let opts = CockroachConnectionOpts::default();
+    Store::new(opts).await
 }
 
-pub fn publish_blocks(
-    stream: &Stream<Block>,
-    producer: Option<Address>,
-    use_height: Option<u32>,
-) -> PublishedBlocksResult {
-    let mut items = Vec::new();
-    for i in 0..10 {
-        let block_item = MockBlock::build(use_height.unwrap_or(i));
-        let subject = BlocksSubject::build(
-            producer.clone(),
-            Some((use_height.unwrap_or(i)).into()),
-        );
-        items.push((subject, block_item));
+pub fn create_test_record<T: Recordable>(
+    subject: &str,
+    payload: T,
+) -> StoreRecord<T> {
+    StoreRecord::new(subject, payload)
+}
+
+pub async fn add_test_records<T: Recordable>(
+    store: &Store<T>,
+    prefix: &str,
+    records: &[(impl AsRef<str>, T)],
+) -> StoreResult<()> {
+    for (suffix, payload) in records {
+        let key = format!("{}.{}", prefix, suffix.as_ref());
+        store
+            .add_record(&create_test_record(&key, payload.clone()))
+            .await?;
     }
-
-    let join_handle = publish_items::<Block>(stream, items.clone());
-
-    Ok((items, join_handle))
+    Ok(())
 }
 
-pub fn publish_transactions(
-    stream: &Stream<Transaction>,
-    mock_block: &Block,
-    use_index: Option<u32>,
-) -> PublishedTxsResult {
-    let mut items = Vec::new();
-    for i in 0..10 {
-        let tx = MockTransaction::build();
-        let subject = TransactionsSubject::from(&tx)
-            .with_block_height(Some(mock_block.height.into()))
-            .with_index(Some(use_index.unwrap_or(i) as usize))
-            .with_status(Some(TransactionStatus::Success));
-        items.push((subject, tx));
-    }
+pub fn create_random_db_name() -> String {
+    format!("test_{}", rand::thread_rng().gen_range(0..1000000))
+}
 
-    let join_handle = publish_items::<Transaction>(stream, items.clone());
-
-    Ok((items, join_handle))
+pub async fn cleanup_tables() -> StoreResult<()> {
+    let opts = CockroachConnectionOpts::default();
+    let storage = CockroachStorage::new(opts).await?;
+    storage.cleanup_tables().await?;
+    Ok(())
 }

@@ -1,3 +1,2 @@
-mod client;
-mod publisher;
-mod stream;
+mod storage;
+mod store;

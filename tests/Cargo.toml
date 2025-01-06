@@ -1,27 +1,20 @@
 [package]
-name = "streams-tests"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+name = "fuel-streams-test"
 version = { workspace = true }
-rust-version = { workspace = true }
-publish = false
-autobenches = false
-autotests = false
+edition = { workspace = true }
 
 [[test]]
 harness = true
 name = "integration_tests"
 path = "tests/lib.rs"
 
-[dependencies]
-fuel-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams = { workspace = true, features = ["test-helpers"] }
-fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+[features]
+test-helpers = []
 
-[dev-dependencies]
-pretty_assertions = { workspace = true }
+[dependencies]
+dotenvy = { workspace = true }
+fuel-streams-store = { workspace = true, features = ["test-helpers"] }
+rand = { workspace = true }
+serde = { workspace = true }
+test-case = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
