@@ -1,5 +1,5 @@
 use fuel_streams_store::{
-    storage::{CockroachConnectionOpts, CockroachStorage, StorageResult},
+    db::{CockroachConnectionOpts, CockroachDb, DbResult},
     store::{Recordable, Store, StoreRecord, StoreResult},
 };
 use rand::Rng;
@@ -14,9 +14,9 @@ impl TestRecord {
     }
 }
 
-pub async fn create_test_storage() -> StorageResult<CockroachStorage> {
+pub async fn create_test_db() -> DbResult<CockroachDb> {
     let opts = CockroachConnectionOpts::default();
-    CockroachStorage::new(opts).await
+    CockroachDb::new(opts).await
 }
 
 pub async fn setup_store<T: Recordable>() -> StoreResult<Store<T>> {
@@ -51,7 +51,7 @@ pub fn create_random_db_name() -> String {
 
 pub async fn cleanup_tables() -> StoreResult<()> {
     let opts = CockroachConnectionOpts::default();
-    let storage = CockroachStorage::new(opts).await?;
-    storage.cleanup_tables().await?;
+    let db = CockroachDb::new(opts).await?;
+    db.cleanup_tables().await?;
     Ok(())
 }

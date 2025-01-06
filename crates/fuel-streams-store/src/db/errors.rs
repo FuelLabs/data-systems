@@ -1,11 +1,11 @@
 #[derive(thiserror::Error, Debug)]
-pub enum StorageError {
-    #[error("Cockroach storage error: {0}")]
-    Cockroach(#[from] CockroachStorageError),
+pub enum DbError {
+    #[error("Cockroach db error: {0}")]
+    Cockroach(#[from] CockroachDbError),
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum CockroachStorageError {
+pub enum CockroachDbError {
     #[error("Failed to open database")]
     Open(#[source] sqlx::Error),
     #[error("Failed to insert data")]

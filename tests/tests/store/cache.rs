@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use fuel_streams_store::{
-    storage::CockroachConnectionOpts,
+    db::CockroachConnectionOpts,
     store::{CacheConfig, Store, StoreResult},
 };
 use fuel_streams_test::{

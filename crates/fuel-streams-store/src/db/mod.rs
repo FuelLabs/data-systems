@@ -1,9 +1,9 @@
 pub mod cockroachdb;
+pub mod db_trait;
 pub mod errors;
-pub mod storage_trait;
 pub mod types;
 
 pub use cockroachdb::*;
+pub use db_trait::*;
 pub use errors::*;
-pub use storage_trait::*;
 pub use types::*;

@@ -10,22 +10,22 @@ use super::{
     StoreResult,
 };
 use crate::{
-    storage::{CockroachConnectionOpts, CockroachStorage, Storage},
+    db::{CockroachConnectionOpts, CockroachDb, Db},
     subject_validator::SubjectValidator,
 };
 
 #[derive(Clone)]
 pub struct Store<S: Recordable> {
-    pub storage: Arc<dyn Storage>,
+    pub db: Arc<dyn Db>,
     cache: Arc<StoreCache<S>>,
     _marker: std::marker::PhantomData<S>,
 }
 
 impl<S: Recordable> Store<S> {
     pub async fn new(opts: CockroachConnectionOpts) -> StoreResult<Self> {
-        let storage = CockroachStorage::new(opts).await?;
+        let db = CockroachDb::new(opts).await?;
         Ok(Self {
-            storage: Arc::new(storage),
+            db: Arc::new(db),
             cache: Arc::new(StoreCache::new(CacheConfig::default())),
             _marker: std::marker::PhantomData,
         })
@@ -35,9 +35,9 @@ impl<S: Recordable> Store<S> {
         opts: CockroachConnectionOpts,
         cache_config: CacheConfig,
     ) -> StoreResult<Self> {
-        let storage = CockroachStorage::new(opts).await?;
+        let db = CockroachDb::new(opts).await?;
         Ok(Self {
-            storage: Arc::new(storage),
+            db: Arc::new(db),
             cache: Arc::new(StoreCache::new(cache_config)),
             _marker: std::marker::PhantomData,
         })
@@ -51,7 +51,7 @@ impl<S: Recordable> Store<S> {
 impl<S: Recordable> Store<S> {
     pub async fn add_record(&self, record: &StoreRecord<S>) -> StoreResult<()> {
         let bytes = Recordable::serialize(&*record.payload);
-        self.storage.insert(&record.subject, &bytes).await?;
+        self.db.insert(&record.subject, &bytes).await?;
         self.cache.insert(&record.subject, &*record.payload);
         Ok(())
     }
@@ -61,7 +61,7 @@ impl<S: Recordable> Store<S> {
         record: &StoreRecord<S>,
     ) -> StoreResult<()> {
         let bytes = Recordable::serialize(&*record.payload);
-        self.storage.update(&record.subject, &bytes).await?;
+        self.db.update(&record.subject, &bytes).await?;
         self.cache.insert(&record.subject, &*record.payload);
         Ok(())
     }
@@ -71,13 +71,13 @@ impl<S: Recordable> Store<S> {
         record: &StoreRecord<S>,
     ) -> StoreResult<()> {
         let bytes = Recordable::serialize(&*record.payload);
-        self.storage.upsert(&record.subject, &bytes).await?;
+        self.db.upsert(&record.subject, &bytes).await?;
         self.cache.insert(&record.subject, &*record.payload);
         Ok(())
     }
 
     pub async fn delete_record(&self, subject: &str) -> StoreResult<()> {
-        self.storage.delete(subject).await?;
+        self.db.delete(subject).await?;
         self.cache.delete(subject);
         Ok(())
     }
@@ -100,7 +100,7 @@ impl<S: Recordable> Store<S> {
             }
         }
 
-        let items = self.storage.find_by_pattern(subject_pattern).await?;
+        let items = self.db.find_by_pattern(subject_pattern).await?;
         let mut messages = Vec::with_capacity(items.len());
         for item in items {
             let payload: S = Recordable::deserialize(&item.value);

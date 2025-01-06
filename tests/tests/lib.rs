@@ -1,2 +1,2 @@
-mod storage;
+mod db;
 mod store;

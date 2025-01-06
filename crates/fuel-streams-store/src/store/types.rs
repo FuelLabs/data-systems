@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::StoreError;
-use crate::storage::StorageRecord;
+use crate::db::DbRecord;
 
 #[async_trait]
 pub trait Recordable:
@@ -37,8 +37,8 @@ impl<T: Recordable> StoreRecord<T> {
     }
 }
 
-impl<T: Recordable> From<StorageRecord> for StoreRecord<T> {
-    fn from(record: StorageRecord) -> Self {
+impl<T: Recordable> From<DbRecord> for StoreRecord<T> {
+    fn from(record: DbRecord) -> Self {
         Self {
             subject: record.subject,
             payload: Arc::new(Recordable::deserialize(&record.value)),

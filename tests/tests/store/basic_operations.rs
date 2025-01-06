@@ -1,5 +1,5 @@
 use fuel_streams_store::{
-    storage::{CockroachStorageError, StorageError},
+    db::{CockroachDbError, DbError},
     store::{StoreError, StoreResult},
 };
 use fuel_streams_test::{
@@ -43,8 +43,8 @@ async fn test_delete_message() -> StoreResult<()> {
     let err = store.delete_record(&key).await.unwrap_err();
     assert!(matches!(
         err,
-        StoreError::Storage(StorageError::Cockroach(
-            CockroachStorageError::NotFound(subject)
+        StoreError::Db(DbError::Cockroach(
+            CockroachDbError::NotFound(subject)
         )) if subject == key
     ));
 
@@ -77,8 +77,8 @@ async fn test_update_message() -> StoreResult<()> {
 
     assert!(matches!(
         err,
-        StoreError::Storage(StorageError::Cockroach(
-            CockroachStorageError::NotFound(subject)
+        StoreError::Db(DbError::Cockroach(
+            CockroachDbError::NotFound(subject)
         )) if subject == key
     ));
 

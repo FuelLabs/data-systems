@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use super::{CockroachStorageError, Storage, StorageRecord, StorageResult};
+use super::{CockroachDbError, Db, DbRecord, DbResult};
 use crate::subject_validator::SubjectValidator;
 
 pub struct CockroachConnectionOpts {
@@ -18,41 +18,37 @@ impl Default for CockroachConnectionOpts {
     }
 }
 
-pub struct CockroachStorage {
+pub struct CockroachDb {
     pool: Pool<Postgres>,
 }
 
-impl CockroachStorage {
-    pub async fn new(opts: CockroachConnectionOpts) -> StorageResult<Self> {
+impl CockroachDb {
+    pub async fn new(opts: CockroachConnectionOpts) -> DbResult<Self> {
         let pool = PgPoolOptions::new()
             .max_connections(opts.pool_size.unwrap_or_default())
             .connect(&opts.connection_str)
             .await
-            .map_err(CockroachStorageError::Open)?;
+            .map_err(CockroachDbError::Open)?;
 
         Ok(Self { pool })
     }
 
     #[cfg(feature = "test-helpers")]
-    pub async fn cleanup_tables(&self) -> StorageResult<()> {
+    pub async fn cleanup_tables(&self) -> DbResult<()> {
         sqlx::query("TRUNCATE TABLE records")
             .execute(&self.pool)
             .await
-            .map_err(CockroachStorageError::Delete)?;
+            .map_err(CockroachDbError::Delete)?;
 
         Ok(())
     }
 }
 
 #[async_trait]
-impl Storage for CockroachStorage {
-    async fn insert(
-        &self,
-        subject: &str,
-        value: &[u8],
-    ) -> StorageResult<StorageRecord> {
+impl Db for CockroachDb {
+    async fn insert(&self, subject: &str, value: &[u8]) -> DbResult<DbRecord> {
         let record = sqlx::query_as!(
-            StorageRecord,
+            DbRecord,
             r#"
             INSERT INTO records (subject, value)
             VALUES ($1, $2)
@@ -67,22 +63,18 @@ impl Storage for CockroachStorage {
             if e.to_string()
                 .contains("duplicate subject value violates unique constraint")
             {
-                CockroachStorageError::DuplicateSubject(subject.to_string())
+                CockroachDbError::DuplicateSubject(subject.to_string())
             } else {
-                CockroachStorageError::Insert(e)
+                CockroachDbError::Insert(e)
             }
         })?;
 
         Ok(record)
     }
 
-    async fn update(
-        &self,
-        subject: &str,
-        value: &[u8],
-    ) -> StorageResult<StorageRecord> {
+    async fn update(&self, subject: &str, value: &[u8]) -> DbResult<DbRecord> {
         let record = sqlx::query_as!(
-            StorageRecord,
+            DbRecord,
             r#"
             UPDATE records
             SET value = $1
@@ -94,19 +86,15 @@ impl Storage for CockroachStorage {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(CockroachStorageError::Update)?
-        .ok_or_else(|| CockroachStorageError::NotFound(subject.to_string()))?;
+        .map_err(CockroachDbError::Update)?
+        .ok_or_else(|| CockroachDbError::NotFound(subject.to_string()))?;
 
         Ok(record)
     }
 
-    async fn upsert(
-        &self,
-        subject: &str,
-        value: &[u8],
-    ) -> StorageResult<StorageRecord> {
+    async fn upsert(&self, subject: &str, value: &[u8]) -> DbResult<DbRecord> {
         let record = sqlx::query_as!(
-            StorageRecord,
+            DbRecord,
             r#"
             INSERT INTO records (subject, value)
             VALUES ($1, $2)
@@ -119,12 +107,12 @@ impl Storage for CockroachStorage {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(CockroachStorageError::Upsert)?;
+        .map_err(CockroachDbError::Upsert)?;
 
         Ok(record)
     }
 
-    async fn delete(&self, subject: &str) -> StorageResult<()> {
+    async fn delete(&self, subject: &str) -> DbResult<()> {
         let result = sqlx::query!(
             r#"
             DELETE FROM records
@@ -134,39 +122,34 @@ impl Storage for CockroachStorage {
         )
         .execute(&self.pool)
         .await
-        .map_err(CockroachStorageError::Delete)?;
+        .map_err(CockroachDbError::Delete)?;
 
         if result.rows_affected() == 0 {
-            return Err(
-                CockroachStorageError::NotFound(subject.to_string()).into()
-            );
+            return Err(CockroachDbError::NotFound(subject.to_string()).into());
         }
         Ok(())
     }
 
-    async fn find_by_pattern(
-        &self,
-        pattern: &str,
-    ) -> StorageResult<Vec<StorageRecord>> {
+    async fn find_by_pattern(&self, pattern: &str) -> DbResult<Vec<DbRecord>> {
         let pg_pattern = SubjectValidator::to_sql_pattern(pattern);
         let records = if pattern.contains('>') {
             sqlx::query_as!(
-                StorageRecord,
+                DbRecord,
                 r#"SELECT subject, value FROM records WHERE subject LIKE $1"#,
                 pg_pattern
             )
             .fetch_all(&self.pool)
             .await
-            .map_err(CockroachStorageError::Query)?
+            .map_err(CockroachDbError::Query)?
         } else {
             sqlx::query_as!(
-                StorageRecord,
+                DbRecord,
                 r#"SELECT subject, value FROM records WHERE subject ~ $1"#,
                 pg_pattern
             )
             .fetch_all(&self.pool)
             .await
-            .map_err(CockroachStorageError::Query)?
+            .map_err(CockroachDbError::Query)?
         };
 
         Ok(records)
