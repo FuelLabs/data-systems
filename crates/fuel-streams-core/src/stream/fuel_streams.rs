@@ -14,6 +14,7 @@ pub struct FuelStreams {
     pub utxos: Stream<Utxo>,
     pub logs: Stream<Log>,
     pub nats_client: Arc<NatsClient>,
+    pub db: Arc<Db>,
 }
 
 impl FuelStreams {
@@ -28,6 +29,7 @@ impl FuelStreams {
             utxos: Stream::<Utxo>::get_or_init(nats_client, db).await,
             logs: Stream::<Log>::get_or_init(nats_client, db).await,
             nats_client: Arc::new(nats_client.clone()),
+            db: Arc::clone(&db),
         }
     }
 

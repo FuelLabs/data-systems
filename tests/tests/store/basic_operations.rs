@@ -1,12 +1,17 @@
 use fuel_streams_store::{
     db::DbError,
     record::{DataEncoder, Record},
-    store::{StoreError, StoreResult},
+    store::StoreError,
 };
-use fuel_streams_test::{create_random_db_name, setup_store, TestRecord};
+use fuel_streams_test::{
+    create_random_db_name,
+    prefix_fn,
+    setup_store,
+    TestRecord,
+};
 
 #[tokio::test]
-async fn test_add_and_retrieve_message() -> StoreResult<()> {
+async fn test_add_and_retrieve_message() -> anyhow::Result<()> {
     let store = setup_store().await?;
     let subject = format!("{}.test.subject", create_random_db_name());
     let record = TestRecord::new("test payload");
@@ -27,9 +32,10 @@ async fn test_add_and_retrieve_message() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_delete_message() -> StoreResult<()> {
+async fn test_delete_message() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
     let record = TestRecord::new("test payload");
     let packet = record.to_packet(&subject);
     store.add_record(&packet).await?;
@@ -54,9 +60,10 @@ async fn test_delete_message() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_update_message() -> StoreResult<()> {
+async fn test_update_message() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
     let record = TestRecord::new("initial payload");
     let packet = record.to_packet(&subject);
     store.add_record(&packet).await?;
@@ -87,9 +94,10 @@ async fn test_update_message() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_upsert_message() -> StoreResult<()> {
+async fn test_upsert_message() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
 
     // Test insert
     let record = TestRecord::new("initial payload");

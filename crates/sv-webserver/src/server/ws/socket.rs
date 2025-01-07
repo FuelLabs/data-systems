@@ -11,8 +11,11 @@ use actix_web::{
 };
 use actix_ws::{Message, Session};
 use fuel_streams_core::prelude::*;
-use fuel_streams_store::record::{DataEncoder, RecordEntity};
-use futures::{stream::BoxStream, StreamExt};
+use fuel_streams_store::{
+    db::Db,
+    record::{DataEncoder, RecordEntity},
+};
+use futures::StreamExt;
 use uuid::Uuid;
 
 use super::{
@@ -203,10 +206,12 @@ async fn handle_binary_message(
 
             let record_entity = RecordEntity::from_str(&entity).unwrap();
             let nats_client = streams.nats_client();
+            let db = streams.db.clone();
             let mut sub = handle_ws_error!(
                 create_subscriber(
                     &record_entity,
                     &nats_client,
+                    &db,
                     subject_wildcard.clone()
                 )
                 .await,
@@ -234,11 +239,11 @@ async fn handle_binary_message(
                 );
 
                 // consume and forward to the ws
-                while let Some((subject, payload)) = sub.next().await {
+                while let Some(message) = sub.next().await {
                     let serialized_ws_payload = match decode(
                         &record_entity,
-                        &subject,
-                        payload,
+                        &message.subject,
+                        message.payload,
                     )
                     .await
                     {
@@ -364,32 +369,31 @@ async fn decode<'a>(
 async fn create_subscriber(
     record_entity: &RecordEntity,
     nats_client: &Arc<NatsClient>,
+    db: &Arc<Db>,
     subject_wildcard: String,
-) -> Result<BoxStream<'static, (String, Bytes)>, StreamError> {
+) -> Result<StreamLiveSubscriber, StreamError> {
+    let streams = FuelStreams::new(nats_client, db).await;
     match record_entity {
         RecordEntity::Block => {
-            Stream::<Block>::subscribe_live(nats_client, subject_wildcard).await
+            streams.blocks.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Transaction => {
-            Stream::<Transaction>::subscribe_live(nats_client, subject_wildcard)
-                .await
+            streams.transactions.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Input => {
-            Stream::<Input>::subscribe_live(nats_client, subject_wildcard).await
+            streams.inputs.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Output => {
-            Stream::<Output>::subscribe_live(nats_client, subject_wildcard)
-                .await
+            streams.outputs.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Receipt => {
-            Stream::<Receipt>::subscribe_live(nats_client, subject_wildcard)
-                .await
+            streams.receipts.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Utxo => {
-            Stream::<Utxo>::subscribe_live(nats_client, subject_wildcard).await
+            streams.utxos.subscribe_live(subject_wildcard).await
         }
         RecordEntity::Log => {
-            Stream::<Log>::subscribe_live(nats_client, subject_wildcard).await
+            streams.logs.subscribe_live(subject_wildcard).await
         }
     }
 }

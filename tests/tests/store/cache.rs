@@ -1,20 +1,21 @@
 use std::time::Duration;
 
-use fuel_streams_store::store::{CacheConfig, Store, StoreResult};
-use fuel_streams_test::{create_random_db_name, create_test_db, TestRecord};
+use fuel_streams_store::store::{CacheConfig, Store};
+use fuel_streams_test::{prefix_fn, setup_db, TestRecord};
 
 #[tokio::test]
-async fn test_cache_operations() -> StoreResult<()> {
+async fn test_cache_operations() -> anyhow::Result<()> {
     let config = CacheConfig {
         capacity: 100,
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let db = create_test_db().await?;
+    let db = setup_db().await?;
     let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add a record
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
     let record = TestRecord::new("test payload");
     let packet = record.to_packet(&subject);
     store.add_record(&packet).await?;
@@ -32,17 +33,18 @@ async fn test_cache_operations() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_cache_update_operations() -> StoreResult<()> {
+async fn test_cache_update_operations() -> anyhow::Result<()> {
     let config = CacheConfig {
         capacity: 100,
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let db = create_test_db().await?;
+    let db = setup_db().await?;
     let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add initial record
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
     let packet = TestRecord::new("initial payload").to_packet(&subject);
     store.add_record(&packet).await?;
 
@@ -66,17 +68,18 @@ async fn test_cache_update_operations() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_cache_delete_operations() -> StoreResult<()> {
+async fn test_cache_delete_operations() -> anyhow::Result<()> {
     let config = CacheConfig {
         capacity: 100,
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let db = create_test_db().await?;
+    let db = setup_db().await?;
     let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add initial record
-    let subject = format!("{}.test.subject", create_random_db_name());
+    let (_, with_prefix) = prefix_fn();
+    let subject = with_prefix("test.subject");
     let packet = TestRecord::new("test payload").to_packet(&subject);
     store.add_record(&packet).await?;
 

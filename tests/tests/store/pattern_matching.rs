@@ -1,19 +1,13 @@
 use fuel_streams_store::{
-    store::{StoreError, StoreResult},
+    store::StoreError,
     subject_validator::SubjectPatternError,
 };
-use fuel_streams_test::{
-    add_test_records,
-    create_random_db_name,
-    setup_store,
-    TestRecord,
-};
+use fuel_streams_test::{add_test_records, prefix_fn, setup_store, TestRecord};
 
 #[tokio::test]
-async fn test_asterisk_wildcards() -> StoreResult<()> {
+async fn test_asterisk_wildcards() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let prefix = create_random_db_name();
-    let with_prefix = |s: &str| format!("{}.{}", prefix, s);
+    let (prefix, with_prefix) = prefix_fn();
 
     add_test_records(&store, &prefix, &[
         ("orders.new", TestRecord::new("Order")),
@@ -52,10 +46,9 @@ async fn test_asterisk_wildcards() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_greater_than_wildcards() -> StoreResult<()> {
+async fn test_greater_than_wildcards() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let prefix = create_random_db_name();
-    let with_prefix = |s: &str| format!("{}.{}", prefix, s);
+    let (prefix, with_prefix) = prefix_fn();
 
     add_test_records(&store, &prefix, &[
         ("orders.processed.1", TestRecord::new("Processed Order 1")),
@@ -93,10 +86,9 @@ async fn test_greater_than_wildcards() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_empty_pattern() -> StoreResult<()> {
+async fn test_empty_pattern() -> anyhow::Result<()> {
     let store = setup_store().await?;
-    let prefix = create_random_db_name();
-    let with_prefix = |s: &str| format!("{}.{}", prefix, s);
+    let (_, with_prefix) = prefix_fn();
     let subject = with_prefix("orders.new.1");
     let packet = TestRecord::new("Order 1").to_packet(&subject);
     store.add_record(&packet).await?;
@@ -114,10 +106,9 @@ async fn test_empty_pattern() -> StoreResult<()> {
 }
 
 #[tokio::test]
-async fn test_nonexistent_subjects() -> StoreResult<()> {
+async fn test_nonexistent_subjects() -> anyhow::Result<()> {
     let store = setup_store::<TestRecord>().await?;
-    let prefix = create_random_db_name();
-    let with_prefix = |s: &str| format!("{}.{}", prefix, s);
+    let (_, with_prefix) = prefix_fn();
 
     let found_messages = store
         .find_many_by_subject(&with_prefix("nonexistent.subject"))

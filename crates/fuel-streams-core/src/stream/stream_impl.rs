@@ -1,12 +1,11 @@
 use std::sync::{Arc, LazyLock};
 
-use bytes::Bytes;
+pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_streams_store::{
     db::{Db, DbRecord},
     record::Record,
     store::{Store, StorePacket},
 };
-use futures::{stream::BoxStream, StreamExt};
 use tokio::sync::OnceCell;
 
 use crate::prelude::*;
@@ -68,17 +67,13 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe_live<'a>(
-        client: &Arc<NatsClient>,
-        subject: String,
-    ) -> Result<BoxStream<'a, (String, Bytes)>, StreamError> {
-        let client = client.nats_client.clone();
-        let subscriber = client.subscribe(subject.to_owned()).await?;
-        Ok(subscriber
-            .then(move |message| async move {
-                (message.subject.to_string(), message.payload)
-            })
-            .boxed())
+    pub async fn subscribe_live(
+        &self,
+        subject: impl Into<String>,
+    ) -> Result<StreamLiveSubscriber, StreamError> {
+        let client = self.nats_client.nats_client.clone();
+        let subscriber = client.subscribe(subject.into()).await?;
+        Ok(subscriber)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
