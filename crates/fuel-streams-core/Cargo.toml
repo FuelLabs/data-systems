@@ -36,6 +36,7 @@ fuel-core-types = { workspace = true, default-features = false, features = ["std
 fuel-streams-macros = { workspace = true }
 fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true }
+fuel-streams-types = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 pretty_assertions = { workspace = true, optional = true }

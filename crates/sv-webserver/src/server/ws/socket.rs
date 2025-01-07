@@ -10,7 +10,7 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{Message, Session};
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{nats::*, stream::*, types::*};
 use fuel_streams_store::{
     db::Db,
     record::{DataEncoder, RecordEntity},

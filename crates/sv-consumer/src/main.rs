@@ -13,7 +13,7 @@ use async_nats::jetstream::{
 };
 use clap::Parser;
 use displaydoc::Display as DisplayDoc;
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{nats::*, types::*, FuelStreams};
 use fuel_streams_executors::*;
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},

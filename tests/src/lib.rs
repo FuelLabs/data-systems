@@ -1,4 +1,4 @@
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{stream::*, subjects::*};
 use fuel_streams_nats::{NatsClient, NatsClientOpts};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
@@ -14,7 +14,10 @@ use serde::{Deserialize, Serialize};
 // -----------------------------------------------------------------------------
 
 pub async fn setup_db() -> DbResult<Db> {
-    let opts = DbConnectionOpts::default();
+    let opts = DbConnectionOpts {
+        pool_size: Some(10),
+        ..Default::default()
+    };
     Db::new(opts).await
 }
 

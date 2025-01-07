@@ -1,4 +1,4 @@
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::subjects::*;
 use fuel_streams_test::{create_multiple_test_data, prefix_fn, setup_stream};
 use futures::StreamExt;
 

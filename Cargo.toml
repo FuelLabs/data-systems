@@ -71,13 +71,14 @@ sqlx = { version = "0.8.3", default-features = false, features = [
 fuel-data-parser = { version = "0.0.15", path = "crates/fuel-data-parser" }
 fuel-streams = { version = "0.0.15", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.15", path = "crates/fuel-streams-core" }
+fuel-streams-executors = { version = "0.0.15", path = "crates/fuel-streams-executors" }
 fuel-streams-macros = { version = "0.0.15", path = "crates/fuel-streams-macros" }
 fuel-streams-nats = { version = "0.0.15", path = "crates/fuel-streams-nats" }
 fuel-streams-store = { version = "0.0.15", path = "crates/fuel-streams-store" }
-fuel-streams-executors = { version = "0.0.15", path = "crates/fuel-streams-executors" }
+fuel-streams-types = { version = "0.0.15", path = "crates/fuel-streams-types" }
 subject-derive = { version = "0.0.15", path = "crates/fuel-streams-macros/subject-derive" }
-sv-publisher = { version = "0.0.15", path = "crates/sv-publisher" }
 sv-consumer = { version = "0.0.15", path = "crates/sv-consumer" }
+sv-publisher = { version = "0.0.15", path = "crates/sv-publisher" }
 sv-webserver = { version = "0.0.15", path = "crates/sv-webserver" }
 
 # Workspace projects

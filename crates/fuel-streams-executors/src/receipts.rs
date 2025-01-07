@@ -1,4 +1,4 @@
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{subjects::*, types::*};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 

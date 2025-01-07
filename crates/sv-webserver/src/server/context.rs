@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{nats::*, stream::*};
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 
 use crate::{config::Config, telemetry::Telemetry};

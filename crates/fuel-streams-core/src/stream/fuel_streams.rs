@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use fuel_streams_store::db::Db;
 
-use crate::prelude::*;
+use super::Stream;
+use crate::{nats::*, types::*};
 
 #[derive(Clone, Debug)]
 pub struct FuelStreams {

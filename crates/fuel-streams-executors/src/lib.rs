@@ -12,7 +12,7 @@ use std::{
 };
 
 use displaydoc::Display as DisplayDoc;
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{fuel_core_like::FuelCoreLike, types::*, Stream};
 use fuel_streams_store::{
     record::{DataEncoder, EncoderError, Record, RecordOrder},
     store::StorePacket,

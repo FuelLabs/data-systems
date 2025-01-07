@@ -3697,6 +3697,7 @@ dependencies = [
  "fuel-streams-macros",
  "fuel-streams-nats",
  "fuel-streams-store",
+ "fuel-streams-types",
  "futures",
  "hex",
  "pretty_assertions",
@@ -3727,6 +3728,7 @@ dependencies = [
  "fuel-core",
  "fuel-streams-core",
  "fuel-streams-store",
+ "fuel-streams-types",
  "futures",
  "num_cpus",
  "rayon",
@@ -3790,6 +3792,23 @@ dependencies = [
  "rand",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "fuel-streams-types"
+version = "0.0.15"
+dependencies = [
+ "fuel-core",
+ "fuel-core-bin",
+ "fuel-core-client",
+ "fuel-core-importer",
+ "fuel-core-services",
+ "fuel-core-storage",
+ "fuel-core-types 0.40.2",
+ "fuel-streams-store",
+ "hex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

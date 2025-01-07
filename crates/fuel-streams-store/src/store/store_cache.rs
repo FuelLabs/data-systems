@@ -134,7 +134,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_stats() {
-        let config = CacheConfig::default();
+        let config = CacheConfig {
+            capacity: 100,
+            ttl: Duration::from_secs(1),
+            enabled: true,
+        };
         let cache = StoreCache::new(config);
 
         let subject = "test.subject".to_string();
@@ -152,7 +156,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_clean() {
-        let config = CacheConfig::default();
+        let config = CacheConfig {
+            capacity: 100,
+            ttl: Duration::from_secs(1),
+            enabled: true,
+        };
         let cache = StoreCache::new(config);
 
         // Insert multiple entries

@@ -12,9 +12,8 @@ use fuel_core_types::{
     blockchain::consensus::{Consensus, Sealed},
     fuel_types::BlockHeight,
 };
+use fuel_streams_types::fuel_core::*;
 use tokio::{sync::broadcast::Receiver, time::sleep};
-
-use crate::types::*;
 
 /// Interface for `fuel-core` related logic.
 /// This was introduced to simplify mocking and testing the `sv-publisher` crate.
@@ -36,7 +35,9 @@ pub trait FuelCoreLike: Sync + Send {
     fn onchain_database(&self) -> &Database<OnChain> {
         self.database().on_chain()
     }
-    fn offchain_database(&self) -> anyhow::Result<Arc<OffchainDatabase>> {
+    fn offchain_database(
+        &self,
+    ) -> anyhow::Result<Arc<FuelCoreOffchainDatabase>> {
         Ok(Arc::new(self.database().off_chain().latest_view()?))
     }
 
@@ -108,7 +109,7 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_block_and_producer(
         &self,
         sealed_block: Sealed<FuelCoreBlock>,
-    ) -> (FuelCoreBlock, Address) {
+    ) -> (FuelCoreBlock, fuel_streams_types::Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus

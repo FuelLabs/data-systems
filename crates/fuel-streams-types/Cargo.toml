@@ -1,0 +1,37 @@
+[package]
+name = "fuel-streams-types"
+description = "Types for fuel streams"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+fuel-core = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+    "test-helpers",
+] }
+fuel-core-bin = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+] }
+fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
+fuel-core-importer = { workspace = true }
+fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
+fuel-core-storage = { workspace = true }
+fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
+fuel-streams-store = { workspace = true }
+hex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+default = []
+test-helpers = []

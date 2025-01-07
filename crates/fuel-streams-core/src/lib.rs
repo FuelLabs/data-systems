@@ -1,29 +1,15 @@
 #![doc = include_str!("../README.md")]
 
-pub mod blocks;
-pub mod inputs;
-pub mod logs;
-pub mod outputs;
-pub mod receipts;
-pub mod transactions;
-pub mod utxos;
-
-pub mod nats {
-    pub use fuel_streams_nats::*;
-}
-
+pub mod fuel_core_like;
 pub mod stream;
 pub mod subjects;
 
-pub mod fuel_core_like;
-mod fuel_core_types;
-mod primitive_types;
-pub mod types;
-
+pub use fuel_core_like::*;
+pub use fuel_streams_nats as nats;
+pub use fuel_streams_types as types;
 pub use stream::*;
 
 pub mod prelude {
-    #[allow(unused_imports)]
     pub use fuel_streams_macros::subject::*;
 
     pub use crate::{
@@ -34,3 +20,19 @@ pub mod prelude {
         types::*,
     };
 }
+
+macro_rules! export_module {
+    ($module:ident) => {
+        pub mod $module {
+            pub use crate::subjects::$module::*;
+        }
+    };
+}
+
+export_module!(blocks);
+export_module!(inputs);
+export_module!(logs);
+export_module!(outputs);
+export_module!(receipts);
+export_module!(transactions);
+export_module!(utxos);

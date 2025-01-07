@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::nats::*;
 
 pub mod cli;
 
