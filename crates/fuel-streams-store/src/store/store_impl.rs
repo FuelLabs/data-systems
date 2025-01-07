@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use super::{CacheConfig, CacheStats, StoreCache, StoreError, StorePacket};
 use crate::{
-    db::{Db, DbRecord, Record},
+    db::{Db, DbRecord},
+    record::Record,
     subject_validator::SubjectValidator,
 };
 
@@ -44,7 +45,7 @@ impl<S: Record> Store<S> {
     ) -> StoreResult<DbRecord> {
         let db_record = packet
             .record
-            .insert(&self.db, &packet.subject, packet.order())
+            .insert(&self.db, &packet.subject, packet.order.clone())
             .await?;
         self.cache.insert(&db_record.subject, &packet.record);
         Ok(db_record)
@@ -56,7 +57,7 @@ impl<S: Record> Store<S> {
     ) -> StoreResult<DbRecord> {
         let db_record = packet
             .record
-            .update(&self.db, &packet.subject, packet.order())
+            .update(&self.db, &packet.subject, packet.order.clone())
             .await?;
         self.cache.insert(&db_record.subject, &packet.record);
         Ok(db_record)
@@ -68,7 +69,7 @@ impl<S: Record> Store<S> {
     ) -> StoreResult<DbRecord> {
         let db_record = packet
             .record
-            .upsert(&self.db, &packet.subject, packet.order())
+            .upsert(&self.db, &packet.subject, packet.order.clone())
             .await?;
         self.cache.insert(&db_record.subject, &packet.record);
         Ok(db_record)
@@ -103,7 +104,7 @@ impl<S: Record> Store<S> {
         let items = S::find_many_by_pattern(&self.db, subject_pattern).await?;
         let mut messages = Vec::with_capacity(items.len());
         for item in items {
-            let payload: S = S::from_db_record(&item);
+            let payload = S::from_db_record(&item).await?;
             if item.subject == subject_pattern {
                 self.cache.insert(&item.subject, &payload);
             }

@@ -210,20 +210,21 @@ run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="8080"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
+run-publisher: FROM_HEIGHT="0"
 run-publisher: check-network
 	@./scripts/run_publisher.sh
 
 run-publisher-mainnet-dev:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
+	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0
 
 run-publisher-mainnet-profiling:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling
+	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling FROM_HEIGHT=0
 
 run-publisher-testnet-dev:
-	$(MAKE) run-publisher NETWORK=testnet MODE=dev
+	$(MAKE) run-publisher NETWORK=testnet MODE=dev FROM_HEIGHT=0
 
 run-publisher-testnet-profiling:
-	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
+	$(MAKE) run-publisher NETWORK=testnet MODE=profiling FROM_HEIGHT=0
 
 run-consumer: NATS_CORE_URL="localhost:4222"
 run-consumer: NATS_PUBLISHER_URL="localhost:4223"
@@ -303,6 +304,8 @@ reset-nats: clean-nats start-nats
 
 setup-db:
 	cd crates/fuel-streams-store && cargo sqlx migrate run && cargo sqlx prepare
+
+reset-db: clean-docker start-docker setup-db
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

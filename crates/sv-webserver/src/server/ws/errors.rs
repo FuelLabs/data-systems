@@ -1,5 +1,6 @@
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::StreamError;
+use fuel_streams_store::{db::DbError, record::EncoderError};
 use thiserror::Error;
 
 /// Ws Subscription-related errors
@@ -15,4 +16,8 @@ pub enum WsSubscriptionError {
     Stream(#[from] StreamError),
     /// Closed by client with reason: `{0}`
     ClosedWithReason(String),
+    /// Failed to encode or decode data: {0}
+    Encoder(#[from] EncoderError),
+    /// Failed with Database: {0}
+    Database(#[from] DbError),
 }

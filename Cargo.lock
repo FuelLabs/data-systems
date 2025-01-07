@@ -57,7 +57,7 @@ dependencies = [
  "ahash 0.8.11",
  "base64 0.22.1",
  "bitflags 2.6.0",
- "brotli",
+ "brotli 6.0.0",
  "bytes",
  "bytestring",
  "derive_more 0.99.18",
@@ -482,11 +482,16 @@ version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df895a515f70646414f4b45c0b79082783b80552b373a68283012928df56f522"
 dependencies = [
+ "brotli 7.0.0",
+ "bzip2",
  "flate2",
  "futures-core",
  "memchr",
  "pin-project-lite",
  "tokio",
+ "xz2",
+ "zstd",
+ "zstd-safe",
 ]
 
 [[package]]
@@ -1143,6 +1148,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "brotli"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc97b8f16f944bba54f0433f07e30be199b6dc2bd25937444bbad560bcea29bd"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
 name = "brotli-decompressor"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1218,6 +1234,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e465647ae23b2823b0753f50decb2d5a86d2bb2cac04788fafd1f80e45378e5f"
 dependencies = [
  "bytes",
+]
+
+[[package]]
+name = "bzip2"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdb116a6ef3f6c3698828873ad02c3014b3c85cadb88496095628e3ef1e347f8"
+dependencies = [
+ "bzip2-sys",
+ "libc",
 ]
 
 [[package]]
@@ -3527,6 +3553,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-data-parser"
+version = "0.0.15"
+dependencies = [
+ "async-compression",
+ "async-trait",
+ "bincode",
+ "displaydoc",
+ "lazy_static",
+ "paste",
+ "postcard",
+ "serde",
+ "serde_json",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
+ "thiserror 2.0.9",
+ "tokio",
+]
+
+[[package]]
 name = "fuel-derive"
 version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3677,7 +3722,6 @@ name = "fuel-streams-executors"
 version = "0.0.15"
 dependencies = [
  "anyhow",
- "bincode",
  "displaydoc",
  "dotenvy",
  "fuel-core",
@@ -3721,13 +3765,11 @@ name = "fuel-streams-store"
 version = "0.0.15"
 dependencies = [
  "async-trait",
- "bincode",
  "dotenvy",
+ "fuel-data-parser",
  "moka",
- "rand",
  "regex",
  "serde",
- "serde_json",
  "sqlx",
  "test-case",
  "testcontainers",
@@ -3739,11 +3781,9 @@ dependencies = [
 name = "fuel-streams-test"
 version = "0.0.15"
 dependencies = [
- "dotenvy",
  "fuel-streams-store",
  "rand",
  "serde",
- "test-case",
  "tokio",
 ]
 
@@ -5900,6 +5940,17 @@ checksum = "6bd8c0d6c6ed0cd30b3652886bb8711dc4bb01d637a68105a3d5158039b418e6"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "lzma-sys"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fda04ab3764e6cde78b9974eec4f779acaba7c4e84b36eca3cf77c581b85d27"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -8776,6 +8827,7 @@ version = "0.0.15"
 dependencies = [
  "anyhow",
  "async-nats",
+ "bincode",
  "clap 4.5.23",
  "displaydoc",
  "dotenvy",
@@ -8787,7 +8839,6 @@ dependencies = [
  "hex",
  "num_cpus",
  "openssl",
- "serde_json",
  "sv-publisher",
  "thiserror 2.0.9",
  "tokio",
@@ -8804,7 +8855,6 @@ dependencies = [
  "async-nats",
  "clap 4.5.23",
  "displaydoc",
- "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-types 0.40.2",
@@ -8817,7 +8867,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -10916,6 +10965,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
 dependencies = [
  "xml-rs",
+]
+
+[[package]]
+name = "xz2"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
+dependencies = [
+ "lzma-sys",
 ]
 
 [[package]]

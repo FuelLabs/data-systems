@@ -7,7 +7,7 @@ use crate::*;
 impl Executor<Receipt> {
     pub fn process(
         &self,
-        tx: &Transaction,
+        (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
@@ -24,11 +24,16 @@ impl Executor<Receipt> {
                         .collect::<Vec<_>>();
 
                 let receipt: Receipt = receipt.to_owned();
-                let mut packets = vec![receipt.to_packet(main_subject)];
+                let order = self
+                    .record_order()
+                    .with_tx(tx_index as u32)
+                    .with_record(index as u32);
+
+                let mut packets = vec![receipt.to_packet(main_subject, &order)];
                 packets.extend(
                     identifier_subjects
                         .into_iter()
-                        .map(|subject| receipt.to_packet(subject)),
+                        .map(|subject| receipt.to_packet(subject, &order)),
                 );
 
                 packets

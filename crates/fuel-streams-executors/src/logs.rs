@@ -7,7 +7,7 @@ use crate::*;
 impl Executor<Log> {
     pub fn process(
         &self,
-        tx: &Transaction,
+        (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
         let block_height = self.block_height();
         let tx_id = tx.id.clone();
@@ -18,6 +18,11 @@ impl Executor<Log> {
             .filter_map(|(index, receipt)| match receipt {
                 Receipt::Log(LogReceipt { id, .. })
                 | Receipt::LogData(LogDataReceipt { id, .. }) => {
+                    let order = self
+                        .record_order()
+                        .with_tx(tx_index as u32)
+                        .with_record(index as u32);
+
                     Some(Log::to_packet(
                         &receipt.into(),
                         LogsSubject {
@@ -27,6 +32,7 @@ impl Executor<Log> {
                             log_id: Some(id.into()),
                         }
                         .parse(),
+                        &order,
                     ))
                 }
                 _ => None,

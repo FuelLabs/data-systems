@@ -10,13 +10,14 @@ use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
-use fuel_streams_store::db::{Db, DbConnectionOpts, Record};
+use fuel_streams_store::{
+    db::{Db, DbConnectionOpts},
+    record::{DataEncoder, EncoderError, Record},
+};
 use futures::StreamExt;
 use sv_publisher::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::fmt::time;
 
 #[derive(Error, Debug, DisplayDoc)]
 pub enum PublishError {
@@ -36,30 +37,14 @@ pub enum PublishError {
     Nats(#[from] async_nats::Error),
     /// Failed to initialize Fuel Core: {0}
     FuelCore(String),
+    /// Failed to encode or decode data: {0}
+    Encoder(#[from] EncoderError),
     /// Processing was cancelled
     Cancelled,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with_timer(time::LocalTime::rfc_3339())
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(true)
-        .with_line_number(true)
-        .with_level(true)
-        .init();
-
-    if let Err(err) = dotenvy::dotenv() {
-        tracing::warn!("File .env not found: {:?}", err);
-    }
-
     let cli = Cli::parse();
     let config = cli.fuel_core_config;
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
@@ -78,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             let historical = process_historical_blocks(
+                cli.from_height,
                 &nats_client,
                 fuel_core.clone(),
                 last_block_height,
@@ -138,15 +124,30 @@ async fn setup_nats(nats_url: &str) -> Result<NatsClient, PublishError> {
 
 async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
     let record = Block::find_last_record(db).await?;
-    Ok(record.sequence_order as u32)
+    match record {
+        Some(record) => Ok(record.order_block as u32),
+        None => Ok(0),
+    }
 }
 
 fn get_historical_block_range(
+    from_height: u32,
     last_published_height: Arc<u32>,
     last_block_height: Arc<u32>,
 ) -> Option<Vec<u32>> {
-    let last_published_height = *last_published_height;
-    let last_block_height = *last_block_height;
+    let last_published_height = if *last_published_height > from_height {
+        *last_published_height
+    } else {
+        from_height
+    };
+
+    let last_block_height = if *last_block_height > from_height {
+        *last_block_height
+    } else {
+        tracing::error!("Last block height is less than from height");
+        *last_block_height
+    };
+
     let start_height = last_published_height + 1;
     let end_height = last_block_height;
     if start_height > end_height {
@@ -162,6 +163,7 @@ fn get_historical_block_range(
 }
 
 fn process_historical_blocks(
+    from_height: u32,
     nats_client: &NatsClient,
     fuel_core: Arc<dyn FuelCoreLike>,
     last_block_height: Arc<u32>,
@@ -171,6 +173,7 @@ fn process_historical_blocks(
     let jetstream = nats_client.jetstream.clone();
     tokio::spawn(async move {
         let Some(heights) = get_historical_block_range(
+            from_height,
             last_published_height,
             last_block_height,
         ) else {
@@ -219,7 +222,7 @@ async fn publish_block(
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
     let publish = Publish::build()
         .message_id(payload.message_id())
-        .payload(payload.encode().into());
+        .payload(payload.encode().await?.into());
 
     jetstream
         .send_publish(payload.subject(), publish)

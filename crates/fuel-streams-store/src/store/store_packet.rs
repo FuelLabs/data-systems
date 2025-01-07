@@ -1,28 +1,17 @@
-use crate::db::Record;
+use crate::record::{Record, RecordOrder};
 
 #[derive(Clone)]
 pub struct StorePacket<R: Record> {
     pub record: R,
     pub subject: String,
-    order: Option<i32>,
+    pub order: RecordOrder,
 }
 impl<R: Record> StorePacket<R> {
-    pub fn new(record: &R, subject: String) -> Self {
+    pub fn new(record: &R, subject: String, order: RecordOrder) -> Self {
         Self {
             record: record.to_owned(),
             subject,
-            order: None,
+            order,
         }
-    }
-
-    pub fn with_order(self, order: i32) -> Self {
-        Self {
-            order: Some(order),
-            ..self
-        }
-    }
-
-    pub fn order(&self) -> i32 {
-        self.order.unwrap_or(0)
     }
 }

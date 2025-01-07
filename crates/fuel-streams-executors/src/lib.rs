@@ -13,7 +13,10 @@ use std::{
 
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
-use fuel_streams_store::{db::Record, store::StorePacket};
+use fuel_streams_store::{
+    record::{DataEncoder, EncoderError, Record, RecordOrder},
+    store::StorePacket,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::task::JoinHandle;
@@ -52,6 +55,8 @@ pub enum ExecutorError {
     OffchainDatabase(#[from] anyhow::Error),
     /// Failed to join tasks: {0}
     JoinError(#[from] tokio::task::JoinError),
+    /// Failed to encode or decode data: {0}
+    Encoder(#[from] EncoderError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +93,10 @@ pub struct BlockPayload {
     pub block: Block,
     pub transactions: Vec<Transaction>,
     metadata: Metadata,
+}
+
+impl DataEncoder for BlockPayload {
+    type Err = ExecutorError;
 }
 
 impl BlockPayload {
@@ -169,14 +178,6 @@ impl BlockPayload {
         }
         Ok(transactions)
     }
-
-    pub fn encode(&self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    }
-
-    pub fn decode(bytes: &[u8]) -> Self {
-        bincode::deserialize(bytes).unwrap()
-    }
 }
 
 pub struct Executor<R: Record> {
@@ -232,14 +233,22 @@ impl<R: Record> Executor<R> {
     pub fn payload(&self) -> Arc<BlockPayload> {
         Arc::clone(&self.payload)
     }
+
     pub fn metadata(&self) -> &Metadata {
         &self.payload.metadata
     }
+
     pub fn block(&self) -> &Block {
         &self.payload.block
     }
+
     pub fn block_height(&self) -> BlockHeight {
         let height = self.block().height;
         BlockHeight::from(height)
+    }
+
+    pub fn record_order(&self) -> RecordOrder {
+        let height = self.block().height;
+        RecordOrder::new(height, None, None)
     }
 }

@@ -20,7 +20,6 @@ anyhow = { workspace = true }
 async-nats = { workspace = true }
 clap = { workspace = true }
 displaydoc = { workspace = true }
-dotenvy = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-bin = { workspace = true, default-features = false, features = [
     "p2p",
@@ -36,7 +35,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = "0.7.13"
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["local-time"] }
 
 [features]
 default = []

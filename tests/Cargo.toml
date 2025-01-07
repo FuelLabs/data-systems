@@ -12,9 +12,7 @@ path = "tests/lib.rs"
 test-helpers = []
 
 [dependencies]
-dotenvy = { workspace = true }
 fuel-streams-store = { workspace = true, features = ["test-helpers"] }
 rand = { workspace = true }
 serde = { workspace = true }
-test-case = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }

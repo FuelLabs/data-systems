@@ -16,7 +16,8 @@ impl Executor<Block> {
             height: Some(block_height),
             producer: Some(block_producer),
         };
-        let packet = block.to_packet(subject.parse());
+        let order = self.record_order();
+        let packet = block.to_packet(subject.parse(), &order);
         self.publish(&packet)
     }
 
@@ -44,20 +45,16 @@ impl Executor<Block> {
         let utxo_executor = Executor::new(&payload, &utxo_stream, semaphore);
 
         let transactions = payload.transactions.to_owned();
-        let tx_tasks =
-            transactions
-                .iter()
-                .enumerate()
-                .flat_map(|tx_item @ (_, tx)| {
-                    vec![
-                        tx_executor.process(tx_item),
-                        input_executor.process(tx),
-                        output_executor.process(tx),
-                        receipt_executor.process(tx),
-                        log_executor.process(tx),
-                        utxo_executor.process(tx),
-                    ]
-                });
+        let tx_tasks = transactions.iter().enumerate().flat_map(|tx_item| {
+            vec![
+                tx_executor.process(tx_item),
+                input_executor.process(tx_item),
+                output_executor.process(tx_item),
+                receipt_executor.process(tx_item),
+                log_executor.process(tx_item),
+                utxo_executor.process(tx_item),
+            ]
+        });
 
         let block_task = block_executor.process();
         std::iter::once(block_task)

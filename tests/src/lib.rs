@@ -1,5 +1,7 @@
 use fuel_streams_store::{
-    db::{Db, DbConnectionOpts, DbResult, Record, RecordEntity},
+    db::{Db, DbConnectionOpts, DbResult},
+    impl_record_for,
+    record::{Record, RecordEntity, RecordOrder},
     store::{Store, StorePacket, StoreResult},
 };
 use rand::Rng;
@@ -7,15 +9,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TestRecord(pub String);
-impl Record for TestRecord {
-    const ENTITY: RecordEntity = RecordEntity::Block;
-}
+impl_record_for!(TestRecord, RecordEntity::Block);
 impl TestRecord {
     pub fn new(payload: impl Into<String>) -> Self {
         Self(payload.into())
     }
     pub fn to_packet(&self, subject: impl Into<String>) -> StorePacket<Self> {
-        StorePacket::new(self, subject.into())
+        let order = RecordOrder::new(0, None, None);
+        StorePacket::new(self, subject.into(), order)
     }
 }
 

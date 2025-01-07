@@ -11,7 +11,7 @@ use actix_web::{
 };
 use actix_ws::{Message, Session};
 use fuel_streams_core::prelude::*;
-use fuel_streams_store::db::{Record, RecordEntity};
+use fuel_streams_store::record::{DataEncoder, RecordEntity};
 use futures::{stream::BoxStream, StreamExt};
 use uuid::Uuid;
 
@@ -335,15 +335,23 @@ async fn decode<'a>(
 ) -> Result<Vec<u8>, WsSubscriptionError> {
     let subject = verify_and_extract_subject_name(subject)?;
     let json_value = match stream_type {
-        RecordEntity::Block => Block::decode(&payload).to_json_value(),
-        RecordEntity::Transaction => {
-            Transaction::decode(&payload).to_json_value()
+        RecordEntity::Block => {
+            Block::decode(&payload).await?.to_json_value()?
         }
-        RecordEntity::Input => Input::decode(&payload).to_json_value(),
-        RecordEntity::Output => Output::decode(&payload).to_json_value(),
-        RecordEntity::Receipt => Receipt::decode(&payload).to_json_value(),
-        RecordEntity::Utxo => Utxo::decode(&payload).to_json_value(),
-        RecordEntity::Log => Log::decode(&payload).to_json_value(),
+        RecordEntity::Transaction => {
+            Transaction::decode(&payload).await?.to_json_value()?
+        }
+        RecordEntity::Input => {
+            Input::decode(&payload).await?.to_json_value()?
+        }
+        RecordEntity::Output => {
+            Output::decode(&payload).await?.to_json_value()?
+        }
+        RecordEntity::Receipt => {
+            Receipt::decode(&payload).await?.to_json_value()?
+        }
+        RecordEntity::Utxo => Utxo::decode(&payload).await?.to_json_value()?,
+        RecordEntity::Log => Log::decode(&payload).await?.to_json_value()?,
     };
 
     serde_json::to_vec(&ServerMessage::Response(ResponseMessage {

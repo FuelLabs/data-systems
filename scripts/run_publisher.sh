@@ -18,6 +18,8 @@ usage() {
     echo "  --telemtry-port : Specify the telemetry port number"
     echo "                  Default: 8080"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
+    echo "  --from-height : Specify the starting block height"
+    echo "                  Default: 0"
     echo ""
     echo "Examples:"
     echo "  $0                                              # Runs with all defaults"
@@ -25,6 +27,7 @@ usage() {
     echo "  $0 --port 4001                                  # Runs on port 4001"
     echo "  $0 --telemetry-port 8081                        # uses telemetry port 8081"
     echo "  $0 --network mainnet --port 4001 --telemetry-port 8081 --mode dev     # Custom network, port, telemetry-port and mode"
+    echo "  $0 --from-height 1000                           # Start from block height 1000"
     exit 1
 }
 
@@ -33,6 +36,7 @@ NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
+FROM_HEIGHT=${FROM_HEIGHT:-"0"}
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -54,6 +58,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --extra-args)
             EXTRA_ARGS="$2"
+            shift 2
+            ;;
+        --from-height)
+            FROM_HEIGHT="$2"
             shift 2
             ;;
         --help)
@@ -82,6 +90,7 @@ echo "  → Network: $NETWORK"
 echo "  → Mode: $MODE"
 echo "  → Port: $PORT"
 echo "  → Telemetry Port: $TELEMETRY_PORT"
+echo "  → From Height: $FROM_HEIGHT"
 if [ -n "$EXTRA_ARGS" ]; then
     echo "→ Extra Arguments: $EXTRA_ARGS"
 fi
@@ -123,6 +132,7 @@ COMMON_ARGS=(
     # Application specific
     "--nats-url" "nats://localhost:4222"
     # "--telemetry-port" "${TELEMETRY_PORT}"
+    "--from-height" "${FROM_HEIGHT}"
 )
 
 # Execute based on mode

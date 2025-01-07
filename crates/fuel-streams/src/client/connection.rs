@@ -1,5 +1,5 @@
 use fuel_streams_core::subjects::IntoSubject;
-use fuel_streams_store::db::Record;
+use fuel_streams_store::record::Record;
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt,

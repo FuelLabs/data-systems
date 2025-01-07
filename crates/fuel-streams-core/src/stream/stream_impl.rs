@@ -2,7 +2,8 @@ use std::sync::{Arc, LazyLock};
 
 use bytes::Bytes;
 use fuel_streams_store::{
-    db::{Db, DbRecord, Record},
+    db::{Db, DbRecord},
+    record::Record,
     store::{Store, StorePacket},
 };
 use futures::{stream::BoxStream, StreamExt};
@@ -62,7 +63,7 @@ impl<R: Record> Stream<R> {
     ) -> Result<(), StreamError> {
         let client = self.nats_client.nats_client.clone();
         let subject = packet.subject.clone();
-        let payload = packet.record.encode().into();
+        let payload = packet.record.encode().await?.into();
         client.publish(subject, payload).await?;
         Ok(())
     }

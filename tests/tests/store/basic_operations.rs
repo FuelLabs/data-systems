@@ -1,5 +1,6 @@
 use fuel_streams_store::{
-    db::{DbError, Record},
+    db::DbError,
+    record::{DataEncoder, Record},
     store::{StoreError, StoreResult},
 };
 use fuel_streams_test::{create_random_db_name, setup_store, TestRecord};
@@ -16,8 +17,8 @@ async fn test_add_and_retrieve_message() -> StoreResult<()> {
     assert_eq!(found_records.len(), 1);
     assert_eq!(found_records[0], record);
 
-    let deserialized_record = TestRecord::from_db_record(&db_record);
-    let serialized_record = record.encode();
+    let deserialized_record = TestRecord::from_db_record(&db_record).await?;
+    let serialized_record = record.encode().await?;
     assert_eq!(db_record.subject, subject);
     assert_eq!(deserialized_record, record);
     assert_eq!(db_record.value, serialized_record);

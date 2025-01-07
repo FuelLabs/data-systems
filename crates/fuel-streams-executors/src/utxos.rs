@@ -8,13 +8,20 @@ use crate::*;
 impl Executor<Utxo> {
     pub fn process(
         &self,
-        tx: &Transaction,
+        (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
         let tx_id = tx.id.clone();
         let packets = tx
             .inputs
             .par_iter()
-            .filter_map(|input| utxo_packet(input, &tx_id))
+            .enumerate()
+            .filter_map(|(index, input)| {
+                let order = self
+                    .record_order()
+                    .with_tx(tx_index as u32)
+                    .with_record(index as u32);
+                utxo_packet(input, &tx_id, &order)
+            })
             .collect::<Vec<_>>();
 
         packets
@@ -24,7 +31,11 @@ impl Executor<Utxo> {
     }
 }
 
-fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<StorePacket<Utxo>> {
+fn utxo_packet(
+    input: &Input,
+    tx_id: &Bytes32,
+    order: &RecordOrder,
+) -> Option<StorePacket<Utxo>> {
     match input {
         Input::Contract(InputContract { utxo_id, .. }) => {
             let utxo = Utxo {
@@ -37,7 +48,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<StorePacket<Utxo>> {
                 utxo_id: Some(utxo_id.into()),
             }
             .parse();
-            Some(utxo.to_packet(subject))
+            Some(utxo.to_packet(subject, order))
         }
         Input::Coin(InputCoin {
             utxo_id, amount, ..
@@ -53,7 +64,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<StorePacket<Utxo>> {
                 utxo_id: Some(utxo_id.into()),
             }
             .parse();
-            Some(utxo.to_packet(subject))
+            Some(utxo.to_packet(subject, order))
         }
         Input::Message(
             input @ InputMessage {
@@ -80,7 +91,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<StorePacket<Utxo>> {
                 utxo_id: Some(utxo_id.into()),
             }
             .parse();
-            Some(utxo.to_packet(subject))
+            Some(utxo.to_packet(subject, order))
         }
     }
 }

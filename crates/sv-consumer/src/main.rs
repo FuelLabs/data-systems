@@ -15,7 +15,10 @@ use clap::Parser;
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
-use fuel_streams_store::db::{Db, DbConnectionOpts};
+use fuel_streams_store::{
+    db::{Db, DbConnectionOpts},
+    record::DataEncoder,
+};
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
 use sv_consumer::{cli::Cli, Client};
 use sv_publisher::shutdown::ShutdownController;
@@ -36,7 +39,7 @@ pub enum ConsumerError {
     /// Failed to communicate with NATS server: {0}
     Nats(#[from] async_nats::Error),
     /// Failed to deserialize block payload from message: {0}
-    Deserialization(#[from] serde_json::Error),
+    Deserialization(#[from] bincode::Error),
     /// Failed to decode UTF-8: {0}
     Utf8(#[from] std::str::Utf8Error),
     /// Failed to execute executor tasks: {0}
@@ -168,18 +171,29 @@ async fn process_messages(
             );
 
             let future = async move {
-                let payload = BlockPayload::decode(&msg.payload);
-                let payload = Arc::new(payload);
-                let start_time = std::time::Instant::now();
-                let futures = Executor::<Block>::process_all(
-                    payload.clone(),
-                    &fuel_streams,
-                    &semaphore,
-                );
-                let results = try_join_all(futures).await?;
-                let end_time = std::time::Instant::now();
-                msg.ack().await.expect("Failed to ack message");
-                Ok::<_, ConsumerError>((results, start_time, end_time, payload))
+                match BlockPayload::decode(&msg.payload).await {
+                    Ok(payload) => {
+                        let payload = Arc::new(payload);
+                        let start_time = std::time::Instant::now();
+                        let futures = Executor::<Block>::process_all(
+                            payload.clone(),
+                            &fuel_streams,
+                            &semaphore,
+                        );
+                        let results = try_join_all(futures).await?;
+                        let end_time = std::time::Instant::now();
+                        msg.ack().await.expect("Failed to ack message");
+                        Ok((results, start_time, end_time, payload))
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to decode payload: {:?}", e);
+                        tracing::debug!(
+                            "Raw payload (hex): {:?}",
+                            hex::encode(&msg.payload)
+                        );
+                        Err(e)
+                    }
+                }
             };
             futs.push(future);
         }

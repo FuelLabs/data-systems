@@ -12,8 +12,10 @@ CREATE TYPE IF NOT EXISTS record_entity AS ENUM (
 CREATE TABLE IF NOT EXISTS records (
     subject TEXT PRIMARY KEY,
     entity record_entity NOT NULL,
-    sequence_order INT4 NOT NULL,
-    value BYTES NOT NULL
+    order_block INTEGER NOT NULL,
+    order_tx INTEGER DEFAULT 0,
+    order_record INTEGER DEFAULT 0,
+    value BYTEA NOT NULL
 );
 
 -- Create index for subject lookups

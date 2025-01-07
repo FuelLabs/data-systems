@@ -57,6 +57,6 @@ impl From<Receipt> for Log {
 
 impl From<&Receipt> for Log {
     fn from(value: &Receipt) -> Self {
-        value.into()
+        value.clone().into()
     }
 }
