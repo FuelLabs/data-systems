@@ -157,7 +157,7 @@ fn process_historical_blocks(
                     publish_block(&jetstream, &fuel_core, &sealed_block).await
                 }
             })
-            .buffer_unordered(100)
+            .buffered(100)
             .take_until(token.cancelled())
             .collect::<Vec<_>>()
             .await;
