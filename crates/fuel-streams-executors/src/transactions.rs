@@ -1,4 +1,5 @@
 use fuel_streams_core::prelude::*;
+use fuel_streams_store::store::StorePacket;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
@@ -20,9 +21,10 @@ impl Executor<Transaction> {
 fn packets_from_tx(
     (index, tx): (usize, &Transaction),
     block_height: &BlockHeight,
-) -> Vec<PublishPacket<Transaction>> {
+) -> Vec<StorePacket<Transaction>> {
     let estimated_capacity =
         1 + tx.inputs.len() + tx.outputs.len() + tx.receipts.len();
+
     let tx_id = tx.id.clone();
     let tx_status = tx.status.clone();
     let receipts = tx.receipts.clone();
@@ -38,28 +40,27 @@ fn packets_from_tx(
                 status: Some(tx_status),
                 kind: Some(tx.kind.to_owned()),
             }
-            .arc(),
+            .parse(),
         ),
     );
 
     let index_u8 = index as u8;
-    let mut additional_packets: Vec<PublishPacket<Transaction>> =
-        rayon::iter::once(&tx.kind)
-            .flat_map(|kind| identifiers(tx, kind, &tx_id, index_u8))
-            .chain(
-                tx.inputs.par_iter().flat_map(|input| {
-                    inputs::identifiers(input, &tx_id, index_u8)
-                }),
-            )
-            .chain(tx.outputs.par_iter().flat_map(|output| {
-                outputs::identifiers(output, tx, &tx_id, index_u8)
-            }))
-            .chain(receipts.par_iter().flat_map(|receipt| {
-                receipts::identifiers(receipt, &tx_id, index_u8)
-            }))
-            .map(|identifier| TransactionsByIdSubject::from(identifier).arc())
-            .map(|subject| tx.to_packet(subject))
-            .collect();
+    let mut additional_packets = rayon::iter::once(&tx.kind)
+        .flat_map(|kind| identifiers(tx, kind, &tx_id, index_u8))
+        .chain(
+            tx.inputs
+                .par_iter()
+                .flat_map(|input| inputs::identifiers(input, &tx_id, index_u8)),
+        )
+        .chain(tx.outputs.par_iter().flat_map(|output| {
+            outputs::identifiers(output, tx, &tx_id, index_u8)
+        }))
+        .chain(receipts.par_iter().flat_map(|receipt| {
+            receipts::identifiers(receipt, &tx_id, index_u8)
+        }))
+        .map(|identifier| identifier.into())
+        .map(|subject: TransactionsByIdSubject| tx.to_packet(subject.parse()))
+        .collect::<Vec<_>>();
 
     packets.append(&mut additional_packets);
     packets

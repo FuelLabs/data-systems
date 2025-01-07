@@ -15,6 +15,7 @@ use clap::Parser;
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
+use fuel_streams_store::db::{Db, DbConnectionOpts};
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
 use sv_consumer::{cli::Cli, Client};
 use sv_publisher::shutdown::ShutdownController;
@@ -44,8 +45,8 @@ pub enum ConsumerError {
     JoinTasks(#[from] tokio::task::JoinError),
     /// Failed to acquire semaphore: {0}
     Semaphore(#[from] tokio::sync::AcquireError),
-    /// Failed to setup storage: {0}
-    Storage(#[from] fuel_streams_core::storage::StorageError),
+    /// Failed to setup database: {0}
+    Db(#[from] fuel_streams_store::db::DbError),
 }
 
 #[tokio::main]
@@ -91,10 +92,13 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_storage() -> Result<Arc<S3Storage>, ConsumerError> {
-    let storage_opts = S3StorageOpts::admin_opts();
-    let storage = S3Storage::new(storage_opts).await?;
-    Ok(Arc::new(storage))
+async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
+    let db = Db::new(DbConnectionOpts {
+        connection_str: db_url.to_string(),
+        pool_size: Some(5),
+    })
+    .await?;
+    Ok(db.arc())
 }
 
 async fn setup_nats(
@@ -142,11 +146,11 @@ async fn process_messages(
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
     let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
-    let storage = setup_storage().await?;
+    let db = setup_db(&cli.db_url).await?;
     let (_, publisher_stream) =
-        FuelStreams::setup_all(&core_client, &publisher_client, &storage).await;
+        FuelStreams::setup_all(&core_client, &publisher_client, &db).await;
 
-    let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
+    let fuel_streams: Arc<FuelStreams> = publisher_stream.arc();
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =
@@ -164,29 +168,18 @@ async fn process_messages(
             );
 
             let future = async move {
-                match BlockPayload::decode(&msg.payload).await {
-                    Ok(payload) => {
-                        let payload = Arc::new(payload);
-                        let start_time = std::time::Instant::now();
-                        let futures = Executor::<Block>::process_all(
-                            payload.clone(),
-                            &fuel_streams,
-                            &semaphore,
-                        );
-                        let results = try_join_all(futures).await?;
-                        let end_time = std::time::Instant::now();
-                        msg.ack().await.expect("Failed to ack message");
-                        Ok((results, start_time, end_time, payload))
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to decode payload: {:?}", e);
-                        tracing::debug!(
-                            "Raw payload (hex): {:?}",
-                            hex::encode(&msg.payload)
-                        );
-                        Err(e)
-                    }
-                }
+                let payload = BlockPayload::decode(&msg.payload);
+                let payload = Arc::new(payload);
+                let start_time = std::time::Instant::now();
+                let futures = Executor::<Block>::process_all(
+                    payload.clone(),
+                    &fuel_streams,
+                    &semaphore,
+                );
+                let results = try_join_all(futures).await?;
+                let end_time = std::time::Instant::now();
+                msg.ack().await.expect("Failed to ack message");
+                Ok::<_, ConsumerError>((results, start_time, end_time, payload))
             };
             futs.push(future);
         }

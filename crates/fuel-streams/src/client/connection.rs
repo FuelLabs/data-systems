@@ -1,4 +1,5 @@
-use fuel_streams_core::{subjects::IntoSubject, Streamable};
+use fuel_streams_core::subjects::IntoSubject;
+use fuel_streams_store::db::Record;
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt,
@@ -82,7 +83,7 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn subscribe<T: Streamable>(
+    pub async fn subscribe<T: Record>(
         &mut self,
         subject: impl IntoSubject,
         deliver_policy: DeliverPolicy,

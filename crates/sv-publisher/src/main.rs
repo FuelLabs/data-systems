@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use async_nats::jetstream::{
-    context::{Publish, PublishErrorKind},
+    context::{CreateStreamErrorKind, Publish, PublishErrorKind},
     stream::RetentionPolicy,
     Context,
 };
@@ -10,31 +10,65 @@ use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
+use fuel_streams_store::db::{Db, DbConnectionOpts, Record};
 use futures::StreamExt;
 use sv_publisher::{cli::Cli, shutdown::ShutdownController};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::fmt::time;
 
 #[derive(Error, Debug, DisplayDoc)]
-pub enum LiveBlockProcessingError {
-    /// Failed to publish block: {0}
-    PublishError(#[from] PublishError),
+pub enum PublishError {
+    /// Failed to publish block to NATS server: {0}
+    NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
+    /// Failed to create block payload due to: {0}
+    BlockPayload(#[from] ExecutorError),
+    /// Failed to access offchain database: {0}
+    OffchainDatabase(String),
+    /// Failed to setup database: {0}
+    Db(#[from] fuel_streams_store::db::DbError),
+    /// Failed to setup NATS client: {0}
+    NatsClient(#[from] NatsError),
+    /// Failed to create stream: {0}
+    CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
+    /// Failed to communicate with NATS server: {0}
+    Nats(#[from] async_nats::Error),
+    /// Failed to initialize Fuel Core: {0}
+    FuelCore(String),
     /// Processing was cancelled
     Cancelled,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .with_timer(time::LocalTime::rfc_3339())
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_file(true)
+        .with_line_number(true)
+        .with_level(true)
+        .init();
+
+    if let Err(err) = dotenvy::dotenv() {
+        tracing::warn!("File .env not found: {:?}", err);
+    }
+
     let cli = Cli::parse();
     let config = cli.fuel_core_config;
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
     fuel_core.start().await?;
 
-    let storage = setup_storage().await?;
+    let db = setup_db(&cli.db_url).await?;
     let nats_client = setup_nats(&cli.nats_url).await?;
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
-    let last_published =
-        Arc::new(find_last_published_height(&nats_client, &storage).await?);
+    let last_published = Arc::new(find_last_published_height(&db).await?);
 
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
@@ -72,13 +106,16 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_storage() -> anyhow::Result<Arc<S3Storage>> {
-    let storage_opts = S3StorageOpts::admin_opts();
-    let storage = S3Storage::new(storage_opts).await?;
-    Ok(Arc::new(storage))
+async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
+    let db = Db::new(DbConnectionOpts {
+        connection_str: db_url.to_string(),
+        pool_size: Some(5),
+    })
+    .await?;
+    Ok(db)
 }
 
-async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
+async fn setup_nats(nats_url: &str) -> Result<NatsClient, PublishError> {
     let opts = NatsClientOpts::admin_opts()
         .with_url(nats_url.to_string())
         .with_domain("CORE".to_string());
@@ -91,6 +128,7 @@ async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
             subjects: vec!["block_submitted.>".to_string()],
             retention: RetentionPolicy::WorkQueue,
             duplicate_window: Duration::from_secs(1),
+            allow_rollup: true,
             ..Default::default()
         })
         .await?;
@@ -98,18 +136,9 @@ async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
     Ok(nats_client)
 }
 
-async fn find_last_published_height(
-    nats_client: &NatsClient,
-    storage: &Arc<S3Storage>,
-) -> anyhow::Result<u32> {
-    let block_stream = Stream::<Block>::get_or_init(nats_client, storage).await;
-    let last_publish_height = block_stream
-        .get_last_published(BlocksSubject::WILDCARD)
-        .await?;
-    match last_publish_height {
-        Some(block) => Ok(block.height),
-        None => Ok(0),
-    }
+async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
+    let record = Block::find_last_record(db).await?;
+    Ok(record.sequence_order as u32)
 }
 
 fn get_historical_block_range(
@@ -168,7 +197,7 @@ async fn process_live_blocks(
     jetstream: &Context,
     fuel_core: Arc<dyn FuelCoreLike>,
     token: CancellationToken,
-) -> Result<(), LiveBlockProcessingError> {
+) -> Result<(), PublishError> {
     let mut subscription = fuel_core.blocks_subscription();
     while let Ok(data) = subscription.recv().await {
         if token.is_cancelled() {
@@ -178,16 +207,6 @@ async fn process_live_blocks(
         publish_block(jetstream, &fuel_core, &sealed_block).await?;
     }
     Ok(())
-}
-
-#[derive(Error, Debug, DisplayDoc)]
-pub enum PublishError {
-    /// Failed to publish block to NATS server: {0}
-    NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-    /// Failed to create block payload due to: {0}
-    BlockPayload(#[from] ExecutorError),
-    /// Failed to access offchain database: {0}
-    OffchainDatabase(String),
 }
 
 async fn publish_block(
@@ -200,7 +219,7 @@ async fn publish_block(
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
     let publish = Publish::build()
         .message_id(payload.message_id())
-        .payload(payload.encode().await?.into());
+        .payload(payload.encode().into());
 
     jetstream
         .send_publish(payload.subject(), publish)

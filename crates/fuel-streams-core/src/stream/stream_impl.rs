@@ -1,6 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
-use fuel_streams_macros::subject::IntoSubject;
+use bytes::Bytes;
 use fuel_streams_store::{
     db::{Db, DbRecord, Record},
     store::{Store, StorePacket},
@@ -67,17 +67,15 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe_live(
-        &self,
-        subject: &impl IntoSubject,
-    ) -> Result<BoxStream<'_, (String, R)>, StreamError> {
-        let client = self.nats_client.nats_client.clone();
-        let subject_str = subject.parse();
-        let subscriber = client.subscribe(subject_str).await?;
+    pub async fn subscribe_live<'a>(
+        client: &Arc<NatsClient>,
+        subject: String,
+    ) -> Result<BoxStream<'a, (String, Bytes)>, StreamError> {
+        let client = client.nats_client.clone();
+        let subscriber = client.subscribe(subject.to_owned()).await?;
         Ok(subscriber
             .then(move |message| async move {
-                let decoded = R::decode(&message.payload);
-                (message.subject.to_string(), decoded)
+                (message.subject.to_string(), message.payload)
             })
             .boxed())
     }

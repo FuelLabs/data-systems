@@ -24,6 +24,7 @@ dotenvy = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
+fuel-streams-store = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 num_cpus = { workspace = true }

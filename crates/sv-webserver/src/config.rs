@@ -10,11 +10,6 @@ pub enum Error {
     UndecodableConfigElement(&'static str),
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct S3Config {
-    pub enabled: bool,
-}
-
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
     pub private_key: PathBuf,
@@ -38,10 +33,15 @@ pub struct NatsConfig {
 }
 
 #[derive(Clone, Debug)]
+pub struct DbConfig {
+    pub url: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct Config {
     pub api: ApiConfig,
     pub auth: AuthConfig,
-    pub s3: S3Config,
+    pub db: DbConfig,
     pub nats: NatsConfig,
 }
 
@@ -63,8 +63,8 @@ impl Config {
             nats: NatsConfig {
                 url: cli.nats_url.clone(),
             },
-            s3: S3Config {
-                enabled: cli.s3_enabled,
+            db: DbConfig {
+                url: cli.db_url.clone(),
             },
         })
     }

@@ -1,4 +1,5 @@
 use fuel_streams_core::prelude::*;
+use fuel_streams_store::store::StorePacket;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
@@ -23,7 +24,7 @@ impl Executor<Utxo> {
     }
 }
 
-fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
+fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<StorePacket<Utxo>> {
     match input {
         Input::Contract(InputContract { utxo_id, .. }) => {
             let utxo = Utxo {
@@ -35,7 +36,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
                 utxo_type: Some(UtxoType::Contract),
                 utxo_id: Some(utxo_id.into()),
             }
-            .arc();
+            .parse();
             Some(utxo.to_packet(subject))
         }
         Input::Coin(InputCoin {
@@ -51,7 +52,7 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
                 utxo_type: Some(UtxoType::Coin),
                 utxo_id: Some(utxo_id.into()),
             }
-            .arc();
+            .parse();
             Some(utxo.to_packet(subject))
         }
         Input::Message(
@@ -76,9 +77,9 @@ fn utxo_packet(input: &Input, tx_id: &Bytes32) -> Option<PublishPacket<Utxo>> {
             };
             let subject = UtxosSubject {
                 utxo_type: Some(UtxoType::Message),
-                utxo_id: None,
+                utxo_id: Some(utxo_id.into()),
             }
-            .arc();
+            .parse();
             Some(utxo.to_packet(subject))
         }
     }

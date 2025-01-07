@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
@@ -12,7 +10,7 @@ impl Executor<Output> {
         tx: &Transaction,
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
         let tx_id = tx.id.clone();
-        let packets: Vec<PublishPacket<Output>> = tx
+        let packets = tx
             .outputs
             .par_iter()
             .enumerate()
@@ -22,8 +20,8 @@ impl Executor<Output> {
                     identifiers(output, tx, &tx_id, index as u8)
                         .into_par_iter()
                         .map(|identifier| identifier.into())
-                        .map(|subject: OutputsByIdSubject| subject.arc())
-                        .collect::<Vec<_>>();
+                        .map(|subject: OutputsByIdSubject| subject.parse())
+                        .collect::<Vec<String>>();
 
                 let mut packets = vec![output.to_packet(main_subject)];
                 packets.extend(
@@ -34,7 +32,7 @@ impl Executor<Output> {
 
                 packets
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         packets.iter().map(|packet| self.publish(packet)).collect()
     }
@@ -45,7 +43,7 @@ fn main_subject(
     transaction: &Transaction,
     tx_id: &Bytes32,
     index: usize,
-) -> Arc<dyn IntoSubject> {
+) -> String {
     match output {
         Output::Coin(OutputCoin { to, asset_id, .. }) => OutputsCoinSubject {
             tx_id: Some(tx_id.to_owned()),
@@ -53,7 +51,7 @@ fn main_subject(
             to: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
-        .arc(),
+        .parse(),
         Output::Contract(contract) => {
             let contract_id =
                 match find_output_contract_id(transaction, contract) {
@@ -73,7 +71,7 @@ fn main_subject(
                 index: Some(index as u16),
                 contract_id: Some(contract_id),
             }
-            .arc()
+            .parse()
         }
         Output::Change(OutputChange { to, asset_id, .. }) => {
             OutputsChangeSubject {
@@ -82,7 +80,7 @@ fn main_subject(
                 to: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
-            .arc()
+            .parse()
         }
         Output::Variable(OutputVariable { to, asset_id, .. }) => {
             OutputsVariableSubject {
@@ -91,7 +89,7 @@ fn main_subject(
                 to: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
-            .arc()
+            .parse()
         }
         Output::ContractCreated(OutputContractCreated {
             contract_id, ..
@@ -100,7 +98,7 @@ fn main_subject(
             index: Some(index as u16),
             contract_id: Some(contract_id.to_owned()),
         }
-        .arc(),
+        .parse(),
     }
 }
 

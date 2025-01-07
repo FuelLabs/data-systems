@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use fuel_streams_core::prelude::*;
-use fuel_streams_storage::S3Storage;
+use fuel_streams_store::db::{Db, DbConnectionOpts};
 
 use crate::{config::Config, telemetry::Telemetry};
 
@@ -13,7 +13,7 @@ pub struct Context {
     pub nats_client: NatsClient,
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry>,
-    pub storage: Option<Arc<S3Storage>>,
+    pub db: Arc<Db>,
     pub jwt_secret: String,
 }
 
@@ -23,22 +23,22 @@ impl Context {
             .with_url(config.nats.url.clone())
             .with_domain("CORE");
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let storage_opts = S3StorageOpts::admin_opts();
-        let storage = Arc::new(S3Storage::new(storage_opts).await?);
-        let fuel_streams =
-            Arc::new(FuelStreams::new(&nats_client, &storage).await);
+        let db = Db::new(DbConnectionOpts {
+            connection_str: config.db.url.clone(),
+            ..Default::default()
+        })
+        .await?
+        .arc();
+
+        let fuel_streams = FuelStreams::new(&nats_client, &db).await.arc();
         let telemetry = Telemetry::new(None).await?;
         telemetry.start().await?;
 
         Ok(Context {
+            db,
             fuel_streams,
             nats_client,
             telemetry,
-            storage: if config.s3.enabled {
-                Some(storage)
-            } else {
-                None
-            },
             jwt_secret: config.auth.jwt_secret.clone(),
         })
     }

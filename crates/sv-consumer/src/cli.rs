@@ -19,4 +19,13 @@ pub struct Cli {
         help = "NATS Publisher URL to connect to."
     )]
     pub nats_publisher_url: String,
+    /// Database URL to connect to.
+    #[arg(
+        long,
+        value_name = "DATABASE_URL",
+        env = "DATABASE_URL",
+        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
+        help = "Database URL to connect to."
+    )]
+    pub db_url: String,
 }

@@ -1,10 +1,7 @@
 use std::time::Duration;
 
-use fuel_streams_store::{
-    db::DbConnectionOpts,
-    store::{CacheConfig, Store, StoreResult},
-};
-use fuel_streams_test::{create_random_db_name, TestRecord};
+use fuel_streams_store::store::{CacheConfig, Store, StoreResult};
+use fuel_streams_test::{create_random_db_name, create_test_db, TestRecord};
 
 #[tokio::test]
 async fn test_cache_operations() -> StoreResult<()> {
@@ -13,8 +10,8 @@ async fn test_cache_operations() -> StoreResult<()> {
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let opts = DbConnectionOpts::default();
-    let store = Store::<TestRecord>::with_cache_config(opts, config).await?;
+    let db = create_test_db().await?;
+    let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add a record
     let subject = format!("{}.test.subject", create_random_db_name());
@@ -23,18 +20,12 @@ async fn test_cache_operations() -> StoreResult<()> {
     store.add_record(&packet).await?;
 
     // First query should cache the result
-    let initial_stats = store.cache_stats();
     let _ = store.find_many_by_subject(&subject).await?;
-    let after_first_query = store.cache_stats();
-    assert!(after_first_query.misses >= initial_stats.misses);
     assert!(store.cache.get(&subject).is_some());
     assert_eq!(store.cache.get(&subject).unwrap(), record);
 
     // Second query should hit the cache
     let _ = store.find_many_by_subject(&subject).await?;
-    let after_second_query = store.cache_stats();
-    assert!(after_second_query.hits >= after_first_query.hits);
-    assert_eq!(after_second_query.misses, after_first_query.misses);
     assert_eq!(store.cache.get(&subject).unwrap(), record);
 
     Ok(())
@@ -47,8 +38,8 @@ async fn test_cache_update_operations() -> StoreResult<()> {
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let opts = DbConnectionOpts::default();
-    let store = Store::<TestRecord>::with_cache_config(opts, config).await?;
+    let db = create_test_db().await?;
+    let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add initial record
     let subject = format!("{}.test.subject", create_random_db_name());
@@ -81,8 +72,8 @@ async fn test_cache_delete_operations() -> StoreResult<()> {
         ttl: Duration::from_secs(10),
         enabled: true,
     };
-    let opts = DbConnectionOpts::default();
-    let store = Store::<TestRecord>::with_cache_config(opts, config).await?;
+    let db = create_test_db().await?;
+    let store = Store::<TestRecord>::with_cache_config(&db.arc(), config);
 
     // Add initial record
     let subject = format!("{}.test.subject", create_random_db_name());

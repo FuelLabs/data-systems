@@ -1,4 +1,7 @@
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::{
+    str::FromStr,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
 use actix_web::{
     web::{self, Bytes},
@@ -8,7 +11,8 @@ use actix_web::{
 };
 use actix_ws::{Message, Session};
 use fuel_streams_core::prelude::*;
-use futures::StreamExt;
+use fuel_streams_store::db::{Record, RecordEntity};
+use futures::{stream::BoxStream, StreamExt};
 use uuid::Uuid;
 
 use super::{
@@ -24,6 +28,42 @@ use crate::{
 };
 
 static _NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
+
+#[derive(Clone)]
+struct WsContext {
+    user_id: uuid::Uuid,
+    session: Session,
+    telemetry: Arc<Telemetry>,
+    subject_wildcard: Option<String>,
+}
+impl WsContext {
+    fn with_subject_wildcard(self, subject_wildcard: &str) -> Self {
+        Self {
+            subject_wildcard: Some(subject_wildcard.to_string()),
+            ..self
+        }
+    }
+}
+
+/// Macro to handle WebSocket errors using WsContext
+macro_rules! handle_ws_error {
+    ($result:expr, $ctx:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                close_socket_with_error(
+                    e.into(),
+                    $ctx.user_id,
+                    $ctx.session,
+                    $ctx.subject_wildcard.clone(),
+                    $ctx.telemetry,
+                )
+                .await;
+                return Ok(());
+            }
+        }
+    };
+}
 
 pub async fn get_ws(
     req: HttpRequest,
@@ -140,43 +180,40 @@ async fn handle_binary_message(
     streams: Arc<FuelStreams>,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received binary {:?}", msg);
-    let client_message = match parse_client_message(msg) {
-        Ok(msg) => msg,
-        Err(e) => {
-            close_socket_with_error(e, user_id, session, None, telemetry).await;
-            return Ok(());
-        }
+
+    let ctx = WsContext {
+        user_id,
+        telemetry: Arc::clone(&telemetry),
+        subject_wildcard: None,
+        session: session.clone(),
     };
 
-    tracing::info!("Message parsed: {:?}", client_message);
-    // handle the client message
+    let client_message = handle_ws_error!(parse_client_message(msg), ctx);
     match client_message {
         ClientMessage::Subscribe(payload) => {
             tracing::info!("Received subscribe message: {:?}", payload);
-            let subject_wildcard = payload.wildcard;
+            let subject_wildcard = payload.wildcard.clone();
             let deliver_policy = payload.deliver_policy;
 
             // verify the subject name
-            let sub_subject =
-                match verify_and_extract_subject_name(&subject_wildcard) {
-                    Ok(res) => res,
-                    Err(e) => {
-                        close_socket_with_error(
-                            e,
-                            user_id,
-                            session,
-                            Some(subject_wildcard.clone()),
-                            telemetry,
-                        )
-                        .await;
-                        return Ok(());
-                    }
-                };
+            let entity = handle_ws_error!(
+                verify_and_extract_subject_name(&subject_wildcard),
+                ctx.clone().with_subject_wildcard(&subject_wildcard)
+            );
 
-            // start the streamer async
+            let record_entity = RecordEntity::from_str(&entity).unwrap();
+            let nats_client = streams.nats_client();
+            let mut sub = handle_ws_error!(
+                create_subscriber(
+                    &record_entity,
+                    &nats_client,
+                    subject_wildcard.clone()
+                )
+                .await,
+                ctx
+            );
+
             let mut stream_session = session.clone();
-
-            // reply to socket with subscription
             send_message_to_socket(
                 &mut session,
                 ServerMessage::Subscribed(SubscriptionPayload {
@@ -187,48 +224,21 @@ async fn handle_binary_message(
             .await;
 
             // receive streaming in a background thread
-            let streams = streams.clone();
             let telemetry = telemetry.clone();
+            let subject_wildcard = subject_wildcard.clone();
+            let record_entity = record_entity.clone();
             actix_web::rt::spawn(async move {
-                // update metrics
                 telemetry.update_user_subscription_metrics(
                     user_id,
                     &subject_wildcard,
                 );
 
-                // subscribe to the stream
-                let config = SubscriptionConfig {
-                    deliver_policy: deliver_policy.into(),
-                    filter_subjects: vec![subject_wildcard.clone()],
-                };
-
-                let mut sub = match streams
-                    .subscribe_raw(&sub_subject, Some(config))
-                    .await
-                {
-                    Ok(sub) => sub,
-                    Err(e) => {
-                        close_socket_with_error(
-                            WsSubscriptionError::Stream(e),
-                            user_id,
-                            session,
-                            Some(subject_wildcard.clone()),
-                            telemetry,
-                        )
-                        .await;
-                        return;
-                    }
-                };
-
                 // consume and forward to the ws
-                while let Some((s3_serialized_payload, s3_path, message)) =
-                    sub.next().await
-                {
-                    // decode and serialize back to ws payload
+                while let Some((subject, payload)) = sub.next().await {
                     let serialized_ws_payload = match decode(
-                        &subject_wildcard,
-                        s3_serialized_payload,
-                        s3_path,
+                        &record_entity,
+                        &subject,
+                        payload,
                     )
                     .await
                     {
@@ -245,29 +255,21 @@ async fn handle_binary_message(
 
                     // send the payload over the stream
                     let _ = stream_session.binary(serialized_ws_payload).await;
-                    let _ = message.ack().await;
+                    // let _ = message.ack().await;
                 }
             });
             Ok(())
         }
         ClientMessage::Unsubscribe(payload) => {
             tracing::info!("Received unsubscribe message: {:?}", payload);
-            let subject_wildcard = payload.wildcard;
+            let subject_wildcard = payload.wildcard.clone();
             let deliver_policy = payload.deliver_policy;
-            if let Err(e) = verify_and_extract_subject_name(&subject_wildcard) {
-                close_socket_with_error(
-                    e,
-                    user_id,
-                    session,
-                    Some(subject_wildcard.clone()),
-                    telemetry,
-                )
-                .await;
-                return Ok(());
-            }
 
-            // TODO: implement session management for the same user_id
-            // send a message to the client to confirm unsubscribing
+            handle_ws_error!(
+                verify_and_extract_subject_name(&subject_wildcard),
+                ctx.clone().with_subject_wildcard(&subject_wildcard)
+            );
+
             send_message_to_socket(
                 &mut session,
                 ServerMessage::Unsubscribed(SubscriptionPayload {
@@ -326,57 +328,60 @@ async fn send_message_to_socket(session: &mut Session, message: ServerMessage) {
     let _ = session.binary(data).await;
 }
 
-async fn decode(
-    subject_wildcard: &str,
-    s3_payload: Vec<u8>,
-    s3_path: String,
+async fn decode<'a>(
+    stream_type: &'a RecordEntity,
+    subject: &str,
+    payload: Bytes,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    let subject = verify_and_extract_subject_name(subject_wildcard)?;
-    let payload = match subject.as_str() {
-        Block::NAME => {
-            let entity = Block::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
+    let subject = verify_and_extract_subject_name(subject)?;
+    let json_value = match stream_type {
+        RecordEntity::Block => Block::decode(&payload).to_json_value(),
+        RecordEntity::Transaction => {
+            Transaction::decode(&payload).to_json_value()
         }
-        Transaction::NAME => {
-            let entity = Transaction::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        Input::NAME => {
-            let entity = Input::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        Output::NAME => {
-            let entity = Output::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        Receipt::NAME => {
-            let entity = Receipt::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        Utxo::NAME => {
-            let entity = Utxo::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        Log::NAME => {
-            let entity = Log::decode(&s3_payload).await?;
-            Ok(entity.encode_json_value()?)
-        }
-        _ => Err(WsSubscriptionError::UnknownSubjectName(
-            subject_wildcard.to_string(),
-        )),
+        RecordEntity::Input => Input::decode(&payload).to_json_value(),
+        RecordEntity::Output => Output::decode(&payload).to_json_value(),
+        RecordEntity::Receipt => Receipt::decode(&payload).to_json_value(),
+        RecordEntity::Utxo => Utxo::decode(&payload).to_json_value(),
+        RecordEntity::Log => Log::decode(&payload).to_json_value(),
     };
 
-    let subject = s3_path_to_subject(s3_path);
     serde_json::to_vec(&ServerMessage::Response(ResponseMessage {
-        subject,
-        payload: payload?,
+        subject: subject.to_string(),
+        payload: json_value,
     }))
     .map_err(WsSubscriptionError::UnserializablePayload)
 }
 
-fn s3_path_to_subject(s3_path: String) -> String {
-    s3_path
-        .replace("/", ".")
-        .replace(".json.zstd", "")
-        .replace(".json", "")
+async fn create_subscriber(
+    record_entity: &RecordEntity,
+    nats_client: &Arc<NatsClient>,
+    subject_wildcard: String,
+) -> Result<BoxStream<'static, (String, Bytes)>, StreamError> {
+    match record_entity {
+        RecordEntity::Block => {
+            Stream::<Block>::subscribe_live(nats_client, subject_wildcard).await
+        }
+        RecordEntity::Transaction => {
+            Stream::<Transaction>::subscribe_live(nats_client, subject_wildcard)
+                .await
+        }
+        RecordEntity::Input => {
+            Stream::<Input>::subscribe_live(nats_client, subject_wildcard).await
+        }
+        RecordEntity::Output => {
+            Stream::<Output>::subscribe_live(nats_client, subject_wildcard)
+                .await
+        }
+        RecordEntity::Receipt => {
+            Stream::<Receipt>::subscribe_live(nats_client, subject_wildcard)
+                .await
+        }
+        RecordEntity::Utxo => {
+            Stream::<Utxo>::subscribe_live(nats_client, subject_wildcard).await
+        }
+        RecordEntity::Log => {
+            Stream::<Log>::subscribe_live(nats_client, subject_wildcard).await
+        }
+    }
 }

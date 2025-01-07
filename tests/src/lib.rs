@@ -25,8 +25,8 @@ pub async fn create_test_db() -> DbResult<Db> {
 }
 
 pub async fn setup_store<R: Record>() -> StoreResult<Store<R>> {
-    let opts = DbConnectionOpts::default();
-    Store::new(opts).await
+    let db = create_test_db().await?;
+    Ok(Store::new(&db.arc()))
 }
 
 pub async fn add_test_records(

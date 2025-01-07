@@ -1,39 +1,12 @@
 use std::sync::Arc;
 
-use super::{CacheConfig, CacheStats, StoreCache, StoreError};
+use super::{CacheConfig, CacheStats, StoreCache, StoreError, StorePacket};
 use crate::{
     db::{Db, DbRecord, Record},
     subject_validator::SubjectValidator,
 };
 
 pub type StoreResult<T> = Result<T, StoreError>;
-
-#[derive(Clone)]
-pub struct StorePacket<R: Record> {
-    pub record: R,
-    pub subject: String,
-    order: Option<i32>,
-}
-impl<R: Record> StorePacket<R> {
-    pub fn new(record: &R, subject: String) -> Self {
-        Self {
-            record: record.to_owned(),
-            subject,
-            order: None,
-        }
-    }
-
-    pub fn with_order(self, order: i32) -> Self {
-        Self {
-            order: Some(order),
-            ..self
-        }
-    }
-
-    pub fn order(&self) -> i32 {
-        self.order.unwrap_or(0)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Store<R: Record> {

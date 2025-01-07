@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::{Db, DbError, RecordEntity};
-use crate::subject_validator::SubjectValidator;
+use crate::{store::StorePacket, subject_validator::SubjectValidator};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbRecord {
@@ -16,14 +16,7 @@ pub type DbResult<T> = Result<T, DbError>;
 
 #[async_trait]
 pub trait Record:
-    std::fmt::Debug
-    + Clone
-    + Send
-    + Sync
-    + Sized
-    + Serialize
-    + DeserializeOwned
-    + 'static
+    std::fmt::Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static
 {
     const ENTITY: RecordEntity;
 
@@ -170,12 +163,34 @@ pub trait Record:
         Ok(records)
     }
 
+    async fn find_last_record(db: &Db) -> DbResult<DbRecord> {
+        let record = sqlx::query_as!(
+            DbRecord,
+            r#"
+            SELECT entity as "entity: RecordEntity", subject, sequence_order, value
+            FROM records
+            ORDER BY sequence_order DESC
+            LIMIT 1
+            "#
+        )
+        .fetch_optional(&db.pool)
+        .await
+        .map_err(DbError::Query)?
+        .ok_or_else(|| DbError::NotFound("No records found".to_string()))?;
+
+        Ok(record)
+    }
+
     fn encode(&self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
 
     fn encode_json(&self) -> Vec<u8> {
         serde_json::to_vec(&self).unwrap()
+    }
+
+    fn to_json_value(&self) -> serde_json::Value {
+        serde_json::to_value(&self).unwrap()
     }
 
     fn decode(bytes: &[u8]) -> Self {
@@ -188,5 +203,9 @@ pub trait Record:
 
     fn from_db_record(record: &DbRecord) -> Self {
         Self::decode(&record.value)
+    }
+
+    fn to_packet(&self, subject: impl Into<String>) -> StorePacket<Self> {
+        StorePacket::new(&self, subject.into())
     }
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
 use super::{DbError, DbResult};
@@ -40,5 +42,9 @@ impl Db {
             .map_err(DbError::Delete)?;
 
         Ok(())
+    }
+
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }

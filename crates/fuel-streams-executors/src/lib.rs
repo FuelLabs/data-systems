@@ -13,6 +13,7 @@ use std::{
 
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
+use fuel_streams_store::{db::Record, store::StorePacket};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::task::JoinHandle;
@@ -51,8 +52,6 @@ pub enum ExecutorError {
     OffchainDatabase(#[from] anyhow::Error),
     /// Failed to join tasks: {0}
     JoinError(#[from] tokio::task::JoinError),
-    /// Failed to encode or decode data: {0}
-    Encoder(#[from] DataParserError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,10 +88,6 @@ pub struct BlockPayload {
     pub block: Block,
     pub transactions: Vec<Transaction>,
     metadata: Metadata,
-}
-
-impl DataEncoder for BlockPayload {
-    type Err = ExecutorError;
 }
 
 impl BlockPayload {
@@ -174,19 +169,27 @@ impl BlockPayload {
         }
         Ok(transactions)
     }
+
+    pub fn encode(&self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+
+    pub fn decode(bytes: &[u8]) -> Self {
+        bincode::deserialize(bytes).unwrap()
+    }
 }
 
-pub struct Executor<S: Streamable + 'static> {
-    pub stream: Arc<Stream<S>>,
+pub struct Executor<R: Record> {
+    pub stream: Arc<Stream<R>>,
     payload: Arc<BlockPayload>,
     semaphore: Arc<tokio::sync::Semaphore>,
-    __marker: PhantomData<S>,
+    __marker: PhantomData<R>,
 }
 
-impl<S: Streamable> Executor<S> {
+impl<R: Record> Executor<R> {
     pub fn new(
         payload: &Arc<BlockPayload>,
-        stream: &Arc<Stream<S>>,
+        stream: &Arc<Stream<R>>,
         semaphore: &Arc<tokio::sync::Semaphore>,
     ) -> Self {
         Self {
@@ -199,9 +202,9 @@ impl<S: Streamable> Executor<S> {
 
     fn publish(
         &self,
-        packet: &PublishPacket<S>,
+        packet: &StorePacket<R>,
     ) -> JoinHandle<Result<(), ExecutorError>> {
-        let wildcard = packet.subject.parse();
+        let wildcard = packet.subject.clone();
         let stream = Arc::clone(&self.stream);
         let permit = Arc::clone(&self.semaphore);
 

@@ -4,7 +4,6 @@ use std::{
 };
 
 use async_nats::jetstream::stream::State;
-use fuel_streams_core::prelude::FuelStreamsExt;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -85,23 +84,24 @@ impl ServerState {
     }
 
     pub async fn get_health(&self) -> HealthResponse {
-        let streams_info = self
-            .context
-            .fuel_streams
-            .get_consumers_and_state()
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|res| StreamInfo {
-                consumers: res.1,
-                state: res.2.into(),
-                stream_name: res.0,
-            })
-            .collect::<Vec<StreamInfo>>();
-        HealthResponse {
-            uptime: self.uptime().as_secs(),
-            streams_info,
-        }
+        todo!()
+        // let streams_info = self
+        //     .context
+        //     .fuel_streams
+        //     .get_consumers_and_state()
+        //     .await
+        //     .unwrap_or_default()
+        //     .into_iter()
+        //     .map(|res| StreamInfo {
+        //         consumers: res.1,
+        //         state: res.2.into(),
+        //         stream_name: res.0,
+        //     })
+        //     .collect::<Vec<StreamInfo>>();
+        // HealthResponse {
+        //     uptime: self.uptime().as_secs(),
+        //     streams_info,
+        // }
     }
 
     pub fn uptime(&self) -> Duration {

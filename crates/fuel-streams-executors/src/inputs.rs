@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use fuel_streams_core::prelude::*;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
@@ -22,7 +20,7 @@ impl Executor<Input> {
                     identifiers(input, &tx_id, index as u8)
                         .into_par_iter()
                         .map(|identifier| identifier.into())
-                        .map(|subject: InputsByIdSubject| subject.arc())
+                        .map(|subject: InputsByIdSubject| subject.parse())
                         .collect::<Vec<_>>();
 
                 let mut packets = vec![input.to_packet(main_subject)];
@@ -40,32 +38,28 @@ impl Executor<Input> {
     }
 }
 
-fn main_subject(
-    input: &Input,
-    tx_id: Bytes32,
-    index: usize,
-) -> Arc<dyn IntoSubject> {
+fn main_subject(input: &Input, tx_id: Bytes32, index: usize) -> String {
     match input {
         Input::Contract(contract) => InputsContractSubject {
             tx_id: Some(tx_id),
             index: Some(index),
             contract_id: Some(contract.contract_id.to_owned().into()),
         }
-        .arc(),
+        .parse(),
         Input::Coin(coin) => InputsCoinSubject {
             tx_id: Some(tx_id),
             index: Some(index),
             owner: Some(coin.owner.to_owned()),
             asset_id: Some(coin.asset_id.to_owned()),
         }
-        .arc(),
+        .parse(),
         Input::Message(message) => InputsMessageSubject {
             tx_id: Some(tx_id),
             index: Some(index),
             sender: Some(message.sender.to_owned()),
             recipient: Some(message.recipient.to_owned()),
         }
-        .arc(),
+        .parse(),
     }
 }
 

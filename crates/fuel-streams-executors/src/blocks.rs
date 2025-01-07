@@ -12,29 +12,26 @@ impl Executor<Block> {
         let block = self.block();
         let block_height = (*metadata.block_height).clone();
         let block_producer = (*metadata.block_producer).clone();
-        let packet = PublishPacket::<Block>::new(
-            block.to_owned(),
-            BlocksSubject {
-                height: Some(block_height),
-                producer: Some(block_producer),
-            }
-            .arc(),
-        );
+        let subject = BlocksSubject {
+            height: Some(block_height),
+            producer: Some(block_producer),
+        };
+        let packet = block.to_packet(subject.parse());
         self.publish(&packet)
     }
 
     pub fn process_all(
         payload: Arc<BlockPayload>,
-        fuel_streams: &Arc<dyn FuelStreamsExt>,
+        fuel_streams: &Arc<FuelStreams>,
         semaphore: &Arc<tokio::sync::Semaphore>,
     ) -> FuturesUnordered<JoinHandle<Result<(), ExecutorError>>> {
-        let block_stream = fuel_streams.blocks().arc();
-        let tx_stream = fuel_streams.transactions().arc();
-        let input_stream = fuel_streams.inputs().arc();
-        let output_stream = fuel_streams.outputs().arc();
-        let receipt_stream = fuel_streams.receipts().arc();
-        let log_stream = fuel_streams.logs().arc();
-        let utxo_stream = fuel_streams.utxos().arc();
+        let block_stream = fuel_streams.blocks.arc();
+        let tx_stream = fuel_streams.transactions.arc();
+        let input_stream = fuel_streams.inputs.arc();
+        let output_stream = fuel_streams.outputs.arc();
+        let receipt_stream = fuel_streams.receipts.arc();
+        let log_stream = fuel_streams.logs.arc();
+        let utxo_stream = fuel_streams.utxos.arc();
 
         let block_executor = Executor::new(&payload, &block_stream, semaphore);
         let tx_executor = Executor::new(&payload, &tx_stream, semaphore);
