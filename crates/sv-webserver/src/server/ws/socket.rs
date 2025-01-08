@@ -10,18 +10,19 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{Message, Session};
-use fuel_streams_core::{nats::*, stream::*, types::*};
+use fuel_streams_core::{stream::*, types::*};
 use fuel_streams_store::{
-    db::{Db, DbRecord},
+    db::DbRecord,
     record::{DataEncoder, RecordEntity},
     store::StoreResult,
 };
-use futures::{stream::BoxStream, StreamExt};
+use futures::StreamExt;
 use uuid::Uuid;
 
 use super::{
     errors::WsSubscriptionError,
     models::{ClientMessage, ResponseMessage},
+    subscriber::create_subscriber,
 };
 use crate::{
     server::{
@@ -213,7 +214,8 @@ async fn handle_binary_message(
                     &record_entity,
                     &nats_client,
                     &db,
-                    subject_wildcard.clone()
+                    subject_wildcard.clone(),
+                    deliver_policy
                 )
                 .await,
                 ctx
@@ -376,36 +378,4 @@ async fn decode<'a>(
         payload: json_value,
     }))
     .map_err(WsSubscriptionError::UnserializablePayload)
-}
-
-async fn create_subscriber(
-    record_entity: &RecordEntity,
-    nats_client: &Arc<NatsClient>,
-    db: &Arc<Db>,
-    subject_wildcard: String,
-) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
-    let streams = FuelStreams::new(nats_client, db).await;
-    match record_entity {
-        RecordEntity::Block => {
-            streams.blocks.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Transaction => {
-            streams.transactions.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Input => {
-            streams.inputs.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Output => {
-            streams.outputs.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Receipt => {
-            streams.receipts.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Utxo => {
-            streams.utxos.subscribe_live(subject_wildcard).await
-        }
-        RecordEntity::Log => {
-            streams.logs.subscribe_live(subject_wildcard).await
-        }
-    }
 }
