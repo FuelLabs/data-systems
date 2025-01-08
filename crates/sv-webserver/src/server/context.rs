@@ -19,9 +19,8 @@ pub struct Context {
 
 impl Context {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::admin_opts()
-            .with_url(config.nats.url.clone())
-            .with_domain("CORE");
+        let nats_client_opts =
+            NatsClientOpts::admin_opts().with_url(config.nats.url.clone());
         let nats_client = NatsClient::connect(&nats_client_opts).await?;
         let db = Db::new(DbConnectionOpts {
             connection_str: config.db.url.clone(),

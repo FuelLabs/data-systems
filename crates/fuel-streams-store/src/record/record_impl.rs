@@ -204,7 +204,7 @@ pub trait Record: RecordEncoder + 'static {
 #[macro_export]
 macro_rules! impl_record_for {
     ($type:ty, $entity:expr) => {
-        use fuel_streams_store::{db::DbError, record::DataEncoder};
+        use $crate::{db::DbError, record::DataEncoder};
 
         impl DataEncoder for $type {
             type Err = DbError;

@@ -30,18 +30,8 @@ impl FuelStreams {
             utxos: Stream::<Utxo>::get_or_init(nats_client, db).await,
             logs: Stream::<Log>::get_or_init(nats_client, db).await,
             nats_client: Arc::new(nats_client.clone()),
-            db: Arc::clone(&db),
+            db: Arc::clone(db),
         }
-    }
-
-    pub async fn setup_all(
-        core_client: &NatsClient,
-        publisher_client: &NatsClient,
-        db: &Arc<Db>,
-    ) -> (Self, Self) {
-        let core_stream = Self::new(core_client, db).await;
-        let publisher_stream = Self::new(publisher_client, db).await;
-        (core_stream, publisher_stream)
     }
 
     pub fn arc(self) -> Arc<Self> {

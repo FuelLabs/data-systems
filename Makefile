@@ -226,23 +226,13 @@ run-publisher-testnet-dev:
 run-publisher-testnet-profiling:
 	$(MAKE) run-publisher NETWORK=testnet MODE=profiling FROM_HEIGHT=0
 
-run-consumer: NATS_CORE_URL="localhost:4222"
-run-consumer: NATS_PUBLISHER_URL="localhost:4223"
-run-consumer:
-	cargo run --package sv-consumer --profile dev -- \
-		--nats-core-url $(NATS_CORE_URL) \
-		--nats-publisher-url $(NATS_PUBLISHER_URL)
-
 # ------------------------------------------------------------
 #  Consumer Run Commands
 # ------------------------------------------------------------
 
 run-consumer: NATS_URL="localhost:4222"
-run-consumer: NATS_PUBLISHER_URL="localhost:4333"
 run-consumer:
-	cargo run --package sv-consumer --profile dev -- \
-		--nats-url $(NATS_URL) \
-		--nats-publisher-url $(NATS_PUBLISHER_URL)
+	cargo run --package sv-consumer --profile dev -- --nats-url $(NATS_URL)
 
 # ------------------------------------------------------------
 #  Streamer Run Commands

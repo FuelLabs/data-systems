@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_nats::{
     error,
     jetstream::{context::CreateKeyValueErrorKind, kv},
@@ -101,5 +103,9 @@ impl NatsClient {
 
     fn state(&self) -> ConnectionState {
         self.nats_client.connection_state()
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.clone())
     }
 }

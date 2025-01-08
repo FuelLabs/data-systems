@@ -74,7 +74,7 @@ async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
 To run the benchmarks and measure performance of different serialization and compression strategies:
 
 ```sh
-cargo bench -p data-parser -p nats-publisher -p bench-consumers
+cargo bench -p data-parser
 ```
 
 > [!INFO]

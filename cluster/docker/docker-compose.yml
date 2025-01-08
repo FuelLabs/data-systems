@@ -19,28 +19,6 @@ services:
     env_file:
       - ./../../.env
 
-  nats-publisher:
-    profiles:
-      - all
-      - nats
-    image: nats:latest
-    container_name: nats-publisher
-    restart: always
-    ports:
-      - 4333:4222
-    volumes:
-      - ./nats-config/publisher.conf:/etc/nats/nats.conf
-      - ./nats-config/accounts.conf:/etc/nats/accounts.conf
-    command:
-      - --name=fuel-streams-nats-publisher
-      - --js
-      - --config=/etc/nats/nats.conf
-      - -D
-    env_file:
-      - ./../../.env
-    depends_on:
-      - nats-core
-
   cockroach:
     profiles:
       - all

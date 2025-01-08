@@ -7,7 +7,6 @@ commonConfigMap:
   data:
     USE_METRICS: "false"
     NATS_URL: "fuel-streams-nats-core:4222"
-    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
     NATS_SYSTEM_USER: "sys"
     NATS_SYSTEM_PASS: "sys"
     NATS_ADMIN_USER: "admin"
@@ -89,36 +88,6 @@ nats-core:
     cluster:
       replicas: 3
 
-    jetstream:
-      fileStore:
-        pvc:
-          size: 10Gi
-          storageClassName: "standard"
-
-    merge:
-      jetstream:
-        max_file_store: << 10GiB >>
-        max_memory_store: << 1GiB >>
-
-# NATS Publisher configuration for local development
-nats-publisher:
-  enabled: true
-  container:
-    env:
-      GOMEMLIMIT: 1GiB
-    merge:
-      envFrom:
-        - configMapRef:
-            name: fuel-streams-config
-      resources:
-        requests:
-          cpu: 100m
-          memory: 512Mi
-        limits:
-          cpu: 500m
-          memory: 1Gi
-
-  config:
     jetstream:
       fileStore:
         pvc:

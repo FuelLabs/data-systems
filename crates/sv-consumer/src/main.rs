@@ -19,7 +19,7 @@ use fuel_streams_store::{
     record::DataEncoder,
 };
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::{cli::Cli, Client};
+use sv_consumer::cli::Cli;
 use sv_publisher::shutdown::ShutdownController;
 use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
@@ -105,14 +105,11 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
 
 async fn setup_nats(
     cli: &Cli,
-) -> Result<
-    (Arc<NatsClient>, Arc<NatsClient>, Consumer<ConsumerConfig>),
-    ConsumerError,
-> {
-    let core_client = Client::Core.create(cli).await?;
-    let publisher_client = Client::Publisher.create(cli).await?;
-    let stream_name = publisher_client.namespace.stream_name("block_importer");
-    let stream = publisher_client
+) -> Result<(Arc<NatsClient>, Consumer<ConsumerConfig>), ConsumerError> {
+    let opts = NatsClientOpts::admin_opts().with_url(cli.nats_url.to_string());
+    let nats_client = NatsClient::connect(&opts).await?;
+    let stream_name = nats_client.namespace.stream_name("block_importer");
+    let stream = nats_client
         .jetstream
         .get_or_create_stream(async_nats::jetstream::stream::Config {
             name: stream_name,
@@ -132,7 +129,7 @@ async fn setup_nats(
         })
         .await?;
 
-    Ok((core_client, publisher_client, consumer))
+    Ok((nats_client.arc(), consumer))
 }
 
 pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
@@ -147,12 +144,9 @@ async fn process_messages(
     cli: &Cli,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
+    let (nats_client, consumer) = setup_nats(cli).await?;
     let db = setup_db(&cli.db_url).await?;
-    let (_, publisher_stream) =
-        FuelStreams::setup_all(&core_client, &publisher_client, &db).await;
-
-    let fuel_streams: Arc<FuelStreams> = publisher_stream.arc();
+    let fuel_streams = FuelStreams::new(&nats_client, &db).await.arc();
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =

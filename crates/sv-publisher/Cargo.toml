@@ -19,7 +19,6 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 clap = { workspace = true }
-displaydoc = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-bin = { workspace = true, default-features = false, features = [
     "p2p",

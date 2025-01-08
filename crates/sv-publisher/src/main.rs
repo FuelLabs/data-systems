@@ -100,9 +100,7 @@ async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
 }
 
 async fn setup_nats(nats_url: &str) -> Result<NatsClient, PublishError> {
-    let opts = NatsClientOpts::admin_opts()
-        .with_url(nats_url.to_string())
-        .with_domain("CORE".to_string());
+    let opts = NatsClientOpts::admin_opts().with_url(nats_url.to_string());
     let nats_client = NatsClient::connect(&opts).await?;
     let stream_name = nats_client.namespace.stream_name("block_importer");
     nats_client

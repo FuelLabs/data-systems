@@ -26,7 +26,7 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
                 let record = record.unwrap();
                 assert_eq!(record.subject.to_string(), subject);
                 assert_eq!(record.value, "test".as_bytes());
-                if record.subject.to_string() == subject {
+                if record.subject == subject {
                     break;
                 }
             }

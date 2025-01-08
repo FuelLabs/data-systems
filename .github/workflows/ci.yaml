@@ -209,7 +209,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NATS_URL: nats://127.0.0.1:4222
-      NATS_PUBLISHER_URL: nats://127.0.0.1:4333
       NATS_SYSTEM_USER: sys
       NATS_SYSTEM_PASSWORD: sys
       NATS_ADMIN_USER: admin

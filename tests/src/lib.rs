@@ -27,9 +27,7 @@ pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
 }
 
 pub async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
-    let opts = NatsClientOpts::admin_opts()
-        .with_url(nats_url.to_string())
-        .with_domain("CORE".to_string());
+    let opts = NatsClientOpts::admin_opts().with_url(nats_url.to_string());
     let nats_client = NatsClient::connect(&opts).await?;
     Ok(nats_client)
 }

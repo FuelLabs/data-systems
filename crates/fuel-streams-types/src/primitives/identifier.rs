@@ -41,59 +41,49 @@ pub enum Identifier {
 #[macro_export]
 macro_rules! impl_from_identifier_for {
     ($subject:ident) => {
-        impl From<fuel_streams_types::Identifier> for $subject {
-            fn from(identifier: fuel_streams_types::Identifier) -> Self {
+        impl From<$crate::Identifier> for $subject {
+            fn from(identifier: $crate::Identifier) -> Self {
                 match identifier {
-                    fuel_streams_types::Identifier::Address(
-                        tx_id,
-                        index,
-                        id,
-                    ) => $subject::build(
-                        Some(tx_id),
-                        Some(index),
-                        Some(fuel_streams_types::IdentifierKind::Address),
-                        Some(id),
-                    ),
-                    fuel_streams_types::Identifier::ContractID(
-                        tx_id,
-                        index,
-                        id,
-                    ) => $subject::build(
-                        Some(tx_id),
-                        Some(index),
-                        Some(fuel_streams_types::IdentifierKind::ContractID),
-                        Some(id),
-                    ),
-                    fuel_streams_types::Identifier::AssetID(
-                        tx_id,
-                        index,
-                        id,
-                    ) => $subject::build(
-                        Some(tx_id),
-                        Some(index),
-                        Some(fuel_streams_types::IdentifierKind::AssetID),
-                        Some(id),
-                    ),
-                    fuel_streams_types::Identifier::PredicateID(
-                        tx_id,
-                        index,
-                        id,
-                    ) => $subject::build(
-                        Some(tx_id),
-                        Some(index),
-                        Some(fuel_streams_types::IdentifierKind::PredicateID),
-                        Some(id),
-                    ),
-                    fuel_streams_types::Identifier::ScriptID(
-                        tx_id,
-                        index,
-                        id,
-                    ) => $subject::build(
-                        Some(tx_id),
-                        Some(index),
-                        Some(fuel_streams_types::IdentifierKind::ScriptID),
-                        Some(id),
-                    ),
+                    $crate::Identifier::Address(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some($crate::IdentifierKind::Address),
+                            Some(id),
+                        )
+                    }
+                    $crate::Identifier::ContractID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some($crate::IdentifierKind::ContractID),
+                            Some(id),
+                        )
+                    }
+                    $crate::Identifier::AssetID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some($crate::IdentifierKind::AssetID),
+                            Some(id),
+                        )
+                    }
+                    $crate::Identifier::PredicateID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some($crate::IdentifierKind::PredicateID),
+                            Some(id),
+                        )
+                    }
+                    $crate::Identifier::ScriptID(tx_id, index, id) => {
+                        $subject::build(
+                            Some(tx_id),
+                            Some(index),
+                            Some($crate::IdentifierKind::ScriptID),
+                            Some(id),
+                        )
+                    }
                 }
             }
         }

@@ -78,7 +78,6 @@ commonConfigMap:
   data:
     USE_METRICS: "false"
     NATS_URL: "fuel-streams-nats-core:4222"
-    NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
     NATS_SYSTEM_USER: "sys"
     NATS_SYSTEM_PASS: "sys"
     NATS_ADMIN_USER: "admin"
@@ -370,88 +369,9 @@ nats-core:
     merge:
       max_payload: << 32MiB >>
       jetstream:
-        domain: CORE
         sync_interval: << 30s >>
         max_outstanding_catchup: << 512MiB >>
         max_file_store: << 2000GiB >>
-        max_memory_store: << 7GiB >>
-      system_account: SYS
-      $include: auth.conf
-
-  configMap:
-    merge:
-      $tplYaml: |
-        {{- include "nats-accounts" . | nindent 8 }}
-
-# -------------------------------------------------------------------------------------------------
-# NATS Publisher configuration
-# -------------------------------------------------------------------------------------------------
-
-nats-publisher:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  promExporter:
-    enabled: false
-
-  statefulSet:
-    merge:
-      spec:
-        replicas: 5
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.24-alpine
-    env:
-      GOMEMLIMIT: 7GiB
-    merge:
-      resources:
-        requests:
-          cpu: 2
-          memory: 8Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      leafnodes:
-        enabled: true
-      monitor:
-        enabled: false
-
-  config:
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 100Gi
-          storageClassName: "gp3-generic"
-
-    leafnodes:
-      enabled: true
-      port: 7422
-      merge:
-        remotes:
-          - urls: ["nats-leaf://admin:admin@fuel-streams-nats-core:7422"]
-            account: ADMIN
-
-    monitor:
-      enabled: false
-      port: 8222
-
-    merge:
-      max_payload: << 32MiB >>
-      jetstream:
-        domain: PUBLISHER
-        sync_interval: << 30s >>
-        max_outstanding_catchup: << 512MiB >>
-        max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
       $include: auth.conf

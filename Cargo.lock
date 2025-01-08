@@ -3559,7 +3559,6 @@ dependencies = [
  "async-compression",
  "async-trait",
  "bincode",
- "displaydoc",
  "lazy_static",
  "paste",
  "postcard",
@@ -3663,7 +3662,6 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 name = "fuel-streams"
 version = "0.0.15"
 dependencies = [
- "displaydoc",
  "fuel-streams-core",
  "fuel-streams-store",
  "futures",
@@ -3685,7 +3683,6 @@ dependencies = [
  "async-nats",
  "async-stream",
  "async-trait",
- "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-importer",
@@ -3719,7 +3716,6 @@ name = "fuel-streams-executors"
 version = "0.0.15"
 dependencies = [
  "anyhow",
- "displaydoc",
  "dotenvy",
  "fuel-core",
  "fuel-streams-core",
@@ -3747,7 +3743,6 @@ name = "fuel-streams-nats"
 version = "0.0.15"
 dependencies = [
  "async-nats",
- "displaydoc",
  "dotenvy",
  "pretty_assertions",
  "rand",
@@ -8845,7 +8840,6 @@ dependencies = [
  "async-nats",
  "bincode",
  "clap 4.5.23",
- "displaydoc",
  "dotenvy",
  "fuel-core",
  "fuel-streams-core",
@@ -8870,7 +8864,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "clap 4.5.23",
- "displaydoc",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-types 0.40.2",

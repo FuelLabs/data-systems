@@ -105,7 +105,7 @@ macro_rules! common_wrapper_type {
 macro_rules! generate_byte_type_wrapper {
     // Pattern with byte_size specified
     ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
-        crate::common_wrapper_type!($wrapper_type, $inner_type);
+        $crate::common_wrapper_type!($wrapper_type, $inner_type);
 
         impl From<[u8; $byte_size]> for $wrapper_type {
             fn from(value: [u8; $byte_size]) -> Self {
@@ -138,7 +138,7 @@ macro_rules! generate_byte_type_wrapper {
 
     // Pattern without byte_size
     ($wrapper_type:ident, $inner_type:ty) => {
-        crate::common_wrapper_type!($wrapper_type, $inner_type);
+        $crate::common_wrapper_type!($wrapper_type, $inner_type);
 
         impl From<Vec<u8>> for $wrapper_type {
             fn from(value: Vec<u8>) -> Self {
