@@ -15,7 +15,7 @@ usage() {
     echo "                  Default: profiling"
     echo "  --port        : Specify the port number"
     echo "                  Default: 4000"
-    echo "  --telemtry-port : Specify the telemetry port number"
+    echo "  --telemetry-port : Specify the telemetry port number"
     echo "                  Default: 8080"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
     echo ""

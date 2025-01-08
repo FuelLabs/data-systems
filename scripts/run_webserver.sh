@@ -16,7 +16,7 @@ usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  --mode         : Specify the run mode (dev|profiling)"
-    echo "  --port     : Port number for the API server (default: 9003)"
+    echo "  --port         : Port number for the API server (default: 9003)"
     echo "  --nats-url     : NATS URL (default: nats://localhost:4222)"
     echo "  --extra-args   : Optional additional arguments to append (in quotes)"
     echo ""

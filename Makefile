@@ -230,9 +230,11 @@ run-publisher-testnet-profiling:
 
 run-consumer: NATS_CORE_URL="localhost:4222"
 run-consumer: NATS_PUBLISHER_URL="localhost:4223"
+run-consumer: PORT="9003"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-core-url $(NATS_CORE_URL) \
+		--port $(PORT) \
 		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------
@@ -241,9 +243,11 @@ run-consumer:
 
 run-consumer: NATS_URL="localhost:4222"
 run-consumer: NATS_PUBLISHER_URL="localhost:4333"
+run-consumer: PORT="9003"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-url $(NATS_URL) \
+		--port $(PORT) \
 		--nats-publisher-url $(NATS_PUBLISHER_URL)
 
 # ------------------------------------------------------------

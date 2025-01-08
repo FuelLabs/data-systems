@@ -1,6 +1,6 @@
 [package]
-name = "sv-webserver"
-description = "Fuel library for streaming data from nats and storage"
+name = "fuel-web-utils"
+description = "Fuel library for web utils"
 authors = { workspace = true }
 keywords = { workspace = true }
 edition = { workspace = true }
@@ -10,37 +10,41 @@ repository = { workspace = true }
 version = { workspace = true }
 rust-version = { workspace = true }
 
-[[bin]]
-name = "sv-webserver"
-path = "src/main.rs"
-
 [dependencies]
+actix-cors = { workspace = true }
+actix-server = { workspace = true }
+actix-service = "2.0.2"
 actix-web = { workspace = true }
-actix-ws = "0.3.0"
 anyhow = { workspace = true }
-async-nats = { workspace = true }
 async-trait = { workspace = true }
-clap = { workspace = true }
+chrono = { workspace = true }
+derive_more = { version = "1.0", features = ["full"] }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
+elasticsearch = "8.15.0-alpha.1"
 fuel-data-parser = { workspace = true }
-fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
-fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
-fuel-web-utils = { workspace = true }
 futures = { workspace = true }
+futures-util = { workspace = true }
+jsonwebtoken = "9.3.0"
 num_cpus = { workspace = true }
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
+rand = { workspace = true }
+rust_decimal = { version = "1.13" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_prometheus = { version = "0.2" }
+sysinfo = { version = "0.29" }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio = { workspace = true }
+tokio-util = "0.7.13"
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-actix-web = { workspace = true }
+url = "2.5"
+urlencoding = "2.1"
 uuid = { version = "1.11.0", features = ["serde", "v4"] }
-validator = { version = "0.19.0", features = ["derive"] }
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
@@ -49,15 +53,3 @@ ignored = ["fuel-data-parser"]
 [features]
 default = []
 test-helpers = []
-
-[target.x86_64-unknown-linux-gnu.dependencies]
-openssl = { version = "0.10.68", features = ["vendored"] }
-
-[target.x86_64-unknown-linux-musl.dependencies]
-openssl = { version = "0.10.68", features = ["vendored"] }
-
-[target.aarch64-unknown-linux-gnu.dependencies]
-openssl = { version = "0.10.68", features = ["vendored"] }
-
-[target.aarch64-unknown-linux-musl.dependencies]
-openssl = { version = "0.10.68", features = ["vendored"] }

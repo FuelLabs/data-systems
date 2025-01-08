@@ -3,6 +3,8 @@ use std::sync::Arc;
 use fuel_streams_core::prelude::*;
 
 pub mod cli;
+pub mod metrics;
+pub mod state;
 
 #[derive(Debug, Clone, Default)]
 pub enum Client {

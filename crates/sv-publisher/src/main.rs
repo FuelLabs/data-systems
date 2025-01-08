@@ -10,8 +10,13 @@ use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
+use fuel_web_utils::{
+    server::api::build_and_spawn_web_server,
+    shutdown::{shutdown_nats_with_timeout, ShutdownController},
+    telemetry::Telemetry,
+};
 use futures::StreamExt;
-use sv_publisher::{cli::Cli, shutdown::ShutdownController};
+use sv_publisher::{cli::Cli, metrics::Metrics, state::ServerState};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
@@ -30,8 +35,17 @@ async fn main() -> anyhow::Result<()> {
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
     fuel_core.start().await?;
 
+    let telemetry = Telemetry::new(None).await?;
+    telemetry.start().await?;
+
     let storage = setup_storage().await?;
     let nats_client = setup_nats(&cli.nats_url).await?;
+
+    let server_state =
+        ServerState::new(nats_client.clone(), Arc::clone(&telemetry));
+    let server_handle =
+        build_and_spawn_web_server(cli.port, server_state).await?;
+
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
     let last_published =
         Arc::new(find_last_published_height(&nats_client, &storage).await?);
@@ -49,12 +63,14 @@ async fn main() -> anyhow::Result<()> {
                 last_block_height,
                 last_published,
                 shutdown.token().clone(),
+                Arc::clone(&telemetry),
             );
 
             let live = process_live_blocks(
                 &nats_client.jetstream,
                 fuel_core.clone(),
                 shutdown.token().clone(),
+                Arc::clone(&telemetry)
             );
 
             tokio::join!(historical, live)
@@ -64,7 +80,11 @@ async fn main() -> anyhow::Result<()> {
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
-            fuel_core.stop().await
+            fuel_core.stop().await;
+            tracing::info!("Stopping actix server ...");
+            server_handle.stop(true).await;
+            tracing::info!("Actix server stopped. Goodbye!");
+            shutdown_nats_with_timeout(&nats_client).await;
         }
     }
 
@@ -138,6 +158,7 @@ fn process_historical_blocks(
     last_block_height: Arc<u32>,
     last_published_height: Arc<u32>,
     token: CancellationToken,
+    telemetry: Arc<Telemetry<Metrics>>,
 ) -> tokio::task::JoinHandle<()> {
     let jetstream = nats_client.jetstream.clone();
     tokio::spawn(async move {
@@ -153,11 +174,18 @@ fn process_historical_blocks(
                 let fuel_core = fuel_core.clone();
                 let sealed_block = fuel_core.get_sealed_block_by_height(height);
                 let sealed_block = Arc::new(sealed_block);
+                let telemetry = telemetry.clone();
                 async move {
-                    publish_block(&jetstream, &fuel_core, &sealed_block).await
+                    publish_block(
+                        &jetstream,
+                        &fuel_core,
+                        &sealed_block,
+                        telemetry,
+                    )
+                    .await
                 }
             })
-            .buffer_unordered(100)
+            .buffered(100)
             .take_until(token.cancelled())
             .collect::<Vec<_>>()
             .await;
@@ -168,6 +196,7 @@ async fn process_live_blocks(
     jetstream: &Context,
     fuel_core: Arc<dyn FuelCoreLike>,
     token: CancellationToken,
+    telemetry: Arc<Telemetry<Metrics>>,
 ) -> Result<(), LiveBlockProcessingError> {
     let mut subscription = fuel_core.blocks_subscription();
     while let Ok(data) = subscription.recv().await {
@@ -175,7 +204,8 @@ async fn process_live_blocks(
             break;
         }
         let sealed_block = Arc::new(data.sealed_block.clone());
-        publish_block(jetstream, &fuel_core, &sealed_block).await?;
+        publish_block(jetstream, &fuel_core, &sealed_block, telemetry.clone())
+            .await?;
     }
     Ok(())
 }
@@ -194,13 +224,16 @@ async fn publish_block(
     jetstream: &Context,
     fuel_core: &Arc<dyn FuelCoreLike>,
     sealed_block: &Arc<SealedBlock>,
+    telemetry: Arc<Telemetry<Metrics>>,
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
+    let encoded_payload = payload.encode().await?;
+    let payload_size = encoded_payload.len();
     let publish = Publish::build()
         .message_id(payload.message_id())
-        .payload(payload.encode().await?.into());
+        .payload(encoded_payload.into());
 
     jetstream
         .send_publish(payload.subject(), publish)
@@ -208,6 +241,11 @@ async fn publish_block(
         .map_err(PublishError::NatsPublish)?
         .await
         .map_err(PublishError::NatsPublish)?;
+
+    if let Some(metrics) = telemetry.base_metrics() {
+        metrics
+            .update_publisher_success_metrics(&payload.subject(), payload_size);
+    }
 
     tracing::info!("New block submitted: {}", payload.block_height());
     Ok(())

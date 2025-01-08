@@ -1,6 +1,24 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
+use fuel_streams_nats::NatsClient;
 use tokio_util::sync::CancellationToken;
+
+pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
+
+pub async fn shutdown_nats_with_timeout(nats_client: &NatsClient) {
+    let _ = tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
+        tracing::info!("Flushing in-flight messages to nats ...");
+        match nats_client.nats_client.flush().await {
+            Ok(_) => {
+                tracing::info!("Flushed all streams successfully!");
+            }
+            Err(e) => {
+                tracing::error!("Failed to flush all streams: {:?}", e);
+            }
+        }
+    })
+    .await;
+}
 
 #[derive(Clone)]
 pub struct ShutdownController {
