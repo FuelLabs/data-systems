@@ -13,9 +13,8 @@ rust-version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
+async-stream = "0.3"
 async-trait = { workspace = true }
-bytes = { workspace = true }
-displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = [
     "p2p",
@@ -28,7 +27,6 @@ fuel-core-bin = { workspace = true, default-features = false, features = [
     "relayer",
     "rocksdb",
 ] }
-fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
 fuel-core-importer = { workspace = true }
 fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
 fuel-core-storage = { workspace = true }
@@ -38,9 +36,6 @@ fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
 futures = { workspace = true }
-hex = { workspace = true }
-pretty_assertions = { workspace = true, optional = true }
-serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
@@ -51,4 +46,4 @@ serde_json = { workspace = true }
 
 [features]
 default = []
-test-helpers = ["dep:pretty_assertions"]
+test-helpers = []

@@ -3683,13 +3683,11 @@ version = "0.0.15"
 dependencies = [
  "anyhow",
  "async-nats",
+ "async-stream",
  "async-trait",
- "bytes",
- "displaydoc",
  "dotenvy",
  "fuel-core",
  "fuel-core-bin",
- "fuel-core-client",
  "fuel-core-importer",
  "fuel-core-services",
  "fuel-core-storage",
@@ -3699,9 +3697,7 @@ dependencies = [
  "fuel-streams-store",
  "fuel-streams-types",
  "futures",
- "hex",
  "pretty_assertions",
- "serde",
  "serde_json",
  "thiserror 2.0.9",
  "tokio",
@@ -3728,7 +3724,6 @@ dependencies = [
  "fuel-core",
  "fuel-streams-core",
  "fuel-streams-store",
- "fuel-streams-types",
  "futures",
  "num_cpus",
  "rayon",
@@ -3769,6 +3764,7 @@ dependencies = [
  "async-trait",
  "dotenvy",
  "fuel-data-parser",
+ "futures",
  "moka",
  "regex",
  "serde",
@@ -3785,7 +3781,6 @@ version = "0.0.15"
 dependencies = [
  "anyhow",
  "fuel-streams-core",
- "fuel-streams-macros",
  "fuel-streams-nats",
  "fuel-streams-store",
  "futures",
@@ -3799,16 +3794,12 @@ name = "fuel-streams-types"
 version = "0.0.15"
 dependencies = [
  "fuel-core",
- "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-importer",
- "fuel-core-services",
- "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "fuel-streams-store",
  "hex",
  "serde",
- "serde_json",
 ]
 
 [[package]]

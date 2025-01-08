@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use futures::{stream, stream::BoxStream, StreamExt};
+
 use super::{CacheConfig, CacheStats, StoreCache, StoreError, StorePacket};
 use crate::{
     db::{Db, DbRecord},
@@ -39,6 +41,16 @@ impl<R: Record> Store<R> {
 }
 
 impl<S: Record> Store<S> {
+    fn validate_subject(&self, subject_pattern: &str) -> StoreResult<()> {
+        if let Err(error) = SubjectValidator::validate(subject_pattern) {
+            return Err(StoreError::InvalidSubject {
+                pattern: subject_pattern.to_string(),
+                error,
+            });
+        }
+        Ok(())
+    }
+
     pub async fn add_record(
         &self,
         packet: &StorePacket<S>,
@@ -88,19 +100,7 @@ impl<S: Record> Store<S> {
         &self,
         subject_pattern: &str,
     ) -> StoreResult<Vec<S>> {
-        if let Err(error) = SubjectValidator::validate(subject_pattern) {
-            return Err(StoreError::InvalidSubject {
-                pattern: subject_pattern.to_string(),
-                error,
-            });
-        }
-
-        if !subject_pattern.contains(['*', '>']) {
-            if let Some(msg) = self.cache.get(subject_pattern) {
-                return Ok(vec![msg]);
-            }
-        }
-
+        self.validate_subject(subject_pattern)?;
         let items = S::find_many_by_pattern(&self.db, subject_pattern).await?;
         let mut messages = Vec::with_capacity(items.len());
         for item in items {
@@ -112,5 +112,41 @@ impl<S: Record> Store<S> {
         }
 
         Ok(messages)
+    }
+
+    pub async fn find_many_by_subject_raw(
+        &self,
+        subject_pattern: &str,
+    ) -> StoreResult<Vec<DbRecord>> {
+        self.validate_subject(subject_pattern)?;
+        S::find_many_by_pattern(&self.db, subject_pattern)
+            .await
+            .map_err(StoreError::from)
+    }
+
+    pub async fn stream_by_subject(
+        &self,
+        subject_pattern: &str,
+    ) -> StoreResult<BoxStream<'static, StoreResult<S>>> {
+        self.validate_subject(subject_pattern)?;
+        let items = self.find_many_by_subject(subject_pattern).await?;
+        let stream = stream::iter(items)
+            .map(|item| async move { Ok(item) })
+            .buffered(10);
+
+        Ok(Box::pin(stream))
+    }
+
+    pub async fn stream_by_subject_raw(
+        &self,
+        subject_pattern: &str,
+    ) -> StoreResult<BoxStream<'static, StoreResult<DbRecord>>> {
+        self.validate_subject(subject_pattern)?;
+        let items = self.find_many_by_subject_raw(subject_pattern).await?;
+        let stream = stream::iter(items)
+            .map(|item| async move { Ok(item) })
+            .buffered(10);
+
+        Ok(Box::pin(stream))
     }
 }

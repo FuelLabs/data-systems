@@ -12,10 +12,11 @@ use actix_web::{
 use actix_ws::{Message, Session};
 use fuel_streams_core::{nats::*, stream::*, types::*};
 use fuel_streams_store::{
-    db::Db,
+    db::{Db, DbRecord},
     record::{DataEncoder, RecordEntity},
+    store::StoreResult,
 };
-use futures::StreamExt;
+use futures::{stream::BoxStream, StreamExt};
 use uuid::Uuid;
 
 use super::{
@@ -239,11 +240,10 @@ async fn handle_binary_message(
                 );
 
                 // consume and forward to the ws
-                while let Some(message) = sub.next().await {
+                while let Some(result) = sub.next().await {
                     let serialized_ws_payload = match decode(
                         &record_entity,
-                        &message.subject,
-                        message.payload,
+                        result,
                     )
                     .await
                     {
@@ -335,28 +335,40 @@ async fn send_message_to_socket(session: &mut Session, message: ServerMessage) {
 
 async fn decode<'a>(
     stream_type: &'a RecordEntity,
-    subject: &str,
-    payload: Bytes,
+    result: StoreResult<DbRecord>,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    let subject = verify_and_extract_subject_name(subject)?;
+    let record = result?;
+    let subject = record.subject.clone();
+    let subject = verify_and_extract_subject_name(&subject)?;
     let json_value = match stream_type {
         RecordEntity::Block => {
-            Block::decode(&payload).await?.to_json_value()?
+            let payload: Block = record.decode_to_record().await?;
+            payload.to_json_value()?
         }
         RecordEntity::Transaction => {
-            Transaction::decode(&payload).await?.to_json_value()?
+            let payload: Transaction = record.decode_to_record().await?;
+            payload.to_json_value()?
         }
         RecordEntity::Input => {
-            Input::decode(&payload).await?.to_json_value()?
+            let payload: Input = record.decode_to_record().await?;
+            payload.to_json_value()?
         }
         RecordEntity::Output => {
-            Output::decode(&payload).await?.to_json_value()?
+            let payload: Output = record.decode_to_record().await?;
+            payload.to_json_value()?
         }
         RecordEntity::Receipt => {
-            Receipt::decode(&payload).await?.to_json_value()?
+            let payload: Receipt = record.decode_to_record().await?;
+            payload.to_json_value()?
         }
-        RecordEntity::Utxo => Utxo::decode(&payload).await?.to_json_value()?,
-        RecordEntity::Log => Log::decode(&payload).await?.to_json_value()?,
+        RecordEntity::Utxo => {
+            let payload: Utxo = record.decode_to_record().await?;
+            payload.to_json_value()?
+        }
+        RecordEntity::Log => {
+            let payload: Log = record.decode_to_record().await?;
+            payload.to_json_value()?
+        }
     };
 
     serde_json::to_vec(&ServerMessage::Response(ResponseMessage {
@@ -371,7 +383,7 @@ async fn create_subscriber(
     nats_client: &Arc<NatsClient>,
     db: &Arc<Db>,
     subject_wildcard: String,
-) -> Result<StreamLiveSubscriber, StreamError> {
+) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
     let streams = FuelStreams::new(nats_client, db).await;
     match record_entity {
         RecordEntity::Block => {

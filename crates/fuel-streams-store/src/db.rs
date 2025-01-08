@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use fuel_data_parser::DataEncoder;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use crate::record::{EncoderError, RecordEntity};
+use crate::record::{EncoderError, Record, RecordEntity};
 
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
@@ -30,7 +31,7 @@ pub enum DbError {
 
 pub type OrderIntSize = i64;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DbRecord {
     pub subject: String,
     pub entity: RecordEntity,
@@ -38,6 +39,27 @@ pub struct DbRecord {
     pub order_tx: Option<OrderIntSize>,
     pub order_record: Option<OrderIntSize>,
     pub value: Vec<u8>,
+}
+impl PartialOrd for DbRecord {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for DbRecord {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.order_block
+            .cmp(&other.order_block)
+            .then(self.order_tx.cmp(&other.order_tx))
+            .then(self.order_record.cmp(&other.order_record))
+    }
+}
+impl DataEncoder for DbRecord {
+    type Err = DbError;
+}
+impl DbRecord {
+    pub async fn decode_to_record<R: Record>(&self) -> Result<R, DbError> {
+        R::decode(&self.value).await
+    }
 }
 
 pub type DbResult<T> = Result<T, DbError>;

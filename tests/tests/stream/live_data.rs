@@ -21,12 +21,12 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
                 .unwrap()
                 .enumerate();
 
-            while let Some((index, message)) = subscriber.next().await {
-                println!("Received message: {:?}", message);
+            while let Some((index, record)) = subscriber.next().await {
                 let subject = data[index].0.clone().parse();
-                assert_eq!(message.subject.to_string(), subject);
-                assert_eq!(message.payload, "test".as_bytes());
-                if message.subject.to_string() == subject {
+                let record = record.unwrap();
+                assert_eq!(record.subject.to_string(), subject);
+                assert_eq!(record.value, "test".as_bytes());
+                if record.subject.to_string() == subject {
                     break;
                 }
             }

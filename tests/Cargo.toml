@@ -14,7 +14,6 @@ test-helpers = []
 [dependencies]
 anyhow = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-macros = { workspace = true }
 fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
