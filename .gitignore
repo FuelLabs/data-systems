@@ -22,7 +22,6 @@ docs/
 **/**/charts/**.tgz
 values-secrets.yaml
 values-publisher-env.yaml
-localstack-data
 .vscode
 **/Cargo.lock
 .sqlx

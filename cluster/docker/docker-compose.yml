@@ -41,30 +41,6 @@ services:
     depends_on:
       - nats-core
 
-  localstack:
-    profiles:
-      - all
-      - localstack
-    image: localstack/localstack:latest
-    container_name: localstack
-    restart: always
-    ports:
-      - "4566:4566" # LocalStack main gateway port
-      - "4572:4572" # S3 service port (optional)
-    environment:
-      - SERVICES=s3 # Enable just S3 service
-      - DEBUG=1
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
-      - DEFAULT_REGION=${AWS_REGION:-us-east-1}
-      - DEFAULT_BUCKETS=${AWS_S3_BUCKET_NAME:-fuel-streams-local}
-    volumes:
-      - ./localstack-data:/var/lib/localstack
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
-    env_file:
-      - ./../../.env
-
   cockroach:
     profiles:
       - all

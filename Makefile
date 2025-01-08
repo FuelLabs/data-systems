@@ -273,7 +273,7 @@ run-webserver-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats localstack docker cockroach
+DOCKER_SERVICES := nats docker cockroach
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:

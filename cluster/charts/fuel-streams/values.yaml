@@ -76,10 +76,6 @@ startupProbe:
 commonConfigMap:
   enabled: true
   data:
-    AWS_S3_BUCKET_NAME: "fuel-streams-staging"
-    AWS_ENDPOINT_URL: "https://s3.us-east-1.amazonaws.com"
-    AWS_REGION: "us-east-1"
-    AWS_S3_ENABLED: "true"
     USE_METRICS: "false"
     NATS_URL: "fuel-streams-nats-core:4222"
     NATS_PUBLISHER_URL: "fuel-streams-nats-publisher:4222"
