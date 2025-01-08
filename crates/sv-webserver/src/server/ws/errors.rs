@@ -1,4 +1,4 @@
-use fuel_streams_core::StreamError;
+use fuel_streams_core::stream::StreamError;
 use fuel_streams_store::{
     db::DbError,
     record::EncoderError,
@@ -8,15 +8,15 @@ use fuel_streams_store::{
 /// Ws Subscription-related errors
 #[derive(Debug, thiserror::Error)]
 pub enum WsSubscriptionError {
-    #[error("Unknown subject name: {0}")]
-    UnknownSubjectName(String),
-    #[error("Unsupported wildcard pattern: {0}")]
+    #[error("Invalid subject pattern: {0}")]
     UnsupportedWildcardPattern(String),
-    #[error(transparent)]
+    #[error("Invalid record entity: {0}")]
+    InvalidRecordEntity(String),
+    #[error("Stream error: {0}")]
+    StreamError(#[from] StreamError),
+    #[error("Unserializable payload: {0}")]
     UnserializablePayload(#[from] serde_json::Error),
-    #[error(transparent)]
-    Stream(#[from] StreamError),
-    #[error("Closed by client with reason: {0}")]
+    #[error("Connection closed: {0}")]
     ClosedWithReason(String),
     #[error(transparent)]
     Encoder(#[from] EncoderError),

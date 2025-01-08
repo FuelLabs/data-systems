@@ -38,13 +38,13 @@ impl FromStr for RecordEntity {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "block" => Ok(Self::Block),
-            "transaction" => Ok(Self::Transaction),
-            "input" => Ok(Self::Input),
-            "output" => Ok(Self::Output),
-            "receipt" => Ok(Self::Receipt),
-            "log" => Ok(Self::Log),
-            "utxo" => Ok(Self::Utxo),
+            "block" | "blocks" => Ok(Self::Block),
+            "transaction" | "transactions" => Ok(Self::Transaction),
+            "input" | "inputs" => Ok(Self::Input),
+            "output" | "outputs" => Ok(Self::Output),
+            "receipt" | "receipts" => Ok(Self::Receipt),
+            "log" | "logs" => Ok(Self::Log),
+            "utxo" | "utxos" => Ok(Self::Utxo),
             _ => Err(format!("Invalid record entity: {}", s)),
         }
     }

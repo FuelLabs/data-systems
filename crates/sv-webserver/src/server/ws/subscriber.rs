@@ -6,15 +6,19 @@ use fuel_streams_store::{
     record::RecordEntity,
     store::StoreResult,
 };
-use futures::{stream::BoxStream, StreamExt};
+use futures::{Stream, StreamExt};
 
 use super::models::DeliverPolicy;
 
+pub type BoxedStream =
+    Box<dyn Stream<Item = StoreResult<DbRecord>> + Send + Unpin>;
+
+/// Creates a live subscription stream for a given record entity
 pub async fn create_live_subscriber(
     record_entity: &RecordEntity,
     streams: &FuelStreams,
     subject_wildcard: String,
-) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
+) -> Result<BoxedStream, StreamError> {
     let stream = match record_entity {
         RecordEntity::Block => {
             streams.blocks.subscribe_live(subject_wildcard).await?
@@ -41,14 +45,15 @@ pub async fn create_live_subscriber(
             streams.logs.subscribe_live(subject_wildcard).await?
         }
     };
-    Ok(stream)
+    Ok(Box::new(stream))
 }
 
+/// Creates a historical subscription stream for a given record entity
 pub async fn create_historical_subscriber(
     record_entity: &RecordEntity,
     streams: &FuelStreams,
     subject_wildcard: String,
-) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
+) -> Result<BoxedStream, StreamError> {
     let historical = match record_entity {
         RecordEntity::Block => {
             streams
@@ -87,16 +92,17 @@ pub async fn create_historical_subscriber(
             streams.logs.subscribe_historical(subject_wildcard).await?
         }
     };
-    Ok(Box::pin(historical.map(Ok)))
+    Ok(Box::new(historical.map(Ok)))
 }
 
+/// Creates a subscription stream based on the deliver policy
 pub async fn create_subscriber(
     record_entity: &RecordEntity,
     nats_client: &Arc<NatsClient>,
     db: &Arc<Db>,
     subject_wildcard: String,
     deliver_policy: DeliverPolicy,
-) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
+) -> Result<BoxedStream, StreamError> {
     let streams = FuelStreams::new(nats_client, db).await;
 
     if deliver_policy == DeliverPolicy::All {
