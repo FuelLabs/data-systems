@@ -91,21 +91,21 @@ RESOURCES = {
         'ports': ['8080:8080'],
         'labels': 'publisher',
         'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats-core', ]
+        'deps': ['fuel-streams-nats', ]
     },
     'consumer': {
         'name': 'fuel-streams-sv-consumer',
         'ports': ['8081:8080'],
         'labels': 'consumer',
         'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats-core', 'fuel-streams-sv-publisher']
+        'deps': ['fuel-streams-nats', 'fuel-streams-sv-publisher']
     },
     'sv-webserver': {
         'name': 'fuel-streams-sv-webserver',
         'ports': ['9003:9003'],
         'labels': 'ws',
         'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats-core']
+        'deps': ['fuel-streams-nats']
     },
     'consumer': {
         'name': 'fuel-streams-sv-consumer',
@@ -113,8 +113,8 @@ RESOURCES = {
         'labels': 'consumer',
         'config_mode': ['minimal', 'full']
     },
-    'nats-core': {
-        'name': 'fuel-streams-nats-core',
+    'nats': {
+        'name': 'fuel-streams-nats',
         'ports': ['4222:4222', '6222:6222', '7422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']

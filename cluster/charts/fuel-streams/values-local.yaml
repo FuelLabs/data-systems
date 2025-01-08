@@ -6,7 +6,7 @@ commonConfigMap:
   enabled: true
   data:
     USE_METRICS: "false"
-    NATS_URL: "fuel-streams-nats-core:4222"
+    NATS_URL: "fuel-streams-nats:4222"
     NATS_SYSTEM_USER: "sys"
     NATS_SYSTEM_PASS: "sys"
     NATS_ADMIN_USER: "admin"
@@ -67,7 +67,7 @@ webserver:
     enabled: false
 
 # NATS Core configuration for local development
-nats-core:
+nats:
   enabled: true
   container:
     env:

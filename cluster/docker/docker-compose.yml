@@ -1,10 +1,10 @@
 services:
-  nats-core:
+  nats:
     profiles:
       - all
       - nats
     image: nats:latest
-    container_name: nats-core
+    container_name: nats
     restart: always
     ports:
       - 4222:4222
@@ -12,7 +12,7 @@ services:
       - ./nats-config/core.conf:/etc/nats/nats.conf
       - ./nats-config/accounts.conf:/etc/nats/accounts.conf
     command:
-      - --name=fuel-streams-nats-core
+      - --name=fuel-streams-nats
       - --js
       - --config=/etc/nats/nats.conf
       - -D
