@@ -1,8 +1,7 @@
 use async_nats::{client::PublishErrorKind, SubscribeError};
 use fuel_streams_store::{db::DbError, store::StoreError};
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum StreamError {
     #[error(transparent)]
     Store(#[from] StoreError),

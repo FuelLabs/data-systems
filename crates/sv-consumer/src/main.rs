@@ -12,7 +12,6 @@ use async_nats::jetstream::{
     stream::{ConsumerErrorKind, RetentionPolicy},
 };
 use clap::Parser;
-use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::{nats::*, types::*, FuelStreams};
 use fuel_streams_executors::*;
 use fuel_streams_store::{
@@ -26,29 +25,29 @@ use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
-#[derive(thiserror::Error, Debug, DisplayDoc)]
+#[derive(thiserror::Error, Debug)]
 pub enum ConsumerError {
-    /// Failed to receive batch of messages from NATS: {0}
+    #[error(transparent)]
     BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
-    /// Failed to create stream: {0}
+    #[error(transparent)]
     CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-    /// Failed to create consumer: {0}
+    #[error(transparent)]
     CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
-    /// Failed to connect to NATS client: {0}
+    #[error(transparent)]
     NatsClient(#[from] NatsError),
-    /// Failed to communicate with NATS server: {0}
+    #[error(transparent)]
     Nats(#[from] async_nats::Error),
-    /// Failed to deserialize block payload from message: {0}
+    #[error(transparent)]
     Deserialization(#[from] bincode::Error),
-    /// Failed to decode UTF-8: {0}
+    #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
-    /// Failed to execute executor tasks: {0}
+    #[error(transparent)]
     Executor(#[from] ExecutorError),
-    /// Failed to join tasks: {0}
+    #[error(transparent)]
     JoinTasks(#[from] tokio::task::JoinError),
-    /// Failed to acquire semaphore: {0}
+    #[error(transparent)]
     Semaphore(#[from] tokio::sync::AcquireError),
-    /// Failed to setup database: {0}
+    #[error(transparent)]
     Db(#[from] fuel_streams_store::db::DbError),
 }
 

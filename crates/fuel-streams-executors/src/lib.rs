@@ -11,7 +11,6 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::{fuel_core_like::FuelCoreLike, types::*, Stream};
 use fuel_streams_store::{
     record::{DataEncoder, EncoderError, Record, RecordOrder},
@@ -41,21 +40,21 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
     bytes.into()
 }
 
-#[derive(Debug, thiserror::Error, DisplayDoc)]
+#[derive(Debug, thiserror::Error)]
 pub enum ExecutorError {
-    /// Failed to publish: {0}
+    #[error("Failed to publish: {0}")]
     PublishFailed(String),
-    /// Failed to acquire semaphore: {0}
+    #[error(transparent)]
     SemaphoreError(#[from] tokio::sync::AcquireError),
-    /// Failed to serialize block payload: {0}
+    #[error(transparent)]
     Serialization(#[from] serde_json::Error),
-    /// Failed to fetch transaction status: {0}
+    #[error("Failed to fetch transaction status: {0}")]
     TransactionStatus(String),
-    /// Failed to access offchain database: {0}
+    #[error(transparent)]
     OffchainDatabase(#[from] anyhow::Error),
-    /// Failed to join tasks: {0}
+    #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
-    /// Failed to encode or decode data: {0}
+    #[error(transparent)]
     Encoder(#[from] EncoderError),
 }
 

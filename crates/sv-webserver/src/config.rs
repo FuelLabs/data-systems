@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use displaydoc::Display as DisplayDoc;
-use thiserror::Error;
 
-#[derive(Debug, DisplayDoc, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Undecodable config element: {0}
+    #[error("Undecodable config element: {0}")]
     UndecodableConfigElement(&'static str),
 }
 

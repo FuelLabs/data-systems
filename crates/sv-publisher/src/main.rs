@@ -6,7 +6,6 @@ use async_nats::jetstream::{
     Context,
 };
 use clap::Parser;
-use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_streams_core::{nats::*, types::*, FuelCore, FuelCoreLike};
 use fuel_streams_executors::*;
@@ -16,30 +15,29 @@ use fuel_streams_store::{
 };
 use futures::StreamExt;
 use sv_publisher::{cli::Cli, shutdown::ShutdownController};
-use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Error, Debug, DisplayDoc)]
+#[derive(thiserror::Error, Debug)]
 pub enum PublishError {
-    /// Failed to publish block to NATS server: {0}
+    #[error(transparent)]
     NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-    /// Failed to create block payload due to: {0}
+    #[error(transparent)]
     BlockPayload(#[from] ExecutorError),
-    /// Failed to access offchain database: {0}
+    #[error("Failed to access offchain database: {0}")]
     OffchainDatabase(String),
-    /// Failed to setup database: {0}
+    #[error(transparent)]
     Db(#[from] fuel_streams_store::db::DbError),
-    /// Failed to setup NATS client: {0}
+    #[error(transparent)]
     NatsClient(#[from] NatsError),
-    /// Failed to create stream: {0}
+    #[error(transparent)]
     CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-    /// Failed to communicate with NATS server: {0}
+    #[error(transparent)]
     Nats(#[from] async_nats::Error),
-    /// Failed to initialize Fuel Core: {0}
+    #[error("Failed to initialize Fuel Core: {0}")]
     FuelCore(String),
-    /// Failed to encode or decode data: {0}
+    #[error(transparent)]
     Encoder(#[from] EncoderError),
-    /// Processing was cancelled
+    #[error("Processing was cancelled")]
     Cancelled,
 }
 

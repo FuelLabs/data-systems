@@ -12,45 +12,35 @@ use async_nats::{
     },
     ConnectErrorKind,
 };
-use displaydoc::Display as DisplayDoc;
-use thiserror::Error;
 
 use super::types::PayloadSize;
 
-#[derive(Error, DisplayDoc, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum NatsError {
-    /// Payload size exceeds maximum allowed: subject '{subject_name}' has size {payload_size} which is larger than the maximum of {max_payload_size}
+    #[error("Payload size exceeds maximum allowed: subject '{subject_name}' has size {payload_size} which is larger than the maximum of {max_payload_size}")]
     PayloadTooLarge {
         subject_name: String,
         payload_size: PayloadSize,
         max_payload_size: PayloadSize,
     },
-
-    /// Failed to connect to NATS server at {url}
+    #[error("Failed to connect to NATS server at {url}")]
     ConnectionError {
         url: String,
         #[source]
         source: error::Error<ConnectErrorKind>,
     },
-
-    /// Failed to create Key-Value Store in NATS
+    #[error(transparent)]
     StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),
-
-    /// Failed to publish item to Key-Value Store
+    #[error(transparent)]
     StorePublish(#[from] PutError),
-
-    /// Failed to subscribe to subject in Key-Value Store
+    #[error(transparent)]
     StoreSubscribe(#[from] error::Error<WatchErrorKind>),
-
-    /// Failed to publish item to NATS stream
+    #[error(transparent)]
     StreamPublish(#[from] PublishError),
-
-    /// Failed to create NATS stream
+    #[error(transparent)]
     StreamCreation(#[from] error::Error<CreateStreamErrorKind>),
-
-    /// Failed to create consumer for NATS stream
+    #[error(transparent)]
     ConsumerCreate(#[from] error::Error<ConsumerErrorKind>),
-
-    /// Failed to consume messages from NATS stream
+    #[error(transparent)]
     ConsumerMessages(#[from] error::Error<StreamErrorKind>),
 }

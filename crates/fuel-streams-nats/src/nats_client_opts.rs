@@ -191,8 +191,14 @@ mod tests {
 
     use super::*;
 
+    fn setup() {
+        dotenvy::dotenv().ok();
+    }
+
     #[test]
     fn test_role_credentials() {
+        setup();
+
         // Setup
         env::set_var("NATS_ADMIN_USER", "admin");
         env::set_var("NATS_ADMIN_PASS", "admin_pass");
@@ -209,6 +215,8 @@ mod tests {
 
     #[test]
     fn test_from_env_with_role() {
+        setup();
+
         // Setup
         env::set_var("NATS_URL", "nats://localhost:4222");
         env::set_var("NATS_ADMIN_USER", "admin");

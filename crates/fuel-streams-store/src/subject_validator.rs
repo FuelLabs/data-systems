@@ -1,6 +1,4 @@
-use thiserror::Error;
-
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub enum SubjectPatternError {
     #[error("Subject pattern cannot be empty")]
     Empty,

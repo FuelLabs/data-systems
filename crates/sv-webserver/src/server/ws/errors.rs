@@ -1,29 +1,27 @@
-use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::StreamError;
 use fuel_streams_store::{
     db::DbError,
     record::EncoderError,
     store::StoreError,
 };
-use thiserror::Error;
 
 /// Ws Subscription-related errors
-#[derive(Debug, DisplayDoc, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum WsSubscriptionError {
-    /// Unknown subject name: `{0}`
+    #[error("Unknown subject name: {0}")]
     UnknownSubjectName(String),
-    /// Unsupported wildcard pattern: `{0}`
+    #[error("Unsupported wildcard pattern: {0}")]
     UnsupportedWildcardPattern(String),
-    /// Unserializable payload: `{0}`
+    #[error(transparent)]
     UnserializablePayload(#[from] serde_json::Error),
-    /// Stream Error: `{0}`
+    #[error(transparent)]
     Stream(#[from] StreamError),
-    /// Closed by client with reason: `{0}`
+    #[error("Closed by client with reason: {0}")]
     ClosedWithReason(String),
-    /// Failed to encode or decode data: {0}
+    #[error(transparent)]
     Encoder(#[from] EncoderError),
-    /// Failed with Database: {0}
+    #[error(transparent)]
     Database(#[from] DbError),
-    /// Failed on store: {0}
+    #[error(transparent)]
     Store(#[from] StoreError),
 }

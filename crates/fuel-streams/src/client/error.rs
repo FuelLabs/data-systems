@@ -1,35 +1,23 @@
-use displaydoc::Display as DisplayDoc;
-use thiserror::Error;
-
-#[derive(Debug, Error, DisplayDoc)]
+#[derive(Debug, thiserror::Error)]
 pub enum ClientError {
-    /// Failed to convert JSON to string: {0}
+    #[error(transparent)]
     JsonToString(#[from] serde_json::Error),
-
-    /// Failed to parse URL: {0}
+    #[error(transparent)]
     UrlParse(#[from] url::ParseError),
-
-    /// Failed to API response: {0}
+    #[error(transparent)]
     ApiResponse(#[from] reqwest::Error),
-
-    /// Failed to connect to WebSocket: {0}
+    #[error(transparent)]
     WebSocketConnect(#[from] tokio_tungstenite::tungstenite::Error),
-
-    /// Invalid header value: {0}
+    #[error(transparent)]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
-
-    /// Failed to parse host from URL
+    #[error("Failed to parse host from URL")]
     HostParseFailed,
-
-    /// Missing JWT token
+    #[error("Missing JWT token")]
     MissingJwtToken,
-
-    /// Missing write sink
+    #[error("Missing write sink")]
     MissingWriteSink,
-
-    /// Missing read stream
+    #[error("Missing read stream")]
     MissingReadStream,
-
-    /// Missing WebSocket connection
+    #[error("Missing WebSocket connection")]
     MissingWebSocketConnection,
 }

@@ -3781,6 +3781,7 @@ version = "0.0.15"
 dependencies = [
  "anyhow",
  "fuel-streams-core",
+ "fuel-streams-macros",
  "fuel-streams-nats",
  "fuel-streams-store",
  "futures",
