@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use fuel_data_parser::DataEncoder;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
@@ -64,6 +64,13 @@ impl DbRecord {
 
 pub type DbResult<T> = Result<T, DbError>;
 
+pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("DB_POOL_SIZE")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(5)
+});
+
 pub struct DbConnectionOpts {
     pub connection_str: String,
     pub pool_size: Option<u32>,
@@ -71,7 +78,7 @@ pub struct DbConnectionOpts {
 impl Default for DbConnectionOpts {
     fn default() -> Self {
         Self {
-            pool_size: Some(5),
+            pool_size: Some(*DB_POOL_SIZE as u32),
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
         }

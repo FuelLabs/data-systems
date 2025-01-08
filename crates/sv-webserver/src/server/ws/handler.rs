@@ -1,4 +1,8 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{
+    str::FromStr,
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
 use actix_web::web::Bytes;
 use actix_ws::Session;
@@ -173,6 +177,13 @@ fn parse_client_message(
         .map_err(WsSubscriptionError::UnserializablePayload)
 }
 
+pub static WS_THROTTLE_TIME: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("WS_THROTTLE_TIME")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(300)
+});
+
 /// Processes a subscription stream
 async fn process_subscription(
     mut sub: BoxedStream,
@@ -183,7 +194,6 @@ async fn process_subscription(
     record_entity: RecordEntity,
 ) {
     telemetry.update_user_subscription_metrics(user_id, &subject_wildcard);
-
     let cleanup = || {
         telemetry.update_unsubscribed(user_id, &subject_wildcard);
         telemetry.decrement_subscriptions_count();
@@ -225,7 +235,7 @@ async fn process_subscription(
         }
 
         // Add delay to throttle data streaming
-        sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(*WS_THROTTLE_TIME as u64)).await;
     }
 
     // Stream ended normally

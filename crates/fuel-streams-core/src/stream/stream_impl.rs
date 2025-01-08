@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_streams_store::{
@@ -14,13 +14,6 @@ use tokio::sync::OnceCell;
 
 use super::StreamError;
 use crate::nats::*;
-
-pub static MAX_ACK_PENDING: LazyLock<usize> = LazyLock::new(|| {
-    dotenvy::var("MAX_ACK_PENDING")
-        .ok()
-        .and_then(|val| val.parse().ok())
-        .unwrap_or(5)
-});
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {
