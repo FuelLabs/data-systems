@@ -293,7 +293,8 @@ $(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(servic
 reset-nats: clean-nats start-nats
 
 setup-db:
-	cd crates/fuel-streams-store && cargo sqlx migrate run && cargo sqlx prepare
+	@cd crates/fuel-streams-store && cargo sqlx migrate run
+	@cd crates/fuel-streams-domains && cargo sqlx prepare
 
 reset-db: clean-docker start-docker setup-db
 

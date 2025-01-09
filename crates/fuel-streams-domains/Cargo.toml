@@ -1,0 +1,44 @@
+[package]
+name = "fuel-streams-domains"
+description = "Domains definitions for fuel streams"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+
+[dependencies]
+async-trait = { workspace = true }
+fuel-core = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+    "test-helpers",
+] }
+fuel-core-client = { workspace = true, default-features = false, features = [
+    "std",
+] }
+fuel-core-importer = { workspace = true }
+fuel-core-types = { workspace = true, default-features = false, features = [
+    "std",
+    "serde",
+] }
+fuel-streams-macros = { workspace = true }
+fuel-streams-store = { workspace = true }
+fuel-streams-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-native-tls",
+    "macros",
+] }
+thiserror = { workspace = true }
+
+[features]
+default = []
+test-helpers = []

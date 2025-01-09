@@ -15,10 +15,9 @@ impl Executor<Block> {
         let subject = BlocksSubject {
             height: Some(block_height),
             producer: Some(block_producer),
-        };
-        let order = self.record_order();
-        let packet = block.to_packet(subject.parse(), &order);
-        self.publish(&packet)
+        }
+        .arc();
+        self.publish(&block.to_packet(subject))
     }
 
     pub fn process_all(
@@ -31,7 +30,6 @@ impl Executor<Block> {
         let input_stream = fuel_streams.inputs.arc();
         let output_stream = fuel_streams.outputs.arc();
         let receipt_stream = fuel_streams.receipts.arc();
-        let log_stream = fuel_streams.logs.arc();
         let utxo_stream = fuel_streams.utxos.arc();
 
         let block_executor = Executor::new(&payload, &block_stream, semaphore);
@@ -41,18 +39,21 @@ impl Executor<Block> {
             Executor::new(&payload, &output_stream, semaphore);
         let receipt_executor =
             Executor::new(&payload, &receipt_stream, semaphore);
-        let log_executor = Executor::new(&payload, &log_stream, semaphore);
         let utxo_executor = Executor::new(&payload, &utxo_stream, semaphore);
 
         let transactions = payload.transactions.to_owned();
         let tx_tasks = transactions.iter().enumerate().flat_map(|tx_item| {
+            let tx_task = tx_executor.process(tx_item);
+            let input_tasks = input_executor.process(tx_item);
+            let output_tasks = output_executor.process(tx_item);
+            let receipt_tasks = receipt_executor.process(tx_item);
+            let utxo_tasks = utxo_executor.process(tx_item);
             vec![
-                tx_executor.process(tx_item),
-                input_executor.process(tx_item),
-                output_executor.process(tx_item),
-                receipt_executor.process(tx_item),
-                log_executor.process(tx_item),
-                utxo_executor.process(tx_item),
+                tx_task,
+                input_tasks,
+                output_tasks,
+                receipt_tasks,
+                utxo_tasks,
             ]
         });
 

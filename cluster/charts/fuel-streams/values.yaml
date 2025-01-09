@@ -84,6 +84,8 @@ commonConfigMap:
     NATS_ADMIN_PASS: "admin"
     NATS_PUBLIC_USER: "default_user"
     NATS_PUBLIC_PASS: ""
+    # For local purposes only, for production use fuel-streams-keys secret
+    DATABASE_URL: "postgresql://root:root@fuel-streams-cockroachdb:26257/fuel_streams?sslmode=disable"
 
 # This is a secret that is used for local development
 # It is not used in production
@@ -330,10 +332,6 @@ nats:
         enabled: true
       cluster:
         enabled: true
-      websocket:
-        enabled: true
-      leafnodes:
-        enabled: true
       monitor:
         enabled: false
 
@@ -345,10 +343,6 @@ nats:
       routeURLs:
         useFQDN: true
 
-    websocket:
-      enabled: true
-      port: 8443
-
     jetstream:
       enabled: true
       fileStore:
@@ -358,10 +352,6 @@ nats:
           size: 2000Gi
           storageClassName: "gp3-generic"
 
-    leafnodes:
-      enabled: true
-      port: 7422
-
     monitor:
       enabled: false
       port: 8222
@@ -369,7 +359,7 @@ nats:
     merge:
       max_payload: << 32MiB >>
       jetstream:
-        sync_interval: << 30s >>
+        sync_interval: always
         max_outstanding_catchup: << 512MiB >>
         max_file_store: << 2000GiB >>
         max_memory_store: << 7GiB >>
@@ -380,3 +370,61 @@ nats:
     merge:
       $tplYaml: |
         {{- include "nats-accounts" . | nindent 8 }}
+
+# ------------------------------------------------------------------------------
+# Database configuration
+# ------------------------------------------------------------------------------
+
+cockroachdb:
+  enabled: true
+  image:
+    repository: cockroachdb/cockroach
+    tag: v24.3.2
+
+  conf:
+    cache: "2Gi"
+    max-sql-memory: "2Gi"
+
+  tls:
+    enabled: false
+
+  storage:
+    persistentVolume:
+      enabled: true
+      size: 100Gi
+      storageClass: "gp3-generic"
+
+  statefulset:
+    replicas: 3
+    resources:
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+
+  service:
+    ports:
+      grpc:
+        external:
+          port: 26257
+        internal:
+          port: 26257
+      http:
+        port: 8080
+
+  prometheus:
+    enabled: false
+
+  init:
+    provisioning:
+      enabled: true
+      users:
+        - name: fuel_streams
+          password: fuel_streams_password # You should use a secret for this in production
+          options: [LOGIN]
+      databases:
+        - name: fuel_streams
+          owners: [fuel_streams]
+          options: [encoding='utf-8']

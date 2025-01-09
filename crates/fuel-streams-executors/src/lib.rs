@@ -1,6 +1,5 @@
 pub mod blocks;
 pub mod inputs;
-pub mod logs;
 pub mod outputs;
 pub mod receipts;
 pub mod transactions;
@@ -12,9 +11,11 @@ use std::{
 };
 
 use fuel_streams_core::{fuel_core_like::FuelCoreLike, types::*, Stream};
-use fuel_streams_store::{
-    record::{DataEncoder, EncoderError, Record, RecordOrder},
-    store::StorePacket,
+use fuel_streams_store::record::{
+    DataEncoder,
+    EncoderError,
+    Record,
+    RecordPacket,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -113,7 +114,8 @@ impl BlockPayload {
         let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
-        let block = Block::new(&block, consensus.into(), txs_ids);
+        let producer = consensus.block_producer(&block.id())?.into();
+        let block = Block::new(&block, consensus.into(), txs_ids, producer);
         Ok(Self {
             block,
             transactions: txs,
@@ -121,7 +123,7 @@ impl BlockPayload {
         })
     }
 
-    pub fn tx_ids(&self) -> Vec<Bytes32> {
+    pub fn tx_ids(&self) -> Vec<TxId> {
         self.transactions
             .iter()
             .map(|tx| tx.id.clone())
@@ -143,8 +145,8 @@ impl BlockPayload {
         &self.metadata
     }
 
-    pub fn block_height(&self) -> u32 {
-        self.block.height
+    pub fn block_height(&self) -> BlockHeight {
+        self.block.height.clone()
     }
 
     pub fn arc(&self) -> Arc<Self> {
@@ -202,14 +204,13 @@ impl<R: Record> Executor<R> {
 
     fn publish(
         &self,
-        packet: &StorePacket<R>,
+        packet: &RecordPacket<R>,
     ) -> JoinHandle<Result<(), ExecutorError>> {
-        let wildcard = packet.subject.clone();
         let stream = Arc::clone(&self.stream);
         let permit = Arc::clone(&self.semaphore);
 
-        // TODO: add telemetry back again
-        let packet = packet.clone();
+        let wildcard = packet.subject_str();
+        let packet = Arc::new(packet.clone());
         tokio::spawn({
             async move {
                 let _permit = permit.acquire().await?;
@@ -242,12 +243,6 @@ impl<R: Record> Executor<R> {
     }
 
     pub fn block_height(&self) -> BlockHeight {
-        let height = self.block().height;
-        BlockHeight::from(height)
-    }
-
-    pub fn record_order(&self) -> RecordOrder {
-        let height = self.block().height;
-        RecordOrder::new(height, None, None)
+        self.block().height.clone()
     }
 }

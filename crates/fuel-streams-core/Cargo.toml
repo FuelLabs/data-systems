@@ -27,14 +27,22 @@ fuel-core-bin = { workspace = true, default-features = false, features = [
     "rocksdb",
 ] }
 fuel-core-importer = { workspace = true }
-fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
+fuel-core-services = { workspace = true, default-features = false, features = [
+    "test-helpers",
+] }
 fuel-core-storage = { workspace = true }
-fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
+fuel-core-types = { workspace = true, default-features = false, features = [
+    "std",
+    "serde",
+] }
+fuel-streams-domains = { workspace = true }
 fuel-streams-macros = { workspace = true }
-fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
+fuel-streams-nats = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
 futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

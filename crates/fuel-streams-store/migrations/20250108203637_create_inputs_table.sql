@@ -1,10 +1,11 @@
 CREATE TABLE IF NOT EXISTS inputs (
-    subject TEXT PRIMARY KEY,
-    block_height BIGINT,
-    tx_id TEXT,
-    tx_index INTEGER,
-    input_index INTEGER,
-    input_type TEXT,  -- 'coin', 'contract', or 'message'
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    block_height BIGINT NOT NULL,
+    tx_id TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    input_index INTEGER NOT NULL,
+    input_type TEXT NOT NULL,  -- 'coin', 'contract', or 'message'
     owner_id TEXT,    -- for coin
     asset_id TEXT,    -- for coin
     contract_id TEXT, -- for contract

@@ -59,7 +59,7 @@ fn subject_derive_sql_where_exact_match() {
 
     assert_eq!(subject.parse(), "test.foo.55.bar");
     assert_eq!(
-        subject.to_sql_where().unwrap(),
+        subject.to_sql_where(),
         "field1 = 'foo' AND field2 = '55' AND field3 = 'bar'"
     );
 }
@@ -73,10 +73,7 @@ fn subject_derive_sql_where_wildcards() {
     };
 
     assert_eq!(subject.parse(), "test.*.55.bar");
-    assert_eq!(
-        subject.to_sql_where().unwrap(),
-        "field2 = '55' AND field3 = 'bar'"
-    );
+    assert_eq!(subject.to_sql_where(), "field2 = '55' AND field3 = 'bar'");
 }
 
 #[test]
@@ -87,10 +84,7 @@ fn subject_derive_sql_where_greater_than() {
         field3: Some("bar".to_string()),
     };
 
-    assert_eq!(
-        subject.to_sql_where().unwrap(),
-        "field1 = 'foo' AND field3 = 'bar'"
-    );
+    assert_eq!(subject.to_sql_where(), "field1 = 'foo' AND field3 = 'bar'");
 }
 
 #[test]
@@ -102,15 +96,15 @@ fn subject_derive_sql_where_table_only() {
     };
 
     assert_eq!(subject.parse(), "test.>");
-    assert_eq!(subject.to_sql_where(), None);
+    assert_eq!(subject.to_sql_where(), "TRUE");
 
     let subject2 = TestSubject::default();
     assert_eq!(subject2.parse(), "test.>");
-    assert_eq!(subject2.to_sql_where(), None);
+    assert_eq!(subject2.to_sql_where(), "TRUE");
 
     let subject3 = TestSubject::new();
     assert_eq!(subject3.parse(), "test.>");
-    assert_eq!(subject3.to_sql_where(), None);
+    assert_eq!(subject3.to_sql_where(), "TRUE");
 }
 
 #[test]

@@ -1,19 +1,23 @@
 use std::sync::Arc;
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
+use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{
-    db::{Db, DbRecord},
-    record::{DataEncoder, Record},
-    store::{Store, StoreError, StorePacket, StoreResult},
+    db::{Db, DbItem},
+    record::{Record, RecordPacket},
+    store::Store,
 };
 use futures::{
-    stream::{BoxStream, TryStreamExt},
+    stream::{BoxStream, Stream as FuturesStream, TryStreamExt},
     StreamExt,
 };
 use tokio::sync::OnceCell;
 
 use super::StreamError;
 use crate::nats::*;
+
+pub type BoxedStream =
+    Box<dyn FuturesStream<Item = (String, Vec<u8>)> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {
@@ -56,66 +60,62 @@ impl<R: Record> Stream<R> {
 
     pub async fn publish(
         &self,
-        packet: &StorePacket<R>,
-    ) -> Result<DbRecord, StreamError> {
-        let db_record = self.store.add_record(packet).await?;
-        self.publish_to_nats(&db_record).await?;
+        packet: &Arc<RecordPacket<R>>,
+    ) -> Result<R::DbItem, StreamError> {
+        let db_record = self.store.insert_record(packet).await?;
+        self.publish_to_nats(packet.subject_str(), db_record.encoded_value())
+            .await?;
         Ok(db_record)
     }
 
     async fn publish_to_nats(
         &self,
-        db_record: &DbRecord,
+        subject: impl ToString,
+        record_encoded: &[u8],
     ) -> Result<(), StreamError> {
         let client = self.nats_client.nats_client.clone();
-        let subject = db_record.subject.clone();
-        let payload = db_record.encode().await?;
-        client.publish(subject, payload.into()).await?;
+        let payload = record_encoded.to_vec();
+        client.publish(subject.to_string(), payload.into()).await?;
         Ok(())
     }
 
     pub async fn subscribe_live(
         &self,
-        subject: impl ToString,
-    ) -> Result<BoxStream<'static, StoreResult<DbRecord>>, StreamError> {
+        subject: &Arc<dyn IntoSubject>,
+    ) -> Result<BoxStream<'static, (String, Vec<u8>)>, StreamError> {
         let client = self.nats_client.nats_client.clone();
-        let subscriber = client.subscribe(subject.to_string()).await?;
-        let stream = subscriber
-            .then(|msg| async move {
-                let payload = msg.payload;
-                DbRecord::decode(&payload).await.map_err(StoreError::from)
-            })
-            .map(|result| result.map_err(StoreError::from));
-
+        let subscriber = client.subscribe(subject.parse()).await?;
+        let stream = subscriber.then(|msg| async move {
+            let payload = msg.payload;
+            (msg.subject.to_string(), payload.to_vec())
+        });
         Ok(Box::pin(stream))
     }
 
     pub async fn subscribe_historical(
         &self,
-        subject: impl Into<String>,
-    ) -> Result<BoxStream<'static, DbRecord>, StreamError> {
-        let subject = subject.into();
-        let live_stream = self.subscribe_live(subject.clone()).await?;
+        subject: Arc<dyn IntoSubject>,
+    ) -> Result<BoxStream<'static, (String, Vec<u8>)>, StreamError> {
+        let live_stream = self.subscribe_live(&subject).await?;
         let (live_sender, live_receiver) = tokio::sync::mpsc::channel(100);
 
         tokio::spawn({
             let mut live_stream = live_stream;
             async move {
                 while let Some(result) = live_stream.next().await {
-                    if let Ok(record) = result {
-                        if live_sender.send(record).await.is_err() {
-                            break;
-                        }
+                    if live_sender.send(result).await.is_err() {
+                        break;
                     }
                 }
             }
         });
 
-        let historical_stream =
-            self.store.stream_by_subject_raw(&subject).await?;
+        let historical_stream = self.store.stream_by_subject(&subject).await?;
         let historical_stream = historical_stream
             .map_err(StreamError::Store)
-            .map_ok(|record| record);
+            .map_ok(move |record| {
+                (subject.parse(), record.encoded_value().to_vec())
+            });
 
         let merged = async_stream::stream! {
             let mut historical = Box::pin(historical_stream);

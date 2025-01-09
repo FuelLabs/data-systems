@@ -1,19 +1,5 @@
-pub(crate) mod blocks;
 pub mod fuel_core;
-pub(crate) mod inputs;
-pub(crate) mod logs;
-pub(crate) mod outputs;
 pub mod primitives;
-pub(crate) mod receipts;
-pub(crate) mod transactions;
-pub(crate) mod utxos;
 
-pub use blocks::types::*;
 pub use fuel_core::*;
-pub use inputs::types::*;
-pub use logs::types::*;
-pub use outputs::types::*;
 pub use primitives::*;
-pub use receipts::types::*;
-pub use transactions::types::*;
-pub use utxos::types::*;

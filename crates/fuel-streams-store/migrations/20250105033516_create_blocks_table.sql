@@ -1,7 +1,8 @@
 -- Create records table
 CREATE TABLE IF NOT EXISTS blocks (
-    subject TEXT PRIMARY KEY,
-    producer_address TEXT,
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    producer_address TEXT NOT NULL,
     height BIGINT NOT NULL,
     value BYTEA NOT NULL
 );

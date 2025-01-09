@@ -9,26 +9,35 @@ repository = { workspace = true }
 version = { workspace = true }
 rust-version = { workspace = true }
 
-[features]
-test-helpers = [] # Feature for test utilities
-
 [dependencies]
 async-trait = { workspace = true }
 dotenvy = { workspace = true }
 fuel-data-parser = { workspace = true }
+fuel-streams-macros = { workspace = true }
 futures = { workspace = true }
 moka = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 sqlx = { workspace = true, default-features = false, features = [
     "runtime-tokio",
     "postgres",
+    "sqlite",
+    "any",
     "tls-native-tls",
     "macros",
 ] }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+tokio = { workspace = true, features = [
+    "rt-multi-thread",
+    "macros",
+    "test-util",
+] }
 
 [dev-dependencies]
 test-case = { workspace = true }
 testcontainers = "0.23.1"
+
+[features]
+default = []
+test-helpers = [] # Feature for test utilities

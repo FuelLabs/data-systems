@@ -6,7 +6,7 @@ use std::{
 
 use actix_web::web::Bytes;
 use actix_ws::Session;
-use fuel_streams_core::FuelStreams;
+use fuel_streams_core::{BoxedStream, FuelStreams};
 use fuel_streams_store::record::RecordEntity;
 use futures::StreamExt;
 use tokio::time::sleep;
@@ -23,7 +23,7 @@ use super::{
         SubscriptionPayload,
     },
     socket::{send_message_to_socket, verify_and_extract_subject_name},
-    subscriber::{create_subscriber, BoxedStream},
+    subscriber::create_subscriber,
 };
 use crate::telemetry::Telemetry;
 
@@ -200,9 +200,7 @@ async fn process_subscription(
     };
 
     while let Some(result) = sub.next().await {
-        let serialized_ws_payload = match decode_record(&record_entity, result)
-            .await
-        {
+        let payload = match decode_record(&record_entity, result).await {
             Ok(res) => res,
             Err(e) => {
                 telemetry
@@ -228,7 +226,7 @@ async fn process_subscription(
             }
         };
 
-        if let Err(e) = stream_session.binary(serialized_ws_payload).await {
+        if let Err(e) = stream_session.binary(payload).await {
             tracing::error!("Error sending message over websocket: {:?}", e);
             cleanup();
             return;

@@ -1,0 +1,83 @@
+use std::cmp::Ordering;
+
+use fuel_streams_store::{
+    db::{DbError, DbItem},
+    record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
+    try_packet_subject_match,
+};
+use serde::{Deserialize, Serialize};
+
+use super::Utxo;
+use crate::utxos::UtxosSubject;
+
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
+)]
+pub struct UtxoDbItem {
+    pub subject: String,
+    pub value: Vec<u8>,
+    pub block_height: i64,
+    pub tx_id: String,
+    pub tx_index: i64,
+    pub input_index: i64,
+    pub utxo_type: String,
+    pub utxo_id: String,
+}
+
+impl DataEncoder for UtxoDbItem {
+    type Err = DbError;
+}
+
+impl DbItem for UtxoDbItem {
+    fn entity(&self) -> &RecordEntity {
+        &RecordEntity::Utxo
+    }
+
+    fn encoded_value(&self) -> &[u8] {
+        &self.value
+    }
+
+    fn subject_str(&self) -> String {
+        self.subject.clone()
+    }
+}
+
+impl PartialOrd for UtxoDbItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for UtxoDbItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Order by block height first
+        self.block_height
+            .cmp(&other.block_height)
+            // Then by transaction index within the block
+            .then(self.tx_index.cmp(&other.tx_index))
+            // Finally by input index
+            .then(self.input_index.cmp(&other.input_index))
+    }
+}
+
+impl TryFrom<&RecordPacket<Utxo>> for UtxoDbItem {
+    type Error = RecordPacketError;
+    fn try_from(packet: &RecordPacket<Utxo>) -> Result<Self, Self::Error> {
+        let record = packet.record.as_ref();
+
+        try_packet_subject_match!(packet, {
+            UtxosSubject => subject => {
+                Ok(UtxoDbItem {
+                    subject: packet.subject_str(),
+                    value: record.encode_json().expect("Failed to encode utxo"),
+                    block_height: subject.block_height.unwrap().into(),
+                    tx_id: subject.tx_id.unwrap().to_string(),
+                    tx_index: subject.tx_index.unwrap() as i64,
+                    input_index: subject.input_index.unwrap() as i64,
+                    utxo_type: subject.utxo_type.unwrap().to_string(),
+                    utxo_id: subject.utxo_id.unwrap().to_string(),
+                })
+            }
+        })
+    }
+}

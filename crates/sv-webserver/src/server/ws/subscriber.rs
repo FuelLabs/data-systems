@@ -1,17 +1,9 @@
 use std::sync::Arc;
 
 use fuel_streams_core::{nats::*, stream::*};
-use fuel_streams_store::{
-    db::{Db, DbRecord},
-    record::RecordEntity,
-    store::StoreResult,
-};
-use futures::{Stream, StreamExt};
+use fuel_streams_store::{db::Db, record::RecordEntity};
 
 use super::models::DeliverPolicy;
-
-pub type BoxedStream =
-    Box<dyn Stream<Item = StoreResult<DbRecord>> + Send + Unpin>;
 
 /// Creates a live subscription stream for a given record entity
 pub async fn create_live_subscriber(
@@ -41,9 +33,6 @@ pub async fn create_live_subscriber(
         RecordEntity::Utxo => {
             streams.utxos.subscribe_live(subject_wildcard).await?
         }
-        RecordEntity::Log => {
-            streams.logs.subscribe_live(subject_wildcard).await?
-        }
     };
     Ok(Box::new(stream))
 }
@@ -54,7 +43,7 @@ pub async fn create_historical_subscriber(
     streams: &FuelStreams,
     subject_wildcard: String,
 ) -> Result<BoxedStream, StreamError> {
-    let historical = match record_entity {
+    let stream = match record_entity {
         RecordEntity::Block => {
             streams
                 .blocks
@@ -88,11 +77,8 @@ pub async fn create_historical_subscriber(
         RecordEntity::Utxo => {
             streams.utxos.subscribe_historical(subject_wildcard).await?
         }
-        RecordEntity::Log => {
-            streams.logs.subscribe_historical(subject_wildcard).await?
-        }
     };
-    Ok(Box::new(historical.map(Ok)))
+    Ok(Box::new(stream))
 }
 
 /// Creates a subscription stream based on the deliver policy
@@ -104,7 +90,6 @@ pub async fn create_subscriber(
     deliver_policy: DeliverPolicy,
 ) -> Result<BoxedStream, StreamError> {
     let streams = FuelStreams::new(nats_client, db).await;
-
     if deliver_policy == DeliverPolicy::All {
         create_historical_subscriber(record_entity, &streams, subject_wildcard)
             .await

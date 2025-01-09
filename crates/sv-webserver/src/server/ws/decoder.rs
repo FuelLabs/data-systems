@@ -1,9 +1,5 @@
 use fuel_streams_core::types::*;
-use fuel_streams_store::{
-    db::DbRecord,
-    record::{DataEncoder, RecordEntity},
-    store::StoreResult,
-};
+use fuel_streams_store::record::{DataEncoder, RecordEntity};
 
 use super::{
     errors::WsSubscriptionError,
@@ -14,13 +10,10 @@ use super::{
 /// Decodes a record based on its type and converts it to a WebSocket message
 pub async fn decode_record(
     stream_type: &RecordEntity,
-    result: StoreResult<DbRecord>,
+    (subject, payload): (String, Vec<u8>),
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    let record = result?;
-    let subject = record.subject.clone();
     let subject = verify_and_extract_subject_name(&subject)?;
-    let json_value = decode_to_json_value(stream_type, record).await?;
-
+    let json_value = decode_to_json_value(stream_type, payload).await?;
     serde_json::to_vec(&ServerMessage::Response(ResponseMessage {
         subject: subject.to_string(),
         payload: json_value,
@@ -31,35 +24,31 @@ pub async fn decode_record(
 /// Decodes a record to its JSON value based on its type
 async fn decode_to_json_value(
     stream_type: &RecordEntity,
-    record: DbRecord,
+    payload: Vec<u8>,
 ) -> Result<serde_json::Value, WsSubscriptionError> {
     let value = match stream_type {
         RecordEntity::Block => {
-            let payload: Block = record.decode_to_record().await?;
+            let payload: Block = Block::decode(&payload).await?;
             payload.to_json_value()?
         }
         RecordEntity::Transaction => {
-            let payload: Transaction = record.decode_to_record().await?;
+            let payload: Transaction = Transaction::decode(&payload).await?;
             payload.to_json_value()?
         }
         RecordEntity::Input => {
-            let payload: Input = record.decode_to_record().await?;
+            let payload: Input = Input::decode(&payload).await?;
             payload.to_json_value()?
         }
         RecordEntity::Output => {
-            let payload: Output = record.decode_to_record().await?;
+            let payload: Output = Output::decode(&payload).await?;
             payload.to_json_value()?
         }
         RecordEntity::Receipt => {
-            let payload: Receipt = record.decode_to_record().await?;
+            let payload: Receipt = Receipt::decode(&payload).await?;
             payload.to_json_value()?
         }
         RecordEntity::Utxo => {
-            let payload: Utxo = record.decode_to_record().await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Log => {
-            let payload: Log = record.decode_to_record().await?;
+            let payload: Utxo = Utxo::decode(&payload).await?;
             payload.to_json_value()?
         }
     };

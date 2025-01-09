@@ -24,7 +24,7 @@ pub fn parse_fn(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
 pub fn wildcard_fn() -> TokenStream {
     quote! {
         fn wildcard(&self) -> &'static str {
-           Self::WILDCARD
+            Self::WILDCARD
         }
     }
 }
@@ -40,14 +40,14 @@ pub fn to_sql_where_fn(field_names: &[&Ident]) -> TokenStream {
     });
 
     quote! {
-        fn to_sql_where(&self) -> Option<String>{
+        fn to_sql_where(&self) -> String {
             let pattern = self.parse();
             if pattern.ends_with(".>") {
-                return None;
+                return "TRUE".to_string();
             }
 
             let conditions = vec![#(#field_props),*].into_iter().filter_map(|x| x).collect::<Vec<_>>();
-            Some(conditions.join(" AND "))
+            conditions.join(" AND ")
         }
     }
 }

@@ -1,5 +1,4 @@
 use fuel_streams_core::{subjects::*, types::*};
-use fuel_streams_store::store::StorePacket;
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
@@ -10,17 +9,21 @@ impl Executor<Utxo> {
         &self,
         (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
+        let block_height = self.block_height();
         let tx_id = tx.id.clone();
         let packets = tx
             .inputs
             .par_iter()
             .enumerate()
-            .filter_map(|(index, input)| {
-                let order = self
-                    .record_order()
-                    .with_tx(tx_index as u32)
-                    .with_record(index as u32);
-                utxo_packet(input, &tx_id, &order)
+            .map(|(input_index, input)| {
+                let (utxo, subject) = main_subject(
+                    block_height.clone(),
+                    tx_index as u32,
+                    input_index as u32,
+                    tx_id.clone(),
+                    input,
+                );
+                utxo.to_packet(subject)
             })
             .collect::<Vec<_>>();
 
@@ -31,11 +34,13 @@ impl Executor<Utxo> {
     }
 }
 
-fn utxo_packet(
+fn main_subject(
+    block_height: BlockHeight,
+    tx_index: u32,
+    input_index: u32,
+    tx_id: TxId,
     input: &Input,
-    tx_id: &Bytes32,
-    order: &RecordOrder,
-) -> Option<StorePacket<Utxo>> {
+) -> (Utxo, Arc<dyn IntoSubject>) {
     match input {
         Input::Contract(InputContract { utxo_id, .. }) => {
             let utxo = Utxo {
@@ -44,11 +49,15 @@ fn utxo_packet(
                 ..Default::default()
             };
             let subject = UtxosSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                input_index: Some(input_index),
                 utxo_type: Some(UtxoType::Contract),
                 utxo_id: Some(utxo_id.into()),
             }
-            .parse();
-            Some(utxo.to_packet(subject, order))
+            .arc();
+            (utxo, subject)
         }
         Input::Coin(InputCoin {
             utxo_id, amount, ..
@@ -60,11 +69,15 @@ fn utxo_packet(
                 ..Default::default()
             };
             let subject = UtxosSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                input_index: Some(input_index),
                 utxo_type: Some(UtxoType::Coin),
                 utxo_id: Some(utxo_id.into()),
             }
-            .parse();
-            Some(utxo.to_packet(subject, order))
+            .arc();
+            (utxo, subject)
         }
         Input::Message(
             input @ InputMessage {
@@ -87,11 +100,15 @@ fn utxo_packet(
                 data: Some(data.to_owned()),
             };
             let subject = UtxosSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                input_index: Some(input_index),
                 utxo_type: Some(UtxoType::Message),
                 utxo_id: Some(utxo_id.into()),
             }
-            .parse();
-            Some(utxo.to_packet(subject, order))
+            .arc();
+            (utxo, subject)
         }
     }
 }

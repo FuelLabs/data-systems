@@ -1,10 +1,11 @@
 CREATE TABLE IF NOT EXISTS transactions (
-    subject TEXT PRIMARY KEY,
-    block_height BIGINT,
-    tx_id TEXT,
-    tx_index INTEGER,
-    tx_status TEXT,
-    kind TEXT,
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    block_height BIGINT NOT NULL,
+    tx_id TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    tx_status TEXT NOT NULL,
+    kind TEXT NOT NULL,
     value BYTEA NOT NULL
 );
 

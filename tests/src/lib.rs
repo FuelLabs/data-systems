@@ -1,13 +1,14 @@
-use fuel_streams_core::{stream::*, subjects::*};
+use std::sync::Arc;
+
+use fuel_streams_core::{stream::*, subjects::*, types::Block};
+use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
 use fuel_streams_nats::{NatsClient, NatsClientOpts};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
-    impl_record_for,
-    record::{Record, RecordEntity, RecordOrder},
-    store::{Store, StorePacket},
+    record::Record,
+    store::Store,
 };
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 
 // -----------------------------------------------------------------------------
 // Setup
@@ -32,13 +33,10 @@ pub async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
     Ok(nats_client)
 }
 
-pub async fn setup_stream(
-    nats_url: &str,
-) -> anyhow::Result<Stream<TestRecord>> {
+pub async fn setup_stream(nats_url: &str) -> anyhow::Result<Stream<Block>> {
     let nats_client = setup_nats(nats_url).await?;
     let db = setup_db().await?;
-    let stream =
-        Stream::<TestRecord>::get_or_init(&nats_client, &db.arc()).await;
+    let stream = Stream::<Block>::get_or_init(&nats_client, &db.arc()).await;
     Ok(stream)
 }
 
@@ -46,62 +44,29 @@ pub async fn setup_stream(
 // Test data
 // -----------------------------------------------------------------------------
 
-#[derive(Subject, Debug, Clone, Default)]
-#[subject_wildcard = "tests.>"]
-#[subject_format = "tests.{name}"]
-pub struct TestSubject {
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TestRecord(pub String);
-impl_record_for!(TestRecord, RecordEntity::Block);
-impl TestRecord {
-    pub fn new(payload: impl Into<String>) -> Self {
-        Self(payload.into())
-    }
-    pub fn to_packet(&self, subject: impl Into<String>) -> StorePacket<Self> {
-        let order = RecordOrder::new(0, None, None);
-        StorePacket::new(self, subject.into(), order)
-    }
-}
-
-pub fn create_test_subject(name: impl Into<String>) -> TestSubject {
-    TestSubject::build(Some(name.into()))
-}
-
-pub fn create_test_data(
-    name: impl Into<String> + Clone,
-) -> (TestSubject, TestRecord) {
-    let subject = create_test_subject(name.clone());
-    let record = TestRecord::new(name.into());
-    (subject, record)
-}
-
-pub fn prefix_fn<R: Into<String>>() -> (String, impl Fn(R) -> String) {
-    let prefix = create_random_db_name();
-    (prefix.clone(), move |value: R| {
-        format!("{}.{}", prefix, value.into())
-    })
+pub fn create_test_data(height: u32) -> (BlocksSubject, Block) {
+    let block = MockBlock::build(height);
+    let subject = BlocksSubject::from(&block);
+    (subject, block)
 }
 
 pub fn create_multiple_test_data(
     count: usize,
-    name: impl Into<String> + Clone,
-) -> Vec<(TestSubject, TestRecord)> {
+    start_height: u32,
+) -> Vec<(BlocksSubject, Block)> {
     (0..count)
-        .map(|idx| create_test_data(format!("{}.{}", name.clone().into(), idx)))
+        .map(|idx| create_test_data(start_height + idx as u32))
         .collect()
 }
 
 pub async fn add_test_records(
-    store: &Store<TestRecord>,
+    store: &Store<Block>,
     prefix: &str,
-    records: &[(impl AsRef<str>, TestRecord)],
+    records: &[(Arc<dyn IntoSubject>, Block)],
 ) -> anyhow::Result<()> {
-    for (suffix, payload) in records {
-        let subject = format!("{}.{}", prefix, suffix.as_ref());
-        store.add_record(&payload.to_packet(&subject)).await?;
+    for (subject, block) in records {
+        let packet = block.to_packet(subject.clone()).with_namespace(prefix);
+        store.insert_record(&packet).await?;
     }
     Ok(())
 }

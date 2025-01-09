@@ -73,6 +73,10 @@ pub fn expanded<'a>(
                 std::sync::Arc::new(self)
             }
 
+            pub fn dyn_arc(self) -> std::sync::Arc<dyn IntoSubject> {
+                self.arc() as std::sync::Arc<dyn IntoSubject>
+            }
+
             #(#with_methods)*
             #(#get_methods)*
         }

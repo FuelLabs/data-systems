@@ -1,7 +1,12 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 resolver = "2"
-members = ["crates/*", "crates/fuel-streams-macros/subject-derive", "examples", "tests"]
+members = [
+    "crates/*",
+    "crates/fuel-streams-macros/subject-derive",
+    "examples",
+    "tests",
+]
 
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]
@@ -36,11 +41,18 @@ fuel-core = { version = "0.40.2", default-features = false, features = [
     "relayer",
     "rocksdb",
 ] }
-fuel-core-client = { version = "0.40.2", default-features = false, features = ["std"] }
+fuel-core-client = { version = "0.40.2", default-features = false, features = [
+    "std",
+] }
 fuel-core-importer = { version = "0.40.2" }
 fuel-core-storage = { version = "0.40.2" }
-fuel-core-types = { version = "0.40.2", default-features = false, features = ["std", "serde"] }
-fuel-core-services = { version = "0.40.2", default-features = false, features = ["test-helpers"] }
+fuel-core-types = { version = "0.40.2", default-features = false, features = [
+    "std",
+    "serde",
+] }
+fuel-core-services = { version = "0.40.2", default-features = false, features = [
+    "test-helpers",
+] }
 futures-util = "0.3"
 hex = "0.4"
 pretty_assertions = "1.4"
@@ -71,6 +83,7 @@ sqlx = { version = "0.8.3", default-features = false, features = [
 fuel-data-parser = { version = "0.0.15", path = "crates/fuel-data-parser" }
 fuel-streams = { version = "0.0.15", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.15", path = "crates/fuel-streams-core" }
+fuel-streams-domains = { version = "0.0.15", path = "crates/fuel-streams-domains" }
 fuel-streams-executors = { version = "0.0.15", path = "crates/fuel-streams-executors" }
 fuel-streams-macros = { version = "0.0.15", path = "crates/fuel-streams-macros" }
 fuel-streams-nats = { version = "0.0.15", path = "crates/fuel-streams-nats" }

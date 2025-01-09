@@ -2,6 +2,7 @@
 
 mod validator;
 pub mod subject {
+    use downcast_rs::{impl_downcast, Downcast};
     pub use subject_derive::*;
 
     #[derive(thiserror::Error, Debug)]
@@ -22,12 +23,15 @@ pub mod subject {
 
     /// This trait is used internally by the `Subject` derive macro to convert a struct into a
     /// standard NATS subject.
-    pub trait IntoSubject: std::fmt::Debug + Send + Sync + 'static {
+    pub trait IntoSubject:
+        std::fmt::Debug + Downcast + Send + Sync + 'static
+    {
         fn parse(&self) -> String;
         fn wildcard(&self) -> &'static str;
-        fn to_sql_where(&self) -> Option<String>;
+        fn to_sql_where(&self) -> String;
         fn validate_pattern(&self, pattern: &str) -> Result<(), SubjectError>;
     }
+    impl_downcast!(IntoSubject);
 
     pub trait FromJsonString:
         Clone + Sized + std::fmt::Debug + Send + Sync + 'static

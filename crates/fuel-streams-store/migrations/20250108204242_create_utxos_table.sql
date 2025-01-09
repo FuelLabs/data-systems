@@ -1,11 +1,12 @@
 CREATE TABLE IF NOT EXISTS utxos (
-    subject TEXT PRIMARY KEY,
-    block_height BIGINT,
-    tx_id TEXT,
-    tx_index INTEGER,
-    input_index INTEGER,
-    utxo_type TEXT,    -- 'message', 'coin', or 'contract'
-    utxo_id TEXT,      -- hex string of the UTXO identifier
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    block_height BIGINT NOT NULL,
+    tx_id TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    input_index INTEGER NOT NULL,
+    utxo_type TEXT NOT NULL,    -- 'message', 'coin', or 'contract'
+    utxo_id TEXT NOT NULL,      -- hex string of the UTXO identifier
     value BYTEA NOT NULL
 );
 

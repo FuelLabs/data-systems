@@ -10,7 +10,6 @@ pub enum RecordEntity {
     Input,
     Output,
     Receipt,
-    Log,
     Utxo,
 }
 
@@ -28,9 +27,12 @@ impl RecordEntity {
             Self::Input => "input",
             Self::Output => "output",
             Self::Receipt => "receipt",
-            Self::Log => "log",
             Self::Utxo => "utxo",
         }
+    }
+
+    pub fn table_name(&self) -> String {
+        format!("{}{}", self.as_str(), "s")
     }
 }
 
@@ -43,7 +45,6 @@ impl FromStr for RecordEntity {
             "input" | "inputs" => Ok(Self::Input),
             "output" | "outputs" => Ok(Self::Output),
             "receipt" | "receipts" => Ok(Self::Receipt),
-            "log" | "logs" => Ok(Self::Log),
             "utxo" | "utxos" => Ok(Self::Utxo),
             _ => Err(format!("Invalid record entity: {}", s)),
         }

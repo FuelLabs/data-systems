@@ -2,11 +2,9 @@
 
 pub mod fuel_core_like;
 pub mod stream;
-pub mod subjects;
 
 pub use fuel_core_like::*;
 pub use fuel_streams_nats as nats;
-pub use fuel_streams_types as types;
 pub use stream::*;
 
 pub mod prelude {
@@ -21,17 +19,40 @@ pub mod prelude {
     };
 }
 
+pub mod types {
+    pub use fuel_streams_domains::{
+        blocks::types::*,
+        inputs::types::*,
+        outputs::types::*,
+        receipts::types::*,
+        transactions::types::*,
+        utxos::types::*,
+    };
+    pub use fuel_streams_types::*;
+}
+
+pub mod subjects {
+    pub use fuel_streams_domains::{
+        blocks::subjects::*,
+        inputs::subjects::*,
+        outputs::subjects::*,
+        receipts::subjects::*,
+        transactions::subjects::*,
+        utxos::subjects::*,
+    };
+    pub use fuel_streams_macros::subject::*;
+}
+
 macro_rules! export_module {
     ($module:ident) => {
         pub mod $module {
-            pub use crate::subjects::$module::*;
+            pub use fuel_streams_domains::$module::subjects::*;
         }
     };
 }
 
 export_module!(blocks);
 export_module!(inputs);
-export_module!(logs);
 export_module!(outputs);
 export_module!(receipts);
 export_module!(transactions);

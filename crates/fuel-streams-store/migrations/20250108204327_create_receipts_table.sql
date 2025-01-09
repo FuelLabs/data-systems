@@ -1,11 +1,12 @@
 CREATE TABLE IF NOT EXISTS receipts (
-    subject TEXT PRIMARY KEY,
-    block_height BIGINT,
-    tx_id TEXT,
-    tx_index INTEGER,
-    receipt_index INTEGER,
-    receipt_type TEXT,         -- 'call', 'return', 'return_data', 'panic', 'revert', 'log', 'log_data',
-                               -- 'transfer', 'transfer_out', 'script_result', 'message_out', 'mint', 'burn'
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    block_height BIGINT NOT NULL,
+    tx_id TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    receipt_index INTEGER NOT NULL,
+    receipt_type TEXT NOT NULL,         -- 'call', 'return', 'return_data', 'panic', 'revert', 'log', 'log_data',
+                                       -- 'transfer', 'transfer_out', 'script_result', 'message_out', 'mint', 'burn'
     from_contract_id TEXT,     -- ContractId for call/transfer/transfer_out
     to_contract_id TEXT,       -- ContractId for call/transfer
     to_address TEXT,           -- Address for transfer_out

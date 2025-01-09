@@ -121,7 +121,7 @@ async fn setup_nats(nats_url: &str) -> Result<NatsClient, PublishError> {
 async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
     let record = Block::find_last_record(db).await?;
     match record {
-        Some(record) => Ok(record.order_block as u32),
+        Some(record) => Ok(record.height as u32),
         None => Ok(0),
     }
 }

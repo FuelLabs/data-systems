@@ -1,10 +1,11 @@
 CREATE TABLE IF NOT EXISTS outputs (
-    subject TEXT PRIMARY KEY,
-    block_height BIGINT,
-    tx_id TEXT,
-    tx_index INTEGER,
-    output_index INTEGER,
-    output_type TEXT,  -- 'coin', 'contract', 'change', 'variable', or 'contract_created'
+    _id SERIAL PRIMARY KEY,
+    subject TEXT NOT NULL,
+    block_height BIGINT NOT NULL,
+    tx_id TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    output_index INTEGER NOT NULL,
+    output_type TEXT NOT NULL,  -- 'coin', 'contract', 'change', 'variable', or 'contract_created'
     to_address TEXT,   -- for coin, change, and variable
     asset_id TEXT,     -- for coin, change, and variable
     contract_id TEXT,  -- for contract and contract_created

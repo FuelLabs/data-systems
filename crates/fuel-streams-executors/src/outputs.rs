@@ -9,33 +9,22 @@ impl Executor<Output> {
         &self,
         (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
+        let block_height = self.block_height();
         let tx_id = tx.id.clone();
         let packets = tx
             .outputs
             .par_iter()
             .enumerate()
-            .flat_map(|(index, output)| {
-                let main_subject = main_subject(output, tx, &tx_id, index);
-                let identifier_subjects =
-                    identifiers(output, tx, &tx_id, index as u8)
-                        .into_par_iter()
-                        .map(|identifier| identifier.into())
-                        .map(|subject: OutputsByIdSubject| subject.parse())
-                        .collect::<Vec<String>>();
-
-                let order = self
-                    .record_order()
-                    .with_tx(tx_index as u32)
-                    .with_record(index as u32);
-
-                let mut packets = vec![output.to_packet(main_subject, &order)];
-                packets.extend(
-                    identifier_subjects
-                        .into_iter()
-                        .map(|subject| output.to_packet(subject, &order)),
+            .flat_map(|(output_index, output)| {
+                let main_subject = main_subject(
+                    block_height.clone(),
+                    tx_index as u32,
+                    output_index as u32,
+                    tx_id.to_owned(),
+                    tx,
+                    output,
                 );
-
-                packets
+                vec![output.to_packet(main_subject)]
             })
             .collect::<Vec<_>>();
 
@@ -44,19 +33,23 @@ impl Executor<Output> {
 }
 
 fn main_subject(
-    output: &Output,
+    block_height: BlockHeight,
+    tx_index: u32,
+    output_index: u32,
+    tx_id: TxId,
     transaction: &Transaction,
-    tx_id: &Bytes32,
-    index: usize,
-) -> String {
+    output: &Output,
+) -> Arc<dyn IntoSubject> {
     match output {
         Output::Coin(OutputCoin { to, asset_id, .. }) => OutputsCoinSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index as u16),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            output_index: Some(output_index),
             to: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
-        .parse(),
+        .arc(),
         Output::Contract(contract) => {
             let contract_id =
                 match find_output_contract_id(transaction, contract) {
@@ -72,76 +65,84 @@ fn main_subject(
                 };
 
             OutputsContractSubject {
-                tx_id: Some(tx_id.to_owned()),
-                index: Some(index as u16),
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
                 contract_id: Some(contract_id),
             }
-            .parse()
+            .arc()
         }
         Output::Change(OutputChange { to, asset_id, .. }) => {
             OutputsChangeSubject {
-                tx_id: Some(tx_id.to_owned()),
-                index: Some(index as u16),
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
                 to: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
-            .parse()
+            .arc()
         }
         Output::Variable(OutputVariable { to, asset_id, .. }) => {
             OutputsVariableSubject {
-                tx_id: Some(tx_id.to_owned()),
-                index: Some(index as u16),
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
                 to: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
-            .parse()
+            .arc()
         }
         Output::ContractCreated(OutputContractCreated {
             contract_id, ..
         }) => OutputsContractCreatedSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index as u16),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            output_index: Some(output_index),
             contract_id: Some(contract_id.to_owned()),
         }
-        .parse(),
+        .arc(),
     }
 }
 
-pub fn identifiers(
-    output: &Output,
-    tx: &Transaction,
-    tx_id: &Bytes32,
-    index: u8,
-) -> Vec<Identifier> {
-    match output {
-        Output::Change(OutputChange { to, asset_id, .. })
-        | Output::Variable(OutputVariable { to, asset_id, .. })
-        | Output::Coin(OutputCoin { to, asset_id, .. }) => {
-            vec![
-                Identifier::Address(tx_id.to_owned(), index, to.into()),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-            ]
-        }
-        Output::Contract(contract) => find_output_contract_id(tx, contract)
-            .map(|contract_id| {
-                vec![Identifier::ContractID(
-                    tx_id.to_owned(),
-                    index,
-                    contract_id.into(),
-                )]
-            })
-            .unwrap_or_default(),
-        Output::ContractCreated(OutputContractCreated {
-            contract_id, ..
-        }) => {
-            vec![Identifier::ContractID(
-                tx_id.to_owned(),
-                index,
-                contract_id.into(),
-            )]
-        }
-    }
-}
+// pub fn identifiers(
+//     output: &Output,
+//     tx: &Transaction,
+//     tx_id: &Bytes32,
+//     index: u8,
+// ) -> Vec<Identifier> {
+//     match output {
+//         Output::Change(OutputChange { to, asset_id, .. })
+//         | Output::Variable(OutputVariable { to, asset_id, .. })
+//         | Output::Coin(OutputCoin { to, asset_id, .. }) => {
+//             vec![
+//                 Identifier::Address(tx_id.to_owned(), index, to.into()),
+//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+//             ]
+//         }
+//         Output::Contract(contract) => find_output_contract_id(tx, contract)
+//             .map(|contract_id| {
+//                 vec![Identifier::ContractID(
+//                     tx_id.to_owned(),
+//                     index,
+//                     contract_id.into(),
+//                 )]
+//             })
+//             .unwrap_or_default(),
+//         Output::ContractCreated(OutputContractCreated {
+//             contract_id, ..
+//         }) => {
+//             vec![Identifier::ContractID(
+//                 tx_id.to_owned(),
+//                 index,
+//                 contract_id.into(),
+//             )]
+//         }
+//     }
+// }
 
 pub fn find_output_contract_id(
     tx: &Transaction,

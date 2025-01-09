@@ -11,10 +11,11 @@ version = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
-subject-derive = { workspace = true }
-thiserror = { workspace = true }
+downcast-rs = "2.0.1"
 regex = { workspace = true }
 serde_json = { workspace = true }
+subject-derive = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

@@ -9,3 +9,8 @@ dependencies:
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats
     condition: nats.enabled
+  - name: cockroachdb
+    version: 15.0.3
+    repository: https://charts.cockroachdb.com/
+    alias: cockroachdb
+    condition: cockroachdb.enabled
