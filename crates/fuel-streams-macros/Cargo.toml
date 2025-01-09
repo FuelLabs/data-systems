@@ -12,3 +12,9 @@ rust-version = { workspace = true }
 
 [dependencies]
 subject-derive = { workspace = true }
+thiserror = { workspace = true }
+regex = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }
