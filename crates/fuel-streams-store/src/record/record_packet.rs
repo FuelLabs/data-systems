@@ -56,6 +56,10 @@ impl<R: Record> RecordPacket<R> {
     pub fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
     }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.clone())
+    }
 }
 
 /// Example usage:

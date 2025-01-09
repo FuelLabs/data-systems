@@ -44,17 +44,6 @@ impl<R: Record> Store<R> {
             .map_err(StoreError::from)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub async fn find_many_by_subject_ns(
-        &self,
-        subject: &Arc<dyn IntoSubject>,
-        namespace: &str,
-    ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject_ns(&self.db, subject, namespace)
-            .await
-            .map_err(StoreError::from)
-    }
-
     pub async fn stream_by_subject(
         &self,
         subject: &Arc<dyn IntoSubject>,
@@ -65,6 +54,17 @@ impl<R: Record> Store<R> {
             .buffered(10);
 
         Ok(Box::pin(stream))
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub async fn find_many_by_subject_ns(
+        &self,
+        subject: &Arc<dyn IntoSubject>,
+        namespace: &str,
+    ) -> StoreResult<Vec<R::DbItem>> {
+        R::find_many_by_subject_ns(&self.db, subject, namespace)
+            .await
+            .map_err(StoreError::from)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
