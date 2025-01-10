@@ -1,3 +1,4 @@
+use actix_ws::Closed;
 use fuel_streams_core::stream::StreamError;
 use fuel_streams_domains::SubjectPayloadError;
 use fuel_streams_store::{
@@ -23,4 +24,6 @@ pub enum WsSubscriptionError {
     Store(#[from] StoreError),
     #[error(transparent)]
     SubjectPayload(#[from] SubjectPayloadError),
+    #[error("Connection closed")]
+    Closed(#[from] Closed),
 }

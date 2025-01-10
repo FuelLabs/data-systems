@@ -14,27 +14,27 @@ pub async fn create_live_subscriber(
     let stream = match record_entity {
         RecordEntity::Block => {
             let subject = subject_json.into_subject();
-            streams.blocks.subscribe_live(&subject).await?
+            streams.blocks.subscribe_live(subject).await
         }
         RecordEntity::Transaction => {
             let subject = subject_json.into_subject();
-            streams.transactions.subscribe_live(&subject).await?
+            streams.transactions.subscribe_live(subject).await
         }
         RecordEntity::Input => {
             let subject = subject_json.into_subject();
-            streams.inputs.subscribe_live(&subject).await?
+            streams.inputs.subscribe_live(subject).await
         }
         RecordEntity::Output => {
             let subject = subject_json.into_subject();
-            streams.outputs.subscribe_live(&subject).await?
+            streams.outputs.subscribe_live(subject).await
         }
         RecordEntity::Receipt => {
             let subject = subject_json.into_subject();
-            streams.receipts.subscribe_live(&subject).await?
+            streams.receipts.subscribe_live(subject).await
         }
         RecordEntity::Utxo => {
             let subject = subject_json.into_subject();
-            streams.utxos.subscribe_live(&subject).await?
+            streams.utxos.subscribe_live(subject).await
         }
     };
     Ok(Box::new(stream))
@@ -48,27 +48,27 @@ pub async fn create_historical_subscriber(
     let stream = match record_entity {
         RecordEntity::Block => {
             let subject = subject_json.into_subject();
-            streams.blocks.subscribe_historical(subject).await?
+            streams.blocks.subscribe_historical(subject).await
         }
         RecordEntity::Transaction => {
             let subject = subject_json.into_subject();
-            streams.transactions.subscribe_historical(subject).await?
+            streams.transactions.subscribe_historical(subject).await
         }
         RecordEntity::Input => {
             let subject = subject_json.into_subject();
-            streams.inputs.subscribe_historical(subject).await?
+            streams.inputs.subscribe_historical(subject).await
         }
         RecordEntity::Output => {
             let subject = subject_json.into_subject();
-            streams.outputs.subscribe_historical(subject).await?
+            streams.outputs.subscribe_historical(subject).await
         }
         RecordEntity::Receipt => {
             let subject = subject_json.into_subject();
-            streams.receipts.subscribe_historical(subject).await?
+            streams.receipts.subscribe_historical(subject).await
         }
         RecordEntity::Utxo => {
             let subject = subject_json.into_subject();
-            streams.utxos.subscribe_historical(subject).await?
+            streams.utxos.subscribe_historical(subject).await
         }
     };
     Ok(Box::new(stream))

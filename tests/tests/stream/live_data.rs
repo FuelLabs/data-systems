@@ -14,15 +14,12 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         let data = data.clone();
         let stream = stream.clone();
         async move {
-            let wildcard_subject =
-                BlocksSubject::new().with_height(None).dyn_arc();
-            let mut subscriber = stream
-                .subscribe_live(&wildcard_subject)
-                .await
-                .unwrap()
-                .enumerate();
+            let subject = BlocksSubject::new().with_height(None).dyn_arc();
+            let mut subscriber =
+                stream.subscribe_live(subject).await.enumerate();
 
             while let Some((index, record)) = subscriber.next().await {
+                let record = record.unwrap();
                 let expected_subject = data[index].0.parse();
                 let expected_block = &data[index].1;
                 let decoded_block = Block::decode(&record.1).await.unwrap();

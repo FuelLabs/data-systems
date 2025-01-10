@@ -90,7 +90,7 @@ async fn handle_subscribe(
     actix_web::rt::spawn({
         let telemetry = telemetry.clone();
         async move {
-            process_subscription(
+            let _ = process_subscription(
                 sub,
                 stream_session,
                 ctx.user_id,
@@ -149,7 +149,7 @@ async fn process_subscription(
     user_id: Uuid,
     telemetry: &Arc<Telemetry>,
     payload: SubscriptionPayload,
-) {
+) -> Result<(), WsSubscriptionError> {
     let payload_str = payload.clone().to_string();
     telemetry.update_user_subscription_metrics(user_id, &payload_str);
     let cleanup = || {
@@ -158,6 +158,7 @@ async fn process_subscription(
     };
 
     while let Some(result) = sub.next().await {
+        let result = result?;
         let payload = match decode_record(payload.to_owned(), result).await {
             Ok(res) => res,
             Err(e) => {
@@ -176,7 +177,7 @@ async fn process_subscription(
                             "Failed to send error message to client"
                         );
                         cleanup();
-                        return;
+                        return Err(e);
                     }
                 }
                 continue;
@@ -186,7 +187,7 @@ async fn process_subscription(
         if let Err(e) = stream_session.binary(payload).await {
             tracing::error!("Error sending message over websocket: {:?}", e);
             cleanup();
-            return;
+            return Err(e.into());
         }
 
         // Add delay to throttle data streaming
@@ -202,4 +203,6 @@ async fn process_subscription(
         ServerMessage::Unsubscribed(payload.clone()),
     )
     .await;
+
+    Ok(())
 }

@@ -8,7 +8,7 @@ use fuel_streams_store::{
     store::Store,
 };
 use futures::{
-    stream::{BoxStream, Stream as FuturesStream, TryStreamExt},
+    stream::{BoxStream, Stream as FStream},
     StreamExt,
 };
 use tokio::sync::OnceCell;
@@ -16,8 +16,8 @@ use tokio::sync::OnceCell;
 use super::StreamError;
 use crate::nats::*;
 
-pub type BoxedStream =
-    Box<dyn FuturesStream<Item = (String, Vec<u8>)> + Send + Unpin>;
+pub type BoxedStreamItem = Result<(String, Vec<u8>), StreamError>;
+pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {
@@ -79,59 +79,53 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
+    pub async fn subscribe(
+        &self,
+        subject: Arc<dyn IntoSubject>,
+        include_historical: bool,
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+        let store = self.store.clone();
+        let client = self.nats_client.clone();
+        let subject_clone = subject.clone();
+        let stream = async_stream::try_stream! {
+            if include_historical {
+                // Get historical data using store's built-in pagination
+                let historical_stream = store.stream_by_subject(subject_clone).await?;
+                futures::pin_mut!(historical_stream);
+                while let Some(result) = historical_stream.next().await {
+                    let item = result.map_err(StreamError::Store)?;
+                    yield (item.subject_str(), item.encoded_value().to_vec());
+                }
+            }
+
+            // Live subscription
+            let client = client.nats_client.clone();
+            let subscription = client.subscribe(subject.parse()).await?;
+            let live_stream = subscription.then(|msg| async move {
+                let payload = msg.payload;
+                (msg.subject.to_string(), payload.to_vec())
+            });
+
+            futures::pin_mut!(live_stream);
+            while let Some(msg) = live_stream.next().await {
+                yield msg;
+            }
+        };
+
+        Box::pin(stream)
+    }
+
     pub async fn subscribe_live(
         &self,
-        subject: &Arc<dyn IntoSubject>,
-    ) -> Result<BoxStream<'static, (String, Vec<u8>)>, StreamError> {
-        let client = self.nats_client.nats_client.clone();
-        let subscriber = client.subscribe(subject.parse()).await?;
-        let stream = subscriber.then(|msg| async move {
-            let payload = msg.payload;
-            (msg.subject.to_string(), payload.to_vec())
-        });
-        Ok(Box::pin(stream))
+        subject: Arc<dyn IntoSubject>,
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+        self.subscribe(subject, false).await
     }
 
     pub async fn subscribe_historical(
         &self,
         subject: Arc<dyn IntoSubject>,
-    ) -> Result<BoxStream<'static, (String, Vec<u8>)>, StreamError> {
-        let store = self.store.clone();
-        let live_stream = self.subscribe_live(&subject).await?;
-        let (live_sender, live_receiver) = tokio::sync::mpsc::channel(100);
-
-        tokio::spawn({
-            let mut live_stream = live_stream;
-            async move {
-                while let Some(result) = live_stream.next().await {
-                    if live_sender.send(result).await.is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-
-        let subject_clone = subject.clone();
-        let historical_stream = store.stream_by_subject(subject).await?;
-        let historical_stream = historical_stream
-            .map_err(StreamError::Store)
-            .map_ok(move |record| {
-                (subject_clone.parse(), record.encoded_value().to_vec())
-            });
-
-        let stream = async_stream::stream! {
-            let mut historical = Box::pin(historical_stream);
-            while let Some(result) = historical.next().await {
-                if let Ok(record) = result {
-                    yield record;
-                }
-            }
-            let mut live_receiver = live_receiver;
-            while let Some(record) = live_receiver.recv().await {
-                yield record;
-            }
-        };
-
-        Ok(Box::pin(stream))
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+        self.subscribe(subject, true).await
     }
 }
