@@ -70,11 +70,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Subscribe to the stream
     let subject = BlocksSubject::new(); // blocks.*.*
-    let mut subscription = stream.subscribe_live(subject.parse()).await?;
+    let mut subscription = stream.subscribe(subject, DeliverPolicy::New).await;
 
     // Process incoming blocks
     while let Some(block) = subscription.next().await {
-        dbg!(block);
+        dbg!(block?);
     }
 
     Ok(())

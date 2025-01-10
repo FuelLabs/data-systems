@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use fuel_streams_macros::subject::{FromJsonString, IntoSubject};
-use fuel_streams_store::record::RecordEntity;
+use fuel_streams_store::record::{RecordEntity, RecordPacket};
 use thiserror::Error;
 
 use crate::{
@@ -129,7 +129,6 @@ impl SubjectPayload {
 
 impl TryFrom<SubjectPayload> for Subjects {
     type Error = SubjectPayloadError;
-
     fn try_from(json: SubjectPayload) -> Result<Self, Self::Error> {
         match json.subject.as_str() {
             BlocksSubject::ID => Ok(Subjects::Block(BlocksSubject::from_json(
@@ -220,6 +219,62 @@ impl TryFrom<SubjectPayload> for Subjects {
         }
     }
 }
+
+macro_rules! impl_try_from_record_packet {
+    ($type:ty, [$(($subject_type:ty, $variant:ident)),+ $(,)?]) => {
+        impl TryFrom<&RecordPacket<$type>> for Subjects {
+            type Error = SubjectPayloadError;
+            fn try_from(packet: &RecordPacket<$type>) -> Result<Self, Self::Error> {
+                $(
+                    if let Ok(subject) = packet.subject_matches::<$subject_type>() {
+                        return Ok(Subjects::$variant(subject));
+                    }
+                )+
+                Err(SubjectPayloadError::UnknownSubject(packet.subject_str()))
+            }
+        }
+    };
+}
+
+// Usage for each type
+impl_try_from_record_packet!(Block, [(BlocksSubject, Block)]);
+
+impl_try_from_record_packet!(Input, [
+    (InputsCoinSubject, InputsCoin),
+    (InputsContractSubject, InputsContract),
+    (InputsMessageSubject, InputsMessage)
+]);
+
+impl_try_from_record_packet!(Output, [
+    (OutputsCoinSubject, OutputsCoin),
+    (OutputsContractSubject, OutputsContract),
+    (OutputsChangeSubject, OutputsChange),
+    (OutputsVariableSubject, OutputsVariable),
+    (OutputsContractCreatedSubject, OutputsContractCreated)
+]);
+
+impl_try_from_record_packet!(Receipt, [
+    (ReceiptsCallSubject, ReceiptsCall),
+    (ReceiptsReturnSubject, ReceiptsReturn),
+    (ReceiptsReturnDataSubject, ReceiptsReturnData),
+    (ReceiptsPanicSubject, ReceiptsPanic),
+    (ReceiptsRevertSubject, ReceiptsRevert),
+    (ReceiptsLogSubject, ReceiptsLog),
+    (ReceiptsLogDataSubject, ReceiptsLogData),
+    (ReceiptsTransferSubject, ReceiptsTransfer),
+    (ReceiptsTransferOutSubject, ReceiptsTransferOut),
+    (ReceiptsScriptResultSubject, ReceiptsScriptResult),
+    (ReceiptsMessageOutSubject, ReceiptsMessageOut),
+    (ReceiptsMintSubject, ReceiptsMint),
+    (ReceiptsBurnSubject, ReceiptsBurn)
+]);
+
+impl_try_from_record_packet!(Transaction, [(
+    TransactionsSubject,
+    Transactions
+)]);
+
+impl_try_from_record_packet!(Utxo, [(UtxosSubject, Utxos)]);
 
 #[cfg(test)]
 mod tests {

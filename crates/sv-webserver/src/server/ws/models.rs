@@ -62,7 +62,7 @@ mod tests {
             "subscribe": {
                 "subject": stream_topic_wildcard,
                 "params": null,
-                "deliverPolicy": "all"
+                "deliverPolicy": "new"
             }
         });
         let deser_msg_val =

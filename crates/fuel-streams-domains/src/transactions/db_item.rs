@@ -3,12 +3,11 @@ use std::cmp::Ordering;
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
-    try_packet_subject_match,
 };
 use serde::{Deserialize, Serialize};
 
 use super::Transaction;
-use crate::transactions::TransactionsSubject;
+use crate::Subjects;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
@@ -63,18 +62,23 @@ impl TryFrom<&RecordPacket<Transaction>> for TransactionDbItem {
         packet: &RecordPacket<Transaction>,
     ) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-        try_packet_subject_match!(packet, {
-            TransactionsSubject => subject => {
-                Ok(TransactionDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode transaction"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    tx_status: subject.tx_status.unwrap().to_string(),
-                    kind: subject.kind.unwrap().to_string(),
-                })
-            }
-        })
+        let subject: Subjects = packet
+            .try_into()
+            .map_err(|_| RecordPacketError::SubjectMismatch)?;
+
+        match subject {
+            Subjects::Transactions(subject) => Ok(TransactionDbItem {
+                subject: packet.subject_str(),
+                value: record
+                    .encode_json()
+                    .expect("Failed to encode transaction"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                tx_status: subject.tx_status.unwrap().to_string(),
+                kind: subject.kind.unwrap().to_string(),
+            }),
+            _ => Err(RecordPacketError::SubjectMismatch),
+        }
     }
 }

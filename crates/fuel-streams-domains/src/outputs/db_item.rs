@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
-    try_packet_subject_match,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{subjects::*, Output};
+use super::Output;
+use crate::Subjects;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
@@ -65,77 +65,72 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket<Output>) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-        try_packet_subject_match!(packet, {
-            OutputsCoinSubject => subject => {
-                Ok(OutputDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode output"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    output_index: subject.output_index.unwrap() as i64,
-                    output_type: "coin".to_string(),
-                    to_address: Some(subject.to_address.unwrap().to_string()),
-                    asset_id: Some(subject.asset_id.unwrap().to_string()),
-                    contract_id: None,
-                })
-            },
-            OutputsContractSubject => subject => {
-                Ok(OutputDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode output"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    output_index: subject.output_index.unwrap() as i64,
-                    output_type: "contract".to_string(),
-                    to_address: None,
-                    asset_id: None,
-                    contract_id: Some(subject.contract_id.unwrap().to_string()),
-                })
-            },
-            OutputsChangeSubject => subject => {
-                Ok(OutputDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode output"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    output_index: subject.output_index.unwrap() as i64,
-                    output_type: "change".to_string(),
-                    to_address: Some(subject.to_address.unwrap().to_string()),
-                    asset_id: Some(subject.asset_id.unwrap().to_string()),
-                    contract_id: None,
-                })
-            },
-            OutputsVariableSubject => subject => {
-                Ok(OutputDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode output"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    output_index: subject.output_index.unwrap() as i64,
-                    output_type: "variable".to_string(),
-                    to_address: Some(subject.to_address.unwrap().to_string()),
-                    asset_id: Some(subject.asset_id.unwrap().to_string()),
-                    contract_id: None,
-                })
-            },
-            OutputsContractCreatedSubject => subject => {
-                Ok(OutputDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode output"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    output_index: subject.output_index.unwrap() as i64,
-                    output_type: "contract_created".to_string(),
-                    to_address: None,
-                    asset_id: None,
-                    contract_id: Some(subject.contract_id.unwrap().to_string()),
-                })
-            }
-        })
+        let subject: Subjects = packet
+            .try_into()
+            .map_err(|_| RecordPacketError::SubjectMismatch)?;
+
+        match subject {
+            Subjects::OutputsCoin(subject) => Ok(OutputDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode output"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                output_index: subject.output_index.unwrap() as i64,
+                output_type: "coin".to_string(),
+                to_address: Some(subject.to_address.unwrap().to_string()),
+                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                contract_id: None,
+            }),
+            Subjects::OutputsContract(subject) => Ok(OutputDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode output"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                output_index: subject.output_index.unwrap() as i64,
+                output_type: "contract".to_string(),
+                to_address: None,
+                asset_id: None,
+                contract_id: Some(subject.contract_id.unwrap().to_string()),
+            }),
+            Subjects::OutputsChange(subject) => Ok(OutputDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode output"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                output_index: subject.output_index.unwrap() as i64,
+                output_type: "change".to_string(),
+                to_address: Some(subject.to_address.unwrap().to_string()),
+                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                contract_id: None,
+            }),
+            Subjects::OutputsVariable(subject) => Ok(OutputDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode output"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                output_index: subject.output_index.unwrap() as i64,
+                output_type: "variable".to_string(),
+                to_address: Some(subject.to_address.unwrap().to_string()),
+                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                contract_id: None,
+            }),
+            Subjects::OutputsContractCreated(subject) => Ok(OutputDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode output"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                output_index: subject.output_index.unwrap() as i64,
+                output_type: "contract_created".to_string(),
+                to_address: None,
+                asset_id: None,
+                contract_id: Some(subject.contract_id.unwrap().to_string()),
+            }),
+            _ => Err(RecordPacketError::SubjectMismatch),
+        }
     }
 }

@@ -15,30 +15,45 @@ pub async fn create_subscriber(
     let stream = match record_entity {
         RecordEntity::Block => {
             let subject = subject_json.into_subject();
-            streams.blocks.subscribe(subject, deliver_policy).await
+            streams
+                .blocks
+                .subscribe_dynamic(subject, deliver_policy)
+                .await
         }
         RecordEntity::Transaction => {
             let subject = subject_json.into_subject();
             streams
                 .transactions
-                .subscribe(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy)
                 .await
         }
         RecordEntity::Input => {
             let subject = subject_json.into_subject();
-            streams.inputs.subscribe(subject, deliver_policy).await
+            streams
+                .inputs
+                .subscribe_dynamic(subject, deliver_policy)
+                .await
         }
         RecordEntity::Output => {
             let subject = subject_json.into_subject();
-            streams.outputs.subscribe(subject, deliver_policy).await
+            streams
+                .outputs
+                .subscribe_dynamic(subject, deliver_policy)
+                .await
         }
         RecordEntity::Receipt => {
             let subject = subject_json.into_subject();
-            streams.receipts.subscribe(subject, deliver_policy).await
+            streams
+                .receipts
+                .subscribe_dynamic(subject, deliver_policy)
+                .await
         }
         RecordEntity::Utxo => {
             let subject = subject_json.into_subject();
-            streams.utxos.subscribe(subject, deliver_policy).await
+            streams
+                .utxos
+                .subscribe_dynamic(subject, deliver_policy)
+                .await
         }
     };
     Ok(Box::new(stream))

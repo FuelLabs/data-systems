@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
-    try_packet_subject_match,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{Block, BlocksSubject};
+use super::Block;
+use crate::Subjects;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
@@ -53,15 +53,18 @@ impl TryFrom<&RecordPacket<Block>> for BlockDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket<Block>) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-        try_packet_subject_match!(packet, {
-            BlocksSubject => _subject => {
-                Ok(BlockDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode block"),
-                    block_height: record.height.clone().into(),
-                    producer_address: record.producer.to_string(),
-                })
-            }
-        })
+        let subject: Subjects = packet
+            .try_into()
+            .map_err(|_| RecordPacketError::SubjectMismatch)?;
+
+        match subject {
+            Subjects::Block(_) => Ok(BlockDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode block"),
+                block_height: record.height.clone().into(),
+                producer_address: record.producer.to_string(),
+            }),
+            _ => Err(RecordPacketError::SubjectMismatch),
+        }
     }
 }

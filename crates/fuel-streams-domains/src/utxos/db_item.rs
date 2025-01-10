@@ -3,12 +3,11 @@ use std::cmp::Ordering;
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
-    try_packet_subject_match,
 };
 use serde::{Deserialize, Serialize};
 
 use super::Utxo;
-use crate::utxos::UtxosSubject;
+use crate::Subjects;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
@@ -64,20 +63,22 @@ impl TryFrom<&RecordPacket<Utxo>> for UtxoDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket<Utxo>) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
+        let subject: Subjects = packet
+            .try_into()
+            .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
-        try_packet_subject_match!(packet, {
-            UtxosSubject => subject => {
-                Ok(UtxoDbItem {
-                    subject: packet.subject_str(),
-                    value: record.encode_json().expect("Failed to encode utxo"),
-                    block_height: subject.block_height.unwrap().into(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap() as i64,
-                    input_index: subject.input_index.unwrap() as i64,
-                    utxo_type: subject.utxo_type.unwrap().to_string(),
-                    utxo_id: subject.utxo_id.unwrap().to_string(),
-                })
-            }
-        })
+        match subject {
+            Subjects::Utxos(subject) => Ok(UtxoDbItem {
+                subject: packet.subject_str(),
+                value: record.encode_json().expect("Failed to encode utxo"),
+                block_height: subject.block_height.unwrap().into(),
+                tx_id: subject.tx_id.unwrap().to_string(),
+                tx_index: subject.tx_index.unwrap() as i64,
+                input_index: subject.input_index.unwrap() as i64,
+                utxo_type: subject.utxo_type.unwrap().to_string(),
+                utxo_id: subject.utxo_id.unwrap().to_string(),
+            }),
+            _ => Err(RecordPacketError::SubjectMismatch),
+        }
     }
 }

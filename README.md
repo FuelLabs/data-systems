@@ -67,7 +67,7 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 
         // Subscribe to blocks with last delivery policy
         let mut stream = connection
-            .subscribe::<Block>(subject, DeliverPolicy::Last)
+            .subscribe::<Block>(subject, DeliverPolicy::New)
             .await?;
 
         while let Some(block) = stream.next().await {

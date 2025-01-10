@@ -79,7 +79,7 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe(
+    pub async fn subscribe_dynamic(
         &self,
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
@@ -115,5 +115,14 @@ impl<R: Record> Stream<R> {
         };
 
         Box::pin(stream)
+    }
+
+    pub async fn subscribe<S: IntoSubject>(
+        &self,
+        subject: S,
+        deliver_policy: DeliverPolicy,
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+        let subject = Arc::new(subject);
+        self.subscribe_dynamic(subject, deliver_policy).await
     }
 }

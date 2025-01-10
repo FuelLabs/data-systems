@@ -8,6 +8,8 @@ use crate::record::Record;
 pub enum RecordPacketError {
     #[error("Failed to downcast subject")]
     DowncastError,
+    #[error("Subject mismatch")]
+    SubjectMismatch,
 }
 
 #[derive(Debug, Clone)]
@@ -60,40 +62,4 @@ impl<R: Record> RecordPacket<R> {
     pub fn arc(&self) -> Arc<Self> {
         Arc::new(self.clone())
     }
-}
-
-/// Example usage:
-/// ```rust
-/// try_packet_subject_match!(packet, {
-///     BlocksSubject => subject => {
-///         Ok(BlockDbItem {
-///             subject: subject.parse(),
-///             value: record.encode_json().expect("Failed to encode block"),
-///             height: record.height,
-///             producer_address: record.producer.to_string(),
-///         })
-///     }
-/// })
-/// ```
-///
-/// The macro attempts to match the packet's subject against each provided subject type.
-/// For each match attempt, if successful, executes the associated code block with the matched subject.
-/// If no matches are found, returns a DowncastError
-#[macro_export]
-macro_rules! try_packet_subject_match {
-    ($packet:expr, {
-        $($subject_type:ty => $param:ident => $block:expr),+ $(,)?
-    }) => {
-        {
-            $(
-                if let Ok($param) = $packet.subject_matches::<$subject_type>() {
-                    let $param = $param.clone();
-                    $block
-                } else
-            )*
-            {
-                Err(RecordPacketError::DowncastError)
-            }
-        }
-    };
 }

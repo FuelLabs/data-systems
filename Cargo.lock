@@ -8858,7 +8858,6 @@ dependencies = [
  "elasticsearch",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-nats",
  "fuel-streams-store",
  "futures",
  "futures-util",
