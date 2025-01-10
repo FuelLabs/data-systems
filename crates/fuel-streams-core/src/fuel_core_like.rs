@@ -95,7 +95,7 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_block_and_producer(
         &self,
         sealed_block: Sealed<FuelCoreBlock>,
-    ) -> (FuelCoreBlock, Address) {
+    ) -> (FuelCoreBlock, fuel_streams_types::primitives::Address) {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
             .consensus

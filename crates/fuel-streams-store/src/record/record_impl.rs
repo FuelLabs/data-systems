@@ -51,7 +51,7 @@ pub trait Record: RecordEncoder + 'static {
         query_builder
             .push(" ORDER BY ")
             .push(Self::ORDER_PROPS.join(", "))
-            .push(" DESC LIMIT ")
+            .push(" ASC LIMIT ")
             .push_bind(options.limit)
             .push(" OFFSET ")
             .push_bind(options.offset);
