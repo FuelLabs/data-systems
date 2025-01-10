@@ -4,6 +4,7 @@ pub mod subject {
     pub use std::fmt::Debug;
 
     use downcast_rs::{impl_downcast, Downcast};
+    pub use serde_json;
     pub use subject_derive::*;
 
     #[derive(thiserror::Error, Debug, PartialEq, Eq)]

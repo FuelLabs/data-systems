@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use fuel_streams_core::stream::*;
 use fuel_streams_domains::SubjectPayload;
 use fuel_streams_store::record::RecordEntity;
@@ -5,7 +7,7 @@ use fuel_streams_store::record::RecordEntity;
 use super::errors::WsSubscriptionError;
 
 pub async fn create_live_subscriber(
-    streams: &FuelStreams,
+    streams: &Arc<FuelStreams>,
     subject_json: &SubjectPayload,
 ) -> Result<BoxedStream, WsSubscriptionError> {
     let record_entity = subject_json.record_entity();
@@ -38,9 +40,8 @@ pub async fn create_live_subscriber(
     Ok(Box::new(stream))
 }
 
-/// Creates a historical subscription stream for a given record entity
 pub async fn create_historical_subscriber(
-    streams: &FuelStreams,
+    streams: &Arc<FuelStreams>,
     subject_json: &SubjectPayload,
 ) -> Result<BoxedStream, WsSubscriptionError> {
     let record_entity = subject_json.record_entity();

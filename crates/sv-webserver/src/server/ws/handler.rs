@@ -42,8 +42,8 @@ pub async fn handle_binary_message(
     msg: Bytes,
     user_id: Uuid,
     session: Session,
-    telemetry: Arc<Telemetry>,
-    streams: Arc<FuelStreams>,
+    telemetry: &Arc<Telemetry>,
+    streams: &Arc<FuelStreams>,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received binary {:?}", msg);
 
@@ -64,8 +64,8 @@ async fn handle_subscribe(
     payload: SubscriptionPayload,
     ctx: WsContext,
     mut session: Session,
-    telemetry: Arc<Telemetry>,
-    streams: Arc<FuelStreams>,
+    telemetry: &Arc<Telemetry>,
+    streams: &Arc<FuelStreams>,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received subscribe message: {:?}", payload);
 
@@ -73,9 +73,9 @@ async fn handle_subscribe(
     let subject_payload: SubjectPayload = payload.clone().try_into()?;
     let sub = match payload.deliver_policy {
         DeliverPolicy::All => {
-            create_historical_subscriber(&streams, &subject_payload).await
+            create_historical_subscriber(streams, &subject_payload).await
         }
-        _ => create_live_subscriber(&streams, &subject_payload).await,
+        _ => create_live_subscriber(streams, &subject_payload).await,
     };
 
     let sub = handle_ws_error!(sub, ctx.clone());
@@ -87,15 +87,18 @@ async fn handle_subscribe(
     .await;
 
     // Start subscription processing in a background task
-    actix_web::rt::spawn(async move {
-        process_subscription(
-            sub,
-            stream_session,
-            ctx.user_id,
-            telemetry,
-            payload,
-        )
-        .await;
+    actix_web::rt::spawn({
+        let telemetry = telemetry.clone();
+        async move {
+            process_subscription(
+                sub,
+                stream_session,
+                ctx.user_id,
+                &telemetry,
+                payload,
+            )
+            .await;
+        }
     });
 
     Ok(())
@@ -144,7 +147,7 @@ async fn process_subscription(
     mut sub: BoxedStream,
     mut stream_session: Session,
     user_id: Uuid,
-    telemetry: Arc<Telemetry>,
+    telemetry: &Arc<Telemetry>,
     payload: SubscriptionPayload,
 ) {
     let payload_str = payload.clone().to_string();

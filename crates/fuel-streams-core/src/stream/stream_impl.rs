@@ -96,6 +96,7 @@ impl<R: Record> Stream<R> {
         &self,
         subject: Arc<dyn IntoSubject>,
     ) -> Result<BoxStream<'static, (String, Vec<u8>)>, StreamError> {
+        let store = self.store.clone();
         let live_stream = self.subscribe_live(&subject).await?;
         let (live_sender, live_receiver) = tokio::sync::mpsc::channel(100);
 
@@ -110,14 +111,15 @@ impl<R: Record> Stream<R> {
             }
         });
 
-        let historical_stream = self.store.stream_by_subject(&subject).await?;
+        let subject_clone = subject.clone();
+        let historical_stream = store.stream_by_subject(subject).await?;
         let historical_stream = historical_stream
             .map_err(StreamError::Store)
             .map_ok(move |record| {
-                (subject.parse(), record.encoded_value().to_vec())
+                (subject_clone.parse(), record.encoded_value().to_vec())
             });
 
-        let merged = async_stream::stream! {
+        let stream = async_stream::stream! {
             let mut historical = Box::pin(historical_stream);
             while let Some(result) = historical.next().await {
                 if let Ok(record) = result {
@@ -130,6 +132,6 @@ impl<R: Record> Stream<R> {
             }
         };
 
-        Ok(Box::pin(merged))
+        Ok(Box::pin(stream))
     }
 }

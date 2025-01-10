@@ -34,13 +34,17 @@ pub trait Record: RecordEncoder + 'static {
     async fn find_many_by_subject(
         db: &Db,
         subject: &Arc<dyn IntoSubject>,
+        offset: i64,
+        limit: i64,
     ) -> DbResult<Vec<Self::DbItem>> {
         let sql_where = subject.to_sql_where();
         let query = format!(
-            "SELECT * FROM {} WHERE {} ORDER BY {} DESC",
+            "SELECT * FROM {} WHERE {} ORDER BY {} DESC LIMIT {} OFFSET {}",
             Self::ENTITY.table_name(),
             sql_where,
-            Self::ORDER_PROPS.join(", ")
+            Self::ORDER_PROPS.join(", "),
+            limit,
+            offset
         );
 
         let records = sqlx::query_as::<_, Self::DbItem>(&query)
@@ -73,8 +77,11 @@ pub trait Record: RecordEncoder + 'static {
         db: &Db,
         subject: &Arc<dyn IntoSubject>,
         namespace: &str,
+        offset: i64,
+        limit: i64,
     ) -> DbResult<Vec<Self::DbItem>> {
-        let records = Self::find_many_by_subject(db, subject).await?;
+        let records =
+            Self::find_many_by_subject(db, subject, offset, limit).await?;
         let records = records
             .into_iter()
             .filter(|record| record.subject_str().starts_with(namespace))

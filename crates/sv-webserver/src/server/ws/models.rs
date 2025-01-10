@@ -61,15 +61,16 @@ pub struct SubscriptionPayload {
     pub subject: String,
     pub params: serde_json::Value,
 }
-impl SubscriptionPayload {
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-}
 impl TryFrom<SubscriptionPayload> for SubjectPayload {
     type Error = SubjectPayloadError;
     fn try_from(payload: SubscriptionPayload) -> Result<Self, Self::Error> {
         SubjectPayload::new(payload.subject, payload.params)
+    }
+}
+impl std::fmt::Display for SubscriptionPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{s}")
     }
 }
 

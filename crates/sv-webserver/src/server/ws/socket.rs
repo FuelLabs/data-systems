@@ -123,14 +123,8 @@ async fn handle_binary(
     telemetry: &Arc<crate::telemetry::Telemetry>,
     streams: &Arc<fuel_streams_core::FuelStreams>,
 ) {
-    let _ = handle_binary_message(
-        bytes,
-        user_id,
-        session,
-        Arc::clone(telemetry),
-        Arc::clone(streams),
-    )
-    .await;
+    let _ = handle_binary_message(bytes, user_id, session, telemetry, streams)
+        .await;
 }
 
 async fn handle_close(

@@ -71,8 +71,9 @@ pub fn from_json_fn(field_names: &[&Ident]) -> TokenStream {
 
     quote! {
         fn from_json(json: &str) -> Result<Self, SubjectError> {
-            let parsed: serde_json::Value = serde_json::from_str(json)
-                .map_err(|e| SubjectError::InvalidJsonConversion(e.to_string()))?;
+            let parsed: fuel_streams_macros::subject::serde_json::Value =
+                fuel_streams_macros::subject::serde_json::from_str(json)
+                    .map_err(|e| SubjectError::InvalidJsonConversion(e.to_string()))?;
 
             let obj = match parsed.as_object() {
                 Some(obj) => obj,
@@ -99,7 +100,7 @@ pub fn id_fn() -> TokenStream {
 pub fn to_json_fn() -> TokenStream {
     quote! {
         fn to_json(&self) -> String {
-            serde_json::to_string(self).unwrap()
+            fuel_streams_macros::subject::serde_json::to_string(self).unwrap()
         }
     }
 }

@@ -45,7 +45,7 @@ fn main_subject(
         Input::Contract(InputContract { utxo_id, .. }) => {
             let utxo = Utxo {
                 utxo_id: utxo_id.to_owned(),
-                tx_id: tx_id.to_owned().into(),
+                tx_id: tx_id.to_owned(),
                 ..Default::default()
             };
             let subject = UtxosSubject {
@@ -65,7 +65,7 @@ fn main_subject(
             let utxo = Utxo {
                 utxo_id: utxo_id.to_owned(),
                 amount: Some(*amount),
-                tx_id: tx_id.to_owned().into(),
+                tx_id: tx_id.to_owned(),
                 ..Default::default()
             };
             let subject = UtxosSubject {
@@ -91,7 +91,7 @@ fn main_subject(
         ) => {
             let utxo_id = input.computed_utxo_id();
             let utxo = Utxo {
-                tx_id: tx_id.to_owned().into(),
+                tx_id: tx_id.to_owned(),
                 utxo_id: utxo_id.to_owned(),
                 sender: Some(sender.to_owned()),
                 recipient: Some(recipient.to_owned()),

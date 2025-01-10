@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{stream, stream::BoxStream, StreamExt};
+use futures::stream::BoxStream;
 
 use super::StoreError;
 use crate::{
@@ -31,27 +31,43 @@ impl<R: Record> Store<R> {
         &self,
         packet: &RecordPacket<R>,
     ) -> StoreResult<R::DbItem> {
-        let db_record = packet.record.insert(&self.db, &packet).await?;
+        let db_record = packet.record.insert(&self.db, packet).await?;
         Ok(db_record)
     }
 
     pub async fn find_many_by_subject(
         &self,
         subject: &Arc<dyn IntoSubject>,
+        offset: i64,
+        limit: i64,
     ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject(&self.db, subject)
+        R::find_many_by_subject(&self.db, subject, offset, limit)
             .await
             .map_err(StoreError::from)
     }
 
     pub async fn stream_by_subject(
         &self,
-        subject: &Arc<dyn IntoSubject>,
+        subject: Arc<dyn IntoSubject>,
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
-        let items = self.find_many_by_subject(subject).await?;
-        let stream = stream::iter(items)
-            .map(|item| async move { Ok(item) })
-            .buffered(10);
+        const DEFAULT_PAGE_SIZE: i64 = 100;
+        let db = self.db.clone();
+
+        let stream = async_stream::try_stream! {
+            let mut offset = 0;
+            loop {
+                let items = R::find_many_by_subject(&db, &subject, offset, DEFAULT_PAGE_SIZE).await?;
+                if items.is_empty() {
+                    break;
+                }
+
+                for item in items {
+                    yield item;
+                }
+
+                offset += DEFAULT_PAGE_SIZE;
+            }
+        };
 
         Ok(Box::pin(stream))
     }
@@ -61,8 +77,10 @@ impl<R: Record> Store<R> {
         &self,
         subject: &Arc<dyn IntoSubject>,
         namespace: &str,
+        offset: i64,
+        limit: i64,
     ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject_ns(&self.db, subject, namespace)
+        R::find_many_by_subject_ns(&self.db, subject, namespace, offset, limit)
             .await
             .map_err(StoreError::from)
     }
@@ -75,5 +93,33 @@ impl<R: Record> Store<R> {
         R::find_last_record_ns(&self.db, namespace)
             .await
             .map_err(StoreError::from)
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub async fn stream_by_subject_ns(
+        &self,
+        subject: Arc<dyn IntoSubject>,
+        namespace: String,
+    ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
+        const DEFAULT_PAGE_SIZE: i64 = 100;
+        let db = self.db.clone();
+
+        let stream = async_stream::try_stream! {
+            let mut offset = 0;
+            loop {
+                let items = R::find_many_by_subject_ns(&db, &subject, &namespace, offset, DEFAULT_PAGE_SIZE).await?;
+                if items.is_empty() {
+                    break;
+                }
+
+                for item in items {
+                    yield item;
+                }
+
+                offset += DEFAULT_PAGE_SIZE;
+            }
+        };
+
+        Ok(Box::pin(stream))
     }
 }

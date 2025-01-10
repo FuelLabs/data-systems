@@ -11,7 +11,6 @@ version = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
-async-trait = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = [
     "p2p",
     "relayer",
@@ -21,7 +20,6 @@ fuel-core = { workspace = true, default-features = false, features = [
 fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
 fuel-core-importer = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
-fuel-streams-store = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 

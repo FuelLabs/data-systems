@@ -13,7 +13,7 @@ rust-version = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true }
-async-stream = "0.3"
+async-stream = { workspace = true }
 async-trait = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = [
     "p2p",
@@ -36,8 +36,6 @@ fuel-streams-nats = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
 futures = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
