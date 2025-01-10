@@ -8,7 +8,7 @@ const NATS_URL: &str = "nats://localhost:4222";
 #[tokio::test]
 async fn test_streaming_live_data() -> anyhow::Result<()> {
     let stream = setup_stream(NATS_URL).await?;
-    let data = create_multiple_test_data(10, 1);
+    let data = create_multiple_test_data(10, 0);
 
     tokio::spawn({
         let data = data.clone();

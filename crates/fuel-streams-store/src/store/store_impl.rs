@@ -52,7 +52,6 @@ impl<R: Record> Store<R> {
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
         const DEFAULT_PAGE_SIZE: i64 = 100;
         let db = self.db.clone();
-
         let stream = async_stream::try_stream! {
             let mut offset = 0;
             loop {
@@ -103,7 +102,6 @@ impl<R: Record> Store<R> {
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
         const DEFAULT_PAGE_SIZE: i64 = 100;
         let db = self.db.clone();
-
         let stream = async_stream::try_stream! {
             let mut offset = 0;
             loop {
