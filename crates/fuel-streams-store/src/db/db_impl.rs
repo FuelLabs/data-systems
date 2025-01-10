@@ -79,4 +79,8 @@ impl Db {
             .map_err(DbError::TruncateTable)?;
         Ok(())
     }
+
+    pub fn pool_ref(&self) -> &Pool<Postgres> {
+        &self.pool
+    }
 }

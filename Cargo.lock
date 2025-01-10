@@ -3618,6 +3618,7 @@ dependencies = [
  "async-nats",
  "async-stream",
  "async-trait",
+ "dotenvy",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-importer",
@@ -3703,6 +3704,7 @@ version = "0.0.15"
 dependencies = [
  "async-nats",
  "dotenvy",
+ "futures",
  "pretty_assertions",
  "rand",
  "serde_json",

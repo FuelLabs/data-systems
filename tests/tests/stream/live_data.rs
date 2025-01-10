@@ -22,12 +22,9 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
 
             while let Some((index, record)) = subscriber.next().await {
                 let record = record.unwrap();
-                let expected_subject = data[index].0.parse();
                 let expected_block = &data[index].1;
-                let decoded_block = Block::decode(&record.1).await.unwrap();
-                assert_eq!(record.0, expected_subject);
+                let decoded_block = Block::decode(&record).await.unwrap();
                 assert_eq!(decoded_block, *expected_block);
-
                 if index == data.len() - 1 {
                     break;
                 }

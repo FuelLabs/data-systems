@@ -13,6 +13,7 @@ rust-version = { workspace = true }
 [dependencies]
 async-nats = { workspace = true }
 dotenvy = { workspace = true }
+futures = { workspace = true }
 rand = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

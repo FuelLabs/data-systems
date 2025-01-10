@@ -1,3 +1,4 @@
+pub(super) mod config;
 mod deliver_policy;
 mod error;
 mod fuel_streams;

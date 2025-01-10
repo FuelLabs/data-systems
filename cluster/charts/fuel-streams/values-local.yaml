@@ -6,13 +6,6 @@ commonConfigMap:
   enabled: true
   data:
     USE_METRICS: "false"
-    NATS_URL: "fuel-streams-nats:4222"
-    NATS_SYSTEM_USER: "sys"
-    NATS_SYSTEM_PASS: "sys"
-    NATS_ADMIN_USER: "admin"
-    NATS_ADMIN_PASS: "admin"
-    NATS_PUBLIC_USER: "default_user"
-    NATS_PUBLIC_PASS: ""
 
 # Reduce storage requirements for local development
 publisher:

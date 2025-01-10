@@ -1,16 +1,13 @@
 use async_nats::{
+    client::PublishErrorKind,
     error,
     jetstream::{
         consumer::StreamErrorKind,
-        context::{
-            CreateKeyValueErrorKind,
-            CreateStreamErrorKind,
-            PublishError,
-        },
-        kv::{PutError, WatchErrorKind},
+        context::{self, CreateStreamErrorKind},
         stream::ConsumerErrorKind,
     },
     ConnectErrorKind,
+    SubscribeError,
 };
 
 use super::types::PayloadSize;
@@ -30,13 +27,11 @@ pub enum NatsError {
         source: error::Error<ConnectErrorKind>,
     },
     #[error(transparent)]
-    StoreCreation(#[from] error::Error<CreateKeyValueErrorKind>),
+    Publish(#[from] error::Error<PublishErrorKind>),
     #[error(transparent)]
-    StorePublish(#[from] PutError),
+    Subscribe(#[from] SubscribeError),
     #[error(transparent)]
-    StoreSubscribe(#[from] error::Error<WatchErrorKind>),
-    #[error(transparent)]
-    StreamPublish(#[from] PublishError),
+    StreamPublish(#[from] error::Error<context::PublishErrorKind>),
     #[error(transparent)]
     StreamCreation(#[from] error::Error<CreateStreamErrorKind>),
     #[error(transparent)]

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_streams_macros::subject::IntoSubject;
@@ -11,12 +11,12 @@ use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,
 };
-use tokio::sync::OnceCell;
+use tokio::{sync::OnceCell, time::sleep};
 
-use super::StreamError;
+use super::{config, StreamError};
 use crate::{nats::*, DeliverPolicy};
 
-pub type BoxedStreamItem = Result<(String, Vec<u8>), StreamError>;
+pub type BoxedStreamItem = Result<Vec<u8>, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
@@ -62,58 +62,43 @@ impl<R: Record> Stream<R> {
         &self,
         packet: &Arc<RecordPacket<R>>,
     ) -> Result<R::DbItem, StreamError> {
+        let client = self.nats_client.clone();
         let db_record = self.store.insert_record(packet).await?;
-        self.publish_to_nats(packet.subject_str(), db_record.encoded_value())
-            .await?;
+        let encoded_value = db_record.encoded_value();
+        let subject = packet.subject_str();
+        client.publish(subject, encoded_value).await?;
         Ok(db_record)
-    }
-
-    async fn publish_to_nats(
-        &self,
-        subject: impl ToString,
-        record_encoded: &[u8],
-    ) -> Result<(), StreamError> {
-        let client = self.nats_client.nats_client.clone();
-        let payload = record_encoded.to_vec();
-        client.publish(subject.to_string(), payload.into()).await?;
-        Ok(())
     }
 
     pub async fn subscribe_dynamic(
         &self,
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+    ) -> BoxStream<'static, Result<Vec<u8>, StreamError>> {
         let store = self.store.clone();
         let client = self.nats_client.clone();
         let subject_clone = subject.clone();
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                // Get historical data using store's built-in pagination
-                let historical_stream = store
-                    .stream_by_subject(subject_clone, Some(block_height))
-                    .await?;
-                futures::pin_mut!(historical_stream);
-                while let Some(result) = historical_stream.next().await {
+                let height = Some(block_height);
+                let historical = store.stream_by_subject(subject_clone, height);
+                futures::pin_mut!(historical);
+                while let Some(result) = historical.next().await {
                     let item = result.map_err(StreamError::Store)?;
-                    yield (item.subject_str(), item.encoded_value().to_vec());
+                    yield item.encoded_value().to_vec();
+                    let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
+                    sleep(Duration::from_millis(throttle_time as u64)).await;
                 }
             }
-
-            // Live subscription
             let client = client.nats_client.clone();
-            let subscription = client.subscribe(subject.parse()).await?;
-            let live_stream = subscription.then(|msg| async move {
-                let payload = msg.payload;
-                (msg.subject.to_string(), payload.to_vec())
-            });
-
-            futures::pin_mut!(live_stream);
-            while let Some(msg) = live_stream.next().await {
-                yield msg;
+            let live = client.subscribe(subject.parse()).await?;
+            futures::pin_mut!(live);
+            while let Some(msg) = live.next().await {
+                yield msg.payload.to_vec();
+                let throttle_time = *config::STREAM_THROTTLE_LIVE;
+                sleep(Duration::from_millis(throttle_time as u64)).await;
             }
         };
-
         Box::pin(stream)
     }
 
@@ -121,7 +106,7 @@ impl<R: Record> Stream<R> {
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+    ) -> BoxStream<'static, Result<Vec<u8>, StreamError>> {
         let subject = Arc::new(subject);
         self.subscribe_dynamic(subject, deliver_policy).await
     }

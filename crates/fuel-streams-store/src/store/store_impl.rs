@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use fuel_streams_macros::subject::IntoSubject;
-use futures::stream::BoxStream;
+use futures::{stream::BoxStream, StreamExt};
 
-use super::StoreError;
+use super::{config, StoreError};
 use crate::{
     db::Db,
     record::{QueryOptions, Record, RecordPacket},
@@ -37,8 +37,7 @@ impl<R: Record> Store<R> {
         &self,
         packet: &RecordPacket<R>,
     ) -> StoreResult<R::DbItem> {
-        let db_record = packet.record.insert(&self.db, packet).await?;
-        Ok(db_record)
+        with_retry(|| packet.record.insert(&self.db, packet)).await
     }
 
     pub async fn find_many_by_subject(
@@ -54,29 +53,26 @@ impl<R: Record> Store<R> {
             .map_err(StoreError::from)
     }
 
-    pub async fn stream_by_subject(
+    pub fn stream_by_subject(
         &self,
         subject: Arc<dyn IntoSubject>,
         from_block: Option<u64>,
-    ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
-        let db = self.db.clone();
-        let namespace = self.namespace.clone();
-        let stream = async_stream::try_stream! {
-            let mut options = QueryOptions::default()
+    ) -> BoxStream<'static, Result<R::DbItem, StoreError>> {
+        let db = Arc::clone(&self.db);
+        async_stream::stream! {
+            let options = QueryOptions::default()
                 .with_from_block(from_block)
-                .with_namespace(namespace);
-            loop {
-                let items = R::find_many_by_subject(&db, &subject, options.clone()).await?;
-                if items.is_empty() {
-                    break;
-                }
-                for item in items {
-                    yield item;
-                }
-                options.increment_offset();
+                .with_limit(*config::STORE_PAGINATION_LIMIT);
+
+            let sql = R::build_find_many_query(subject, options);
+            let mut stream = sqlx::query_as::<_, R::DbItem>(sql.as_str())
+                .fetch(&db.pool);
+
+            while let Some(result) = stream.next().await {
+                yield result.map_err(StoreError::from);
             }
-        };
-        Ok(Box::pin(stream))
+        }
+        .boxed()
     }
 
     pub async fn find_last_record(&self) -> StoreResult<Option<R::DbItem>> {
@@ -89,5 +85,31 @@ impl<R: Record> Store<R> {
         R::find_last_record(&self.db, namespace)
             .await
             .map_err(StoreError::from)
+    }
+}
+
+async fn with_retry<F, Fut, T, E>(f: F) -> StoreResult<T>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, E>>,
+    StoreError: From<E>,
+{
+    let mut attempt = 0;
+    loop {
+        match f().await {
+            Ok(result) => return Ok(result),
+            Err(err) => {
+                attempt += 1;
+                if attempt >= *config::STORE_MAX_RETRIES {
+                    return Err(StoreError::from(err));
+                }
+
+                // Exponential backoff: 100ms, 200ms, 400ms
+                let initial_backoff_ms = *config::STORE_INITIAL_BACKOFF_MS;
+                let delay = initial_backoff_ms * (1 << (attempt - 1));
+                tokio::time::sleep(std::time::Duration::from_millis(delay))
+                    .await;
+            }
+        }
     }
 }

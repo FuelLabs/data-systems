@@ -127,8 +127,8 @@ fn parse_client_message(
         .map_err(WsSubscriptionError::UnserializablePayload)
 }
 
-pub static WS_THROTTLE_TIME: LazyLock<usize> = LazyLock::new(|| {
-    dotenvy::var("WS_THROTTLE_TIME")
+pub static STREAM_THROTTLE_TIME: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("STREAM_THROTTLE_TIME")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(300)
@@ -182,7 +182,7 @@ async fn process_subscription(
         }
 
         // Add delay to throttle data streaming
-        sleep(Duration::from_millis(*WS_THROTTLE_TIME as u64)).await;
+        sleep(Duration::from_millis(*STREAM_THROTTLE_TIME as u64)).await;
     }
 
     // Stream ended normally

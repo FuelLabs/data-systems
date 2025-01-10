@@ -4,4 +4,6 @@ use crate::db::DbError;
 pub enum StoreError {
     #[error(transparent)]
     Db(#[from] DbError),
+    #[error(transparent)]
+    Stream(#[from] sqlx::Error),
 }

@@ -8,11 +8,11 @@ use super::{
 };
 
 pub async fn decode_record(
-    subject_payload: SubscriptionPayload,
-    (subject, data): (String, Vec<u8>),
+    payload: SubscriptionPayload,
+    data: Vec<u8>,
 ) -> Result<Vec<u8>, WsSubscriptionError> {
-    let subject_payload: SubjectPayload = subject_payload.try_into()?;
-    let payload = decode_to_json_value(&subject_payload, data).await?;
+    let subject = payload.subject.clone();
+    let payload = decode_to_json_value(&payload.try_into()?, data).await?;
     let response_message = ResponseMessage { subject, payload };
     serde_json::to_vec(&ServerMessage::Response(response_message))
         .map_err(WsSubscriptionError::UnserializablePayload)

@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use async_nats::{
-    error,
-    jetstream::{context::CreateKeyValueErrorKind, kv},
-};
+use futures::{Stream, StreamExt};
 use tracing::info;
 
 use super::{types::*, NatsClientOpts, NatsError, NatsNamespace};
@@ -83,18 +80,29 @@ impl NatsClient {
         })
     }
 
-    pub async fn get_or_create_kv_store(
+    pub async fn publish(
         &self,
-        options: kv::Config,
-    ) -> Result<kv::Store, error::Error<CreateKeyValueErrorKind>> {
-        let bucket = options.bucket.clone();
-        let store = self.jetstream.get_key_value(&bucket).await;
-        let store = match store {
-            Ok(store) => store,
-            Err(_) => self.jetstream.create_key_value(options).await?,
-        };
+        subject: impl ToString,
+        payload: impl Into<Vec<u8>>,
+    ) -> Result<(), NatsError> {
+        let subject = subject.to_string();
+        self.nats_client
+            .publish(subject, payload.into().into())
+            .await?;
+        Ok(())
+    }
 
-        Ok(store)
+    pub async fn subscribe(
+        &self,
+        subject: impl ToString,
+    ) -> Result<impl Stream<Item = Vec<u8>>, NatsError> {
+        let subject = subject.to_string();
+        let subscription = self.nats_client.subscribe(subject).await?;
+        let subscription = subscription.then(|msg| async move {
+            let payload = msg.payload;
+            payload.to_vec()
+        });
+        Ok(subscription)
     }
 
     pub fn is_connected(&self) -> bool {
