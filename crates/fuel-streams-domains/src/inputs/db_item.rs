@@ -67,7 +67,6 @@ impl TryFrom<&RecordPacket<Input>> for InputDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket<Input>) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-
         try_packet_subject_match!(packet, {
             InputsCoinSubject => subject => {
                 Ok(InputDbItem {
@@ -78,7 +77,7 @@ impl TryFrom<&RecordPacket<Input>> for InputDbItem {
                     tx_index: subject.tx_index.unwrap() as i64,
                     input_index: subject.input_index.unwrap() as i64,
                     input_type: "coin".to_string(),
-                    owner_id: Some(subject.owner.unwrap().to_string()),
+                    owner_id: Some(subject.owner_id.unwrap().to_string()),
                     asset_id: Some(subject.asset_id.unwrap().to_string()),
                     contract_id: None,
                     sender: None,

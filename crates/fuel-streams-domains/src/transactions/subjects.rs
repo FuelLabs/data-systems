@@ -7,12 +7,12 @@ use crate::{blocks::types::*, transactions::types::*};
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "transactions"]
 #[subject_wildcard = "transactions.>"]
-#[subject_format = "transactions.{block_height}.{tx_id}.{tx_index}.{status}.{kind}"]
+#[subject_format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{kind}"]
 pub struct TransactionsSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
-    pub status: Option<TransactionStatus>,
+    pub tx_status: Option<TransactionStatus>,
     pub kind: Option<TransactionKind>,
 }
 

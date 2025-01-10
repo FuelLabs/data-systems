@@ -14,7 +14,8 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         let data = data.clone();
         let stream = stream.clone();
         async move {
-            let subject = BlocksSubject::new().with_height(None).dyn_arc();
+            let subject =
+                BlocksSubject::new().with_block_height(None).dyn_arc();
             let mut subscriber = stream
                 .subscribe(subject, DeliverPolicy::New)
                 .await

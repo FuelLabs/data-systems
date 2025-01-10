@@ -24,7 +24,7 @@ fn packet_from_tx(
         block_height: Some(block_height.to_owned()),
         tx_index: Some(tx_index as u32),
         tx_id: Some(tx_id.to_owned()),
-        status: Some(tx_status),
+        tx_status: Some(tx_status),
         kind: Some(tx.kind.to_owned()),
     }
     .arc();

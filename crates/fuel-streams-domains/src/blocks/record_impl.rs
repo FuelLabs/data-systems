@@ -15,7 +15,7 @@ impl Record for Block {
     type DbItem = BlockDbItem;
 
     const ENTITY: RecordEntity = RecordEntity::Block;
-    const ORDER_PROPS: &'static [&'static str] = &["height"];
+    const ORDER_PROPS: &'static [&'static str] = &["block_height"];
 
     async fn insert(
         &self,
@@ -25,14 +25,14 @@ impl Record for Block {
         let db_item = BlockDbItem::try_from(packet)?;
         let record = sqlx::query_as::<_, Self::DbItem>(
             r#"
-            INSERT INTO blocks (subject, producer_address, height, value)
+            INSERT INTO blocks (subject, producer_address, block_height, value)
             VALUES ($1, $2, $3, $4)
-            RETURNING subject, producer_address, height, value
+            RETURNING subject, producer_address, block_height, value
             "#,
         )
         .bind(db_item.subject)
         .bind(db_item.producer_address)
-        .bind(db_item.height)
+        .bind(db_item.block_height)
         .bind(db_item.value)
         .fetch_one(&db.pool)
         .await

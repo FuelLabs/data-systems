@@ -4,7 +4,7 @@ use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_macros::subject::IntoSubject;
 
-use super::{RecordEntity, RecordPacket};
+use super::{QueryOptions, RecordEntity, RecordPacket};
 use crate::db::{Db, DbError, DbItem, DbResult};
 
 pub trait RecordEncoder: DataEncoder<Err = DbError> {}
@@ -34,84 +34,67 @@ pub trait Record: RecordEncoder + 'static {
     async fn find_many_by_subject(
         db: &Db,
         subject: &Arc<dyn IntoSubject>,
-        offset: i64,
-        limit: i64,
-        from_block: Option<u64>,
+        options: QueryOptions,
     ) -> DbResult<Vec<Self::DbItem>> {
-        let sql_where = subject.to_sql_where();
-        let sql_where = if let Some(from_block) = from_block {
-            format!("{} AND block_height >= {}", sql_where, from_block)
-        } else {
-            sql_where
-        };
-        let query = format!(
-            "SELECT * FROM {} WHERE {} ORDER BY {} DESC LIMIT {} OFFSET {}",
-            Self::ENTITY.table_name(),
-            sql_where,
-            Self::ORDER_PROPS.join(", "),
-            limit,
-            offset
-        );
+        let mut query_builder = sqlx::QueryBuilder::new(format!(
+            "SELECT * FROM {}",
+            Self::ENTITY.table_name()
+        ));
 
-        let records = sqlx::query_as::<_, Self::DbItem>(&query)
+        query_builder.push(" WHERE ").push(subject.to_sql_where());
+        if let Some(block) = options.from_block {
+            query_builder
+                .push(" AND block_height >= ")
+                .push_bind(block as i64);
+        }
+
+        query_builder
+            .push(" ORDER BY ")
+            .push(Self::ORDER_PROPS.join(", "))
+            .push(" DESC LIMIT ")
+            .push_bind(options.limit)
+            .push(" OFFSET ")
+            .push_bind(options.offset);
+
+        let query = query_builder.build_query_as::<Self::DbItem>();
+        let mut records = query
             .fetch_all(&db.pool)
             .await
             .map_err(DbError::FindManyByPattern)?;
 
+        if cfg!(any(test, feature = "test-helpers")) {
+            if let Some(ns) = options.namespace {
+                records.retain(|record| record.subject_str().starts_with(&ns));
+            }
+        }
+
         Ok(records)
     }
 
-    async fn find_last_record(db: &Db) -> DbResult<Option<Self::DbItem>> {
-        let query = format!(
-            "SELECT * FROM {} ORDER BY {} DESC LIMIT 1",
-            Self::ENTITY.table_name(),
-            Self::ORDER_PROPS.join(", ")
-        );
-
-        let record = sqlx::query_as::<_, Self::DbItem>(&query)
-            .fetch_optional(&db.pool)
-            .await
-            .map_err(DbError::FindManyByPattern)?;
-
-        Ok(record)
-    }
-
-    /// TODO: Remove this once we have a better way to filter records by namespace
-    /// This is a temporary solution to allow testing with namespaces
-    #[cfg(any(test, feature = "test-helpers"))]
-    async fn find_many_by_subject_ns(
+    async fn find_last_record(
         db: &Db,
-        subject: &Arc<dyn IntoSubject>,
-        namespace: &str,
-        offset: i64,
-        limit: i64,
-        from_block: Option<u64>,
-    ) -> DbResult<Vec<Self::DbItem>> {
-        let records =
-            Self::find_many_by_subject(db, subject, offset, limit, from_block)
-                .await?;
-        let records = records
-            .into_iter()
-            .filter(|record| record.subject_str().starts_with(namespace))
-            .collect();
-        Ok(records)
-    }
-
-    /// TODO: Remove this once we have a better way to filter records by namespace
-    /// This is a temporary solution to allow testing with namespaces
-    #[cfg(any(test, feature = "test-helpers"))]
-    async fn find_last_record_ns(
-        db: &Db,
-        namespace: &str,
+        namespace: Option<&str>,
     ) -> DbResult<Option<Self::DbItem>> {
-        let query = format!(
-            "SELECT * FROM {} WHERE subject LIKE '{}%' ORDER BY {} DESC LIMIT 1",
-            Self::ENTITY.table_name(),
-            namespace,
-            Self::ORDER_PROPS.join(", ")
-        );
+        let mut query_builder = sqlx::QueryBuilder::new(format!(
+            "SELECT * FROM {}",
+            Self::ENTITY.table_name()
+        ));
 
-        let record = sqlx::query_as::<_, Self::DbItem>(&query)
+        if cfg!(any(test, feature = "test-helpers")) {
+            if let Some(ns) = namespace {
+                query_builder
+                    .push(" WHERE subject LIKE ")
+                    .push_bind(format!("{}%", ns));
+            }
+        }
+
+        query_builder
+            .push(" ORDER BY ")
+            .push(Self::ORDER_PROPS.join(", "))
+            .push(" DESC LIMIT 1");
+
+        let query = query_builder.build_query_as::<Self::DbItem>();
+        let record = query
             .fetch_optional(&db.pool)
             .await
             .map_err(DbError::FindManyByPattern)?;

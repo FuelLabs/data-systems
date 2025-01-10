@@ -7,13 +7,13 @@ use crate::blocks::types::*;
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "inputs_coin"]
 #[subject_wildcard = "inputs.>"]
-#[subject_format = "inputs.coin.{block_height}.{tx_id}.{tx_index}.{input_index}.{owner}.{asset_id}"]
+#[subject_format = "inputs.coin.{block_height}.{tx_id}.{tx_index}.{input_index}.{owner_id}.{asset_id}"]
 pub struct InputsCoinSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub input_index: Option<u32>,
-    pub owner: Option<Address>,
+    pub owner_id: Option<Address>,
     pub asset_id: Option<AssetId>,
 }
 

@@ -28,12 +28,12 @@ impl Record for Receipt {
             r#"
             INSERT INTO receipts (
                 subject, value, block_height, tx_id, tx_index, receipt_index,
-                receipt_type, from_contract_id, to_contract_id, to_address,
+                receipt_type, from_contract_id, to_contract_id,
                 asset_id, contract_id, sub_id, sender_address, recipient_address
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             RETURNING subject, value, block_height, tx_id, tx_index, receipt_index,
-                receipt_type, from_contract_id, to_contract_id, to_address,
+                receipt_type, from_contract_id, to_contract_id,
                 asset_id, contract_id, sub_id, sender_address, recipient_address
             "#,
         )
@@ -46,7 +46,6 @@ impl Record for Receipt {
         .bind(db_item.receipt_type)
         .bind(db_item.from_contract_id)
         .bind(db_item.to_contract_id)
-        .bind(db_item.to_address)
         .bind(db_item.asset_id)
         .bind(db_item.contract_id)
         .bind(db_item.sub_id)

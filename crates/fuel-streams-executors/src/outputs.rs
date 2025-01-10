@@ -46,7 +46,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             output_index: Some(output_index),
-            to: Some(to.to_owned()),
+            to_address: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
@@ -79,7 +79,7 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 output_index: Some(output_index),
-                to: Some(to.to_owned()),
+                to_address: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
             .arc()
@@ -90,7 +90,7 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 output_index: Some(output_index),
-                to: Some(to.to_owned()),
+                to_address: Some(to.to_owned()),
                 asset_id: Some(asset_id.to_owned()),
             }
             .arc()

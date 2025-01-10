@@ -50,8 +50,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            from_contract_id: Some(from.to_owned()),
+            to_contract_id: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
@@ -60,7 +60,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            id: Some(id.to_owned()),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::ReturnData(ReturnDataReceipt { id, .. }) => {
@@ -69,7 +69,7 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 receipt_index: Some(receipt_index),
-                id: Some(id.to_owned()),
+                contract_id: Some(id.to_owned()),
             }
             .arc()
         }
@@ -78,7 +78,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            id: Some(id.to_owned()),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Revert(RevertReceipt { id, .. }) => ReceiptsRevertSubject {
@@ -86,7 +86,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            id: Some(id.to_owned()),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Log(LogReceipt { id, .. }) => ReceiptsLogSubject {
@@ -94,7 +94,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            id: Some(id.to_owned()),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::LogData(LogDataReceipt { id, .. }) => ReceiptsLogDataSubject {
@@ -102,7 +102,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            id: Some(id.to_owned()),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Transfer(TransferReceipt {
@@ -115,8 +115,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            from_contract_id: Some(from.to_owned()),
+            to_contract_id: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
@@ -131,8 +131,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            from_contract_id: Some(from.to_owned()),
+            to_address: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
@@ -153,8 +153,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            sender: Some(sender.to_owned()),
-            recipient: Some(recipient.to_owned()),
+            sender_address: Some(sender.to_owned()),
+            recipient_address: Some(recipient.to_owned()),
         }
         .arc(),
         Receipt::Mint(MintReceipt {

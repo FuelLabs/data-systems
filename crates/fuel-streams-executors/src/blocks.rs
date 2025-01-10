@@ -13,7 +13,7 @@ impl Executor<Block> {
         let block_height = (*metadata.block_height).clone();
         let block_producer = (*metadata.block_producer).clone();
         let subject = BlocksSubject {
-            height: Some(block_height),
+            block_height: Some(block_height),
             producer: Some(block_producer),
         }
         .arc();

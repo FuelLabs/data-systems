@@ -2,27 +2,28 @@ use std::sync::Arc;
 
 use fuel_streams_core::{subjects::*, types::Block};
 use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
-use fuel_streams_store::record::Record;
+use fuel_streams_store::record::{QueryOptions, Record};
 use fuel_streams_test::{create_random_db_name, setup_store};
 
 #[tokio::test]
 async fn test_asterisk_wildcards() -> anyhow::Result<()> {
-    let store = setup_store().await?;
     let prefix = create_random_db_name();
+    let mut store = setup_store::<Block>().await?;
+    store.with_namespace(&prefix);
 
     // Create and insert test blocks with different subjects
     let blocks = vec![
         (
             MockBlock::build(1),
-            BlocksSubject::new().with_height(Some(1.into())),
+            BlocksSubject::new().with_block_height(Some(1.into())),
         ),
         (
             MockBlock::build(2),
-            BlocksSubject::new().with_height(Some(2.into())),
+            BlocksSubject::new().with_block_height(Some(2.into())),
         ),
         (
             MockBlock::build(3),
-            BlocksSubject::new().with_height(Some(3.into())),
+            BlocksSubject::new().with_block_height(Some(3.into())),
         ),
     ];
 
@@ -32,9 +33,10 @@ async fn test_asterisk_wildcards() -> anyhow::Result<()> {
     }
 
     // Test wildcard matching
-    let wildcard_subject = BlocksSubject::new().with_height(None).dyn_arc();
+    let wildcard_subject =
+        BlocksSubject::new().with_block_height(None).dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&wildcard_subject, &prefix, 0, 10, None)
+        .find_many_by_subject(&wildcard_subject, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 3);
 
@@ -43,14 +45,16 @@ async fn test_asterisk_wildcards() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_nonexistent_subjects() -> anyhow::Result<()> {
-    let store = setup_store::<Block>().await?;
     let prefix = create_random_db_name();
+    let mut store = setup_store::<Block>().await?;
+    store.with_namespace(&prefix);
 
     // Test finding with a subject that doesn't exist
-    let nonexistent_subject =
-        BlocksSubject::new().with_height(Some(999.into())).dyn_arc();
+    let nonexistent_subject = BlocksSubject::new()
+        .with_block_height(Some(999.into()))
+        .dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&nonexistent_subject, &prefix, 0, 10, None)
+        .find_many_by_subject(&nonexistent_subject, QueryOptions::default())
         .await?;
     assert!(records.is_empty());
 

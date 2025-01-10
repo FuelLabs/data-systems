@@ -10,9 +10,10 @@ use futures::StreamExt;
 #[tokio::test]
 async fn test_stream_by_subject() -> anyhow::Result<()> {
     // Setup store and test data
-    let store = setup_store::<Block>().await?;
-    let data = create_multiple_test_data(10, 0);
     let prefix = create_random_db_name();
+    let mut store = setup_store::<Block>().await?;
+    store.with_namespace(&prefix);
+    let data = create_multiple_test_data(10, 0);
 
     // Insert test records
     for (subject, block) in &data {
@@ -24,16 +25,14 @@ async fn test_stream_by_subject() -> anyhow::Result<()> {
 
     // Test streaming with the first subject
     let subject = data[0].0.clone();
-    let mut stream = store
-        .stream_by_subject_ns(subject.arc(), prefix.clone(), None)
-        .await?;
+    let mut stream = store.stream_by_subject(subject.arc(), Some(0)).await?;
 
     // Collect and verify streamed records
     let mut count = 0;
     while let Some(result) = stream.next().await {
         let record = result?;
         let height: u32 = data[count].1.height.clone().into();
-        assert_eq!(record.height as u32, height);
+        assert_eq!(record.block_height as u32, height);
         count += 1;
     }
 

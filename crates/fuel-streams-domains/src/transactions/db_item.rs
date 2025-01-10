@@ -63,7 +63,6 @@ impl TryFrom<&RecordPacket<Transaction>> for TransactionDbItem {
         packet: &RecordPacket<Transaction>,
     ) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-
         try_packet_subject_match!(packet, {
             TransactionsSubject => subject => {
                 Ok(TransactionDbItem {
@@ -72,7 +71,7 @@ impl TryFrom<&RecordPacket<Transaction>> for TransactionDbItem {
                     block_height: subject.block_height.unwrap().into(),
                     tx_id: subject.tx_id.unwrap().to_string(),
                     tx_index: subject.tx_index.unwrap() as i64,
-                    tx_status: subject.status.unwrap().to_string(),
+                    tx_status: subject.tx_status.unwrap().to_string(),
                     kind: subject.kind.unwrap().to_string(),
                 })
             }

@@ -6,7 +6,7 @@ use futures::stream::BoxStream;
 use super::StoreError;
 use crate::{
     db::Db,
-    record::{Record, RecordPacket},
+    record::{QueryOptions, Record, RecordPacket},
 };
 
 pub type StoreResult<T> = Result<T, StoreError>;
@@ -14,6 +14,7 @@ pub type StoreResult<T> = Result<T, StoreError>;
 #[derive(Debug, Clone)]
 pub struct Store<S: Record> {
     pub db: Arc<Db>,
+    pub namespace: Option<String>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -21,12 +22,17 @@ impl<R: Record> Store<R> {
     pub fn new(db: &Arc<Db>) -> Self {
         Self {
             db: Arc::clone(db),
+            namespace: None,
             _marker: std::marker::PhantomData,
         }
     }
-}
 
-impl<R: Record> Store<R> {
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn with_namespace(&mut self, namespace: &str) -> &mut Self {
+        self.namespace = Some(namespace.to_string());
+        self
+    }
+
     pub async fn insert_record(
         &self,
         packet: &RecordPacket<R>,
@@ -38,11 +44,12 @@ impl<R: Record> Store<R> {
     pub async fn find_many_by_subject(
         &self,
         subject: &Arc<dyn IntoSubject>,
-        offset: i64,
-        limit: i64,
-        from_block: Option<u64>,
+        mut options: QueryOptions,
     ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject(&self.db, subject, offset, limit, from_block)
+        if cfg!(any(test, feature = "test-helpers")) {
+            options = options.with_namespace(self.namespace.clone());
+        }
+        R::find_many_by_subject(&self.db, subject, options)
             .await
             .map_err(StoreError::from)
     }
@@ -52,78 +59,35 @@ impl<R: Record> Store<R> {
         subject: Arc<dyn IntoSubject>,
         from_block: Option<u64>,
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
-        const DEFAULT_PAGE_SIZE: i64 = 100;
         let db = self.db.clone();
+        let namespace = self.namespace.clone();
         let stream = async_stream::try_stream! {
-            let mut offset = 0;
+            let mut options = QueryOptions::default()
+                .with_from_block(from_block)
+                .with_namespace(namespace);
             loop {
-                let items = R::find_many_by_subject(&db, &subject, offset, DEFAULT_PAGE_SIZE, from_block).await?;
+                let items = R::find_many_by_subject(&db, &subject, options.clone()).await?;
                 if items.is_empty() {
                     break;
                 }
-
                 for item in items {
                     yield item;
                 }
-
-                offset += DEFAULT_PAGE_SIZE;
+                options.increment_offset();
             }
         };
-
         Ok(Box::pin(stream))
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub async fn find_many_by_subject_ns(
-        &self,
-        subject: &Arc<dyn IntoSubject>,
-        namespace: &str,
-        offset: i64,
-        limit: i64,
-        from_block: Option<u64>,
-    ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject_ns(
-            &self.db, subject, namespace, offset, limit, from_block,
-        )
-        .await
-        .map_err(StoreError::from)
-    }
+    pub async fn find_last_record(&self) -> StoreResult<Option<R::DbItem>> {
+        let namespace = if cfg!(any(test, feature = "test-helpers")) {
+            self.namespace.as_deref()
+        } else {
+            None
+        };
 
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub async fn find_last_record_ns(
-        &self,
-        namespace: &str,
-    ) -> StoreResult<Option<R::DbItem>> {
-        R::find_last_record_ns(&self.db, namespace)
+        R::find_last_record(&self.db, namespace)
             .await
             .map_err(StoreError::from)
-    }
-
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub async fn stream_by_subject_ns(
-        &self,
-        subject: Arc<dyn IntoSubject>,
-        namespace: String,
-        from_block: Option<u64>,
-    ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
-        const DEFAULT_PAGE_SIZE: i64 = 100;
-        let db = self.db.clone();
-        let stream = async_stream::try_stream! {
-            let mut offset = 0;
-            loop {
-                let items = R::find_many_by_subject_ns(&db, &subject, &namespace, offset, DEFAULT_PAGE_SIZE, from_block).await?;
-                if items.is_empty() {
-                    break;
-                }
-
-                for item in items {
-                    yield item;
-                }
-
-                offset += DEFAULT_PAGE_SIZE;
-            }
-        };
-
-        Ok(Box::pin(stream))
     }
 }

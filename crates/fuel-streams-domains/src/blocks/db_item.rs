@@ -15,7 +15,7 @@ use super::{Block, BlocksSubject};
 pub struct BlockDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub height: i64,
+    pub block_height: i64,
     pub producer_address: String,
 }
 
@@ -45,7 +45,7 @@ impl PartialOrd for BlockDbItem {
 
 impl Ord for BlockDbItem {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.height.cmp(&other.height)
+        self.block_height.cmp(&other.block_height)
     }
 }
 
@@ -58,7 +58,7 @@ impl TryFrom<&RecordPacket<Block>> for BlockDbItem {
                 Ok(BlockDbItem {
                     subject: packet.subject_str(),
                     value: record.encode_json().expect("Failed to encode block"),
-                    height: record.height.clone().into(),
+                    block_height: record.height.clone().into(),
                     producer_address: record.producer.to_string(),
                 })
             }

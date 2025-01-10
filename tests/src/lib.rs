@@ -24,7 +24,8 @@ pub async fn setup_db() -> DbResult<Db> {
 
 pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
     let db = setup_db().await?;
-    Ok(Store::new(&db.arc()))
+    let store = Store::new(&db.arc());
+    Ok(store)
 }
 
 pub async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {

@@ -6,7 +6,7 @@ use fuel_streams_domains::blocks::{
     types::MockBlock,
     BlockDbItem,
 };
-use fuel_streams_store::record::{Record, RecordPacket};
+use fuel_streams_store::record::{QueryOptions, Record, RecordPacket};
 use fuel_streams_test::{create_random_db_name, setup_store};
 
 #[tokio::test]
@@ -24,7 +24,7 @@ async fn test_block_db_item_conversion() -> anyhow::Result<()> {
 
     let height: i64 = block.height.clone().into();
     assert_eq!(db_item.subject, subject.parse());
-    assert_eq!(db_item.height, height);
+    assert_eq!(db_item.block_height, height);
     assert_eq!(db_item.producer_address, block.producer.to_string());
 
     // Verify we can decode the value back to a block
@@ -53,12 +53,13 @@ async fn test_basic_insert() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_multiple_inserts() -> anyhow::Result<()> {
-    let store = setup_store().await?;
+    let prefix = create_random_db_name();
+    let mut store = setup_store().await?;
+    store.with_namespace(&prefix);
     let subject = BlocksSubject::from(&MockBlock::build(1));
 
     // Insert first block
     let block1 = MockBlock::build(1);
-    let prefix = create_random_db_name();
     let packet = block1
         .to_packet(Arc::new(subject.clone()))
         .with_namespace(&prefix);
@@ -76,9 +77,9 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
     assert_eq!(Block::from_db_item(&db_record2).await?, block2);
 
     // Verify both records are found
-    let subject = BlocksSubject::new().with_height(None).dyn_arc();
+    let subject = BlocksSubject::new().with_block_height(None).dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&subject, &prefix, 0, 10, None)
+        .find_many_by_subject(&subject, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 2);
 
@@ -87,8 +88,9 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_find_many_by_subject() -> anyhow::Result<()> {
-    let store = setup_store().await?;
     let prefix = create_random_db_name();
+    let mut store = setup_store().await?;
+    store.with_namespace(&prefix);
     let subject1 = BlocksSubject::from(&MockBlock::build(1));
     let subject2 = BlocksSubject::from(&MockBlock::build(2));
 
@@ -107,14 +109,14 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
 
     // Test finding by subject1
     let records = store
-        .find_many_by_subject_ns(&subject1.dyn_arc(), &prefix, 0, 10, None)
+        .find_many_by_subject(&subject1.dyn_arc(), QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
     assert_eq!(Block::from_db_item(&records[0]).await?, block1);
 
     // Test finding by subject2
     let records = store
-        .find_many_by_subject_ns(&subject2.dyn_arc(), &prefix, 0, 10, None)
+        .find_many_by_subject(&subject2.dyn_arc(), QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
     assert_eq!(Block::from_db_item(&records[0]).await?, block2);
@@ -124,7 +126,9 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_find_last_record() -> anyhow::Result<()> {
-    let store = setup_store().await?;
+    let prefix = create_random_db_name();
+    let mut store = setup_store().await?;
+    store.with_namespace(&prefix);
     let subject = BlocksSubject::from(&MockBlock::build(1));
 
     // Insert multiple blocks
@@ -135,13 +139,14 @@ async fn test_find_last_record() -> anyhow::Result<()> {
     ];
 
     for block in &blocks {
-        store
-            .insert_record(&block.to_packet(Arc::new(subject.clone())))
-            .await?;
+        let packet = block
+            .to_packet(Arc::new(subject.clone()))
+            .with_namespace(&prefix);
+        store.insert_record(&packet).await?;
     }
 
     // Test finding last record
-    let last_record = Block::find_last_record(&store.db).await?;
+    let last_record = store.find_last_record().await?;
     assert!(last_record.is_some());
     let last_block = Block::from_db_item(&last_record.unwrap()).await?;
     assert_eq!(last_block, blocks.last().unwrap().clone());

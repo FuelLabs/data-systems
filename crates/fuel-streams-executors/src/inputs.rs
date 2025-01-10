@@ -52,7 +52,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             input_index: Some(input_index),
-            owner: Some(coin.owner.to_owned()),
+            owner_id: Some(coin.owner.to_owned()),
             asset_id: Some(coin.asset_id.to_owned()),
         }
         .arc(),

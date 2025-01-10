@@ -65,7 +65,6 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket<Output>) -> Result<Self, Self::Error> {
         let record = packet.record.as_ref();
-
         try_packet_subject_match!(packet, {
             OutputsCoinSubject => subject => {
                 Ok(OutputDbItem {
@@ -76,7 +75,7 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
                     tx_index: subject.tx_index.unwrap() as i64,
                     output_index: subject.output_index.unwrap() as i64,
                     output_type: "coin".to_string(),
-                    to_address: Some(subject.to.unwrap().to_string()),
+                    to_address: Some(subject.to_address.unwrap().to_string()),
                     asset_id: Some(subject.asset_id.unwrap().to_string()),
                     contract_id: None,
                 })
@@ -104,7 +103,7 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
                     tx_index: subject.tx_index.unwrap() as i64,
                     output_index: subject.output_index.unwrap() as i64,
                     output_type: "change".to_string(),
-                    to_address: Some(subject.to.unwrap().to_string()),
+                    to_address: Some(subject.to_address.unwrap().to_string()),
                     asset_id: Some(subject.asset_id.unwrap().to_string()),
                     contract_id: None,
                 })
@@ -118,7 +117,7 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
                     tx_index: subject.tx_index.unwrap() as i64,
                     output_index: subject.output_index.unwrap() as i64,
                     output_type: "variable".to_string(),
-                    to_address: Some(subject.to.unwrap().to_string()),
+                    to_address: Some(subject.to_address.unwrap().to_string()),
                     asset_id: Some(subject.asset_id.unwrap().to_string()),
                     contract_id: None,
                 })

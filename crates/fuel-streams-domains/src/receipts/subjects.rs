@@ -7,114 +7,114 @@ use crate::blocks::types::*;
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_call"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.call.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to}.{asset_id}"]
+#[subject_format = "receipts.call.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from_contract_id}.{to_contract_id}.{asset_id}"]
 pub struct ReceiptsCallSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub from: Option<ContractId>,
-    pub to: Option<ContractId>,
+    pub from_contract_id: Option<ContractId>,
+    pub to_contract_id: Option<ContractId>,
     pub asset_id: Option<AssetId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_return"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.return.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.return.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsReturnSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_return_data"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.return_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.return_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsReturnDataSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_panic"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.panic.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.panic.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsPanicSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_revert"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.revert.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.revert.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsRevertSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_log"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.log.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.log.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsLogSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_log_data"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.log_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{id}"]
+#[subject_format = "receipts.log_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract_id}"]
 pub struct ReceiptsLogDataSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub id: Option<ContractId>,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_transfer"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.transfer.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to}.{asset_id}"]
+#[subject_format = "receipts.transfer.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from_contract_id}.{to_contract_id}.{asset_id}"]
 pub struct ReceiptsTransferSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub from: Option<ContractId>,
-    pub to: Option<ContractId>,
+    pub from_contract_id: Option<ContractId>,
+    pub to_contract_id: Option<ContractId>,
     pub asset_id: Option<AssetId>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_transfer_out"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.transfer_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to}.{asset_id}"]
+#[subject_format = "receipts.transfer_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from_contract_id}.{to_address}.{asset_id}"]
 pub struct ReceiptsTransferOutSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub from: Option<ContractId>,
-    pub to: Option<Address>,
+    pub from_contract_id: Option<ContractId>,
+    pub to_address: Option<Address>,
     pub asset_id: Option<AssetId>,
 }
 
@@ -132,14 +132,14 @@ pub struct ReceiptsScriptResultSubject {
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject_id = "receipts_message_out"]
 #[subject_wildcard = "receipts.>"]
-#[subject_format = "receipts.message_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{sender}.{recipient}"]
+#[subject_format = "receipts.message_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{sender_address}.{recipient_address}"]
 pub struct ReceiptsMessageOutSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub receipt_index: Option<u32>,
-    pub sender: Option<Address>,
-    pub recipient: Option<Address>,
+    pub sender_address: Option<Address>,
+    pub recipient_address: Option<Address>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
