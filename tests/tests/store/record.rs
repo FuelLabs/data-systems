@@ -78,7 +78,7 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
     // Verify both records are found
     let subject = BlocksSubject::new().with_height(None).dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&subject, &prefix, 0, 10)
+        .find_many_by_subject_ns(&subject, &prefix, 0, 10, None)
         .await?;
     assert_eq!(records.len(), 2);
 
@@ -107,14 +107,14 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
 
     // Test finding by subject1
     let records = store
-        .find_many_by_subject_ns(&subject1.dyn_arc(), &prefix, 0, 10)
+        .find_many_by_subject_ns(&subject1.dyn_arc(), &prefix, 0, 10, None)
         .await?;
     assert_eq!(records.len(), 1);
     assert_eq!(Block::from_db_item(&records[0]).await?, block1);
 
     // Test finding by subject2
     let records = store
-        .find_many_by_subject_ns(&subject2.dyn_arc(), &prefix, 0, 10)
+        .find_many_by_subject_ns(&subject2.dyn_arc(), &prefix, 0, 10, None)
         .await?;
     assert_eq!(records.len(), 1);
     assert_eq!(Block::from_db_item(&records[0]).await?, block2);

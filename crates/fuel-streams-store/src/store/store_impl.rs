@@ -40,8 +40,9 @@ impl<R: Record> Store<R> {
         subject: &Arc<dyn IntoSubject>,
         offset: i64,
         limit: i64,
+        from_block: Option<u64>,
     ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject(&self.db, subject, offset, limit)
+        R::find_many_by_subject(&self.db, subject, offset, limit, from_block)
             .await
             .map_err(StoreError::from)
     }
@@ -49,13 +50,14 @@ impl<R: Record> Store<R> {
     pub async fn stream_by_subject(
         &self,
         subject: Arc<dyn IntoSubject>,
+        from_block: Option<u64>,
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
         const DEFAULT_PAGE_SIZE: i64 = 100;
         let db = self.db.clone();
         let stream = async_stream::try_stream! {
             let mut offset = 0;
             loop {
-                let items = R::find_many_by_subject(&db, &subject, offset, DEFAULT_PAGE_SIZE).await?;
+                let items = R::find_many_by_subject(&db, &subject, offset, DEFAULT_PAGE_SIZE, from_block).await?;
                 if items.is_empty() {
                     break;
                 }
@@ -78,10 +80,13 @@ impl<R: Record> Store<R> {
         namespace: &str,
         offset: i64,
         limit: i64,
+        from_block: Option<u64>,
     ) -> StoreResult<Vec<R::DbItem>> {
-        R::find_many_by_subject_ns(&self.db, subject, namespace, offset, limit)
-            .await
-            .map_err(StoreError::from)
+        R::find_many_by_subject_ns(
+            &self.db, subject, namespace, offset, limit, from_block,
+        )
+        .await
+        .map_err(StoreError::from)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -99,13 +104,14 @@ impl<R: Record> Store<R> {
         &self,
         subject: Arc<dyn IntoSubject>,
         namespace: String,
+        from_block: Option<u64>,
     ) -> StoreResult<BoxStream<'static, StoreResult<R::DbItem>>> {
         const DEFAULT_PAGE_SIZE: i64 = 100;
         let db = self.db.clone();
         let stream = async_stream::try_stream! {
             let mut offset = 0;
             loop {
-                let items = R::find_many_by_subject_ns(&db, &subject, &namespace, offset, DEFAULT_PAGE_SIZE).await?;
+                let items = R::find_many_by_subject_ns(&db, &subject, &namespace, offset, DEFAULT_PAGE_SIZE, from_block).await?;
                 if items.is_empty() {
                     break;
                 }

@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Subscribe to the transaction stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Transaction>(subject, DeliverPolicy::Last)
+        .subscribe::<Transaction>(subject, DeliverPolicy::New)
         .await?;
 
     // Process incoming transactions

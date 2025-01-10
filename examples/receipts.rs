@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Subscribe to the receipt stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Receipt>(subject, DeliverPolicy::All)
+        .subscribe::<Receipt>(subject, DeliverPolicy::New)
         .await?;
 
     // Process incoming receipts

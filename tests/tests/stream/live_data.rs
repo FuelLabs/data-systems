@@ -1,4 +1,4 @@
-use fuel_streams_core::{subjects::*, types::Block};
+use fuel_streams_core::{subjects::*, types::Block, DeliverPolicy};
 use fuel_streams_store::record::{DataEncoder, Record};
 use fuel_streams_test::{create_multiple_test_data, setup_stream};
 use futures::StreamExt;
@@ -15,8 +15,10 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         let stream = stream.clone();
         async move {
             let subject = BlocksSubject::new().with_height(None).dyn_arc();
-            let mut subscriber =
-                stream.subscribe_live(subject).await.enumerate();
+            let mut subscriber = stream
+                .subscribe(subject, DeliverPolicy::New)
+                .await
+                .enumerate();
 
             while let Some((index, record)) = subscriber.next().await {
                 let record = record.unwrap();

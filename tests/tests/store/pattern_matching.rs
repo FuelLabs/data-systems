@@ -34,7 +34,7 @@ async fn test_asterisk_wildcards() -> anyhow::Result<()> {
     // Test wildcard matching
     let wildcard_subject = BlocksSubject::new().with_height(None).dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&wildcard_subject, &prefix, 0, 10)
+        .find_many_by_subject_ns(&wildcard_subject, &prefix, 0, 10, None)
         .await?;
     assert_eq!(records.len(), 3);
 
@@ -50,7 +50,7 @@ async fn test_nonexistent_subjects() -> anyhow::Result<()> {
     let nonexistent_subject =
         BlocksSubject::new().with_height(Some(999.into())).dyn_arc();
     let records = store
-        .find_many_by_subject_ns(&nonexistent_subject, &prefix, 0, 10)
+        .find_many_by_subject_ns(&nonexistent_subject, &prefix, 0, 10, None)
         .await?;
     assert!(records.is_empty());
 

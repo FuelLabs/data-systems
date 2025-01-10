@@ -1,6 +1,8 @@
 use async_nats::{client::PublishErrorKind, SubscribeError};
 use fuel_streams_store::{db::DbError, store::StoreError};
 
+use crate::DeliverPolicyError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum StreamError {
     #[error(transparent)]
@@ -11,4 +13,6 @@ pub enum StreamError {
     Store(#[from] StoreError),
     #[error(transparent)]
     Subscribe(#[from] SubscribeError),
+    #[error(transparent)]
+    DeliverPolicy(#[from] DeliverPolicyError),
 }

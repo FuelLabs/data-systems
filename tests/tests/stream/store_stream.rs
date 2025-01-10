@@ -25,7 +25,7 @@ async fn test_stream_by_subject() -> anyhow::Result<()> {
     // Test streaming with the first subject
     let subject = data[0].0.clone();
     let mut stream = store
-        .stream_by_subject_ns(subject.arc(), prefix.clone())
+        .stream_by_subject_ns(subject.arc(), prefix.clone(), None)
         .await?;
 
     // Collect and verify streamed records

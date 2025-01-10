@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let subject = InputsCoinSubject::new();
     // Subscribe to the input stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Input>(subject, DeliverPolicy::Last)
+        .subscribe::<Input>(subject, DeliverPolicy::New)
         .await?;
 
     // Process incoming inputs

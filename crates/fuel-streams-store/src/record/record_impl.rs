@@ -36,8 +36,14 @@ pub trait Record: RecordEncoder + 'static {
         subject: &Arc<dyn IntoSubject>,
         offset: i64,
         limit: i64,
+        from_block: Option<u64>,
     ) -> DbResult<Vec<Self::DbItem>> {
         let sql_where = subject.to_sql_where();
+        let sql_where = if let Some(from_block) = from_block {
+            format!("{} AND block_height >= {}", sql_where, from_block)
+        } else {
+            sql_where
+        };
         let query = format!(
             "SELECT * FROM {} WHERE {} ORDER BY {} DESC LIMIT {} OFFSET {}",
             Self::ENTITY.table_name(),
@@ -79,9 +85,11 @@ pub trait Record: RecordEncoder + 'static {
         namespace: &str,
         offset: i64,
         limit: i64,
+        from_block: Option<u64>,
     ) -> DbResult<Vec<Self::DbItem>> {
         let records =
-            Self::find_many_by_subject(db, subject, offset, limit).await?;
+            Self::find_many_by_subject(db, subject, offset, limit, from_block)
+                .await?;
         let records = records
             .into_iter()
             .filter(|record| record.subject_str().starts_with(namespace))

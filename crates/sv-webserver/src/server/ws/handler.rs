@@ -18,13 +18,7 @@ use super::{
     models::{ClientMessage, ServerMessage, SubscriptionPayload},
     socket::send_message_to_socket,
 };
-use crate::{
-    server::ws::{
-        models::DeliverPolicy,
-        subscriber::{create_historical_subscriber, create_live_subscriber},
-    },
-    telemetry::Telemetry,
-};
+use crate::{server::ws::subscriber::create_subscriber, telemetry::Telemetry};
 
 macro_rules! handle_ws_error {
     ($result:expr, $ctx:expr) => {
@@ -71,12 +65,9 @@ async fn handle_subscribe(
 
     let ctx = ctx.with_payload(&payload);
     let subject_payload: SubjectPayload = payload.clone().try_into()?;
-    let sub = match payload.deliver_policy {
-        DeliverPolicy::All => {
-            create_historical_subscriber(streams, &subject_payload).await
-        }
-        _ => create_live_subscriber(streams, &subject_payload).await,
-    };
+    let sub =
+        create_subscriber(streams, &subject_payload, payload.deliver_policy)
+            .await;
 
     let sub = handle_ws_error!(sub, ctx.clone());
     let stream_session = session.clone();

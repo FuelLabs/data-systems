@@ -14,7 +14,7 @@ use futures::{
 use tokio::sync::OnceCell;
 
 use super::StreamError;
-use crate::nats::*;
+use crate::{nats::*, DeliverPolicy};
 
 pub type BoxedStreamItem = Result<(String, Vec<u8>), StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
@@ -82,15 +82,17 @@ impl<R: Record> Stream<R> {
     pub async fn subscribe(
         &self,
         subject: Arc<dyn IntoSubject>,
-        include_historical: bool,
+        deliver_policy: DeliverPolicy,
     ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
         let store = self.store.clone();
         let client = self.nats_client.clone();
         let subject_clone = subject.clone();
         let stream = async_stream::try_stream! {
-            if include_historical {
+            if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
                 // Get historical data using store's built-in pagination
-                let historical_stream = store.stream_by_subject(subject_clone).await?;
+                let historical_stream = store
+                    .stream_by_subject(subject_clone, Some(block_height))
+                    .await?;
                 futures::pin_mut!(historical_stream);
                 while let Some(result) = historical_stream.next().await {
                     let item = result.map_err(StreamError::Store)?;
@@ -113,19 +115,5 @@ impl<R: Record> Stream<R> {
         };
 
         Box::pin(stream)
-    }
-
-    pub async fn subscribe_live(
-        &self,
-        subject: Arc<dyn IntoSubject>,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
-        self.subscribe(subject, false).await
-    }
-
-    pub async fn subscribe_historical(
-        &self,
-        subject: Arc<dyn IntoSubject>,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
-        self.subscribe(subject, true).await
     }
 }

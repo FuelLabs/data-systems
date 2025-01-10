@@ -1,58 +1,6 @@
+use fuel_streams_core::DeliverPolicy;
 use fuel_streams_domains::{SubjectPayload, SubjectPayloadError};
-use fuel_streams_nats::NatsDeliverPolicy;
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-#[serde(rename_all = "camelCase")]
-pub enum DeliverPolicy {
-    All,
-    Last,
-    New,
-    ByStartSequence {
-        #[serde(rename = "optStartSeq")]
-        start_sequence: u64,
-    },
-    ByStartTime {
-        #[serde(rename = "optStartTime")]
-        start_time: time::OffsetDateTime,
-    },
-    LastPerSubject,
-}
-
-impl From<DeliverPolicy> for NatsDeliverPolicy {
-    fn from(policy: DeliverPolicy) -> Self {
-        match policy {
-            DeliverPolicy::All => NatsDeliverPolicy::All,
-            DeliverPolicy::Last => NatsDeliverPolicy::Last,
-            DeliverPolicy::New => NatsDeliverPolicy::New,
-            DeliverPolicy::ByStartSequence { start_sequence } => {
-                NatsDeliverPolicy::ByStartSequence { start_sequence }
-            }
-            DeliverPolicy::ByStartTime { start_time } => {
-                NatsDeliverPolicy::ByStartTime { start_time }
-            }
-            DeliverPolicy::LastPerSubject => NatsDeliverPolicy::LastPerSubject,
-        }
-    }
-}
-
-impl From<NatsDeliverPolicy> for DeliverPolicy {
-    fn from(policy: NatsDeliverPolicy) -> Self {
-        match policy {
-            NatsDeliverPolicy::All => DeliverPolicy::All,
-            NatsDeliverPolicy::Last => DeliverPolicy::Last,
-            NatsDeliverPolicy::New => DeliverPolicy::New,
-            NatsDeliverPolicy::ByStartSequence { start_sequence } => {
-                DeliverPolicy::ByStartSequence { start_sequence }
-            }
-            NatsDeliverPolicy::ByStartTime { start_time } => {
-                DeliverPolicy::ByStartTime { start_time }
-            }
-            NatsDeliverPolicy::LastPerSubject => DeliverPolicy::LastPerSubject,
-        }
-    }
-}
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -106,7 +54,7 @@ mod tests {
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
             subject: stream_topic_wildcard.clone(),
             params: serde_json::Value::Null,
-            deliver_policy: DeliverPolicy::All,
+            deliver_policy: DeliverPolicy::New,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
         println!("Ser value {:?}", ser_str_value);

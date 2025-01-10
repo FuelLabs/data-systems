@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Subscribe to the UTXO stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Utxo>(subject, DeliverPolicy::Last)
+        .subscribe::<Utxo>(subject, DeliverPolicy::New)
         .await?;
 
     // Process incoming UTXOs
