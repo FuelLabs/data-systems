@@ -13,7 +13,7 @@ pub struct Utxo {
     pub tx_id: TxId,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum UtxoType {
     Contract,
     Coin,

@@ -1,45 +1,42 @@
 #![doc = include_str!("../README.md")]
 
-mod validator;
 pub mod subject {
+    pub use std::fmt::Debug;
+
     use downcast_rs::{impl_downcast, Downcast};
     pub use subject_derive::*;
 
-    #[derive(thiserror::Error, Debug)]
+    #[derive(thiserror::Error, Debug, PartialEq, Eq)]
     pub enum SubjectError {
-        #[error(transparent)]
-        InvalidPattern(#[from] SubjectPatternError),
-        #[error(
-            "Pattern is incompatible with the number of fields in the subject"
-        )]
-        IncompatiblePattern,
         #[error("Invalid JSON conversion: {0}")]
-        InvalidJsonConversion(#[source] serde_json::Error),
+        InvalidJsonConversion(String),
         #[error("Expected JSON object")]
         ExpectedJsonObject,
     }
 
-    pub use crate::validator::*;
-
-    /// This trait is used internally by the `Subject` derive macro to convert a struct into a
-    /// standard NATS subject.
-    pub trait IntoSubject:
-        std::fmt::Debug + Downcast + Send + Sync + 'static
-    {
+    pub trait IntoSubject: Debug + Downcast + Send + Sync + 'static {
+        fn id(&self) -> &'static str;
         fn parse(&self) -> String;
         fn wildcard(&self) -> &'static str;
         fn to_sql_where(&self) -> String;
-        fn validate_pattern(&self, pattern: &str) -> Result<(), SubjectError>;
     }
     impl_downcast!(IntoSubject);
 
     pub trait FromJsonString:
-        Clone + Sized + std::fmt::Debug + Send + Sync + 'static
+        serde::Serialize
+        + serde::de::DeserializeOwned
+        + Clone
+        + Sized
+        + Debug
+        + Send
+        + Sync
+        + 'static
     {
         fn from_json_str(json: &str) -> Result<Self, SubjectError>;
+        fn to_json_str(&self) -> String;
     }
 
-    pub trait SubjectBuildable: std::fmt::Debug {
+    pub trait SubjectBuildable: Debug {
         fn new() -> Self;
     }
 

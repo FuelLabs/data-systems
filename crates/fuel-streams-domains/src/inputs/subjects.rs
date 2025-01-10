@@ -1,9 +1,11 @@
 use fuel_streams_macros::subject::*;
 use fuel_streams_types::*;
+use serde::{Deserialize, Serialize};
 
 use crate::blocks::types::*;
 
-#[derive(Subject, Debug, Clone, Default)]
+#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+#[subject_id = "inputs_coin"]
 #[subject_wildcard = "inputs.>"]
 #[subject_format = "inputs.coin.{block_height}.{tx_id}.{tx_index}.{input_index}.{owner}.{asset_id}"]
 pub struct InputsCoinSubject {
@@ -15,7 +17,8 @@ pub struct InputsCoinSubject {
     pub asset_id: Option<AssetId>,
 }
 
-#[derive(Subject, Debug, Clone, Default)]
+#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+#[subject_id = "inputs_contract"]
 #[subject_wildcard = "inputs.>"]
 #[subject_format = "inputs.contract.{block_height}.{tx_id}.{tx_index}.{input_index}.{contract_id}"]
 pub struct InputsContractSubject {
@@ -26,7 +29,8 @@ pub struct InputsContractSubject {
     pub contract_id: Option<ContractId>,
 }
 
-#[derive(Subject, Debug, Clone, Default)]
+#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+#[subject_id = "inputs_message"]
 #[subject_wildcard = "inputs.>"]
 #[subject_format = "inputs.message.{block_height}.{tx_id}.{tx_index}.{input_index}.{sender}.{recipient}"]
 pub struct InputsMessageSubject {

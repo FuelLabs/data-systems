@@ -13,6 +13,7 @@ rust-version = { workspace = true }
 [dependencies]
 downcast-rs = "2.0.1"
 regex = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 subject-derive = { workspace = true }
 thiserror = { workspace = true }

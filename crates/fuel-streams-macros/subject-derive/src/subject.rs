@@ -46,9 +46,11 @@ pub fn expanded<'a>(
     let with_methods = create_with_methods(field_names, field_types);
     let get_methods = create_get_methods(field_names, field_types);
     let wildcard = crate::attrs::subject_attr("wildcard", attrs);
+    let id = crate::attrs::subject_attr("id", attrs);
 
     quote! {
         impl #name {
+            pub const ID: &'static str = #id;
             pub const WILDCARD: &'static str = #wildcard;
 
             pub fn build(

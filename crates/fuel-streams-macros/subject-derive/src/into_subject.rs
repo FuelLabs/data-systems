@@ -52,20 +52,6 @@ pub fn to_sql_where_fn(field_names: &[&Ident]) -> TokenStream {
     }
 }
 
-pub fn validate_pattern_fn(field_names: &[&Ident]) -> TokenStream {
-    let field_length = field_names.len();
-    quote! {
-        fn validate_pattern(&self, pattern: &str) -> Result<(), fuel_streams_macros::subject::SubjectError> {
-            fuel_streams_macros::subject::SubjectValidator::validate(pattern)?;
-            let pattern_length = pattern.split('.').count();
-            if pattern_length > #field_length {
-                return Err(fuel_streams_macros::subject::SubjectError::IncompatiblePattern);
-            }
-            Ok(())
-        }
-    }
-}
-
 pub fn from_json_str_fn(field_names: &[&Ident]) -> TokenStream {
     let parse_fields = field_names.iter().map(|name| {
         let name_str = name.to_string();
@@ -86,7 +72,7 @@ pub fn from_json_str_fn(field_names: &[&Ident]) -> TokenStream {
     quote! {
         fn from_json_str(json: &str) -> Result<Self, SubjectError> {
             let parsed: serde_json::Value = serde_json::from_str(json)
-                .map_err(|e| SubjectError::InvalidJsonConversion(e))?;
+                .map_err(|e| SubjectError::InvalidJsonConversion(e.to_string()))?;
 
             let obj = match parsed.as_object() {
                 Some(obj) => obj,
@@ -98,6 +84,22 @@ pub fn from_json_str_fn(field_names: &[&Ident]) -> TokenStream {
             Ok(Self::build(
                 #(#field_names.and_then(|v| v.parse().ok()),)*
             ))
+        }
+    }
+}
+
+pub fn id_fn() -> TokenStream {
+    quote! {
+        fn id(&self) -> &'static str {
+            Self::ID
+        }
+    }
+}
+
+pub fn to_json_str_fn() -> TokenStream {
+    quote! {
+        fn to_json_str(&self) -> String {
+            serde_json::to_string(self).unwrap()
         }
     }
 }

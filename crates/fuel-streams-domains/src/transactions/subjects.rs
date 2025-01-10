@@ -1,9 +1,11 @@
 use fuel_streams_macros::subject::*;
 use fuel_streams_types::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{blocks::types::*, transactions::types::*};
 
-#[derive(Subject, Debug, Clone, Default)]
+#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+#[subject_id = "transactions"]
 #[subject_wildcard = "transactions.>"]
 #[subject_format = "transactions.{block_height}.{tx_id}.{tx_index}.{status}.{kind}"]
 pub struct TransactionsSubject {
