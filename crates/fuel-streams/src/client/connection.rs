@@ -1,4 +1,4 @@
-use fuel_streams_core::subjects::IntoSubject;
+use fuel_streams_core::subjects::*;
 use fuel_streams_store::record::Record;
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -85,13 +85,14 @@ impl Connection {
 
     pub async fn subscribe<T: Record>(
         &mut self,
-        subject: impl IntoSubject,
+        subject: impl IntoSubject + FromJsonString,
         deliver_policy: DeliverPolicy,
     ) -> Result<impl Stream<Item = Message<T>> + '_ + Send + Unpin, ClientError>
     {
         let message = ClientMessage::Subscribe(SubscriptionPayload {
-            wildcard: subject.parse(),
             deliver_policy,
+            subject: subject.id().to_string(),
+            params: subject.to_json().into(),
         });
         self.send_client_message(message).await?;
 
@@ -137,13 +138,14 @@ impl Connection {
         Ok(Box::pin(stream))
     }
 
-    pub async fn unsubscribe<S: IntoSubject>(
+    pub async fn unsubscribe(
         &self,
-        subject: S,
+        subject: impl IntoSubject + FromJsonString,
         deliver_policy: DeliverPolicy,
     ) -> Result<(), ClientError> {
         let message = ClientMessage::Unsubscribe(SubscriptionPayload {
-            wildcard: subject.parse(),
+            subject: subject.id().to_string(),
+            params: subject.to_json().into(),
             deliver_policy,
         });
         self.send_client_message(message).await?;

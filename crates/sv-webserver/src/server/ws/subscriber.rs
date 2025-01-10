@@ -1,37 +1,38 @@
-use std::sync::Arc;
+use fuel_streams_core::stream::*;
+use fuel_streams_domains::SubjectPayload;
+use fuel_streams_store::record::RecordEntity;
 
-use fuel_streams_core::{nats::*, stream::*};
-use fuel_streams_store::{db::Db, record::RecordEntity};
+use super::errors::WsSubscriptionError;
 
-use super::models::DeliverPolicy;
-
-/// Creates a live subscription stream for a given record entity
 pub async fn create_live_subscriber(
-    record_entity: &RecordEntity,
     streams: &FuelStreams,
-    subject_wildcard: String,
-) -> Result<BoxedStream, StreamError> {
+    subject_json: &SubjectPayload,
+) -> Result<BoxedStream, WsSubscriptionError> {
+    let record_entity = subject_json.record_entity();
     let stream = match record_entity {
         RecordEntity::Block => {
-            streams.blocks.subscribe_live(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.blocks.subscribe_live(&subject).await?
         }
         RecordEntity::Transaction => {
-            streams
-                .transactions
-                .subscribe_live(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.transactions.subscribe_live(&subject).await?
         }
         RecordEntity::Input => {
-            streams.inputs.subscribe_live(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.inputs.subscribe_live(&subject).await?
         }
         RecordEntity::Output => {
-            streams.outputs.subscribe_live(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.outputs.subscribe_live(&subject).await?
         }
         RecordEntity::Receipt => {
-            streams.receipts.subscribe_live(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.receipts.subscribe_live(&subject).await?
         }
         RecordEntity::Utxo => {
-            streams.utxos.subscribe_live(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.utxos.subscribe_live(&subject).await?
         }
     };
     Ok(Box::new(stream))
@@ -39,61 +40,35 @@ pub async fn create_live_subscriber(
 
 /// Creates a historical subscription stream for a given record entity
 pub async fn create_historical_subscriber(
-    record_entity: &RecordEntity,
     streams: &FuelStreams,
-    subject_wildcard: String,
-) -> Result<BoxedStream, StreamError> {
+    subject_json: &SubjectPayload,
+) -> Result<BoxedStream, WsSubscriptionError> {
+    let record_entity = subject_json.record_entity();
     let stream = match record_entity {
         RecordEntity::Block => {
-            streams
-                .blocks
-                .subscribe_historical(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.blocks.subscribe_historical(subject).await?
         }
         RecordEntity::Transaction => {
-            streams
-                .transactions
-                .subscribe_historical(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.transactions.subscribe_historical(subject).await?
         }
         RecordEntity::Input => {
-            streams
-                .inputs
-                .subscribe_historical(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.inputs.subscribe_historical(subject).await?
         }
         RecordEntity::Output => {
-            streams
-                .outputs
-                .subscribe_historical(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.outputs.subscribe_historical(subject).await?
         }
         RecordEntity::Receipt => {
-            streams
-                .receipts
-                .subscribe_historical(subject_wildcard)
-                .await?
+            let subject = subject_json.into_subject();
+            streams.receipts.subscribe_historical(subject).await?
         }
         RecordEntity::Utxo => {
-            streams.utxos.subscribe_historical(subject_wildcard).await?
+            let subject = subject_json.into_subject();
+            streams.utxos.subscribe_historical(subject).await?
         }
     };
     Ok(Box::new(stream))
-}
-
-/// Creates a subscription stream based on the deliver policy
-pub async fn create_subscriber(
-    record_entity: &RecordEntity,
-    nats_client: &Arc<NatsClient>,
-    db: &Arc<Db>,
-    subject_wildcard: String,
-    deliver_policy: DeliverPolicy,
-) -> Result<BoxedStream, StreamError> {
-    let streams = FuelStreams::new(nats_client, db).await;
-    if deliver_policy == DeliverPolicy::All {
-        create_historical_subscriber(record_entity, &streams, subject_wildcard)
-            .await
-    } else {
-        create_live_subscriber(record_entity, &streams, subject_wildcard).await
-    }
 }

@@ -1,5 +1,4 @@
 use std::{
-    str::FromStr,
     sync::{Arc, LazyLock},
     time::Duration,
 };
@@ -7,7 +6,7 @@ use std::{
 use actix_web::web::Bytes;
 use actix_ws::Session;
 use fuel_streams_core::{BoxedStream, FuelStreams};
-use fuel_streams_store::record::RecordEntity;
+use fuel_streams_domains::SubjectPayload;
 use futures::StreamExt;
 use tokio::time::sleep;
 use uuid::Uuid;
@@ -16,18 +15,17 @@ use super::{
     context::WsContext,
     decoder::decode_record,
     errors::WsSubscriptionError,
-    models::{
-        ClientMessage,
-        DeliverPolicy,
-        ServerMessage,
-        SubscriptionPayload,
-    },
-    socket::{send_message_to_socket, verify_and_extract_subject_name},
-    subscriber::create_subscriber,
+    models::{ClientMessage, ServerMessage, SubscriptionPayload},
+    socket::send_message_to_socket,
 };
-use crate::telemetry::Telemetry;
+use crate::{
+    server::ws::{
+        models::DeliverPolicy,
+        subscriber::{create_historical_subscriber, create_live_subscriber},
+    },
+    telemetry::Telemetry,
+};
 
-/// Macro to handle WebSocket errors using WsContext
 macro_rules! handle_ws_error {
     ($result:expr, $ctx:expr) => {
         match $result {
@@ -40,7 +38,6 @@ macro_rules! handle_ws_error {
     };
 }
 
-/// Handles incoming binary messages from the WebSocket
 pub async fn handle_binary_message(
     msg: Bytes,
     user_id: Uuid,
@@ -58,12 +55,11 @@ pub async fn handle_binary_message(
             handle_subscribe(payload, ctx, session, telemetry, streams).await
         }
         ClientMessage::Unsubscribe(payload) => {
-            handle_unsubscribe(payload, ctx, session).await
+            handle_unsubscribe(ctx, session, payload).await
         }
     }
 }
 
-/// Handles subscription requests
 async fn handle_subscribe(
     payload: SubscriptionPayload,
     ctx: WsContext,
@@ -72,45 +68,21 @@ async fn handle_subscribe(
     streams: Arc<FuelStreams>,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received subscribe message: {:?}", payload);
-    let subject_wildcard = payload.wildcard.clone();
-    let deliver_policy = payload.deliver_policy;
 
-    // verify the subject name
-    let entity = handle_ws_error!(
-        verify_and_extract_subject_name(&subject_wildcard),
-        ctx.clone().with_subject_wildcard(&subject_wildcard)
-    );
+    let ctx = ctx.with_payload(&payload);
+    let subject_payload: SubjectPayload = payload.clone().try_into()?;
+    let sub = match payload.deliver_policy {
+        DeliverPolicy::All => {
+            create_historical_subscriber(&streams, &subject_payload).await
+        }
+        _ => create_live_subscriber(&streams, &subject_payload).await,
+    };
 
-    let record_entity = RecordEntity::from_str(&entity)
-        .map_err(|_| WsSubscriptionError::InvalidRecordEntity(entity.clone()));
-    let record_entity = handle_ws_error!(
-        record_entity,
-        ctx.clone().with_subject_wildcard(&subject_wildcard)
-    );
-
-    let nats_client = streams.nats_client();
-    let db = streams.db.clone();
-    let sub = create_subscriber(
-        &record_entity,
-        &nats_client,
-        &db,
-        subject_wildcard.clone(),
-        deliver_policy,
-    )
-    .await
-    .map_err(WsSubscriptionError::StreamError);
-    let sub = handle_ws_error!(
-        sub,
-        ctx.clone().with_subject_wildcard(&subject_wildcard)
-    );
-
+    let sub = handle_ws_error!(sub, ctx.clone());
     let stream_session = session.clone();
     send_message_to_socket(
         &mut session,
-        ServerMessage::Subscribed(SubscriptionPayload {
-            wildcard: subject_wildcard.clone(),
-            deliver_policy,
-        }),
+        ServerMessage::Subscribed(payload.clone()),
     )
     .await;
 
@@ -121,8 +93,7 @@ async fn handle_subscribe(
             stream_session,
             ctx.user_id,
             telemetry,
-            subject_wildcard,
-            record_entity,
+            payload,
         )
         .await;
     });
@@ -130,35 +101,21 @@ async fn handle_subscribe(
     Ok(())
 }
 
-/// Handles unsubscribe requests
 async fn handle_unsubscribe(
-    payload: SubscriptionPayload,
     ctx: WsContext,
     mut session: Session,
+    payload: SubscriptionPayload,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received unsubscribe message: {:?}", payload);
-    let subject_wildcard = payload.wildcard.clone();
-    let deliver_policy = payload.deliver_policy;
-
-    let ctx = ctx.with_subject_wildcard(&subject_wildcard);
-
-    // Verify the subject name
-    handle_ws_error!(
-        verify_and_extract_subject_name(&subject_wildcard),
-        ctx.clone()
-    );
+    let ctx = ctx.with_payload(&payload);
 
     // Update metrics
-    ctx.telemetry
-        .update_unsubscribed(ctx.user_id, &subject_wildcard);
+    let payload_str = payload.to_string();
+    ctx.telemetry.update_unsubscribed(ctx.user_id, &payload_str);
     ctx.telemetry.decrement_subscriptions_count();
 
     // Send unsubscribe confirmation
-    let msg = ServerMessage::Unsubscribed(SubscriptionPayload {
-        wildcard: subject_wildcard,
-        deliver_policy,
-    });
-
+    let msg = ServerMessage::Unsubscribed(payload.clone());
     if let Err(e) = serde_json::to_vec(&msg) {
         let error = WsSubscriptionError::UnserializablePayload(e);
         ctx.close_with_error(error).await;
@@ -169,7 +126,6 @@ async fn handle_unsubscribe(
     Ok(())
 }
 
-/// Parses a binary message into a ClientMessage
 fn parse_client_message(
     msg: Bytes,
 ) -> Result<ClientMessage, WsSubscriptionError> {
@@ -184,27 +140,25 @@ pub static WS_THROTTLE_TIME: LazyLock<usize> = LazyLock::new(|| {
         .unwrap_or(300)
 });
 
-/// Processes a subscription stream
 async fn process_subscription(
     mut sub: BoxedStream,
     mut stream_session: Session,
     user_id: Uuid,
     telemetry: Arc<Telemetry>,
-    subject_wildcard: String,
-    record_entity: RecordEntity,
+    payload: SubscriptionPayload,
 ) {
-    telemetry.update_user_subscription_metrics(user_id, &subject_wildcard);
+    let payload_str = payload.clone().to_string();
+    telemetry.update_user_subscription_metrics(user_id, &payload_str);
     let cleanup = || {
-        telemetry.update_unsubscribed(user_id, &subject_wildcard);
+        telemetry.update_unsubscribed(user_id, &payload_str);
         telemetry.decrement_subscriptions_count();
     };
 
     while let Some(result) = sub.next().await {
-        let payload = match decode_record(&record_entity, result).await {
+        let payload = match decode_record(payload.to_owned(), result).await {
             Ok(res) => res,
             Err(e) => {
-                telemetry
-                    .update_error_metrics(&subject_wildcard, &e.to_string());
+                telemetry.update_error_metrics(&payload_str, &e.to_string());
                 tracing::error!(
                     "Error serializing received stream message: {:?}",
                     e
@@ -242,10 +196,7 @@ async fn process_subscription(
     // Send unsubscribe message to client
     let _ = send_message_to_socket(
         &mut stream_session,
-        ServerMessage::Unsubscribed(SubscriptionPayload {
-            wildcard: subject_wildcard,
-            deliver_policy: DeliverPolicy::All, // Default value since we don't have the original
-        }),
+        ServerMessage::Unsubscribed(payload.clone()),
     )
     .await;
 }

@@ -145,15 +145,11 @@ impl Telemetry {
         });
     }
 
-    pub fn update_unsubscribed(
-        &self,
-        user_id: uuid::Uuid,
-        subject_wildcard: &str,
-    ) {
+    pub fn update_unsubscribed(&self, user_id: uuid::Uuid, payload_str: &str) {
         self.maybe_use_metrics(|metrics| {
             metrics
                 .user_subscribed_messages
-                .with_label_values(&[&user_id.to_string(), subject_wildcard])
+                .with_label_values(&[&user_id.to_string(), payload_str])
                 .dec();
         });
     }

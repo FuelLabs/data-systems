@@ -52,7 +52,7 @@ pub fn to_sql_where_fn(field_names: &[&Ident]) -> TokenStream {
     }
 }
 
-pub fn from_json_str_fn(field_names: &[&Ident]) -> TokenStream {
+pub fn from_json_fn(field_names: &[&Ident]) -> TokenStream {
     let parse_fields = field_names.iter().map(|name| {
         let name_str = name.to_string();
         quote! {
@@ -70,7 +70,7 @@ pub fn from_json_str_fn(field_names: &[&Ident]) -> TokenStream {
     });
 
     quote! {
-        fn from_json_str(json: &str) -> Result<Self, SubjectError> {
+        fn from_json(json: &str) -> Result<Self, SubjectError> {
             let parsed: serde_json::Value = serde_json::from_str(json)
                 .map_err(|e| SubjectError::InvalidJsonConversion(e.to_string()))?;
 
@@ -96,9 +96,9 @@ pub fn id_fn() -> TokenStream {
     }
 }
 
-pub fn to_json_str_fn() -> TokenStream {
+pub fn to_json_fn() -> TokenStream {
     quote! {
-        fn to_json_str(&self) -> String {
+        fn to_json(&self) -> String {
             serde_json::to_string(self).unwrap()
         }
     }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use actix_ws::Session;
 use uuid::Uuid;
 
+use super::models::SubscriptionPayload;
 use crate::telemetry::Telemetry;
 
 /// Represents the context for a WebSocket connection
@@ -11,7 +12,7 @@ pub struct WsContext {
     pub user_id: Uuid,
     pub session: Session,
     pub telemetry: Arc<Telemetry>,
-    pub subject_wildcard: Option<String>,
+    pub payload: Option<SubscriptionPayload>,
 }
 
 impl WsContext {
@@ -25,14 +26,14 @@ impl WsContext {
             user_id,
             session,
             telemetry,
-            subject_wildcard: None,
+            payload: None,
         }
     }
 
     /// Creates a new context with a subject wildcard
-    pub fn with_subject_wildcard(self, subject_wildcard: &str) -> Self {
+    pub fn with_payload(self, payload: &SubscriptionPayload) -> Self {
         Self {
-            subject_wildcard: Some(subject_wildcard.to_string()),
+            payload: Some(payload.clone()),
             ..self
         }
     }
@@ -43,11 +44,12 @@ impl WsContext {
         error: super::errors::WsSubscriptionError,
     ) {
         tracing::error!("ws subscription error: {:?}", error.to_string());
-        if let Some(subject_wildcard) = self.subject_wildcard {
+        if let Some(payload) = self.payload {
+            let payload_str = payload.to_string();
             self.telemetry
-                .update_error_metrics(&subject_wildcard, &error.to_string());
+                .update_error_metrics(&payload_str, &error.to_string());
             self.telemetry
-                .update_unsubscribed(self.user_id, &subject_wildcard);
+                .update_unsubscribed(self.user_id, &payload_str);
         }
 
         self.telemetry.decrement_subscriptions_count();

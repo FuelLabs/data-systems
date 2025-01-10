@@ -3735,6 +3735,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "test-case",
  "thiserror 2.0.9",
 ]
 
@@ -3774,6 +3775,7 @@ version = "0.0.15"
 dependencies = [
  "downcast-rs",
  "regex",
+ "serde",
  "serde_json",
  "subject-derive",
  "test-case",
@@ -9086,6 +9088,7 @@ dependencies = [
  "dotenvy",
  "elasticsearch",
  "fuel-streams-core",
+ "fuel-streams-domains",
  "fuel-streams-nats",
  "fuel-streams-store",
  "futures",

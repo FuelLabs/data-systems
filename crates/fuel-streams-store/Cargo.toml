@@ -28,11 +28,7 @@ sqlx = { workspace = true, default-features = false, features = [
     "macros",
 ] }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = [
-    "rt-multi-thread",
-    "macros",
-    "test-util",
-] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 
 [dev-dependencies]
 test-case = { workspace = true }

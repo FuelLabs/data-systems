@@ -1,4 +1,5 @@
 use fuel_streams_core::stream::StreamError;
+use fuel_streams_domains::SubjectPayloadError;
 use fuel_streams_store::{
     db::DbError,
     record::EncoderError,
@@ -8,10 +9,6 @@ use fuel_streams_store::{
 /// Ws Subscription-related errors
 #[derive(Debug, thiserror::Error)]
 pub enum WsSubscriptionError {
-    #[error("Invalid subject pattern: {0}")]
-    UnsupportedWildcardPattern(String),
-    #[error("Invalid record entity: {0}")]
-    InvalidRecordEntity(String),
     #[error("Stream error: {0}")]
     StreamError(#[from] StreamError),
     #[error("Unserializable payload: {0}")]
@@ -24,4 +21,6 @@ pub enum WsSubscriptionError {
     Database(#[from] DbError),
     #[error(transparent)]
     Store(#[from] StoreError),
+    #[error(transparent)]
+    SubjectPayload(#[from] SubjectPayloadError),
 }

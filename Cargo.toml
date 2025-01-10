@@ -1,12 +1,7 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 resolver = "2"
-members = [
-    "crates/*",
-    "crates/fuel-streams-macros/subject-derive",
-    "examples",
-    "tests",
-]
+members = ["crates/*", "crates/fuel-streams-macros/subject-derive", "examples", "tests"]
 
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]
@@ -41,18 +36,11 @@ fuel-core = { version = "0.40.2", default-features = false, features = [
     "relayer",
     "rocksdb",
 ] }
-fuel-core-client = { version = "0.40.2", default-features = false, features = [
-    "std",
-] }
+fuel-core-client = { version = "0.40.2", default-features = false, features = ["std"] }
 fuel-core-importer = { version = "0.40.2" }
 fuel-core-storage = { version = "0.40.2" }
-fuel-core-types = { version = "0.40.2", default-features = false, features = [
-    "std",
-    "serde",
-] }
-fuel-core-services = { version = "0.40.2", default-features = false, features = [
-    "test-helpers",
-] }
+fuel-core-types = { version = "0.40.2", default-features = false, features = ["std", "serde"] }
+fuel-core-services = { version = "0.40.2", default-features = false, features = ["test-helpers"] }
 futures-util = "0.3"
 hex = "0.4"
 pretty_assertions = "1.4"

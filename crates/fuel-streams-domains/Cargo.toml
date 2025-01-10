@@ -18,26 +18,19 @@ fuel-core = { workspace = true, default-features = false, features = [
     "rocksdb",
     "test-helpers",
 ] }
-fuel-core-client = { workspace = true, default-features = false, features = [
-    "std",
-] }
+fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
 fuel-core-importer = { workspace = true }
-fuel-core-types = { workspace = true, default-features = false, features = [
-    "std",
-    "serde",
-] }
+fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-streams-macros = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sqlx = { workspace = true, features = [
-    "runtime-tokio",
-    "postgres",
-    "tls-native-tls",
-    "macros",
-] }
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "tls-native-tls", "macros"] }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }
 
 [features]
 default = []

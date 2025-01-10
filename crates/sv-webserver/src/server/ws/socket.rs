@@ -172,17 +172,3 @@ pub async fn send_message_to_socket(
     let data = serde_json::to_vec(&message).ok().unwrap_or_default();
     let _ = session.binary(data).await;
 }
-
-/// Verifies and extracts the subject name from a wildcard pattern
-pub fn verify_and_extract_subject_name(
-    subject_wildcard: &str,
-) -> Result<String, WsSubscriptionError> {
-    let mut subject_parts = subject_wildcard.split('.');
-    if subject_parts.clone().count() == 1 {
-        return Err(WsSubscriptionError::UnsupportedWildcardPattern(
-            subject_wildcard.to_string(),
-        ));
-    }
-    let subject_name = subject_parts.next().unwrap_or_default();
-    Ok(subject_name.to_string())
-}

@@ -23,8 +23,8 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let wildcard_fn = into_subject::wildcard_fn();
     let parse_fn = into_subject::parse_fn(&input, &field_names);
     let to_sql_where_fn = into_subject::to_sql_where_fn(&field_names);
-    let from_json_str_fn = into_subject::from_json_str_fn(&field_names);
-    let to_json_str_fn = into_subject::to_json_str_fn();
+    let from_json_fn = into_subject::from_json_fn(&field_names);
+    let to_json_fn = into_subject::to_json_fn();
     let subject_expanded =
         subject::expanded(name, &field_names, &field_types, &input.attrs);
 
@@ -47,8 +47,8 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
         }
 
         impl FromJsonString for #name {
-            #from_json_str_fn
-            #to_json_str_fn
+            #from_json_fn
+            #to_json_fn
         }
     }
     .into()

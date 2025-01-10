@@ -1,3 +1,4 @@
+use fuel_streams_domains::{SubjectPayload, SubjectPayloadError};
 use fuel_streams_nats::NatsDeliverPolicy;
 use serde::{Deserialize, Serialize};
 
@@ -56,8 +57,20 @@ impl From<NatsDeliverPolicy> for DeliverPolicy {
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
-    pub wildcard: String,
     pub deliver_policy: DeliverPolicy,
+    pub subject: String,
+    pub params: serde_json::Value,
+}
+impl SubscriptionPayload {
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+impl TryFrom<SubscriptionPayload> for SubjectPayload {
+    type Error = SubjectPayloadError;
+    fn try_from(payload: SubscriptionPayload) -> Result<Self, Self::Error> {
+        SubjectPayload::new(payload.subject, payload.params)
+    }
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
@@ -90,14 +103,16 @@ mod tests {
     fn test_sub_ser() {
         let stream_topic_wildcard = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
-            wildcard: stream_topic_wildcard.clone(),
+            subject: stream_topic_wildcard.clone(),
+            params: serde_json::Value::Null,
             deliver_policy: DeliverPolicy::All,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
         println!("Ser value {:?}", ser_str_value);
         let expected_value = serde_json::json!({
             "subscribe": {
-                "wildcard": stream_topic_wildcard,
+                "subject": stream_topic_wildcard,
+                "params": null,
                 "deliverPolicy": "all"
             }
         });

@@ -112,31 +112,31 @@ fn subject_derive_sql_where_table_only() {
 #[test]
 fn subject_derive_from_json() {
     // Test with all fields
-    let subject = TestSubject::from_json_str(
+    let subject = TestSubject::from_json(
         r#"{"field1": "foo", "field2": 55, "field3": "bar"}"#,
     )
     .unwrap();
     assert_eq!(subject.parse(), "test.foo.55.bar");
 
     // Test with partial fields
-    let subject = TestSubject::from_json_str(r#"{"field1": "foo"}"#).unwrap();
+    let subject = TestSubject::from_json(r#"{"field1": "foo"}"#).unwrap();
     assert_eq!(subject.parse(), "test.foo.*.*");
 
     // Test with empty object
-    let subject = TestSubject::from_json_str("{}").unwrap();
+    let subject = TestSubject::from_json("{}").unwrap();
     assert_eq!(subject.parse(), "test.>");
 }
 
 #[test]
 fn subject_derive_from_json_error() {
     // Test error cases
-    let invalid_json = TestSubject::from_json_str("{invalid}");
+    let invalid_json = TestSubject::from_json("{invalid}");
     assert!(matches!(
         invalid_json,
         Err(SubjectError::InvalidJsonConversion(_))
     ));
 
-    let invalid_type = TestSubject::from_json_str("[1, 2, 3]");
+    let invalid_type = TestSubject::from_json("[1, 2, 3]");
     assert!(matches!(
         invalid_type,
         Err(SubjectError::ExpectedJsonObject)
@@ -159,7 +159,7 @@ fn subject_derive_to_json() {
         field3: Some("bar".to_string()),
     };
     assert_eq!(
-        subject.to_json_str(),
+        subject.to_json(),
         r#"{"field1":"foo","field2":55,"field3":"bar"}"#
     );
 
@@ -170,14 +170,14 @@ fn subject_derive_to_json() {
         field3: None,
     };
     assert_eq!(
-        subject.to_json_str(),
+        subject.to_json(),
         r#"{"field1":"foo","field2":null,"field3":null}"#
     );
 
     // Test with no fields
     let subject = TestSubject::new();
     assert_eq!(
-        subject.to_json_str(),
+        subject.to_json(),
         r#"{"field1":null,"field2":null,"field3":null}"#
     );
 }
@@ -192,10 +192,10 @@ fn subject_derive_json_roundtrip() {
     };
 
     // Convert to JSON string
-    let json_str = original.to_json_str();
+    let json_str = original.to_json();
 
     // Convert back from JSON string
-    let roundtrip = TestSubject::from_json_str(&json_str).unwrap();
+    let roundtrip = TestSubject::from_json(&json_str).unwrap();
 
     // Verify the fields match
     assert_eq!(roundtrip.field1, original.field1);

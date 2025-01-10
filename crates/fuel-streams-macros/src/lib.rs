@@ -32,8 +32,8 @@ pub mod subject {
         + Sync
         + 'static
     {
-        fn from_json_str(json: &str) -> Result<Self, SubjectError>;
-        fn to_json_str(&self) -> String;
+        fn from_json(json: &str) -> Result<Self, SubjectError>;
+        fn to_json(&self) -> String;
     }
 
     pub trait SubjectBuildable: Debug {
