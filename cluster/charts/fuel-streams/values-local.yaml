@@ -9,6 +9,7 @@ commonConfigMap:
 
 # Reduce storage requirements for local development
 publisher:
+  enabled: false
   image:
     repository: sv-publisher
     pullPolicy: IfNotPresent
@@ -29,7 +30,7 @@ publisher:
         memory: 512Mi
 
 consumer:
-  enabled: true
+  enabled: false
   image:
     repository: sv-consumer
     pullPolicy: IfNotPresent
@@ -46,7 +47,7 @@ consumer:
         memory: 512Mi
 
 webserver:
-  enabled: true
+  enabled: false
   image:
     repository: sv-webserver
     pullPolicy: IfNotPresent
@@ -61,7 +62,7 @@ webserver:
 
 # NATS Core configuration for local development
 nats:
-  enabled: true
+  enabled: false
   container:
     env:
       GOMEMLIMIT: 1GiB

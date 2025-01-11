@@ -107,18 +107,13 @@ RESOURCES = {
         'config_mode': ['minimal', 'full'],
         'deps': ['fuel-streams-nats']
     },
-    'consumer': {
-        'name': 'fuel-streams-sv-consumer',
-        'ports': ['8082:8082'],
-        'labels': 'consumer',
-        'config_mode': ['minimal', 'full']
-    },
     'nats': {
         'name': 'fuel-streams-nats',
         'ports': ['4222:4222', '6222:6222', '7422:7422'],
         'labels': 'nats',
         'config_mode': ['minimal', 'full']
     },
+
 }
 
 k8s_yaml(helm(
