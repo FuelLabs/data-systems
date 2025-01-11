@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use fuel_streams_macros::subject::IntoSubject;
-use futures::{stream::BoxStream, StreamExt};
+use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 
 use super::{config, StoreError};
 use crate::{
@@ -40,15 +40,16 @@ impl<R: Record> Store<R> {
         with_retry(|| packet.record.insert(&self.db, packet)).await
     }
 
+    #[cfg(any(test, feature = "test-helpers"))]
     pub async fn find_many_by_subject(
         &self,
         subject: &Arc<dyn IntoSubject>,
         mut options: QueryOptions,
     ) -> StoreResult<Vec<R::DbItem>> {
-        if cfg!(any(test, feature = "test-helpers")) {
-            options = options.with_namespace(self.namespace.clone());
-        }
-        R::find_many_by_subject(&self.db, subject, options)
+        options = options.with_namespace(self.namespace.clone());
+        R::build_find_many_query(subject.clone(), options.clone())
+            .build_query_as::<R::DbItem>()
+            .fetch_all(&self.db.pool)
             .await
             .map_err(StoreError::from)
     }
@@ -59,30 +60,27 @@ impl<R: Record> Store<R> {
         from_block: Option<u64>,
     ) -> BoxStream<'static, Result<R::DbItem, StoreError>> {
         let db = Arc::clone(&self.db);
+        let namespace = self.namespace.clone();
         async_stream::stream! {
             let options = QueryOptions::default()
+                .with_namespace(namespace)
                 .with_from_block(from_block)
                 .with_limit(*config::STORE_PAGINATION_LIMIT);
-
-            let sql = R::build_find_many_query(subject, options);
-            let mut stream = sqlx::query_as::<_, R::DbItem>(sql.as_str())
+            let mut query = R::build_find_many_query(subject, options.clone());
+            let mut stream = query
+                .build_query_as::<R::DbItem>()
                 .fetch(&db.pool);
-
-            while let Some(result) = stream.next().await {
-                yield result.map_err(StoreError::from);
+            while let Some(result) = stream.try_next().await? {
+                yield Ok(result);
             }
         }
         .boxed()
     }
 
     pub async fn find_last_record(&self) -> StoreResult<Option<R::DbItem>> {
-        let namespace = if cfg!(any(test, feature = "test-helpers")) {
-            self.namespace.as_deref()
-        } else {
-            None
-        };
-
-        R::find_last_record(&self.db, namespace)
+        let options =
+            QueryOptions::default().with_namespace(self.namespace.clone());
+        R::find_last_record(&self.db, options)
             .await
             .map_err(StoreError::from)
     }

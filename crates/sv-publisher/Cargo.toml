@@ -17,7 +17,6 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = { workspace = true }
 clap = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-bin = { workspace = true, default-features = false, features = [
@@ -26,6 +25,7 @@ fuel-core-bin = { workspace = true, default-features = false, features = [
     "rocksdb",
 ] }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
+fuel-message-broker = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true }

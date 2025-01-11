@@ -4,19 +4,12 @@ pub mod fuel_core_like;
 pub mod stream;
 
 pub use fuel_core_like::*;
-pub use fuel_streams_nats as nats;
 pub use stream::*;
 
 pub mod prelude {
     pub use fuel_streams_macros::subject::*;
 
-    pub use crate::{
-        fuel_core_like::*,
-        nats::*,
-        stream::*,
-        subjects::*,
-        types::*,
-    };
+    pub use crate::{fuel_core_like::*, stream::*, subjects::*, types::*};
 }
 
 pub mod types {

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use fuel_message_broker::MessageBroker;
 use fuel_streams_store::db::Db;
 
 use super::Stream;
-use crate::{nats::*, types::*};
+use crate::types::*;
 
 #[derive(Clone, Debug)]
 pub struct FuelStreams {
@@ -13,21 +14,20 @@ pub struct FuelStreams {
     pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
-    pub nats_client: Arc<NatsClient>,
+    pub msg_broker: Arc<dyn MessageBroker>,
     pub db: Arc<Db>,
 }
 
 impl FuelStreams {
-    pub async fn new(nats_client: &NatsClient, db: &Arc<Db>) -> Self {
+    pub async fn new(broker: &Arc<dyn MessageBroker>, db: &Arc<Db>) -> Self {
         Self {
-            blocks: Stream::<Block>::get_or_init(nats_client, db).await,
-            transactions: Stream::<Transaction>::get_or_init(nats_client, db)
-                .await,
-            inputs: Stream::<Input>::get_or_init(nats_client, db).await,
-            outputs: Stream::<Output>::get_or_init(nats_client, db).await,
-            receipts: Stream::<Receipt>::get_or_init(nats_client, db).await,
-            utxos: Stream::<Utxo>::get_or_init(nats_client, db).await,
-            nats_client: Arc::new(nats_client.clone()),
+            blocks: Stream::<Block>::get_or_init(broker, db).await,
+            transactions: Stream::<Transaction>::get_or_init(broker, db).await,
+            inputs: Stream::<Input>::get_or_init(broker, db).await,
+            outputs: Stream::<Output>::get_or_init(broker, db).await,
+            receipts: Stream::<Receipt>::get_or_init(broker, db).await,
+            utxos: Stream::<Utxo>::get_or_init(broker, db).await,
+            msg_broker: Arc::clone(broker),
             db: Arc::clone(db),
         }
     }
@@ -36,7 +36,7 @@ impl FuelStreams {
         Arc::new(self)
     }
 
-    pub fn nats_client(&self) -> Arc<NatsClient> {
-        self.nats_client.clone()
+    pub fn broker(&self) -> Arc<dyn MessageBroker> {
+        self.msg_broker.clone()
     }
 }

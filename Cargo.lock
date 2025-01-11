@@ -3570,6 +3570,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-message-broker"
+version = "0.0.15"
+dependencies = [
+ "async-nats",
+ "async-trait",
+ "bytes",
+ "dotenvy",
+ "futures",
+ "rand",
+ "serde_json",
+ "thiserror 2.0.9",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fuel-sequencer-proto"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3625,9 +3641,9 @@ dependencies = [
  "fuel-core-services",
  "fuel-core-storage",
  "fuel-core-types 0.40.2",
+ "fuel-message-broker",
  "fuel-streams-domains",
  "fuel-streams-macros",
- "fuel-streams-nats",
  "fuel-streams-store",
  "fuel-streams-types",
  "futures",
@@ -3699,21 +3715,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-streams-nats"
-version = "0.0.15"
-dependencies = [
- "async-nats",
- "dotenvy",
- "futures",
- "pretty_assertions",
- "rand",
- "serde_json",
- "thiserror 2.0.9",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "fuel-streams-store"
 version = "0.0.15"
 dependencies = [
@@ -3735,10 +3736,10 @@ name = "fuel-streams-test"
 version = "0.0.15"
 dependencies = [
  "anyhow",
+ "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-macros",
- "fuel-streams-nats",
  "fuel-streams-store",
  "futures",
  "rand",
@@ -8799,11 +8800,11 @@ name = "sv-consumer"
 version = "0.0.15"
 dependencies = [
  "anyhow",
- "async-nats",
  "bincode",
  "clap 4.5.23",
  "dotenvy",
  "fuel-core",
+ "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-executors",
  "fuel-streams-store",
@@ -8824,11 +8825,11 @@ name = "sv-publisher"
 version = "0.0.15"
 dependencies = [
  "anyhow",
- "async-nats",
  "clap 4.5.23",
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-types 0.40.2",
+ "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-executors",
  "fuel-streams-store",
@@ -8858,6 +8859,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "elasticsearch",
+ "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-store",

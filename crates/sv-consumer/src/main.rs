@@ -1,18 +1,8 @@
-use std::{
-    sync::{Arc, LazyLock},
-    time::Duration,
-};
+use std::sync::{Arc, LazyLock};
 
-use async_nats::jetstream::{
-    consumer::{
-        pull::{BatchErrorKind, Config as ConsumerConfig},
-        Consumer,
-    },
-    context::CreateStreamErrorKind,
-    stream::{ConsumerErrorKind, RetentionPolicy},
-};
 use clap::Parser;
-use fuel_streams_core::{nats::*, types::*, FuelStreams};
+use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_streams_core::{types::*, FuelStreams};
 use fuel_streams_executors::*;
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
@@ -28,16 +18,6 @@ use tracing_subscriber::fmt::time;
 #[derive(thiserror::Error, Debug)]
 pub enum ConsumerError {
     #[error(transparent)]
-    BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
-    #[error(transparent)]
-    CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-    #[error(transparent)]
-    CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
-    #[error(transparent)]
-    NatsClient(#[from] NatsError),
-    #[error(transparent)]
-    Nats(#[from] async_nats::Error),
-    #[error(transparent)]
     Deserialization(#[from] bincode::Error),
     #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
@@ -49,6 +29,8 @@ pub enum ConsumerError {
     Semaphore(#[from] tokio::sync::AcquireError),
     #[error(transparent)]
     Db(#[from] fuel_streams_store::db::DbError),
+    #[error(transparent)]
+    MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
 }
 
 #[tokio::main]
@@ -103,33 +85,13 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
     Ok(db.arc())
 }
 
-async fn setup_nats(
-    cli: &Cli,
-) -> Result<(Arc<NatsClient>, Consumer<ConsumerConfig>), ConsumerError> {
-    let opts = NatsClientOpts::admin_opts().with_url(cli.nats_url.to_string());
-    let nats_client = NatsClient::connect(&opts).await?;
-    let stream_name = nats_client.namespace.stream_name("block_importer");
-    let stream = nats_client
-        .jetstream
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: stream_name,
-            subjects: vec!["block_submitted.>".to_string()],
-            retention: RetentionPolicy::WorkQueue,
-            duplicate_window: Duration::from_secs(1),
-            allow_rollup: true,
-            ..Default::default()
-        })
-        .await?;
-
-    let consumer = stream
-        .get_or_create_consumer("block_importer", ConsumerConfig {
-            durable_name: Some("block_importer".to_string()),
-            ack_policy: AckPolicy::Explicit,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok((nats_client.arc(), consumer))
+async fn setup_message_broker(
+    nats_url: &str,
+) -> Result<Arc<dyn MessageBroker>, ConsumerError> {
+    let broker = MessageBrokerClient::Nats;
+    let broker = broker.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
 }
 
 pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
@@ -144,27 +106,27 @@ async fn process_messages(
     cli: &Cli,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let (nats_client, consumer) = setup_nats(cli).await?;
     let db = setup_db(&cli.db_url).await?;
-    let fuel_streams = FuelStreams::new(&nats_client, &db).await.arc();
+    let message_broker = setup_message_broker(&cli.nats_url).await?;
+    let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =
-            consumer.fetch().max_messages(100).messages().await?.fuse();
+            message_broker.receive_blocks_stream(100).await?.fuse();
         let mut futs = FuturesUnordered::new();
 
         while let Some(msg) = messages.next().await {
             let msg = msg?;
+            let payload = msg.payload();
             let fuel_streams = fuel_streams.clone();
             let semaphore = semaphore.clone();
-
             tracing::debug!(
                 "Received message payload length: {}",
-                msg.payload.len()
+                payload.len()
             );
 
             let future = async move {
-                match BlockPayload::decode(&msg.payload).await {
+                match BlockPayload::decode(&payload).await {
                     Ok(payload) => {
                         let payload = Arc::new(payload);
                         let start_time = std::time::Instant::now();
@@ -182,7 +144,7 @@ async fn process_messages(
                         tracing::error!("Failed to decode payload: {:?}", e);
                         tracing::debug!(
                             "Raw payload (hex): {:?}",
-                            hex::encode(&msg.payload)
+                            hex::encode(payload)
                         );
                         Err(e)
                     }

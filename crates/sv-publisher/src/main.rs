@@ -1,17 +1,17 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use async_nats::jetstream::{
-    context::{CreateStreamErrorKind, Publish, PublishErrorKind},
-    stream::RetentionPolicy,
-    Context,
-};
 use clap::Parser;
 use fuel_core_types::blockchain::SealedBlock;
-use fuel_streams_core::{nats::*, types::*, FuelCore, FuelCoreLike};
+use fuel_message_broker::{
+    MessageBroker,
+    MessageBrokerClient,
+    MessageBrokerError,
+};
+use fuel_streams_core::{types::*, FuelCore, FuelCoreLike};
 use fuel_streams_executors::*;
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
-    record::{DataEncoder, EncoderError, Record},
+    record::{DataEncoder, EncoderError, QueryOptions, Record},
 };
 use futures::StreamExt;
 use sv_publisher::{cli::Cli, shutdown::ShutdownController};
@@ -20,25 +20,19 @@ use tokio_util::sync::CancellationToken;
 #[derive(thiserror::Error, Debug)]
 pub enum PublishError {
     #[error(transparent)]
-    NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-    #[error(transparent)]
     BlockPayload(#[from] ExecutorError),
     #[error("Failed to access offchain database: {0}")]
     OffchainDatabase(String),
     #[error(transparent)]
     Db(#[from] fuel_streams_store::db::DbError),
-    #[error(transparent)]
-    NatsClient(#[from] NatsError),
-    #[error(transparent)]
-    CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-    #[error(transparent)]
-    Nats(#[from] async_nats::Error),
     #[error("Failed to initialize Fuel Core: {0}")]
     FuelCore(String),
     #[error(transparent)]
     Encoder(#[from] EncoderError),
     #[error("Processing was cancelled")]
     Cancelled,
+    #[error(transparent)]
+    MessageBrokerClient(#[from] MessageBrokerError),
 }
 
 #[tokio::main]
@@ -49,10 +43,9 @@ async fn main() -> anyhow::Result<()> {
     fuel_core.start().await?;
 
     let db = setup_db(&cli.db_url).await?;
-    let nats_client = setup_nats(&cli.nats_url).await?;
+    let message_broker = setup_message_broker(&cli.nats_url).await?;
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
     let last_published = Arc::new(find_last_published_height(&db).await?);
-
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
@@ -62,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
         result = async {
             let historical = process_historical_blocks(
                 cli.from_height,
-                &nats_client,
+                &message_broker,
                 fuel_core.clone(),
                 last_block_height,
                 last_published,
@@ -70,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
             );
 
             let live = process_live_blocks(
-                &nats_client.jetstream,
+                &message_broker,
                 fuel_core.clone(),
                 shutdown.token().clone(),
             );
@@ -99,27 +92,17 @@ async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
     Ok(db)
 }
 
-async fn setup_nats(nats_url: &str) -> Result<NatsClient, PublishError> {
-    let opts = NatsClientOpts::admin_opts().with_url(nats_url.to_string());
-    let nats_client = NatsClient::connect(&opts).await?;
-    let stream_name = nats_client.namespace.stream_name("block_importer");
-    nats_client
-        .jetstream
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: stream_name,
-            subjects: vec!["block_submitted.>".to_string()],
-            retention: RetentionPolicy::WorkQueue,
-            duplicate_window: Duration::from_secs(1),
-            allow_rollup: true,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok(nats_client)
+async fn setup_message_broker(
+    nats_url: &str,
+) -> Result<Arc<dyn MessageBroker>, PublishError> {
+    let broker = MessageBrokerClient::Nats;
+    let broker = broker.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
 }
 
 async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
-    let record = Block::find_last_record(db, None).await?;
+    let record = Block::find_last_record(db, QueryOptions::default()).await?;
     match record {
         Some(record) => Ok(record.block_height as u32),
         None => Ok(0),
@@ -160,13 +143,14 @@ fn get_historical_block_range(
 
 fn process_historical_blocks(
     from_height: u32,
-    nats_client: &NatsClient,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
     last_block_height: Arc<u32>,
     last_published_height: Arc<u32>,
     token: CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
-    let jetstream = nats_client.jetstream.clone();
+    let message_broker = message_broker.clone();
+    let fuel_core = fuel_core.clone();
     tokio::spawn(async move {
         let Some(heights) = get_historical_block_range(
             from_height,
@@ -177,12 +161,13 @@ fn process_historical_blocks(
         };
         futures::stream::iter(heights)
             .map(|height| {
-                let jetstream = jetstream.clone();
+                let message_broker = message_broker.clone();
                 let fuel_core = fuel_core.clone();
                 let sealed_block = fuel_core.get_sealed_block_by_height(height);
                 let sealed_block = Arc::new(sealed_block);
                 async move {
-                    publish_block(&jetstream, &fuel_core, &sealed_block).await
+                    publish_block(&message_broker, &fuel_core, &sealed_block)
+                        .await
                 }
             })
             .buffer_unordered(100)
@@ -193,7 +178,7 @@ fn process_historical_blocks(
 }
 
 async fn process_live_blocks(
-    jetstream: &Context,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
     token: CancellationToken,
 ) -> Result<(), PublishError> {
@@ -203,30 +188,24 @@ async fn process_live_blocks(
             break;
         }
         let sealed_block = Arc::new(data.sealed_block.clone());
-        publish_block(jetstream, &fuel_core, &sealed_block).await?;
+        publish_block(message_broker, &fuel_core, &sealed_block).await?;
     }
     Ok(())
 }
 
 async fn publish_block(
-    jetstream: &Context,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: &Arc<dyn FuelCoreLike>,
     sealed_block: &Arc<SealedBlock>,
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
-    let publish = Publish::build()
-        .message_id(payload.message_id())
-        .payload(payload.encode().await?.into());
+    let encoded = payload.encode().await?;
 
-    jetstream
-        .send_publish(payload.subject(), publish)
-        .await
-        .map_err(PublishError::NatsPublish)?
-        .await
-        .map_err(PublishError::NatsPublish)?;
-
+    message_broker
+        .publish_block(payload.message_id(), encoded)
+        .await?;
     tracing::info!("New block submitted: {}", payload.block_height());
     Ok(())
 }

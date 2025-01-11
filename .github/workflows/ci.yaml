@@ -41,12 +41,15 @@ jobs:
             repo
             deps
             release
+            data-parser
+            message-broker
             fuel-streams
             core
+            domains
             executors
             macros
-            nats
             store
+            types
             consumer
             publisher
             webserver

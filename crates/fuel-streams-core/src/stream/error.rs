@@ -1,5 +1,5 @@
 use async_nats::SubscribeError;
-use fuel_streams_nats::NatsError;
+use fuel_message_broker::MessageBrokerError;
 use fuel_streams_store::{db::DbError, store::StoreError};
 
 use crate::DeliverPolicyError;
@@ -15,5 +15,5 @@ pub enum StreamError {
     #[error(transparent)]
     DeliverPolicy(#[from] DeliverPolicyError),
     #[error(transparent)]
-    Nats(#[from] NatsError),
+    MessageBrokerClient(#[from] MessageBrokerError),
 }

@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
+use fuel_message_broker::MessageBroker;
 use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{
     db::{Db, DbItem},
@@ -14,7 +15,7 @@ use futures::{
 use tokio::{sync::OnceCell, time::sleep};
 
 use super::{config, StreamError};
-use crate::{nats::*, DeliverPolicy};
+use crate::DeliverPolicy;
 
 pub type BoxedStreamItem = Result<Vec<u8>, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
@@ -22,7 +23,7 @@ pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {
     store: Arc<Store<S>>,
-    nats_client: Arc<NatsClient>,
+    broker: Arc<dyn MessageBroker>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -30,21 +31,22 @@ impl<R: Record> Stream<R> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
-    pub async fn get_or_init(nats_client: &NatsClient, db: &Arc<Db>) -> Self {
+    pub async fn get_or_init(
+        broker: &Arc<dyn MessageBroker>,
+        db: &Arc<Db>,
+    ) -> Self {
         let cell = Self::INSTANCE;
-        cell.get_or_init(|| async {
-            Self::new(nats_client, db).await.to_owned()
-        })
-        .await
-        .to_owned()
+        cell.get_or_init(|| async { Self::new(broker, db).await.to_owned() })
+            .await
+            .to_owned()
     }
 
-    pub async fn new(nats_client: &NatsClient, db: &Arc<Db>) -> Self {
+    pub async fn new(broker: &Arc<dyn MessageBroker>, db: &Arc<Db>) -> Self {
         let store = Arc::new(Store::new(db));
-        let nats_client = Arc::new(nats_client.clone());
+        let broker = Arc::clone(broker);
         Self {
             store,
-            nats_client,
+            broker,
             _marker: std::marker::PhantomData,
         }
     }
@@ -62,11 +64,11 @@ impl<R: Record> Stream<R> {
         &self,
         packet: &Arc<RecordPacket<R>>,
     ) -> Result<R::DbItem, StreamError> {
-        let client = self.nats_client.clone();
+        let broker = self.broker.clone();
         let db_record = self.store.insert_record(packet).await?;
-        let encoded_value = db_record.encoded_value();
+        let encoded_value = db_record.encoded_value().to_vec();
         let subject = packet.subject_str();
-        client.publish(subject, encoded_value).await?;
+        broker.publish_event(&subject, encoded_value.into()).await?;
         Ok(db_record)
     }
 
@@ -76,13 +78,12 @@ impl<R: Record> Stream<R> {
         deliver_policy: DeliverPolicy,
     ) -> BoxStream<'static, Result<Vec<u8>, StreamError>> {
         let store = self.store.clone();
-        let client = self.nats_client.clone();
+        let broker = self.broker.clone();
         let subject_clone = subject.clone();
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
                 let height = Some(block_height);
-                let historical = store.stream_by_subject(subject_clone, height);
-                futures::pin_mut!(historical);
+                let mut historical = store.stream_by_subject(subject_clone, height);
                 while let Some(result) = historical.next().await {
                     let item = result.map_err(StreamError::Store)?;
                     yield item.encoded_value().to_vec();
@@ -90,11 +91,9 @@ impl<R: Record> Stream<R> {
                     sleep(Duration::from_millis(throttle_time as u64)).await;
                 }
             }
-            let client = client.nats_client.clone();
-            let live = client.subscribe(subject.parse()).await?;
-            futures::pin_mut!(live);
+            let mut live = broker.subscribe_to_events(&subject.parse()).await?;
             while let Some(msg) = live.next().await {
-                yield msg.payload.to_vec();
+                yield msg?;
                 let throttle_time = *config::STREAM_THROTTLE_LIVE;
                 sleep(Duration::from_millis(throttle_time as u64)).await;
             }

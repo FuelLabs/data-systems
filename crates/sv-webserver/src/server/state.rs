@@ -77,7 +77,7 @@ impl ServerState {
 
 impl ServerState {
     pub fn is_healthy(&self) -> bool {
-        if !self.context.nats_client.is_connected() {
+        if !self.context.message_broker.is_connected() {
             return false;
         }
         true

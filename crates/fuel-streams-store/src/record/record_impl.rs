@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_macros::subject::IntoSubject;
-use sqlx::{Execute, Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket};
 use crate::db::{Db, DbError, DbItem, DbResult};
@@ -35,61 +35,47 @@ pub trait Record: RecordEncoder + 'static {
     fn build_find_many_query(
         subject: Arc<dyn IntoSubject>,
         options: QueryOptions,
-    ) -> String {
+    ) -> QueryBuilder<'static, Postgres> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
         let select = format!("SELECT * FROM {}", Self::ENTITY.table_name());
         query_builder.push(select);
         query_builder.push(" WHERE ");
         query_builder.push(subject.to_sql_where());
+
         if let Some(block) = options.from_block {
             query_builder.push(" AND block_height >= ");
             query_builder.push_bind(block as i64);
         }
+
+        if cfg!(any(test, feature = "test-helpers")) {
+            if let Some(ns) = options.namespace {
+                query_builder.push(" AND subject LIKE ");
+                query_builder.push_bind(format!("{}%", ns));
+            }
+        }
+
         query_builder.push(" ORDER BY ");
         query_builder.push(Self::ORDER_PROPS.join(", "));
         query_builder.push(" ASC LIMIT ");
         query_builder.push_bind(options.limit);
         query_builder.push(" OFFSET ");
         query_builder.push_bind(options.offset);
-        query_builder.build().sql().to_string()
-    }
-
-    async fn find_many_by_subject(
-        db: &Db,
-        subject: &Arc<dyn IntoSubject>,
-        options: QueryOptions,
-    ) -> DbResult<Vec<Self::DbItem>> {
-        let query =
-            Self::build_find_many_query(subject.clone(), options.clone());
-        let mut records = sqlx::query_as::<_, Self::DbItem>(&query)
-            .fetch_all(&db.pool)
-            .await
-            .map_err(DbError::FindManyByPattern)?;
-
-        if cfg!(any(test, feature = "test-helpers")) {
-            if let Some(ns) = options.namespace {
-                records.retain(|record| record.subject_str().starts_with(&ns));
-            }
-        }
-
-        Ok(records)
+        query_builder
     }
 
     async fn find_last_record(
         db: &Db,
-        namespace: Option<&str>,
+        options: QueryOptions,
     ) -> DbResult<Option<Self::DbItem>> {
         let mut query_builder = sqlx::QueryBuilder::new(format!(
             "SELECT * FROM {}",
             Self::ENTITY.table_name()
         ));
 
-        if cfg!(any(test, feature = "test-helpers")) {
-            if let Some(ns) = namespace {
-                query_builder
-                    .push(" WHERE subject LIKE ")
-                    .push_bind(format!("{}%", ns));
-            }
+        if let Some(ns) = options.namespace {
+            query_builder
+                .push(" WHERE subject LIKE ")
+                .push_bind(format!("{}%", ns));
         }
 
         query_builder

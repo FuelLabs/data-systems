@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::{stream::*, subjects::*, types::Block};
 use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
-use fuel_streams_nats::{NatsClient, NatsClientOpts};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
     record::Record,
@@ -28,15 +28,17 @@ pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
     Ok(store)
 }
 
-pub async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
-    let opts = NatsClientOpts::admin_opts().with_url(nats_url.to_string());
-    let nats_client = NatsClient::connect(&opts).await?;
-    Ok(nats_client)
+pub async fn setup_message_broker(
+    nats_url: &str,
+) -> anyhow::Result<Arc<dyn MessageBroker>> {
+    let broker = MessageBrokerClient::Nats.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
 }
 
 pub async fn setup_stream(nats_url: &str) -> anyhow::Result<Stream<Block>> {
-    let nats_client = setup_nats(nats_url).await?;
     let db = setup_db().await?;
+    let nats_client = setup_message_broker(nats_url).await?;
     let stream = Stream::<Block>::get_or_init(&nats_client, &db.arc()).await;
     Ok(stream)
 }

@@ -33,10 +33,9 @@ async fn test_asterisk_wildcards() -> anyhow::Result<()> {
     }
 
     // Test wildcard matching
-    let wildcard_subject =
-        BlocksSubject::new().with_block_height(None).dyn_arc();
+    let subject = BlocksSubject::new().with_block_height(None).dyn_arc();
     let records = store
-        .find_many_by_subject(&wildcard_subject, QueryOptions::default())
+        .find_many_by_subject(&subject, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 3);
 

@@ -56,17 +56,18 @@ Here's a simple example to get you started with Fuel Streams Core:
 ```rust,no_run
 use fuel_streams_core::prelude::*;
 use fuel_streams_store::db::*;
+use fuel_message_broker::*;
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Connect to NATS server
-    let nats_opts = NatsClientOpts::admin_opts();
-    let nats_client = NatsClient::connect(&nats_opts).await?;
     let db = Db::new(DbConnectionOpts::default()).await?;
+    let broker = MessageBrokerClient::Nats.start("nats://localhost:4222").await?;
+    broker.setup().await?;
 
     // Create or get existing stream for blocks
-    let stream = Stream::<Block>::get_or_init(&nats_client, &db.arc()).await;
+    let stream = Stream::<Block>::get_or_init(&broker, &db.arc()).await;
 
     // Subscribe to the stream
     let subject = BlocksSubject::new(); // blocks.*.*
