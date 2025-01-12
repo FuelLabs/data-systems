@@ -5,14 +5,11 @@ use std::{
 
 use async_nats::jetstream::stream::State;
 use async_trait::async_trait;
-use fuel_streams_core::{nats::NatsClient, FuelStreams, FuelStreamsExt};
-use fuel_streams_nats::NatsClientOpts;
-use fuel_streams_storage::{S3Storage, S3StorageOpts, Storage, StorageConfig};
+use fuel_streams_core::{nats::NatsClient, FuelStreamsExt};
 use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, metrics::Metrics};
+use crate::metrics::Metrics;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamInfo {
@@ -64,44 +61,25 @@ pub struct HealthResponse {
     pub streams_info: Vec<StreamInfo>,
 }
 
-#[derive(Clone)]
 pub struct ServerState {
     pub start_time: Instant,
-    pub nats_client: NatsClient,
+    pub nats_client: Arc<NatsClient>,
     pub telemetry: Arc<Telemetry<Metrics>>,
-    pub fuel_streams: Arc<FuelStreams>,
-    pub connection_count: Arc<RwLock<u32>>,
-    pub storage: Option<Arc<S3Storage>>,
-    pub jwt_secret: String,
+    pub fuel_streams: Arc<dyn FuelStreamsExt>,
 }
 
 impl ServerState {
-    pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let nats_client_opts = NatsClientOpts::admin_opts()
-            .with_url(config.nats.url.clone())
-            .with_domain("CORE");
-        let nats_client = NatsClient::connect(&nats_client_opts).await?;
-        let storage_opts = S3StorageOpts::admin_opts();
-        let storage = Arc::new(S3Storage::new(storage_opts).await?);
-        let fuel_streams =
-            Arc::new(FuelStreams::new(&nats_client, &storage).await);
-        let metrics = Metrics::new_with_random_prefix()?;
-        let telemetry = Telemetry::new(Some(metrics)).await?;
-        telemetry.start().await?;
-
-        Ok(Self {
+    pub fn new(
+        nats_client: Arc<NatsClient>,
+        telemetry: Arc<Telemetry<Metrics>>,
+        fuel_streams: Arc<dyn FuelStreamsExt>,
+    ) -> Self {
+        Self {
             start_time: Instant::now(),
-            fuel_streams,
             nats_client,
             telemetry,
-            storage: if config.s3.enabled {
-                Some(storage)
-            } else {
-                None
-            },
-            jwt_secret: config.auth.jwt_secret.clone(),
-            connection_count: Arc::new(RwLock::new(0)),
-        })
+            fuel_streams,
+        }
     }
 
     pub fn uptime(&self) -> Duration {

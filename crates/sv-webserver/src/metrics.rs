@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
 use prometheus::{
     register_int_counter_vec,
     register_int_gauge_vec,
@@ -5,7 +7,6 @@ use prometheus::{
     IntGaugeVec,
     Registry,
 };
-use rand::{distributions::Alphanumeric, Rng};
 
 #[derive(Clone, Debug)]
 pub struct Metrics {
@@ -22,16 +23,18 @@ impl Default for Metrics {
     }
 }
 
-impl Metrics {
-    pub fn generate_random_prefix() -> String {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .filter(|c| c.is_ascii_alphabetic())
-            .take(6)
-            .map(char::from)
-            .collect()
+#[async_trait]
+impl TelemetryMetrics for Metrics {
+    fn registry(&self) -> &Registry {
+        &self.registry
     }
 
+    fn metrics(&self) -> Option<Self> {
+        Some(self.clone())
+    }
+}
+
+impl Metrics {
     pub fn new_with_random_prefix() -> anyhow::Result<Self> {
         Metrics::new(Some(Metrics::generate_random_prefix()))
     }
@@ -88,6 +91,63 @@ impl Metrics {
             subs_messages_throughput,
             subs_messages_error_rates,
         })
+    }
+
+    pub fn update_user_subscription_metrics(
+        &self,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
+    ) {
+        // Increment total user subscribed messages
+        self.user_subscribed_messages
+            .with_label_values(&[
+                user_id.to_string().as_str(),
+                subject_wildcard,
+            ])
+            .inc();
+
+        // Increment throughput for the subscribed messages
+        self.subs_messages_throughput
+            .with_label_values(&[subject_wildcard])
+            .inc();
+    }
+
+    pub fn update_error_metrics(
+        &self,
+        subject_wildcard: &str,
+        error_type: &str,
+    ) {
+        self.subs_messages_error_rates
+            .with_label_values(&[subject_wildcard, error_type])
+            .inc();
+    }
+
+    pub fn increment_subscriptions_count(&self) {
+        self.total_ws_subs.with_label_values(&[]).inc();
+    }
+
+    pub fn decrement_subscriptions_count(&self) {
+        self.total_ws_subs.with_label_values(&[]).inc();
+    }
+
+    pub fn update_unsubscribed(
+        &self,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
+    ) {
+        self.user_subscribed_messages
+            .with_label_values(&[&user_id.to_string(), subject_wildcard])
+            .dec();
+    }
+
+    pub fn update_subscribed(
+        &self,
+        user_id: uuid::Uuid,
+        subject_wildcard: &str,
+    ) {
+        self.user_subscribed_messages
+            .with_label_values(&[&user_id.to_string(), subject_wildcard])
+            .inc();
     }
 }
 

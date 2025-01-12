@@ -12,7 +12,7 @@ use actix_web::{
 };
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 
-use crate::server::auth::authorize_request;
+use super::jwt::authorize_request;
 
 pub struct JwtAuth {
     jwt_secret: String,

@@ -8,6 +8,7 @@ use actix_web::{
 };
 use actix_ws::{Message, Session};
 use fuel_streams_core::prelude::*;
+use fuel_web_utils::telemetry::Telemetry;
 use futures::StreamExt;
 use uuid::Uuid;
 
@@ -16,11 +17,11 @@ use super::{
     models::{ClientMessage, ResponseMessage},
 };
 use crate::{
+    metrics::Metrics,
     server::{
         state::ServerState,
         ws::models::{ServerMessage, SubscriptionPayload},
     },
-    telemetry::Telemetry,
 };
 
 static _NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
@@ -50,12 +51,9 @@ pub async fn get_ws(
     // split the request into response, session, and message stream
     let (response, session, mut msg_stream) = actix_ws::handle(&req, body)?;
 
-    // record the new subscription
-    state.context.telemetry.increment_subscriptions_count();
-
     // spawm an actor handling the ws connection
-    let streams = state.context.fuel_streams.clone();
-    let telemetry = state.context.telemetry.clone();
+    let streams = state.fuel_streams.clone();
+    let telemetry = state.telemetry.clone();
     actix_web::rt::spawn(async move {
         tracing::info!("Ws opened for user id {:?}", user_id.to_string());
         while let Some(Ok(msg)) = msg_stream.recv().await {
@@ -136,7 +134,7 @@ async fn handle_binary_message(
     msg: Bytes,
     user_id: uuid::Uuid,
     mut session: Session,
-    telemetry: Arc<Telemetry>,
+    telemetry: Arc<Telemetry<Metrics>>,
     streams: Arc<FuelStreams>,
 ) -> Result<(), WsSubscriptionError> {
     tracing::info!("Received binary {:?}", msg);
@@ -191,10 +189,12 @@ async fn handle_binary_message(
             let telemetry = telemetry.clone();
             actix_web::rt::spawn(async move {
                 // update metrics
-                telemetry.update_user_subscription_metrics(
-                    user_id,
-                    &subject_wildcard,
-                );
+                if let Some(metrics) = telemetry.base_metrics() {
+                    metrics.update_user_subscription_metrics(
+                        user_id,
+                        &subject_wildcard,
+                    );
+                }
 
                 // subscribe to the stream
                 let config = SubscriptionConfig {
@@ -234,10 +234,12 @@ async fn handle_binary_message(
                     {
                         Ok(res) => res,
                         Err(e) => {
-                            telemetry.update_error_metrics(
-                                &subject_wildcard,
-                                &e.to_string(),
-                            );
+                            if let Some(metrics) = telemetry.base_metrics() {
+                                metrics.update_error_metrics(
+                                    &subject_wildcard,
+                                    &e.to_string(),
+                                );
+                            }
                             tracing::error!("Error serializing received stream message: {:?}", e);
                             continue;
                         }
@@ -313,14 +315,19 @@ async fn close_socket_with_error(
     user_id: uuid::Uuid,
     mut session: Session,
     subject_wildcard: Option<String>,
-    telemetry: Arc<Telemetry>,
+    telemetry: Arc<Telemetry<Metrics>>,
 ) {
     tracing::error!("ws subscription error: {:?}", e.to_string());
     if let Some(subject_wildcard) = subject_wildcard {
-        telemetry.update_error_metrics(&subject_wildcard, &e.to_string());
-        telemetry.update_unsubscribed(user_id, &subject_wildcard);
+        if let Some(metrics) = telemetry.base_metrics() {
+            metrics.update_error_metrics(&subject_wildcard, &e.to_string());
+            metrics.update_unsubscribed(user_id, &subject_wildcard);
+        }
     }
-    telemetry.decrement_subscriptions_count();
+
+    if let Some(metrics) = telemetry.base_metrics() {
+        metrics.decrement_subscriptions_count();
+    }
     send_message_to_socket(&mut session, ServerMessage::Error(e.to_string()))
         .await;
     let _ = session.close(None).await;

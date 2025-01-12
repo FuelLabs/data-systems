@@ -1,11 +1,17 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use actix_web::{web, HttpResponse, Result};
+use actix_web::{web, HttpResponse};
+use fuel_web_utils::server::middlewares::auth::jwt::{
+    create_jwt,
+    AuthError,
+    UserError,
+    UserRole,
+};
 use uuid::Uuid;
 
 use super::models::{LoginRequest, LoginResponse};
 use crate::server::{
-    auth::{create_jwt, AuthError, UserError, UserRole},
+    // auth::{create_jwt, AuthError, UserError, UserRole},
     state::ServerState,
 };
 
@@ -23,26 +29,7 @@ pub static AUTH_DATA: LazyLock<HashMap<String, (String, UserRole, Uuid)>> =
         ])
     });
 
-pub async fn get_metrics(
-    state: web::Data<ServerState>,
-) -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok()
-        .content_type(
-            "application/openmetrics-text; version=1.0.0; charset=utf-8",
-        )
-        .body(state.context.telemetry.get_metrics().await))
-}
-
-pub async fn get_health(state: web::Data<ServerState>) -> Result<HttpResponse> {
-    if !state.is_healthy() {
-        return Ok(
-            HttpResponse::ServiceUnavailable().body("Service Unavailable")
-        );
-    }
-    Ok(HttpResponse::Ok().json(state.get_health().await))
-}
-
-// request jwt
+// request jwt endpoint
 pub async fn request_jwt(
     state: web::Data<ServerState>,
     req_body: web::Json<LoginRequest>,
@@ -58,12 +45,9 @@ pub async fn request_jwt(
     }
 
     // if all good, generate a jwt with the user role encoded
-    let jwt_token = create_jwt(
-        &uuid.to_string(),
-        user_role,
-        state.context.jwt_secret.as_bytes(),
-    )
-    .map_err(|_| AuthError::JWTTokenCreationError)?;
+    let jwt_token =
+        create_jwt(&uuid.to_string(), user_role, state.jwt_secret.as_bytes())
+            .map_err(|_| AuthError::JWTTokenCreationError)?;
 
     Ok(HttpResponse::Ok().json(&LoginResponse {
         id: uuid.to_owned(),

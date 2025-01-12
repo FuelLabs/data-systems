@@ -15,9 +15,13 @@ use clap::Parser;
 use displaydoc::Display as DisplayDoc;
 use fuel_streams_core::prelude::*;
 use fuel_streams_executors::*;
+use fuel_web_utils::{
+    server::api::build_and_spawn_web_server,
+    shutdown::{shutdown_nats_with_timeout, ShutdownController},
+    telemetry::Telemetry,
+};
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::{cli::Cli, Client};
-use sv_publisher::shutdown::ShutdownController;
+use sv_consumer::{cli::Cli, state::ServerState, Client};
 use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
@@ -46,6 +50,10 @@ pub enum ConsumerError {
     Semaphore(#[from] tokio::sync::AcquireError),
     /// Failed to setup storage: {0}
     Storage(#[from] fuel_streams_core::storage::StorageError),
+    /// Failed to start telemetry
+    TelemetryStart,
+    /// Failed to start web server
+    WebServerStart,
 }
 
 #[tokio::main]
@@ -145,8 +153,25 @@ async fn process_messages(
     let storage = setup_storage().await?;
     let (_, publisher_stream) =
         FuelStreams::setup_all(&core_client, &publisher_client, &storage).await;
-
     let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
+
+    let telemetry = Telemetry::new(None)
+        .await
+        .map_err(|_| ConsumerError::TelemetryStart)?;
+    telemetry
+        .start()
+        .await
+        .map_err(|_| ConsumerError::TelemetryStart)?;
+
+    let server_state = ServerState::new(
+        publisher_client.clone(),
+        Arc::clone(&telemetry),
+        Arc::clone(&fuel_streams),
+    );
+    let server_handle = build_and_spawn_web_server(cli.port, server_state)
+        .await
+        .map_err(|_| ConsumerError::WebServerStart)?;
+
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =
@@ -195,6 +220,11 @@ async fn process_messages(
             log_task(results, start_time, end_time, payload);
         }
     }
+    tracing::info!("Stopping actix server ...");
+    server_handle.stop(true).await;
+    tracing::info!("Actix server stopped. Goodbye!");
+    shutdown_nats_with_timeout(&publisher_client).await;
+
     Ok(())
 }
 
