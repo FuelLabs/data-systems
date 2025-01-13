@@ -53,6 +53,8 @@ pub enum MessageBrokerError {
     #[error("Failed to flush: {0}")]
     Flush(String),
     #[error(transparent)]
+    Serde(#[from] serde_json::Error),
+    #[error(transparent)]
     Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
@@ -119,7 +121,10 @@ pub trait MessageBroker: std::fmt::Debug + Send + Sync + 'static {
     async fn is_healthy(&self) -> bool;
 
     /// Get health info
-    async fn get_health_info(&self) -> serde_json::Value;
+    async fn get_health_info(
+        &self,
+        uptime_secs: u64,
+    ) -> Result<serde_json::Value, MessageBrokerError>;
 }
 
 #[derive(Debug, Clone, Default)]

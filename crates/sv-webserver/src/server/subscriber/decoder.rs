@@ -2,26 +2,26 @@ use fuel_streams_core::types::*;
 use fuel_streams_domains::SubjectPayload;
 use fuel_streams_store::record::{DataEncoder, RecordEntity};
 
-use super::{
-    errors::WsSubscriptionError,
-    models::{ResponseMessage, ServerMessage, SubscriptionPayload},
+use crate::server::{
+    errors::WebsocketError,
+    types::{ResponseMessage, ServerMessage, SubscriptionPayload},
 };
 
-pub async fn decode_record(
+pub async fn decode_and_responde(
     payload: SubscriptionPayload,
     data: Vec<u8>,
-) -> Result<Vec<u8>, WsSubscriptionError> {
+) -> Result<Vec<u8>, WebsocketError> {
     let subject = payload.subject.clone();
     let payload = decode_to_json_value(&payload.try_into()?, data).await?;
     let response_message = ResponseMessage { subject, payload };
     serde_json::to_vec(&ServerMessage::Response(response_message))
-        .map_err(WsSubscriptionError::UnserializablePayload)
+        .map_err(WebsocketError::UnserializablePayload)
 }
 
 async fn decode_to_json_value(
     payload: &SubjectPayload,
     data: Vec<u8>,
-) -> Result<serde_json::Value, WsSubscriptionError> {
+) -> Result<serde_json::Value, WebsocketError> {
     let value = match payload.record_entity() {
         RecordEntity::Block => {
             let payload: Block = Block::decode(&data).await?;

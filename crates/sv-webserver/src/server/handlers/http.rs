@@ -9,10 +9,9 @@ use fuel_web_utils::server::middlewares::auth::jwt::{
 };
 use uuid::Uuid;
 
-use super::models::{LoginRequest, LoginResponse};
 use crate::server::{
-    // auth::{create_jwt, AuthError, UserError, UserRole},
     state::ServerState,
+    types::{LoginRequest, LoginResponse},
 };
 
 pub static AUTH_DATA: LazyLock<HashMap<String, (String, UserRole, Uuid)>> =

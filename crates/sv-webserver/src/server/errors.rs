@@ -9,7 +9,7 @@ use fuel_streams_store::{
 
 /// Ws Subscription-related errors
 #[derive(Debug, thiserror::Error)]
-pub enum WsSubscriptionError {
+pub enum WebsocketError {
     #[error("Stream error: {0}")]
     StreamError(#[from] StreamError),
     #[error("Unserializable payload: {0}")]

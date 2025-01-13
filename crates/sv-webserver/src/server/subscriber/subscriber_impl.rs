@@ -1,70 +1,56 @@
 use std::sync::Arc;
 
-use actix_ws::Session;
 use fuel_streams_core::{BoxedStream, DeliverPolicy, FuelStreams};
 use fuel_streams_domains::SubjectPayload;
 use fuel_streams_store::record::RecordEntity;
-use fuel_web_utils::telemetry::Telemetry;
 use futures::StreamExt;
 
+use super::decoder::decode_and_responde;
 use crate::{
     handle_ws_error,
-    metrics::Metrics,
-    server::ws::{
-        context::WsContext,
-        decoder::decode_record,
-        errors::WsSubscriptionError,
-        models::{ServerMessage, SubscriptionPayload},
+    server::{
+        errors::WebsocketError,
+        types::{ServerMessage, SubscriptionPayload},
+        ws_context::WsContext,
     },
 };
 
-pub async fn handle_subscribe(
+pub async fn subscribe(
     payload: SubscriptionPayload,
     ctx: WsContext,
-    session: Session,
-    telemetry: &Arc<Telemetry<Metrics>>,
-    streams: &Arc<FuelStreams>,
-) -> Result<(), WsSubscriptionError> {
+) -> Result<(), WebsocketError> {
     tracing::info!("Received subscribe message: {:?}", payload);
 
     let mut ctx = ctx.with_payload(&payload);
     let subject_payload: SubjectPayload = payload.clone().try_into()?;
-    let sub =
-        create_subscriber(streams, &subject_payload, payload.deliver_policy)
-            .await;
+    let sub = create_subscriber(
+        &ctx.streams,
+        &subject_payload,
+        payload.deliver_policy,
+    )
+    .await;
 
     let sub = handle_ws_error!(sub, ctx.clone());
-    let stream_session = session.clone();
     ctx.send_message_to_socket(ServerMessage::Subscribed(payload.clone()))
         .await;
 
-    // Start subscription processing in a background task
     actix_web::rt::spawn({
-        let telemetry = telemetry.clone();
         async move {
-            let _ = process_subscription(
-                sub,
-                stream_session,
-                ctx,
-                &telemetry,
-                payload,
-            )
-            .await;
+            let _ = process_subscription(sub, ctx, payload).await;
         }
     });
-
     Ok(())
 }
 
-pub async fn handle_unsubscribe(
+pub async fn unsubscribe(
     ctx: WsContext,
     payload: SubscriptionPayload,
-) -> Result<(), WsSubscriptionError> {
+) -> Result<(), WebsocketError> {
     tracing::info!("Received unsubscribe message: {:?}", payload);
     let mut ctx = ctx.with_payload(&payload);
     let msg = ServerMessage::Unsubscribed(payload.clone());
     if let Err(e) = serde_json::to_vec(&msg) {
-        let error = WsSubscriptionError::UnserializablePayload(e);
+        let error = WebsocketError::UnserializablePayload(e);
         ctx.close_with_error(error).await;
         return Ok(());
     }
@@ -75,30 +61,30 @@ pub async fn handle_unsubscribe(
 
 async fn process_subscription(
     mut sub: BoxedStream,
-    mut stream_session: Session,
     ctx: WsContext,
-    telemetry: &Arc<Telemetry<Metrics>>,
     payload: SubscriptionPayload,
-) -> Result<(), WsSubscriptionError> {
+) -> Result<(), WebsocketError> {
     let mut ctx = ctx.with_payload(&payload);
     let payload_str = payload.clone().to_string();
     let cleanup = || {
-        if let Some(metrics) = telemetry.base_metrics() {
+        if let Some(metrics) = ctx.telemetry.base_metrics() {
             metrics.update_unsubscribed(ctx.user_id, &payload_str);
             metrics.decrement_subscriptions_count();
         }
     };
 
-    if let Some(metrics) = telemetry.base_metrics() {
+    if let Some(metrics) = ctx.telemetry.base_metrics() {
         metrics.update_user_subscription_metrics(ctx.user_id, &payload_str);
     }
 
     while let Some(result) = sub.next().await {
         let result = result?;
-        let payload = match decode_record(payload.to_owned(), result).await {
+        let payload = match decode_and_responde(payload.to_owned(), result)
+            .await
+        {
             Ok(res) => res,
             Err(e) => {
-                if let Some(metrics) = telemetry.base_metrics() {
+                if let Some(metrics) = ctx.telemetry.base_metrics() {
                     metrics.update_error_metrics(&payload_str, &e.to_string());
                 }
                 tracing::error!(
@@ -109,7 +95,7 @@ async fn process_subscription(
             }
         };
 
-        if let Err(e) = stream_session.binary(payload).await {
+        if let Err(e) = ctx.session.binary(payload).await {
             tracing::error!("Error sending message over websocket: {:?}", e);
             cleanup();
             return Err(e.into());
@@ -127,7 +113,7 @@ async fn create_subscriber(
     streams: &Arc<FuelStreams>,
     subject_json: &SubjectPayload,
     deliver_policy: DeliverPolicy,
-) -> Result<BoxedStream, WsSubscriptionError> {
+) -> Result<BoxedStream, WebsocketError> {
     let record_entity = subject_json.record_entity();
     let stream = match record_entity {
         RecordEntity::Block => {

@@ -1,7 +1,7 @@
 use fuel_web_utils::server::api::{spawn_web_server, ApiServerBuilder};
 use sv_webserver::{
     config::Config,
-    server::{state::ServerState, svc::svc_handlers},
+    server::{handlers, state::ServerState},
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load()?;
     let server_state = ServerState::new(&config).await?;
     let server = ApiServerBuilder::new(config.api.port, server_state.clone())
-        .with_dynamic_routes(svc_handlers(server_state))
+        .with_dynamic_routes(handlers::create_services(server_state))
         .build()?;
     let server_handle = server.handle();
     let server_task = spawn_web_server(server).await;

@@ -14,7 +14,7 @@ use futures::StreamExt;
 use tracing::info;
 
 use crate::{
-    nats_metrics::StreamInfo,
+    nats_metrics::{NatsHealthInfo, StreamInfo},
     Message,
     MessageBlockStream,
     MessageBroker,
@@ -105,9 +105,20 @@ impl NatsMessageBroker {
             .map_err(|e| MessageBrokerError::Setup(e.to_string()))
     }
 
-    pub async fn get_stream_info(&self) -> Vec<StreamInfo> {
-        // let streams = self.
-        todo!()
+    pub async fn get_stream_info(
+        &self,
+    ) -> Result<Vec<StreamInfo>, MessageBrokerError> {
+        let mut streams = self.jetstream.streams();
+        let mut infos = vec![];
+        while let Some(stream) = streams.next().await {
+            let stream =
+                stream.map_err(|e| MessageBrokerError::Setup(e.to_string()))?;
+            infos.push(StreamInfo {
+                stream_name: stream.config.name,
+                state: stream.state.into(),
+            });
+        }
+        Ok(infos)
     }
 
     pub fn arc(&self) -> Arc<Self> {
@@ -225,8 +236,17 @@ impl MessageBroker for NatsMessageBroker {
         self.is_connected()
     }
 
-    async fn get_health_info(&self) -> serde_json::Value {
-        serde_json::json!({})
+    async fn get_health_info(
+        &self,
+        uptime_secs: u64,
+    ) -> Result<serde_json::Value, MessageBrokerError> {
+        let infos = self.get_stream_info().await?;
+        let health_info = NatsHealthInfo {
+            uptime_secs,
+            is_healthy: self.is_healthy().await,
+            streams_info: infos,
+        };
+        Ok(serde_json::to_value(health_info)?)
     }
 }
 

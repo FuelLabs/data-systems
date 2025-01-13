@@ -17,7 +17,6 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-async-nats = { workspace = true }
 async-trait = { workspace = true }
 bincode = { workspace = true }
 clap = { workspace = true }
@@ -32,7 +31,6 @@ futures = { workspace = true }
 hex = { workspace = true }
 num_cpus = { workspace = true }
 prometheus = { version = "0.13", features = ["process"] }
-serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

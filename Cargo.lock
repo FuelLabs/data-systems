@@ -8841,7 +8841,6 @@ name = "sv-consumer"
 version = "0.0.16"
 dependencies = [
  "anyhow",
- "async-nats",
  "async-trait",
  "bincode",
  "clap 4.5.26",
@@ -8857,7 +8856,6 @@ dependencies = [
  "num_cpus",
  "openssl",
  "prometheus",
- "serde",
  "serde_json",
  "thiserror 2.0.11",
  "tokio",
@@ -8899,7 +8897,6 @@ dependencies = [
  "actix-web",
  "actix-ws",
  "anyhow",
- "async-nats",
  "async-trait",
  "bytes",
  "clap 4.5.26",

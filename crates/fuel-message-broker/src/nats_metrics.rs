@@ -3,9 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamInfo {
-    consumers: Vec<String>,
-    state: StreamState,
-    stream_name: String,
+    pub state: StreamState,
+    pub stream_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]

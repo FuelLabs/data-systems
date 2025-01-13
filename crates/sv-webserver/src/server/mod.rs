@@ -1,4 +1,6 @@
-pub mod http;
+pub mod errors;
+pub mod handlers;
 pub mod state;
-pub mod svc;
-pub mod ws;
+pub mod subscriber;
+pub mod types;
+pub mod ws_context;
