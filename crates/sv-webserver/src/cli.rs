@@ -23,6 +23,16 @@ pub struct Cli {
     )]
     pub nats_url: String,
 
+    /// Database URL to connect to.
+    #[arg(
+        long,
+        value_name = "DATABASE_URL",
+        env = "DATABASE_URL",
+        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
+        help = "Database URL to connect to."
+    )]
+    pub db_url: String,
+
     /// JWT secret
     #[arg(
         long,
@@ -41,14 +51,4 @@ pub struct Cli {
         help = "Enable metrics"
     )]
     pub use_metrics: bool,
-
-    /// Database URL to connect to.
-    #[arg(
-        long,
-        value_name = "DATABASE_URL",
-        env = "DATABASE_URL",
-        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
-        help = "Database URL to connect to."
-    )]
-    pub db_url: String,
 }

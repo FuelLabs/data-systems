@@ -3,16 +3,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-// TODO: remove this once we have a proper broker implementation
 use async_nats::jetstream::stream::State;
 use async_trait::async_trait;
-use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_message_broker::MessageBroker;
 use fuel_streams_core::FuelStreams;
-use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, metrics::Metrics};
+use crate::metrics::Metrics;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamInfo {
@@ -43,6 +41,7 @@ pub struct StreamState {
     pub consumer_count: usize,
 }
 
+// TODO: remove this once we have a proper way to get the stream state
 impl From<State> for StreamState {
     fn from(state: State) -> Self {
         StreamState {
@@ -64,40 +63,25 @@ pub struct HealthResponse {
     pub streams_info: Vec<StreamInfo>,
 }
 
-#[derive(Clone)]
 pub struct ServerState {
     pub start_time: Instant,
     pub msg_broker: Arc<dyn MessageBroker>,
-    pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry<Metrics>>,
-    pub db: Arc<Db>,
-    pub jwt_secret: String,
+    pub fuel_streams: Arc<FuelStreams>,
 }
 
 impl ServerState {
-    pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let msg_broker =
-            MessageBrokerClient::Nats.start(&config.broker.url).await?;
-        let db = Db::new(DbConnectionOpts {
-            connection_str: config.db.url.clone(),
-            ..Default::default()
-        })
-        .await?
-        .arc();
-
-        let fuel_streams = FuelStreams::new(&msg_broker, &db).await.arc();
-        let metrics = Metrics::new_with_random_prefix()?;
-        let telemetry = Telemetry::new(Some(metrics)).await?;
-        telemetry.start().await?;
-
-        Ok(Self {
+    pub fn new(
+        msg_broker: Arc<dyn MessageBroker>,
+        telemetry: Arc<Telemetry<Metrics>>,
+        fuel_streams: Arc<FuelStreams>,
+    ) -> Self {
+        Self {
             start_time: Instant::now(),
             msg_broker,
-            fuel_streams,
             telemetry,
-            db,
-            jwt_secret: config.auth.jwt_secret.clone(),
-        })
+            fuel_streams,
+        }
     }
 
     pub fn uptime(&self) -> Duration {

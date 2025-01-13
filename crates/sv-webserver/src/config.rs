@@ -1,11 +1,18 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use displaydoc::Display as DisplayDoc;
+use thiserror::Error;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, DisplayDoc, Error)]
 pub enum Error {
-    #[error("Undecodable config element: {0}")]
+    /// Undecodable config element: {0}
     UndecodableConfigElement(&'static str),
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct S3Config {
+    pub enabled: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -26,7 +33,7 @@ pub struct AuthConfig {
 }
 
 #[derive(Clone, Debug)]
-pub struct NatsConfig {
+pub struct BrokerConfig {
     pub url: String,
 }
 
@@ -39,8 +46,8 @@ pub struct DbConfig {
 pub struct Config {
     pub api: ApiConfig,
     pub auth: AuthConfig,
+    pub broker: BrokerConfig,
     pub db: DbConfig,
-    pub nats: NatsConfig,
 }
 
 impl Config {
@@ -58,7 +65,7 @@ impl Config {
             auth: AuthConfig {
                 jwt_secret: cli.jwt_secret.clone(),
             },
-            nats: NatsConfig {
+            broker: BrokerConfig {
                 url: cli.nats_url.clone(),
             },
             db: DbConfig {

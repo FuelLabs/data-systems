@@ -114,6 +114,12 @@ pub trait MessageBroker: std::fmt::Debug + Send + Sync + 'static {
 
     /// Flush all in-flight messages
     async fn flush(&self) -> Result<(), MessageBrokerError>;
+
+    /// Check if the broker is healthy
+    async fn is_healthy(&self) -> bool;
+
+    /// Get health info
+    async fn get_health_info(&self) -> serde_json::Value;
 }
 
 #[derive(Debug, Clone, Default)]

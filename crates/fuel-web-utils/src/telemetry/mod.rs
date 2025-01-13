@@ -13,33 +13,27 @@ use elastic_search::{
     ElasticSearch,
     LogEntry,
 };
-use metrics::Metrics;
+use metrics::TelemetryMetrics;
 // TODO: Consider using tokio's Rwlock instead
 use parking_lot::RwLock;
 use runtime::Runtime;
 use system::{System, SystemMetricsWrapper};
 
 #[derive(Clone)]
-pub struct Telemetry {
+pub struct Telemetry<M: TelemetryMetrics> {
     runtime: Arc<Runtime>,
     system: Arc<RwLock<System>>,
-    metrics: Option<Arc<Metrics>>,
+    metrics: Option<Arc<M>>,
     elastic_search: Option<Arc<ElasticSearch>>,
 }
 
-impl Telemetry {
+impl<M: TelemetryMetrics> Telemetry<M> {
     const DEDICATED_THREADS: usize = 2;
 
-    pub async fn new(prefix: Option<String>) -> anyhow::Result<Arc<Self>> {
+    pub async fn new(metrics: Option<M>) -> anyhow::Result<Arc<Self>> {
         let runtime =
             Runtime::new(Self::DEDICATED_THREADS, Duration::from_secs(20));
         let system = Arc::new(RwLock::new(System::new().await));
-
-        let metrics = if should_use_metrics() {
-            Some(Arc::new(Metrics::new(prefix)?))
-        } else {
-            None
-        };
 
         let elastic_search = if should_use_elasticsearch() {
             Some(Arc::new(new_elastic_search().await?))
@@ -50,7 +44,11 @@ impl Telemetry {
         Ok(Arc::new(Self {
             runtime: Arc::new(runtime),
             system,
-            metrics,
+            metrics: if should_use_metrics() {
+                metrics.map(Arc::new)
+            } else {
+                None
+            },
             elastic_search,
         }))
     }
@@ -78,6 +76,10 @@ impl Telemetry {
         Ok(())
     }
 
+    pub fn base_metrics(&self) -> Option<M> {
+        self.metrics.clone().and_then(|m| m.metrics())
+    }
+
     pub fn log_info(&self, message: &str) {
         let entry = LogEntry::new("INFO", message);
         self.maybe_elog(entry);
@@ -97,66 +99,9 @@ impl Telemetry {
         }
     }
 
-    pub fn update_user_subscription_metrics(
-        &self,
-        user_id: uuid::Uuid,
-        subject_wildcard: &str,
-    ) {
-        self.maybe_use_metrics(|metrics| {
-            // Increment total user subscribed messages
-            metrics
-                .user_subscribed_messages
-                .with_label_values(&[
-                    user_id.to_string().as_str(),
-                    subject_wildcard,
-                ])
-                .inc();
-
-            // Increment throughput for the subscribed messages
-            metrics
-                .subs_messages_throughput
-                .with_label_values(&[subject_wildcard])
-                .inc();
-        });
-    }
-
-    pub fn update_error_metrics(
-        &self,
-        subject_wildcard: &str,
-        error_type: &str,
-    ) {
-        self.maybe_use_metrics(|metrics| {
-            metrics
-                .subs_messages_error_rates
-                .with_label_values(&[subject_wildcard, error_type])
-                .inc();
-        });
-    }
-
-    pub fn increment_subscriptions_count(&self) {
-        self.maybe_use_metrics(|metrics| {
-            metrics.total_ws_subs.with_label_values(&[]).inc();
-        });
-    }
-
-    pub fn decrement_subscriptions_count(&self) {
-        self.maybe_use_metrics(|metrics| {
-            metrics.total_ws_subs.with_label_values(&[]).inc();
-        });
-    }
-
-    pub fn update_unsubscribed(&self, user_id: uuid::Uuid, payload_str: &str) {
-        self.maybe_use_metrics(|metrics| {
-            metrics
-                .user_subscribed_messages
-                .with_label_values(&[&user_id.to_string(), payload_str])
-                .dec();
-        });
-    }
-
     pub fn maybe_use_metrics<F>(&self, f: F)
     where
-        F: Fn(&Metrics),
+        F: Fn(&M),
     {
         if let Some(metrics) = &self.metrics {
             f(metrics);
@@ -167,29 +112,15 @@ impl Telemetry {
         use prometheus::Encoder;
         let encoder = prometheus::TextEncoder::new();
 
+        // if no metrics, return
         if self.metrics.is_none() {
             return "".to_string();
         }
 
-        // fetch all measured metrics
-        let mut buffer = Vec::new();
-        if let Err(e) = encoder.encode(
-            &self.metrics.as_ref().unwrap().registry.gather(),
-            &mut buffer,
-        ) {
-            tracing::error!("could not encode custom metrics: {}", e);
-        };
-        let mut res = match String::from_utf8(buffer.clone()) {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!(
-                    "custom metrics could not be from_utf8'd: {}",
-                    e
-                );
-                String::default()
-            }
-        };
-        buffer.clear();
+        let mut result = String::new();
+        if let Some(metrics) = &self.metrics {
+            result.push_str(&metrics.gather_metrics());
+        }
 
         let mut buffer = Vec::new();
         if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
@@ -207,7 +138,7 @@ impl Telemetry {
         };
         buffer.clear();
 
-        res.push_str(&res_custom);
+        result.push_str(&res_custom);
 
         // now fetch and add system metrics
         let system_metrics = match self.system.read().metrics() {
@@ -233,9 +164,9 @@ impl Telemetry {
                 String::default()
             }
         };
-        res.push_str(&system_metrics);
+        result.push_str(&system_metrics);
 
-        res
+        result
     }
 }
 

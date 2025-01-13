@@ -9,6 +9,15 @@ use clap::Parser;
 /// - `fuel_core_config`: Configuration for the Fuel Core service, parsed using a flattened command.
 #[derive(Clone, Parser)]
 pub struct Cli {
+    /// API port number
+    #[arg(
+        long,
+        value_name = "PORT",
+        env = "PORT",
+        default_value = "9003",
+        help = "Port number for the API server"
+    )]
+    pub port: u16,
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     pub fuel_core_config: fuel_core_bin::cli::run::Command,
@@ -38,4 +47,12 @@ pub struct Cli {
         help = "Start from block height"
     )]
     pub from_height: u32,
+    /// Use metrics
+    #[arg(
+        long,
+        env = "USE_METRICS",
+        default_value = "false",
+        help = "Enable metrics"
+    )]
+    pub use_metrics: bool,
 }

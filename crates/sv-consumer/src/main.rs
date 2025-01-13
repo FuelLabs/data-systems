@@ -8,9 +8,13 @@ use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
     record::DataEncoder,
 };
+use fuel_web_utils::{
+    server::api::build_and_spawn_web_server,
+    shutdown::{shutdown_broker_with_timeout, ShutdownController},
+    telemetry::Telemetry,
+};
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::cli::Cli;
-use sv_publisher::shutdown::ShutdownController;
+use sv_consumer::{cli::Cli, state::ServerState};
 use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
@@ -31,6 +35,10 @@ pub enum ConsumerError {
     Db(#[from] fuel_streams_store::db::DbError),
     #[error(transparent)]
     MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
+    #[error("Failed to start telemetry")]
+    TelemetryStart,
+    #[error("Failed to start web server")]
+    WebServerStart,
 }
 
 #[tokio::main]
@@ -109,6 +117,23 @@ async fn process_messages(
     let db = setup_db(&cli.db_url).await?;
     let message_broker = setup_message_broker(&cli.nats_url).await?;
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
+    let telemetry = Telemetry::new(None)
+        .await
+        .map_err(|_| ConsumerError::TelemetryStart)?;
+    telemetry
+        .start()
+        .await
+        .map_err(|_| ConsumerError::TelemetryStart)?;
+
+    let server_state = ServerState::new(
+        message_broker.clone(),
+        Arc::clone(&telemetry),
+        Arc::clone(&fuel_streams),
+    );
+    let server_handle = build_and_spawn_web_server(cli.port, server_state)
+        .await
+        .map_err(|_| ConsumerError::WebServerStart)?;
+
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =
@@ -157,6 +182,11 @@ async fn process_messages(
             log_task(results, start_time, end_time, payload);
         }
     }
+    tracing::info!("Stopping actix server ...");
+    server_handle.stop(true).await;
+    tracing::info!("Actix server stopped. Goodbye!");
+    shutdown_broker_with_timeout(&message_broker).await;
+
     Ok(())
 }
 

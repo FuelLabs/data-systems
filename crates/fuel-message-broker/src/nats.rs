@@ -14,6 +14,7 @@ use futures::StreamExt;
 use tracing::info;
 
 use crate::{
+    nats_metrics::StreamInfo,
     Message,
     MessageBlockStream,
     MessageBroker,
@@ -102,6 +103,11 @@ impl NatsMessageBroker {
             })
             .await
             .map_err(|e| MessageBrokerError::Setup(e.to_string()))
+    }
+
+    pub async fn get_stream_info(&self) -> Vec<StreamInfo> {
+        // let streams = self.
+        todo!()
     }
 
     pub fn arc(&self) -> Arc<Self> {
@@ -213,6 +219,14 @@ impl MessageBroker for NatsMessageBroker {
             ))
         })?;
         Ok(())
+    }
+
+    async fn is_healthy(&self) -> bool {
+        self.is_connected()
+    }
+
+    async fn get_health_info(&self) -> serde_json::Value {
+        serde_json::json!({})
     }
 }
 

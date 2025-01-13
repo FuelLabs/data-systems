@@ -231,8 +231,11 @@ run-publisher-testnet-profiling:
 # ------------------------------------------------------------
 
 run-consumer: NATS_URL="localhost:4222"
+run-consumer: PORT="9003"
 run-consumer:
-	cargo run --package sv-consumer --profile dev -- --nats-url $(NATS_URL)
+	cargo run --package sv-consumer --profile dev -- \
+		--nats-url $(NATS_URL) \
+		--port $(PORT)
 
 # ------------------------------------------------------------
 #  Streamer Run Commands
