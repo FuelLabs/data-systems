@@ -6,13 +6,10 @@ use fuel_streams_store::record::RecordEntity;
 use futures::StreamExt;
 
 use super::decoder::decode_and_responde;
-use crate::{
-    handle_ws_error,
-    server::{
-        errors::WebsocketError,
-        types::{ServerMessage, SubscriptionPayload},
-        ws_context::WsContext,
-    },
+use crate::server::{
+    errors::WebsocketError,
+    types::{ServerMessage, SubscriptionPayload},
+    ws_context::WsContext,
 };
 
 pub async fn subscribe(
@@ -30,15 +27,11 @@ pub async fn subscribe(
     )
     .await;
 
-    let sub = handle_ws_error!(sub, ctx.clone());
-    ctx.send_message_to_socket(ServerMessage::Subscribed(payload.clone()))
-        .await;
+    let sub = ctx.handle_error(sub, true).await?;
+    ctx.send_message(ServerMessage::Subscribed(payload.clone()))
+        .await?;
 
-    actix_web::rt::spawn({
-        async move {
-            let _ = process_subscription(sub, ctx, payload).await;
-        }
-    });
+    actix_web::rt::spawn(process_subscription(sub, ctx, payload));
     Ok(())
 }
 
@@ -49,13 +42,7 @@ pub async fn unsubscribe(
     tracing::info!("Received unsubscribe message: {:?}", payload);
     let mut ctx = ctx.with_payload(&payload);
     let msg = ServerMessage::Unsubscribed(payload.clone());
-    if let Err(e) = serde_json::to_vec(&msg) {
-        let error = WebsocketError::UnserializablePayload(e);
-        ctx.close_with_error(error).await;
-        return Ok(());
-    }
-
-    ctx.send_message_to_socket(msg).await;
+    ctx.send_message(msg).await?;
     Ok(())
 }
 
@@ -78,34 +65,20 @@ async fn process_subscription(
     }
 
     while let Some(result) = sub.next().await {
+        let mut ctx = ctx.clone();
         let result = result?;
-        let payload = match decode_and_responde(payload.to_owned(), result)
-            .await
-        {
-            Ok(res) => res,
-            Err(e) => {
-                if let Some(metrics) = ctx.telemetry.base_metrics() {
-                    metrics.update_error_metrics(&payload_str, &e.to_string());
-                }
-                tracing::error!(
-                    "Error serializing received stream message: {:?}",
-                    e
-                );
-                continue;
-            }
-        };
-
-        if let Err(e) = ctx.session.binary(payload).await {
+        let payload = decode_and_responde(payload.to_owned(), result).await;
+        let payload = ctx.handle_error(payload, false).await?;
+        if let Err(e) = ctx.send_message(payload).await {
             tracing::error!("Error sending message over websocket: {:?}", e);
             cleanup();
-            return Err(e.into());
+            return Err(e);
         }
     }
 
     cleanup();
-
     let msg = ServerMessage::Unsubscribed(payload.clone());
-    ctx.send_message_to_socket(msg).await;
+    ctx.send_message(msg).await?;
     Ok(())
 }
 

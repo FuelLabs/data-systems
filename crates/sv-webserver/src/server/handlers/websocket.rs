@@ -7,15 +7,12 @@ use actix_web::{
 };
 use actix_ws::Message;
 
-use crate::{
-    handle_ws_error,
-    server::{
-        errors::WebsocketError,
-        state::ServerState,
-        subscriber::{subscribe, unsubscribe},
-        types::ClientMessage,
-        ws_context::WsContext,
-    },
+use crate::server::{
+    errors::WebsocketError,
+    state::ServerState,
+    subscriber::{subscribe, unsubscribe},
+    types::ClientMessage,
+    ws_context::WsContext,
 };
 
 static _NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
@@ -54,24 +51,11 @@ pub async fn get_ws(
     Ok(response)
 }
 
-#[macro_export]
-macro_rules! handle_ws_error {
-    ($result:expr, $ctx:expr) => {
-        match $result {
-            Ok(value) => value,
-            Err(e) => {
-                $ctx.close_with_error(e.into()).await;
-                return Ok(());
-            }
-        }
-    };
-}
-
 async fn handle_ping(ctx: WsContext, bytes: &[u8]) {
     let mut session = ctx.session.clone();
     tracing::info!("Received ping, {:?}", bytes);
-    if session.pong(bytes).await.is_err() {
-        tracing::error!("Error sending pong, {:?}", bytes);
+    if let Err(e) = ctx.handle_error(session.pong(bytes).await, true).await {
+        tracing::error!("Error sending pong: {:?}", e);
     }
 }
 
@@ -89,11 +73,8 @@ async fn handle_message(
     ctx: WsContext,
 ) -> Result<(), WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
-
-    let parsed_message = serde_json::from_slice(&msg)
-        .map_err(WebsocketError::UnserializablePayload);
-    let client_message = handle_ws_error!(parsed_message, ctx);
-
+    let msg = serde_json::from_slice(&msg);
+    let client_message = ctx.handle_error(msg, true).await?;
     match client_message {
         ClientMessage::Subscribe(payload) => {
             subscribe(payload, ctx.clone()).await
@@ -110,16 +91,17 @@ async fn handle_close(reason: Option<actix_ws::CloseReason>, ctx: WsContext) {
         reason
     );
     let reason_str = reason.and_then(|r| r.description).unwrap_or_default();
-    ctx.close_with_error(WebsocketError::ClosedWithReason(
-        reason_str.to_string(),
-    ))
-    .await;
+    let _ = ctx
+        .close_with_error(
+            WebsocketError::ClosedWithReason(reason_str.to_string()),
+            true,
+        )
+        .await;
 }
 
 async fn handle_unknown(ctx: WsContext) {
     tracing::error!("Received unknown message type");
-    ctx.close_with_error(WebsocketError::ClosedWithReason(
-        "Unknown message type".to_string(),
-    ))
-    .await;
+    let reason =
+        WebsocketError::ClosedWithReason("Unknown message type".to_string());
+    let _ = ctx.close_with_error(reason, true).await;
 }

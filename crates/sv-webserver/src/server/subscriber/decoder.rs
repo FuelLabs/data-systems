@@ -10,12 +10,11 @@ use crate::server::{
 pub async fn decode_and_responde(
     payload: SubscriptionPayload,
     data: Vec<u8>,
-) -> Result<Vec<u8>, WebsocketError> {
+) -> Result<ServerMessage, WebsocketError> {
     let subject = payload.subject.clone();
     let payload = decode_to_json_value(&payload.try_into()?, data).await?;
     let response_message = ResponseMessage { subject, payload };
-    serde_json::to_vec(&ServerMessage::Response(response_message))
-        .map_err(WebsocketError::UnserializablePayload)
+    Ok(ServerMessage::Response(response_message))
 }
 
 async fn decode_to_json_value(

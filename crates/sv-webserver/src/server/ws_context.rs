@@ -49,8 +49,11 @@ impl WsContext {
         }
     }
 
-    /// Updates error metrics and closes the socket with an error message
-    pub async fn close_with_error(mut self, error: WebsocketError) {
+    pub async fn close_with_error(
+        mut self,
+        error: WebsocketError,
+        close: bool,
+    ) -> Result<(), WebsocketError> {
         tracing::error!("ws subscription error: {:?}", error.to_string());
         if let Some(payload) = self.payload.as_ref() {
             if let Some(metrics) = self.telemetry.base_metrics() {
@@ -64,13 +67,49 @@ impl WsContext {
             metrics.decrement_subscriptions_count();
         }
         let msg = ServerMessage::Error(error.to_string());
-        self.send_message_to_socket(msg).await;
-        let _ = self.session.close(None).await;
+        self.send_message(msg).await?;
+        if close {
+            let _ = self.session.close(None).await;
+        }
+        Ok(())
     }
 
-    pub async fn send_message_to_socket(&mut self, message: ServerMessage) {
-        let data = serde_json::to_vec(&message).ok().unwrap_or_default();
-        let _ = self.session.binary(data).await;
+    pub async fn handle_error<T, E>(
+        &self,
+        result: Result<T, E>,
+        close: bool,
+    ) -> Result<T, WebsocketError>
+    where
+        E: Into<WebsocketError>,
+    {
+        match result {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                let error_future =
+                    self.clone().close_with_error(e.into(), close);
+                if let Err(send_err) = Box::pin(error_future).await {
+                    tracing::error!(
+                        "Failed to send error message to client: {:?}",
+                        send_err
+                    );
+                }
+                Err(WebsocketError::ClosedWithReason(
+                    "Failed to send error message to client".to_string(),
+                ))
+            }
+        }
+    }
+
+    pub async fn send_message(
+        &mut self,
+        message: ServerMessage,
+    ) -> Result<(), WebsocketError> {
+        let mut session = self.session.clone();
+        let msg_encoded = serde_json::to_vec(&message)
+            .map_err(WebsocketError::UnserializablePayload);
+        let data = self.handle_error(msg_encoded, true).await?;
+        self.handle_error(session.binary(data).await, true).await?;
+        Ok(())
     }
 
     pub fn user_id_from_req(
