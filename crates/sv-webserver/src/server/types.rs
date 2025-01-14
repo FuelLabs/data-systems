@@ -82,8 +82,9 @@ mod tests {
         println!("Ser value {:?}", ser_str_value);
         let expected_value = serde_json::json!({
             "subscribe": {
-                "wildcard": stream_topic_wildcard,
-                "deliverPolicy": "all"
+                "subject": stream_topic_wildcard,
+                "params": serde_json::Value::Null,
+                "deliverPolicy": "new"
             }
         });
         let deser_msg_val =
