@@ -104,3 +104,46 @@ pub struct OutputContractCreated {
     pub contract_id: ContractId,
     pub state_root: Bytes32,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MockOutput;
+impl MockOutput {
+    pub fn coin(amount: u64) -> Output {
+        Output::Coin(OutputCoin {
+            amount,
+            asset_id: AssetId::default(),
+            to: Address::default(),
+        })
+    }
+
+    pub fn contract() -> Output {
+        Output::Contract(OutputContract {
+            balance_root: Bytes32::default(),
+            input_index: 0,
+            state_root: Bytes32::default(),
+        })
+    }
+
+    pub fn change(amount: u64) -> Output {
+        Output::Change(OutputChange {
+            amount,
+            asset_id: AssetId::default(),
+            to: Address::default(),
+        })
+    }
+
+    pub fn variable(amount: u64) -> Output {
+        Output::Variable(OutputVariable {
+            amount,
+            asset_id: AssetId::default(),
+            to: Address::default(),
+        })
+    }
+
+    pub fn contract_created() -> Output {
+        Output::ContractCreated(OutputContractCreated {
+            contract_id: ContractId::default(),
+            state_root: Bytes32::default(),
+        })
+    }
+}
