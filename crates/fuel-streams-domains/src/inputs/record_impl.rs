@@ -24,7 +24,8 @@ impl Record for Input {
         packet: &RecordPacket<Self>,
     ) -> DbResult<Self::DbItem> {
         let db_item = InputDbItem::try_from(packet)?;
-        let record = sqlx::query_as::<_, Self::DbItem>(
+        let record = sqlx::query_as!(
+            Self::DbItem,
             r#"
             INSERT INTO inputs (
                 subject, value, block_height, tx_id, tx_index,
@@ -36,19 +37,19 @@ impl Record for Input {
                 input_index, input_type, owner_id, asset_id,
                 contract_id, sender, recipient
             "#,
+            db_item.subject,
+            db_item.value,
+            db_item.block_height,
+            db_item.tx_id,
+            db_item.tx_index,
+            db_item.input_index,
+            db_item.input_type,
+            db_item.owner_id,
+            db_item.asset_id,
+            db_item.contract_id,
+            db_item.sender,
+            db_item.recipient
         )
-        .bind(db_item.subject)
-        .bind(db_item.value)
-        .bind(db_item.block_height)
-        .bind(db_item.tx_id)
-        .bind(db_item.tx_index)
-        .bind(db_item.input_index)
-        .bind(db_item.input_type)
-        .bind(db_item.owner_id)
-        .bind(db_item.asset_id)
-        .bind(db_item.contract_id)
-        .bind(db_item.sender)
-        .bind(db_item.recipient)
         .fetch_one(&db.pool)
         .await
         .map_err(DbError::Insert)?;

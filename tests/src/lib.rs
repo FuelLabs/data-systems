@@ -1,5 +1,8 @@
+mod fuel_core_helpers;
+
 use std::sync::Arc;
 
+pub use fuel_core_helpers::*;
 use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::{stream::*, subjects::*, types::Block};
 use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};

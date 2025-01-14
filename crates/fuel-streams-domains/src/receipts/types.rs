@@ -19,6 +19,16 @@ pub enum Receipt {
     Burn(BurnReceipt),
 }
 
+impl Receipt {
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn as_call(&self) -> CallReceipt {
+        match self {
+            Receipt::Call(receipt) => receipt.clone(),
+            _ => panic!("Invalid receipt type"),
+        }
+    }
+}
+
 // Individual Receipt Types
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

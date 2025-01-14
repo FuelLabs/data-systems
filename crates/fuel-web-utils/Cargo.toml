@@ -52,4 +52,4 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = []
+test-helpers = ["fuel-data-parser/test-helpers", "fuel-message-broker/test-helpers"]

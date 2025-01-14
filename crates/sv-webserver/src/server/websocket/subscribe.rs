@@ -99,7 +99,7 @@ async fn process_msgs(
         ctx.send_message(session, payload).await?;
     }
 
-    ctx.remove_subscription(&payload).await;
+    ctx.remove_subscription(payload).await;
     let msg = ServerMessage::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())

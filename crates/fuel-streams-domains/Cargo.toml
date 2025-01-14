@@ -12,12 +12,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 async-trait = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
-] }
+fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-streams-macros = { workspace = true }
 fuel-streams-store = { workspace = true }
@@ -32,4 +27,9 @@ test-case = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-core-types/test-helpers",
+    "fuel-streams-store/test-helpers",
+    "fuel-streams-types/test-helpers",
+]

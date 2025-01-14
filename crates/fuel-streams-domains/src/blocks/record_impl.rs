@@ -23,17 +23,18 @@ impl Record for Block {
         packet: &RecordPacket<Self>,
     ) -> DbResult<Self::DbItem> {
         let db_item = BlockDbItem::try_from(packet)?;
-        let record = sqlx::query_as::<_, Self::DbItem>(
+        let record = sqlx::query_as!(
+            Self::DbItem,
             r#"
             INSERT INTO blocks (subject, producer_address, block_height, value)
             VALUES ($1, $2, $3, $4)
             RETURNING subject, producer_address, block_height, value
             "#,
+            db_item.subject,
+            db_item.producer_address,
+            db_item.block_height,
+            db_item.value
         )
-        .bind(db_item.subject)
-        .bind(db_item.producer_address)
-        .bind(db_item.block_height)
-        .bind(db_item.value)
         .fetch_one(&db.pool)
         .await
         .map_err(DbError::Insert)?;

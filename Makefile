@@ -298,6 +298,7 @@ reset-nats: clean-nats start-nats
 setup-db:
 	@echo "Setting up database..."
 	@cd crates/fuel-streams-store && cargo sqlx migrate run
+	@cd crates/fuel-streams-domains && cargo sqlx prepare
 
 reset-db: clean-docker start-docker setup-db
 

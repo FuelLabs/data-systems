@@ -29,4 +29,8 @@ tracing = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-streams-core/test-helpers",
+    "fuel-streams-store/test-helpers",
+]

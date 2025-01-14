@@ -13,15 +13,29 @@ test-helpers = []
 
 [dependencies]
 anyhow = { workspace = true }
-fuel-message-broker = { workspace = true }
+fuel-core = { workspace = true, features = [
+    "smt",
+    "p2p",
+    "relayer",
+    "wasm-executor",
+    "test-helpers",
+] }
+fuel-core-bin = { workspace = true, features = ["parquet", "p2p"] }
+fuel-core-client = { workspace = true, features = ["test-helpers", "subscriptions"] }
+fuel-core-types = { workspace = true, features = ["test-helpers", "std", "serde"] }
+fuel-message-broker = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
-fuel-streams-macros = { workspace = true }
+fuel-streams-macros = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true, features = ["test-helpers"] }
+fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 rand = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+
+[dev-dependencies]
+mockall = "0.13.1"
 
 [package.metadata.cargo-machete]
 ignored = ["fuel-streams-macros"]

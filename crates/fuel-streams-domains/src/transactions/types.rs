@@ -592,11 +592,15 @@ impl FuelCoreTransactionExt for FuelCoreTransaction {
 
 #[derive(Debug, Clone)]
 #[cfg(any(test, feature = "test-helpers"))]
-pub struct MockTransaction(pub crate::blocks::Block);
+pub struct MockTransaction(pub Transaction);
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockTransaction {
-    pub fn build() -> Transaction {
-        Transaction::default()
+    pub fn chain_id() -> FuelCoreChainId {
+        FuelCoreChainId::default()
+    }
+
+    pub fn build() -> fuel_streams_types::FuelCoreTransaction {
+        FuelCoreTransaction::default_test_tx()
     }
 }

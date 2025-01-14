@@ -23,7 +23,8 @@ impl Record for Transaction {
         packet: &RecordPacket<Self>,
     ) -> DbResult<Self::DbItem> {
         let db_item = TransactionDbItem::try_from(packet)?;
-        let record = sqlx::query_as::<_, Self::DbItem>(
+        let record = sqlx::query_as!(
+            Self::DbItem,
             r#"
             INSERT INTO transactions (
                 subject, value, block_height, tx_id, tx_index, tx_status, kind
@@ -31,14 +32,14 @@ impl Record for Transaction {
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING subject, value, block_height, tx_id, tx_index, tx_status, kind
             "#,
+            db_item.subject,
+            db_item.value,
+            db_item.block_height,
+            db_item.tx_id,
+            db_item.tx_index,
+            db_item.tx_status,
+            db_item.kind
         )
-        .bind(db_item.subject)
-        .bind(db_item.value)
-        .bind(db_item.block_height)
-        .bind(db_item.tx_id)
-        .bind(db_item.tx_index)
-        .bind(db_item.tx_status)
-        .bind(db_item.kind)
         .fetch_one(&db.pool)
         .await
         .map_err(DbError::Insert)?;

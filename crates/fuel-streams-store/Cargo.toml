@@ -33,4 +33,4 @@ test-case = { workspace = true }
 
 [features]
 default = []
-test-helpers = [] # Feature for test utilities
+test-helpers = ["fuel-data-parser/test-helpers"]

@@ -16,19 +16,14 @@ async-nats = { workspace = true }
 async-stream = { workspace = true }
 async-trait = { workspace = true }
 dotenvy = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
-] }
+fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-bin = { workspace = true, default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
 ] }
 fuel-core-importer = { workspace = true }
-fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
+fuel-core-services = { workspace = true }
 fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-message-broker = { workspace = true }
@@ -49,4 +44,15 @@ serde_json = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-core-types/test-helpers",
+    "fuel-core-importer/test-helpers",
+    "fuel-core-services/test-helpers",
+    "fuel-core-storage/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-domains/test-helpers",
+    "fuel-streams-macros/test-helpers",
+    "fuel-streams-store/test-helpers",
+    "fuel-streams-types/test-helpers",
+]
