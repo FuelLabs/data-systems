@@ -37,6 +37,12 @@ impl std::fmt::Display for SubscriptionPayload {
         write!(f, "{s}")
     }
 }
+impl TryFrom<String> for SubscriptionPayload {
+    type Error = serde_json::Error;
+    fn try_from(subscription_id: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&subscription_id)
+    }
+}
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,8 +56,8 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Subscribed(SubscriptionPayload),
     Unsubscribed(SubscriptionPayload),
-    Response(ResponseMessage),
     Error(String),
+    Response(ResponseMessage),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

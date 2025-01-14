@@ -14,6 +14,7 @@ pub fn create_services(
     state: ServerState,
 ) -> impl Fn(&mut web::ServiceConfig) + Send + Sync + 'static {
     move |cfg: &mut web::ServiceConfig| {
+        cfg.app_data(web::Data::new(state.clone()));
         cfg.service(
             web::resource(with_prefixed_route("jwt"))
                 .route(web::post().to(handlers::http::request_jwt)),
@@ -23,7 +24,7 @@ pub fn create_services(
                 .wrap(JwtAuth::new(state.jwt_secret.clone()))
                 .route(web::get().to({
                     move |req, body, state: web::Data<ServerState>| {
-                        handlers::websocket::get_ws(req, body, state)
+                        handlers::websocket::get_websocket(req, body, state)
                     }
                 })),
         );

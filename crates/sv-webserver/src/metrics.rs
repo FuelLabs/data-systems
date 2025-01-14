@@ -1,12 +1,22 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
 use prometheus::{
+    register_histogram_vec,
     register_int_counter_vec,
     register_int_gauge_vec,
+    HistogramVec,
     IntCounterVec,
     IntGaugeVec,
     Registry,
 };
+
+#[derive(Debug)]
+pub enum SubscriptionChange {
+    Added,
+    Removed,
+}
 
 #[derive(Clone, Debug)]
 pub struct Metrics {
@@ -15,6 +25,10 @@ pub struct Metrics {
     pub user_subscribed_messages: IntGaugeVec,
     pub subs_messages_throughput: IntCounterVec,
     pub subs_messages_error_rates: IntCounterVec,
+    pub connection_duration: HistogramVec,
+    pub duplicate_subscription_attempts: IntCounterVec,
+    pub user_active_subscriptions: IntGaugeVec,
+    pub subscription_lifetime: HistogramVec,
 }
 
 impl Default for Metrics {
@@ -77,12 +91,46 @@ impl Metrics {
         )
             .expect("metric must be created");
 
+        let connection_duration = register_histogram_vec!(
+            format!("{}ws_connection_duration_seconds", metric_prefix),
+            "Duration of WebSocket connections in seconds",
+            &["user_id"],
+            vec![0.1, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0]
+        )
+        .expect("metric must be created");
+
+        let duplicate_subscription_attempts = register_int_counter_vec!(
+            format!("{}ws_duplicate_subscription_attempts", metric_prefix),
+            "Number of attempts to create duplicate subscriptions",
+            &["user_id", "subscription_id"]
+        )
+        .expect("metric must be created");
+
+        let user_active_subscriptions = register_int_gauge_vec!(
+            format!("{}ws_user_active_subscriptions", metric_prefix),
+            "Number of active subscriptions per user",
+            &["user_id"]
+        )
+        .expect("metric must be created");
+
+        let subscription_lifetime = register_histogram_vec!(
+            format!("{}ws_subscription_lifetime_seconds", metric_prefix),
+            "Duration of individual subscriptions in seconds",
+            &["user_id", "subscription_id"],
+            vec![0.1, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0]
+        )
+        .expect("metric must be created");
+
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");
         registry.register(Box::new(total_ws_subs.clone()))?;
         registry.register(Box::new(user_subscribed_messages.clone()))?;
         registry.register(Box::new(subs_messages_throughput.clone()))?;
         registry.register(Box::new(subs_messages_error_rates.clone()))?;
+        registry.register(Box::new(connection_duration.clone()))?;
+        registry.register(Box::new(duplicate_subscription_attempts.clone()))?;
+        registry.register(Box::new(user_active_subscriptions.clone()))?;
+        registry.register(Box::new(subscription_lifetime.clone()))?;
 
         Ok(Self {
             registry,
@@ -90,6 +138,10 @@ impl Metrics {
             user_subscribed_messages,
             subs_messages_throughput,
             subs_messages_error_rates,
+            connection_duration,
+            duplicate_subscription_attempts,
+            user_active_subscriptions,
+            subscription_lifetime,
         })
     }
 
@@ -127,7 +179,7 @@ impl Metrics {
     }
 
     pub fn decrement_subscriptions_count(&self) {
-        self.total_ws_subs.with_label_values(&[]).inc();
+        self.total_ws_subs.with_label_values(&[]).dec();
     }
 
     pub fn update_unsubscribed(
@@ -148,6 +200,55 @@ impl Metrics {
         self.user_subscribed_messages
             .with_label_values(&[&user_id.to_string(), subject_wildcard])
             .inc();
+    }
+
+    pub fn track_connection_duration(&self, user_id: &str, duration: Duration) {
+        self.connection_duration
+            .with_label_values(&[user_id])
+            .observe(duration.as_secs_f64());
+    }
+
+    pub fn track_duplicate_subscription(
+        &self,
+        user_id: uuid::Uuid,
+        subscription_id: &str,
+    ) {
+        self.duplicate_subscription_attempts
+            .with_label_values(&[&user_id.to_string(), subscription_id])
+            .inc();
+    }
+
+    pub fn update_user_subscription_count(
+        &self,
+        user_id: uuid::Uuid,
+        subject: &str,
+        change: &SubscriptionChange,
+    ) {
+        let delta = match change {
+            SubscriptionChange::Added => 1,
+            SubscriptionChange::Removed => -1,
+        };
+
+        // Update per-user subscription count
+        self.user_active_subscriptions
+            .with_label_values(&[&user_id.to_string()])
+            .add(delta);
+
+        // Update subject-specific count
+        self.user_subscribed_messages
+            .with_label_values(&[&user_id.to_string(), subject])
+            .add(delta);
+    }
+
+    pub fn track_subscription_lifetime(
+        &self,
+        user_id: uuid::Uuid,
+        subscription_id: &str,
+        duration: Duration,
+    ) {
+        self.subscription_lifetime
+            .with_label_values(&[&user_id.to_string(), subscription_id])
+            .observe(duration.as_secs_f64());
     }
 }
 

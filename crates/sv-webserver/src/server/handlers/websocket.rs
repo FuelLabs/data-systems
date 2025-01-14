@@ -1,107 +1,181 @@
-use std::sync::atomic::AtomicUsize;
+use std::{pin::pin, sync::Arc, time::Instant};
 
 use actix_web::{
     web::{self, Bytes},
     HttpRequest,
     Responder,
 };
-use actix_ws::Message;
+use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
+use fuel_streams_core::FuelStreams;
+use fuel_web_utils::telemetry::Telemetry;
+use futures::{
+    future::{self, Either},
+    StreamExt as _,
+};
+use uuid::Uuid;
 
-use crate::server::{
-    errors::WebsocketError,
-    state::ServerState,
-    subscriber::{subscribe, unsubscribe},
-    types::ClientMessage,
-    ws_context::WsContext,
+use crate::{
+    metrics::Metrics,
+    server::{
+        errors::WebsocketError,
+        state::ServerState,
+        types::ClientMessage,
+        websocket::{subscribe, unsubscribe, WsController},
+    },
 };
 
-static _NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
+#[derive(Debug)]
+enum CloseAction {
+    Error(WebsocketError),
+    Closed(Option<CloseReason>),
+    Unsubscribe,
+    Timeout,
+}
+impl From<CloseAction> for CloseReason {
+    fn from(action: CloseAction) -> Self {
+        match action {
+            CloseAction::Closed(reason) => {
+                reason.unwrap_or(CloseCode::Normal.into())
+            }
+            CloseAction::Error(_) => CloseCode::Away.into(),
+            CloseAction::Unsubscribe => CloseCode::Normal.into(),
+            CloseAction::Timeout => CloseCode::Away.into(),
+        }
+    }
+}
 
-pub async fn get_ws(
+pub async fn get_websocket(
     req: HttpRequest,
     body: web::Payload,
     state: web::Data<ServerState>,
 ) -> actix_web::Result<impl Responder> {
-    let user_id = WsContext::user_id_from_req(&req)?;
-    let (response, session, mut msg_stream) = actix_ws::handle(&req, body)?;
-    let streams = state.fuel_streams.clone();
+    let user_id = WsController::user_id_from_req(&req)?;
+    let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
+    let fuel_streams = state.fuel_streams.clone();
     let telemetry = state.telemetry.clone();
-    let ctx = WsContext::new(user_id, session.clone(), telemetry, streams);
-
-    actix_web::rt::spawn(async move {
-        tracing::info!("Ws opened for user id {:?}", user_id.to_string());
-        while let Some(Ok(msg)) = msg_stream.recv().await {
-            match msg {
-                Message::Ping(bytes) => handle_ping(ctx.clone(), &bytes).await,
-                Message::Pong(bytes) => handle_pong(&bytes),
-                Message::Text(string) => {
-                    handle_text(ctx.clone(), string.into()).await;
-                }
-                Message::Binary(bytes) => {
-                    let _ = handle_message(bytes, ctx.clone()).await;
-                }
-                Message::Close(reason) => {
-                    handle_close(reason, ctx.clone()).await;
-                }
-                _ => handle_unknown(ctx.clone()).await,
-            };
-        }
-    });
-
+    actix_web::rt::spawn(handler(
+        session,
+        msg_stream,
+        telemetry,
+        fuel_streams,
+        user_id,
+    ));
     Ok(response)
 }
 
-async fn handle_ping(ctx: WsContext, bytes: &[u8]) {
-    let mut session = ctx.session.clone();
-    tracing::info!("Received ping, {:?}", bytes);
-    if let Err(e) = ctx.handle_error(session.pong(bytes).await, true).await {
-        tracing::error!("Error sending pong: {:?}", e);
+async fn handler(
+    mut session: actix_ws::Session,
+    msg_stream: actix_ws::MessageStream,
+    telemetry: Arc<Telemetry<Metrics>>,
+    fuel_streams: Arc<FuelStreams>,
+    user_id: Uuid,
+) -> Result<(), WebsocketError> {
+    let mut ctx = WsController::new(user_id, telemetry, fuel_streams);
+    tracing::info!(
+        %user_id,
+        event = "websocket_connection_opened",
+        "WebSocket connection opened"
+    );
+
+    let action = handle_messages(&mut ctx, &mut session, msg_stream).await;
+    if let Some(action) = action {
+        if let CloseAction::Error(err) = &action {
+            ctx.send_error_msg(&mut session, err).await?;
+        }
+        ctx.close_session(session, action.into()).await;
+    }
+    Ok(())
+}
+
+async fn handle_messages(
+    ctx: &mut WsController,
+    session: &mut Session,
+    msg_stream: MessageStream,
+) -> Option<CloseAction> {
+    let mut last_heartbeat = Instant::now();
+    let mut interval = tokio::time::interval(ctx.heartbeat_interval());
+    let mut msg_stream = msg_stream.max_frame_size(ctx.max_frame_size());
+    let mut msg_stream = pin!(msg_stream);
+
+    loop {
+        let tick = pin!(interval.tick());
+        match future::select(msg_stream.next(), tick).await {
+            Either::Left((Some(Ok(msg)), _)) => match msg {
+                Message::Text(msg) => {
+                    let msg = Bytes::from(msg.as_bytes().to_vec());
+                    match handle_client_msg(session, ctx, msg).await {
+                        Err(err) => break Some(CloseAction::Error(err)),
+                        Ok(Some(close_action)) => break Some(close_action),
+                        Ok(None) => {}
+                    }
+                }
+                Message::Binary(msg) => {
+                    match handle_client_msg(session, ctx, msg).await {
+                        Err(err) => break Some(CloseAction::Error(err)),
+                        Ok(Some(close_action)) => break Some(close_action),
+                        Ok(None) => {}
+                    }
+                }
+                Message::Ping(bytes) => {
+                    last_heartbeat = Instant::now();
+                    if let Err(err) = session.pong(&bytes).await {
+                        let err = WebsocketError::from(err);
+                        break Some(CloseAction::Error(err));
+                    }
+                }
+                Message::Pong(_) => {
+                    last_heartbeat = Instant::now();
+                }
+                Message::Close(reason) => {
+                    break Some(CloseAction::Closed(reason));
+                }
+                Message::Continuation(_) => {
+                    let user_id = ctx.user_id();
+                    tracing::warn!(%user_id, "Continuation frames not supported");
+                    let err = WebsocketError::UnsupportedMessageType;
+                    break Some(CloseAction::Error(err));
+                }
+                Message::Nop => {}
+            },
+            Either::Left((Some(Err(err)), _)) => {
+                let user_id = ctx.user_id();
+                tracing::error!(%user_id, error = %err, "WebSocket protocol error");
+                break Some(CloseAction::Error(WebsocketError::from(err)));
+            }
+            Either::Left((None, _)) => {
+                let user_id = ctx.user_id();
+                tracing::info!(%user_id, "Client disconnected");
+                break None;
+            }
+            Either::Right((_inst, _)) => {
+                if let Err(err) = ctx.heartbeat(session, last_heartbeat).await {
+                    match err {
+                        WebsocketError::Timeout => {
+                            break Some(CloseAction::Timeout)
+                        }
+                        _ => break Some(CloseAction::Error(err)),
+                    }
+                }
+            }
+        }
     }
 }
 
-fn handle_pong(bytes: &[u8]) {
-    tracing::info!("Received pong, {:?}", bytes);
-}
-
-async fn handle_text(ctx: WsContext, text: String) {
-    let bytes = Bytes::from(text.as_bytes().to_vec());
-    let _ = handle_message(bytes, ctx.clone()).await;
-}
-
-async fn handle_message(
+async fn handle_client_msg(
+    session: &mut Session,
+    ctx: &mut WsController,
     msg: Bytes,
-    ctx: WsContext,
-) -> Result<(), WebsocketError> {
+) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
-    let msg = serde_json::from_slice(&msg);
-    let client_message = ctx.handle_error(msg, true).await?;
-    match client_message {
+    let msg = serde_json::from_slice(&msg)?;
+    match msg {
         ClientMessage::Subscribe(payload) => {
-            subscribe(payload, ctx.clone()).await
+            subscribe(session, ctx, payload).await?;
+            Ok(None)
         }
         ClientMessage::Unsubscribe(payload) => {
-            unsubscribe(ctx.clone(), payload).await
+            unsubscribe(session, ctx, payload).await?;
+            Ok(Some(CloseAction::Unsubscribe))
         }
     }
-}
-
-async fn handle_close(reason: Option<actix_ws::CloseReason>, ctx: WsContext) {
-    tracing::info!(
-        "Got close event, terminating session with reason {:?}",
-        reason
-    );
-    let reason_str = reason.and_then(|r| r.description).unwrap_or_default();
-    let _ = ctx
-        .close_with_error(
-            WebsocketError::ClosedWithReason(reason_str.to_string()),
-            true,
-        )
-        .await;
-}
-
-async fn handle_unknown(ctx: WsContext) {
-    tracing::error!("Received unknown message type");
-    let reason =
-        WebsocketError::ClosedWithReason("Unknown message type".to_string());
-    let _ = ctx.close_with_error(reason, true).await;
 }
