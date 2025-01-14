@@ -23,15 +23,15 @@ pub struct Cli {
     )]
     pub nats_url: String,
 
-    /// Enable S3
+    /// Database URL to connect to.
     #[arg(
         long,
-        value_name = "AWS_S3_ENABLED",
-        env = "AWS_S3_ENABLED",
-        default_value = "true",
-        help = "Enable S3 integration"
+        value_name = "DATABASE_URL",
+        env = "DATABASE_URL",
+        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
+        help = "Database URL to connect to."
     )]
-    pub s3_enabled: bool,
+    pub db_url: String,
 
     /// JWT secret
     #[arg(

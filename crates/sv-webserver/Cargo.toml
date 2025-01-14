@@ -18,19 +18,19 @@ path = "src/main.rs"
 actix-web = { workspace = true }
 actix-ws = "0.3.0"
 anyhow = { workspace = true }
-async-nats = { workspace = true }
 async-trait = { workspace = true }
+bytes = { workspace = true }
 clap = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-data-parser = { workspace = true }
+fuel-message-broker = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
-fuel-streams-storage = { workspace = true, features = ["test-helpers"] }
+fuel-streams-domains = { workspace = true }
+fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 futures = { workspace = true }
 num_cpus = { workspace = true }
-parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

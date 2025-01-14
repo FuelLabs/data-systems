@@ -1,58 +1,43 @@
-use std::{
-    sync::{Arc, LazyLock},
-    time::Duration,
-};
+use std::sync::{Arc, LazyLock};
 
-use async_nats::jetstream::{
-    consumer::{
-        pull::{BatchErrorKind, Config as ConsumerConfig},
-        Consumer,
-    },
-    context::CreateStreamErrorKind,
-    stream::{ConsumerErrorKind, RetentionPolicy},
-};
 use clap::Parser;
-use displaydoc::Display as DisplayDoc;
-use fuel_streams_core::prelude::*;
+use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_streams_core::{types::*, FuelStreams};
 use fuel_streams_executors::*;
+use fuel_streams_store::{
+    db::{Db, DbConnectionOpts},
+    record::DataEncoder,
+};
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
-    shutdown::{shutdown_nats_with_timeout, ShutdownController},
+    shutdown::{shutdown_broker_with_timeout, ShutdownController},
     telemetry::Telemetry,
 };
 use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::{cli::Cli, state::ServerState, Client};
+use sv_consumer::{cli::Cli, state::ServerState};
 use tokio_util::sync::CancellationToken;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
-#[derive(thiserror::Error, Debug, DisplayDoc)]
+#[derive(thiserror::Error, Debug)]
 pub enum ConsumerError {
-    /// Failed to receive batch of messages from NATS: {0}
-    BatchStream(#[from] async_nats::error::Error<BatchErrorKind>),
-    /// Failed to create stream: {0}
-    CreateStream(#[from] async_nats::error::Error<CreateStreamErrorKind>),
-    /// Failed to create consumer: {0}
-    CreateConsumer(#[from] async_nats::error::Error<ConsumerErrorKind>),
-    /// Failed to connect to NATS client: {0}
-    NatsClient(#[from] NatsError),
-    /// Failed to communicate with NATS server: {0}
-    Nats(#[from] async_nats::Error),
-    /// Failed to deserialize block payload from message: {0}
-    Deserialization(#[from] serde_json::Error),
-    /// Failed to decode UTF-8: {0}
+    #[error(transparent)]
+    Deserialization(#[from] bincode::Error),
+    #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
-    /// Failed to execute executor tasks: {0}
+    #[error(transparent)]
     Executor(#[from] ExecutorError),
-    /// Failed to join tasks: {0}
+    #[error(transparent)]
     JoinTasks(#[from] tokio::task::JoinError),
-    /// Failed to acquire semaphore: {0}
+    #[error(transparent)]
     Semaphore(#[from] tokio::sync::AcquireError),
-    /// Failed to setup storage: {0}
-    Storage(#[from] fuel_streams_core::storage::StorageError),
-    /// Failed to start telemetry
+    #[error(transparent)]
+    Db(#[from] fuel_streams_store::db::DbError),
+    #[error(transparent)]
+    MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
+    #[error("Failed to start telemetry")]
     TelemetryStart,
-    /// Failed to start web server
+    #[error("Failed to start web server")]
     WebServerStart,
 }
 
@@ -99,42 +84,22 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_storage() -> Result<Arc<S3Storage>, ConsumerError> {
-    let storage_opts = S3StorageOpts::admin_opts();
-    let storage = S3Storage::new(storage_opts).await?;
-    Ok(Arc::new(storage))
+async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
+    let db = Db::new(DbConnectionOpts {
+        connection_str: db_url.to_string(),
+        pool_size: Some(5),
+    })
+    .await?;
+    Ok(db.arc())
 }
 
-async fn setup_nats(
-    cli: &Cli,
-) -> Result<
-    (Arc<NatsClient>, Arc<NatsClient>, Consumer<ConsumerConfig>),
-    ConsumerError,
-> {
-    let core_client = Client::Core.create(cli).await?;
-    let publisher_client = Client::Publisher.create(cli).await?;
-    let stream_name = publisher_client.namespace.stream_name("block_importer");
-    let stream = publisher_client
-        .jetstream
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: stream_name,
-            subjects: vec!["block_submitted.>".to_string()],
-            retention: RetentionPolicy::WorkQueue,
-            duplicate_window: Duration::from_secs(1),
-            allow_rollup: true,
-            ..Default::default()
-        })
-        .await?;
-
-    let consumer = stream
-        .get_or_create_consumer("block_importer", ConsumerConfig {
-            durable_name: Some("block_importer".to_string()),
-            ack_policy: AckPolicy::Explicit,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok((core_client, publisher_client, consumer))
+async fn setup_message_broker(
+    nats_url: &str,
+) -> Result<Arc<dyn MessageBroker>, ConsumerError> {
+    let broker = MessageBrokerClient::Nats;
+    let broker = broker.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
 }
 
 pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
@@ -149,12 +114,9 @@ async fn process_messages(
     cli: &Cli,
     token: &CancellationToken,
 ) -> Result<(), ConsumerError> {
-    let (core_client, publisher_client, consumer) = setup_nats(cli).await?;
-    let storage = setup_storage().await?;
-    let (_, publisher_stream) =
-        FuelStreams::setup_all(&core_client, &publisher_client, &storage).await;
-    let fuel_streams: Arc<dyn FuelStreamsExt> = publisher_stream.arc();
-
+    let db = setup_db(&cli.db_url).await?;
+    let message_broker = setup_message_broker(&cli.nats_url).await?;
+    let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let telemetry = Telemetry::new(None)
         .await
         .map_err(|_| ConsumerError::TelemetryStart)?;
@@ -164,7 +126,7 @@ async fn process_messages(
         .map_err(|_| ConsumerError::TelemetryStart)?;
 
     let server_state = ServerState::new(
-        publisher_client.clone(),
+        message_broker.clone(),
         Arc::clone(&telemetry),
         Arc::clone(&fuel_streams),
     );
@@ -175,21 +137,21 @@ async fn process_messages(
     let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while !token.is_cancelled() {
         let mut messages =
-            consumer.fetch().max_messages(100).messages().await?.fuse();
+            message_broker.receive_blocks_stream(100).await?.fuse();
         let mut futs = FuturesUnordered::new();
 
         while let Some(msg) = messages.next().await {
             let msg = msg?;
+            let payload = msg.payload();
             let fuel_streams = fuel_streams.clone();
             let semaphore = semaphore.clone();
-
             tracing::debug!(
                 "Received message payload length: {}",
-                msg.payload.len()
+                payload.len()
             );
 
             let future = async move {
-                match BlockPayload::decode(&msg.payload).await {
+                match BlockPayload::decode(&payload).await {
                     Ok(payload) => {
                         let payload = Arc::new(payload);
                         let start_time = std::time::Instant::now();
@@ -207,7 +169,7 @@ async fn process_messages(
                         tracing::error!("Failed to decode payload: {:?}", e);
                         tracing::debug!(
                             "Raw payload (hex): {:?}",
-                            hex::encode(&msg.payload)
+                            hex::encode(payload)
                         );
                         Err(e)
                     }
@@ -223,7 +185,7 @@ async fn process_messages(
     tracing::info!("Stopping actix server ...");
     server_handle.stop(true).await;
     tracing::info!("Actix server stopped. Goodbye!");
-    shutdown_nats_with_timeout(&publisher_client).await;
+    shutdown_broker_with_timeout(&message_broker).await;
 
     Ok(())
 }

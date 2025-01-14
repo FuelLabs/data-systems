@@ -20,6 +20,23 @@ fn create_with_methods<'a>(
         })
 }
 
+fn create_get_methods<'a>(
+    field_names: &'a [&'a Ident],
+    field_types: &'a [&'a Type],
+) -> impl Iterator<Item = TokenStream> + 'a {
+    field_names
+        .iter()
+        .zip(field_types.iter())
+        .map(|(name, ty)| {
+            let method_name = format_ident!("get_{}", name);
+            quote! {
+                pub fn #method_name(&self) -> &#ty {
+                    &self.#name
+                }
+            }
+        })
+}
+
 pub fn expanded<'a>(
     name: &'a Ident,
     field_names: &'a [&'a Ident],
@@ -27,10 +44,13 @@ pub fn expanded<'a>(
     attrs: &'a [syn::Attribute],
 ) -> TokenStream {
     let with_methods = create_with_methods(field_names, field_types);
+    let get_methods = create_get_methods(field_names, field_types);
     let wildcard = crate::attrs::subject_attr("wildcard", attrs);
+    let id = crate::attrs::subject_attr("id", attrs);
 
     quote! {
         impl #name {
+            pub const ID: &'static str = #id;
             pub const WILDCARD: &'static str = #wildcard;
 
             pub fn build(
@@ -55,7 +75,12 @@ pub fn expanded<'a>(
                 std::sync::Arc::new(self)
             }
 
+            pub fn dyn_arc(self) -> std::sync::Arc<dyn IntoSubject> {
+                self.arc() as std::sync::Arc<dyn IntoSubject>
+            }
+
             #(#with_methods)*
+            #(#get_methods)*
         }
 
         impl std::fmt::Display for #name {

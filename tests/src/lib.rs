@@ -1,112 +1,79 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use fuel_streams::{client::Client, Connection, FuelNetwork};
-use fuel_streams_core::{
-    nats::NatsClient,
-    prelude::*,
-    types::Transaction,
-    Stream,
+use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_streams_core::{stream::*, subjects::*, types::Block};
+use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
+use fuel_streams_store::{
+    db::{Db, DbConnectionOpts, DbResult},
+    record::Record,
+    store::Store,
 };
-use tokio::task::JoinHandle;
+use rand::Rng;
 
-type PublishedBlocksResult =
-    BoxedResult<(Vec<(BlocksSubject, Block)>, JoinHandle<()>)>;
-type PublishedTxsResult =
-    BoxedResult<(Vec<(TransactionsSubject, Transaction)>, JoinHandle<()>)>;
+// -----------------------------------------------------------------------------
+// Setup
+// -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
-pub struct Streams {
-    pub blocks: Stream<Block>,
-    pub transactions: Stream<Transaction>,
+pub async fn setup_db() -> DbResult<Db> {
+    let opts = DbConnectionOpts {
+        pool_size: Some(10),
+        ..Default::default()
+    };
+    Db::new(opts).await
 }
 
-impl Streams {
-    pub async fn new(
-        nats_client: &NatsClient,
-        storage: &Arc<S3Storage>,
-    ) -> Self {
-        let blocks = Stream::<Block>::get_or_init(nats_client, storage).await;
-        let transactions =
-            Stream::<Transaction>::get_or_init(nats_client, storage).await;
-        Self {
-            transactions,
-            blocks,
-        }
+pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
+    let db = setup_db().await?;
+    let store = Store::new(&db.arc());
+    Ok(store)
+}
+
+pub async fn setup_message_broker(
+    nats_url: &str,
+) -> anyhow::Result<Arc<dyn MessageBroker>> {
+    let broker = MessageBrokerClient::Nats.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
+}
+
+pub async fn setup_stream(nats_url: &str) -> anyhow::Result<Stream<Block>> {
+    let db = setup_db().await?;
+    let nats_client = setup_message_broker(nats_url).await?;
+    let stream = Stream::<Block>::get_or_init(&nats_client, &db.arc()).await;
+    Ok(stream)
+}
+
+// -----------------------------------------------------------------------------
+// Test data
+// -----------------------------------------------------------------------------
+
+pub fn create_test_data(height: u32) -> (BlocksSubject, Block) {
+    let block = MockBlock::build(height);
+    let subject = BlocksSubject::from(&block);
+    (subject, block)
+}
+
+pub fn create_multiple_test_data(
+    count: usize,
+    start_height: u32,
+) -> Vec<(BlocksSubject, Block)> {
+    (0..count)
+        .map(|idx| create_test_data(start_height + idx as u32))
+        .collect()
+}
+
+pub async fn add_test_records(
+    store: &Store<Block>,
+    prefix: &str,
+    records: &[(Arc<dyn IntoSubject>, Block)],
+) -> anyhow::Result<()> {
+    for (subject, block) in records {
+        let packet = block.to_packet(subject.clone()).with_namespace(prefix);
+        store.insert_record(&packet).await?;
     }
+    Ok(())
 }
 
-pub async fn server_setup() -> BoxedResult<(NatsClient, Streams, Connection)> {
-    let nats_client_opts = NatsClientOpts::admin_opts().with_rdn_namespace();
-    let nats_client = NatsClient::connect(&nats_client_opts).await?;
-
-    let storage_opts = S3StorageOpts::admin_opts().with_random_namespace();
-    let storage = Arc::new(S3Storage::new(storage_opts).await?);
-    storage.create_bucket().await?;
-
-    let streams = Streams::new(&nats_client, &storage).await;
-
-    let mut client = Client::new(FuelNetwork::Local).await?;
-    let connection = client.connect().await?;
-
-    Ok((nats_client, streams, connection))
-}
-
-pub fn publish_items<T: Streamable + 'static>(
-    stream: &Stream<T>,
-    items: Vec<(impl IntoSubject + Clone + 'static, T)>,
-) -> JoinHandle<()> {
-    tokio::task::spawn({
-        let stream = stream.clone();
-        let items = items.clone();
-        async move {
-            for item in items {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-                let payload = item.1.clone();
-                let subject = Arc::new(item.0);
-                let packet = payload.to_packet(subject);
-
-                stream.publish(&packet).await.unwrap();
-            }
-        }
-    })
-}
-
-pub fn publish_blocks(
-    stream: &Stream<Block>,
-    producer: Option<Address>,
-    use_height: Option<u32>,
-) -> PublishedBlocksResult {
-    let mut items = Vec::new();
-    for i in 0..10 {
-        let block_item = MockBlock::build(use_height.unwrap_or(i));
-        let subject = BlocksSubject::build(
-            producer.clone(),
-            Some((use_height.unwrap_or(i)).into()),
-        );
-        items.push((subject, block_item));
-    }
-
-    let join_handle = publish_items::<Block>(stream, items.clone());
-
-    Ok((items, join_handle))
-}
-
-pub fn publish_transactions(
-    stream: &Stream<Transaction>,
-    mock_block: &Block,
-    use_index: Option<u32>,
-) -> PublishedTxsResult {
-    let mut items = Vec::new();
-    for i in 0..10 {
-        let tx = MockTransaction::build();
-        let subject = TransactionsSubject::from(&tx)
-            .with_block_height(Some(mock_block.height.into()))
-            .with_index(Some(use_index.unwrap_or(i) as usize))
-            .with_status(Some(TransactionStatus::Success));
-        items.push((subject, tx));
-    }
-
-    let join_handle = publish_items::<Transaction>(stream, items.clone());
-
-    Ok((items, join_handle))
+pub fn create_random_db_name() -> String {
+    format!("test_{}", rand::thread_rng().gen_range(0..1000000))
 }

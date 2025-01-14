@@ -23,7 +23,7 @@ displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 elasticsearch = "8.15.0-alpha.1"
 fuel-data-parser = { workspace = true }
-fuel-streams-nats = { workspace = true, features = ["test-helpers"] }
+fuel-message-broker = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 jsonwebtoken = "9.3.0"

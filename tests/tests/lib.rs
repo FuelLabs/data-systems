@@ -1,3 +1,3 @@
-mod client;
-mod publisher;
+#![cfg(test)]
+mod store;
 mod stream;

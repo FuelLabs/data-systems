@@ -15,7 +15,7 @@ RUST_VERSION := 1.81.0
 
 .PHONY: install validate-env check-commands check-network check-versions \
         check-dev-env setup create-env version bump-version release dev-watch \
-        clean clean-build cleanup-artifacts test-watch test bench helm-test \
+        clean clean-build cleanup-artifacts test-watch test helm-test \
         fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
         audit audit-fix-test audit-fix load-test run-publisher run-consumer \
@@ -138,9 +138,6 @@ test:
 		cargo test --profile $(PROFILE) --doc -p $(PACKAGE) --all-features; \
 	fi
 
-bench:
-	cargo bench -p data-parser
-
 helm-test:
 	helm unittest -f "tests/**/*.yaml" -f "tests/*.yaml" cluster/charts/fuel-streams
 
@@ -213,42 +210,32 @@ run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="8080"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
+run-publisher: FROM_HEIGHT="0"
 run-publisher: check-network
 	@./scripts/run_publisher.sh
 
 run-publisher-mainnet-dev:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=dev
+	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0
 
 run-publisher-mainnet-profiling:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling
+	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling FROM_HEIGHT=0
 
 run-publisher-testnet-dev:
-	$(MAKE) run-publisher NETWORK=testnet MODE=dev
+	$(MAKE) run-publisher NETWORK=testnet MODE=dev FROM_HEIGHT=0
 
 run-publisher-testnet-profiling:
-	$(MAKE) run-publisher NETWORK=testnet MODE=profiling
-
-run-consumer: NATS_CORE_URL="localhost:4222"
-run-consumer: NATS_PUBLISHER_URL="localhost:4223"
-run-consumer: PORT="9003"
-run-consumer:
-	cargo run --package sv-consumer --profile dev -- \
-		--nats-core-url $(NATS_CORE_URL) \
-		--port $(PORT) \
-		--nats-publisher-url $(NATS_PUBLISHER_URL)
+	$(MAKE) run-publisher NETWORK=testnet MODE=profiling FROM_HEIGHT=0
 
 # ------------------------------------------------------------
 #  Consumer Run Commands
 # ------------------------------------------------------------
 
 run-consumer: NATS_URL="localhost:4222"
-run-consumer: NATS_PUBLISHER_URL="localhost:4333"
 run-consumer: PORT="9003"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-url $(NATS_URL) \
-		--port $(PORT) \
-		--nats-publisher-url $(NATS_PUBLISHER_URL)
+		--port $(PORT)
 
 # ------------------------------------------------------------
 #  Streamer Run Commands
@@ -279,7 +266,7 @@ run-webserver-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats localstack docker
+DOCKER_SERVICES := nats docker cockroach
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:
@@ -307,6 +294,12 @@ endef
 $(foreach service,$(DOCKER_SERVICES),$(eval $(call make-docker-commands,$(service))))
 
 reset-nats: clean-nats start-nats
+
+setup-db:
+	@echo "Setting up database..."
+	@cd crates/fuel-streams-store && cargo sqlx migrate run
+
+reset-db: clean-docker start-docker setup-db
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)

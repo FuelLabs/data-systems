@@ -6,7 +6,6 @@ use actix_web::{
     ResponseError,
 };
 use chrono::Utc;
-use displaydoc::Display as DisplayDoc;
 use jsonwebtoken::{
     decode,
     encode,
@@ -17,7 +16,6 @@ use jsonwebtoken::{
     Validation,
 };
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use uuid::Uuid;
 
 const BEARER: &str = "Bearer";
@@ -31,23 +29,23 @@ pub enum UserType {
 }
 
 /// User-related errors
-#[derive(Clone, Debug, DisplayDoc, Error, PartialEq)]
+#[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum UserError {
-    /// User not found
+    #[error("User not found")]
     UserNotFound,
-    /// Unknown User Role: `{0}`
+    #[error("Unknown User Role: {0}")]
     UnknownUserRole(String),
-    /// Unknown User Status: `{0}`
+    #[error("Unknown User Status: {0}")]
     UnknownUserStatus(String),
-    /// Unallowed User Role: `{0}`
+    #[error("Unallowed User Role: {0}")]
     UnallowedUserRole(String),
-    /// Missing password
+    #[error("Missing password")]
     MissingPassword,
-    /// Missing username
+    #[error("Missing username")]
     MissingUsername,
-    /// Wrong password
+    #[error("Wrong password")]
     WrongPassword,
-    /// User is not verified
+    #[error("User is not verified")]
     UnverifiedUser,
 }
 
@@ -83,25 +81,25 @@ impl ResponseError for UserError {
 }
 
 /// Auth errors
-#[derive(Clone, Debug, DisplayDoc, Error, PartialEq)]
+#[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum AuthError {
-    /// Wrong Credentials
+    #[error("Wrong Credentials")]
     WrongCredentialsError,
-    /// JWT Token not valid
+    #[error("JWT Token not valid")]
     JWTTokenError,
-    /// JWT Token Creation Error
+    #[error("JWT Token Creation Error")]
     JWTTokenCreationError,
-    /// No Auth Header
+    #[error("No Auth Header")]
     NoAuthHeaderError,
-    /// Invalid Auth Header
+    #[error("Invalid Auth Header")]
     InvalidAuthHeaderError,
-    /// No Permission
+    #[error("No Permission")]
     NoPermissionError,
-    /// Expired Token
+    #[error("Expired Token")]
     ExpiredToken,
-    /// Bad Encoded User Role: `{0}`
+    #[error("Bad Encoded User Role: {0}")]
     BadEncodedUserRole(String),
-    /// Unparsable UUID error: `{0}`
+    #[error("Unparsable UUID error: {0}")]
     UnparsableUuid(String),
 }
 

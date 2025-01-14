@@ -12,22 +12,20 @@ WORKDIR /build/
 COPY --from=xx / /
 
 # hadolint ignore=DL3008
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    lld \
-    clang \
-    libclang-dev \
-    && xx-apt-get update  \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        lld \
+        clang \
+        libclang-dev \
+    && xx-apt-get update \
     && xx-apt-get install -y libc6-dev g++ binutils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
 
 FROM chef AS planner
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
-
 
 FROM chef AS builder
 ARG PACKAGE_NAME

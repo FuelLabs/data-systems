@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use fuel_streams_core::nats::NatsClient;
+use fuel_message_broker::MessageBroker;
 use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
 use serde::{Deserialize, Serialize};
 
@@ -18,18 +18,18 @@ pub struct HealthResponse {
 
 pub struct ServerState {
     pub start_time: Instant,
-    pub nats_client: NatsClient,
+    pub msg_broker: Arc<dyn MessageBroker>,
     pub telemetry: Arc<Telemetry<Metrics>>,
 }
 
 impl ServerState {
     pub fn new(
-        nats_client: NatsClient,
+        msg_broker: Arc<dyn MessageBroker>,
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
         Self {
             start_time: Instant::now(),
-            nats_client,
+            msg_broker,
             telemetry,
         }
     }
@@ -42,7 +42,7 @@ impl ServerState {
 #[async_trait]
 impl StateProvider for ServerState {
     async fn is_healthy(&self) -> bool {
-        self.nats_client.is_connected()
+        self.msg_broker.is_healthy().await
     }
 
     async fn get_health(&self) -> serde_json::Value {

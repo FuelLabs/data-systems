@@ -1,6 +1,5 @@
 pub mod blocks;
 pub mod inputs;
-pub mod logs;
 pub mod outputs;
 pub mod receipts;
 pub mod transactions;
@@ -11,9 +10,13 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use displaydoc::Display as DisplayDoc;
-use fuel_data_parser::DataParserError;
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{fuel_core_like::FuelCoreLike, types::*, Stream};
+use fuel_streams_store::record::{
+    DataEncoder,
+    EncoderError,
+    Record,
+    RecordPacket,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::task::JoinHandle;
@@ -38,22 +41,22 @@ pub fn sha256(bytes: &[u8]) -> Bytes32 {
     bytes.into()
 }
 
-#[derive(Debug, thiserror::Error, DisplayDoc)]
+#[derive(Debug, thiserror::Error)]
 pub enum ExecutorError {
-    /// Failed to publish: {0}
+    #[error("Failed to publish: {0}")]
     PublishFailed(String),
-    /// Failed to acquire semaphore: {0}
+    #[error(transparent)]
     SemaphoreError(#[from] tokio::sync::AcquireError),
-    /// Failed to serialize block payload: {0}
+    #[error(transparent)]
     Serialization(#[from] serde_json::Error),
-    /// Failed to fetch transaction status: {0}
+    #[error("Failed to fetch transaction status: {0}")]
     TransactionStatus(String),
-    /// Failed to access offchain database: {0}
+    #[error(transparent)]
     OffchainDatabase(#[from] anyhow::Error),
-    /// Failed to join tasks: {0}
+    #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
-    /// Failed to encode or decode data: {0}
-    Encoder(#[from] DataParserError),
+    #[error(transparent)]
+    Encoder(#[from] EncoderError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,7 +114,8 @@ impl BlockPayload {
         let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
-        let block = Block::new(&block, consensus.into(), txs_ids);
+        let producer = consensus.block_producer(&block.id())?.into();
+        let block = Block::new(&block, consensus.into(), txs_ids, producer);
         Ok(Self {
             block,
             transactions: txs,
@@ -119,7 +123,7 @@ impl BlockPayload {
         })
     }
 
-    pub fn tx_ids(&self) -> Vec<Bytes32> {
+    pub fn tx_ids(&self) -> Vec<TxId> {
         self.transactions
             .iter()
             .map(|tx| tx.id.clone())
@@ -141,8 +145,8 @@ impl BlockPayload {
         &self.metadata
     }
 
-    pub fn block_height(&self) -> u32 {
-        self.block.height
+    pub fn block_height(&self) -> BlockHeight {
+        self.block.height.clone()
     }
 
     pub fn arc(&self) -> Arc<Self> {
@@ -177,17 +181,17 @@ impl BlockPayload {
     }
 }
 
-pub struct Executor<S: Streamable + 'static> {
-    pub stream: Arc<Stream<S>>,
+pub struct Executor<R: Record> {
+    pub stream: Arc<Stream<R>>,
     payload: Arc<BlockPayload>,
     semaphore: Arc<tokio::sync::Semaphore>,
-    __marker: PhantomData<S>,
+    __marker: PhantomData<R>,
 }
 
-impl<S: Streamable> Executor<S> {
+impl<R: Record> Executor<R> {
     pub fn new(
         payload: &Arc<BlockPayload>,
-        stream: &Arc<Stream<S>>,
+        stream: &Arc<Stream<R>>,
         semaphore: &Arc<tokio::sync::Semaphore>,
     ) -> Self {
         Self {
@@ -200,14 +204,13 @@ impl<S: Streamable> Executor<S> {
 
     fn publish(
         &self,
-        packet: &PublishPacket<S>,
+        packet: &RecordPacket<R>,
     ) -> JoinHandle<Result<(), ExecutorError>> {
-        let wildcard = packet.subject.parse();
         let stream = Arc::clone(&self.stream);
         let permit = Arc::clone(&self.semaphore);
 
-        // TODO: add telemetry back again
-        let packet = packet.clone();
+        let wildcard = packet.subject_str();
+        let packet = Arc::new(packet.clone());
         tokio::spawn({
             async move {
                 let _permit = permit.acquire().await?;
@@ -230,14 +233,16 @@ impl<S: Streamable> Executor<S> {
     pub fn payload(&self) -> Arc<BlockPayload> {
         Arc::clone(&self.payload)
     }
+
     pub fn metadata(&self) -> &Metadata {
         &self.payload.metadata
     }
+
     pub fn block(&self) -> &Block {
         &self.payload.block
     }
+
     pub fn block_height(&self) -> BlockHeight {
-        let height = self.block().height;
-        BlockHeight::from(height)
+        self.block().height.clone()
     }
 }

@@ -1,31 +1,43 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use async_nats::jetstream::{
-    context::{Publish, PublishErrorKind},
-    stream::RetentionPolicy,
-    Context,
-};
 use clap::Parser;
-use displaydoc::Display as DisplayDoc;
 use fuel_core_types::blockchain::SealedBlock;
-use fuel_streams_core::prelude::*;
+use fuel_message_broker::{
+    MessageBroker,
+    MessageBrokerClient,
+    MessageBrokerError,
+};
+use fuel_streams_core::{types::*, FuelCore, FuelCoreLike};
 use fuel_streams_executors::*;
+use fuel_streams_store::{
+    db::{Db, DbConnectionOpts},
+    record::{DataEncoder, EncoderError, QueryOptions, Record},
+};
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
-    shutdown::{shutdown_nats_with_timeout, ShutdownController},
+    shutdown::{shutdown_broker_with_timeout, ShutdownController},
     telemetry::Telemetry,
 };
 use futures::StreamExt;
 use sv_publisher::{cli::Cli, metrics::Metrics, state::ServerState};
-use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Error, Debug, DisplayDoc)]
-pub enum LiveBlockProcessingError {
-    /// Failed to publish block: {0}
-    PublishError(#[from] PublishError),
-    /// Processing was cancelled
+#[derive(thiserror::Error, Debug)]
+pub enum PublishError {
+    #[error(transparent)]
+    BlockPayload(#[from] ExecutorError),
+    #[error("Failed to access offchain database: {0}")]
+    OffchainDatabase(String),
+    #[error(transparent)]
+    Db(#[from] fuel_streams_store::db::DbError),
+    #[error("Failed to initialize Fuel Core: {0}")]
+    FuelCore(String),
+    #[error(transparent)]
+    Encoder(#[from] EncoderError),
+    #[error("Processing was cancelled")]
     Cancelled,
+    #[error(transparent)]
+    MessageBrokerClient(#[from] MessageBrokerError),
 }
 
 #[tokio::main]
@@ -35,21 +47,18 @@ async fn main() -> anyhow::Result<()> {
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
     fuel_core.start().await?;
 
+    let db = setup_db(&cli.db_url).await?;
+    let message_broker = setup_message_broker(&cli.nats_url).await?;
     let telemetry = Telemetry::new(None).await?;
     telemetry.start().await?;
 
-    let storage = setup_storage().await?;
-    let nats_client = setup_nats(&cli.nats_url).await?;
-
     let server_state =
-        ServerState::new(nats_client.clone(), Arc::clone(&telemetry));
+        ServerState::new(message_broker.clone(), Arc::clone(&telemetry));
     let server_handle =
         build_and_spawn_web_server(cli.port, server_state).await?;
 
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
-    let last_published =
-        Arc::new(find_last_published_height(&nats_client, &storage).await?);
-
+    let last_published = Arc::new(find_last_published_height(&db).await?);
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
@@ -58,7 +67,8 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             let historical = process_historical_blocks(
-                &nats_client,
+                cli.from_height,
+                &message_broker,
                 fuel_core.clone(),
                 last_block_height,
                 last_published,
@@ -67,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
             );
 
             let live = process_live_blocks(
-                &nats_client.jetstream,
+                &message_broker,
                 fuel_core.clone(),
                 shutdown.token().clone(),
                 Arc::clone(&telemetry)
@@ -84,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("Stopping actix server ...");
             server_handle.stop(true).await;
             tracing::info!("Actix server stopped. Goodbye!");
-            shutdown_nats_with_timeout(&nats_client).await;
+            shutdown_broker_with_timeout(&message_broker).await;
         }
     }
 
@@ -92,52 +102,50 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_storage() -> anyhow::Result<Arc<S3Storage>> {
-    let storage_opts = S3StorageOpts::admin_opts();
-    let storage = S3Storage::new(storage_opts).await?;
-    Ok(Arc::new(storage))
+async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
+    let db = Db::new(DbConnectionOpts {
+        connection_str: db_url.to_string(),
+        ..Default::default()
+    })
+    .await?;
+    Ok(db)
 }
 
-async fn setup_nats(nats_url: &str) -> anyhow::Result<NatsClient> {
-    let opts = NatsClientOpts::admin_opts()
-        .with_url(nats_url.to_string())
-        .with_domain("CORE".to_string());
-    let nats_client = NatsClient::connect(&opts).await?;
-    let stream_name = nats_client.namespace.stream_name("block_importer");
-    nats_client
-        .jetstream
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: stream_name,
-            subjects: vec!["block_submitted.>".to_string()],
-            retention: RetentionPolicy::WorkQueue,
-            duplicate_window: Duration::from_secs(1),
-            ..Default::default()
-        })
-        .await?;
-
-    Ok(nats_client)
+async fn setup_message_broker(
+    nats_url: &str,
+) -> Result<Arc<dyn MessageBroker>, PublishError> {
+    let broker = MessageBrokerClient::Nats;
+    let broker = broker.start(nats_url).await?;
+    broker.setup().await?;
+    Ok(broker)
 }
 
-async fn find_last_published_height(
-    nats_client: &NatsClient,
-    storage: &Arc<S3Storage>,
-) -> anyhow::Result<u32> {
-    let block_stream = Stream::<Block>::get_or_init(nats_client, storage).await;
-    let last_publish_height = block_stream
-        .get_last_published(BlocksSubject::WILDCARD)
-        .await?;
-    match last_publish_height {
-        Some(block) => Ok(block.height),
+async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
+    let record = Block::find_last_record(db, QueryOptions::default()).await?;
+    match record {
+        Some(record) => Ok(record.block_height as u32),
         None => Ok(0),
     }
 }
 
 fn get_historical_block_range(
+    from_height: u32,
     last_published_height: Arc<u32>,
     last_block_height: Arc<u32>,
 ) -> Option<Vec<u32>> {
-    let last_published_height = *last_published_height;
-    let last_block_height = *last_block_height;
+    let last_published_height = if *last_published_height > from_height {
+        *last_published_height
+    } else {
+        from_height
+    };
+
+    let last_block_height = if *last_block_height > from_height {
+        *last_block_height
+    } else {
+        tracing::error!("Last block height is less than from height");
+        *last_block_height
+    };
+
     let start_height = last_published_height + 1;
     let end_height = last_block_height;
     if start_height > end_height {
@@ -153,16 +161,19 @@ fn get_historical_block_range(
 }
 
 fn process_historical_blocks(
-    nats_client: &NatsClient,
+    from_height: u32,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
     last_block_height: Arc<u32>,
     last_published_height: Arc<u32>,
     token: CancellationToken,
     telemetry: Arc<Telemetry<Metrics>>,
 ) -> tokio::task::JoinHandle<()> {
-    let jetstream = nats_client.jetstream.clone();
+    let message_broker = message_broker.clone();
+    let fuel_core = fuel_core.clone();
     tokio::spawn(async move {
         let Some(heights) = get_historical_block_range(
+            from_height,
             last_published_height,
             last_block_height,
         ) else {
@@ -170,14 +181,14 @@ fn process_historical_blocks(
         };
         futures::stream::iter(heights)
             .map(|height| {
-                let jetstream = jetstream.clone();
+                let message_broker = message_broker.clone();
                 let fuel_core = fuel_core.clone();
                 let sealed_block = fuel_core.get_sealed_block_by_height(height);
                 let sealed_block = Arc::new(sealed_block);
                 let telemetry = telemetry.clone();
                 async move {
                     publish_block(
-                        &jetstream,
+                        &message_broker,
                         &fuel_core,
                         &sealed_block,
                         telemetry,
@@ -193,35 +204,30 @@ fn process_historical_blocks(
 }
 
 async fn process_live_blocks(
-    jetstream: &Context,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
     token: CancellationToken,
     telemetry: Arc<Telemetry<Metrics>>,
-) -> Result<(), LiveBlockProcessingError> {
+) -> Result<(), PublishError> {
     let mut subscription = fuel_core.blocks_subscription();
     while let Ok(data) = subscription.recv().await {
         if token.is_cancelled() {
             break;
         }
         let sealed_block = Arc::new(data.sealed_block.clone());
-        publish_block(jetstream, &fuel_core, &sealed_block, telemetry.clone())
-            .await?;
+        publish_block(
+            message_broker,
+            &fuel_core,
+            &sealed_block,
+            telemetry.clone(),
+        )
+        .await?;
     }
     Ok(())
 }
 
-#[derive(Error, Debug, DisplayDoc)]
-pub enum PublishError {
-    /// Failed to publish block to NATS server: {0}
-    NatsPublish(#[from] async_nats::error::Error<PublishErrorKind>),
-    /// Failed to create block payload due to: {0}
-    BlockPayload(#[from] ExecutorError),
-    /// Failed to access offchain database: {0}
-    OffchainDatabase(String),
-}
-
 async fn publish_block(
-    jetstream: &Context,
+    message_broker: &Arc<dyn MessageBroker>,
     fuel_core: &Arc<dyn FuelCoreLike>,
     sealed_block: &Arc<SealedBlock>,
     telemetry: Arc<Telemetry<Metrics>>,
@@ -229,22 +235,17 @@ async fn publish_block(
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
     let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
-    let encoded_payload = payload.encode().await?;
-    let payload_size = encoded_payload.len();
-    let publish = Publish::build()
-        .message_id(payload.message_id())
-        .payload(encoded_payload.into());
+    let encoded = payload.encode().await?;
 
-    jetstream
-        .send_publish(payload.subject(), publish)
-        .await
-        .map_err(PublishError::NatsPublish)?
-        .await
-        .map_err(PublishError::NatsPublish)?;
+    message_broker
+        .publish_block(payload.message_id(), encoded.clone())
+        .await?;
 
     if let Some(metrics) = telemetry.base_metrics() {
-        metrics
-            .update_publisher_success_metrics(&payload.subject(), payload_size);
+        metrics.update_publisher_success_metrics(
+            &payload.subject(),
+            encoded.len(),
+        );
     }
 
     tracing::info!("New block submitted: {}", payload.block_height());

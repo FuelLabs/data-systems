@@ -39,7 +39,3 @@ path = "outputs.rs"
 [[example]]
 name = "utxos"
 path = "utxos.rs"
-
-[[example]]
-name = "logs"
-path = "logs.rs"

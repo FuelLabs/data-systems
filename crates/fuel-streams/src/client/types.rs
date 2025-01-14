@@ -1,9 +1,8 @@
-pub use sv_webserver::server::{
-    http::models::{LoginRequest, LoginResponse},
-    ws::models::{
-        ClientMessage,
-        DeliverPolicy,
-        ServerMessage,
-        SubscriptionPayload,
-    },
+pub use fuel_streams_core::DeliverPolicy;
+pub use sv_webserver::server::types::{
+    ClientMessage,
+    LoginRequest,
+    LoginResponse,
+    ServerMessage,
+    SubscriptionPayload,
 };

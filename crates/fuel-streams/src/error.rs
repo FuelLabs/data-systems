@@ -1,8 +1,5 @@
-use displaydoc::Display as DisplayDoc;
-use thiserror::Error as ThisError;
-
-#[derive(Debug, ThisError, DisplayDoc)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// WebSocket client error: {0}
+    #[error(transparent)]
     Client(#[from] crate::client::error::ClientError),
 }

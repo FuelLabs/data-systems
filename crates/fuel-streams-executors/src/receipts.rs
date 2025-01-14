@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use fuel_streams_core::prelude::*;
+use fuel_streams_core::{subjects::*, types::*};
 use rayon::prelude::*;
 use tokio::task::JoinHandle;
 
@@ -9,42 +7,37 @@ use crate::*;
 impl Executor<Receipt> {
     pub fn process(
         &self,
-        tx: &Transaction,
+        (tx_index, tx): (usize, &Transaction),
     ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
+        let block_height = self.block_height();
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
-        let packets: Vec<PublishPacket<Receipt>> = receipts
+        let packets = receipts
             .par_iter()
             .enumerate()
-            .flat_map(|(index, receipt)| {
-                let main_subject = main_subject(receipt, &tx_id, index);
-                let identifier_subjects =
-                    identifiers(receipt, &tx_id, index as u8)
-                        .into_par_iter()
-                        .map(|identifier| identifier.into())
-                        .map(|subject: ReceiptsByIdSubject| subject.arc())
-                        .collect::<Vec<_>>();
-
-                let receipt: Receipt = receipt.to_owned();
-                let mut packets = vec![receipt.to_packet(main_subject)];
-                packets.extend(
-                    identifier_subjects
-                        .into_iter()
-                        .map(|subject| receipt.to_packet(subject)),
+            .flat_map(|(receipt_index, receipt)| {
+                let main_subject = main_subject(
+                    block_height.clone(),
+                    tx_index as u32,
+                    receipt_index as u32,
+                    tx_id.clone(),
+                    receipt,
                 );
-
-                packets
+                let receipt: Receipt = receipt.to_owned();
+                vec![receipt.to_packet(main_subject)]
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         packets.iter().map(|packet| self.publish(packet)).collect()
     }
 }
 
 fn main_subject(
+    block_height: BlockHeight,
+    tx_index: u32,
+    receipt_index: u32,
+    tx_id: TxId,
     receipt: &Receipt,
-    tx_id: &Bytes32,
-    index: usize,
 ) -> Arc<dyn IntoSubject> {
     match receipt {
         Receipt::Call(CallReceipt {
@@ -53,49 +46,63 @@ fn main_subject(
             asset_id,
             ..
         }) => ReceiptsCallSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            from_contract_id: Some(from.to_owned()),
+            to_contract_id: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
         Receipt::Return(ReturnReceipt { id, .. }) => ReceiptsReturnSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            id: Some(id.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::ReturnData(ReturnDataReceipt { id, .. }) => {
             ReceiptsReturnDataSubject {
-                tx_id: Some(tx_id.to_owned()),
-                index: Some(index),
-                id: Some(id.to_owned()),
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                receipt_index: Some(receipt_index),
+                contract_id: Some(id.to_owned()),
             }
             .arc()
         }
         Receipt::Panic(PanicReceipt { id, .. }) => ReceiptsPanicSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            id: Some(id.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Revert(RevertReceipt { id, .. }) => ReceiptsRevertSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            id: Some(id.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Log(LogReceipt { id, .. }) => ReceiptsLogSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            id: Some(id.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::LogData(LogDataReceipt { id, .. }) => ReceiptsLogDataSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            id: Some(id.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            contract_id: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Transfer(TransferReceipt {
@@ -104,10 +111,12 @@ fn main_subject(
             asset_id,
             ..
         }) => ReceiptsTransferSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            from_contract_id: Some(from.to_owned()),
+            to_contract_id: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
@@ -118,28 +127,34 @@ fn main_subject(
             asset_id,
             ..
         }) => ReceiptsTransferOutSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            from: Some(from.to_owned()),
-            to: Some(to.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            from_contract_id: Some(from.to_owned()),
+            to_address: Some(to.to_owned()),
             asset_id: Some(asset_id.to_owned()),
         }
         .arc(),
 
         Receipt::ScriptResult(ScriptResultReceipt { .. }) => {
             ReceiptsScriptResultSubject {
-                tx_id: Some(tx_id.to_owned()),
-                index: Some(index),
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                receipt_index: Some(receipt_index),
             }
             .arc()
         }
         Receipt::MessageOut(MessageOutReceipt {
             sender, recipient, ..
         }) => ReceiptsMessageOutSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
-            sender: Some(sender.to_owned()),
-            recipient: Some(recipient.to_owned()),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
+            sender_address: Some(sender.to_owned()),
+            recipient_address: Some(recipient.to_owned()),
         }
         .arc(),
         Receipt::Mint(MintReceipt {
@@ -147,8 +162,10 @@ fn main_subject(
             sub_id,
             ..
         }) => ReceiptsMintSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
             contract_id: Some(contract_id.to_owned()),
             sub_id: Some((*sub_id).to_owned()),
         }
@@ -158,8 +175,10 @@ fn main_subject(
             sub_id,
             ..
         }) => ReceiptsBurnSubject {
-            tx_id: Some(tx_id.to_owned()),
-            index: Some(index),
+            block_height: Some(block_height),
+            tx_id: Some(tx_id),
+            tx_index: Some(tx_index),
+            receipt_index: Some(receipt_index),
             contract_id: Some(contract_id.to_owned()),
             sub_id: Some((*sub_id).to_owned()),
         }
@@ -167,72 +186,72 @@ fn main_subject(
     }
 }
 
-pub fn identifiers(
-    receipt: &Receipt,
-    tx_id: &Bytes32,
-    index: u8,
-) -> Vec<Identifier> {
-    match receipt {
-        Receipt::Call(CallReceipt {
-            id: from,
-            to,
-            asset_id,
-            ..
-        }) => {
-            vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-            ]
-        }
-        Receipt::Return(ReturnReceipt { id, .. })
-        | Receipt::ReturnData(ReturnDataReceipt { id, .. })
-        | Receipt::Panic(PanicReceipt { id, .. })
-        | Receipt::Revert(RevertReceipt { id, .. })
-        | Receipt::Log(LogReceipt { id, .. })
-        | Receipt::LogData(LogDataReceipt { id, .. }) => {
-            vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())]
-        }
-        Receipt::Transfer(TransferReceipt {
-            id: from,
-            to,
-            asset_id,
-            ..
-        }) => {
-            vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-            ]
-        }
-        Receipt::TransferOut(TransferOutReceipt {
-            id: from,
-            to,
-            asset_id,
-            ..
-        }) => {
-            vec![
-                Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-                Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-                Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-            ]
-        }
-        Receipt::MessageOut(MessageOutReceipt {
-            sender, recipient, ..
-        }) => {
-            vec![
-                Identifier::Address(tx_id.to_owned(), index, sender.into()),
-                Identifier::Address(tx_id.to_owned(), index, recipient.into()),
-            ]
-        }
-        Receipt::Mint(MintReceipt { contract_id, .. })
-        | Receipt::Burn(BurnReceipt { contract_id, .. }) => {
-            vec![Identifier::ContractID(
-                tx_id.to_owned(),
-                index,
-                contract_id.into(),
-            )]
-        }
-        _ => Vec::new(),
-    }
-}
+// pub fn identifiers(
+//     receipt: &Receipt,
+//     tx_id: &Bytes32,
+//     index: u8,
+// ) -> Vec<Identifier> {
+//     match receipt {
+//         Receipt::Call(CallReceipt {
+//             id: from,
+//             to,
+//             asset_id,
+//             ..
+//         }) => {
+//             vec![
+//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+//             ]
+//         }
+//         Receipt::Return(ReturnReceipt { id, .. })
+//         | Receipt::ReturnData(ReturnDataReceipt { id, .. })
+//         | Receipt::Panic(PanicReceipt { id, .. })
+//         | Receipt::Revert(RevertReceipt { id, .. })
+//         | Receipt::Log(LogReceipt { id, .. })
+//         | Receipt::LogData(LogDataReceipt { id, .. }) => {
+//             vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())]
+//         }
+//         Receipt::Transfer(TransferReceipt {
+//             id: from,
+//             to,
+//             asset_id,
+//             ..
+//         }) => {
+//             vec![
+//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+//             ]
+//         }
+//         Receipt::TransferOut(TransferOutReceipt {
+//             id: from,
+//             to,
+//             asset_id,
+//             ..
+//         }) => {
+//             vec![
+//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
+//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
+//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
+//             ]
+//         }
+//         Receipt::MessageOut(MessageOutReceipt {
+//             sender, recipient, ..
+//         }) => {
+//             vec![
+//                 Identifier::Address(tx_id.to_owned(), index, sender.into()),
+//                 Identifier::Address(tx_id.to_owned(), index, recipient.into()),
+//             ]
+//         }
+//         Receipt::Mint(MintReceipt { contract_id, .. })
+//         | Receipt::Burn(BurnReceipt { contract_id, .. }) => {
+//             vec![Identifier::ContractID(
+//                 tx_id.to_owned(),
+//                 index,
+//                 contract_id.into(),
+//             )]
+//         }
+//         _ => Vec::new(),
+//     }
+// }

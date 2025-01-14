@@ -11,8 +11,8 @@ rust-version = { workspace = true }
 version = "0.0.16"
 
 [dependencies]
-displaydoc = { workspace = true }
 fuel-streams-core = { workspace = true }
+fuel-streams-store = { workspace = true }
 futures = { workspace = true }
 reqwest = "0.12.9"
 serde = { workspace = true }

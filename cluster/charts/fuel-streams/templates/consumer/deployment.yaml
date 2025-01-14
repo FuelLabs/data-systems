@@ -43,8 +43,6 @@ spec:
           args:
           - "--nats-url"
           - "$(NATS_URL)"
-          - "--nats-publisher-url"
-          - "$(NATS_PUBLISHER_URL)"
           {{- with $consumer.image.args }}
           {{- toYaml . | nindent 10 }}
           {{- end }}

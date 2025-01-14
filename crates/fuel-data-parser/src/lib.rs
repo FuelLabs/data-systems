@@ -53,13 +53,6 @@ pub trait DataEncoder:
         Self::data_parser().encode_json(self).map_err(Into::into)
     }
 
-    #[cfg(feature = "json")]
-    fn encode_json_value(&self) -> Result<serde_json::Value, Self::Err> {
-        Self::data_parser()
-            .encode_json_value(self)
-            .map_err(Into::into)
-    }
-
     async fn decode(encoded: &[u8]) -> Result<Self, Self::Err> {
         Self::data_parser()
             .decode(encoded)
@@ -73,12 +66,8 @@ pub trait DataEncoder:
     }
 
     #[cfg(feature = "json")]
-    fn decode_json_value(
-        encoded: &serde_json::Value,
-    ) -> Result<Self, Self::Err> {
-        Self::data_parser()
-            .decode_json_value(encoded)
-            .map_err(Into::into)
+    fn to_json_value(&self) -> Result<serde_json::Value, Self::Err> {
+        Self::data_parser().to_json_value(self).map_err(Into::into)
     }
 }
 
@@ -141,7 +130,7 @@ impl Default for DataParser {
     /// ```
     fn default() -> Self {
         Self {
-            compression_strategy: Some(DEFAULT_COMPRESSION_STRATEGY.clone()),
+            compression_strategy: None,
             serialization_type: SerializationType::Json,
         }
     }
@@ -255,7 +244,7 @@ impl DataParser {
     }
 
     #[cfg(feature = "json")]
-    pub fn encode_json_value<T: serde::Serialize>(
+    pub fn to_json_value<T: serde::Serialize>(
         &self,
         data: &T,
     ) -> Result<serde_json::Value, DataParserError> {
@@ -362,14 +351,6 @@ impl DataParser {
         self.deserialize_json(data)
     }
 
-    #[cfg(feature = "json")]
-    pub fn decode_json_value<T: DeserializeOwned>(
-        &self,
-        data: &serde_json::Value,
-    ) -> Result<T, DataParserError> {
-        self.deserialize_json_value(data)
-    }
-
     /// Deserializes the provided data according to the selected `SerializationType`.
     ///
     /// # Arguments
@@ -402,15 +383,6 @@ impl DataParser {
         raw_data: &[u8],
     ) -> Result<T, DataParserError> {
         serde_json::from_slice(raw_data)
-            .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
-    }
-
-    #[cfg(feature = "json")]
-    fn deserialize_json_value<T: DeserializeOwned>(
-        &self,
-        raw_data: &serde_json::Value,
-    ) -> Result<T, DataParserError> {
-        serde_json::from_value(raw_data.clone())
             .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
     }
 }

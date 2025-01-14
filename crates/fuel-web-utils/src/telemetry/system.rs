@@ -7,7 +7,6 @@ use std::{
 };
 
 use derive_more::Deref;
-use displaydoc::Display as DisplayDoc;
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
@@ -23,7 +22,6 @@ use sysinfo::{
     RefreshKind,
     SystemExt,
 };
-use thiserror::Error;
 use tokio::time;
 
 // TODO: move this to web interface as `SystemsMetricsResponse` ?
@@ -38,9 +36,9 @@ impl From<SystemMetrics> for SystemMetricsWrapper {
     }
 }
 
-#[derive(Debug, Error, DisplayDoc)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// The process {0} could not be found
+    #[error("The process {0} could not be found")]
     ProcessNotFound(Pid),
 }
 

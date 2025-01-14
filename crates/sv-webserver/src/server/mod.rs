@@ -1,4 +1,5 @@
-pub mod http;
+pub mod errors;
+pub mod handlers;
 pub mod state;
-pub mod svc;
-pub mod ws;
+pub mod types;
+pub mod websocket;

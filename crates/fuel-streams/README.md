@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Subscribe to blocks with last delivery policy
     let mut stream = connection
-        .subscribe::<Block>(subject, DeliverPolicy::Last)
+        .subscribe::<Block>(subject, DeliverPolicy::New)
         .await?;
 
     while let Some(block) = stream.next().await {
@@ -129,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Subscribe to the filtered transaction stream
     let mut stream = connection
-        .subscribe::<Transaction>(subject, DeliverPolicy::Last)
+        .subscribe::<Transaction>(subject, DeliverPolicy::New)
         .await?;
 
     while let Some(transaction) = stream.next().await {

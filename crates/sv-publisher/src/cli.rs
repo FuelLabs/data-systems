@@ -30,6 +30,23 @@ pub struct Cli {
         help = "NATS URL to connect to."
     )]
     pub nats_url: String,
+    /// Database URL to connect to.
+    #[arg(
+        long,
+        value_name = "DATABASE_URL",
+        env = "DATABASE_URL",
+        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
+        help = "Database URL to connect to."
+    )]
+    pub db_url: String,
+    /// Start from block height
+    #[arg(
+        long,
+        value_name = "FROM_HEIGHT",
+        default_value = "0",
+        help = "Start from block height"
+    )]
+    pub from_height: u32,
     /// Use metrics
     #[arg(
         long,

@@ -1,27 +1,27 @@
 [package]
-name = "streams-tests"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+name = "fuel-streams-test"
 version = { workspace = true }
-rust-version = { workspace = true }
-publish = false
-autobenches = false
-autotests = false
+edition = { workspace = true }
 
 [[test]]
 harness = true
 name = "integration_tests"
 path = "tests/lib.rs"
 
+[features]
+test-helpers = []
+
 [dependencies]
-fuel-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams = { workspace = true, features = ["test-helpers"] }
+anyhow = { workspace = true }
+fuel-message-broker = { workspace = true }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
+fuel-streams-macros = { workspace = true }
+fuel-streams-store = { workspace = true, features = ["test-helpers"] }
+futures = { workspace = true }
+rand = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 
-[dev-dependencies]
-pretty_assertions = { workspace = true }
+[package.metadata.cargo-machete]
+ignored = ["fuel-streams-macros"]
