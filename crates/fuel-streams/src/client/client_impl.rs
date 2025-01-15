@@ -1,34 +1,21 @@
-use reqwest::{
-    header::{
-        ACCEPT,
-        CONNECTION,
-        CONTENT_TYPE,
-        HOST,
-        SEC_WEBSOCKET_KEY,
-        SEC_WEBSOCKET_VERSION,
-        UPGRADE,
-    },
-    Client as HttpClient,
-    StatusCode,
+use reqwest::header::{
+    CONNECTION,
+    HOST,
+    SEC_WEBSOCKET_KEY,
+    SEC_WEBSOCKET_VERSION,
+    UPGRADE,
 };
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest,
     handshake::client::generate_key,
 };
 
-use super::{
-    error::ClientError,
-    Connection,
-    ConnectionOpts,
-    LoginRequest,
-    LoginResponse,
-};
+use super::{error::ClientError, Connection, ConnectionOpts};
 use crate::FuelNetwork;
 
 #[derive(Debug, Clone)]
 pub struct Client {
     pub opts: ConnectionOpts,
-    pub jwt_token: Option<String>,
 }
 
 impl Client {
@@ -41,20 +28,17 @@ impl Client {
     }
 
     pub async fn with_opts(opts: ConnectionOpts) -> Result<Self, ClientError> {
-        let jwt_token =
-            Self::fetch_jwt(opts.network, &opts.username, &opts.password)
-                .await?;
-        Ok(Self {
-            opts,
-            jwt_token: Some(jwt_token),
-        })
+        Ok(Self { opts })
     }
 
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
-        let jwt_token =
-            self.jwt_token.clone().ok_or(ClientError::MissingJwtToken)?;
+        let jwt_token = self
+            .opts
+            .api_key
+            .clone()
+            .ok_or(ClientError::MissingApiKey)?;
 
-        let subdirectory = format!("/api/v1/ws?token={}", jwt_token);
+        let subdirectory = format!("/api/v1/ws?api_key={}", jwt_token);
         let ws_url = self.opts.network.to_ws_url().join(&subdirectory)?;
         let host = ws_url
             .host_str()
@@ -68,49 +52,5 @@ impl Client {
         headers_map.insert(SEC_WEBSOCKET_KEY, generate_key().parse()?);
         headers_map.insert(SEC_WEBSOCKET_VERSION, "13".parse()?);
         Connection::new(request).await
-    }
-
-    async fn fetch_jwt(
-        network: FuelNetwork,
-        username: &str,
-        password: &str,
-    ) -> Result<String, ClientError> {
-        let client = HttpClient::new();
-        let json_body = serde_json::to_string(&LoginRequest {
-            username: username.to_string(),
-            password: password.to_string(),
-        })?;
-
-        let api_url = network.to_web_url().join("/api/v1/jwt")?;
-        let response = client
-            .post(api_url)
-            .header(ACCEPT, "application/json")
-            .header(CONTENT_TYPE, "application/json")
-            .body(json_body)
-            .send()
-            .await?;
-
-        match response.status() {
-            StatusCode::OK => {
-                let json_body = response.json::<LoginResponse>().await?;
-                Ok(json_body.jwt_token)
-            }
-            _ => Err(ClientError::ApiResponse(
-                response.error_for_status_ref().unwrap_err(),
-            )),
-        }
-    }
-
-    pub async fn refresh_jwt_and_connect(
-        &mut self,
-    ) -> Result<Connection, ClientError> {
-        let jwt_token = Self::fetch_jwt(
-            self.opts.network,
-            &self.opts.username,
-            &self.opts.password,
-        )
-        .await?;
-        self.jwt_token = Some(jwt_token);
-        self.connect().await
     }
 }

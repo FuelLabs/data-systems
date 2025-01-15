@@ -7,7 +7,11 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let mut client = Client::new(FuelNetwork::Staging).await?;
+    let mut client = Client::with_opts(ConnectionOpts {
+        network: FuelNetwork::Staging,
+        api_key: Some("your_api_key".to_string()),
+    })
+    .await?;
     let mut connection = client.connect().await?;
 
     println!("Listening for transactions...");

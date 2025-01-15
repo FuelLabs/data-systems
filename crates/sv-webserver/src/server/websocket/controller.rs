@@ -298,7 +298,7 @@ impl WsController {
     }
 
     pub fn user_id(&self) -> &Uuid {
-        &self.auth.user_id()
+        self.auth.user_id()
     }
 
     pub async fn send_message(
@@ -351,7 +351,7 @@ impl WsController {
         if !self.is_subscribed(&payload.to_string()).await {
             let warning_msg = ServerMessage::Error(format!(
                 "No active subscription found for {}",
-                payload.to_string()
+                payload
             ));
             self.send_message(session, warning_msg).await?;
             return Ok(());
