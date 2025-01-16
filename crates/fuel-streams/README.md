@@ -100,8 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create client with custom connection options
     let client = Client::with_opts(ConnectionOpts {
         network: FuelNetwork::Local,
-        username: "custom_user".to_string(),
-        password: "custom_pass".to_string(),
+        api_key: Some("your_api_key".to_string()),
     }).await?;
 
     Ok(())

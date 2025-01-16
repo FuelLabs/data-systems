@@ -278,7 +278,7 @@ pub fn create_jwt(
         .map_err(|_| AuthError::JWTTokenCreationError)
 }
 
-fn jwt_from_query_string(headers: &HeaderMap) -> Result<String, AuthError> {
+fn jwt_from_headers(headers: &HeaderMap) -> Result<String, AuthError> {
     let token = headers
         .get(AUTHORIZATION)
         .ok_or(AuthError::NoAuthHeaderError)?;
@@ -312,7 +312,7 @@ pub fn authorize_request(
         }
     }
 
-    match jwt_from_query_string(&headers) {
+    match jwt_from_headers(&headers) {
         Ok(jwt) => {
             let decoded = decode::<Claims>(
                 &jwt,

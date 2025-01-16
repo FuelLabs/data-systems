@@ -7,7 +7,7 @@ use crate::server::{
     types::{ResponseMessage, ServerMessage, SubscriptionPayload},
 };
 
-pub async fn decode_and_responde(
+pub async fn decode_and_respond(
     payload: SubscriptionPayload,
     data: Vec<u8>,
 ) -> Result<ServerMessage, WebsocketError> {

@@ -6,7 +6,7 @@ use fuel_streams_domains::SubjectPayload;
 use fuel_streams_store::record::RecordEntity;
 use futures::StreamExt;
 
-use super::decoder::decode_and_responde;
+use super::decoder::decode_and_respond;
 use crate::server::{
     errors::WebsocketError,
     types::{ServerMessage, SubscriptionPayload},
@@ -95,11 +95,11 @@ async fn process_msgs(
 ) -> Result<(), WebsocketError> {
     while let Some(result) = sub.next().await {
         let result = result?;
-        let payload = decode_and_responde(payload.to_owned(), result).await?;
+        let payload = decode_and_respond(payload.to_owned(), result).await?;
         ctx.send_message(session, payload).await?;
     }
 
-    ctx.remove_subscription(&payload).await;
+    ctx.remove_subscription(payload).await;
     let msg = ServerMessage::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())
