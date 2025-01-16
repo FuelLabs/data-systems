@@ -20,13 +20,13 @@ serde = { workspace = true }
 sqlx = { workspace = true, default-features = false, features = [
     "runtime-tokio",
     "postgres",
-    "sqlite",
     "any",
     "tls-native-tls",
     "macros",
 ] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

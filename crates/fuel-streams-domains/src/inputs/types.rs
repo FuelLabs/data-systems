@@ -301,4 +301,16 @@ impl MockInput {
             witness_index: 0,
         })
     }
+
+    pub fn all() -> Vec<Input> {
+        vec![
+            Self::contract(),
+            Self::coin_signed(),
+            Self::coin_predicate(),
+            Self::message_coin_signed(),
+            Self::message_coin_predicate(),
+            Self::message_data_signed(),
+            Self::message_data_predicate(),
+        ]
+    }
 }

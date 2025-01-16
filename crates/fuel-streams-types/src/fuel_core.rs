@@ -65,3 +65,255 @@ pub type FuelCoreOffchainDatabase = GenericDatabase<
         fuel_core::fuel_core_graphql_api::storage::Column,
     >,
 >;
+
+use std::sync::Arc;
+
+use fuel_core::{
+    combined_database::CombinedDatabase,
+    database::{database_description::on_chain::OnChain, Database},
+    fuel_core_graphql_api::ports::DatabaseBlocks,
+};
+use fuel_core_bin::FuelService;
+use fuel_core_importer::ports::ImporterDatabase;
+use fuel_core_storage::transactional::AtomicView;
+use fuel_core_types::{
+    blockchain::consensus::{Consensus, Sealed},
+    fuel_types::BlockHeight,
+};
+use tokio::sync::broadcast::Receiver;
+
+#[derive(thiserror::Error, Debug)]
+pub enum FuelCoreError {
+    #[error("Failed to start Fuel Core: {0}")]
+    Start(String),
+    #[error("Failed to stop Fuel Core: {0}")]
+    Stop(String),
+    #[error("Database error: {0}")]
+    Database(String),
+    #[error("Service error: {0}")]
+    Service(String),
+    #[error("Failed to await sync: {0}")]
+    AwaitSync(String),
+    #[error("Failed to sync offchain database: {0}")]
+    OffchainSync(String),
+    #[error("Failed to get block producer from consensus")]
+    GetBlockProducer,
+}
+
+pub type FuelCoreResult<T> = Result<T, FuelCoreError>;
+
+/// Interface for `fuel-core` related logic.
+/// This was introduced to simplify mocking and testing the `sv-publisher` crate.
+#[async_trait::async_trait]
+pub trait FuelCoreLike: Sync + Send {
+    async fn start(&self) -> FuelCoreResult<()>;
+    async fn stop(&self);
+
+    fn is_started(&self) -> bool;
+    fn base_asset_id(&self) -> &FuelCoreAssetId;
+    fn chain_id(&self) -> &FuelCoreChainId;
+    fn fuel_service(&self) -> &FuelService;
+    fn database(&self) -> &CombinedDatabase;
+
+    fn onchain_database(&self) -> &Database<OnChain> {
+        self.database().on_chain()
+    }
+
+    fn offchain_database(
+        &self,
+    ) -> FuelCoreResult<Arc<FuelCoreOffchainDatabase>> {
+        Ok(Arc::new(
+            self.database()
+                .off_chain()
+                .latest_view()
+                .map_err(|e| FuelCoreError::Database(e.to_string()))?,
+        ))
+    }
+
+    fn blocks_subscription(
+        &self,
+    ) -> Receiver<fuel_core_importer::ImporterResult>;
+
+    fn get_latest_block_height(&self) -> FuelCoreResult<u32> {
+        Ok(self
+            .onchain_database()
+            .latest_block_height()
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?
+            .map(|h| *h)
+            .unwrap_or_default())
+    }
+
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>>;
+
+    fn get_receipts(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<Option<Vec<FuelCoreReceipt>>>;
+
+    fn get_consensus(
+        &self,
+        block_height: &BlockHeight,
+    ) -> FuelCoreResult<Consensus> {
+        self.onchain_database()
+            .latest_view()
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?
+            .consensus(block_height)
+            .map_err(|e| FuelCoreError::Database(e.to_string()))
+    }
+
+    fn get_block_and_producer(
+        &self,
+        sealed_block: &Sealed<FuelCoreBlock>,
+    ) -> FuelCoreResult<(FuelCoreBlock, crate::Address)> {
+        let block = sealed_block.entity.clone();
+        let block_producer = sealed_block
+            .consensus
+            .block_producer(&block.id())
+            .map_err(|_| FuelCoreError::GetBlockProducer)?;
+        Ok((block, block_producer.into()))
+    }
+
+    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<FuelCoreBlock> {
+        self.onchain_database()
+            .latest_view()
+            .expect("failed to get latest db view")
+            .get_sealed_block_by_height(&height.into())
+            .expect("Failed to get latest block height")
+            .expect("NATS Publisher: no block at height {height}")
+    }
+}
+
+#[derive(Clone)]
+pub struct FuelCore {
+    pub fuel_service: Arc<FuelService>,
+    chain_id: FuelCoreChainId,
+    base_asset_id: FuelCoreAssetId,
+    database: CombinedDatabase,
+}
+
+impl From<FuelService> for FuelCore {
+    fn from(fuel_service: FuelService) -> Self {
+        let snapshot = &fuel_service.shared.config.snapshot_reader;
+        let chain_config = snapshot.chain_config();
+        let chain_id = chain_config.consensus_parameters.chain_id();
+        let base_asset_id = *chain_config.consensus_parameters.base_asset_id();
+        let database = fuel_service.shared.database.clone();
+        Self {
+            fuel_service: Arc::new(fuel_service),
+            chain_id,
+            base_asset_id,
+            database,
+        }
+    }
+}
+
+impl FuelCore {
+    pub async fn new(
+        command: fuel_core_bin::cli::run::Command,
+    ) -> anyhow::Result<Arc<Self>> {
+        let fuel_service =
+            fuel_core_bin::cli::run::get_service(command).await?;
+
+        let fuel_core: Self = fuel_service.into();
+
+        Ok(fuel_core.arc())
+    }
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl FuelCoreLike for FuelCore {
+    async fn start(&self) -> FuelCoreResult<()> {
+        fuel_core_bin::cli::init_logging();
+        self.fuel_service
+            .start_and_await()
+            .await
+            .map_err(|e| FuelCoreError::Start(e.to_string()))?;
+        Ok(())
+    }
+
+    fn is_started(&self) -> bool {
+        self.fuel_service.state().started()
+    }
+
+    fn fuel_service(&self) -> &FuelService {
+        &self.fuel_service
+    }
+
+    async fn stop(&self) {
+        if matches!(
+            self.fuel_service.state(),
+            fuel_core_services::State::Stopped
+                | fuel_core_services::State::Stopping
+                | fuel_core_services::State::StoppedWithError(_)
+                | fuel_core_services::State::NotStarted
+        ) {
+            return;
+        }
+
+        tracing::info!("Stopping fuel core ...");
+        match self
+            .fuel_service
+            .send_stop_signal_and_await_shutdown()
+            .await
+        {
+            Ok(state) => {
+                tracing::info!("Stopped fuel core. Status = {:?}", state)
+            }
+            Err(e) => tracing::error!("Stopping fuel core failed: {:?}", e),
+        }
+    }
+
+    fn base_asset_id(&self) -> &FuelCoreAssetId {
+        &self.base_asset_id
+    }
+    fn chain_id(&self) -> &FuelCoreChainId {
+        &self.chain_id
+    }
+
+    fn database(&self) -> &CombinedDatabase {
+        &self.database
+    }
+
+    fn blocks_subscription(
+        &self,
+    ) -> Receiver<fuel_core_importer::ImporterResult> {
+        self.fuel_service
+            .shared
+            .block_importer
+            .block_importer
+            .subscribe()
+    }
+
+    fn get_tx_status(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>> {
+        self.offchain_database()?
+            .get_tx_status(tx_id)
+            .map_err(|e| FuelCoreError::Database(e.to_string()))
+    }
+
+    fn get_receipts(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<Option<Vec<FuelCoreReceipt>>> {
+        let receipts = self
+            .get_tx_status(tx_id)?
+            .map(|status| match &status {
+                FuelCoreTransactionStatus::Success { receipts, .. }
+                | FuelCoreTransactionStatus::Failed { receipts, .. } => {
+                    Some(receipts.clone())
+                }
+                _ => None,
+            })
+            .unwrap_or_default();
+
+        Ok(receipts)
+    }
+}

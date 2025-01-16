@@ -35,7 +35,7 @@ usage() {
 NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
-TELEMETRY_PORT=${TELEMETRY_PORT:-"8080"}
+TELEMETRY_PORT=${TELEMETRY_PORT:-"9002"}
 FROM_HEIGHT=${FROM_HEIGHT:-"0"}
 
 while [[ "$#" -gt 0 ]]; do
@@ -131,7 +131,7 @@ COMMON_ARGS=(
     "--graphql-max-complexity" "1000000000"
     # Application specific
     "--nats-url" "nats://localhost:4222"
-    # "--telemetry-port" "${TELEMETRY_PORT}"
+    "--telemetry-port" "${TELEMETRY_PORT}"
     "--from-height" "${FROM_HEIGHT}"
 )
 

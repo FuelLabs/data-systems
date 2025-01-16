@@ -146,4 +146,14 @@ impl MockOutput {
             state_root: Bytes32::default(),
         })
     }
+
+    pub fn all() -> Vec<Output> {
+        vec![
+            Self::coin(1000),
+            Self::contract(),
+            Self::change(2000),
+            Self::variable(3000),
+            Self::contract_created(),
+        ]
+    }
 }

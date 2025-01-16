@@ -207,7 +207,7 @@ load-test:
 run-publisher: NETWORK="testnet"
 run-publisher: MODE="dev"
 run-publisher: PORT="4000"
-run-publisher: TELEMETRY_PORT="8080"
+run-publisher: TELEMETRY_PORT="9001"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
 run-publisher: FROM_HEIGHT="0"
@@ -231,7 +231,7 @@ run-publisher-testnet-profiling:
 # ------------------------------------------------------------
 
 run-consumer: NATS_URL="localhost:4222"
-run-consumer: PORT="9003"
+run-consumer: PORT="9002"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-url $(NATS_URL) \
@@ -310,7 +310,6 @@ reset-db: clean-docker start-docker setup-db
 NETWORK ?= testnet
 MODE ?= profiling
 PORT ?= 4000
-TELEMETRY_PORT ?= 8080
 
 minikube-setup:
 	@./cluster/scripts/setup_minikube.sh "$(DISK_SIZE)" "$(MEMORY)"

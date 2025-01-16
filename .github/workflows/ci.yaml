@@ -46,7 +46,6 @@ jobs:
             fuel-streams
             core
             domains
-            executors
             macros
             store
             types

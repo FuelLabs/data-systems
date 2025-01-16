@@ -6,7 +6,6 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Input;
 use crate::Subjects;
 
 #[derive(
@@ -23,8 +22,8 @@ pub struct InputDbItem {
     pub owner_id: Option<String>, // for coin inputs
     pub asset_id: Option<String>, // for coin inputs
     pub contract_id: Option<String>, // for contract inputs
-    pub sender: Option<String>,   // for message inputs
-    pub recipient: Option<String>, // for message inputs
+    pub sender_address: Option<String>, // for message inputs
+    pub recipient_address: Option<String>, // for message inputs
 }
 
 impl DataEncoder for InputDbItem {
@@ -63,32 +62,32 @@ impl Ord for InputDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket<Input>> for InputDbItem {
+impl TryFrom<&RecordPacket> for InputDbItem {
     type Error = RecordPacketError;
-    fn try_from(packet: &RecordPacket<Input>) -> Result<Self, Self::Error> {
-        let record = packet.record.as_ref();
+    fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
             Subjects::InputsCoin(subject) => Ok(InputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode input"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
                 input_index: subject.input_index.unwrap() as i64,
                 input_type: "coin".to_string(),
-                owner_id: Some(subject.owner_id.unwrap().to_string()),
-                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                owner_id: Some(subject.owner.unwrap().to_string()),
+                asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
-                sender: None,
-                recipient: None,
+                sender_address: None,
+                recipient_address: None,
             }),
             Subjects::InputsContract(subject) => Ok(InputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode input"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
@@ -96,13 +95,13 @@ impl TryFrom<&RecordPacket<Input>> for InputDbItem {
                 input_type: "contract".to_string(),
                 owner_id: None,
                 asset_id: None,
-                contract_id: Some(subject.contract_id.unwrap().to_string()),
-                sender: None,
-                recipient: None,
+                contract_id: Some(subject.contract.unwrap().to_string()),
+                sender_address: None,
+                recipient_address: None,
             }),
             Subjects::InputsMessage(subject) => Ok(InputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode input"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
@@ -111,8 +110,8 @@ impl TryFrom<&RecordPacket<Input>> for InputDbItem {
                 owner_id: None,
                 asset_id: None,
                 contract_id: None,
-                sender: Some(subject.sender.unwrap().to_string()),
-                recipient: Some(subject.recipient.unwrap().to_string()),
+                sender_address: Some(subject.sender.unwrap().to_string()),
+                recipient_address: Some(subject.recipient.unwrap().to_string()),
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

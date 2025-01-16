@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS inputs (
     owner_id TEXT,    -- for coin
     asset_id TEXT,    -- for coin
     contract_id TEXT, -- for contract
-    sender TEXT,      -- for message
-    recipient TEXT,   -- for message
+    sender_address TEXT,      -- for message
+    recipient_address TEXT,   -- for message
     value BYTEA NOT NULL
 );
 
@@ -23,5 +23,5 @@ CREATE INDEX IF NOT EXISTS idx_inputs_input_type ON inputs (input_type);
 CREATE INDEX IF NOT EXISTS idx_inputs_owner_id ON inputs (owner_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_asset_id ON inputs (asset_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_contract_id ON inputs (contract_id);
-CREATE INDEX IF NOT EXISTS idx_inputs_sender ON inputs (sender);
-CREATE INDEX IF NOT EXISTS idx_inputs_recipient ON inputs (recipient);
+CREATE INDEX IF NOT EXISTS idx_inputs_sender_address ON inputs (sender_address);
+CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address ON inputs (recipient_address);

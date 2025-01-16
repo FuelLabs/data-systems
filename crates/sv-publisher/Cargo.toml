@@ -28,7 +28,7 @@ fuel-core-bin = { workspace = true, default-features = false, features = [
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-message-broker = { workspace = true }
 fuel-streams-core = { workspace = true }
-fuel-streams-executors = { workspace = true }
+fuel-streams-domains = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 futures = { workspace = true }
@@ -47,7 +47,6 @@ test-helpers = [
     "fuel-core/test-helpers",
     "fuel-message-broker/test-helpers",
     "fuel-streams-core/test-helpers",
-    "fuel-streams-executors/test-helpers",
     "fuel-streams-store/test-helpers",
 ]
 

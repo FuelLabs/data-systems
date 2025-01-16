@@ -81,7 +81,7 @@ impl NatsMessageBroker {
                 subjects: vec![subject_name],
                 retention: RetentionPolicy::WorkQueue,
                 duplicate_window: Duration::from_secs(1),
-                allow_rollup: true,
+                allow_direct: true,
                 ..Default::default()
             })
             .await
@@ -94,13 +94,16 @@ impl NatsMessageBroker {
     ) -> Result<PullConsumer, MessageBrokerError> {
         let consumer_name = self.consumer_name();
         let stream = self.get_blocks_stream().await?;
+        let mut config = ConsumerConfig {
+            durable_name: Some(consumer_name.to_string()),
+            ack_policy: AckPolicy::Explicit,
+            ..Default::default()
+        };
+        if let Some(ack_wait) = self.opts.ack_wait_secs {
+            config.ack_wait = Duration::from_secs(ack_wait);
+        }
         stream
-            .get_or_create_consumer(&consumer_name, ConsumerConfig {
-                durable_name: Some(consumer_name.to_string()),
-                ack_policy: AckPolicy::Explicit,
-                ack_wait: Duration::from_secs(self.opts.ack_wait_secs),
-                ..Default::default()
-            })
+            .get_or_create_consumer(&consumer_name, config)
             .await
             .map_err(|e| MessageBrokerError::Setup(e.to_string()))
     }
@@ -130,6 +133,10 @@ impl NatsMessageBroker {
 impl Message for NatsMessage {
     fn payload(&self) -> Vec<u8> {
         self.0.payload.to_vec()
+    }
+
+    fn id(&self) -> String {
+        self.0.subject.to_string()
     }
 
     async fn ack(&self) -> Result<(), MessageBrokerError> {

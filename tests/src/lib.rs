@@ -4,11 +4,15 @@ use std::sync::Arc;
 
 pub use fuel_core_helpers::*;
 use fuel_message_broker::{MessageBroker, MessageBrokerClient};
-use fuel_streams_core::{stream::*, subjects::*, types::Block};
-use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
+use fuel_streams_core::{stream::*, subjects::IntoSubject, types::Block};
+use fuel_streams_domains::blocks::{
+    subjects::BlocksSubject,
+    types::MockBlock,
+    BlockDbItem,
+};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
-    record::Record,
+    record::{DbTransaction, Record},
     store::Store,
 };
 use rand::Rng;
@@ -50,29 +54,46 @@ pub async fn setup_stream(nats_url: &str) -> anyhow::Result<Stream<Block>> {
 // Test data
 // -----------------------------------------------------------------------------
 
-pub fn create_test_data(height: u32) -> (BlocksSubject, Block) {
+pub fn create_record(height: u32) -> (Arc<dyn IntoSubject>, Block) {
     let block = MockBlock::build(height);
-    let subject = BlocksSubject::from(&block);
+    let subject = BlocksSubject::from(&block).dyn_arc();
     (subject, block)
 }
 
-pub fn create_multiple_test_data(
+pub fn create_multiple_records(
     count: usize,
     start_height: u32,
-) -> Vec<(BlocksSubject, Block)> {
+) -> Vec<(Arc<dyn IntoSubject>, Block)> {
     (0..count)
-        .map(|idx| create_test_data(start_height + idx as u32))
+        .map(|idx| create_record(start_height + idx as u32))
         .collect()
 }
 
-pub async fn add_test_records(
+pub async fn insert_records(
     store: &Store<Block>,
     prefix: &str,
     records: &[(Arc<dyn IntoSubject>, Block)],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<BlockDbItem>> {
+    let mut final_records = vec![];
     for (subject, block) in records {
-        let packet = block.to_packet(subject.clone()).with_namespace(prefix);
-        store.insert_record(&packet).await?;
+        let packet = block.to_packet(subject).with_namespace(prefix);
+        let record = store.insert_record(&packet).await?;
+        final_records.push(record);
+    }
+    Ok(final_records)
+}
+
+pub async fn insert_records_with_transaction(
+    store: &Store<Block>,
+    tx: &mut DbTransaction,
+    prefix: &str,
+    records: &[(Arc<dyn IntoSubject>, Block)],
+) -> anyhow::Result<()> {
+    let mut final_records = vec![];
+    for (subject, block) in records {
+        let packet = block.to_packet(subject).with_namespace(prefix);
+        let record = store.insert_record_with_transaction(tx, &packet).await?;
+        final_records.push(record);
     }
     Ok(())
 }

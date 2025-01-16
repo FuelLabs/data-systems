@@ -127,104 +127,12 @@ impl SubjectPayload {
     }
 }
 
-impl TryFrom<SubjectPayload> for Subjects {
-    type Error = SubjectPayloadError;
-    fn try_from(json: SubjectPayload) -> Result<Self, Self::Error> {
-        match json.subject.as_str() {
-            BlocksSubject::ID => Ok(Subjects::Block(BlocksSubject::from_json(
-                &json.params.to_string(),
-            )?)),
-            InputsCoinSubject::ID => Ok(Subjects::InputsCoin(
-                InputsCoinSubject::from_json(&json.params.to_string())?,
-            )),
-            InputsContractSubject::ID => Ok(Subjects::InputsContract(
-                InputsContractSubject::from_json(&json.params.to_string())?,
-            )),
-            InputsMessageSubject::ID => Ok(Subjects::InputsMessage(
-                InputsMessageSubject::from_json(&json.params.to_string())?,
-            )),
-            OutputsCoinSubject::ID => Ok(Subjects::OutputsCoin(
-                OutputsCoinSubject::from_json(&json.params.to_string())?,
-            )),
-            OutputsContractSubject::ID => Ok(Subjects::OutputsContract(
-                OutputsContractSubject::from_json(&json.params.to_string())?,
-            )),
-            OutputsChangeSubject::ID => Ok(Subjects::OutputsChange(
-                OutputsChangeSubject::from_json(&json.params.to_string())?,
-            )),
-            OutputsVariableSubject::ID => Ok(Subjects::OutputsVariable(
-                OutputsVariableSubject::from_json(&json.params.to_string())?,
-            )),
-            OutputsContractCreatedSubject::ID => {
-                Ok(Subjects::OutputsContractCreated(
-                    OutputsContractCreatedSubject::from_json(
-                        &json.params.to_string(),
-                    )?,
-                ))
-            }
-            ReceiptsCallSubject::ID => Ok(Subjects::ReceiptsCall(
-                ReceiptsCallSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsReturnSubject::ID => Ok(Subjects::ReceiptsReturn(
-                ReceiptsReturnSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsReturnDataSubject::ID => Ok(Subjects::ReceiptsReturnData(
-                ReceiptsReturnDataSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsPanicSubject::ID => Ok(Subjects::ReceiptsPanic(
-                ReceiptsPanicSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsRevertSubject::ID => Ok(Subjects::ReceiptsRevert(
-                ReceiptsRevertSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsLogSubject::ID => Ok(Subjects::ReceiptsLog(
-                ReceiptsLogSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsLogDataSubject::ID => Ok(Subjects::ReceiptsLogData(
-                ReceiptsLogDataSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsTransferSubject::ID => Ok(Subjects::ReceiptsTransfer(
-                ReceiptsTransferSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsTransferOutSubject::ID => {
-                Ok(Subjects::ReceiptsTransferOut(
-                    ReceiptsTransferOutSubject::from_json(
-                        &json.params.to_string(),
-                    )?,
-                ))
-            }
-            ReceiptsScriptResultSubject::ID => {
-                Ok(Subjects::ReceiptsScriptResult(
-                    ReceiptsScriptResultSubject::from_json(
-                        &json.params.to_string(),
-                    )?,
-                ))
-            }
-            ReceiptsMessageOutSubject::ID => Ok(Subjects::ReceiptsMessageOut(
-                ReceiptsMessageOutSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsMintSubject::ID => Ok(Subjects::ReceiptsMint(
-                ReceiptsMintSubject::from_json(&json.params.to_string())?,
-            )),
-            ReceiptsBurnSubject::ID => Ok(Subjects::ReceiptsBurn(
-                ReceiptsBurnSubject::from_json(&json.params.to_string())?,
-            )),
-            TransactionsSubject::ID => Ok(Subjects::Transactions(
-                TransactionsSubject::from_json(&json.params.to_string())?,
-            )),
-            UtxosSubject::ID => Ok(Subjects::Utxos(UtxosSubject::from_json(
-                &json.params.to_string(),
-            )?)),
-            _ => Err(SubjectPayloadError::UnknownSubject(json.subject)),
-        }
-    }
-}
-
-macro_rules! impl_try_from_record_packet {
-    ($type:ty, [$(($subject_type:ty, $variant:ident)),+ $(,)?]) => {
-        impl TryFrom<&RecordPacket<$type>> for Subjects {
+macro_rules! impl_try_from_subjects {
+    ($(($subject_type:ty, $variant:ident)),+ $(,)?) => {
+        // Implementation for RecordPacket
+        impl TryFrom<RecordPacket> for Subjects {
             type Error = SubjectPayloadError;
-            fn try_from(packet: &RecordPacket<$type>) -> Result<Self, Self::Error> {
+            fn try_from(packet: RecordPacket) -> Result<Self, Self::Error> {
                 $(
                     if let Ok(subject) = packet.subject_matches::<$subject_type>() {
                         return Ok(Subjects::$variant(subject));
@@ -233,27 +141,37 @@ macro_rules! impl_try_from_record_packet {
                 Err(SubjectPayloadError::UnknownSubject(packet.subject_str()))
             }
         }
+
+        // Implementation for SubjectPayload
+        impl TryFrom<SubjectPayload> for Subjects {
+            type Error = SubjectPayloadError;
+            fn try_from(json: SubjectPayload) -> Result<Self, Self::Error> {
+                match json.subject.as_str() {
+                    $(<$subject_type>::ID => Ok(Subjects::$variant(
+                        <$subject_type>::from_json(&json.params.to_string())?
+                    )),)+
+                    _ => Err(SubjectPayloadError::UnknownSubject(json.subject))
+                }
+            }
+        }
     };
 }
 
-// Usage for each type
-impl_try_from_record_packet!(Block, [(BlocksSubject, Block)]);
-
-impl_try_from_record_packet!(Input, [
+// Usage: call the macro with all subject types and their corresponding variants
+impl_try_from_subjects!(
+    // Block subjects
+    (BlocksSubject, Block),
+    // Input subjects
     (InputsCoinSubject, InputsCoin),
     (InputsContractSubject, InputsContract),
-    (InputsMessageSubject, InputsMessage)
-]);
-
-impl_try_from_record_packet!(Output, [
+    (InputsMessageSubject, InputsMessage),
+    // Output subjects
     (OutputsCoinSubject, OutputsCoin),
     (OutputsContractSubject, OutputsContract),
     (OutputsChangeSubject, OutputsChange),
     (OutputsVariableSubject, OutputsVariable),
-    (OutputsContractCreatedSubject, OutputsContractCreated)
-]);
-
-impl_try_from_record_packet!(Receipt, [
+    (OutputsContractCreatedSubject, OutputsContractCreated),
+    // Receipt subjects
     (ReceiptsCallSubject, ReceiptsCall),
     (ReceiptsReturnSubject, ReceiptsReturn),
     (ReceiptsReturnDataSubject, ReceiptsReturnData),
@@ -266,15 +184,12 @@ impl_try_from_record_packet!(Receipt, [
     (ReceiptsScriptResultSubject, ReceiptsScriptResult),
     (ReceiptsMessageOutSubject, ReceiptsMessageOut),
     (ReceiptsMintSubject, ReceiptsMint),
-    (ReceiptsBurnSubject, ReceiptsBurn)
-]);
-
-impl_try_from_record_packet!(Transaction, [(
-    TransactionsSubject,
-    Transactions
-)]);
-
-impl_try_from_record_packet!(Utxo, [(UtxosSubject, Utxos)]);
+    (ReceiptsBurnSubject, ReceiptsBurn),
+    // Transaction subjects
+    (TransactionsSubject, Transactions),
+    // Utxo subjects
+    (UtxosSubject, Utxos),
+);
 
 #[cfg(test)]
 mod tests {

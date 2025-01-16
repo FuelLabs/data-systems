@@ -1,22 +1,17 @@
-use std::sync::Arc;
-
 use fuel_streams_core::{subjects::*, types::Block};
 use fuel_streams_domains::blocks::{
     subjects::BlocksSubject,
     types::MockBlock,
     BlockDbItem,
 };
-use fuel_streams_store::record::{Record, RecordPacket};
+use fuel_streams_store::record::Record;
 use fuel_streams_test::{create_random_db_name, setup_store};
 
 #[tokio::test]
 async fn test_block_db_item_conversion() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
-    let subject = BlocksSubject::from(&block);
-
-    // Create Arc<BlocksSubject> explicitly and use RecordPacket::new
-    let subject_arc: Arc<BlocksSubject> = Arc::new(subject.clone());
-    let packet = RecordPacket::new(subject_arc, &block);
+    let subject = BlocksSubject::from(&block).dyn_arc();
+    let packet = block.to_packet(&subject);
 
     // Test direct conversion
     let db_item = BlockDbItem::try_from(&packet)
@@ -36,15 +31,13 @@ async fn test_block_db_item_conversion() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn store_can_record_blocks() -> anyhow::Result<()> {
-    let store = setup_store().await?;
+    let store = setup_store::<Block>().await?;
     let block = MockBlock::build(1);
-    let subject = BlocksSubject::from(&block);
+    let subject = BlocksSubject::from(&block).dyn_arc();
     let prefix = create_random_db_name();
-    let packet = block
-        .to_packet(Arc::new(subject.clone()))
-        .with_namespace(&prefix);
+    let packet = block.to_packet(&subject).with_namespace(&prefix);
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_record: BlockDbItem = store.insert_record(&packet).await?;
     assert_eq!(db_record.subject, packet.subject_str());
     assert_eq!(Block::from_db_item(&db_record).await?, block);
 

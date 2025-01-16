@@ -20,7 +20,6 @@ fuel-core = { workspace = true, features = [
     "wasm-executor",
     "test-helpers",
 ] }
-fuel-core-bin = { workspace = true, features = ["parquet", "p2p"] }
 fuel-core-client = { workspace = true, features = ["test-helpers", "subscriptions"] }
 fuel-core-types = { workspace = true, features = ["test-helpers", "std", "serde"] }
 fuel-message-broker = { workspace = true, features = ["test-helpers"] }
@@ -29,13 +28,16 @@ fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
 fuel-streams-macros = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
+fuel-web-utils = { workspace = true, features = ["test-helpers"] }
 futures = { workspace = true }
 rand = { workspace = true }
 serde_json = { workspace = true }
+sv-consumer = { workspace = true, features = ["test-helpers"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 
 [dev-dependencies]
 mockall = "0.13.1"
+pretty_assertions = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["fuel-streams-macros"]

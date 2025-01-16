@@ -6,7 +6,6 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Utxo;
 use crate::Subjects;
 
 #[derive(
@@ -59,18 +58,18 @@ impl Ord for UtxoDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket<Utxo>> for UtxoDbItem {
+impl TryFrom<&RecordPacket> for UtxoDbItem {
     type Error = RecordPacketError;
-    fn try_from(packet: &RecordPacket<Utxo>) -> Result<Self, Self::Error> {
-        let record = packet.record.as_ref();
+    fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
             Subjects::Utxos(subject) => Ok(UtxoDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode utxo"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,

@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use fuel_streams_store::{
-    db::{Db, DbError, DbResult},
+    db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity, RecordPacket},
 };
+use sqlx::PgExecutor;
 
 use super::{Transaction, TransactionDbItem};
 
@@ -17,11 +18,14 @@ impl Record for Transaction {
     const ENTITY: RecordEntity = RecordEntity::Transaction;
     const ORDER_PROPS: &'static [&'static str] = &["block_height", "tx_index"];
 
-    async fn insert(
-        &self,
-        db: &Db,
-        packet: &RecordPacket<Self>,
-    ) -> DbResult<Self::DbItem> {
+    async fn insert<'e, 'c: 'e, E>(
+        executor: E,
+        packet: &RecordPacket,
+    ) -> DbResult<Self::DbItem>
+    where
+        'c: 'e,
+        E: PgExecutor<'c>,
+    {
         let db_item = TransactionDbItem::try_from(packet)?;
         let record = sqlx::query_as!(
             Self::DbItem,
@@ -40,7 +44,7 @@ impl Record for Transaction {
             db_item.tx_status,
             db_item.kind
         )
-        .fetch_one(&db.pool)
+        .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;
 

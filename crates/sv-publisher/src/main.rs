@@ -7,8 +7,8 @@ use fuel_message_broker::{
     MessageBrokerClient,
     MessageBrokerError,
 };
-use fuel_streams_core::{types::*, FuelCore, FuelCoreLike};
-use fuel_streams_executors::*;
+use fuel_streams_core::types::*;
+use fuel_streams_domains::{Metadata, MsgPayload, MsgPayloadError};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
     record::{DataEncoder, EncoderError, QueryOptions, Record},
@@ -24,18 +24,16 @@ use tokio_util::sync::CancellationToken;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PublishError {
-    #[error(transparent)]
-    BlockPayload(#[from] ExecutorError),
-    #[error("Failed to access offchain database: {0}")]
-    OffchainDatabase(String),
-    #[error(transparent)]
-    Db(#[from] fuel_streams_store::db::DbError),
-    #[error("Failed to initialize Fuel Core: {0}")]
-    FuelCore(String),
-    #[error(transparent)]
-    Encoder(#[from] EncoderError),
     #[error("Processing was cancelled")]
     Cancelled,
+    #[error(transparent)]
+    Db(#[from] fuel_streams_store::db::DbError),
+    #[error(transparent)]
+    FuelCore(#[from] FuelCoreError),
+    #[error(transparent)]
+    MsgPayload(#[from] MsgPayloadError),
+    #[error(transparent)]
+    Encoder(#[from] EncoderError),
     #[error(transparent)]
     MessageBrokerClient(#[from] MessageBrokerError),
 }
@@ -55,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     let server_state =
         ServerState::new(message_broker.clone(), Arc::clone(&telemetry));
     let server_handle =
-        build_and_spawn_web_server(cli.port, server_state).await?;
+        build_and_spawn_web_server(cli.telemetry_port, server_state).await?;
 
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
     let last_published = Arc::new(find_last_published_height(&db).await?);
@@ -198,7 +196,14 @@ fn process_historical_blocks(
             })
             .buffered(100)
             .take_until(token.cancelled())
-            .collect::<Vec<_>>()
+            .for_each(|result| async move {
+                match result {
+                    Ok(_) => tracing::debug!("Block processed successfully"),
+                    Err(e) => {
+                        tracing::error!("Error processing block: {:?}", e)
+                    }
+                }
+            })
             .await;
     })
 }
@@ -210,19 +215,34 @@ async fn process_live_blocks(
     telemetry: Arc<Telemetry<Metrics>>,
 ) -> Result<(), PublishError> {
     let mut subscription = fuel_core.blocks_subscription();
-    while let Ok(data) = subscription.recv().await {
-        if token.is_cancelled() {
-            break;
+
+    loop {
+        tokio::select! {
+            _ = token.cancelled() => {
+                tracing::info!("Shutdown signal received in live block processor");
+                break;
+            }
+            result = subscription.recv() => {
+                match result {
+                    Ok(data) => {
+                        let sealed_block = Arc::new(data.sealed_block.clone());
+                        publish_block(
+                            message_broker,
+                            &fuel_core,
+                            &sealed_block,
+                            telemetry.clone(),
+                        )
+                        .await?;
+                    }
+                    Err(_) => {
+                        tracing::error!("Block subscription error");
+                        break;
+                    }
+                }
+            }
         }
-        let sealed_block = Arc::new(data.sealed_block.clone());
-        publish_block(
-            message_broker,
-            &fuel_core,
-            &sealed_block,
-            telemetry.clone(),
-        )
-        .await?;
     }
+
     Ok(())
 }
 
@@ -234,7 +254,7 @@ async fn publish_block(
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
-    let payload = BlockPayload::new(fuel_core, sealed_block, &metadata)?;
+    let payload = MsgPayload::new(fuel_core, sealed_block, &metadata)?;
     let encoded = payload.encode().await?;
 
     message_broker

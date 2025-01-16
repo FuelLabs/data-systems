@@ -314,6 +314,24 @@ impl MockReceipt {
             is: 0,
         })
     }
+
+    pub fn all() -> Vec<Receipt> {
+        vec![
+            Self::call(),
+            Self::return_receipt(),
+            Self::return_data(),
+            Self::panic(),
+            Self::revert(),
+            Self::log(),
+            Self::log_data(),
+            Self::transfer(),
+            Self::transfer_out(),
+            Self::script_result(),
+            Self::message_out(),
+            Self::mint(),
+            Self::burn(),
+        ]
+    }
 }
 
 impl From<FuelCoreReceipt> for Receipt {

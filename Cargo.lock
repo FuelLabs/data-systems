@@ -298,7 +298,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
 dependencies = [
  "cfg-if",
- "const-random",
  "getrandom",
  "once_cell",
  "version_check",
@@ -1526,26 +1525,6 @@ name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
-
-[[package]]
-name = "const-random"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87e00182fe74b066627d63b85fd550ac2998d4b0bd86bfed477a0ae4c7c71359"
-dependencies = [
- "const-random-macro",
-]
-
-[[package]]
-name = "const-random-macro"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d839f2a20b0aee515dc581a6172f2321f96cab76c1a38a4c584a194955390e"
-dependencies = [
- "getrandom",
- "once_cell",
- "tiny-keccak",
-]
 
 [[package]]
 name = "const_format"
@@ -3077,7 +3056,6 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "itertools 0.12.1",
- "parquet",
  "postcard",
  "rand",
  "serde",
@@ -3673,17 +3651,10 @@ dependencies = [
 name = "fuel-streams-core"
 version = "0.0.16"
 dependencies = [
- "anyhow",
  "async-nats",
  "async-stream",
- "async-trait",
  "dotenvy",
  "fuel-core",
- "fuel-core-bin",
- "fuel-core-importer",
- "fuel-core-services",
- "fuel-core-storage",
- "fuel-core-types 0.40.2",
  "fuel-message-broker",
  "fuel-streams-domains",
  "fuel-streams-macros",
@@ -3695,7 +3666,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.11",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3708,11 +3678,13 @@ dependencies = [
  "fuel-streams-macros",
  "fuel-streams-store",
  "fuel-streams-types",
+ "rayon",
  "serde",
  "serde_json",
  "sqlx",
  "test-case",
  "thiserror 2.0.11",
+ "tracing",
 ]
 
 [[package]]
@@ -3723,26 +3695,6 @@ dependencies = [
  "fuel-streams",
  "futures",
  "tokio",
-]
-
-[[package]]
-name = "fuel-streams-executors"
-version = "0.0.16"
-dependencies = [
- "anyhow",
- "dotenvy",
- "fuel-core",
- "fuel-streams-core",
- "fuel-streams-store",
- "futures",
- "num_cpus",
- "rayon",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "thiserror 2.0.11",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3772,6 +3724,7 @@ dependencies = [
  "test-case",
  "thiserror 2.0.11",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3780,7 +3733,6 @@ version = "0.0.16"
 dependencies = [
  "anyhow",
  "fuel-core",
- "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-types 0.40.2",
  "fuel-message-broker",
@@ -3789,10 +3741,13 @@ dependencies = [
  "fuel-streams-macros",
  "fuel-streams-store",
  "fuel-streams-types",
+ "fuel-web-utils",
  "futures",
  "mockall 0.13.1",
+ "pretty_assertions",
  "rand",
  "serde_json",
+ "sv-consumer",
  "tokio",
 ]
 
@@ -3800,12 +3755,20 @@ dependencies = [
 name = "fuel-streams-types"
 version = "0.0.16"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "fuel-core",
+ "fuel-core-bin",
  "fuel-core-client",
  "fuel-core-importer",
+ "fuel-core-services",
+ "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "hex",
  "serde",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5115,12 +5078,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "integer-encoding"
-version = "3.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bb03732005da905c88227371639bf1ad885cc712789c011c31c5fb3ab3ccf02"
-
-[[package]]
 name = "ip_network"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5867,7 +5824,6 @@ version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
 dependencies = [
- "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -6382,19 +6338,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
-dependencies = [
- "num-complex",
- "num-integer",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6419,15 +6362,6 @@ dependencies = [
  "rand",
  "smallvec",
  "zeroize",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
@@ -6636,15 +6570,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ordered-float"
-version = "2.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "os_str_bytes"
 version = "6.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6721,25 +6646,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "parquet"
-version = "49.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af88740a842787da39b3d69ce5fbf6fce97d20211d3b299fee0a0da6430c74d4"
-dependencies = [
- "ahash 0.8.11",
- "bytes",
- "chrono",
- "hashbrown 0.14.5",
- "num",
- "num-bigint",
- "paste",
- "seq-macro",
- "thrift",
- "twox-hash",
- "zstd",
 ]
 
 [[package]]
@@ -8316,12 +8222,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 
 [[package]]
-name = "seq-macro"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3f0bf26fd526d2a95683cd0f87bf103b8539e2ca1ef48ce002d67aad59aa0b4"
-
-[[package]]
 name = "serde"
 version = "1.0.217"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8740,7 +8640,6 @@ dependencies = [
  "sha2 0.10.8",
  "sqlx-core",
  "sqlx-postgres",
- "sqlx-sqlite",
  "syn 2.0.96",
  "tempfile",
  "tokio",
@@ -8841,7 +8740,6 @@ dependencies = [
  "libsqlite3-sys",
  "log",
  "percent-encoding",
- "serde",
  "serde_urlencoded",
  "sqlx-core",
  "tracing",
@@ -8997,15 +8895,14 @@ dependencies = [
  "fuel-core",
  "fuel-message-broker",
  "fuel-streams-core",
- "fuel-streams-executors",
+ "fuel-streams-domains",
  "fuel-streams-store",
  "fuel-web-utils",
  "futures",
- "hex",
- "num_cpus",
  "openssl",
  "prometheus",
  "serde_json",
+ "sqlx",
  "thiserror 2.0.11",
  "tokio",
  "tokio-util",
@@ -9025,7 +8922,7 @@ dependencies = [
  "fuel-core-types 0.40.2",
  "fuel-message-broker",
  "fuel-streams-core",
- "fuel-streams-executors",
+ "fuel-streams-domains",
  "fuel-streams-store",
  "fuel-web-utils",
  "futures",
@@ -9474,17 +9371,6 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
-]
-
-[[package]]
-name = "thrift"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e54bc85fc7faa8bc175c4bab5b92ba8d9a3ce893d0e9f42cc455c8ab16a9e09"
-dependencies = [
- "byteorder",
- "integer-encoding",
- "ordered-float",
 ]
 
 [[package]]
@@ -10063,16 +9949,6 @@ dependencies = [
  "sha1",
  "thiserror 2.0.11",
  "utf-8",
-]
-
-[[package]]
-name = "twox-hash"
-version = "1.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
-dependencies = [
- "cfg-if",
- "static_assertions",
 ]
 
 [[package]]

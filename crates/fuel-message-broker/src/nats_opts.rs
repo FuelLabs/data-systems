@@ -9,7 +9,7 @@ pub struct NatsOpts {
     pub(crate) url: String,
     pub(crate) namespace: Namespace,
     pub(crate) timeout_secs: u64,
-    pub(crate) ack_wait_secs: u64,
+    pub(crate) ack_wait_secs: Option<u64>,
 }
 
 impl NatsOpts {
@@ -17,7 +17,7 @@ impl NatsOpts {
         Self {
             url,
             timeout_secs: 5,
-            ack_wait_secs: 10,
+            ack_wait_secs: None,
             namespace: Namespace::None,
         }
     }
@@ -40,7 +40,7 @@ impl NatsOpts {
 
     pub fn with_ack_wait(self, secs: u64) -> Self {
         Self {
-            ack_wait_secs: secs,
+            ack_wait_secs: Some(secs),
             ..self
         }
     }

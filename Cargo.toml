@@ -77,7 +77,6 @@ fuel-message-broker = { version = "0.0.16", path = "crates/fuel-message-broker" 
 fuel-streams = { version = "0.0.16", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.16", path = "crates/fuel-streams-core" }
 fuel-streams-domains = { version = "0.0.16", path = "crates/fuel-streams-domains" }
-fuel-streams-executors = { version = "0.0.16", path = "crates/fuel-streams-executors" }
 fuel-streams-macros = { version = "0.0.16", path = "crates/fuel-streams-macros" }
 fuel-streams-store = { version = "0.0.16", path = "crates/fuel-streams-store" }
 fuel-streams-types = { version = "0.0.16", path = "crates/fuel-streams-types" }

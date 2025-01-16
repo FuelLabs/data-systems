@@ -82,9 +82,17 @@ impl MockUtxo {
             sender: None,
             recipient: Some(contract_id),
             nonce: None,
-            data: Some(HexData::default().into()),
+            data: Some(HexData::default()),
             amount: None,
             tx_id: TxId::default(),
         }
+    }
+
+    pub fn all() -> Vec<Utxo> {
+        vec![
+            Self::coin(1000, Address::default()), // Coin UTXO
+            Self::message(500, Address::default(), Address::default()), /* Message UTXO */
+            Self::contract(Address::default()), // Contract UTXO
+        ]
     }
 }

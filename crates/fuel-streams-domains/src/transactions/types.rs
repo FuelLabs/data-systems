@@ -758,4 +758,18 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx
     }
+
+    pub fn all() -> Vec<Transaction> {
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let receipts = MockReceipt::all();
+        vec![
+            Self::script(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::create(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::mint(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::upgrade(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::upload(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::blob(inputs.clone(), outputs.clone(), receipts.clone()),
+        ]
+    }
 }
