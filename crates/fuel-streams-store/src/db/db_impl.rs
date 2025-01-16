@@ -26,7 +26,7 @@ pub enum DbError {
     Query(#[source] sqlx::Error),
     #[error("Failed to start database transaction: {0}")]
     BeginTransaction(#[source] sqlx::Error),
-    #[error("Failed to commmit transaction: {0}")]
+    #[error("Failed to commit transaction: {0}")]
     CommitTransaction(#[source] sqlx::Error),
 }
 
