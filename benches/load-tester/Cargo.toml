@@ -1,0 +1,22 @@
+[package]
+name = "load-tester"
+authors = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+fuel-message-broker = { workspace = true }
+fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-store = { workspace = true }
+futures = { workspace = true }
+statrs = "0.18.0"
+tokio = { workspace = true }

@@ -38,6 +38,7 @@ jobs:
             refactor
             test
           scopes: |
+            benches
             repo
             deps
             release

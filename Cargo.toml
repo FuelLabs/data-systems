@@ -1,7 +1,13 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 resolver = "2"
-members = ["crates/*", "crates/fuel-streams-macros/subject-derive", "examples", "tests"]
+members = [
+    "benches/*",
+    "crates/*",
+    "crates/fuel-streams-macros/subject-derive",
+    "examples",
+    "tests",
+]
 
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]
@@ -79,6 +85,7 @@ fuel-streams-executors = { version = "0.0.16", path = "crates/fuel-streams-execu
 fuel-streams-macros = { version = "0.0.16", path = "crates/fuel-streams-macros" }
 fuel-streams-store = { version = "0.0.16", path = "crates/fuel-streams-store" }
 fuel-streams-types = { version = "0.0.16", path = "crates/fuel-streams-types" }
+fuel-streams-test = { version = "0.0.16", path = "crates/fuel-streams-test" }
 fuel-web-utils = { version = "0.0.16", path = "crates/fuel-web-utils" }
 subject-derive = { version = "0.0.16", path = "crates/fuel-streams-macros/subject-derive" }
 sv-consumer = { version = "0.0.16", path = "crates/sv-consumer" }
