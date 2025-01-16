@@ -12,8 +12,8 @@ pub enum ClientError {
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
     #[error("Failed to parse host from URL")]
     HostParseFailed,
-    #[error("Missing JWT token")]
-    MissingJwtToken,
+    #[error("Missing api key")]
+    MissingApiKey,
     #[error("Missing write sink")]
     MissingWriteSink,
     #[error("Missing read stream")]

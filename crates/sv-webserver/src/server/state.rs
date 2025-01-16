@@ -7,8 +7,15 @@ use async_trait::async_trait;
 use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
+use fuel_web_utils::{
+    server::{
+        middlewares::api_key::{InMemoryApiKeyStorage, KeyStorage},
+        state::StateProvider,
+    },
+    telemetry::Telemetry,
+};
 
+use super::api_key::ApiKeysManager;
 use crate::{config::Config, metrics::Metrics};
 
 #[derive(Clone)]
@@ -19,6 +26,7 @@ pub struct ServerState {
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
     pub jwt_secret: String,
+    pub api_key_storage: Arc<InMemoryApiKeyStorage>,
 }
 
 impl ServerState {
@@ -36,6 +44,14 @@ impl ServerState {
         let metrics = Metrics::new_with_random_prefix()?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
+        let api_keys =
+            ApiKeysManager::new(Arc::clone(&db)).load_from_db().await?;
+        let mut api_key_storage = InMemoryApiKeyStorage::new();
+        for api_key in api_keys {
+            api_key_storage
+                .store_api_key_for_user(&api_key.user_id.to_string(), &api_key)
+                .map_err(|e| anyhow::anyhow!(e))?;
+        }
 
         Ok(Self {
             start_time: Instant::now(),
@@ -44,6 +60,7 @@ impl ServerState {
             telemetry,
             db,
             jwt_secret: config.auth.jwt_secret.clone(),
+            api_key_storage: Arc::new(api_key_storage),
         })
     }
 

@@ -22,16 +22,14 @@ use crate::FuelNetwork;
 #[derive(Debug, Clone)]
 pub struct ConnectionOpts {
     pub network: FuelNetwork,
-    pub username: String,
-    pub password: String,
+    pub api_key: Option<String>,
 }
 
 impl Default for ConnectionOpts {
     fn default() -> Self {
         Self {
             network: FuelNetwork::Local,
-            username: "admin".to_string(),
-            password: "admin".to_string(),
+            api_key: None,
         }
     }
 }
