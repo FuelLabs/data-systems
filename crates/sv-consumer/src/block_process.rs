@@ -8,7 +8,13 @@ use fuel_streams_core::{
 use fuel_streams_domains::MsgPayload;
 use fuel_streams_store::{
     db::Db,
-    record::{DataEncoder, PacketBuilder, RecordEntity, RecordPacket},
+    record::{
+        DataEncoder,
+        DbTransaction,
+        PacketBuilder,
+        RecordEntity,
+        RecordPacket,
+    },
 };
 use fuel_web_utils::shutdown::shutdown_broker_with_timeout;
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -77,73 +83,79 @@ async fn process_block(
         .chain(tx_packets)
         .collect::<Vec<_>>();
 
-    let result = process_packets(db, &packets, fuel_streams, fuel_stores).await;
-    msg.ack().await.map_err(|e| {
-        tracing::error!("Failed to ack message: {:?}", e);
-        ConsumerError::MessageBrokerClient(e)
-    })?;
+    let mut db_tx = db.pool.begin().await?;
+    let result =
+        process_packets(&mut db_tx, &packets, fuel_streams, fuel_stores).await;
 
     match result {
-        Ok(packet_count) => Ok(stats.finish(packet_count)),
-        Err(e) => Ok(stats.finish_with_error(e)),
+        Ok(packet_count) => {
+            db_tx.commit().await?;
+            msg.ack().await.map_err(|e| {
+                tracing::error!("Failed to ack message: {:?}", e);
+                ConsumerError::MessageBrokerClient(e)
+            })?;
+            Ok(stats.finish(packet_count))
+        }
+        Err(e) => {
+            db_tx.rollback().await?;
+            Ok(stats.finish_with_error(e))
+        }
     }
 }
 
 async fn process_packets(
-    db: &Arc<Db>,
+    db_tx: &mut DbTransaction,
     packets: &[RecordPacket],
     fuel_streams: &Arc<FuelStreams>,
     fuel_stores: &Arc<FuelStores>,
 ) -> Result<usize, ConsumerError> {
-    let mut db_tx = db.pool.begin().await?;
     for packet in packets {
         let entity = packet.get_entity()?;
         match entity {
             RecordEntity::Block => {
                 let record = fuel_stores
                     .blocks
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.blocks.publish(&record).await?;
             }
             RecordEntity::Transaction => {
                 let record = fuel_stores
                     .transactions
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.transactions.publish(&record).await?;
             }
             RecordEntity::Input => {
                 let record = fuel_stores
                     .inputs
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.inputs.publish(&record).await?;
             }
             RecordEntity::Output => {
                 let record = fuel_stores
                     .outputs
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.outputs.publish(&record).await?;
             }
             RecordEntity::Receipt => {
                 let record = fuel_stores
                     .receipts
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.receipts.publish(&record).await?;
             }
             RecordEntity::Utxo => {
                 let record = fuel_stores
                     .utxos
-                    .insert_record_with_transaction(&mut db_tx, packet)
+                    .insert_record_with_transaction(db_tx, packet)
                     .await?;
                 fuel_streams.utxos.publish(&record).await?;
             }
         }
     }
 
-    db_tx.commit().await?;
     Ok(packets.len())
 }
