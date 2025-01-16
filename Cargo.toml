@@ -88,7 +88,7 @@ sv-webserver = { version = "0.0.16", path = "crates/sv-webserver" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["fuel-core", "tokio"]
+ignored = ["fuel-core", "tokio", "anyhow"]
 
 [profile.release]
 opt-level = 3

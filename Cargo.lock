@@ -3651,6 +3651,7 @@ dependencies = [
 name = "fuel-streams-core"
 version = "0.0.16"
 dependencies = [
+ "anyhow",
  "async-nats",
  "async-stream",
  "dotenvy",
