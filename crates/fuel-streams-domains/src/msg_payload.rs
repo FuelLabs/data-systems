@@ -14,16 +14,8 @@ use fuel_streams_types::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    blocks::{Block, BlockHeight, Consensus, MockBlock},
-    inputs::MockInput,
-    outputs::MockOutput,
-    receipts::MockReceipt,
-    transactions::{
-        MockTransaction,
-        Transaction,
-        TransactionKind,
-        TransactionStatus,
-    },
+    blocks::{Block, BlockHeight, Consensus},
+    transactions::{Transaction, TransactionStatus},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -177,6 +169,7 @@ pub struct MockMsgPayload;
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockMsgPayload {
     pub fn build(height: u32) -> MsgPayload {
+        use crate::mocks::*;
         let block = MockBlock::build(height);
         let chain_id = Arc::new(FuelCoreChainId::default());
         let base_asset_id = Arc::new(FuelCoreAssetId::default());
@@ -201,6 +194,7 @@ impl MockMsgPayload {
     }
 
     pub fn with_height(height: u32) -> MsgPayload {
+        use crate::mocks::*;
         let mut payload = Self::build(height);
         payload.block = MockBlock::build(height);
         payload.metadata.block_height = Arc::new(BlockHeight::from(height));
@@ -218,8 +212,9 @@ impl MockMsgPayload {
 
     pub fn single_transaction(
         height: u32,
-        tx_type: TransactionKind,
+        tx_type: crate::transactions::TransactionKind,
     ) -> MsgPayload {
+        use crate::{mocks::*, transactions::TransactionKind};
         let inputs = MockInput::all();
         let outputs = MockOutput::all();
         let receipts = MockReceipt::all();
