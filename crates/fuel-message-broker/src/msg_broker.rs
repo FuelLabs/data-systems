@@ -149,7 +149,6 @@ impl MessageBrokerClient {
         }
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub async fn start_with_namespace(
         &self,
         url: &str,

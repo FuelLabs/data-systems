@@ -19,16 +19,26 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(network: FuelNetwork) -> Result<Self, ClientError> {
-        Self::with_opts(ConnectionOpts {
-            network,
-            ..Default::default()
-        })
-        .await
+    pub fn new(network: FuelNetwork) -> Self {
+        Self {
+            opts: ConnectionOpts {
+                network,
+                ..Default::default()
+            },
+        }
     }
 
-    pub async fn with_opts(opts: ConnectionOpts) -> Result<Self, ClientError> {
-        Ok(Self { opts })
+    pub fn with_opts(opts: ConnectionOpts) -> Self {
+        Self { opts }
+    }
+
+    pub fn with_api_key(&mut self, api_key: impl ToString) -> Self {
+        Self {
+            opts: ConnectionOpts {
+                network: self.opts.network,
+                api_key: Some(api_key.to_string()),
+            },
+        }
     }
 
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
