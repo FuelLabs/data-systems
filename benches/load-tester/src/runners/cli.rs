@@ -1,25 +1,26 @@
 use clap::Parser;
+use fuel_streams::FuelNetwork;
 
 #[derive(Clone, Parser)]
 pub struct Cli {
-    /// NATS URL
+    /// Fuel Network to connect to.
     #[arg(
         long,
-        value_name = "NATS_URL",
-        env = "NATS_URL",
-        default_value = "nats://localhost:4222",
-        help = "NATS URL"
+        value_name = "NETWORK",
+        env = "NETWORK",
+        default_value = "Local",
+        value_parser = clap::value_parser!(FuelNetwork)
     )]
-    pub nats_url: String,
-    /// Database URL to connect to.
+    pub network: FuelNetwork,
+    /// Api Key for the websocket server.
     #[arg(
         long,
-        value_name = "DATABASE_URL",
-        env = "DATABASE_URL",
-        default_value = "postgresql://root@localhost:26257/defaultdb?sslmode=disable",
-        help = "Database URL to connect to."
+        value_name = "API_KEY",
+        env = "API_KEY",
+        default_value = "",
+        help = "Api Key for the ws server."
     )]
-    pub db_url: String,
+    pub api_key: String,
     /// Maximum subscriptions for load testing
     #[arg(
         long,

@@ -6,8 +6,8 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     println!("Running load test ...");
     let load_tester = LoadTesterEngine::new(
-        cli.nats_url,
-        cli.db_url,
+        cli.network,
+        cli.api_key,
         cli.max_subscriptions,
         cli.step_size,
     );

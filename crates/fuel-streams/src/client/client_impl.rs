@@ -42,13 +42,13 @@ impl Client {
     }
 
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
-        let jwt_token = self
+        let api_key = self
             .opts
             .api_key
             .clone()
             .ok_or(ClientError::MissingApiKey)?;
 
-        let subdirectory = format!("/api/v1/ws?api_key={}", jwt_token);
+        let subdirectory = format!("/api/v1/ws?api_key={}", api_key);
         let ws_url = self.opts.network.to_ws_url().join(&subdirectory)?;
         let host = ws_url
             .host_str()

@@ -214,7 +214,7 @@ docs-serve: docs
 # ------------------------------------------------------------
 
 load-test:
-	cargo run -p load-tester -- --nats-url "nats://localhost:4222" --db-url "postgresql://root@localhost:26257/defaultdb?sslmode=disable" --max-subscriptions 10 --step-size 1
+	cargo run -p load-tester -- --network staging --ws-url "wss://stream-staging.fuel.network" --api-key "your_api_key" --max-subscriptions 10 --step-size 1
 
 bench:
 	cargo bench -p data-parser
