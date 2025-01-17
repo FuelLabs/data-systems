@@ -45,11 +45,10 @@ impl ApiKeysManager {
 
     pub async fn load_from_db(&self) -> Result<Vec<ApiKey>, ApiKeyError> {
         let db_records =
-            sqlx::query_as!(DbUserApiKey, "SELECT * FROM api_keys")
+            sqlx::query_as::<_, DbUserApiKey>("SELECT * FROM api_keys")
                 .fetch_all(&self.db.pool)
                 .await
                 .map_err(ApiKeyManagerError::DatabaseError)?;
-
         let keys = db_records
             .into_iter()
             .map(|record| {
@@ -60,7 +59,6 @@ impl ApiKeysManager {
                 )
             })
             .collect::<Vec<ApiKey>>();
-
         Ok(keys)
     }
 
@@ -68,15 +66,13 @@ impl ApiKeysManager {
         self,
         api_key: &str,
     ) -> Result<Option<ApiKey>, ApiKeyError> {
-        let record = sqlx::query_as!(
-            DbUserApiKey,
+        let record = sqlx::query_as::<_, DbUserApiKey>(
             "SELECT * FROM api_keys WHERE api_key = $1",
-            api_key
         )
+        .bind(api_key)
         .fetch_optional(&self.db.pool)
         .await
         .map_err(ApiKeyManagerError::DatabaseError)?;
-
         Ok(record
             .map(|r| ApiKey::new(r.user_id as u64, r.user_name, r.api_key)))
     }

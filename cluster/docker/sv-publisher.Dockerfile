@@ -2,9 +2,7 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 FROM --platform=$BUILDPLATFORM rust:1.81.0 AS chef
 
-# Add package name as build argument
 ARG TARGETPLATFORM
-
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
 WORKDIR /build/
 
@@ -27,7 +25,6 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-ARG PACKAGE_NAME
 ARG DEBUG_SYMBOLS=false
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV CARGO_PROFILE_RELEASE_DEBUG=$DEBUG_SYMBOLS

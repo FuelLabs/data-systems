@@ -28,26 +28,23 @@ impl Record for Utxo {
         E: PgExecutor<'c>,
     {
         let db_item = UtxoDbItem::try_from(packet)?;
-        let record = sqlx::query_as!(
-            Self::DbItem,
-            r#"
-                INSERT INTO utxos (
-                    subject, value, block_height, tx_id, tx_index,
-                    input_index, utxo_type, utxo_id
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING subject, value, block_height, tx_id, tx_index,
-                    input_index, utxo_type, utxo_id
-                "#,
-            db_item.subject,
-            db_item.value,
-            db_item.block_height,
-            db_item.tx_id,
-            db_item.tx_index,
-            db_item.input_index,
-            db_item.utxo_type,
-            db_item.utxo_id
+        let record = sqlx::query_as::<_, UtxoDbItem>(
+            "INSERT INTO utxos (
+                subject, value, block_height, tx_id, tx_index,
+                input_index, utxo_type, utxo_id
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING subject, value, block_height, tx_id, tx_index,
+                input_index, utxo_type, utxo_id",
         )
+        .bind(db_item.subject)
+        .bind(db_item.value)
+        .bind(db_item.block_height)
+        .bind(db_item.tx_id)
+        .bind(db_item.tx_index)
+        .bind(db_item.input_index)
+        .bind(db_item.utxo_type)
+        .bind(db_item.utxo_id)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

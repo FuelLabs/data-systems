@@ -26,18 +26,15 @@ impl Record for Block {
         E: PgExecutor<'c>,
     {
         let db_item = BlockDbItem::try_from(packet)?;
-        let record = sqlx::query_as!(
-            BlockDbItem,
-            r#"
-            INSERT INTO blocks (subject, producer_address, block_height, value)
+        let record = sqlx::query_as::<_, BlockDbItem>(
+            "INSERT INTO blocks (subject, producer_address, block_height, value)
             VALUES ($1, $2, $3, $4)
-            RETURNING subject, producer_address, block_height, value
-            "#,
-            db_item.subject,
-            db_item.producer_address,
-            db_item.block_height,
-            db_item.value
+            RETURNING subject, producer_address, block_height, value"
         )
+        .bind(db_item.subject)
+        .bind(db_item.producer_address)
+        .bind(db_item.block_height)
+        .bind(db_item.value)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;
