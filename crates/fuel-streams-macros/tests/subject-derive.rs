@@ -223,3 +223,30 @@ fn subject_derive_entity() {
     assert_eq!(TestSubject::ENTITY, "Test");
     assert_eq!(subject.entity(), "Test");
 }
+
+#[test]
+fn subject_derive_schema() {
+    let subject = TestSubject::new();
+    let schema = subject.schema();
+
+    let mut fields = std::collections::HashMap::new();
+    fields.insert("field1".to_string(), FieldSchema {
+        type_name: "String".to_string(),
+    });
+    fields.insert("field2".to_string(), FieldSchema {
+        type_name: "u32".to_string(),
+    });
+    fields.insert("field3".to_string(), FieldSchema {
+        type_name: "String".to_string(),
+    });
+
+    let expected_schema = Schema {
+        name: "Test".to_string(),
+        subject: "TestSubject".to_string(),
+        format: "test.{field1}.{field2}.{field3}".to_string(),
+        wildcard: "test.>".to_string(),
+        fields,
+    };
+
+    assert_eq!(schema, expected_schema);
+}
