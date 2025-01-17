@@ -82,8 +82,6 @@ commonConfigMap:
     NATS_SYSTEM_PASS: "sys"
     NATS_ADMIN_USER: "admin"
     NATS_ADMIN_PASS: "admin"
-    NATS_PUBLIC_USER: "default_user"
-    NATS_PUBLIC_PASS: ""
     # For local purposes only, for production use fuel-streams-keys secret
     DATABASE_URL: "postgresql://root:root@fuel-streams-cockroachdb:26257/fuel_streams?sslmode=disable"
 

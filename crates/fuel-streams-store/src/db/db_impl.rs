@@ -24,6 +24,10 @@ pub enum DbError {
     TruncateTable(#[source] sqlx::Error),
     #[error("Failed to execute query")]
     Query(#[source] sqlx::Error),
+    #[error("Failed to start database transaction: {0}")]
+    BeginTransaction(#[source] sqlx::Error),
+    #[error("Failed to commit transaction: {0}")]
+    CommitTransaction(#[source] sqlx::Error),
 }
 
 pub type DbResult<T> = Result<T, DbError>;
@@ -64,6 +68,7 @@ impl Db {
             .await
             .map_err(DbError::Open)?;
 
+        tracing::info!("Database connected");
         Ok(Self { pool })
     }
 
@@ -82,5 +87,21 @@ impl Db {
 
     pub fn pool_ref(&self) -> &Pool<Postgres> {
         &self.pool
+    }
+
+    pub async fn begin_transaction(
+        &self,
+    ) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, DbError> {
+        self.pool.begin().await.map_err(DbError::BeginTransaction)
+    }
+
+    pub async fn commit_transaction(
+        &self,
+        transaction: sqlx::Transaction<'static, sqlx::Postgres>,
+    ) -> Result<(), DbError> {
+        transaction
+            .commit()
+            .await
+            .map_err(DbError::CommitTransaction)
     }
 }

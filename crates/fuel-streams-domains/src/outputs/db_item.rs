@@ -6,7 +6,6 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Output;
 use crate::Subjects;
 
 #[derive(
@@ -61,30 +60,30 @@ impl Ord for OutputDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
+impl TryFrom<&RecordPacket> for OutputDbItem {
     type Error = RecordPacketError;
-    fn try_from(packet: &RecordPacket<Output>) -> Result<Self, Self::Error> {
-        let record = packet.record.as_ref();
+    fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
             Subjects::OutputsCoin(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode output"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
                 output_index: subject.output_index.unwrap() as i64,
                 output_type: "coin".to_string(),
-                to_address: Some(subject.to_address.unwrap().to_string()),
-                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                to_address: Some(subject.to.unwrap().to_string()),
+                asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
             }),
             Subjects::OutputsContract(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode output"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
@@ -92,35 +91,35 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
                 output_type: "contract".to_string(),
                 to_address: None,
                 asset_id: None,
-                contract_id: Some(subject.contract_id.unwrap().to_string()),
+                contract_id: Some(subject.contract.unwrap().to_string()),
             }),
             Subjects::OutputsChange(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode output"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
                 output_index: subject.output_index.unwrap() as i64,
                 output_type: "change".to_string(),
-                to_address: Some(subject.to_address.unwrap().to_string()),
-                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                to_address: Some(subject.to.unwrap().to_string()),
+                asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
             }),
             Subjects::OutputsVariable(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode output"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
                 output_index: subject.output_index.unwrap() as i64,
                 output_type: "variable".to_string(),
-                to_address: Some(subject.to_address.unwrap().to_string()),
-                asset_id: Some(subject.asset_id.unwrap().to_string()),
+                to_address: Some(subject.to.unwrap().to_string()),
+                asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
             }),
             Subjects::OutputsContractCreated(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode output"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,
@@ -128,7 +127,7 @@ impl TryFrom<&RecordPacket<Output>> for OutputDbItem {
                 output_type: "contract_created".to_string(),
                 to_address: None,
                 asset_id: None,
-                contract_id: Some(subject.contract_id.unwrap().to_string()),
+                contract_id: Some(subject.contract.unwrap().to_string()),
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

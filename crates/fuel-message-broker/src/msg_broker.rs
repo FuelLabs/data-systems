@@ -62,6 +62,7 @@ pub enum MessageBrokerError {
 pub trait Message: std::fmt::Debug + Send + Sync {
     fn payload(&self) -> Vec<u8>;
     async fn ack(&self) -> Result<(), MessageBrokerError>;
+    fn id(&self) -> String;
 }
 
 pub type MessageBlockStream = Box<
@@ -141,6 +142,22 @@ impl MessageBrokerClient {
         match self {
             MessageBrokerClient::Nats => {
                 let opts = crate::NatsOpts::new(url.to_string());
+                let broker = crate::NatsMessageBroker::new(&opts).await?;
+                broker.setup().await?;
+                Ok(broker.arc())
+            }
+        }
+    }
+
+    pub async fn start_with_namespace(
+        &self,
+        url: &str,
+        namespace: &str,
+    ) -> Result<Arc<dyn MessageBroker>, MessageBrokerError> {
+        match self {
+            MessageBrokerClient::Nats => {
+                let opts = crate::NatsOpts::new(url.to_string())
+                    .with_namespace(namespace);
                 let broker = crate::NatsMessageBroker::new(&opts).await?;
                 broker.setup().await?;
                 Ok(broker.arc())

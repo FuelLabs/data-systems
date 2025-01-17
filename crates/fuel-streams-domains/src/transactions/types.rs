@@ -61,7 +61,7 @@ pub struct Transaction {
     pub storage_slots: Vec<StorageSlot>,
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
-    pub tx_pointer: Option<FuelCoreTxPointer>,
+    pub tx_pointer: Option<TxPointer>,
     pub upgrade_purpose: Option<FuelCoreUpgradePurpose>,
     pub witnesses: Vec<HexData>,
     pub receipts: Vec<Receipt>,
@@ -404,7 +404,7 @@ impl Transaction {
             storage_slots,
             subsection_index,
             subsections_number,
-            tx_pointer,
+            tx_pointer: Some(tx_pointer.into()),
             upgrade_purpose,
             witnesses,
             receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
@@ -590,13 +590,186 @@ impl FuelCoreTransactionExt for FuelCoreTransaction {
     }
 }
 
-#[derive(Debug, Clone)]
-#[cfg(any(test, feature = "test-helpers"))]
-pub struct MockTransaction(pub crate::blocks::Block);
-
-#[cfg(any(test, feature = "test-helpers"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MockTransaction;
 impl MockTransaction {
-    pub fn build() -> Transaction {
-        Transaction::default()
+    fn base_transaction(kind: TransactionKind) -> Transaction {
+        Transaction {
+            id: TxId::default(),
+            kind: kind.clone(),
+            bytecode_root: None,
+            bytecode_witness_index: None,
+            blob_id: None,
+            input_asset_ids: Some(vec![AssetId::default()]),
+            input_contract: None,
+            input_contracts: None,
+            inputs: vec![MockInput::coin_signed()],
+            output_contract: None,
+            outputs: vec![MockOutput::coin(100)],
+            is_create: kind == TransactionKind::Create,
+            is_mint: kind == TransactionKind::Mint,
+            is_script: kind == TransactionKind::Script,
+            is_upgrade: kind == TransactionKind::Upgrade,
+            is_upload: kind == TransactionKind::Upload,
+            maturity: Some(0),
+            mint_amount: None,
+            mint_asset_id: None,
+            mint_gas_price: None,
+            policies: Some(FuelCorePolicies::default()),
+            proof_set: vec![],
+            raw_payload: HexData::default(),
+            receipts_root: None,
+            salt: None,
+            script: None,
+            script_data: None,
+            script_gas_limit: None,
+            status: TransactionStatus::Success,
+            storage_slots: vec![],
+            subsection_index: None,
+            subsections_number: None,
+            tx_pointer: Some(TxPointer::default()),
+            upgrade_purpose: None,
+            witnesses: vec![HexData::default()],
+            receipts: vec![MockReceipt::script_result()],
+        }
+    }
+
+    fn with_script_data(
+        mut tx: Transaction,
+        script: Vec<u8>,
+        script_data: Vec<u8>,
+    ) -> Transaction {
+        tx.script = Some(HexData(script.into()));
+        tx.script_data = Some(HexData(script_data.into()));
+        tx.script_gas_limit = Some(1000);
+        tx
+    }
+
+    fn with_contract_data(mut tx: Transaction) -> Transaction {
+        tx.output_contract = Some(OutputContract {
+            balance_root: Bytes32::default(),
+            input_index: 0,
+            state_root: Bytes32::default(),
+        });
+        tx.storage_slots = vec![StorageSlot {
+            key: HexData::default(),
+            value: HexData::default(),
+        }];
+        tx
+    }
+
+    fn with_mint_data(mut tx: Transaction) -> Transaction {
+        tx.input_contract = Some(InputContract {
+            balance_root: Bytes32::default(),
+            contract_id: Bytes32::default(),
+            state_root: Bytes32::default(),
+            tx_pointer: TxPointer::default(),
+            utxo_id: UtxoId::default(),
+        });
+        tx.mint_amount = Some(1000);
+        tx.mint_asset_id = Some(AssetId::default());
+        tx.mint_gas_price = Some(100);
+        tx.tx_pointer = Some(TxPointer::default());
+        tx
+    }
+
+    pub fn script(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::with_script_data(
+            Self::base_transaction(TransactionKind::Script),
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+        );
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        tx
+    }
+
+    pub fn create(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::base_transaction(TransactionKind::Create);
+        tx.salt = Some(Salt::default());
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        Self::with_contract_data(tx)
+    }
+
+    pub fn mint(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::base_transaction(TransactionKind::Mint);
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        Self::with_mint_data(tx)
+    }
+
+    pub fn upgrade(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::base_transaction(TransactionKind::Upgrade);
+        tx.upgrade_purpose = Some(FuelCoreUpgradePurpose::StateTransition {
+            root: FuelCoreBytes32::default(),
+        });
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        tx
+    }
+
+    pub fn upload(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::base_transaction(TransactionKind::Upload);
+        tx.bytecode_root = Some(Bytes32::default());
+        tx.bytecode_witness_index = Some(0);
+        tx.proof_set = vec![Bytes32::default()];
+        tx.subsection_index = Some(0);
+        tx.subsections_number = Some(1);
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        tx
+    }
+
+    pub fn blob(
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        receipts: Vec<Receipt>,
+    ) -> Transaction {
+        let mut tx = Self::base_transaction(TransactionKind::Blob);
+        tx.blob_id = Some(BlobId::default());
+        tx.inputs = inputs;
+        tx.outputs = outputs;
+        tx.receipts = receipts;
+        tx
+    }
+
+    pub fn all() -> Vec<Transaction> {
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let receipts = MockReceipt::all();
+        vec![
+            Self::script(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::create(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::mint(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::upgrade(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::upload(inputs.clone(), outputs.clone(), receipts.clone()),
+            Self::blob(inputs.clone(), outputs.clone(), receipts.clone()),
+        ]
     }
 }

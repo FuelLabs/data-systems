@@ -130,7 +130,7 @@ impl LoadTesterEngine {
                     handles.push(tokio::spawn(async move {
                         if let Err(e) =
                             run_streamable_consumer::<BlocksSubject, Block>(
-                                BlocksSubject::new().with_block_height(None),
+                                BlocksSubject::new().with_height(None),
                                 fuel_streams,
                                 blocks_test_tracker,
                             )

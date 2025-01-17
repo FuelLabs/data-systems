@@ -6,7 +6,6 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Transaction;
 use crate::Subjects;
 
 #[derive(
@@ -56,22 +55,18 @@ impl Ord for TransactionDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket<Transaction>> for TransactionDbItem {
+impl TryFrom<&RecordPacket> for TransactionDbItem {
     type Error = RecordPacketError;
-    fn try_from(
-        packet: &RecordPacket<Transaction>,
-    ) -> Result<Self, Self::Error> {
-        let record = packet.record.as_ref();
+    fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
             Subjects::Transactions(subject) => Ok(TransactionDbItem {
                 subject: packet.subject_str(),
-                value: record
-                    .encode_json()
-                    .expect("Failed to encode transaction"),
+                value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i64,

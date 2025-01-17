@@ -4,64 +4,32 @@ use std::{
     time::{Duration, Instant},
 };
 
-use actix_web::{HttpMessage, HttpRequest};
 use actix_ws::{CloseCode, CloseReason, Session};
-use fuel_streams_core::FuelStreams;
-use fuel_web_utils::telemetry::Telemetry;
+use fuel_streams_core::{
+    server::{ServerMessage, Subscription},
+    FuelStreams,
+};
+use fuel_web_utils::{
+    server::middlewares::api_key::ApiKey,
+    telemetry::Telemetry,
+};
 use tokio::sync::{broadcast, Mutex};
-use uuid::Uuid;
 
 use crate::{
     metrics::{Metrics, SubscriptionChange},
-    server::{
-        errors::WebsocketError,
-        types::{ServerMessage, SubscriptionPayload},
-    },
+    server::errors::WebsocketError,
 };
 
 #[derive(Clone)]
-struct AuthManager {
-    user_id: Uuid,
-}
-
-impl AuthManager {
-    fn new(user_id: Uuid) -> Self {
-        Self { user_id }
-    }
-
-    pub fn user_id(&self) -> &Uuid {
-        &self.user_id
-    }
-
-    pub fn user_id_from_req(
-        req: &HttpRequest,
-    ) -> Result<Uuid, actix_web::Error> {
-        match req.extensions().get::<Uuid>() {
-            Some(user_id) => {
-                tracing::info!(
-                    user_id = %user_id,
-                    "Authenticated WebSocket connection"
-                );
-                Ok(*user_id)
-            }
-            None => {
-                tracing::warn!("Unauthenticated WebSocket connection attempt");
-                Err(actix_web::error::ErrorUnauthorized(
-                    "Missing or invalid JWT",
-                ))
-            }
-        }
-    }
-}
-
-#[derive(Clone)]
 struct MessageHandler {
-    user_id: Uuid,
+    api_key: ApiKey,
 }
 
 impl MessageHandler {
-    fn new(user_id: Uuid) -> Self {
-        Self { user_id }
+    fn new(api_key: &ApiKey) -> Self {
+        Self {
+            api_key: api_key.to_owned(),
+        }
     }
 
     async fn send_message(
@@ -80,10 +48,11 @@ impl MessageHandler {
         session: &mut Session,
         error: &WebsocketError,
     ) -> Result<(), WebsocketError> {
+        let api_key = self.api_key.to_owned();
         let error_msg = ServerMessage::Error(error.to_string());
         if let Err(send_err) = self.send_message(session, error_msg).await {
             tracing::error!(
-                %self.user_id,
+                %api_key,
                 error = %send_err,
                 "Failed to send error message"
             );
@@ -96,23 +65,27 @@ impl MessageHandler {
 #[derive(Clone)]
 struct MetricsHandler {
     telemetry: Arc<Telemetry<Metrics>>,
-    user_id: Uuid,
+    api_key: ApiKey,
 }
 
 impl MetricsHandler {
-    fn new(telemetry: Arc<Telemetry<Metrics>>, user_id: Uuid) -> Self {
-        Self { telemetry, user_id }
+    fn new(telemetry: Arc<Telemetry<Metrics>>, api_key: &ApiKey) -> Self {
+        Self {
+            telemetry,
+            api_key: api_key.to_owned(),
+        }
     }
 
     fn track_subscription(
         &self,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
         change: SubscriptionChange,
     ) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            let subject = payload.subject.clone();
+            let subject = subscription.payload().subject.clone();
             metrics.update_user_subscription_count(
-                self.user_id,
+                self.api_key.id(),
+                &self.api_key.user(),
                 &subject,
                 &change,
             );
@@ -129,16 +102,20 @@ impl MetricsHandler {
 
     fn track_connection_duration(&self, duration: Duration) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            metrics
-                .track_connection_duration(&self.user_id.to_string(), duration);
+            metrics.track_connection_duration(
+                self.api_key.id(),
+                &self.api_key.user(),
+                duration,
+            );
         }
     }
 
-    fn track_duplicate_subscription(&self, payload: &SubscriptionPayload) {
+    fn track_duplicate_subscription(&self, subscription: &Subscription) {
         if let Some(metrics) = self.telemetry.base_metrics() {
             metrics.track_duplicate_subscription(
-                self.user_id,
-                &payload.to_string(),
+                self.api_key.id(),
+                &self.api_key.user(),
+                subscription,
             );
         }
     }
@@ -147,10 +124,10 @@ impl MetricsHandler {
 // Connection management
 #[derive(Clone)]
 struct ConnectionManager {
-    user_id: Uuid,
+    api_key: ApiKey,
     start_time: Instant,
-    tx: broadcast::Sender<Uuid>,
-    active_subscriptions: Arc<Mutex<HashSet<String>>>,
+    tx: broadcast::Sender<ApiKey>,
+    active_subscriptions: Arc<Mutex<HashSet<Subscription>>>,
     metrics_handler: MetricsHandler,
 }
 
@@ -160,10 +137,10 @@ impl ConnectionManager {
     pub const MAX_FRAME_SIZE: usize = 8 * 1024 * 1024; // 8MB
     pub const CHANNEL_CAPACITY: usize = 100;
 
-    fn new(user_id: Uuid, metrics_handler: MetricsHandler) -> Self {
+    fn new(api_key: &ApiKey, metrics_handler: MetricsHandler) -> Self {
         let (tx, _) = broadcast::channel(Self::CHANNEL_CAPACITY);
         Self {
-            user_id,
+            api_key: api_key.to_owned(),
             start_time: Instant::now(),
             tx,
             active_subscriptions: Arc::new(Mutex::new(HashSet::new())),
@@ -171,60 +148,49 @@ impl ConnectionManager {
         }
     }
 
-    fn subscribe(&self) -> broadcast::Receiver<Uuid> {
+    fn subscribe(&self) -> broadcast::Receiver<ApiKey> {
         self.tx.subscribe()
     }
 
-    async fn is_subscribed(&self, subscription_id: &str) -> bool {
+    async fn shutdown(&self, api_key: &ApiKey) {
+        let _ = self.tx.send(api_key.to_owned());
+    }
+
+    async fn is_subscribed(&self, subscription: &Subscription) -> bool {
         self.active_subscriptions
             .lock()
             .await
-            .contains(subscription_id)
+            .contains(subscription)
     }
 
     async fn add_subscription(
         &self,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
-        let subscription_id = payload.to_string();
         self.active_subscriptions
             .lock()
             .await
-            .insert(subscription_id);
+            .insert(subscription.to_owned());
         self.metrics_handler
-            .track_subscription(payload, SubscriptionChange::Added);
+            .track_subscription(subscription, SubscriptionChange::Added);
         Ok(())
     }
 
-    async fn remove_subscription(&self, payload: &SubscriptionPayload) {
-        self.shutdown(self.user_id).await;
-        let subscription_id = payload.to_string();
-        if self
-            .active_subscriptions
-            .lock()
-            .await
-            .remove(&subscription_id)
-        {
+    async fn remove_subscription(&self, subscription: &Subscription) {
+        self.shutdown(&self.api_key).await;
+        if self.active_subscriptions.lock().await.remove(subscription) {
             self.metrics_handler
-                .track_subscription(payload, SubscriptionChange::Removed);
+                .track_subscription(subscription, SubscriptionChange::Removed);
         }
     }
 
     async fn clear_subscriptions(&self) {
         let subscriptions = self.active_subscriptions.lock().await;
-        for subscription_id in subscriptions.iter() {
-            let payload =
-                SubscriptionPayload::try_from(subscription_id.clone());
-            if let Ok(payload) = payload {
-                self.remove_subscription(&payload).await;
-                self.metrics_handler
-                    .track_subscription(&payload, SubscriptionChange::Removed);
-            }
+        for item in subscriptions.iter() {
+            self.remove_subscription(item).await;
+            self.metrics_handler
+                .track_subscription(item, SubscriptionChange::Removed);
         }
-    }
-
-    async fn shutdown(&self, user_id: Uuid) {
-        let _ = self.tx.send(user_id);
     }
 
     fn connection_duration(&self) -> Duration {
@@ -234,15 +200,15 @@ impl ConnectionManager {
     async fn check_duplicate_subscription(
         &self,
         session: &mut Session,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
         message_handler: &MessageHandler,
     ) -> Result<bool, WebsocketError> {
-        let subscription_id = payload.to_string();
-        if self.is_subscribed(&subscription_id).await {
-            self.metrics_handler.track_duplicate_subscription(payload);
+        if self.is_subscribed(subscription).await {
+            self.metrics_handler
+                .track_duplicate_subscription(subscription);
             let warning_msg = ServerMessage::Error(format!(
                 "Already subscribed to {}",
-                subscription_id
+                subscription
             ));
             message_handler.send_message(session, warning_msg).await?;
             return Ok(true);
@@ -252,14 +218,14 @@ impl ConnectionManager {
 
     async fn heartbeat(
         &self,
-        user_id: &Uuid,
+        api_key: &ApiKey,
         session: &mut Session,
         last_heartbeat: Instant,
     ) -> Result<(), WebsocketError> {
         let duration = Instant::now().duration_since(last_heartbeat);
         if duration > Self::CLIENT_TIMEOUT {
             tracing::warn!(
-                %user_id,
+                %api_key,
                 timeout = ?Self::CLIENT_TIMEOUT,
                 "Client timeout; disconnecting"
             );
@@ -270,35 +236,36 @@ impl ConnectionManager {
 }
 
 #[derive(Clone)]
-pub struct WsController {
-    auth: AuthManager,
+pub struct WsSession {
+    api_key: ApiKey,
     messaging: MessageHandler,
     connection: ConnectionManager,
     pub streams: Arc<FuelStreams>,
 }
 
-impl WsController {
+impl WsSession {
     pub fn new(
-        user_id: Uuid,
+        api_key: &ApiKey,
         telemetry: Arc<Telemetry<Metrics>>,
         streams: Arc<FuelStreams>,
     ) -> Self {
-        let metrics = MetricsHandler::new(telemetry, user_id);
-        let connection = ConnectionManager::new(user_id, metrics);
+        let metrics = MetricsHandler::new(telemetry, api_key);
+        let connection = ConnectionManager::new(api_key, metrics);
+        let messaging = MessageHandler::new(api_key);
         Self {
-            auth: AuthManager::new(user_id),
-            messaging: MessageHandler::new(user_id),
+            api_key: api_key.to_owned(),
+            messaging,
             connection,
             streams,
         }
     }
 
-    pub fn receiver(&self) -> broadcast::Receiver<Uuid> {
+    pub fn receiver(&self) -> broadcast::Receiver<ApiKey> {
         self.connection.subscribe()
     }
 
-    pub fn user_id(&self) -> &Uuid {
-        self.auth.user_id()
+    pub fn api_key(&self) -> ApiKey {
+        self.api_key.to_owned()
     }
 
     pub async fn send_message(
@@ -317,46 +284,50 @@ impl WsController {
         self.messaging.send_error(session, error).await
     }
 
-    pub async fn is_subscribed(&self, subscription_id: &str) -> bool {
-        self.connection.is_subscribed(subscription_id).await
+    pub async fn is_subscribed(&self, subscription: &Subscription) -> bool {
+        self.connection.is_subscribed(subscription).await
     }
 
     pub async fn add_subscription(
         &self,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
-        self.connection.add_subscription(payload).await
+        self.connection.add_subscription(subscription).await
     }
 
-    pub async fn remove_subscription(&self, payload: &SubscriptionPayload) {
-        self.connection.remove_subscription(payload).await
+    pub async fn remove_subscription(&self, subscription: &Subscription) {
+        self.connection.remove_subscription(subscription).await
     }
 
     pub async fn check_duplicate_subscription(
         &self,
         session: &mut Session,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
     ) -> Result<bool, WebsocketError> {
         self.connection
-            .check_duplicate_subscription(session, payload, &self.messaging)
+            .check_duplicate_subscription(
+                session,
+                subscription,
+                &self.messaging,
+            )
             .await
     }
 
     pub async fn shutdown_subscription(
         &self,
         session: &mut Session,
-        payload: &SubscriptionPayload,
+        subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
-        let user_id = self.auth.user_id();
-        if !self.is_subscribed(&payload.to_string()).await {
+        let api_key = self.api_key();
+        if !self.is_subscribed(subscription).await {
             let warning_msg = ServerMessage::Error(format!(
                 "No active subscription found for {}",
-                payload
+                subscription
             ));
             self.send_message(session, warning_msg).await?;
             return Ok(());
         }
-        self.connection.shutdown(user_id.to_owned()).await;
+        self.connection.shutdown(&api_key).await;
         Ok(())
     }
 
@@ -367,12 +338,10 @@ impl WsController {
     ) {
         let _ = session.close(Some(close_reason.clone())).await;
         self.connection.clear_subscriptions().await;
-
         let duration = self.connection.connection_duration();
         self.connection
             .metrics_handler
             .track_connection_duration(duration);
-
         self.log_connection_close(duration, &close_reason);
     }
 
@@ -381,13 +350,12 @@ impl WsController {
         duration: Duration,
         close_reason: &CloseReason,
     ) {
-        let user_id = self.auth.user_id().to_string();
+        let api_key = self.api_key();
         let description = close_reason.description.as_deref();
-
         if close_reason.code == CloseCode::Normal {
             tracing::info!(
                 target: "websocket",
-                %user_id,
+                %api_key,
                 event = "websocket_connection_closed",
                 duration_secs = duration.as_secs_f64(),
                 close_reason = description,
@@ -396,7 +364,7 @@ impl WsController {
         } else {
             tracing::error!(
                 target: "websocket",
-                %user_id,
+                %api_key,
                 event = "websocket_connection_closed",
                 duration_secs = duration.as_secs_f64(),
                 close_reason = description,
@@ -405,19 +373,13 @@ impl WsController {
         }
     }
 
-    pub fn user_id_from_req(
-        req: &HttpRequest,
-    ) -> Result<Uuid, actix_web::Error> {
-        AuthManager::user_id_from_req(req)
-    }
-
     pub async fn heartbeat(
         &self,
         session: &mut Session,
         last_heartbeat: Instant,
     ) -> Result<(), WebsocketError> {
         self.connection
-            .heartbeat(self.user_id(), session, last_heartbeat)
+            .heartbeat(&self.api_key(), session, last_heartbeat)
             .await
     }
 

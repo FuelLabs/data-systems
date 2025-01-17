@@ -1,35 +1,44 @@
-use fuel_streams_core::{subjects::*, types::*};
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
+use fuel_streams_types::TxId;
 use rayon::prelude::*;
-use tokio::task::JoinHandle;
 
-use crate::*;
+use super::{subjects::*, types::*};
+use crate::{
+    blocks::BlockHeight,
+    inputs::types::*,
+    transactions::Transaction,
+    MsgPayload,
+};
 
-impl Executor<Utxo> {
-    pub fn process(
-        &self,
-        (tx_index, tx): (usize, &Transaction),
-    ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
-        let block_height = self.block_height();
+#[async_trait]
+impl PacketBuilder for Utxo {
+    type Opts = (MsgPayload, usize, Transaction);
+    fn build_packets(
+        (msg_payload, tx_index, tx): &Self::Opts,
+    ) -> Vec<RecordPacket> {
+        let block_height = msg_payload.block_height();
         let tx_id = tx.id.clone();
-        let packets = tx
-            .inputs
+        tx.inputs
             .par_iter()
             .enumerate()
             .map(|(input_index, input)| {
                 let (utxo, subject) = main_subject(
                     block_height.clone(),
-                    tx_index as u32,
+                    *tx_index as u32,
                     input_index as u32,
                     tx_id.clone(),
                     input,
                 );
-                utxo.to_packet(subject)
+                let packet = utxo.to_packet(&subject);
+                match msg_payload.namespace.clone() {
+                    Some(ns) => packet.with_namespace(&ns),
+                    _ => packet,
+                }
             })
-            .collect::<Vec<_>>();
-
-        packets
-            .into_iter()
-            .map(|packet| self.publish(&packet))
             .collect()
     }
 }

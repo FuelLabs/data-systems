@@ -5,7 +5,7 @@ use fuel_message_broker::MessageBroker;
 use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{
     db::{Db, DbItem},
-    record::{Record, RecordPacket},
+    record::Record,
     store::Store,
 };
 use futures::{
@@ -15,7 +15,7 @@ use futures::{
 use tokio::{sync::OnceCell, time::sleep};
 
 use super::{config, StreamError};
-use crate::DeliverPolicy;
+use crate::server::DeliverPolicy;
 
 pub type BoxedStreamItem = Result<Vec<u8>, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
@@ -62,14 +62,12 @@ impl<R: Record> Stream<R> {
 
     pub async fn publish(
         &self,
-        packet: &Arc<RecordPacket<R>>,
-    ) -> Result<R::DbItem, StreamError> {
+        subject: &str,
+        payload: bytes::Bytes,
+    ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
-        let db_record = self.store.insert_record(packet).await?;
-        let encoded_value = db_record.encoded_value().to_vec();
-        let subject = packet.subject_str();
-        broker.publish_event(&subject, encoded_value.into()).await?;
-        Ok(db_record)
+        broker.publish_event(subject, payload).await?;
+        Ok(())
     }
 
     pub async fn subscribe_dynamic(
@@ -83,7 +81,7 @@ impl<R: Record> Stream<R> {
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
                 let height = Some(block_height);
-                let mut historical = store.stream_by_subject(subject_clone, height);
+                let mut historical = store.stream_by_subject(&subject_clone, height);
                 while let Some(result) = historical.next().await {
                     let item = result.map_err(StreamError::Store)?;
                     yield item.encoded_value().to_vec();

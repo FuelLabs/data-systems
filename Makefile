@@ -226,7 +226,7 @@ bench:
 run-publisher: NETWORK="testnet"
 run-publisher: MODE="dev"
 run-publisher: PORT="4000"
-run-publisher: TELEMETRY_PORT="8080"
+run-publisher: TELEMETRY_PORT="9001"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
 run-publisher: FROM_HEIGHT="0"
@@ -250,7 +250,7 @@ run-publisher-testnet-profiling:
 # ------------------------------------------------------------
 
 run-consumer: NATS_URL="localhost:4222"
-run-consumer: PORT="9003"
+run-consumer: PORT="9002"
 run-consumer:
 	cargo run --package sv-consumer --profile dev -- \
 		--nats-url $(NATS_URL) \
@@ -316,7 +316,9 @@ reset-nats: clean-nats start-nats
 
 setup-db:
 	@echo "Setting up database..."
-	@cd crates/fuel-streams-store && cargo sqlx migrate run
+	@cargo sqlx migrate run --source crates/fuel-streams-store/migrations
+	# I removed this for now because it was not working on CI
+	# @cargo sqlx prepare --workspace -- --all-features
 
 reset-db: clean-docker start-docker setup-db
 
@@ -328,7 +330,6 @@ reset-db: clean-docker start-docker setup-db
 NETWORK ?= testnet
 MODE ?= profiling
 PORT ?= 4000
-TELEMETRY_PORT ?= 8080
 
 minikube-setup:
 	@./cluster/scripts/setup_minikube.sh "$(DISK_SIZE)" "$(MEMORY)"

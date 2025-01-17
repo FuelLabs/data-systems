@@ -3,7 +3,7 @@ pub mod websocket;
 use actix_web::web;
 use fuel_web_utils::server::{
     api::with_prefixed_route,
-    middlewares::api_key::transform::ApiKeyAuth,
+    middlewares::api_key::middleware::ApiKeyAuth,
 };
 
 use super::handlers;
@@ -16,7 +16,7 @@ pub fn create_services(
         cfg.app_data(web::Data::new(state.clone()));
         cfg.service(
             web::resource(with_prefixed_route("ws"))
-                .wrap(ApiKeyAuth::new(state.api_key_storage.clone()))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
                 .route(web::get().to({
                     move |req, body, state: web::Data<ServerState>| {
                         handlers::websocket::get_websocket(req, body, state)

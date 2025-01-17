@@ -6,7 +6,6 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Block;
 use crate::Subjects;
 
 #[derive(
@@ -49,20 +48,20 @@ impl Ord for BlockDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket<Block>> for BlockDbItem {
+impl TryFrom<&RecordPacket> for BlockDbItem {
     type Error = RecordPacketError;
-    fn try_from(packet: &RecordPacket<Block>) -> Result<Self, Self::Error> {
-        let record = packet.record.as_ref();
+    fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::Block(_) => Ok(BlockDbItem {
+            Subjects::Block(subject) => Ok(BlockDbItem {
                 subject: packet.subject_str(),
-                value: record.encode_json().expect("Failed to encode block"),
-                block_height: record.height.clone().into(),
-                producer_address: record.producer.to_string(),
+                value: packet.value.to_owned(),
+                block_height: subject.height.unwrap().into(),
+                producer_address: subject.producer.unwrap().to_string(),
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

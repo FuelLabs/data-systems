@@ -5,16 +5,21 @@ use serde::{Deserialize, Serialize};
 use super::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject_id = "blocks"]
-#[subject_wildcard = "blocks.>"]
-#[subject_format = "blocks.{producer}.{block_height}"]
+#[subject(id = "blocks")]
+#[subject(wildcard = "blocks.>")]
+#[subject(format = "blocks.{producer}.{height}")]
 pub struct BlocksSubject {
+    #[subject(sql_column = "producer_address")]
     pub producer: Option<Address>,
-    pub block_height: Option<BlockHeight>,
+    #[subject(sql_column = "block_height")]
+    pub height: Option<BlockHeight>,
 }
 
 impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
-        BlocksSubject::new().with_block_height(Some(block.height.clone()))
+        BlocksSubject {
+            producer: Some(block.producer.to_owned()),
+            height: Some(block.height.to_owned()),
+        }
     }
 }

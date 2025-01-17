@@ -9,19 +9,20 @@ use actix_web::{
     dev::{ServiceRequest, ServiceResponse},
     Error,
     HttpMessage,
-    Result,
 };
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 
-use super::{validator::authorize_request, InMemoryApiKeyStorage};
+use super::{ApiKeyError, ApiKeysManager};
 
 pub struct ApiKeyAuth {
-    api_key_register: Arc<InMemoryApiKeyStorage>,
+    manager: Arc<ApiKeysManager>,
 }
 
 impl ApiKeyAuth {
-    pub fn new(api_key_register: Arc<InMemoryApiKeyStorage>) -> Self {
-        ApiKeyAuth { api_key_register }
+    pub fn new(manager: &Arc<ApiKeysManager>) -> Self {
+        ApiKeyAuth {
+            manager: manager.to_owned(),
+        }
     }
 }
 
@@ -42,15 +43,15 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(ApiKeyAuthMiddleware {
-            service,
-            api_key_register: self.api_key_register.clone(),
+            service: Arc::new(service),
+            manager: self.manager.clone(),
         }))
     }
 }
 
 pub struct ApiKeyAuthMiddleware<S> {
-    service: S,
-    api_key_register: Arc<InMemoryApiKeyStorage>,
+    service: Arc<S>,
+    manager: Arc<ApiKeysManager>,
 }
 
 impl<S, B> actix_service::Service<ServiceRequest> for ApiKeyAuthMiddleware<S>
@@ -90,22 +91,28 @@ where
             })
             .collect();
 
-        // Validate the api key
         let headers = req.headers().clone();
-        let api_key_register = self.api_key_register.clone();
-        match authorize_request((api_key_register, headers, query_map)) {
-            Ok(api_key_info) => {
-                req.extensions_mut().insert(api_key_info.user_id);
-                req.extensions_mut().insert(api_key_info);
-                Box::pin(self.service.call(req))
+        let manager = self.manager.clone();
+        let service = self.service.clone();
+
+        Box::pin(async move {
+            let api_key_str = manager.key_from_headers((headers, query_map))?;
+            let api_key = manager
+                .validate_api_key(&api_key_str)
+                .await?
+                .ok_or_else(|| Error::from(ApiKeyError::Invalid))?;
+
+            match api_key.validate_status() {
+                Ok(()) => {
+                    tracing::debug!(
+                        %api_key,
+                        "Request authenticated successfully"
+                    );
+                    req.extensions_mut().insert(api_key);
+                    service.call(req).await
+                }
+                Err(err) => Err(Error::from(err)),
             }
-            Err(e) => {
-                let err = e.to_string();
-                // If api key is invalid or missing, reject the request
-                Box::pin(async {
-                    Err(actix_web::error::ErrorUnauthorized(err))
-                })
-            }
-        }
+        })
     }
 }

@@ -1,30 +1,35 @@
 use std::sync::Arc;
 
+use fuel_data_parser::DataEncoder;
 use fuel_streams_macros::subject::IntoSubject;
 use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 
 use super::{config, StoreError};
 use crate::{
     db::Db,
-    record::{QueryOptions, Record, RecordPacket},
+    record::{DbTransaction, QueryOptions, Record, RecordPacket},
 };
 
 pub type StoreResult<T> = Result<T, StoreError>;
 
 #[derive(Debug, Clone)]
-pub struct Store<S: Record> {
+pub struct Store<S: Record + DataEncoder> {
     pub db: Arc<Db>,
     pub namespace: Option<String>,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<R: Record> Store<R> {
+impl<R: Record + DataEncoder> Store<R> {
     pub fn new(db: &Arc<Db>) -> Self {
         Self {
             db: Arc::clone(db),
             namespace: None,
             _marker: std::marker::PhantomData,
         }
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.to_owned())
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -35,9 +40,19 @@ impl<R: Record> Store<R> {
 
     pub async fn insert_record(
         &self,
-        packet: &RecordPacket<R>,
+        packet: &RecordPacket,
     ) -> StoreResult<R::DbItem> {
-        with_retry(|| packet.record.insert(&self.db, packet)).await
+        let record = R::insert(&self.db.pool, packet).await?;
+        Ok(record)
+    }
+
+    pub async fn insert_record_with_transaction(
+        &self,
+        tx: &mut DbTransaction,
+        packet: &RecordPacket,
+    ) -> StoreResult<R::DbItem> {
+        let record = R::insert_with_transaction(tx, packet).await?;
+        Ok(record)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -56,11 +71,12 @@ impl<R: Record> Store<R> {
 
     pub fn stream_by_subject(
         &self,
-        subject: Arc<dyn IntoSubject>,
+        subject: &Arc<dyn IntoSubject>,
         from_block: Option<u64>,
     ) -> BoxStream<'static, Result<R::DbItem, StoreError>> {
         let db = Arc::clone(&self.db);
         let namespace = self.namespace.clone();
+        let subject = subject.clone();
         async_stream::stream! {
             let options = QueryOptions::default()
                 .with_namespace(namespace)
@@ -83,31 +99,5 @@ impl<R: Record> Store<R> {
         R::find_last_record(&self.db, options)
             .await
             .map_err(StoreError::from)
-    }
-}
-
-async fn with_retry<F, Fut, T, E>(f: F) -> StoreResult<T>
-where
-    F: Fn() -> Fut,
-    Fut: std::future::Future<Output = Result<T, E>>,
-    StoreError: From<E>,
-{
-    let mut attempt = 0;
-    loop {
-        match f().await {
-            Ok(result) => return Ok(result),
-            Err(err) => {
-                attempt += 1;
-                if attempt >= *config::STORE_MAX_RETRIES {
-                    return Err(StoreError::from(err));
-                }
-
-                // Exponential backoff: 100ms, 200ms, 400ms
-                let initial_backoff_ms = *config::STORE_INITIAL_BACKOFF_MS;
-                let delay = initial_backoff_ms * (1 << (attempt - 1));
-                tokio::time::sleep(std::time::Duration::from_millis(delay))
-                    .await;
-            }
-        }
     }
 }

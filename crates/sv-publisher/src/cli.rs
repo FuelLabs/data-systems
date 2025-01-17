@@ -12,12 +12,12 @@ pub struct Cli {
     /// API port number
     #[arg(
         long,
-        value_name = "PORT",
-        env = "PORT",
-        default_value = "9003",
+        value_name = "TELEMETRY_PORT",
+        env = "TELEMETRY_PORT",
+        default_value = "8080",
         help = "Port number for the API server"
     )]
-    pub port: u16,
+    pub telemetry_port: u16,
     /// Flattened command structure for Fuel Core configuration.
     #[command(flatten)]
     pub fuel_core_config: fuel_core_bin::cli::run::Command,

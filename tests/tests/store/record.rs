@@ -1,83 +1,34 @@
-use std::sync::Arc;
-
 use fuel_streams_core::{subjects::*, types::Block};
-use fuel_streams_domains::blocks::{
-    subjects::BlocksSubject,
-    types::MockBlock,
-    BlockDbItem,
+use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
+use fuel_streams_store::record::{QueryOptions, Record};
+use fuel_streams_test::{
+    create_multiple_records,
+    create_random_db_name,
+    insert_records,
+    insert_records_with_transaction,
+    setup_store,
 };
-use fuel_streams_store::record::{QueryOptions, Record, RecordPacket};
-use fuel_streams_test::{create_random_db_name, setup_store};
-
-#[tokio::test]
-async fn test_block_db_item_conversion() -> anyhow::Result<()> {
-    let block = MockBlock::build(1);
-    let subject = BlocksSubject::from(&block);
-
-    // Create Arc<BlocksSubject> explicitly and use RecordPacket::new
-    let subject_arc: Arc<BlocksSubject> = Arc::new(subject.clone());
-    let packet = RecordPacket::new(subject_arc, &block);
-
-    // Test direct conversion
-    let db_item = BlockDbItem::try_from(&packet)
-        .expect("Failed to convert packet to BlockDbItem");
-
-    let height: i64 = block.height.clone().into();
-    assert_eq!(db_item.subject, subject.parse());
-    assert_eq!(db_item.block_height, height);
-    assert_eq!(db_item.producer_address, block.producer.to_string());
-
-    // Verify we can decode the value back to a block
-    let decoded_block: Block = serde_json::from_slice(&db_item.value)
-        .expect("Failed to decode block from value");
-    assert_eq!(decoded_block, block);
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_basic_insert() -> anyhow::Result<()> {
-    let store = setup_store().await?;
-    let block = MockBlock::build(1);
-    let subject = BlocksSubject::from(&block);
-    let prefix = create_random_db_name();
-    let packet = block
-        .to_packet(Arc::new(subject.clone()))
-        .with_namespace(&prefix);
-
-    let db_record = store.insert_record(&packet).await?;
-    assert_eq!(db_record.subject, packet.subject_str());
-    assert_eq!(Block::from_db_item(&db_record).await?, block);
-
-    Ok(())
-}
+use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn test_multiple_inserts() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
-    let mut store = setup_store().await?;
+    let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
-    let subject = BlocksSubject::from(&MockBlock::build(1));
 
-    // Insert first block
-    let block1 = MockBlock::build(1);
-    let packet = block1
-        .to_packet(Arc::new(subject.clone()))
-        .with_namespace(&prefix);
-    let db_record1 = store.insert_record(&packet).await?;
-
-    // Insert second block
-    let block2 = MockBlock::build(2);
-    let packet = block2
-        .to_packet(Arc::new(subject.clone()))
-        .with_namespace(&prefix);
-    let db_record2 = store.insert_record(&packet).await?;
+    let blocks = create_multiple_records(2, 1);
+    let db_items = insert_records(&store, &prefix, &blocks).await?;
 
     // Verify both records exist and are correct
-    assert_eq!(Block::from_db_item(&db_record1).await?, block1);
-    assert_eq!(Block::from_db_item(&db_record2).await?, block2);
+    let db_record1 = db_items.first().unwrap();
+    let db_record2 = db_items.get(1).unwrap();
+    let block1 = &blocks.first().unwrap().1;
+    let block2 = &blocks.get(1).unwrap().1;
+    assert_eq!(&Block::from_db_item(db_record1).await?, block1);
+    assert_eq!(&Block::from_db_item(db_record2).await?, block2);
 
     // Verify both records are found
-    let subject = BlocksSubject::new().with_block_height(None).dyn_arc();
+    let subject = BlocksSubject::new().with_height(None).dyn_arc();
     let records = store
         .find_many_by_subject(&subject, QueryOptions::default())
         .await?;
@@ -89,37 +40,29 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_find_many_by_subject() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
-    let mut store = setup_store().await?;
+    let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
-    let subject1 = BlocksSubject::from(&MockBlock::build(1));
-    let subject2 = BlocksSubject::from(&MockBlock::build(2));
 
-    // Insert blocks with different subjects
-    let block1 = MockBlock::build(1);
-    let block2 = MockBlock::build(2);
-    let packet1 = block1
-        .to_packet(Arc::new(subject1.clone()))
-        .with_namespace(&prefix);
-    let packet2 = block2
-        .to_packet(Arc::new(subject2.clone()))
-        .with_namespace(&prefix);
-
-    store.insert_record(&packet1).await?;
-    store.insert_record(&packet2).await?;
+    let blocks = create_multiple_records(2, 1);
+    let _ = insert_records(&store, &prefix, &blocks).await?;
+    let block1 = &blocks.first().unwrap().1;
+    let block2 = &blocks.get(1).unwrap().1;
 
     // Test finding by subject1
+    let subject1 = BlocksSubject::build(None, Some(1.into())).dyn_arc();
     let records = store
-        .find_many_by_subject(&subject1.dyn_arc(), QueryOptions::default())
+        .find_many_by_subject(&subject1, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(Block::from_db_item(&records[0]).await?, block1);
+    assert_eq!(&Block::from_db_item(&records[0]).await?, block1);
 
     // Test finding by subject2
+    let subject2 = BlocksSubject::build(None, Some(2.into())).dyn_arc();
     let records = store
-        .find_many_by_subject(&subject2.dyn_arc(), QueryOptions::default())
+        .find_many_by_subject(&subject2, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(Block::from_db_item(&records[0]).await?, block2);
+    assert_eq!(&Block::from_db_item(&records[0]).await?, block2);
 
     Ok(())
 }
@@ -127,29 +70,19 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_find_last_record() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
-    let mut store = setup_store().await?;
+    let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
-    let subject = BlocksSubject::from(&MockBlock::build(1));
 
     // Insert multiple blocks
-    let blocks = vec![
-        MockBlock::build(1),
-        MockBlock::build(2),
-        MockBlock::build(3),
-    ];
-
-    for block in &blocks {
-        let packet = block
-            .to_packet(Arc::new(subject.clone()))
-            .with_namespace(&prefix);
-        store.insert_record(&packet).await?;
-    }
+    let blocks = create_multiple_records(4, 1);
+    let _ = insert_records(&store, &prefix, &blocks).await?;
+    let block4 = &blocks.get(3).unwrap().1;
 
     // Test finding last record
     let last_record = store.find_last_record().await?;
     assert!(last_record.is_some());
     let last_block = Block::from_db_item(&last_record.unwrap()).await?;
-    assert_eq!(last_block, blocks.last().unwrap().clone());
+    assert_eq!(&last_block, block4);
 
     Ok(())
 }
@@ -157,15 +90,41 @@ async fn test_find_last_record() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_subject_matching() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
-    let subject = BlocksSubject::from(&block);
-    let packet = block.to_packet(Arc::new(subject.clone()));
+    let subject = BlocksSubject::from(&block).dyn_arc();
+    let packet = block.to_packet(&subject);
 
     // Test subject matching
     let matched_subject: BlocksSubject = packet
         .subject_matches()
         .expect("Failed to match BlocksSubject");
-
     assert_eq!(matched_subject.parse(), subject.parse());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_insert_with_transaction() -> anyhow::Result<()> {
+    let prefix = create_random_db_name();
+    let mut store = setup_store::<Block>().await?;
+    store.with_namespace(&prefix);
+
+    // Start a transaction
+    let mut tx = store.db.pool.begin().await?;
+    let blocks = create_multiple_records(4, 1);
+    insert_records_with_transaction(&store, &mut tx, &prefix, &blocks).await?;
+    tx.commit().await?;
+
+    // Verify all records were inserted
+    let subject = BlocksSubject::new().with_height(None).dyn_arc();
+    let found_records = store
+        .find_many_by_subject(&subject, QueryOptions::default())
+        .await?;
+    assert_eq!(found_records.len(), 4);
+
+    // Verify the records match the original blocks
+    for (record, item) in found_records.iter().zip(blocks.iter()) {
+        let (_, block) = item;
+        assert_eq!(&Block::from_db_item(record).await?, block);
+    }
 
     Ok(())
 }

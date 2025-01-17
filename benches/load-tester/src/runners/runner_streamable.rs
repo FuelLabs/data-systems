@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::Utc;
-use fuel_streams_core::{subjects::IntoSubject, DeliverPolicy, FuelStreams};
+use fuel_streams_core::{
+    server::DeliverPolicy,
+    subjects::IntoSubject,
+    FuelStreams,
+};
 use fuel_streams_store::record::DataEncoder;
 use futures::StreamExt;
 

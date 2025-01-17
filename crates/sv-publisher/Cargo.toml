@@ -27,8 +27,8 @@ fuel-core-bin = { workspace = true, default-features = false, features = [
 ] }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-message-broker = { workspace = true }
-fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true }
+fuel-streams-domains = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 futures = { workspace = true }
@@ -42,7 +42,13 @@ tracing = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core-types/test-helpers",
+    "fuel-core/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-core/test-helpers",
+    "fuel-streams-store/test-helpers",
+]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 openssl = { version = "0.10.68", features = ["vendored"] }

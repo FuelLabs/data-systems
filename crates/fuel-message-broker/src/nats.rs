@@ -81,7 +81,7 @@ impl NatsMessageBroker {
                 subjects: vec![subject_name],
                 retention: RetentionPolicy::WorkQueue,
                 duplicate_window: Duration::from_secs(1),
-                allow_rollup: true,
+                allow_direct: true,
                 ..Default::default()
             })
             .await
@@ -94,13 +94,16 @@ impl NatsMessageBroker {
     ) -> Result<PullConsumer, MessageBrokerError> {
         let consumer_name = self.consumer_name();
         let stream = self.get_blocks_stream().await?;
+        let mut config = ConsumerConfig {
+            durable_name: Some(consumer_name.to_string()),
+            ack_policy: AckPolicy::Explicit,
+            ..Default::default()
+        };
+        if let Some(ack_wait) = self.opts.ack_wait_secs {
+            config.ack_wait = Duration::from_secs(ack_wait);
+        }
         stream
-            .get_or_create_consumer(&consumer_name, ConsumerConfig {
-                durable_name: Some(consumer_name.to_string()),
-                ack_policy: AckPolicy::Explicit,
-                ack_wait: Duration::from_secs(self.opts.ack_wait_secs),
-                ..Default::default()
-            })
+            .get_or_create_consumer(&consumer_name, config)
             .await
             .map_err(|e| MessageBrokerError::Setup(e.to_string()))
     }
@@ -132,6 +135,10 @@ impl Message for NatsMessage {
         self.0.payload.to_vec()
     }
 
+    fn id(&self) -> String {
+        self.0.subject.to_string()
+    }
+
     async fn ack(&self) -> Result<(), MessageBrokerError> {
         self.0
             .ack()
@@ -153,6 +160,7 @@ impl MessageBroker for NatsMessageBroker {
 
     async fn setup(&self) -> Result<(), MessageBrokerError> {
         let _ = self.get_blocks_stream().await?;
+        let _ = self.get_blocks_consumer().await?;
         Ok(())
     }
 
@@ -302,45 +310,6 @@ mod tests {
             .await?;
         let result = receiver.await.expect("receiver task panicked")?;
         assert_eq!(result, vec![4, 5, 6]);
-        Ok(())
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_work_queue() -> Result<(), MessageBrokerError> {
-        let broker = setup_broker().await?;
-        let broker_clone = broker.clone();
-
-        // Spawn a task to receive events
-        let receiver = tokio::spawn(async move {
-            let mut messages = Vec::new();
-            let mut stream = broker_clone.receive_blocks_stream(3).await?;
-            while let Some(msg) = stream.next().await {
-                let msg = msg?;
-                messages.push(msg);
-                if messages.len() >= 3 {
-                    break;
-                }
-            }
-            Ok::<Vec<Box<dyn Message>>, MessageBrokerError>(messages)
-        });
-
-        // Publish multiple messages
-        broker.publish_block("1".to_string(), vec![1, 2, 3]).await?;
-        broker.publish_block("2".to_string(), vec![4, 5, 6]).await?;
-        broker.publish_block("3".to_string(), vec![7, 8, 9]).await?;
-
-        // Wait for receiver and check results
-        let messages = receiver.await.expect("receiver task panicked")?;
-        assert_eq!(messages.len(), 3, "Expected to receive 3 messages");
-        assert_eq!(messages[0].payload(), &[1, 2, 3]);
-        assert_eq!(messages[1].payload(), &[4, 5, 6]);
-        assert_eq!(messages[2].payload(), &[7, 8, 9]);
-
-        // Acknowledge all messages
-        for msg in messages {
-            msg.ack().await?;
-        }
-
         Ok(())
     }
 

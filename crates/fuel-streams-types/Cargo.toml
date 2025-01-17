@@ -11,17 +11,29 @@ version = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
     "test-helpers",
 ] }
+fuel-core-bin = { workspace = true, default-features = false, features = [
+    "p2p",
+    "relayer",
+    "rocksdb",
+] }
 fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
 fuel-core-importer = { workspace = true }
+fuel-core-services = { workspace = true }
+fuel-core-storage = { workspace = true }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 hex = { workspace = true }
 serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
 
 [features]
 default = []

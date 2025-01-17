@@ -26,3 +26,9 @@ impl From<FuelCoreTxPointer> for TxPointer {
         }
     }
 }
+
+impl From<Option<FuelCoreTxPointer>> for TxPointer {
+    fn from(value: Option<FuelCoreTxPointer>) -> Self {
+        value.unwrap_or_default().into()
+    }
+}

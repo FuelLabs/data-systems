@@ -34,14 +34,12 @@
 
 ## 📝 About The Project
 
-> [!WARNING]
-> This project is currently under development and is not yet ready for production use.
-
-Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It provides an efficient and user-friendly interface for developers to interact with real-time blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable streaming.
+Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It provides an efficient and user-friendly interface for developers to interact with real-time and historical blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable streaming.
 
 ## 🚀 Features
 
 - Real-time streaming of Fuel blockchain data
+- Historical streaming of Fuel blockchain data
 - Support for Fuel-specific data types
 - Efficient data handling using NATS
 - Easy-to-use API for subscribing to and processing blockchain events
@@ -69,7 +67,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a client and establish connection
-    let mut client = Client::new(FuelNetwork::Local).await?;
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     let mut connection = client.connect().await?;
 
     println!("Listening for blocks...");
@@ -98,11 +96,7 @@ use fuel_streams::prelude::*;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create client with custom connection options
-    let client = Client::with_opts(ConnectionOpts {
-        network: FuelNetwork::Local,
-        api_key: Some("your_api_key".to_string()),
-    }).await?;
-
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     Ok(())
 }
 ```
@@ -117,7 +111,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     let mut connection = client.connect().await?;
 
     println!("Listening for transactions...");

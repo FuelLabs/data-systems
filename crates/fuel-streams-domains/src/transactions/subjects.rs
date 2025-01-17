@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::{blocks::types::*, transactions::types::*};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject_id = "transactions"]
-#[subject_wildcard = "transactions.>"]
-#[subject_format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{kind}"]
+#[subject(id = "transactions")]
+#[subject(wildcard = "transactions.>")]
+#[subject(
+    format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{kind}"
+)]
 pub struct TransactionsSubject {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,

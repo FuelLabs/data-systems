@@ -196,3 +196,121 @@ impl InputMessage {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MockInput;
+impl MockInput {
+    pub fn contract() -> Input {
+        Input::Contract(InputContract {
+            balance_root: Bytes32::default(),
+            contract_id: Bytes32::default(),
+            state_root: Bytes32::default(),
+            tx_pointer: TxPointer::default(),
+            utxo_id: UtxoId::default(),
+        })
+    }
+
+    pub fn coin_signed() -> Input {
+        Input::Coin(InputCoin {
+            amount: 100,
+            asset_id: AssetId::default(),
+            owner: Address::default(),
+            predicate: HexData::default(),
+            predicate_data: HexData::default(),
+            predicate_gas_used: 0,
+            tx_pointer: TxPointer::default(),
+            utxo_id: UtxoId::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn coin_predicate() -> Input {
+        Input::Coin(InputCoin {
+            amount: 100,
+            asset_id: AssetId::default(),
+            owner: Address::default(),
+            predicate: HexData(vec![1, 2, 3].into()),
+            predicate_data: HexData(vec![4, 5, 6].into()),
+            predicate_gas_used: 1000,
+            tx_pointer: TxPointer::default(),
+            utxo_id: UtxoId::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn message_coin_signed() -> Input {
+        Input::Message(InputMessage {
+            amount: 100,
+            data: HexData::default(),
+            nonce: Nonce::default(),
+            predicate: HexData::default(),
+            predicate_length: 0,
+            predicate_data: HexData::default(),
+            predicate_data_length: 0,
+            predicate_gas_used: 0,
+            recipient: Address::default(),
+            sender: Address::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn message_coin_predicate() -> Input {
+        Input::Message(InputMessage {
+            amount: 100,
+            data: HexData::default(),
+            nonce: Nonce::default(),
+            predicate: HexData(vec![1, 2, 3].into()),
+            predicate_length: 3,
+            predicate_data: HexData(vec![4, 5, 6].into()),
+            predicate_data_length: 3,
+            predicate_gas_used: 1000,
+            recipient: Address::default(),
+            sender: Address::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn message_data_signed() -> Input {
+        Input::Message(InputMessage {
+            amount: 100,
+            data: HexData(vec![7, 8, 9].into()),
+            nonce: Nonce::default(),
+            predicate: HexData::default(),
+            predicate_length: 0,
+            predicate_data: HexData::default(),
+            predicate_data_length: 0,
+            predicate_gas_used: 0,
+            recipient: Address::default(),
+            sender: Address::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn message_data_predicate() -> Input {
+        Input::Message(InputMessage {
+            amount: 100,
+            data: HexData(vec![7, 8, 9].into()),
+            nonce: Nonce::default(),
+            predicate: HexData(vec![1, 2, 3].into()),
+            predicate_length: 3,
+            predicate_data: HexData(vec![4, 5, 6].into()),
+            predicate_data_length: 3,
+            predicate_gas_used: 1000,
+            recipient: Address::default(),
+            sender: Address::default(),
+            witness_index: 0,
+        })
+    }
+
+    pub fn all() -> Vec<Input> {
+        vec![
+            Self::contract(),
+            Self::coin_signed(),
+            Self::coin_predicate(),
+            Self::message_coin_signed(),
+            Self::message_coin_predicate(),
+            Self::message_data_signed(),
+            Self::message_data_predicate(),
+        ]
+    }
+}

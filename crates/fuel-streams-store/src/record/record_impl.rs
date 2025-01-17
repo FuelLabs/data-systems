@@ -3,13 +3,16 @@ use std::sync::Arc;
 use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_macros::subject::IntoSubject;
-use sqlx::{Postgres, QueryBuilder};
+use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket};
 use crate::db::{Db, DbError, DbItem, DbResult};
 
 pub trait RecordEncoder: DataEncoder<Err = DbError> {}
 impl<T: DataEncoder<Err = DbError>> RecordEncoder for T {}
+
+pub type DbTransaction = sqlx::Transaction<'static, sqlx::Postgres>;
+pub type DbConnection = PgConnection;
 
 #[async_trait]
 pub trait Record: RecordEncoder + 'static {
@@ -18,19 +21,31 @@ pub trait Record: RecordEncoder + 'static {
     const ENTITY: RecordEntity;
     const ORDER_PROPS: &'static [&'static str];
 
-    fn to_packet(&self, subject: Arc<dyn IntoSubject>) -> RecordPacket<Self> {
-        RecordPacket::new(subject, self)
+    async fn insert<'e, 'c: 'e, E>(
+        executor: E,
+        packet: &RecordPacket,
+    ) -> DbResult<Self::DbItem>
+    where
+        'c: 'e,
+        E: PgExecutor<'c>;
+
+    async fn insert_with_transaction(
+        tx: &mut DbTransaction,
+        packet: &RecordPacket,
+    ) -> DbResult<Self::DbItem> {
+        Self::insert(&mut **tx, packet).await
+    }
+
+    fn to_packet(&self, subject: &Arc<dyn IntoSubject>) -> RecordPacket {
+        let value = self
+            .encode_json()
+            .unwrap_or_else(|_| panic!("Encode failed for {}", Self::ENTITY));
+        RecordPacket::new(subject.to_owned(), value)
     }
 
     async fn from_db_item(record: &Self::DbItem) -> DbResult<Self> {
         Self::decode(record.encoded_value()).await
     }
-
-    async fn insert(
-        &self,
-        db: &Db,
-        packet: &RecordPacket<Self>,
-    ) -> DbResult<Self::DbItem>;
 
     fn build_find_many_query(
         subject: Arc<dyn IntoSubject>,
