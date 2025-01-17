@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Ident};
 
+use crate::fields::FieldInfo;
+
 pub fn parse_fn(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
     let format_str = super::attrs::subject_attr("format", &input.attrs);
     let parse_fields = field_names.iter().map(|name| {
@@ -29,25 +31,33 @@ pub fn wildcard_fn() -> TokenStream {
     }
 }
 
-pub fn to_sql_where_fn(field_names: &[&Ident]) -> TokenStream {
-    let field_props = field_names.iter().map(|name| {
-        quote! {
-            match &self.#name {
-                Some(val) => Some(format!("{} = '{}'", stringify!(#name), val)),
-                None => None,
+pub fn to_sql_where_fn(fields: &[FieldInfo]) -> TokenStream {
+    let conditions: Vec<TokenStream> = fields
+        .iter()
+        .map(|field| {
+            let name = field.ident;
+            let column_name = match &field.attributes.sql_column {
+                Some(val) => val.clone(),
+                None => name.to_string(),
+            };
+
+            quote! {
+                if let Some(val) = &self.#name {
+                    conditions.push(format!("{} = '{}'", #column_name, val));
+                }
             }
-        }
-    });
+        })
+        .collect();
 
     quote! {
         fn to_sql_where(&self) -> String {
-            let pattern = self.parse();
-            if pattern.ends_with(".>") {
-                return "TRUE".to_string();
+            let mut conditions = Vec::new();
+            #(#conditions)*
+            if conditions.is_empty() {
+                "TRUE".to_string()
+            } else {
+                conditions.join(" AND ")
             }
-
-            let conditions = vec![#(#field_props),*].into_iter().filter_map(|x| x).collect::<Vec<_>>();
-            conditions.join(" AND ")
         }
     }
 }

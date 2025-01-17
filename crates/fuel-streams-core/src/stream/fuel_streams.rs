@@ -32,8 +32,8 @@ impl FuelStreams {
         }
     }
 
-    pub fn arc(self) -> Arc<Self> {
-        Arc::new(self)
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.clone())
     }
 
     pub fn broker(&self) -> Arc<dyn MessageBroker> {

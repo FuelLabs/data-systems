@@ -54,8 +54,20 @@ impl From<FuelCoreBlockHeight> for BlockHeight {
     }
 }
 
+impl From<i32> for BlockHeight {
+    fn from(value: i32) -> Self {
+        BlockHeight(value.to_string())
+    }
+}
+
 impl From<u32> for BlockHeight {
     fn from(value: u32) -> Self {
+        BlockHeight(value.to_string())
+    }
+}
+
+impl From<i64> for BlockHeight {
+    fn from(value: i64) -> Self {
         BlockHeight(value.to_string())
     }
 }

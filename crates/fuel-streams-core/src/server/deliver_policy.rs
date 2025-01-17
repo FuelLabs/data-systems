@@ -10,7 +10,7 @@ pub enum DeliverPolicyError {
     InvalidBlockHeight(String),
 }
 
-#[derive(Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Hash, Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum DeliverPolicy {
     #[default]

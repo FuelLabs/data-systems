@@ -1,8 +1,12 @@
 use async_nats::SubscribeError;
 use fuel_message_broker::MessageBrokerError;
-use fuel_streams_store::{db::DbError, store::StoreError};
+use fuel_streams_store::{
+    db::DbError,
+    record::RecordPacketError,
+    store::StoreError,
+};
 
-use crate::DeliverPolicyError;
+use crate::server::DeliverPolicyError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StreamError {
@@ -16,4 +20,6 @@ pub enum StreamError {
     DeliverPolicy(#[from] DeliverPolicyError),
     #[error(transparent)]
     MessageBrokerClient(#[from] MessageBrokerError),
+    #[error(transparent)]
+    RecordPacket(#[from] RecordPacketError),
 }

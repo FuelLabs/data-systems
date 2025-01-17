@@ -1,8 +1,8 @@
 use fuel_streams_core::types::Block;
-use fuel_streams_store::record::Record;
 use fuel_streams_test::{
-    create_multiple_test_data,
+    create_multiple_records,
     create_random_db_name,
+    insert_records,
     setup_store,
 };
 use futures::StreamExt;
@@ -13,19 +13,13 @@ async fn test_stream_by_subject() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
-    let data = create_multiple_test_data(10, 0);
 
-    // Insert test records
-    for (subject, block) in &data {
-        let packet = block
-            .to_packet(subject.clone().dyn_arc())
-            .with_namespace(&prefix);
-        store.insert_record(&packet).await?;
-    }
+    let data = create_multiple_records(10, 0);
+    let _ = insert_records(&store, &prefix, &data).await?;
 
     // Test streaming with the first subject
     let subject = data[0].0.clone();
-    let mut stream = store.stream_by_subject(subject.arc(), Some(0));
+    let mut stream = store.stream_by_subject(&subject, Some(0));
     let mut count = 0;
     while let Some(result) = stream.next().await {
         let record = result?;

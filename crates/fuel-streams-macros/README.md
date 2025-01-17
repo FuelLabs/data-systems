@@ -50,9 +50,9 @@ Example:
 use fuel_streams_macros::subject::*;
 
 #[derive(Subject, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-#[subject_id = "test"]
-#[subject_wildcard = "test.>"]
-#[subject_format = "test.{field1}.{field2}"]
+#[subject(id = "test")]
+#[subject(wildcard = "test.>")]
+#[subject(format = "test.{field1}.{field2}")]
 struct TestSubject {
     field1: Option<String>,
     field2: Option<u32>,

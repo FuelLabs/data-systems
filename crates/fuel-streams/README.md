@@ -69,7 +69,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a client and establish connection
-    let mut client = Client::new(FuelNetwork::Local).await?;
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     let mut connection = client.connect().await?;
 
     println!("Listening for blocks...");
@@ -98,11 +98,7 @@ use fuel_streams::prelude::*;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create client with custom connection options
-    let client = Client::with_opts(ConnectionOpts {
-        network: FuelNetwork::Local,
-        api_key: Some("your_api_key".to_string()),
-    }).await?;
-
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     Ok(())
 }
 ```
@@ -117,7 +113,7 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = Client::new(FuelNetwork::Testnet).await?;
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     let mut connection = client.connect().await?;
 
     println!("Listening for transactions...");

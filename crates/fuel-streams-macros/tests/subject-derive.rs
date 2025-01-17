@@ -2,12 +2,15 @@ use fuel_streams_macros::subject::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject_id = "test"]
-#[subject_wildcard = "test.>"]
-#[subject_format = "test.{field1}.{field2}.{field3}"]
+#[subject(id = "test")]
+#[subject(wildcard = "test.>")]
+#[subject(format = "test.{field1}.{field2}.{field3}")]
 struct TestSubject {
+    #[subject(sql_column = "field_id1")]
     pub field1: Option<String>,
+    #[subject(sql_column = "field_id2")]
     pub field2: Option<u32>,
+    #[subject(sql_column = "field_id3")]
     pub field3: Option<String>,
 }
 
@@ -62,7 +65,7 @@ fn subject_derive_sql_where_exact_match() {
     assert_eq!(subject.parse(), "test.foo.55.bar");
     assert_eq!(
         subject.to_sql_where(),
-        "field1 = 'foo' AND field2 = '55' AND field3 = 'bar'"
+        "field_id1 = 'foo' AND field_id2 = '55' AND field_id3 = 'bar'"
     );
 }
 
@@ -75,7 +78,10 @@ fn subject_derive_sql_where_wildcards() {
     };
 
     assert_eq!(subject.parse(), "test.*.55.bar");
-    assert_eq!(subject.to_sql_where(), "field2 = '55' AND field3 = 'bar'");
+    assert_eq!(
+        subject.to_sql_where(),
+        "field_id2 = '55' AND field_id3 = 'bar'"
+    );
 }
 
 #[test]
@@ -86,7 +92,10 @@ fn subject_derive_sql_where_greater_than() {
         field3: Some("bar".to_string()),
     };
 
-    assert_eq!(subject.to_sql_where(), "field1 = 'foo' AND field3 = 'bar'");
+    assert_eq!(
+        subject.to_sql_where(),
+        "field_id1 = 'foo' AND field_id3 = 'bar'"
+    );
 }
 
 #[test]

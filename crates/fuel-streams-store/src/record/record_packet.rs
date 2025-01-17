@@ -1,8 +1,8 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, str::FromStr, sync::Arc};
 
 use fuel_streams_macros::subject::IntoSubject;
 
-use crate::record::Record;
+use super::{Record, RecordEntity};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RecordPacketError {
@@ -10,22 +10,38 @@ pub enum RecordPacketError {
     DowncastError,
     #[error("Subject mismatch")]
     SubjectMismatch,
+    #[error("Entity not found: {0}")]
+    EntityNotFound(String),
+}
+
+pub trait PacketBuilder: Send + Sync + 'static {
+    type Opts;
+    fn build_packets(opts: &Self::Opts) -> Vec<RecordPacket>;
 }
 
 #[derive(Debug, Clone)]
-pub struct RecordPacket<R: Record> {
-    pub record: Arc<R>,
+pub struct RecordPacket {
+    pub value: Vec<u8>,
     pub subject: Arc<dyn IntoSubject>,
     namespace: Option<String>,
 }
 
-impl<R: Record> RecordPacket<R> {
-    pub fn new(subject: Arc<dyn IntoSubject>, record: &R) -> Self {
+impl RecordPacket {
+    pub fn new(subject: Arc<dyn IntoSubject>, value: Vec<u8>) -> Self {
         Self {
-            subject: Arc::clone(&subject),
-            record: Arc::new(record.clone()),
+            value,
+            subject,
             namespace: None,
         }
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.to_owned())
+    }
+
+    pub fn to_record<R: Record>(&self) -> R {
+        R::decode_json(&self.value)
+            .unwrap_or_else(|_| panic!("Decoded failed for {}", R::ENTITY))
     }
 
     pub fn with_namespace(mut self, namespace: &str) -> Self {
@@ -43,6 +59,21 @@ impl<R: Record> RecordPacket<R> {
         }
     }
 
+    pub fn get_entity(&self) -> Result<RecordEntity, RecordPacketError> {
+        let subject_str = self.subject_str();
+        let first_part = match self.namespace {
+            Some(_) => subject_str.split('.').nth(1),
+            None => subject_str.split('.').next(),
+        };
+        match first_part {
+            Some(value) => RecordEntity::from_str(value)
+                .map_err(RecordPacketError::EntityNotFound),
+            _ => Err(RecordPacketError::EntityNotFound(
+                "not_defined".to_string(),
+            )),
+        }
+    }
+
     pub fn subject_str(&self) -> String {
         if cfg!(any(test, feature = "test-helpers")) {
             let mut subject = self.subject.parse();
@@ -57,9 +88,5 @@ impl<R: Record> RecordPacket<R> {
 
     pub fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
-    }
-
-    pub fn arc(&self) -> Arc<Self> {
-        Arc::new(self.clone())
     }
 }

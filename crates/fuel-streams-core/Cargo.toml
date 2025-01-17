@@ -14,34 +14,20 @@ rust-version = { workspace = true }
 anyhow = { workspace = true }
 async-nats = { workspace = true }
 async-stream = { workspace = true }
-async-trait = { workspace = true }
+bytes = { workspace = true }
 dotenvy = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
-] }
-fuel-core-bin = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core-importer = { workspace = true }
-fuel-core-services = { workspace = true, default-features = false, features = ["test-helpers"] }
-fuel-core-storage = { workspace = true }
-fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
+fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-message-broker = { workspace = true }
 fuel-streams-domains = { workspace = true }
 fuel-streams-macros = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
+fuel-web-utils = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tracing = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
@@ -49,4 +35,11 @@ serde_json = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-domains/test-helpers",
+    "fuel-streams-macros/test-helpers",
+    "fuel-streams-store/test-helpers",
+    "fuel-streams-types/test-helpers",
+]

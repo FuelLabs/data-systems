@@ -29,8 +29,7 @@ runs:
         set_env_var "NATS_SYSTEM_PASS" "sys"
         set_env_var "NATS_ADMIN_USER" "admin"
         set_env_var "NATS_ADMIN_PASS" "admin"
-        set_env_var "NATS_PUBLIC_USER" "default_user"
-        set_env_var "NATS_PUBLIC_PASS" ""
+        set_env_var "DATABASE_URL" "postgresql://root@127.0.0.1:26257/defaultdb?sslmode=disable"
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@master

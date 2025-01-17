@@ -19,6 +19,16 @@ pub enum Receipt {
     Burn(BurnReceipt),
 }
 
+impl Receipt {
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn as_call(&self) -> CallReceipt {
+        match self {
+            Receipt::Call(receipt) => receipt.clone(),
+            _ => panic!("Invalid receipt type"),
+        }
+    }
+}
+
 // Individual Receipt Types
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -159,6 +169,169 @@ pub struct BurnReceipt {
     pub val: FuelCoreWord,
     pub pc: FuelCoreWord,
     pub is: FuelCoreWord,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MockReceipt;
+impl MockReceipt {
+    pub fn call() -> Receipt {
+        Receipt::Call(CallReceipt {
+            id: ContractId::default(),
+            to: ContractId::default(),
+            amount: 100,
+            asset_id: AssetId::default(),
+            gas: 1000,
+            param1: 0,
+            param2: 0,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn return_receipt() -> Receipt {
+        Receipt::Return(ReturnReceipt {
+            id: ContractId::default(),
+            val: 0,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn return_data() -> Receipt {
+        Receipt::ReturnData(ReturnDataReceipt {
+            id: ContractId::default(),
+            ptr: 0,
+            len: 0,
+            digest: Bytes32::default(),
+            pc: 0,
+            is: 0,
+            data: Some(vec![1, 2, 3]),
+        })
+    }
+
+    pub fn panic() -> Receipt {
+        Receipt::Panic(PanicReceipt {
+            id: ContractId::default(),
+            reason: PanicInstruction::default(),
+            pc: 0,
+            is: 0,
+            contract_id: None,
+        })
+    }
+
+    pub fn revert() -> Receipt {
+        Receipt::Revert(RevertReceipt {
+            id: ContractId::default(),
+            ra: 0,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn log() -> Receipt {
+        Receipt::Log(LogReceipt {
+            id: ContractId::default(),
+            ra: 0,
+            rb: 0,
+            rc: 0,
+            rd: 0,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn log_data() -> Receipt {
+        Receipt::LogData(LogDataReceipt {
+            id: ContractId::default(),
+            ra: 0,
+            rb: 0,
+            ptr: 0,
+            len: 0,
+            digest: Bytes32::default(),
+            pc: 0,
+            is: 0,
+            data: Some(vec![4, 5, 6]),
+        })
+    }
+
+    pub fn transfer() -> Receipt {
+        Receipt::Transfer(TransferReceipt {
+            id: ContractId::default(),
+            to: ContractId::default(),
+            amount: 100,
+            asset_id: AssetId::default(),
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn transfer_out() -> Receipt {
+        Receipt::TransferOut(TransferOutReceipt {
+            id: ContractId::default(),
+            to: Address::default(),
+            amount: 100,
+            asset_id: AssetId::default(),
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn script_result() -> Receipt {
+        Receipt::ScriptResult(ScriptResultReceipt {
+            result: ScriptExecutionResult::Success,
+            gas_used: 1000,
+        })
+    }
+
+    pub fn message_out() -> Receipt {
+        Receipt::MessageOut(MessageOutReceipt {
+            sender: Address::default(),
+            recipient: Address::default(),
+            amount: 100,
+            nonce: Nonce::default(),
+            len: 0,
+            digest: Bytes32::default(),
+            data: Some(vec![7, 8, 9]),
+        })
+    }
+
+    pub fn mint() -> Receipt {
+        Receipt::Mint(MintReceipt {
+            sub_id: Bytes32::default(),
+            contract_id: ContractId::default(),
+            val: 100,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn burn() -> Receipt {
+        Receipt::Burn(BurnReceipt {
+            sub_id: Bytes32::default(),
+            contract_id: ContractId::default(),
+            val: 100,
+            pc: 0,
+            is: 0,
+        })
+    }
+
+    pub fn all() -> Vec<Receipt> {
+        vec![
+            Self::call(),
+            Self::return_receipt(),
+            Self::return_data(),
+            Self::panic(),
+            Self::revert(),
+            Self::log(),
+            Self::log_data(),
+            Self::transfer(),
+            Self::transfer_out(),
+            Self::script_result(),
+            Self::message_out(),
+            Self::mint(),
+            Self::burn(),
+        ]
+    }
 }
 
 impl From<FuelCoreReceipt> for Receipt {

@@ -1,34 +1,41 @@
-use fuel_streams_core::{subjects::*, types::*};
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
+use fuel_streams_types::TxId;
 use rayon::prelude::*;
-use tokio::task::JoinHandle;
 
-use crate::*;
+use super::{subjects::*, types::*};
+use crate::{blocks::BlockHeight, transactions::Transaction, MsgPayload};
 
-impl Executor<Receipt> {
-    pub fn process(
-        &self,
-        (tx_index, tx): (usize, &Transaction),
-    ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
-        let block_height = self.block_height();
+#[async_trait]
+impl PacketBuilder for Receipt {
+    type Opts = (MsgPayload, usize, Transaction);
+    fn build_packets(
+        (msg_payload, tx_index, tx): &Self::Opts,
+    ) -> Vec<RecordPacket> {
+        let block_height = msg_payload.block_height();
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
-        let packets = receipts
+        receipts
             .par_iter()
             .enumerate()
-            .flat_map(|(receipt_index, receipt)| {
-                let main_subject = main_subject(
+            .map(|(receipt_index, receipt)| {
+                let subject = main_subject(
                     block_height.clone(),
-                    tx_index as u32,
+                    *tx_index as u32,
                     receipt_index as u32,
                     tx_id.clone(),
                     receipt,
                 );
-                let receipt: Receipt = receipt.to_owned();
-                vec![receipt.to_packet(main_subject)]
+                let packet = receipt.to_packet(&subject);
+                match msg_payload.namespace.clone() {
+                    Some(ns) => packet.with_namespace(&ns),
+                    _ => packet,
+                }
             })
-            .collect::<Vec<_>>();
-
-        packets.iter().map(|packet| self.publish(packet)).collect()
+            .collect()
     }
 }
 
@@ -50,9 +57,9 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from_contract_id: Some(from.to_owned()),
-            to_contract_id: Some(to.to_owned()),
-            asset_id: Some(asset_id.to_owned()),
+            from: Some(from.to_owned()),
+            to: Some(to.to_owned()),
+            asset: Some(asset_id.to_owned()),
         }
         .arc(),
         Receipt::Return(ReturnReceipt { id, .. }) => ReceiptsReturnSubject {
@@ -60,7 +67,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(id.to_owned()),
+            contract: Some(id.to_owned()),
         }
         .arc(),
         Receipt::ReturnData(ReturnDataReceipt { id, .. }) => {
@@ -69,7 +76,7 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 receipt_index: Some(receipt_index),
-                contract_id: Some(id.to_owned()),
+                contract: Some(id.to_owned()),
             }
             .arc()
         }
@@ -78,7 +85,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(id.to_owned()),
+            contract: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Revert(RevertReceipt { id, .. }) => ReceiptsRevertSubject {
@@ -86,7 +93,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(id.to_owned()),
+            contract: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Log(LogReceipt { id, .. }) => ReceiptsLogSubject {
@@ -94,7 +101,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(id.to_owned()),
+            contract: Some(id.to_owned()),
         }
         .arc(),
         Receipt::LogData(LogDataReceipt { id, .. }) => ReceiptsLogDataSubject {
@@ -102,7 +109,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(id.to_owned()),
+            contract: Some(id.to_owned()),
         }
         .arc(),
         Receipt::Transfer(TransferReceipt {
@@ -115,9 +122,9 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from_contract_id: Some(from.to_owned()),
-            to_contract_id: Some(to.to_owned()),
-            asset_id: Some(asset_id.to_owned()),
+            from: Some(from.to_owned()),
+            to: Some(to.to_owned()),
+            asset: Some(asset_id.to_owned()),
         }
         .arc(),
 
@@ -131,9 +138,9 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            from_contract_id: Some(from.to_owned()),
+            from: Some(from.to_owned()),
             to_address: Some(to.to_owned()),
-            asset_id: Some(asset_id.to_owned()),
+            asset: Some(asset_id.to_owned()),
         }
         .arc(),
 
@@ -153,8 +160,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            sender_address: Some(sender.to_owned()),
-            recipient_address: Some(recipient.to_owned()),
+            sender: Some(sender.to_owned()),
+            recipient: Some(recipient.to_owned()),
         }
         .arc(),
         Receipt::Mint(MintReceipt {
@@ -166,7 +173,7 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(contract_id.to_owned()),
+            contract: Some(contract_id.to_owned()),
             sub_id: Some((*sub_id).to_owned()),
         }
         .arc(),
@@ -179,79 +186,9 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             receipt_index: Some(receipt_index),
-            contract_id: Some(contract_id.to_owned()),
+            contract: Some(contract_id.to_owned()),
             sub_id: Some((*sub_id).to_owned()),
         }
         .arc(),
     }
 }
-
-// pub fn identifiers(
-//     receipt: &Receipt,
-//     tx_id: &Bytes32,
-//     index: u8,
-// ) -> Vec<Identifier> {
-//     match receipt {
-//         Receipt::Call(CallReceipt {
-//             id: from,
-//             to,
-//             asset_id,
-//             ..
-//         }) => {
-//             vec![
-//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-//             ]
-//         }
-//         Receipt::Return(ReturnReceipt { id, .. })
-//         | Receipt::ReturnData(ReturnDataReceipt { id, .. })
-//         | Receipt::Panic(PanicReceipt { id, .. })
-//         | Receipt::Revert(RevertReceipt { id, .. })
-//         | Receipt::Log(LogReceipt { id, .. })
-//         | Receipt::LogData(LogDataReceipt { id, .. }) => {
-//             vec![Identifier::ContractID(tx_id.to_owned(), index, id.into())]
-//         }
-//         Receipt::Transfer(TransferReceipt {
-//             id: from,
-//             to,
-//             asset_id,
-//             ..
-//         }) => {
-//             vec![
-//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-//             ]
-//         }
-//         Receipt::TransferOut(TransferOutReceipt {
-//             id: from,
-//             to,
-//             asset_id,
-//             ..
-//         }) => {
-//             vec![
-//                 Identifier::ContractID(tx_id.to_owned(), index, from.into()),
-//                 Identifier::ContractID(tx_id.to_owned(), index, to.into()),
-//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-//             ]
-//         }
-//         Receipt::MessageOut(MessageOutReceipt {
-//             sender, recipient, ..
-//         }) => {
-//             vec![
-//                 Identifier::Address(tx_id.to_owned(), index, sender.into()),
-//                 Identifier::Address(tx_id.to_owned(), index, recipient.into()),
-//             ]
-//         }
-//         Receipt::Mint(MintReceipt { contract_id, .. })
-//         | Receipt::Burn(BurnReceipt { contract_id, .. }) => {
-//             vec![Identifier::ContractID(
-//                 tx_id.to_owned(),
-//                 index,
-//                 contract_id.into(),
-//             )]
-//         }
-//         _ => Vec::new(),
-//     }
-// }

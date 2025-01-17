@@ -1,34 +1,46 @@
-use fuel_streams_core::{subjects::*, types::*};
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
+use fuel_streams_types::{ContractId, TxId};
 use rayon::prelude::*;
-use tokio::task::JoinHandle;
 
-use crate::*;
+use super::{subjects::*, types::*};
+use crate::{
+    blocks::BlockHeight,
+    inputs::Input,
+    transactions::Transaction,
+    MsgPayload,
+};
 
-impl Executor<Output> {
-    pub fn process(
-        &self,
-        (tx_index, tx): (usize, &Transaction),
-    ) -> Vec<JoinHandle<Result<(), ExecutorError>>> {
-        let block_height = self.block_height();
+#[async_trait]
+impl PacketBuilder for Output {
+    type Opts = (MsgPayload, usize, Transaction);
+    fn build_packets(
+        (msg_payload, tx_index, tx): &Self::Opts,
+    ) -> Vec<RecordPacket> {
+        let block_height = msg_payload.block_height();
         let tx_id = tx.id.clone();
-        let packets = tx
-            .outputs
+        tx.outputs
             .par_iter()
             .enumerate()
-            .flat_map(|(output_index, output)| {
-                let main_subject = main_subject(
+            .map(|(output_index, output)| {
+                let subject = main_subject(
                     block_height.clone(),
-                    tx_index as u32,
+                    *tx_index as u32,
                     output_index as u32,
                     tx_id.to_owned(),
                     tx,
                     output,
                 );
-                vec![output.to_packet(main_subject)]
+                let packet = output.to_packet(&subject);
+                match msg_payload.namespace.clone() {
+                    Some(ns) => packet.with_namespace(&ns),
+                    _ => packet,
+                }
             })
-            .collect::<Vec<_>>();
-
-        packets.iter().map(|packet| self.publish(packet)).collect()
+            .collect()
     }
 }
 
@@ -46,8 +58,8 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             output_index: Some(output_index),
-            to_address: Some(to.to_owned()),
-            asset_id: Some(asset_id.to_owned()),
+            to: Some(to.to_owned()),
+            asset: Some(asset_id.to_owned()),
         }
         .arc(),
         Output::Contract(contract) => {
@@ -69,7 +81,7 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 output_index: Some(output_index),
-                contract_id: Some(contract_id),
+                contract: Some(contract_id),
             }
             .arc()
         }
@@ -79,8 +91,8 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 output_index: Some(output_index),
-                to_address: Some(to.to_owned()),
-                asset_id: Some(asset_id.to_owned()),
+                to: Some(to.to_owned()),
+                asset: Some(asset_id.to_owned()),
             }
             .arc()
         }
@@ -90,8 +102,8 @@ fn main_subject(
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 output_index: Some(output_index),
-                to_address: Some(to.to_owned()),
-                asset_id: Some(asset_id.to_owned()),
+                to: Some(to.to_owned()),
+                asset: Some(asset_id.to_owned()),
             }
             .arc()
         }
@@ -102,47 +114,11 @@ fn main_subject(
             tx_id: Some(tx_id),
             tx_index: Some(tx_index),
             output_index: Some(output_index),
-            contract_id: Some(contract_id.to_owned()),
+            contract: Some(contract_id.to_owned()),
         }
         .arc(),
     }
 }
-
-// pub fn identifiers(
-//     output: &Output,
-//     tx: &Transaction,
-//     tx_id: &Bytes32,
-//     index: u8,
-// ) -> Vec<Identifier> {
-//     match output {
-//         Output::Change(OutputChange { to, asset_id, .. })
-//         | Output::Variable(OutputVariable { to, asset_id, .. })
-//         | Output::Coin(OutputCoin { to, asset_id, .. }) => {
-//             vec![
-//                 Identifier::Address(tx_id.to_owned(), index, to.into()),
-//                 Identifier::AssetID(tx_id.to_owned(), index, asset_id.into()),
-//             ]
-//         }
-//         Output::Contract(contract) => find_output_contract_id(tx, contract)
-//             .map(|contract_id| {
-//                 vec![Identifier::ContractID(
-//                     tx_id.to_owned(),
-//                     index,
-//                     contract_id.into(),
-//                 )]
-//             })
-//             .unwrap_or_default(),
-//         Output::ContractCreated(OutputContractCreated {
-//             contract_id, ..
-//         }) => {
-//             vec![Identifier::ContractID(
-//                 tx_id.to_owned(),
-//                 index,
-//                 contract_id.into(),
-//             )]
-//         }
-//     }
-// }
 
 pub fn find_output_contract_id(
     tx: &Transaction,

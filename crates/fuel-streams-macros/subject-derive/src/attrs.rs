@@ -1,30 +1,86 @@
-use syn::{Attribute, Expr, Lit};
+use proc_macro2::{TokenStream, TokenTree};
+use syn::{Attribute, Meta};
 
-fn find_attr<'a>(name: &'a str, attrs: &'a [Attribute]) -> &'a Attribute {
-    attrs
-        .iter()
-        .find(|attr| {
-            let segments = attr.path().clone().segments;
-            let first = segments.first().unwrap();
-            first.ident.to_string().contains(name)
-        })
-        .unwrap_or_else(|| panic!("#[subject_{}] attribute not defined", name))
+#[derive(Default)]
+pub struct SubjectAttrs {
+    id: Option<String>,
+    wildcard: Option<String>,
+    format: Option<String>,
 }
 
-fn find_literal_str(name: &str, attr: &Attribute) -> String {
-    let meta = attr.meta.require_name_value().unwrap();
-    if let Expr::Lit(arg) = meta.value.clone() {
-        match arg.lit {
-            Lit::Str(lit) => Some(lit.value()),
-            _ => None,
+impl SubjectAttrs {
+    pub fn from_attributes(attrs: &[Attribute]) -> Self {
+        let mut subject_attrs = SubjectAttrs::default();
+
+        for attr in attrs {
+            if !attr.path().is_ident("subject") {
+                continue;
+            }
+
+            if let Meta::List(list) = &attr.meta {
+                subject_attrs.parse_token_stream(&list.tokens);
+            }
         }
-    } else {
+
+        subject_attrs
+    }
+
+    fn parse_token_stream(&mut self, tokens: &TokenStream) {
+        let mut tokens = tokens.clone().into_iter();
+
+        while let Some(token) = tokens.next() {
+            if let Some((name, value)) =
+                self.parse_name_value_pair(&mut tokens, token)
+            {
+                self.set_attribute(name, value);
+            }
+        }
+    }
+
+    fn parse_name_value_pair(
+        &self,
+        tokens: &mut impl Iterator<Item = TokenTree>,
+        name_token: TokenTree,
+    ) -> Option<(String, String)> {
+        if let TokenTree::Ident(name) = name_token {
+            // Skip the equals sign
+            if let Some(TokenTree::Punct(punct)) = tokens.next() {
+                if punct.as_char() == '=' {
+                    // Get the string literal
+                    if let Some(TokenTree::Literal(lit)) = tokens.next() {
+                        let lit_str = lit.to_string();
+                        // Remove the quotes
+                        let value = lit_str[1..lit_str.len() - 1].to_string();
+                        return Some((name.to_string(), value));
+                    }
+                }
+            }
+        }
         None
     }
-    .unwrap_or_else(|| panic!("#[subject_{}] is not a valid string", name))
+
+    fn set_attribute(&mut self, name: String, value: String) {
+        match name.as_str() {
+            "id" => self.id = Some(value),
+            "wildcard" => self.wildcard = Some(value),
+            "format" => self.format = Some(value),
+            _ => {}
+        }
+    }
+
+    pub fn get(&self, name: &str) -> Option<&String> {
+        match name {
+            "id" => self.id.as_ref(),
+            "wildcard" => self.wildcard.as_ref(),
+            "format" => self.format.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 pub fn subject_attr(name: &str, attrs: &[Attribute]) -> String {
-    let attr = find_attr(name, attrs);
-    find_literal_str(name, attr)
+    let subject_attrs = SubjectAttrs::from_attributes(attrs);
+    subject_attrs.get(name).cloned().unwrap_or_else(|| {
+        panic!("No {} parameter found in #[subject] attribute", name)
+    })
 }

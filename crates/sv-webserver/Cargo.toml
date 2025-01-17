@@ -9,6 +9,7 @@ license = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
 rust-version = { workspace = true }
+publish = false
 
 [[bin]]
 name = "sv-webserver"
@@ -20,38 +21,24 @@ actix-ws = "0.3.0"
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
-chrono = { workspace = true }
 clap = { workspace = true }
 displaydoc = { workspace = true }
 dotenvy = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-message-broker = { workspace = true }
-fuel-streams-core = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true }
 fuel-streams-domains = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 futures = { workspace = true }
 num_cpus = { workspace = true }
 prometheus = { version = "0.13", features = ["process"] }
-rand = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { workspace = true }
-sqlx = { workspace = true, default-features = false, features = [
-    "runtime-tokio",
-    "postgres",
-    "sqlite",
-    "any",
-    "tls-native-tls",
-    "macros",
-    "uuid",
-] }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-uuid = { version = "1.11.0", features = ["serde", "v4"] }
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
@@ -59,7 +46,13 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-data-parser/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-core/test-helpers",
+    "fuel-streams-domains/test-helpers",
+    "fuel-streams-store/test-helpers",
+]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 openssl = { version = "0.10.68", features = ["vendored"] }

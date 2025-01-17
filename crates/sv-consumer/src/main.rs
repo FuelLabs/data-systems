@@ -1,45 +1,23 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use clap::Parser;
 use fuel_message_broker::{MessageBroker, MessageBrokerClient};
-use fuel_streams_core::{types::*, FuelStreams};
-use fuel_streams_executors::*;
-use fuel_streams_store::{
-    db::{Db, DbConnectionOpts},
-    record::DataEncoder,
-};
+use fuel_streams_core::FuelStreams;
+use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
-    shutdown::{shutdown_broker_with_timeout, ShutdownController},
+    shutdown::ShutdownController,
     telemetry::Telemetry,
 };
-use futures::{future::try_join_all, stream::FuturesUnordered, StreamExt};
-use sv_consumer::{cli::Cli, state::ServerState};
-use tokio_util::sync::CancellationToken;
+use sv_consumer::{
+    cli::Cli,
+    errors::ConsumerError,
+    process_messages_from_broker,
+    state::ServerState,
+    FuelStores,
+};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConsumerError {
-    #[error(transparent)]
-    Deserialization(#[from] bincode::Error),
-    #[error(transparent)]
-    Utf8(#[from] std::str::Utf8Error),
-    #[error(transparent)]
-    Executor(#[from] ExecutorError),
-    #[error(transparent)]
-    JoinTasks(#[from] tokio::task::JoinError),
-    #[error(transparent)]
-    Semaphore(#[from] tokio::sync::AcquireError),
-    #[error(transparent)]
-    Db(#[from] fuel_streams_store::db::DbError),
-    #[error(transparent)]
-    MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
-    #[error("Failed to start telemetry")]
-    TelemetryStart,
-    #[error("Failed to start web server")]
-    WebServerStart,
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -66,13 +44,32 @@ async fn main() -> anyhow::Result<()> {
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
+    // Initialize shared resources
+    let db = setup_db(&cli.db_url).await?;
+    let message_broker = setup_message_broker(&cli.nats_url).await?;
+    let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
+    let fuel_stores = FuelStores::new(&db).arc();
+
     tracing::info!("Consumer started. Waiting for messages...");
     tokio::select! {
         result = async {
-            process_messages(&cli, shutdown.token())
-                .await
+            tokio::join!(
+                process_messages_from_broker(
+                    &db,
+                    shutdown.token(),
+                    &message_broker,
+                    &fuel_streams,
+                    &fuel_stores
+                ),
+                start_web_server(
+                    cli.port,
+                    message_broker.clone(),
+                    fuel_streams.clone()
+                )
+            )
         } => {
-            result?;
+            result.0?;
+            result.1?;
             tracing::info!("Processing complete");
         }
         _ = shutdown.wait_for_shutdown() => {
@@ -102,118 +99,25 @@ async fn setup_message_broker(
     Ok(broker)
 }
 
-pub static CONSUMER_MAX_THREADS: LazyLock<usize> = LazyLock::new(|| {
-    let available_cpus = num_cpus::get();
-    dotenvy::var("CONSUMER_MAX_THREADS")
-        .ok()
-        .and_then(|val| val.parse().ok())
-        .unwrap_or(available_cpus)
-});
-
-async fn process_messages(
-    cli: &Cli,
-    token: &CancellationToken,
+async fn start_web_server(
+    port: u16,
+    message_broker: Arc<dyn MessageBroker>,
+    fuel_streams: Arc<FuelStreams>,
 ) -> Result<(), ConsumerError> {
-    let db = setup_db(&cli.db_url).await?;
-    let message_broker = setup_message_broker(&cli.nats_url).await?;
-    let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let telemetry = Telemetry::new(None)
         .await
         .map_err(|_| ConsumerError::TelemetryStart)?;
+
     telemetry
         .start()
         .await
         .map_err(|_| ConsumerError::TelemetryStart)?;
 
-    let server_state = ServerState::new(
-        message_broker.clone(),
-        Arc::clone(&telemetry),
-        Arc::clone(&fuel_streams),
-    );
-    let server_handle = build_and_spawn_web_server(cli.port, server_state)
+    let server_state =
+        ServerState::new(message_broker, Arc::clone(&telemetry), fuel_streams);
+
+    build_and_spawn_web_server(port, server_state)
         .await
         .map_err(|_| ConsumerError::WebServerStart)?;
-
-    let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
-    while !token.is_cancelled() {
-        let mut messages =
-            message_broker.receive_blocks_stream(100).await?.fuse();
-        let mut futs = FuturesUnordered::new();
-
-        while let Some(msg) = messages.next().await {
-            let msg = msg?;
-            let payload = msg.payload();
-            let fuel_streams = fuel_streams.clone();
-            let semaphore = semaphore.clone();
-            tracing::debug!(
-                "Received message payload length: {}",
-                payload.len()
-            );
-
-            let future = async move {
-                match BlockPayload::decode(&payload).await {
-                    Ok(payload) => {
-                        let payload = Arc::new(payload);
-                        let start_time = std::time::Instant::now();
-                        let futures = Executor::<Block>::process_all(
-                            payload.clone(),
-                            &fuel_streams,
-                            &semaphore,
-                        );
-                        let results = try_join_all(futures).await?;
-                        let end_time = std::time::Instant::now();
-                        msg.ack().await.expect("Failed to ack message");
-                        Ok((results, start_time, end_time, payload))
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to decode payload: {:?}", e);
-                        tracing::debug!(
-                            "Raw payload (hex): {:?}",
-                            hex::encode(payload)
-                        );
-                        Err(e)
-                    }
-                }
-            };
-            futs.push(future);
-        }
-        while let Some(result) = futs.next().await {
-            let (results, start_time, end_time, payload) = result?;
-            log_task(results, start_time, end_time, payload);
-        }
-    }
-    tracing::info!("Stopping actix server ...");
-    server_handle.stop(true).await;
-    tracing::info!("Actix server stopped. Goodbye!");
-    shutdown_broker_with_timeout(&message_broker).await;
-
     Ok(())
-}
-
-fn log_task(
-    res: Vec<Result<(), ExecutorError>>,
-    start_time: std::time::Instant,
-    end_time: std::time::Instant,
-    payload: Arc<BlockPayload>,
-) {
-    let height = payload.metadata().clone().block_height;
-    let has_error = res.iter().any(|r| r.is_err());
-    let errors = res
-        .iter()
-        .filter_map(|r| r.as_ref().err())
-        .collect::<Vec<_>>();
-
-    let elapsed = end_time.duration_since(start_time);
-    if has_error {
-        tracing::error!(
-            "Block {height} published with errors in {:?}",
-            elapsed
-        );
-        tracing::debug!("Errors: {:?}", errors);
-    } else {
-        tracing::info!(
-            "Block {height} published successfully in {:?}",
-            elapsed
-        );
-    }
 }

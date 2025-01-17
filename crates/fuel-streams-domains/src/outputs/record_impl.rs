@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use fuel_streams_store::{
-    db::{Db, DbError, DbResult},
+    db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity, RecordPacket},
 };
+use sqlx::PgExecutor;
 
 use super::{Output, OutputDbItem};
 
@@ -18,22 +19,23 @@ impl Record for Output {
     const ORDER_PROPS: &'static [&'static str] =
         &["block_height", "tx_index", "output_index"];
 
-    async fn insert(
-        &self,
-        db: &Db,
-        packet: &RecordPacket<Self>,
-    ) -> DbResult<Self::DbItem> {
+    async fn insert<'e, 'c: 'e, E>(
+        executor: E,
+        packet: &RecordPacket,
+    ) -> DbResult<Self::DbItem>
+    where
+        'c: 'e,
+        E: PgExecutor<'c>,
+    {
         let db_item = OutputDbItem::try_from(packet)?;
-        let record = sqlx::query_as::<_, Self::DbItem>(
-            r#"
-            INSERT INTO outputs (
+        let record = sqlx::query_as::<_, OutputDbItem>(
+            "INSERT INTO outputs (
                 subject, value, block_height, tx_id, tx_index,
                 output_index, output_type, to_address, asset_id, contract_id
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING subject, value, block_height, tx_id, tx_index,
-                output_index, output_type, to_address, asset_id, contract_id
-            "#,
+                output_index, output_type, to_address, asset_id, contract_id",
         )
         .bind(db_item.subject)
         .bind(db_item.value)
@@ -45,7 +47,7 @@ impl Record for Output {
         .bind(db_item.to_address)
         .bind(db_item.asset_id)
         .bind(db_item.contract_id)
-        .fetch_one(&db.pool)
+        .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;
 

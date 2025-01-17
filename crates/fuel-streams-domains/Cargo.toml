@@ -12,24 +12,26 @@ rust-version = { workspace = true }
 
 [dependencies]
 async-trait = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
-] }
+fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
 fuel-streams-macros = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "tls-native-tls", "macros"] }
 thiserror = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-core-types/test-helpers",
+    "fuel-streams-store/test-helpers",
+    "fuel-streams-types/test-helpers",
+]

@@ -23,15 +23,20 @@ clap = { workspace = true }
 dotenvy = { workspace = true }
 fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
 fuel-message-broker = { workspace = true }
-fuel-streams-core = { workspace = true, features = ["test-helpers"] }
-fuel-streams-executors = { workspace = true, features = ["test-helpers"] }
+fuel-streams-core = { workspace = true }
+fuel-streams-domains = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 futures = { workspace = true }
-hex = { workspace = true }
-num_cpus = { workspace = true }
 prometheus = { version = "0.13", features = ["process"] }
 serde_json = { workspace = true }
+sqlx = { workspace = true, default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "any",
+    "tls-native-tls",
+    "macros",
+] }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = "0.7.13"
@@ -40,7 +45,12 @@ tracing-subscriber = { workspace = true, features = ["local-time"] }
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-core/test-helpers",
+    "fuel-streams-store/test-helpers",
+]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 openssl = { version = "0.10.68", features = ["vendored"] }

@@ -21,9 +21,9 @@ usage() {
     echo "  --extra-args   : Optional additional arguments to append (in quotes)"
     echo ""
     echo "Examples:"
-    echo "  $0                                         # Runs with all defaults"
-    echo "  $0 --mode dev --port 8080             # Custom port"
-    echo "  $0 --mode dev --extra-args '\"--use-metrics\"' # Enable metrics"
+    echo "  $0                                              # Runs with all defaults"
+    echo "  $0 --mode dev --port 8080                       # Custom port"
+    echo "  $0 --mode dev --extra-args '\"--use-metrics\"'  # Enable metrics"
     exit 1
 }
 

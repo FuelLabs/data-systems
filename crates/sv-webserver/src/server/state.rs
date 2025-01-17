@@ -9,13 +9,12 @@ use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     server::{
-        middlewares::api_key::{InMemoryApiKeyStorage, KeyStorage},
+        middlewares::api_key::{ApiKeysManager, KeyStorage},
         state::StateProvider,
     },
     telemetry::Telemetry,
 };
 
-use super::api_key::ApiKeysManager;
 use crate::{config::Config, metrics::Metrics};
 
 #[derive(Clone)]
@@ -26,13 +25,14 @@ pub struct ServerState {
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
     pub jwt_secret: String,
-    pub api_key_storage: Arc<InMemoryApiKeyStorage>,
+    pub api_keys_manager: Arc<ApiKeysManager>,
 }
 
 impl ServerState {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
         let msg_broker =
             MessageBrokerClient::Nats.start(&config.broker.url).await?;
+
         let db = Db::new(DbConnectionOpts {
             connection_str: config.db.url.clone(),
             ..Default::default()
@@ -44,23 +44,26 @@ impl ServerState {
         let metrics = Metrics::new_with_random_prefix()?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
-        let api_keys =
-            ApiKeysManager::new(Arc::clone(&db)).load_from_db().await?;
-        let mut api_key_storage = InMemoryApiKeyStorage::new();
-        for api_key in api_keys {
-            api_key_storage
-                .store_api_key_for_user(&api_key.user_id.to_string(), &api_key)
-                .map_err(|e| anyhow::anyhow!(e))?;
+
+        let api_keys_manager = Arc::new(ApiKeysManager::new(&db));
+        let initial_keys = api_keys_manager.load_from_db().await?;
+        for key in initial_keys {
+            if let Err(e) = api_keys_manager.storage.insert(&key) {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to cache initial API key"
+                );
+            }
         }
 
         Ok(Self {
+            db,
             start_time: Instant::now(),
             msg_broker,
             fuel_streams,
             telemetry,
-            db,
             jwt_secret: config.auth.jwt_secret.clone(),
-            api_key_storage: Arc::new(api_key_storage),
+            api_keys_manager,
         })
     }
 

@@ -1,6 +1,6 @@
-mod controller;
 pub(super) mod decoder;
+mod session;
 mod subscribe;
 
-pub use controller::*;
+pub use session::*;
 pub use subscribe::*;
