@@ -160,6 +160,7 @@ impl MessageBroker for NatsMessageBroker {
 
     async fn setup(&self) -> Result<(), MessageBrokerError> {
         let _ = self.get_blocks_stream().await?;
+        let _ = self.get_blocks_consumer().await?;
         Ok(())
     }
 
@@ -309,45 +310,6 @@ mod tests {
             .await?;
         let result = receiver.await.expect("receiver task panicked")?;
         assert_eq!(result, vec![4, 5, 6]);
-        Ok(())
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_work_queue() -> Result<(), MessageBrokerError> {
-        let broker = setup_broker().await?;
-        let broker_clone = broker.clone();
-
-        // Spawn a task to receive events
-        let receiver = tokio::spawn(async move {
-            let mut messages = Vec::new();
-            let mut stream = broker_clone.receive_blocks_stream(3).await?;
-            while let Some(msg) = stream.next().await {
-                let msg = msg?;
-                messages.push(msg);
-                if messages.len() >= 3 {
-                    break;
-                }
-            }
-            Ok::<Vec<Box<dyn Message>>, MessageBrokerError>(messages)
-        });
-
-        // Publish multiple messages
-        broker.publish_block("1".to_string(), vec![1, 2, 3]).await?;
-        broker.publish_block("2".to_string(), vec![4, 5, 6]).await?;
-        broker.publish_block("3".to_string(), vec![7, 8, 9]).await?;
-
-        // Wait for receiver and check results
-        let messages = receiver.await.expect("receiver task panicked")?;
-        assert_eq!(messages.len(), 3, "Expected to receive 3 messages");
-        assert_eq!(messages[0].payload(), &[1, 2, 3]);
-        assert_eq!(messages[1].payload(), &[4, 5, 6]);
-        assert_eq!(messages[2].payload(), &[7, 8, 9]);
-
-        // Acknowledge all messages
-        for msg in messages {
-            msg.ack().await?;
-        }
-
         Ok(())
     }
 

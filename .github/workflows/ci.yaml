@@ -215,16 +215,19 @@ jobs:
       NATS_SYSTEM_PASSWORD: sys
       NATS_ADMIN_USER: admin
       NATS_ADMIN_PASS: admin
-      NATS_PUBLIC_USER: default_user
-      NATS_PUBLIC_PASS: ""
     strategy:
       fail-fast: false
       matrix:
         package:
+          - fuel-data-parser
+          - fuel-message-broker
           - fuel-streams
           - fuel-streams-core
+          - fuel-streams-domains
           - fuel-streams-macros
           - fuel-streams-store
+          - fuel-streams-types
+          - fuel-streams-test
           - sv-webserver
           - sv-publisher
     steps:
@@ -244,6 +247,7 @@ jobs:
       - name: Start Docker
         run: |
           make start-docker
+          make setup-db
 
       - name: Run tests
         run: make test PACKAGE=${{ matrix.package }} PROFILE=ci

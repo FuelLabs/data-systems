@@ -77,36 +77,5 @@ data:
           {user: $NATS_ADMIN_USER, password: $NATS_ADMIN_PASS}
         ]
       }
-      PUBLIC: {
-        jetstream: enabled
-        users: [
-          {
-            user: $NATS_PUBLIC_USER
-            password: $NATS_PUBLIC_PASS
-            permissions: {
-              subscribe: ">"
-              publish: {
-                deny: [
-                  "*.by_id.>"
-                  "*.blocks.>"
-                  "*.transactions.>"
-                  "*.inputs.>"
-                  "*.outputs.>"
-                  "*.receipts.>"
-                  "*.logs.>"
-                  "*.utxos.>"
-                  "$JS.API.STREAM.CREATE.>"
-                  "$JS.API.STREAM.UPDATE.>"
-                  "$JS.API.STREAM.DELETE.>"
-                  "$JS.API.STREAM.PURGE.>"
-                  "$JS.API.STREAM.RESTORE.>"
-                  "$JS.API.STREAM.MSG.DELETE.>"
-                  "$JS.API.CONSUMER.DURABLE.CREATE.>"
-                ]
-              }
-            }
-          }
-        ]
-      }
     }
 {{- end }}
