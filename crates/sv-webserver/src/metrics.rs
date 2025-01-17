@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
+use fuel_web_utils::{
+    server::middlewares::api_key::ApiKeyId,
+    telemetry::metrics::TelemetryMetrics,
+};
 use prometheus::{
     register_histogram_vec,
     register_int_counter_vec,
@@ -11,6 +14,8 @@ use prometheus::{
     IntGaugeVec,
     Registry,
 };
+
+use crate::server::types::Subscription;
 
 #[derive(Debug)]
 pub enum SubscriptionChange {
@@ -72,7 +77,7 @@ impl Metrics {
                 metric_prefix
             ),
             "A metric counting the number of published messages",
-            &["user_id", "subject_wildcard"],
+            &["user_id", "user_name", "subject_wildcard"],
         )
         .expect("metric must be created");
 
@@ -94,7 +99,7 @@ impl Metrics {
         let connection_duration = register_histogram_vec!(
             format!("{}ws_connection_duration_seconds", metric_prefix),
             "Duration of WebSocket connections in seconds",
-            &["user_id"],
+            &["user_id", "user_name"],
             vec![0.1, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0]
         )
         .expect("metric must be created");
@@ -102,21 +107,21 @@ impl Metrics {
         let duplicate_subscription_attempts = register_int_counter_vec!(
             format!("{}ws_duplicate_subscription_attempts", metric_prefix),
             "Number of attempts to create duplicate subscriptions",
-            &["user_id", "subscription_id"]
+            &["user_id", "user_name", "subscription_id"]
         )
         .expect("metric must be created");
 
         let user_active_subscriptions = register_int_gauge_vec!(
             format!("{}ws_user_active_subscriptions", metric_prefix),
             "Number of active subscriptions per user",
-            &["user_id"]
+            &["user_id", "user_name"]
         )
         .expect("metric must be created");
 
         let subscription_lifetime = register_histogram_vec!(
             format!("{}ws_subscription_lifetime_seconds", metric_prefix),
             "Duration of individual subscriptions in seconds",
-            &["user_id", "subscription_id"],
+            &["user_id", "user_name", "subscription_id"],
             vec![0.1, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0, 1800.0, 3600.0]
         )
         .expect("metric must be created");
@@ -147,13 +152,14 @@ impl Metrics {
 
     pub fn update_user_subscription_metrics(
         &self,
-        user_id: uuid::Uuid,
+        user_id: ApiKeyId,
+        user_name: &str,
         subject_wildcard: &str,
     ) {
-        // Increment total user subscribed messages
         self.user_subscribed_messages
             .with_label_values(&[
                 user_id.to_string().as_str(),
+                user_name,
                 subject_wildcard,
             ])
             .inc();
@@ -184,43 +190,64 @@ impl Metrics {
 
     pub fn update_unsubscribed(
         &self,
-        user_id: uuid::Uuid,
+        user_id: ApiKeyId,
+        user_name: &str,
         subject_wildcard: &str,
     ) {
         self.user_subscribed_messages
-            .with_label_values(&[&user_id.to_string(), subject_wildcard])
+            .with_label_values(&[
+                &user_id.to_string(),
+                user_name,
+                subject_wildcard,
+            ])
             .dec();
     }
 
     pub fn update_subscribed(
         &self,
-        user_id: uuid::Uuid,
+        user_id: ApiKeyId,
+        user_name: &str,
         subject_wildcard: &str,
     ) {
         self.user_subscribed_messages
-            .with_label_values(&[&user_id.to_string(), subject_wildcard])
+            .with_label_values(&[
+                &user_id.to_string(),
+                user_name,
+                subject_wildcard,
+            ])
             .inc();
     }
 
-    pub fn track_connection_duration(&self, user_id: &str, duration: Duration) {
+    pub fn track_connection_duration(
+        &self,
+        user_id: ApiKeyId,
+        user_name: &str,
+        duration: Duration,
+    ) {
         self.connection_duration
-            .with_label_values(&[user_id])
+            .with_label_values(&[&user_id.to_string(), user_name])
             .observe(duration.as_secs_f64());
     }
 
     pub fn track_duplicate_subscription(
         &self,
-        user_id: uuid::Uuid,
-        subscription_id: &str,
+        user_id: ApiKeyId,
+        user_name: &str,
+        subscription_id: &Subscription,
     ) {
         self.duplicate_subscription_attempts
-            .with_label_values(&[&user_id.to_string(), subscription_id])
+            .with_label_values(&[
+                &user_id.to_string(),
+                user_name,
+                &subscription_id.to_string(),
+            ])
             .inc();
     }
 
     pub fn update_user_subscription_count(
         &self,
-        user_id: uuid::Uuid,
+        user_id: ApiKeyId,
+        user_name: &str,
         subject: &str,
         change: &SubscriptionChange,
     ) {
@@ -231,23 +258,28 @@ impl Metrics {
 
         // Update per-user subscription count
         self.user_active_subscriptions
-            .with_label_values(&[&user_id.to_string()])
+            .with_label_values(&[&user_id.to_string(), user_name])
             .add(delta);
 
         // Update subject-specific count
         self.user_subscribed_messages
-            .with_label_values(&[&user_id.to_string(), subject])
+            .with_label_values(&[&user_id.to_string(), user_name, subject])
             .add(delta);
     }
 
     pub fn track_subscription_lifetime(
         &self,
-        user_id: uuid::Uuid,
-        subscription_id: &str,
+        user_id: ApiKeyId,
+        user_name: &str,
+        subscription_id: &Subscription,
         duration: Duration,
     ) {
         self.subscription_lifetime
-            .with_label_values(&[&user_id.to_string(), subscription_id])
+            .with_label_values(&[
+                &user_id.to_string(),
+                user_name,
+                &subscription_id.to_string(),
+            ])
             .observe(duration.as_secs_f64());
     }
 }
@@ -271,7 +303,11 @@ mod tests {
 
         metrics
             .user_subscribed_messages
-            .with_label_values(&["user_id_1", "subject_wildcard_1"])
+            .with_label_values(&[
+                "user_id_1",
+                "user_name_1",
+                "subject_wildcard_1",
+            ])
             .set(5);
 
         let metric_families = gather();
@@ -283,6 +319,7 @@ mod tests {
 
         assert!(output.contains("ws_streamer_metrics_user_subscribed_messages"));
         assert!(output.contains("user_id_1"));
+        assert!(output.contains("user_name_1"));
         assert!(output.contains("subject_wildcard_1"));
         assert!(output.contains("5"));
     }

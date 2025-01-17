@@ -9,16 +9,17 @@ use futures::StreamExt;
 use super::decoder::decode_and_respond;
 use crate::server::{
     errors::WebsocketError,
-    types::{ServerMessage, SubscriptionPayload},
-    websocket::WsController,
+    types::{ServerMessage, Subscription},
+    websocket::WsSession,
 };
 
 pub async fn unsubscribe(
     session: &mut Session,
-    ctx: &mut WsController,
-    payload: SubscriptionPayload,
+    ctx: &mut WsSession,
+    subscription: &Subscription,
 ) -> Result<(), WebsocketError> {
-    ctx.remove_subscription(&payload).await;
+    ctx.remove_subscription(subscription).await;
+    let payload = subscription.payload();
     let msg = ServerMessage::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())
@@ -26,11 +27,15 @@ pub async fn unsubscribe(
 
 pub async fn subscribe(
     session: &mut Session,
-    ctx: &mut WsController,
-    payload: SubscriptionPayload,
+    ctx: &mut WsSession,
+    subscription: &Subscription,
 ) -> Result<(), WebsocketError> {
+    let payload = subscription.payload();
     tracing::info!("Received subscribe message: {:?}", payload);
-    if ctx.check_duplicate_subscription(session, &payload).await? {
+    if ctx
+        .check_duplicate_subscription(session, subscription)
+        .await?
+    {
         return Ok(());
     }
 
@@ -46,41 +51,49 @@ pub async fn subscribe(
     // Send the subscription message to the client
     let subscribed_msg = ServerMessage::Subscribed(payload.clone());
     ctx.send_message(session, subscribed_msg).await?;
-    ctx.add_subscription(&payload).await?;
+    ctx.add_subscription(subscription).await?;
 
     // Spawn a task to process messages
-    spawn_subscription_process(session, ctx, payload, sub);
+    spawn_subscription_process(session, ctx, subscription, sub);
     Ok(())
 }
 
 fn spawn_subscription_process(
     session: &mut Session,
-    ctx: &mut WsController,
-    payload: SubscriptionPayload,
+    ctx: &mut WsSession,
+    subscription: &Subscription,
     mut sub: BoxedStream,
 ) -> tokio::task::JoinHandle<()> {
-    let user_id = *ctx.user_id();
+    let api_key = ctx.api_key();
     let mut shutdown_rx = ctx.receiver();
+    let payload = subscription.payload();
+    tracing::debug!(%api_key, ?payload, "Starting subscription process");
     actix_web::rt::spawn({
         let mut session = session.to_owned();
         let mut ctx = ctx.to_owned();
+        let subscription = subscription.clone();
         async move {
             let result: Result<(), WebsocketError> = tokio::select! {
-                shutdown = shutdown_rx.recv() => match shutdown {
-                    Ok(shutdown_user_id) if shutdown_user_id == user_id => {
-                        tracing::info!(%user_id, "Subscription gracefully shutdown");
-                        Ok(())
+                shutdown = shutdown_rx.recv() => {
+                    match shutdown {
+                        Ok(shutdown_api_key) if shutdown_api_key == api_key => {
+                            tracing::info!(%api_key, "Subscription gracefully shutdown");
+                            Ok(())
+                        }
+                        other => {
+                            tracing::debug!(%api_key, ?other, "Unexpected shutdown value, falling back to process_msgs");
+                            process_msgs(&mut session, &mut ctx, &mut sub, &subscription).await
+                        }
                     }
-                    _ => process_msgs(&mut session, &mut ctx, &mut sub, &payload).await
                 },
-                process_result = process_msgs(&mut session, &mut ctx, &mut sub, &payload) => {
-                    tracing::debug!(%user_id, "Process messages completed");
+                process_result = process_msgs(&mut session, &mut ctx, &mut sub, &subscription) => {
+                    tracing::debug!(%api_key, ?process_result, "Process messages completed");
                     process_result
                 }
             };
 
             if let Err(err) = result {
-                tracing::error!(%user_id, error = %err, "Subscription processing error");
+                tracing::error!(%api_key, error = %err, "Subscription processing error");
                 let _ = session.close(Some(CloseReason::from(err))).await;
             }
         }
@@ -89,17 +102,22 @@ fn spawn_subscription_process(
 
 async fn process_msgs(
     session: &mut Session,
-    ctx: &mut WsController,
+    ctx: &mut WsSession,
     sub: &mut BoxedStream,
-    payload: &SubscriptionPayload,
+    subscription: &Subscription,
 ) -> Result<(), WebsocketError> {
+    let payload = subscription.payload();
+    tracing::debug!(?payload, "Starting to process messages");
     while let Some(result) = sub.next().await {
+        tracing::debug!(?payload, ?result, "Received message from stream");
         let result = result?;
         let payload = decode_and_respond(payload.to_owned(), result).await?;
+        tracing::debug!("Sending message to client: {:?}", payload);
         ctx.send_message(session, payload).await?;
     }
 
-    ctx.remove_subscription(payload).await;
+    tracing::debug!(?payload, "Stream ended, removing subscription");
+    ctx.remove_subscription(subscription).await;
     let msg = ServerMessage::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())

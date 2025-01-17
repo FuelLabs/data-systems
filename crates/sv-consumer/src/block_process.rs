@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_message_broker::{Message, MessageBroker};
+use fuel_message_broker::MessageBroker;
 use fuel_streams_core::{
     types::{Block, Transaction},
     FuelStreams,
@@ -8,20 +8,25 @@ use fuel_streams_core::{
 use fuel_streams_domains::MsgPayload;
 use fuel_streams_store::{
     db::Db,
-    record::{
-        DataEncoder,
-        DbTransaction,
-        PacketBuilder,
-        RecordEntity,
-        RecordPacket,
-    },
+    record::{DataEncoder, PacketBuilder, RecordEntity, RecordPacket},
 };
 use fuel_web_utils::shutdown::shutdown_broker_with_timeout;
-use futures::{stream::FuturesUnordered, StreamExt};
-use tokio::sync::Semaphore;
+use futures::{future::try_join_all, StreamExt};
+use tokio::{sync::Semaphore, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 
-use crate::{block_stats::BlockStats, errors::ConsumerError, FuelStores};
+use crate::{
+    block_stats::BlockStats,
+    errors::ConsumerError,
+    ActionType,
+    FuelStores,
+};
+
+#[derive(Debug)]
+enum ProcessResult {
+    Store(Result<BlockStats, ConsumerError>),
+    Stream(Result<BlockStats, ConsumerError>),
+}
 
 pub async fn process_messages_from_broker(
     db: &Arc<Db>,
@@ -31,32 +36,82 @@ pub async fn process_messages_from_broker(
     fuel_stores: &Arc<FuelStores>,
 ) -> Result<(), ConsumerError> {
     let semaphore = Arc::new(Semaphore::new(32));
+    let mut join_set = JoinSet::new();
+
     while !token.is_cancelled() {
         let mut messages = message_broker.receive_blocks_stream(100).await?;
-        let mut futs = FuturesUnordered::new();
-
-        // Process block on each new message
         while let Some(msg) = messages.next().await {
             let msg = msg?;
             let db = db.clone();
             let fuel_streams = fuel_streams.clone();
             let fuel_stores = fuel_stores.clone();
-            let permit = semaphore.clone().acquire_owned().await?;
-            futs.push(tokio::spawn(async move {
-                let result =
-                    process_block(&db, msg, &fuel_streams, &fuel_stores)
-                        .await?;
-                drop(permit);
-                Ok::<_, ConsumerError>(result)
-            }));
+            let semaphore = semaphore.clone();
+            let payload = msg.payload();
+            let msg_payload = MsgPayload::decode(&payload).await?.arc();
+            let packets = build_packets(&msg_payload);
+
+            // Spawn store task
+            let store_packets = packets.clone();
+            let store_msg_payload = msg_payload.clone();
+            join_set.spawn({
+                let semaphore = semaphore.clone();
+                async move {
+                    let _permit = semaphore.acquire_owned().await?;
+                    let result = handle_store_insertions(
+                        &db,
+                        &fuel_stores,
+                        &store_packets,
+                        &store_msg_payload,
+                    )
+                    .await;
+                    Ok::<_, ConsumerError>(ProcessResult::Store(result))
+                }
+            });
+
+            // Spawn stream task
+            let stream_packets = packets.clone();
+            let stream_msg_payload = msg_payload.clone();
+            join_set.spawn({
+                let semaphore = semaphore.clone();
+                async move {
+                    let _permit = semaphore.acquire_owned().await?;
+                    let result = handle_stream_publishes(
+                        &fuel_streams,
+                        &stream_packets,
+                        &stream_msg_payload,
+                    )
+                    .await;
+                    Ok(ProcessResult::Stream(result))
+                }
+            });
+
+            // TODO: msg is acking here before we wait the tasks to success
+            // we should implement a background mechanism for recover failed msgs
+            msg.ack().await.map_err(|e| {
+                tracing::error!("Failed to ack message: {:?}", e);
+                ConsumerError::MessageBrokerClient(e)
+            })?;
         }
 
-        // Execute the thread and log results for each block from BlockStats
-        while let Some(result) = futs.next().await {
-            let block_stats = &result??;
-            match &block_stats.error {
-                Some(error) => block_stats.log_error(error),
-                None => block_stats.log_success(),
+        // Process all results
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok(Ok(ProcessResult::Store(store_result))) => {
+                    let store_stats = store_result?;
+                    match &store_stats.error {
+                        Some(error) => store_stats.log_error(error),
+                        None => store_stats.log_success(),
+                    }
+                }
+                Ok(Ok(ProcessResult::Stream(stream_result))) => {
+                    let stream_stats = stream_result?;
+                    match &stream_stats.error {
+                        Some(error) => stream_stats.log_error(error),
+                        None => stream_stats.log_success(),
+                    }
+                }
+                Ok(Err(e)) => tracing::error!("Task error: {}", e),
+                Err(e) => tracing::error!("Task panicked: {}", e),
             }
         }
     }
@@ -66,34 +121,74 @@ pub async fn process_messages_from_broker(
     Ok(())
 }
 
-async fn process_block(
-    db: &Arc<Db>,
-    msg: Box<dyn Message>,
-    fuel_streams: &Arc<FuelStreams>,
-    fuel_stores: &Arc<FuelStores>,
-) -> Result<BlockStats, ConsumerError> {
-    let payload = msg.payload();
-    let msg_payload = MsgPayload::decode(&payload).await?;
-    let height = msg_payload.block_height().to_owned();
-    let stats = BlockStats::new(height);
-    let block_packets = Block::build_packets(&msg_payload);
-    let tx_packets = Transaction::build_packets(&msg_payload);
+fn build_packets(msg_payload: &MsgPayload) -> Arc<Vec<RecordPacket>> {
+    let block_packets = Block::build_packets(msg_payload);
+    let tx_packets = Transaction::build_packets(msg_payload);
     let packets = block_packets
         .into_iter()
         .chain(tx_packets)
         .collect::<Vec<_>>();
+    Arc::new(packets)
+}
 
+async fn handle_store_insertions(
+    db: &Arc<Db>,
+    fuel_stores: &Arc<FuelStores>,
+    packets: &Arc<Vec<RecordPacket>>,
+    msg_payload: &Arc<MsgPayload>,
+) -> Result<BlockStats, ConsumerError> {
+    let block_height = msg_payload.block_height();
+    let stats = BlockStats::new(block_height.to_owned(), ActionType::Store);
     let mut db_tx = db.pool.begin().await?;
-    let result =
-        process_packets(&mut db_tx, &packets, fuel_streams, fuel_stores).await;
+    let result = async {
+        for packet in packets.iter() {
+            let entity = packet.get_entity()?;
+            match entity {
+                RecordEntity::Block => {
+                    fuel_stores
+                        .blocks
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+                RecordEntity::Transaction => {
+                    fuel_stores
+                        .transactions
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+                RecordEntity::Input => {
+                    fuel_stores
+                        .inputs
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+                RecordEntity::Output => {
+                    fuel_stores
+                        .outputs
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+                RecordEntity::Receipt => {
+                    fuel_stores
+                        .receipts
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+                RecordEntity::Utxo => {
+                    fuel_stores
+                        .utxos
+                        .insert_record_with_transaction(&mut db_tx, packet)
+                        .await?;
+                }
+            }
+        }
+        Ok::<_, ConsumerError>(packets.len())
+    }
+    .await;
 
     match result {
         Ok(packet_count) => {
             db_tx.commit().await?;
-            msg.ack().await.map_err(|e| {
-                tracing::error!("Failed to ack message: {:?}", e);
-                ConsumerError::MessageBrokerClient(e)
-            })?;
             Ok(stats.finish(packet_count))
         }
         Err(e) => {
@@ -103,59 +198,41 @@ async fn process_block(
     }
 }
 
-async fn process_packets(
-    db_tx: &mut DbTransaction,
-    packets: &[RecordPacket],
+async fn handle_stream_publishes(
     fuel_streams: &Arc<FuelStreams>,
-    fuel_stores: &Arc<FuelStores>,
-) -> Result<usize, ConsumerError> {
-    for packet in packets {
+    packets: &Arc<Vec<RecordPacket>>,
+    msg_payload: &Arc<MsgPayload>,
+) -> Result<BlockStats, ConsumerError> {
+    let block_height = msg_payload.block_height();
+    let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
+    let publish_futures = packets.iter().map(|packet| async {
         let entity = packet.get_entity()?;
+        let subject = packet.subject_str();
+        let payload = packet.to_owned().value.into();
         match entity {
             RecordEntity::Block => {
-                let record = fuel_stores
-                    .blocks
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.blocks.publish(&record).await?;
+                fuel_streams.blocks.publish(&subject, payload).await
             }
             RecordEntity::Transaction => {
-                let record = fuel_stores
-                    .transactions
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.transactions.publish(&record).await?;
+                fuel_streams.transactions.publish(&subject, payload).await
             }
             RecordEntity::Input => {
-                let record = fuel_stores
-                    .inputs
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.inputs.publish(&record).await?;
+                fuel_streams.inputs.publish(&subject, payload).await
             }
             RecordEntity::Output => {
-                let record = fuel_stores
-                    .outputs
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.outputs.publish(&record).await?;
+                fuel_streams.outputs.publish(&subject, payload).await
             }
             RecordEntity::Receipt => {
-                let record = fuel_stores
-                    .receipts
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.receipts.publish(&record).await?;
+                fuel_streams.receipts.publish(&subject, payload).await
             }
             RecordEntity::Utxo => {
-                let record = fuel_stores
-                    .utxos
-                    .insert_record_with_transaction(db_tx, packet)
-                    .await?;
-                fuel_streams.utxos.publish(&record).await?;
+                fuel_streams.utxos.publish(&subject, payload).await
             }
         }
-    }
+    });
 
-    Ok(packets.len())
+    match try_join_all(publish_futures).await {
+        Ok(_) => Ok(stats.finish(packets.len())),
+        Err(e) => Ok(stats.finish_with_error(ConsumerError::from(e))),
+    }
 }

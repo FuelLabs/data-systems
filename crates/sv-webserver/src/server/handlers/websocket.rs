@@ -7,12 +7,14 @@ use actix_web::{
 };
 use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
 use fuel_streams_core::FuelStreams;
-use fuel_web_utils::telemetry::Telemetry;
+use fuel_web_utils::{
+    server::middlewares::api_key::ApiKey,
+    telemetry::Telemetry,
+};
 use futures::{
     future::{self, Either},
     StreamExt as _,
 };
-use uuid::Uuid;
 
 use crate::{
     metrics::Metrics,
@@ -20,7 +22,7 @@ use crate::{
         errors::WebsocketError,
         state::ServerState,
         types::ClientMessage,
-        websocket::{subscribe, unsubscribe, WsController},
+        websocket::{subscribe, unsubscribe, WsSession},
     },
 };
 
@@ -49,7 +51,7 @@ pub async fn get_websocket(
     body: web::Payload,
     state: web::Data<ServerState>,
 ) -> actix_web::Result<impl Responder> {
-    let user_id = WsController::user_id_from_req(&req)?;
+    let api_key = ApiKey::from_req(&req)?;
     let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
     let fuel_streams = state.fuel_streams.clone();
     let telemetry = state.telemetry.clone();
@@ -58,7 +60,7 @@ pub async fn get_websocket(
         msg_stream,
         telemetry,
         fuel_streams,
-        user_id,
+        api_key,
     ));
     Ok(response)
 }
@@ -68,11 +70,11 @@ async fn handler(
     msg_stream: actix_ws::MessageStream,
     telemetry: Arc<Telemetry<Metrics>>,
     fuel_streams: Arc<FuelStreams>,
-    user_id: Uuid,
+    api_key: ApiKey,
 ) -> Result<(), WebsocketError> {
-    let mut ctx = WsController::new(user_id, telemetry, fuel_streams);
+    let mut ctx = WsSession::new(&api_key, telemetry, fuel_streams);
     tracing::info!(
-        %user_id,
+        %api_key,
         event = "websocket_connection_opened",
         "WebSocket connection opened"
     );
@@ -88,7 +90,7 @@ async fn handler(
 }
 
 async fn handle_messages(
-    ctx: &mut WsController,
+    ctx: &mut WsSession,
     session: &mut Session,
     msg_stream: MessageStream,
 ) -> Option<CloseAction> {
@@ -130,21 +132,21 @@ async fn handle_messages(
                     break Some(CloseAction::Closed(reason));
                 }
                 Message::Continuation(_) => {
-                    let user_id = ctx.user_id();
-                    tracing::warn!(%user_id, "Continuation frames not supported");
+                    let api_key = ctx.api_key();
+                    tracing::warn!(%api_key, "Continuation frames not supported");
                     let err = WebsocketError::UnsupportedMessageType;
                     break Some(CloseAction::Error(err));
                 }
                 Message::Nop => {}
             },
             Either::Left((Some(Err(err)), _)) => {
-                let user_id = ctx.user_id();
-                tracing::error!(%user_id, error = %err, "WebSocket protocol error");
+                let api_key = ctx.api_key();
+                tracing::error!(%api_key, error = %err, "WebSocket protocol error");
                 break Some(CloseAction::Error(WebsocketError::from(err)));
             }
             Either::Left((None, _)) => {
-                let user_id = ctx.user_id();
-                tracing::info!(%user_id, "Client disconnected");
+                let api_key = ctx.api_key();
+                tracing::info!(%api_key, "Client disconnected");
                 break None;
             }
             Either::Right((_inst, _)) => {
@@ -163,18 +165,20 @@ async fn handle_messages(
 
 async fn handle_client_msg(
     session: &mut Session,
-    ctx: &mut WsController,
+    ctx: &mut WsSession,
     msg: Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
     let msg = serde_json::from_slice(&msg)?;
     match msg {
         ClientMessage::Subscribe(payload) => {
-            subscribe(session, ctx, payload).await?;
+            let api_key = ctx.api_key();
+            subscribe(session, ctx, &(api_key, payload).into()).await?;
             Ok(None)
         }
         ClientMessage::Unsubscribe(payload) => {
-            unsubscribe(session, ctx, payload).await?;
+            let api_key = ctx.api_key();
+            unsubscribe(session, ctx, &(api_key, payload).into()).await?;
             Ok(Some(CloseAction::Unsubscribe))
         }
     }

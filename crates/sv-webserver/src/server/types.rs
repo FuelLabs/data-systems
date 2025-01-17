@@ -1,8 +1,9 @@
 use fuel_streams_core::DeliverPolicy;
 use fuel_streams_domains::{SubjectPayload, SubjectPayloadError};
+use fuel_web_utils::server::middlewares::api_key::ApiKey;
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
     pub deliver_policy: DeliverPolicy,
@@ -25,6 +26,43 @@ impl TryFrom<String> for SubscriptionPayload {
     type Error = serde_json::Error;
     fn try_from(subscription_id: String) -> Result<Self, Self::Error> {
         serde_json::from_str(&subscription_id)
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct Subscription {
+    id: String,
+    payload: SubscriptionPayload,
+}
+
+impl Subscription {
+    pub fn new(api_key: &ApiKey, payload: &SubscriptionPayload) -> Self {
+        Self {
+            id: Self::create_subscription_id(api_key, payload),
+            payload: payload.to_owned(),
+        }
+    }
+
+    pub fn payload(&self) -> SubscriptionPayload {
+        self.payload.to_owned()
+    }
+
+    fn create_subscription_id(
+        api_key: &ApiKey,
+        payload: &SubscriptionPayload,
+    ) -> String {
+        format!("{}-{}-{}", api_key.id(), api_key.user(), payload)
+    }
+}
+impl std::fmt::Display for Subscription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
+impl From<(ApiKey, SubscriptionPayload)> for Subscription {
+    fn from((api_key, payload): (ApiKey, SubscriptionPayload)) -> Self {
+        Subscription::new(&api_key, &payload)
     }
 }
 

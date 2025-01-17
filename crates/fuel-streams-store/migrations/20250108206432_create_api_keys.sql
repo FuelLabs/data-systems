@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS api_keys (
-    id UUID,
-    api_key VARCHAR NOT NULL,
-    PRIMARY KEY (id)
+    user_id SERIAL PRIMARY KEY,
+    user_name VARCHAR NOT NULL,
+    api_key VARCHAR NOT NULL UNIQUE
 );

@@ -51,7 +51,6 @@ impl NatsOpts {
         self.with_namespace(&namespace)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_namespace(self, namespace: &str) -> Self {
         use crate::Namespace;
         let namespace = Namespace::Custom(namespace.to_string());

@@ -32,11 +32,10 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         }
     });
 
-    let store = stream.store();
     for (subject, block) in data {
         let packet = block.to_packet(&subject);
-        let db_record = store.insert_record(&packet).await?;
-        stream.publish(&db_record).await?;
+        let subject = packet.subject_str();
+        stream.publish(&subject, packet.value.into()).await?;
     }
 
     Ok(())

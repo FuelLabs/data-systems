@@ -62,12 +62,11 @@ impl<R: Record> Stream<R> {
 
     pub async fn publish(
         &self,
-        db_record: &R::DbItem,
+        subject: &str,
+        payload: bytes::Bytes,
     ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
-        let encoded_value = db_record.encoded_value().to_vec();
-        let subject = db_record.subject_str();
-        broker.publish_event(&subject, encoded_value.into()).await?;
+        broker.publish_event(subject, payload).await?;
         Ok(())
     }
 
