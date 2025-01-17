@@ -6,7 +6,7 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
-use fuel_streams_core::FuelStreams;
+use fuel_streams_core::{server::ClientMessage, FuelStreams};
 use fuel_web_utils::{
     server::middlewares::api_key::ApiKey,
     telemetry::Telemetry,
@@ -21,7 +21,6 @@ use crate::{
     server::{
         errors::WebsocketError,
         state::ServerState,
-        types::ClientMessage,
         websocket::{subscribe, unsubscribe, WsSession},
     },
 };

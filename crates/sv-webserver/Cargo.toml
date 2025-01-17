@@ -33,7 +33,6 @@ fuel-web-utils = { workspace = true }
 futures = { workspace = true }
 num_cpus = { workspace = true }
 prometheus = { version = "0.13", features = ["process"] }
-serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }

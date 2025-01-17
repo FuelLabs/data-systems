@@ -6,7 +6,7 @@ use fuel_streams_store::{
     store::StoreError,
 };
 
-use crate::DeliverPolicyError;
+use crate::server::DeliverPolicyError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StreamError {

@@ -17,7 +17,6 @@ futures = { workspace = true }
 reqwest = "0.12.9"
 serde = { workspace = true }
 serde_json = { workspace = true }
-sv-webserver = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = "0.26.1"

@@ -22,6 +22,7 @@ fuel-streams-domains = { workspace = true }
 fuel-streams-macros = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-streams-types = { workspace = true }
+fuel-web-utils = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

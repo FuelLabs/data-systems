@@ -1,7 +1,8 @@
-use fuel_streams_core::DeliverPolicy;
 use fuel_streams_domains::{SubjectPayload, SubjectPayloadError};
 use fuel_web_utils::server::middlewares::api_key::ApiKey;
 use serde::{Deserialize, Serialize};
+
+use super::DeliverPolicy;
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone, Hash)]
 #[serde(rename_all = "camelCase")]

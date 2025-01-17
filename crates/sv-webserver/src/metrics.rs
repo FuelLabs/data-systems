@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use fuel_streams_core::server::Subscription;
 use fuel_web_utils::{
     server::middlewares::api_key::ApiKeyId,
     telemetry::metrics::TelemetryMetrics,
@@ -14,8 +15,6 @@ use prometheus::{
     IntGaugeVec,
     Registry,
 };
-
-use crate::server::types::Subscription;
 
 #[derive(Debug)]
 pub enum SubscriptionChange {

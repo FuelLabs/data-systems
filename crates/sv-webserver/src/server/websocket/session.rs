@@ -5,7 +5,10 @@ use std::{
 };
 
 use actix_ws::{CloseCode, CloseReason, Session};
-use fuel_streams_core::FuelStreams;
+use fuel_streams_core::{
+    server::{ServerMessage, Subscription},
+    FuelStreams,
+};
 use fuel_web_utils::{
     server::middlewares::api_key::ApiKey,
     telemetry::Telemetry,
@@ -14,10 +17,7 @@ use tokio::sync::{broadcast, Mutex};
 
 use crate::{
     metrics::{Metrics, SubscriptionChange},
-    server::{
-        errors::WebsocketError,
-        types::{ServerMessage, Subscription},
-    },
+    server::errors::WebsocketError,
 };
 
 #[derive(Clone)]

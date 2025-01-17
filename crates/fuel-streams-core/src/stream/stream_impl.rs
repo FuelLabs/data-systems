@@ -15,7 +15,7 @@ use futures::{
 use tokio::{sync::OnceCell, time::sleep};
 
 use super::{config, StreamError};
-use crate::DeliverPolicy;
+use crate::server::DeliverPolicy;
 
 pub type BoxedStreamItem = Result<Vec<u8>, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;

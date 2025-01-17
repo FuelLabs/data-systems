@@ -1,4 +1,4 @@
-use fuel_streams_core::{subjects::*, types::Block, DeliverPolicy};
+use fuel_streams_core::{server::DeliverPolicy, subjects::*, types::Block};
 use fuel_streams_store::record::{DataEncoder, Record};
 use fuel_streams_test::{create_multiple_records, setup_stream};
 use futures::StreamExt;

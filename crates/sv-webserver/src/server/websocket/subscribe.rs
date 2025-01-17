@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use actix_ws::{CloseReason, Session};
-use fuel_streams_core::{BoxedStream, DeliverPolicy, FuelStreams};
+use fuel_streams_core::{
+    server::{DeliverPolicy, ServerMessage, Subscription},
+    BoxedStream,
+    FuelStreams,
+};
 use fuel_streams_domains::SubjectPayload;
 use fuel_streams_store::record::RecordEntity;
 use futures::StreamExt;
 
 use super::decoder::decode_and_respond;
-use crate::server::{
-    errors::WebsocketError,
-    types::{ServerMessage, Subscription},
-    websocket::WsSession,
-};
+use crate::server::{errors::WebsocketError, websocket::WsSession};
 
 pub async fn unsubscribe(
     session: &mut Session,
