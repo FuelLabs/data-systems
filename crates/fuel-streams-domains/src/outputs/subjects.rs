@@ -7,7 +7,7 @@ use crate::blocks::types::*;
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_coin")]
 #[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
+#[subject(wildcard = "outputs.coin.>")]
 #[subject(
     format = "outputs.coin.{block_height}.{tx_id}.{tx_index}.{output_index}.{to}.{asset}"
 )]
@@ -25,7 +25,7 @@ pub struct OutputsCoinSubject {
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_contract")]
 #[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
+#[subject(wildcard = "outputs.contract.>")]
 #[subject(
     format = "outputs.contract.{block_height}.{tx_id}.{tx_index}.{output_index}.{contract}"
 )]
@@ -41,7 +41,7 @@ pub struct OutputsContractSubject {
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_change")]
 #[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
+#[subject(wildcard = "outputs.change.>")]
 #[subject(
     format = "outputs.change.{block_height}.{tx_id}.{tx_index}.{output_index}.{to}.{asset}"
 )]
@@ -59,7 +59,7 @@ pub struct OutputsChangeSubject {
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_variable")]
 #[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
+#[subject(wildcard = "outputs.variable.>")]
 #[subject(
     format = "outputs.variable.{block_height}.{tx_id}.{tx_index}.{output_index}.{to}.{asset}"
 )]
@@ -77,7 +77,7 @@ pub struct OutputsVariableSubject {
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_contract_created")]
 #[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
+#[subject(wildcard = "outputs.contract_created.>")]
 #[subject(
     format = "outputs.contract_created.{block_height}.{tx_id}.{tx_index}.{output_index}.{contract}"
 )]

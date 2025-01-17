@@ -22,6 +22,23 @@ pub mod subject {
         pub format: String,
         pub wildcard: String,
         pub fields: HashMap<String, FieldSchema>,
+        pub variants: Option<HashMap<String, Schema>>,
+    }
+    impl Schema {
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(self).unwrap()
+        }
+        pub fn set_variant(
+            &mut self,
+            name: String,
+            variant: Schema,
+        ) -> &mut Self {
+            if self.variants.is_none() {
+                self.variants = Some(HashMap::new());
+            }
+            self.variants.as_mut().unwrap().insert(name, variant);
+            self
+        }
     }
 
     #[derive(thiserror::Error, Debug, PartialEq, Eq)]

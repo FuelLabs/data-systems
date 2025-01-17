@@ -1,7 +1,14 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 resolver = "2"
-members = ["crates/*", "crates/fuel-streams-macros/subject-derive", "examples", "tests"]
+members = [
+    "crates/*",
+    "crates/fuel-streams-macros/subject-derive",
+    "examples",
+    "scripts/subjects-schema",
+    "scripts/subjects-schema",
+    "tests",
+]
 
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]

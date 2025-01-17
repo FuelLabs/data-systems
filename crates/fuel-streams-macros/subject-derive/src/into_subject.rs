@@ -157,6 +157,7 @@ pub fn schema_fn(
                 format: #format.to_string(),
                 wildcard: #wildcard.to_string(),
                 fields,
+                variants: None,
             }
         }
     }

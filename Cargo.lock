@@ -8881,6 +8881,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "subjects-schema"
+version = "0.0.16"
+dependencies = [
+ "fuel-streams-domains",
+ "fuel-streams-macros",
+ "fuel-streams-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

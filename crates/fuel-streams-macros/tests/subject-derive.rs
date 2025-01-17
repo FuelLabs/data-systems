@@ -246,6 +246,7 @@ fn subject_derive_schema() {
         format: "test.{field1}.{field2}.{field3}".to_string(),
         wildcard: "test.>".to_string(),
         fields,
+        variants: None,
     };
 
     assert_eq!(schema, expected_schema);
