@@ -6,6 +6,7 @@ use crate::blocks::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_coin")]
+#[subject(entity = "Input")]
 #[subject(wildcard = "inputs.>")]
 #[subject(
     format = "inputs.coin.{block_height}.{tx_id}.{tx_index}.{input_index}.{owner}.{asset}"
@@ -23,6 +24,7 @@ pub struct InputsCoinSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_contract")]
+#[subject(entity = "Input")]
 #[subject(wildcard = "inputs.>")]
 #[subject(
     format = "inputs.contract.{block_height}.{tx_id}.{tx_index}.{input_index}.{contract}"
@@ -38,6 +40,7 @@ pub struct InputsContractSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_message")]
+#[subject(entity = "Input")]
 #[subject(wildcard = "inputs.>")]
 #[subject(
     format = "inputs.message.{block_height}.{tx_id}.{tx_index}.{input_index}.{sender}.{recipient}"

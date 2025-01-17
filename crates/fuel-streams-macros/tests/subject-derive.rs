@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "test")]
+#[subject(entity = "Test")]
 #[subject(wildcard = "test.>")]
 #[subject(format = "test.{field1}.{field2}.{field3}")]
 struct TestSubject {
@@ -214,4 +215,11 @@ fn subject_derive_json_roundtrip() {
     // Verify the parsed subject string is the same
     assert_eq!(roundtrip.parse(), "test.test.*.value");
     assert_eq!(original.parse(), "test.test.*.value");
+}
+
+#[test]
+fn subject_derive_entity() {
+    let subject = TestSubject::new();
+    assert_eq!(TestSubject::ENTITY, "Test");
+    assert_eq!(subject.entity(), "Test");
 }

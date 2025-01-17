@@ -6,6 +6,7 @@ use super::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "blocks")]
+#[subject(entity = "Block")]
 #[subject(wildcard = "blocks.>")]
 #[subject(format = "blocks.{producer}.{height}")]
 pub struct BlocksSubject {

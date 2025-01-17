@@ -47,11 +47,13 @@ pub fn expanded<'a>(
     let get_methods = create_get_methods(field_names, field_types);
     let wildcard = crate::attrs::subject_attr("wildcard", attrs);
     let id = crate::attrs::subject_attr("id", attrs);
+    let entity = crate::attrs::subject_attr("entity", attrs);
 
     quote! {
         impl #name {
             pub const ID: &'static str = #id;
             pub const WILDCARD: &'static str = #wildcard;
+            pub const ENTITY: &'static str = #entity;
 
             pub fn build(
                 #(#field_names: #field_types,)*
@@ -77,6 +79,10 @@ pub fn expanded<'a>(
 
             pub fn dyn_arc(self) -> std::sync::Arc<dyn IntoSubject> {
                 self.arc() as std::sync::Arc<dyn IntoSubject>
+            }
+
+            pub fn entity(&self) -> &'static str {
+                Self::ENTITY
             }
 
             #(#with_methods)*
