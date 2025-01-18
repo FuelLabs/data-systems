@@ -12,7 +12,10 @@ pub async fn decode_and_respond(
     (subject, data): (String, Vec<u8>),
 ) -> Result<ServerMessage, WebsocketError> {
     let payload = decode_to_json_value(&payload.try_into()?, data).await?;
-    let response_message = ResponseMessage { subject, payload };
+    let response_message = ResponseMessage {
+        key: subject,
+        data: payload,
+    };
     Ok(ServerMessage::Response(response_message))
 }
 
