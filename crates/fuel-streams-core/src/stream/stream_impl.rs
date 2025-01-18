@@ -93,10 +93,7 @@ impl<R: Record> Stream<R> {
             }
             let mut live = broker.subscribe_to_events(&subject.parse()).await?;
             while let Some(msg) = live.next().await {
-                let msg = msg?;
-                let subject = msg.0;
-                let value = msg.1;
-                yield (subject, value);
+                yield msg?;
                 let throttle_time = *config::STREAM_THROTTLE_LIVE;
                 sleep(Duration::from_millis(throttle_time as u64)).await;
             }
