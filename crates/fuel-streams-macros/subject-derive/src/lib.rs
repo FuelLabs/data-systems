@@ -23,6 +23,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let to_sql_where_fn = into_subject::to_sql_where_fn(&field_infos);
     let from_json_fn = into_subject::from_json_fn(&field_names);
     let to_json_fn = into_subject::to_json_fn();
+    let schema_fn = into_subject::schema_fn(&input, &field_names, &field_types);
     let subject_expanded =
         subject::expanded(name, &field_names, &field_types, &input.attrs);
 
@@ -42,6 +43,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
             #parse_fn
             #wildcard_fn
             #to_sql_where_fn
+            #schema_fn
         }
 
         impl FromJsonString for #name {

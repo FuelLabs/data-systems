@@ -6,7 +6,8 @@ use crate::blocks::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_call")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.call.>")]
 #[subject(
     format = "receipts.call.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to}.{asset}"
 )]
@@ -25,7 +26,8 @@ pub struct ReceiptsCallSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_return")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.return.>")]
 #[subject(
     format = "receipts.return.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -40,7 +42,8 @@ pub struct ReceiptsReturnSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_return_data")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.return_data.>")]
 #[subject(
     format = "receipts.return_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -55,7 +58,8 @@ pub struct ReceiptsReturnDataSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_panic")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.panic.>")]
 #[subject(
     format = "receipts.panic.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -70,7 +74,8 @@ pub struct ReceiptsPanicSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_revert")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.revert.>")]
 #[subject(
     format = "receipts.revert.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -85,7 +90,8 @@ pub struct ReceiptsRevertSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_log")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.log.>")]
 #[subject(
     format = "receipts.log.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -100,7 +106,8 @@ pub struct ReceiptsLogSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_log_data")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.log_data.>")]
 #[subject(
     format = "receipts.log_data.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}"
 )]
@@ -115,7 +122,8 @@ pub struct ReceiptsLogDataSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_transfer")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.transfer.>")]
 #[subject(
     format = "receipts.transfer.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to}.{asset}"
 )]
@@ -134,7 +142,8 @@ pub struct ReceiptsTransferSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_transfer_out")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.transfer_out.>")]
 #[subject(
     format = "receipts.transfer_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{from}.{to_address}.{asset}"
 )]
@@ -153,7 +162,8 @@ pub struct ReceiptsTransferOutSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_script_result")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.script_result.>")]
 #[subject(
     format = "receipts.script_result.{block_height}.{tx_id}.{tx_index}.{receipt_index}"
 )]
@@ -166,7 +176,8 @@ pub struct ReceiptsScriptResultSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_message_out")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.message_out.>")]
 #[subject(
     format = "receipts.message_out.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{sender}.{recipient}"
 )]
@@ -183,7 +194,8 @@ pub struct ReceiptsMessageOutSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_mint")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.mint.>")]
 #[subject(
     format = "receipts.mint.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}.{sub_id}"
 )]
@@ -199,7 +211,8 @@ pub struct ReceiptsMintSubject {
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_burn")]
-#[subject(wildcard = "receipts.>")]
+#[subject(entity = "Receipt")]
+#[subject(wildcard = "receipts.burn.>")]
 #[subject(
     format = "receipts.burn.{block_height}.{tx_id}.{tx_index}.{receipt_index}.{contract}.{sub_id}"
 )]

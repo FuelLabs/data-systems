@@ -51,6 +51,7 @@ use fuel_streams_macros::subject::*;
 
 #[derive(Subject, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[subject(id = "test")]
+#[subject(entity = "Test")]
 #[subject(wildcard = "test.>")]
 #[subject(format = "test.{field1}.{field2}")]
 struct TestSubject {

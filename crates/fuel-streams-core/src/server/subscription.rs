@@ -85,8 +85,8 @@ pub enum ServerMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResponseMessage {
-    pub subject: String,
-    pub payload: serde_json::Value,
+    pub key: String,
+    pub data: serde_json::Value,
 }
 
 #[cfg(test)]

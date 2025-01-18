@@ -347,3 +347,14 @@ cluster-down: pre-cluster
 	CLUSTER_MODE=$(MODE) tilt --file ./Tiltfile down
 
 cluster-reset: cluster-down cluster-up
+
+# ------------------------------------------------------------
+#  Subjects Schema
+# ------------------------------------------------------------
+
+subjects-schema:
+	@echo "Generating subjects schema..."
+	@cd scripts/subjects-schema && cargo run
+	@cat scripts/subjects-schema/schema.json | pbcopy
+	@echo "Subjects schema copied to clipboard"
+	@rm -rf scripts/subjects-schema/schema.json

@@ -2726,7 +2726,7 @@ dependencies = [
  "hashers",
  "http 0.2.12",
  "instant",
- "jsonwebtoken 8.3.0",
+ "jsonwebtoken",
  "once_cell",
  "pin-project",
  "reqwest 0.11.27",
@@ -3942,7 +3942,6 @@ dependencies = [
  "fuel-streams-store",
  "futures",
  "futures-util",
- "jsonwebtoken 9.3.0",
  "num_cpus",
  "parking_lot",
  "prometheus",
@@ -3961,7 +3960,6 @@ dependencies = [
  "tracing-actix-web",
  "url",
  "urlencoding",
- "uuid",
 ]
 
 [[package]]
@@ -5193,21 +5191,6 @@ dependencies = [
  "base64 0.21.7",
  "pem 1.1.1",
  "ring 0.16.20",
- "serde",
- "serde_json",
- "simple_asn1",
-]
-
-[[package]]
-name = "jsonwebtoken"
-version = "9.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9ae10193d25051e74945f1ea2d0b42e03cc3b890f7e4cc5faa44997d808193f"
-dependencies = [
- "base64 0.21.7",
- "js-sys",
- "pem 3.0.4",
- "ring 0.17.8",
  "serde",
  "serde_json",
  "simple_asn1",
@@ -8881,6 +8864,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "subjects-schema"
+version = "0.0.16"
+dependencies = [
+ "fuel-streams-domains",
+ "fuel-streams-macros",
+ "fuel-streams-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10127,7 +10121,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b913a3b5fe84142e269d63cc62b64319ccaf89b748fc31fe025177f767a756c4"
 dependencies = [
  "getrandom",
- "serde",
 ]
 
 [[package]]

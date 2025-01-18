@@ -114,7 +114,8 @@ impl ApiKeysManager {
                 let token = format!("Bearer {}", value);
                 headers.insert(
                     AUTHORIZATION,
-                    HeaderValue::from_str(&token).unwrap(),
+                    HeaderValue::from_str(&token)
+                        .map_err(ApiKeyError::InvalidHeader)?,
                 );
             }
         }

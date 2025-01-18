@@ -99,18 +99,20 @@ impl SubjectPayload {
         })
     }
 
-    pub fn into_subject(&self) -> Arc<dyn IntoSubject> {
-        let subject: Subjects = self.clone().try_into().unwrap();
-        subject.into()
+    pub fn into_subject(
+        &self,
+    ) -> Result<Arc<dyn IntoSubject>, SubjectPayloadError> {
+        let subject: Subjects = self.clone().try_into()?;
+        Ok(subject.into())
     }
 
     pub fn record_entity(&self) -> &RecordEntity {
         &self.record_entity
     }
 
-    pub fn parsed_subject(&self) -> String {
-        let subject_item = self.into_subject();
-        subject_item.parse()
+    pub fn parsed_subject(&self) -> Result<String, SubjectPayloadError> {
+        let subject_item = self.into_subject()?;
+        Ok(subject_item.parse())
     }
 
     fn record_from_subject_str(
@@ -118,7 +120,10 @@ impl SubjectPayload {
     ) -> Result<RecordEntity, SubjectPayloadError> {
         let subject = subject.to_lowercase();
         let subject_entity = if subject.contains("_") {
-            subject.split("_").next().unwrap()
+            subject
+                .split("_")
+                .next()
+                .ok_or(SubjectPayloadError::UnknownSubject(subject.clone()))?
         } else {
             &subject
         };

@@ -24,7 +24,6 @@ pub struct ServerState {
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
-    pub jwt_secret: String,
     pub api_keys_manager: Arc<ApiKeysManager>,
 }
 
@@ -62,7 +61,6 @@ impl ServerState {
             msg_broker,
             fuel_streams,
             telemetry,
-            jwt_secret: config.auth.jwt_secret.clone(),
             api_keys_manager,
         })
     }

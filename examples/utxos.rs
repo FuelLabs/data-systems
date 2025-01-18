@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Process incoming UTXOs
     while let Some(msg) = stream.next().await {
-        println!("Received UTXO: {:?}", msg.payload);
+        println!("Received UTXO: {:?}", msg.data);
     }
 
     Ok(())

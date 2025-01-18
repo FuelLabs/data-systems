@@ -71,8 +71,11 @@ pub type MessageBlockStream = Box<
         + Unpin,
 >;
 
-pub type MessageStream =
-    Box<dyn Stream<Item = Result<Vec<u8>, MessageBrokerError>> + Send + Unpin>;
+pub type MessageStream = Box<
+    dyn Stream<Item = Result<(String, Vec<u8>), MessageBrokerError>>
+        + Send
+        + Unpin,
+>;
 
 #[async_trait]
 pub trait MessageBroker: std::fmt::Debug + Send + Sync + 'static {
