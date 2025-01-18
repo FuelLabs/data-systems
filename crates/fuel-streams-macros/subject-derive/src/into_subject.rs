@@ -62,6 +62,37 @@ pub fn to_sql_where_fn(fields: &[FieldInfo]) -> TokenStream {
     }
 }
 
+pub fn to_sql_select_fn(fields: &[FieldInfo]) -> TokenStream {
+    let column_names: Vec<TokenStream> = fields
+        .iter()
+        .map(|field| {
+            let name = field.ident;
+            let column_name = match &field.attributes.sql_column {
+                Some(val) => val.clone(),
+                None => name.to_string(),
+            };
+
+            quote! {
+                if self.#name.is_some() {
+                    columns.push(#column_name.to_string());
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        fn to_sql_select(&self) -> String {
+            let mut columns = Vec::new();
+            #(#column_names)*
+            if columns.is_empty() {
+                "*".to_string()
+            } else {
+                columns.join(", ")
+            }
+        }
+    }
+}
+
 pub fn from_json_fn(field_names: &[&Ident]) -> TokenStream {
     let parse_fields = field_names.iter().map(|name| {
         let name_str = name.to_string();

@@ -21,6 +21,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let wildcard_fn = into_subject::wildcard_fn();
     let parse_fn = into_subject::parse_fn(&input, &field_names);
     let to_sql_where_fn = into_subject::to_sql_where_fn(&field_infos);
+    let to_sql_select_fn = into_subject::to_sql_select_fn(&field_infos);
     let from_json_fn = into_subject::from_json_fn(&field_names);
     let to_json_fn = into_subject::to_json_fn();
     let schema_fn = into_subject::schema_fn(&input, &field_names, &field_types);
@@ -43,6 +44,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
             #parse_fn
             #wildcard_fn
             #to_sql_where_fn
+            #to_sql_select_fn
             #schema_fn
         }
 

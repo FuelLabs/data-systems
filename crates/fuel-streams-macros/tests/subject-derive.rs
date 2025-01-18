@@ -252,3 +252,26 @@ fn subject_derive_schema() {
 
     assert_eq!(schema, expected_schema);
 }
+
+#[test]
+fn subject_derive_sql_select() {
+    // Test with all fields
+    let subject = TestSubject {
+        field1: Some("foo".to_string()),
+        field2: Some(55),
+        field3: Some("bar".to_string()),
+    };
+    assert_eq!(subject.to_sql_select(), "field_id1, field_id2, field_id3");
+
+    // Test with partial fields
+    let subject = TestSubject {
+        field1: Some("foo".to_string()),
+        field2: None,
+        field3: Some("bar".to_string()),
+    };
+    assert_eq!(subject.to_sql_select(), "field_id1, field_id3");
+
+    // Test with no fields
+    let subject = TestSubject::default();
+    assert_eq!(subject.to_sql_select(), "*");
+}

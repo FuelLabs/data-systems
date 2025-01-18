@@ -55,6 +55,7 @@ pub mod subject {
         fn parse(&self) -> String;
         fn wildcard(&self) -> &'static str;
         fn to_sql_where(&self) -> String;
+        fn to_sql_select(&self) -> String;
         fn schema(&self) -> Schema;
     }
     impl_downcast!(IntoSubject);
