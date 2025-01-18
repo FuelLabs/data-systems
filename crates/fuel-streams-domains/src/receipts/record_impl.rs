@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Receipt, ReceiptDbItem};
+use super::{Receipt, ReceiptDbItem, ReceiptStoreItem};
 
 impl DataEncoder for Receipt {
     type Err = DbError;
@@ -14,6 +14,7 @@ impl DataEncoder for Receipt {
 #[async_trait]
 impl Record for Receipt {
     type DbItem = ReceiptDbItem;
+    type StoreItem = ReceiptStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Receipt;
     const ORDER_PROPS: &'static [&'static str] =

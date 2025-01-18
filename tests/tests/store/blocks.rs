@@ -39,7 +39,7 @@ async fn store_can_record_blocks() -> anyhow::Result<()> {
 
     let db_record: BlockDbItem = store.insert_record(&packet).await?;
     assert_eq!(db_record.subject, packet.subject_str());
-    assert_eq!(Block::from_db_item(&db_record).await?, block);
+    assert_eq!(Block::from_db_item(&db_record)?, block);
 
     Ok(())
 }

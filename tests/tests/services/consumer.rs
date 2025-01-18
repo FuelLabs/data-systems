@@ -11,7 +11,7 @@ use fuel_streams_core::{
         TransactionsSubject,
         UtxosSubject,
     },
-    types::BlockHeight,
+    types::{BlockHeight, Transaction},
     FuelStreams,
 };
 use fuel_streams_domains::{MockMsgPayload, MsgPayload};
@@ -64,8 +64,13 @@ async fn verify_transactions(
         .into_iter()
         .map(|id| id.to_string())
         .collect();
-    let actual_tx_ids: Vec<String> =
-        transactions.iter().map(|tx| tx.tx_id.clone()).collect();
+    let actual_tx_ids: Vec<String> = transactions
+        .iter()
+        .map(|tx| {
+            let decoded = Transaction::decode_json(&tx.value).unwrap();
+            decoded.id.to_string()
+        })
+        .collect();
 
     assert_eq!(
         actual_tx_ids.len(),

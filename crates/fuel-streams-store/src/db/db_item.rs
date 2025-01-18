@@ -12,8 +12,28 @@ pub trait DbItem:
     + std::fmt::Debug
     + PartialEq
     + Eq
+    + Send
+    + Sync
+    + Sized
+    + serde::Serialize
+    + serde::de::DeserializeOwned
+    + for<'r> sqlx::FromRow<'r, PgRow>
+    + 'static
+{
+    fn entity(&self) -> &RecordEntity;
+    fn encoded_value(&self) -> &[u8];
+    fn subject_str(&self) -> String;
+}
+
+#[async_trait]
+pub trait StoreItem:
+    DataEncoder<Err = DbError>
+    + Unpin
+    + std::fmt::Debug
+    + PartialEq
     + Ord
     + PartialOrd
+    + Eq
     + Send
     + Sync
     + Sized
