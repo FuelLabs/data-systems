@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Transaction, TransactionDbItem};
+use super::{Transaction, TransactionDbItem, TransactionStoreItem};
 
 impl DataEncoder for Transaction {
     type Err = DbError;
@@ -14,6 +14,7 @@ impl DataEncoder for Transaction {
 #[async_trait]
 impl Record for Transaction {
     type DbItem = TransactionDbItem;
+    type StoreItem = TransactionStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Transaction;
     const ORDER_PROPS: &'static [&'static str] = &["block_height", "tx_index"];

@@ -6,7 +6,7 @@ use fuel_streams_macros::subject::IntoSubject;
 use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket};
-use crate::db::{Db, DbError, DbItem, DbResult};
+use crate::db::{Db, DbError, DbItem, DbResult, StoreItem};
 
 pub trait RecordEncoder: DataEncoder<Err = DbError> {}
 impl<T: DataEncoder<Err = DbError>> RecordEncoder for T {}
@@ -17,6 +17,7 @@ pub type DbConnection = PgConnection;
 #[async_trait]
 pub trait Record: RecordEncoder + 'static {
     type DbItem: DbItem;
+    type StoreItem: StoreItem;
 
     const ENTITY: RecordEntity;
     const ORDER_PROPS: &'static [&'static str];
@@ -43,8 +44,12 @@ pub trait Record: RecordEncoder + 'static {
         RecordPacket::new(subject.to_owned(), value)
     }
 
-    async fn from_db_item(record: &Self::DbItem) -> DbResult<Self> {
-        Self::decode(record.encoded_value()).await
+    fn from_db_item(record: &Self::DbItem) -> DbResult<Self> {
+        Self::decode_json(record.encoded_value())
+    }
+
+    fn from_store_item(item: &Self::StoreItem) -> DbResult<Self> {
+        Self::decode_json(item.encoded_value())
     }
 
     fn build_find_many_query(
@@ -52,21 +57,39 @@ pub trait Record: RecordEncoder + 'static {
         options: QueryOptions,
     ) -> QueryBuilder<'static, Postgres> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-        let select = format!("SELECT * FROM {}", Self::ENTITY.table_name());
-        query_builder.push(select);
-        query_builder.push(" WHERE ");
-        query_builder.push(subject.to_sql_where());
 
-        if let Some(block) = options.from_block {
-            query_builder.push(" AND block_height >= ");
-            query_builder.push_bind(block as i64);
+        query_builder.push("SELECT ");
+        query_builder.push(Self::build_select_fields());
+        query_builder.push(" FROM ");
+        query_builder.push(Self::ENTITY.table_name());
+
+        let mut conditions = Vec::new();
+
+        // Add subject conditions if any
+        if let Some(where_clause) = subject.to_sql_where() {
+            conditions.push(where_clause);
         }
 
+        // Add block conditions
+        if let Some(block) = options.from_block {
+            conditions.push(format!("block_height >= {}", block));
+        }
+
+        if let Some(block) = options.to_block {
+            conditions.push(format!("block_height < {}", block));
+        }
+
+        // Add namespace condition for tests
         if cfg!(any(test, feature = "test-helpers")) {
             if let Some(ns) = options.namespace {
-                query_builder.push(" AND subject LIKE ");
-                query_builder.push_bind(format!("{}%", ns));
+                conditions.push(format!("subject LIKE '{ns}%'"));
             }
+        }
+
+        // Add WHERE clause if we have any conditions
+        if !conditions.is_empty() {
+            query_builder.push(" WHERE ");
+            query_builder.push(conditions.join(" AND "));
         }
 
         query_builder.push(" ORDER BY ");
@@ -76,6 +99,20 @@ pub trait Record: RecordEncoder + 'static {
         query_builder.push(" OFFSET ");
         query_builder.push_bind(options.offset);
         query_builder
+    }
+
+    fn build_select_fields() -> String {
+        let mut select_fields = vec![
+            "_id".to_string(),
+            "subject".to_string(),
+            "value".to_string(),
+        ];
+
+        // Add order fields first
+        let order_fields: Vec<String> =
+            Self::ORDER_PROPS.iter().map(|&s| s.to_string()).collect();
+        select_fields.extend(order_fields);
+        select_fields.join(", ")
     }
 
     async fn find_last_record(

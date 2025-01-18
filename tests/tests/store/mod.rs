@@ -2,6 +2,7 @@ mod blocks;
 mod inputs;
 mod outputs;
 mod pattern_matching;
+mod query_builder;
 mod receipts;
 mod record;
 mod transactions;

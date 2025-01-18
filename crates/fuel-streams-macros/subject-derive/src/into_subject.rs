@@ -50,13 +50,44 @@ pub fn to_sql_where_fn(fields: &[FieldInfo]) -> TokenStream {
         .collect();
 
     quote! {
-        fn to_sql_where(&self) -> String {
+        fn to_sql_where(&self) -> Option<String> {
             let mut conditions = Vec::new();
             #(#conditions)*
             if conditions.is_empty() {
-                "TRUE".to_string()
+                None
             } else {
-                conditions.join(" AND ")
+                Some(conditions.join(" AND "))
+            }
+        }
+    }
+}
+
+pub fn to_sql_select_fn(fields: &[FieldInfo]) -> TokenStream {
+    let column_names: Vec<TokenStream> = fields
+        .iter()
+        .map(|field| {
+            let name = field.ident;
+            let column_name = match &field.attributes.sql_column {
+                Some(val) => val.clone(),
+                None => name.to_string(),
+            };
+
+            quote! {
+                if self.#name.is_some() {
+                    columns.push(#column_name.to_string());
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        fn to_sql_select(&self) -> Option<String> {
+            let mut columns = Vec::new();
+            #(#column_names)*
+            if columns.is_empty() {
+                None
+            } else {
+                Some(columns.join(", "))
             }
         }
     }

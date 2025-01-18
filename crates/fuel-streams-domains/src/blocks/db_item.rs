@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
@@ -33,18 +31,6 @@ impl DbItem for BlockDbItem {
 
     fn subject_str(&self) -> String {
         self.subject.clone()
-    }
-}
-
-impl PartialOrd for BlockDbItem {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for BlockDbItem {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.block_height.cmp(&other.block_height)
     }
 }
 

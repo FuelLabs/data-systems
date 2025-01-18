@@ -4,7 +4,7 @@ pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_message_broker::MessageBroker;
 use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{
-    db::{Db, DbItem},
+    db::{Db, StoreItem},
     record::Record,
     store::Store,
 };
@@ -17,8 +17,8 @@ use tokio::{sync::OnceCell, time::sleep};
 use super::{config, StreamError};
 use crate::server::DeliverPolicy;
 
-pub type BoxedStreamItem = Result<(String, Vec<u8>), StreamError>;
-pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
+pub type BoxedStoreItem = Result<(String, Vec<u8>), StreamError>;
+pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {

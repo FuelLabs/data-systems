@@ -60,10 +60,12 @@ impl<R: Record + DataEncoder> Store<R> {
         &self,
         subject: &Arc<dyn IntoSubject>,
         mut options: QueryOptions,
-    ) -> StoreResult<Vec<R::DbItem>> {
+    ) -> StoreResult<Vec<R::StoreItem>> {
         options = options.with_namespace(self.namespace.clone());
-        R::build_find_many_query(subject.clone(), options.clone())
-            .build_query_as::<R::DbItem>()
+        let mut query =
+            R::build_find_many_query(subject.clone(), options.clone());
+        query
+            .build_query_as::<R::StoreItem>()
             .fetch_all(&self.db.pool)
             .await
             .map_err(StoreError::from)
@@ -73,7 +75,7 @@ impl<R: Record + DataEncoder> Store<R> {
         &self,
         subject: &Arc<dyn IntoSubject>,
         from_block: Option<u64>,
-    ) -> BoxStream<'static, Result<R::DbItem, StoreError>> {
+    ) -> BoxStream<'static, Result<R::StoreItem, StoreError>> {
         let db = Arc::clone(&self.db);
         let namespace = self.namespace.clone();
         let subject = subject.clone();
@@ -84,7 +86,7 @@ impl<R: Record + DataEncoder> Store<R> {
                 .with_limit(*config::STORE_PAGINATION_LIMIT);
             let mut query = R::build_find_many_query(subject, options.clone());
             let mut stream = query
-                .build_query_as::<R::DbItem>()
+                .build_query_as::<R::StoreItem>()
                 .fetch(&db.pool);
             while let Some(result) = stream.try_next().await? {
                 yield Ok(result);

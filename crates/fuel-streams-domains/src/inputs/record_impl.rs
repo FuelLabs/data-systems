@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Input, InputDbItem};
+use super::{Input, InputDbItem, InputStoreItem};
 
 impl DataEncoder for Input {
     type Err = DbError;
@@ -14,6 +14,7 @@ impl DataEncoder for Input {
 #[async_trait]
 impl Record for Input {
     type DbItem = InputDbItem;
+    type StoreItem = InputStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Input;
     const ORDER_PROPS: &'static [&'static str] =

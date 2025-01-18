@@ -66,7 +66,10 @@ fn subject_derive_sql_where_exact_match() {
     assert_eq!(subject.parse(), "test.foo.55.bar");
     assert_eq!(
         subject.to_sql_where(),
-        "field_id1 = 'foo' AND field_id2 = '55' AND field_id3 = 'bar'"
+        Some(
+            "field_id1 = 'foo' AND field_id2 = '55' AND field_id3 = 'bar'"
+                .to_string()
+        )
     );
 }
 
@@ -81,7 +84,7 @@ fn subject_derive_sql_where_wildcards() {
     assert_eq!(subject.parse(), "test.*.55.bar");
     assert_eq!(
         subject.to_sql_where(),
-        "field_id2 = '55' AND field_id3 = 'bar'"
+        Some("field_id2 = '55' AND field_id3 = 'bar'".to_string())
     );
 }
 
@@ -95,7 +98,7 @@ fn subject_derive_sql_where_greater_than() {
 
     assert_eq!(
         subject.to_sql_where(),
-        "field_id1 = 'foo' AND field_id3 = 'bar'"
+        Some("field_id1 = 'foo' AND field_id3 = 'bar'".to_string())
     );
 }
 
@@ -108,15 +111,15 @@ fn subject_derive_sql_where_table_only() {
     };
 
     assert_eq!(subject.parse(), "test.>");
-    assert_eq!(subject.to_sql_where(), "TRUE");
+    assert_eq!(subject.to_sql_where(), None);
 
     let subject2 = TestSubject::default();
     assert_eq!(subject2.parse(), "test.>");
-    assert_eq!(subject2.to_sql_where(), "TRUE");
+    assert_eq!(subject2.to_sql_where(), None);
 
     let subject3 = TestSubject::new();
     assert_eq!(subject3.parse(), "test.>");
-    assert_eq!(subject3.to_sql_where(), "TRUE");
+    assert_eq!(subject3.to_sql_where(), None);
 }
 
 #[test]
@@ -251,4 +254,33 @@ fn subject_derive_schema() {
     };
 
     assert_eq!(schema, expected_schema);
+}
+
+#[test]
+fn subject_derive_sql_select() {
+    // Test with all fields
+    let subject = TestSubject {
+        field1: Some("foo".to_string()),
+        field2: Some(55),
+        field3: Some("bar".to_string()),
+    };
+    assert_eq!(
+        subject.to_sql_select(),
+        Some("field_id1, field_id2, field_id3".to_string())
+    );
+
+    // Test with partial fields
+    let subject = TestSubject {
+        field1: Some("foo".to_string()),
+        field2: None,
+        field3: Some("bar".to_string()),
+    };
+    assert_eq!(
+        subject.to_sql_select(),
+        Some("field_id1, field_id3".to_string())
+    );
+
+    // Test with no fields
+    let subject = TestSubject::default();
+    assert_eq!(subject.to_sql_select(), None);
 }

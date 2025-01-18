@@ -24,8 +24,8 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
     let db_record2 = db_items.get(1).unwrap();
     let block1 = &blocks.first().unwrap().1;
     let block2 = &blocks.get(1).unwrap().1;
-    assert_eq!(&Block::from_db_item(db_record1).await?, block1);
-    assert_eq!(&Block::from_db_item(db_record2).await?, block2);
+    assert_eq!(&Block::from_db_item(db_record1)?, block1);
+    assert_eq!(&Block::from_db_item(db_record2)?, block2);
 
     // Verify both records are found
     let subject = BlocksSubject::new().with_height(None).dyn_arc();
@@ -54,7 +54,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
         .find_many_by_subject(&subject1, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(&Block::from_db_item(&records[0]).await?, block1);
+    assert_eq!(&Block::from_store_item(&records[0])?, block1);
 
     // Test finding by subject2
     let subject2 = BlocksSubject::build(None, Some(2.into())).dyn_arc();
@@ -62,7 +62,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
         .find_many_by_subject(&subject2, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(&Block::from_db_item(&records[0]).await?, block2);
+    assert_eq!(&Block::from_store_item(&records[0])?, block2);
 
     Ok(())
 }
@@ -81,7 +81,7 @@ async fn test_find_last_record() -> anyhow::Result<()> {
     // Test finding last record
     let last_record = store.find_last_record().await?;
     assert!(last_record.is_some());
-    let last_block = Block::from_db_item(&last_record.unwrap()).await?;
+    let last_block = Block::from_db_item(&last_record.unwrap())?;
     assert_eq!(&last_block, block4);
 
     Ok(())
@@ -123,7 +123,7 @@ async fn test_insert_with_transaction() -> anyhow::Result<()> {
     // Verify the records match the original blocks
     for (record, item) in found_records.iter().zip(blocks.iter()) {
         let (_, block) = item;
-        assert_eq!(&Block::from_db_item(record).await?, block);
+        assert_eq!(&Block::from_store_item(record)?, block);
     }
 
     Ok(())
