@@ -17,3 +17,10 @@ CREATE INDEX IF NOT EXISTS idx_utxos_tx_index ON utxos (tx_index);
 CREATE INDEX IF NOT EXISTS idx_utxos_input_index ON utxos (input_index);
 CREATE INDEX IF NOT EXISTS idx_utxos_utxo_type ON utxos (utxo_type);
 CREATE INDEX IF NOT EXISTS idx_utxos_utxo_id ON utxos (utxo_id);
+
+-- Composite indexes for filtering with "WHERE block_height >= <value>"
+CREATE INDEX IF NOT EXISTS idx_utxos_utxo_type_block_height ON utxos (utxo_type, block_height);
+CREATE INDEX IF NOT EXISTS idx_utxos_utxo_id_block_height ON utxos (utxo_id, block_height);
+
+-- Composite index for ordering by (block_height, tx_index, input_index)
+CREATE INDEX IF NOT EXISTS idx_utxos_ordering ON utxos (block_height, tx_index, input_index);

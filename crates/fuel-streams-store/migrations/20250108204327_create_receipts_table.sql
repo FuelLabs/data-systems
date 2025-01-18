@@ -32,3 +32,17 @@ CREATE INDEX IF NOT EXISTS idx_receipts_contract_id ON receipts (contract_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_sub_id ON receipts (sub_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_sender_address ON receipts (sender_address);
 CREATE INDEX IF NOT EXISTS idx_receipts_recipient_address ON receipts (recipient_address);
+
+-- Composite indexes for filtering with "WHERE block_height >= <value>"
+CREATE INDEX IF NOT EXISTS idx_receipts_receipt_type_block_height ON receipts (receipt_type, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_from_contract_id_block_height ON receipts (from_contract_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_to_contract_id_block_height ON receipts (to_contract_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_to_address_block_height ON receipts (to_address, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_asset_id_block_height ON receipts (asset_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_contract_id_block_height ON receipts (contract_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_sub_id_block_height ON receipts (sub_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_sender_address_block_height ON receipts (sender_address, block_height);
+CREATE INDEX IF NOT EXISTS idx_receipts_recipient_address_block_height ON receipts (recipient_address, block_height);
+
+-- Composite index for ordering by (block_height, tx_index, receipt_index)
+CREATE INDEX IF NOT EXISTS idx_receipts_ordering ON receipts (block_height, tx_index, receipt_index);

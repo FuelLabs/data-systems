@@ -25,3 +25,14 @@ CREATE INDEX IF NOT EXISTS idx_inputs_asset_id ON inputs (asset_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_contract_id ON inputs (contract_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_sender_address ON inputs (sender_address);
 CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address ON inputs (recipient_address);
+
+-- Composite indexes for filtering with "WHERE block_height >= <value>"
+CREATE INDEX IF NOT EXISTS idx_inputs_input_type_block_height ON inputs (input_type, block_height);
+CREATE INDEX IF NOT EXISTS idx_inputs_owner_id_block_height ON inputs (owner_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_inputs_asset_id_block_height ON inputs (asset_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_inputs_contract_id_block_height ON inputs (contract_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_inputs_sender_address_block_height ON inputs (sender_address, block_height);
+CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address_block_height ON inputs (recipient_address, block_height);
+
+-- Composite index for ordering by (block_height, tx_index, input_index)
+CREATE INDEX IF NOT EXISTS idx_inputs_ordering ON inputs (block_height, tx_index, input_index);

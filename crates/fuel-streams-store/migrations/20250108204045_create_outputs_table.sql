@@ -21,3 +21,12 @@ CREATE INDEX IF NOT EXISTS idx_outputs_output_type ON outputs (output_type);
 CREATE INDEX IF NOT EXISTS idx_outputs_to_address ON outputs (to_address);
 CREATE INDEX IF NOT EXISTS idx_outputs_asset_id ON outputs (asset_id);
 CREATE INDEX IF NOT EXISTS idx_outputs_contract_id ON outputs (contract_id);
+
+-- Composite indexes for filtering with "WHERE block_height >= <value>"
+CREATE INDEX IF NOT EXISTS idx_outputs_output_type_block_height ON outputs (output_type, block_height);
+CREATE INDEX IF NOT EXISTS idx_outputs_to_address_block_height ON outputs (to_address, block_height);
+CREATE INDEX IF NOT EXISTS idx_outputs_asset_id_block_height ON outputs (asset_id, block_height);
+CREATE INDEX IF NOT EXISTS idx_outputs_contract_id_block_height ON outputs (contract_id, block_height);
+
+-- Composite index for ordering by (block_height, tx_index, output_index)
+CREATE INDEX IF NOT EXISTS idx_outputs_ordering ON outputs (block_height, tx_index, output_index);
