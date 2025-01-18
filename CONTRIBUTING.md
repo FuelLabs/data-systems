@@ -57,6 +57,7 @@ You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is b
 Here's an overview of the project's directory structure:
 
 - `crates/`: Contains the main Rust crates for the project
+- `benches/`: Benchmarking code
 - `tests/`: Integration and end-to-end tests
 - `examples/`: Example code and usage demonstrations
 - `cluster/`: Kubernetes cluster configuration and deployment files
@@ -90,6 +91,7 @@ This is a general rule used for commits. When you are creating a PR, ensure that
 - `core`: Changes that affect the core package.
 - `publisher`: Changes that affect the publisher package.
 - `fuel-streams`: Changes that affect the fuel-streams package.
+- `benches`: Changes related to benchmarks.
 - `deps`: Changes related to dependencies.
 - `macros`: Changes that affect the macros package.
 

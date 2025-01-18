@@ -34,14 +34,12 @@
 
 ## 📝 About The Project
 
-> [!WARNING]
-> This project is currently under development and is not yet ready for production use.
-
-Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It provides an efficient and user-friendly interface for developers to interact with real-time blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable streaming.
+Fuel Streams is a Rust library designed for working with streams of Fuel blockchain data. It provides an efficient and user-friendly interface for developers to interact with real-time and historical blockchain data, offering support for Fuel-specific data types and leveraging NATS for scalable streaming.
 
 ## 🚀 Features
 
 - Real-time streaming of Fuel blockchain data
+- Historical streaming of Fuel blockchain data
 - Support for Fuel-specific data types
 - Efficient data handling using NATS
 - Easy-to-use API for subscribing to and processing blockchain events

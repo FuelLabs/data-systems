@@ -25,16 +25,14 @@
 
 ## 📝 About The Project
 
-> [!WARNING]
-> This project is currently under development and is not yet ready for production use.
-
-Fuel Data Systems is a comprehensive suite of libraries and tools designed to enable real-time data streaming and processing from the Fuel Network. This repository houses the official data streaming ecosystem, offering developers a powerful and flexible API to interact with Fuel Network data in real-time.
+Fuel Data Systems is a comprehensive suite of libraries and tools designed to enable real-time and historical data streaming and processing from the Fuel Network. This repository houses the official data streaming ecosystem, offering developers a powerful and flexible API to interact with Fuel Network data in real-time.
 
 With Fuel Data Systems, developers can build sophisticated applications that leverage the full potential of the Fuel Network's data, from simple block explorers to complex analytics engines and trading systems.
 
 ## 🚀 Features
 
 - Real-time streaming of Fuel blockchain data
+- Historical streaming of Fuel blockchain data
 - Support for various Fuel-specific data types
 - Customizable filters for targeted data retrieval
 - Flexible delivery policies for historical and real-time data

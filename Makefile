@@ -194,11 +194,30 @@ audit-fix:
 	cargo audit fix
 
 # ------------------------------------------------------------
+#  Build & Documentation
+# ------------------------------------------------------------
+
+build:
+	cargo build --release
+
+docs: doc
+	@echo "Generating additional documentation..."
+	@cargo doc --no-deps --document-private-items
+	@cargo doc --workspace --no-deps
+
+docs-serve: docs
+	@echo "Serving documentation on http://localhost:8000"
+	@python3 -m http.server 8000 --directory target/doc
+
+# ------------------------------------------------------------
 #  Load Testing & Benchmarking
 # ------------------------------------------------------------
 
 load-test:
-	cargo run -p load-tester -- --network testnet --max-subscriptions 10 --step-size 1
+	cargo run -p load-tester -- --network staging --ws-url "wss://stream-staging.fuel.network" --api-key "your_api_key" --max-subscriptions 10 --step-size 1
+
+bench:
+	cargo bench -p data-parser
 
 # ------------------------------------------------------------
 #  Publisher Run Commands
