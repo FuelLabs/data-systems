@@ -80,28 +80,16 @@ impl<R: Record + DataEncoder> Store<R> {
         let namespace = self.namespace.clone();
         let subject = subject.clone();
         async_stream::stream! {
-            const MAX_BLOCK_RANGE: u64 = 100_000;
-            let mut current_from_block = from_block;
-            loop {
-                let to_block = current_from_block.map(|b| b + MAX_BLOCK_RANGE);
-                let options = QueryOptions::default()
-                    .with_namespace(namespace.clone())
-                    .with_from_block(current_from_block)
-                    .with_to_block(to_block)
-                    .with_limit(*config::STORE_PAGINATION_LIMIT);
-                let mut query = R::build_find_many_query(subject.clone(), options.clone());
-                let mut stream = query
-                    .build_query_as::<R::StoreItem>()
-                    .fetch(&db.pool);
-                let mut found_records = false;
-                while let Some(result) = stream.try_next().await? {
-                    found_records = true;
-                    yield Ok(result);
-                }
-                if !found_records || to_block.is_none() {
-                    break;
-                }
-                current_from_block = to_block;
+            let options = QueryOptions::default()
+                .with_namespace(namespace)
+                .with_from_block(from_block)
+                .with_limit(*config::STORE_PAGINATION_LIMIT);
+            let mut query = R::build_find_many_query(subject, options.clone());
+            let mut stream = query
+                .build_query_as::<R::StoreItem>()
+                .fetch(&db.pool);
+            while let Some(result) = stream.try_next().await? {
+                yield Ok(result);
             }
         }
         .boxed()
