@@ -38,6 +38,11 @@ runs:
         target: ${{ inputs.target }}
         components: clippy, rustfmt
 
+    - name: Install Rustfmt
+      uses: taiki-e/cache-cargo-install-action@v2
+      with:
+        tool: sqlx-cli@0.8.3
+
     - uses: taiki-e/cache-cargo-install-action@v2
       with:
         tool: cargo-sort@1.0.9

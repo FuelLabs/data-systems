@@ -33,16 +33,6 @@ pub struct Cli {
     )]
     pub db_url: String,
 
-    /// JWT secret
-    #[arg(
-        long,
-        value_name = "JWT_AUTH_SECRET",
-        env = "JWT_AUTH_SECRET",
-        default_value = "secret",
-        help = "Secret key for JWT authentication"
-    )]
-    pub jwt_secret: String,
-
     /// Use metrics
     #[arg(
         long,

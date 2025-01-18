@@ -241,7 +241,8 @@ fn subject_derive_schema() {
     });
 
     let expected_schema = Schema {
-        name: "Test".to_string(),
+        id: "test".to_string(),
+        entity: "Test".to_string(),
         subject: "TestSubject".to_string(),
         format: "test.{field1}.{field2}.{field3}".to_string(),
         wildcard: "test.>".to_string(),

@@ -28,7 +28,6 @@ fuel-message-broker = { workspace = true }
 fuel-streams-store = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-jsonwebtoken = "9.3.0"
 num_cpus = { workspace = true }
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
@@ -53,7 +52,6 @@ tracing = { workspace = true }
 tracing-actix-web = { workspace = true }
 url = "2.5"
 urlencoding = "2.1"
-uuid = { version = "1.11.0", features = ["serde", "v4"] }
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]

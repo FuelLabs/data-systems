@@ -17,7 +17,7 @@ use tokio::{sync::OnceCell, time::sleep};
 use super::{config, StreamError};
 use crate::server::DeliverPolicy;
 
-pub type BoxedStreamItem = Result<Vec<u8>, StreamError>;
+pub type BoxedStreamItem = Result<(String, Vec<u8>), StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStreamItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
@@ -74,7 +74,7 @@ impl<R: Record> Stream<R> {
         &self,
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<Vec<u8>, StreamError>> {
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
         let store = self.store.clone();
         let broker = self.broker.clone();
         let subject_clone = subject.clone();
@@ -84,14 +84,19 @@ impl<R: Record> Stream<R> {
                 let mut historical = store.stream_by_subject(&subject_clone, height);
                 while let Some(result) = historical.next().await {
                     let item = result.map_err(StreamError::Store)?;
-                    yield item.encoded_value().to_vec();
+                    let subject = item.subject_str();
+                    let value = item.encoded_value().to_vec();
+                    yield (subject, value);
                     let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
                     sleep(Duration::from_millis(throttle_time as u64)).await;
                 }
             }
             let mut live = broker.subscribe_to_events(&subject.parse()).await?;
             while let Some(msg) = live.next().await {
-                yield msg?;
+                let msg = msg?;
+                let subject = msg.0;
+                let value = msg.1;
+                yield (subject, value);
                 let throttle_time = *config::STREAM_THROTTLE_LIVE;
                 sleep(Duration::from_millis(throttle_time as u64)).await;
             }
@@ -103,7 +108,7 @@ impl<R: Record> Stream<R> {
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<Vec<u8>, StreamError>> {
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
         let subject = Arc::new(subject);
         self.subscribe_dynamic(subject, deliver_policy).await
     }

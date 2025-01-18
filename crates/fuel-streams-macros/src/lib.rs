@@ -17,7 +17,8 @@ pub mod subject {
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
     pub struct Schema {
-        pub name: String,
+        pub id: String,
+        pub entity: String,
         pub subject: String,
         pub format: String,
         pub wildcard: String,

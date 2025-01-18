@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::HashMap,
     sync::Arc,
     task::{Context, Poll},
@@ -81,10 +82,12 @@ where
             .filter_map(|pair| {
                 let mut parts = pair.split('=');
                 if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
-                    Some((
-                        key.to_string(),
-                        urlencoding::decode(value).unwrap().into_owned(),
-                    ))
+                    let decoded =
+                        urlencoding::decode(value).unwrap_or_else(|e| {
+                            tracing::error!("Error decoding value: {}", e);
+                            Cow::Borrowed(value)
+                        });
+                    Some((key.to_string(), decoded.into_owned()))
                 } else {
                     None
                 }

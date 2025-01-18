@@ -42,13 +42,13 @@ impl Client {
     }
 
     pub async fn connect(&mut self) -> Result<Connection, ClientError> {
-        let jwt_token = self
+        let api_key = self
             .opts
             .api_key
             .clone()
             .ok_or(ClientError::MissingApiKey)?;
 
-        let subdirectory = format!("/api/v1/ws?api_key={}", jwt_token);
+        let subdirectory = format!("/api/v1/ws?api_key={}", api_key);
         let ws_url = self.opts.network.to_ws_url().join(&subdirectory)?;
         let host = ws_url
             .host_str()
@@ -58,7 +58,7 @@ impl Client {
         let headers_map = request.headers_mut();
         headers_map.insert(HOST, host.parse()?);
         headers_map.insert(UPGRADE, "websocket".parse()?);
-        headers_map.insert(CONNECTION, "Upgrade".parse().unwrap());
+        headers_map.insert(CONNECTION, "Upgrade".parse()?);
         headers_map.insert(SEC_WEBSOCKET_KEY, generate_key().parse()?);
         headers_map.insert(SEC_WEBSOCKET_VERSION, "13".parse()?);
         Connection::new(request).await

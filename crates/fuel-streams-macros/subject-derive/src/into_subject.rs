@@ -120,6 +120,7 @@ pub fn schema_fn(
     field_names: &[&Ident],
     field_types: &[&Type],
 ) -> TokenStream {
+    let id = super::attrs::subject_attr("id", &input.attrs);
     let entity = super::attrs::subject_attr("entity", &input.attrs);
     let format = super::attrs::subject_attr("format", &input.attrs);
     let wildcard = super::attrs::subject_attr("wildcard", &input.attrs);
@@ -152,7 +153,8 @@ pub fn schema_fn(
             #(#field_entries)*
 
             fuel_streams_macros::subject::Schema {
-                name: #entity.to_string(),
+                id: #id.to_string(),
+                entity: #entity.to_string(),
                 subject: #struct_name.to_string(),
                 format: #format.to_string(),
                 wildcard: #wildcard.to_string(),
