@@ -21,6 +21,8 @@ pub mod types {
         utxos::types::*,
     };
     pub use fuel_streams_types::*;
+
+    pub use crate::server::DeliverPolicy;
 }
 
 pub mod subjects {

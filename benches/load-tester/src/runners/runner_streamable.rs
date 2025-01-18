@@ -26,7 +26,7 @@ pub async fn run_streamable_consumer<
         .await?;
 
     while let Some(msg) = stream.next().await {
-        println!("Received entity: {:?}", msg.payload);
+        println!("Received entity: {:?}", msg.data);
         load_test_tracker.increment_message_count();
         load_test_tracker
             .add_publish_time(Utc::now().timestamp_millis() as u128);

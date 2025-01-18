@@ -109,9 +109,9 @@ async fn process_msgs(
     let payload = subscription.payload();
     tracing::debug!(?payload, "Starting to process messages");
     while let Some(result) = sub.next().await {
-        tracing::debug!(?payload, ?result, "Received message from stream");
         let result = result?;
-        let payload = decode_and_respond(payload.to_owned(), result).await?;
+        tracing::debug!(?payload, ?result, "Received message from stream");
+        let payload = decode_and_respond(payload.clone(), result).await?;
         tracing::debug!("Sending message to client: {:?}", payload);
         ctx.send_message(session, payload).await?;
     }
@@ -128,7 +128,7 @@ async fn create_subscriber(
     subject_payload: &SubjectPayload,
     deliver_policy: DeliverPolicy,
 ) -> Result<BoxedStream, WebsocketError> {
-    let subject = subject_payload.into_subject();
+    let subject = subject_payload.into_subject()?;
     let stream = match subject_payload.record_entity() {
         RecordEntity::Block => {
             streams

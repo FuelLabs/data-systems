@@ -226,7 +226,7 @@ impl MessageBroker for NatsMessageBroker {
             .subscribe(subject)
             .await
             .map_err(|e| MessageBrokerError::Subscription(e.to_string()))?
-            .map(|msg| Ok(msg.payload.to_vec()));
+            .map(|msg| Ok((msg.subject.to_string(), msg.payload.to_vec())));
         Ok(Box::new(stream))
     }
 
@@ -309,7 +309,8 @@ mod tests {
             .publish_event("test.topic", vec![4, 5, 6].into())
             .await?;
         let result = receiver.await.expect("receiver task panicked")?;
-        assert_eq!(result, vec![4, 5, 6]);
+        let topic = format!("{}.{}", broker.namespace(), "test.topic");
+        assert_eq!(result, (topic, vec![4, 5, 6]));
         Ok(())
     }
 

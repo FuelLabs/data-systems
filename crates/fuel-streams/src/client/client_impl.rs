@@ -58,7 +58,7 @@ impl Client {
         let headers_map = request.headers_mut();
         headers_map.insert(HOST, host.parse()?);
         headers_map.insert(UPGRADE, "websocket".parse()?);
-        headers_map.insert(CONNECTION, "Upgrade".parse().unwrap());
+        headers_map.insert(CONNECTION, "Upgrade".parse()?);
         headers_map.insert(SEC_WEBSOCKET_KEY, generate_key().parse()?);
         headers_map.insert(SEC_WEBSOCKET_VERSION, "13".parse()?);
         Connection::new(request).await

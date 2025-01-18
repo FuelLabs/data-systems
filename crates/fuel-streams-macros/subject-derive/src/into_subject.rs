@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Ident};
+use syn::{DeriveInput, Ident, Type};
 
 use crate::fields::FieldInfo;
 
@@ -111,6 +111,56 @@ pub fn to_json_fn() -> TokenStream {
     quote! {
         fn to_json(&self) -> String {
             fuel_streams_macros::subject::serde_json::to_string(self).unwrap()
+        }
+    }
+}
+
+pub fn schema_fn(
+    input: &DeriveInput,
+    field_names: &[&Ident],
+    field_types: &[&Type],
+) -> TokenStream {
+    let id = super::attrs::subject_attr("id", &input.attrs);
+    let entity = super::attrs::subject_attr("entity", &input.attrs);
+    let format = super::attrs::subject_attr("format", &input.attrs);
+    let wildcard = super::attrs::subject_attr("wildcard", &input.attrs);
+    let struct_name = &input.ident.to_string();
+
+    let field_entries =
+        field_names
+            .iter()
+            .zip(field_types.iter())
+            .map(|(name, ty)| {
+                let name_str = name.to_string();
+                let type_str = quote::quote!(#ty)
+                    .to_string()
+                    .replace("Option < ", "")
+                    .replace(" >", "");
+
+                quote! {
+                    fields.insert(
+                        #name_str.to_string(),
+                        fuel_streams_macros::subject::FieldSchema {
+                            type_name: #type_str.to_string(),
+                        }
+                    );
+                }
+            });
+
+    quote! {
+        fn schema(&self) -> fuel_streams_macros::subject::Schema {
+            let mut fields = std::collections::HashMap::new();
+            #(#field_entries)*
+
+            fuel_streams_macros::subject::Schema {
+                id: #id.to_string(),
+                entity: #entity.to_string(),
+                subject: #struct_name.to_string(),
+                format: #format.to_string(),
+                wildcard: #wildcard.to_string(),
+                fields,
+                variants: None,
+            }
         }
     }
 }

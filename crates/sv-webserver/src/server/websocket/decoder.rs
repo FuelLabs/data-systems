@@ -9,11 +9,13 @@ use crate::server::errors::WebsocketError;
 
 pub async fn decode_and_respond(
     payload: SubscriptionPayload,
-    data: Vec<u8>,
+    (subject, data): (String, Vec<u8>),
 ) -> Result<ServerMessage, WebsocketError> {
-    let subject = payload.subject.clone();
     let payload = decode_to_json_value(&payload.try_into()?, data).await?;
-    let response_message = ResponseMessage { subject, payload };
+    let response_message = ResponseMessage {
+        key: subject,
+        data: payload,
+    };
     Ok(ServerMessage::Response(response_message))
 }
 

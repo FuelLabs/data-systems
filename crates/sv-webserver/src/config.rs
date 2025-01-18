@@ -28,11 +28,6 @@ pub struct ApiConfig {
 }
 
 #[derive(Clone, Debug)]
-pub struct AuthConfig {
-    pub jwt_secret: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct BrokerConfig {
     pub url: String,
 }
@@ -45,7 +40,6 @@ pub struct DbConfig {
 #[derive(Clone, Debug)]
 pub struct Config {
     pub api: ApiConfig,
-    pub auth: AuthConfig,
     pub broker: BrokerConfig,
     pub db: DbConfig,
 }
@@ -61,9 +55,6 @@ impl Config {
             api: ApiConfig {
                 port: cli.port,
                 tls: None,
-            },
-            auth: AuthConfig {
-                jwt_secret: cli.jwt_secret.clone(),
             },
             broker: BrokerConfig {
                 url: cli.nats_url.clone(),

@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Process incoming outputs
     while let Some(msg) = stream.next().await {
-        println!("Received output: {:?}", msg.payload);
+        println!("Received output: {:?}", msg.data);
     }
 
     Ok(())

@@ -1,3 +1,5 @@
+use actix_web::http::header::InvalidHeaderValue;
+
 use super::{ApiKeyManagerError, ApiKeyStorageError};
 
 #[derive(Debug, thiserror::Error)]
@@ -14,6 +16,8 @@ pub enum ApiKeyError {
     Storage(#[from] ApiKeyStorageError),
     #[error(transparent)]
     Manager(#[from] ApiKeyManagerError),
+    #[error(transparent)]
+    InvalidHeader(#[from] InvalidHeaderValue),
 }
 
 impl From<ApiKeyError> for actix_web::Error {
@@ -36,6 +40,9 @@ impl From<ApiKeyError> for actix_web::Error {
             }
             ApiKeyError::Manager(e) => {
                 actix_web::error::ErrorInternalServerError(e.to_string())
+            }
+            ApiKeyError::InvalidHeader(e) => {
+                actix_web::error::ErrorUnauthorized(e.to_string())
             }
         }
     }

@@ -48,8 +48,8 @@ type WriteSink = RwLock<
 
 #[derive(Debug, Clone)]
 pub struct Message<T> {
-    pub subject: String,
-    pub payload: T,
+    pub key: String,
+    pub data: T,
 }
 
 #[derive(Debug)]
@@ -99,10 +99,10 @@ impl Connection {
                 Ok(TungsteniteMessage::Binary(bin)) => {
                     match serde_json::from_slice::<ServerMessage>(&bin) {
                         Ok(ServerMessage::Response(value)) => {
-                            match serde_json::from_value::<T>(value.payload) {
+                            match serde_json::from_value::<T>(value.data) {
                                 Ok(parsed) => Some(Message {
-                                    subject: value.subject,
-                                    payload: parsed,
+                                    key: value.key,
+                                    data: parsed,
                                 }),
                                 Err(e) => {
                                     eprintln!("Failed to parse value: {:?}", e);

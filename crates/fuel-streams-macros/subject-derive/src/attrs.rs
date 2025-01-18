@@ -6,6 +6,7 @@ pub struct SubjectAttrs {
     id: Option<String>,
     wildcard: Option<String>,
     format: Option<String>,
+    entity: Option<String>,
 }
 
 impl SubjectAttrs {
@@ -64,6 +65,7 @@ impl SubjectAttrs {
             "id" => self.id = Some(value),
             "wildcard" => self.wildcard = Some(value),
             "format" => self.format = Some(value),
+            "entity" => self.entity = Some(value),
             _ => {}
         }
     }
@@ -73,6 +75,7 @@ impl SubjectAttrs {
             "id" => self.id.as_ref(),
             "wildcard" => self.wildcard.as_ref(),
             "format" => self.format.as_ref(),
+            "entity" => self.entity.as_ref(),
             _ => None,
         }
     }
