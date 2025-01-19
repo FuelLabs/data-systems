@@ -21,8 +21,7 @@ fn test_query_builder() {
     let options = QueryOptions {
         offset: 0,
         limit: 10,
-        from_block: Some(100),
-        to_block: Some(200),
+        from_block: None,
         namespace: Some("test_ns".to_string()),
     };
 
@@ -46,7 +45,7 @@ fn test_query_builder() {
     assert_eq!(
         sql,
         format!(
-            r#"SELECT _id, subject, value, block_height FROM blocks WHERE producer_address = '{}' AND block_height = '50' AND block_height >= 100 AND block_height < 200 AND subject LIKE 'test_ns%' ORDER BY block_height ASC LIMIT $1 OFFSET $2"#,
+            r#"SELECT _id, subject, value, block_height FROM blocks WHERE producer_address = '{}' AND block_height = '50' AND subject LIKE 'test_ns%' ORDER BY block_height ASC"#,
             Address::default()
         )
     );
@@ -55,14 +54,13 @@ fn test_query_builder() {
 #[test]
 fn test_query_builder_with_no_subject_fields() {
     let subject = Arc::new(BlocksSubject::new());
-
     let options = QueryOptions::default();
     let query = Block::build_find_many_query(subject, options);
     let sql = query.sql();
 
     assert_eq!(
         sql,
-        r#"SELECT _id, subject, value, block_height FROM blocks ORDER BY block_height ASC LIMIT $1 OFFSET $2"#
+        r#"SELECT _id, subject, value, block_height FROM blocks ORDER BY block_height ASC"#
     );
 }
 
@@ -82,7 +80,6 @@ fn test_query_builder_coin_input() {
         offset: 0,
         limit: 20,
         from_block: Some(50),
-        to_block: Some(150),
         namespace: Some("test_ns".to_string()),
     };
 
@@ -92,7 +89,7 @@ fn test_query_builder_coin_input() {
     assert_eq!(
         sql,
         format!(
-            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height = '100' AND tx_id = '{}' AND tx_index = '1' AND input_index = '2' AND owner_id = '{}' AND asset_id = '{}' AND block_height >= 50 AND block_height < 150 AND subject LIKE 'test_ns%' ORDER BY block_height, tx_index, input_index ASC LIMIT $1 OFFSET $2"#,
+            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height = '100' AND tx_id = '{}' AND tx_index = '1' AND input_index = '2' AND owner_id = '{}' AND asset_id = '{}' AND block_height = 50 AND subject LIKE 'test_ns%' ORDER BY block_height, tx_index, input_index ASC"#,
             TxId::default(),
             Address::default(),
             AssetId::default(),
@@ -118,7 +115,7 @@ fn test_query_builder_contract_input() {
     assert_eq!(
         sql,
         format!(
-            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height = '100' AND contract_id = '{}' ORDER BY block_height, tx_index, input_index ASC LIMIT $1 OFFSET $2"#,
+            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height = '100' AND contract_id = '{}' ORDER BY block_height, tx_index, input_index ASC"#,
             contract_id,
         )
     );
@@ -143,7 +140,7 @@ fn test_query_builder_message_input() {
     assert_eq!(
         sql,
         format!(
-            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE sender_address = '{}' ORDER BY block_height, tx_index, input_index ASC LIMIT $1 OFFSET $2"#,
+            r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE sender_address = '{}' ORDER BY block_height, tx_index, input_index ASC"#,
             sender,
         )
     );
@@ -159,7 +156,7 @@ fn test_query_builder_empty_subject() {
 
     assert_eq!(
         sql,
-        r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs ORDER BY block_height, tx_index, input_index ASC LIMIT $1 OFFSET $2"#
+        r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs ORDER BY block_height, tx_index, input_index ASC"#
     );
 }
 
@@ -170,7 +167,6 @@ fn test_query_builder_only_block_range() {
         offset: 0,
         limit: 50,
         from_block: Some(100),
-        to_block: Some(200),
         namespace: None,
     };
 
@@ -179,6 +175,6 @@ fn test_query_builder_only_block_range() {
 
     assert_eq!(
         sql,
-        r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height >= 100 AND block_height < 200 ORDER BY block_height, tx_index, input_index ASC LIMIT $1 OFFSET $2"#
+        r#"SELECT _id, subject, value, block_height, tx_index, input_index FROM inputs WHERE block_height = 100 ORDER BY block_height, tx_index, input_index ASC"#
     );
 }

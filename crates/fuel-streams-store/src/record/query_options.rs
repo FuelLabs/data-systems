@@ -3,7 +3,6 @@ pub struct QueryOptions {
     pub offset: i64,
     pub limit: i64,
     pub from_block: Option<u64>,
-    pub to_block: Option<u64>,
     pub namespace: Option<String>,
 }
 impl Default for QueryOptions {
@@ -12,7 +11,6 @@ impl Default for QueryOptions {
             offset: 0,
             limit: 100,
             from_block: None,
-            to_block: None,
             namespace: None,
         }
     }
@@ -37,9 +35,5 @@ impl QueryOptions {
     }
     pub fn increment_offset(&mut self) {
         self.offset += self.limit;
-    }
-    pub fn with_to_block(mut self, to_block: Option<u64>) -> Self {
-        self.to_block = to_block;
-        self
     }
 }

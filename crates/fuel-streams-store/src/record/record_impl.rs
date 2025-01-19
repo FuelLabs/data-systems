@@ -72,11 +72,7 @@ pub trait Record: RecordEncoder + 'static {
 
         // Add block conditions
         if let Some(block) = options.from_block {
-            conditions.push(format!("block_height >= {}", block));
-        }
-
-        if let Some(block) = options.to_block {
-            conditions.push(format!("block_height < {}", block));
+            conditions.push(format!("block_height = {}", block));
         }
 
         // Add namespace condition for tests
@@ -94,10 +90,12 @@ pub trait Record: RecordEncoder + 'static {
 
         query_builder.push(" ORDER BY ");
         query_builder.push(Self::ORDER_PROPS.join(", "));
-        query_builder.push(" ASC LIMIT ");
-        query_builder.push_bind(options.limit);
-        query_builder.push(" OFFSET ");
-        query_builder.push_bind(options.offset);
+        query_builder.push(" ASC");
+        // query_builder.push(" LIMIT ");
+        // query_builder.push_bind(options.limit);
+        // query_builder.push(" OFFSET ");
+        // query_builder.push_bind(options.offset);
+        dbg!(&query_builder.sql());
         query_builder
     }
 

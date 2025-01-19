@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
-use fuel_streams_macros::subject::IntoSubject;
-use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 
-use super::{config, StoreError};
+use super::StoreError;
 use crate::{
     db::Db,
     record::{DbTransaction, QueryOptions, Record, RecordPacket},
@@ -58,7 +56,7 @@ impl<R: Record + DataEncoder> Store<R> {
     #[cfg(any(test, feature = "test-helpers"))]
     pub async fn find_many_by_subject(
         &self,
-        subject: &Arc<dyn IntoSubject>,
+        subject: &Arc<dyn fuel_streams_macros::subject::IntoSubject>,
         mut options: QueryOptions,
     ) -> StoreResult<Vec<R::StoreItem>> {
         options = options.with_namespace(self.namespace.clone());
@@ -69,30 +67,6 @@ impl<R: Record + DataEncoder> Store<R> {
             .fetch_all(&self.db.pool)
             .await
             .map_err(StoreError::from)
-    }
-
-    pub fn stream_by_subject(
-        &self,
-        subject: &Arc<dyn IntoSubject>,
-        from_block: Option<u64>,
-    ) -> BoxStream<'static, Result<R::StoreItem, StoreError>> {
-        let db = Arc::clone(&self.db);
-        let namespace = self.namespace.clone();
-        let subject = subject.clone();
-        async_stream::stream! {
-            let options = QueryOptions::default()
-                .with_namespace(namespace)
-                .with_from_block(from_block)
-                .with_limit(*config::STORE_PAGINATION_LIMIT);
-            let mut query = R::build_find_many_query(subject, options.clone());
-            let mut stream = query
-                .build_query_as::<R::StoreItem>()
-                .fetch(&db.pool);
-            while let Some(result) = stream.try_next().await? {
-                yield Ok(result);
-            }
-        }
-        .boxed()
     }
 
     pub async fn find_last_record(&self) -> StoreResult<Option<R::DbItem>> {

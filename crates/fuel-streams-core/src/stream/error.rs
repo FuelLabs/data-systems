@@ -1,7 +1,7 @@
 use async_nats::SubscribeError;
 use fuel_message_broker::MessageBrokerError;
 use fuel_streams_store::{
-    db::DbError,
+    db::{DbError, SqlxError},
     record::RecordPacketError,
     store::StoreError,
 };
@@ -22,4 +22,6 @@ pub enum StreamError {
     MessageBrokerClient(#[from] MessageBrokerError),
     #[error(transparent)]
     RecordPacket(#[from] RecordPacketError),
+    #[error(transparent)]
+    Sqlx(#[from] SqlxError),
 }

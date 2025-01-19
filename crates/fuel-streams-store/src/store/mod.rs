@@ -1,4 +1,3 @@
-pub(super) mod config;
 mod errors;
 mod store_impl;
 

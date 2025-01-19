@@ -31,6 +31,7 @@ pub enum DbError {
 }
 
 pub type DbResult<T> = Result<T, DbError>;
+pub type SqlxError = sqlx::Error;
 
 pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("DB_POOL_SIZE")

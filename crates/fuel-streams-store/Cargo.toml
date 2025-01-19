@@ -10,12 +10,10 @@ version = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
-async-stream = { workspace = true }
 async-trait = { workspace = true }
 dotenvy = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
-futures = { workspace = true }
 serde = { workspace = true }
 sqlx = { workspace = true, default-features = false, features = [
     "runtime-tokio",
