@@ -97,17 +97,20 @@ impl Metrics {
         .expect("metric must be created");
 
         let published_messages_throughput = register_int_counter_vec!(
-        format!("{}publisher_metrics_published_messages_throughput", metric_prefix),
-        "A metric counting the number of published messages per subject wildcard",
-        &["subject_wildcard"],
-    )
-    .expect("metric must be created");
+            format!(
+                "{}publisher_metrics_published_messages_throughput",
+                metric_prefix
+            ),
+            "A metric counting the number of published messages per subject",
+            &["subject"],
+        )
+        .expect("metric must be created");
 
         // New histogram metric for block latency
         let publishing_latency_histogram = register_histogram_vec!(
             format!("{}publisher_metrics_block_latency_seconds", metric_prefix),
             "Histogram of latencies between receiving and publishing a block",
-            &["subject_wildcard"],
+            &["subject"],
             // buckets for latency measurement (e.g., 0.1s, 0.5s, 1s, 5s, 10s)
             vec![0.1, 0.5, 1.0, 5.0, 10.0],
         )
@@ -116,7 +119,7 @@ impl Metrics {
         let message_size_histogram = register_histogram_vec!(
             format!("{}publisher_metrics_message_size_bytes", metric_prefix),
             "Histogram of message sizes in bytes",
-            &["subject_wildcard"],
+            &["subject"],
             vec![100.0, 500.0, 1000.0, 5000.0, 10000.0, 100000.0, 1000000.0]
         )
         .expect("metric must be created");
@@ -124,7 +127,7 @@ impl Metrics {
         let error_rates = register_int_counter_vec!(
             format!("{}publisher_metrics_error_rates", metric_prefix),
             "A metric counting errors or failures during message processing",
-            &["subject_wildcard", "error_type"],
+            &["subject", "error_type"],
         )
         .expect("metric must be created");
 

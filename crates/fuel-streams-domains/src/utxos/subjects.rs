@@ -8,7 +8,7 @@ use crate::blocks::types::*;
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "utxos")]
 #[subject(entity = "Utxo")]
-#[subject(wildcard = "utxos.>")]
+#[subject(query_all = "utxos.>")]
 #[subject(
     format = "utxos.{block_height}.{tx_id}.{tx_index}.{input_index}.{utxo_type}.{utxo_id}"
 )]

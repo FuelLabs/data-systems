@@ -157,3 +157,44 @@ impl MockOutput {
         ]
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum OutputType {
+    Coin,
+    Contract,
+    Change,
+    Variable,
+    ContractCreated,
+}
+
+impl std::fmt::Display for OutputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl From<OutputType> for String {
+    fn from(value: OutputType) -> Self {
+        match value {
+            OutputType::Coin => "coin".to_string(),
+            OutputType::Contract => "contract".to_string(),
+            OutputType::Change => "change".to_string(),
+            OutputType::Variable => "variable".to_string(),
+            OutputType::ContractCreated => "contract_created".to_string(),
+        }
+    }
+}
+
+impl std::str::FromStr for OutputType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coin" => Ok(OutputType::Coin),
+            "contract" => Ok(OutputType::Contract),
+            "change" => Ok(OutputType::Change),
+            "variable" => Ok(OutputType::Variable),
+            "contract_created" => Ok(OutputType::ContractCreated),
+            _ => Err(format!("Invalid output type: {}", s)),
+        }
+    }
+}

@@ -18,7 +18,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let field_types = fields::types_from_fields(fields);
 
     let id_fn = into_subject::id_fn();
-    let wildcard_fn = into_subject::wildcard_fn();
+    let query_all_fn = into_subject::query_all_fn();
     let parse_fn = into_subject::parse_fn(&input, &field_names);
     let to_sql_where_fn = into_subject::to_sql_where_fn(&field_infos);
     let to_sql_select_fn = into_subject::to_sql_select_fn(&field_infos);
@@ -42,7 +42,7 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
         impl IntoSubject for #name {
             #id_fn
             #parse_fn
-            #wildcard_fn
+            #query_all_fn
             #to_sql_where_fn
             #to_sql_select_fn
             #schema_fn

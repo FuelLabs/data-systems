@@ -21,7 +21,7 @@ pub mod subject {
         pub entity: String,
         pub subject: String,
         pub format: String,
-        pub wildcard: String,
+        pub query_all: String,
         pub fields: HashMap<String, FieldSchema>,
         pub variants: Option<HashMap<String, Schema>>,
     }
@@ -53,7 +53,7 @@ pub mod subject {
     pub trait IntoSubject: Debug + Downcast + Send + Sync + 'static {
         fn id(&self) -> &'static str;
         fn parse(&self) -> String;
-        fn wildcard(&self) -> &'static str;
+        fn query_all(&self) -> &'static str;
         fn to_sql_where(&self) -> Option<String>;
         fn to_sql_select(&self) -> Option<String>;
         fn schema(&self) -> Schema;

@@ -7,7 +7,7 @@ use crate::{blocks::types::*, transactions::types::*};
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "transactions")]
 #[subject(entity = "Transaction")]
-#[subject(wildcard = "transactions.>")]
+#[subject(query_all = "transactions.>")]
 #[subject(
     format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{kind}"
 )]

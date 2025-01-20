@@ -15,7 +15,7 @@ pub fn parse_fn(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
     quote! {
         fn parse(&self) -> String {
             if [#(&self.#field_names.is_none()),*].iter().all(|&x| *x) {
-                return Self::WILDCARD.to_string();
+                return Self::QUERY_ALL.to_string();
             }
             #(#parse_fields)*
             format!(#format_str)
@@ -23,10 +23,10 @@ pub fn parse_fn(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
     }
 }
 
-pub fn wildcard_fn() -> TokenStream {
+pub fn query_all_fn() -> TokenStream {
     quote! {
-        fn wildcard(&self) -> &'static str {
-            Self::WILDCARD
+        fn query_all(&self) -> &'static str {
+            Self::QUERY_ALL
         }
     }
 }
@@ -53,7 +53,14 @@ pub fn to_sql_where_fn(fields: &[FieldInfo]) -> TokenStream {
         fn to_sql_where(&self) -> Option<String> {
             let mut conditions = Vec::new();
             #(#conditions)*
-            if conditions.is_empty() {
+
+            if let Some(extra) = Self::EXTRA_WHERE {
+                if conditions.is_empty() {
+                    Some(extra.to_string())
+                } else {
+                    Some(format!("{} AND {}", conditions.join(" AND "), extra))
+                }
+            } else if conditions.is_empty() {
                 None
             } else {
                 Some(conditions.join(" AND "))
@@ -154,7 +161,7 @@ pub fn schema_fn(
     let id = super::attrs::subject_attr("id", &input.attrs);
     let entity = super::attrs::subject_attr("entity", &input.attrs);
     let format = super::attrs::subject_attr("format", &input.attrs);
-    let wildcard = super::attrs::subject_attr("wildcard", &input.attrs);
+    let query_all = super::attrs::subject_attr("query_all", &input.attrs);
     let struct_name = &input.ident.to_string();
 
     let field_entries =
@@ -188,7 +195,7 @@ pub fn schema_fn(
                 entity: #entity.to_string(),
                 subject: #struct_name.to_string(),
                 format: #format.to_string(),
-                wildcard: #wildcard.to_string(),
+                query_all: #query_all.to_string(),
                 fields,
                 variants: None,
             }

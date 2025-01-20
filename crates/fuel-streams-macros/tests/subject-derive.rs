@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "test")]
 #[subject(entity = "Test")]
-#[subject(wildcard = "test.>")]
+#[subject(query_all = "test.>")]
 #[subject(format = "test.{field1}.{field2}.{field3}")]
 struct TestSubject {
     #[subject(sql_column = "field_id1")]
@@ -23,14 +23,8 @@ fn subject_derive_parse() {
         field3: Some("bar".to_string()),
     };
 
-    assert_eq!(TestSubject::WILDCARD, "test.>");
+    assert_eq!(TestSubject::QUERY_ALL, "test.>");
     assert_eq!(subject.parse(), "test.foo.55.bar");
-}
-
-#[test]
-fn subject_derive_wildcard() {
-    let wildcard = TestSubject::wildcard(None, Some(10), None);
-    assert_eq!(wildcard, "test.*.10.*");
 }
 
 #[test]
@@ -74,7 +68,7 @@ fn subject_derive_sql_where_exact_match() {
 }
 
 #[test]
-fn subject_derive_sql_where_wildcards() {
+fn subject_derive_sql_where_subject_string() {
     let subject = TestSubject {
         field1: None,
         field2: Some(55),
@@ -248,7 +242,7 @@ fn subject_derive_schema() {
         entity: "Test".to_string(),
         subject: "TestSubject".to_string(),
         format: "test.{field1}.{field2}.{field3}".to_string(),
-        wildcard: "test.>".to_string(),
+        query_all: "test.>".to_string(),
         fields,
         variants: None,
     };
@@ -283,4 +277,51 @@ fn subject_derive_sql_select() {
     // Test with no fields
     let subject = TestSubject::default();
     assert_eq!(subject.to_sql_select(), None);
+}
+
+#[test]
+fn subject_derive_sql_where_with_custom_where() {
+    #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+    #[subject(id = "test")]
+    #[subject(entity = "Test")]
+    #[subject(query_all = "test.>")]
+    #[subject(format = "test.{field1}.{field2}.{field3}")]
+    #[subject(custom_where = "deleted_at IS NULL")]
+    struct TestSubjectWithExtra {
+        #[subject(sql_column = "field_id1")]
+        pub field1: Option<String>,
+        #[subject(sql_column = "field_id2")]
+        pub field2: Option<u32>,
+        #[subject(sql_column = "field_id3")]
+        pub field3: Option<String>,
+    }
+
+    // Test with all fields
+    let subject = TestSubjectWithExtra {
+        field1: Some("foo".to_string()),
+        field2: Some(55),
+        field3: Some("bar".to_string()),
+    };
+    assert_eq!(
+        subject.to_sql_where(),
+        Some("field_id1 = 'foo' AND field_id2 = '55' AND field_id3 = 'bar' AND deleted_at IS NULL".to_string())
+    );
+
+    // Test with partial fields
+    let subject = TestSubjectWithExtra {
+        field1: Some("foo".to_string()),
+        field2: None,
+        field3: None,
+    };
+    assert_eq!(
+        subject.to_sql_where(),
+        Some("field_id1 = 'foo' AND deleted_at IS NULL".to_string())
+    );
+
+    // Test with no fields
+    let subject = TestSubjectWithExtra::default();
+    assert_eq!(
+        subject.to_sql_where(),
+        Some("deleted_at IS NULL".to_string())
+    );
 }

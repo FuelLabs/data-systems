@@ -95,9 +95,9 @@ mod tests {
 
     #[test]
     fn test_sub_ser() {
-        let stream_topic_wildcard = "blocks.*.*".to_owned();
+        let stream_topic_subject = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
-            subject: stream_topic_wildcard.clone(),
+            subject: stream_topic_subject.clone(),
             params: serde_json::Value::Null,
             deliver_policy: DeliverPolicy::New,
         });
@@ -105,7 +105,7 @@ mod tests {
         println!("Ser value {:?}", ser_str_value);
         let expected_value = serde_json::json!({
             "subscribe": {
-                "subject": stream_topic_wildcard,
+                "subject": stream_topic_subject,
                 "params": serde_json::Value::Null,
                 "deliverPolicy": "new"
             }

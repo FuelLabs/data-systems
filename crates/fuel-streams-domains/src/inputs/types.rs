@@ -198,6 +198,41 @@ impl InputMessage {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum InputType {
+    Contract,
+    Coin,
+    Message,
+}
+
+impl std::fmt::Display for InputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl From<InputType> for String {
+    fn from(value: InputType) -> Self {
+        match value {
+            InputType::Contract => "contract".to_string(),
+            InputType::Coin => "coin".to_string(),
+            InputType::Message => "message".to_string(),
+        }
+    }
+}
+
+impl std::str::FromStr for InputType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "contract" => Ok(InputType::Contract),
+            "coin" => Ok(InputType::Coin),
+            "message" => Ok(InputType::Message),
+            _ => Err(format!("Invalid input type: {}", s)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockInput;
 impl MockInput {
     pub fn contract() -> Input {

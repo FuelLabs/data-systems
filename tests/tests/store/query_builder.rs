@@ -99,6 +99,7 @@ fn test_query_builder_with_complex_ordering() {
             SELECT * FROM inputs \
             WHERE tx_id = '{}' \
             AND owner_id = '{}' \
+            AND input_type = 'coin' \
             AND block_height >= 50 \
             AND subject LIKE 'test_ns%' \
             ORDER BY block_height ASC \

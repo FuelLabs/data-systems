@@ -1,7 +1,7 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use fuel_streams_domains::{
-    blocks::{subjects::*, BlockHeight},
+    blocks::subjects::*,
     inputs::subjects::*,
     outputs::subjects::*,
     receipts::subjects::*,
@@ -9,53 +9,6 @@ use fuel_streams_domains::{
     utxos::subjects::*,
 };
 use fuel_streams_macros::subject::*;
-use fuel_streams_types::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject(id = "inputs")]
-#[subject(entity = "Input")]
-#[subject(wildcard = "inputs.>")]
-#[subject(
-    format = "inputs.{input_type}.{block_height}.{tx_id}.{tx_index}.{input_index}"
-)]
-pub struct InputsSubject {
-    pub block_height: Option<BlockHeight>,
-    pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
-    pub input_index: Option<u32>,
-    pub input_type: Option<String>,
-}
-
-#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject(id = "outputs")]
-#[subject(entity = "Output")]
-#[subject(wildcard = "outputs.>")]
-#[subject(
-    format = "outputs.{output_type}.{block_height}.{tx_id}.{tx_index}.{output_index}"
-)]
-pub struct OutputsSubject {
-    pub output_type: Option<String>,
-    pub block_height: Option<BlockHeight>,
-    pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
-    pub output_index: Option<u32>,
-}
-
-#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
-#[subject(id = "receipts")]
-#[subject(entity = "Receipt")]
-#[subject(wildcard = "receipts.>")]
-#[subject(
-    format = "receipts.{receipt_type}.{block_height}.{tx_id}.{tx_index}.{receipt_index}"
-)]
-pub struct ReceiptsSubject {
-    pub block_height: Option<BlockHeight>,
-    pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
-    pub receipt_index: Option<u32>,
-    pub receipt_type: Option<String>,
-}
 
 fn main() {
     let block_schema = BlocksSubject::new().schema();

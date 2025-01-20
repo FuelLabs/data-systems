@@ -76,14 +76,17 @@ impl Metrics {
                 metric_prefix
             ),
             "A metric counting the number of published messages",
-            &["user_id", "user_name", "subject_wildcard"],
+            &["user_id", "user_name", "subject"],
         )
         .expect("metric must be created");
 
         let subs_messages_throughput = register_int_counter_vec!(
-            format!("{}ws_streamer_metrics_subs_messages_throughput", metric_prefix),
-            "A metric counting the number of subscription messages per subject wildcard",
-            &["subject_wildcard"],
+            format!(
+                "{}ws_streamer_metrics_subs_messages_throughput",
+                metric_prefix
+            ),
+            "A metric counting the number of subscription messages per subject",
+            &["subject"],
         )
         .expect("metric must be created");
 
@@ -91,7 +94,7 @@ impl Metrics {
             register_int_counter_vec!(
             format!("{}ws_streamer_metrics_subs_messages_error_rates", metric_prefix),
             "A metric counting errors or failures during subscription message processing",
-            &["subject_wildcard", "error_type"],
+            &["subject", "error_type"],
         )
             .expect("metric must be created");
 
@@ -153,29 +156,25 @@ impl Metrics {
         &self,
         user_id: ApiKeyId,
         user_name: &str,
-        subject_wildcard: &str,
+        subject: &str,
     ) {
         self.user_subscribed_messages
             .with_label_values(&[
                 user_id.to_string().as_str(),
                 user_name,
-                subject_wildcard,
+                subject,
             ])
             .inc();
 
         // Increment throughput for the subscribed messages
         self.subs_messages_throughput
-            .with_label_values(&[subject_wildcard])
+            .with_label_values(&[subject])
             .inc();
     }
 
-    pub fn update_error_metrics(
-        &self,
-        subject_wildcard: &str,
-        error_type: &str,
-    ) {
+    pub fn update_error_metrics(&self, subject: &str, error_type: &str) {
         self.subs_messages_error_rates
-            .with_label_values(&[subject_wildcard, error_type])
+            .with_label_values(&[subject, error_type])
             .inc();
     }
 
@@ -191,14 +190,10 @@ impl Metrics {
         &self,
         user_id: ApiKeyId,
         user_name: &str,
-        subject_wildcard: &str,
+        subject: &str,
     ) {
         self.user_subscribed_messages
-            .with_label_values(&[
-                &user_id.to_string(),
-                user_name,
-                subject_wildcard,
-            ])
+            .with_label_values(&[&user_id.to_string(), user_name, subject])
             .dec();
     }
 
@@ -206,14 +201,10 @@ impl Metrics {
         &self,
         user_id: ApiKeyId,
         user_name: &str,
-        subject_wildcard: &str,
+        subject: &str,
     ) {
         self.user_subscribed_messages
-            .with_label_values(&[
-                &user_id.to_string(),
-                user_name,
-                subject_wildcard,
-            ])
+            .with_label_values(&[&user_id.to_string(), user_name, subject])
             .inc();
     }
 
@@ -302,11 +293,7 @@ mod tests {
 
         metrics
             .user_subscribed_messages
-            .with_label_values(&[
-                "user_id_1",
-                "user_name_1",
-                "subject_wildcard_1",
-            ])
+            .with_label_values(&["user_id_1", "user_name_1", "subject_1"])
             .set(5);
 
         let metric_families = gather();
@@ -319,7 +306,7 @@ mod tests {
         assert!(output.contains("ws_streamer_metrics_user_subscribed_messages"));
         assert!(output.contains("user_id_1"));
         assert!(output.contains("user_name_1"));
-        assert!(output.contains("subject_wildcard_1"));
+        assert!(output.contains("subject_1"));
         assert!(output.contains("5"));
     }
 
@@ -346,7 +333,7 @@ mod tests {
 
         metrics
             .subs_messages_throughput
-            .with_label_values(&["wildcard_1"])
+            .with_label_values(&["subject_1"])
             .inc_by(10);
 
         let metric_families = gather();
@@ -357,7 +344,7 @@ mod tests {
         let output = String::from_utf8(buffer.clone()).unwrap();
 
         assert!(output.contains("ws_streamer_metrics_subs_messages_throughput"));
-        assert!(output.contains("wildcard_1"));
+        assert!(output.contains("subject_1"));
         assert!(output.contains("10"));
     }
 
@@ -367,7 +354,7 @@ mod tests {
 
         metrics
             .subs_messages_error_rates
-            .with_label_values(&["wildcard_1", "timeout"])
+            .with_label_values(&["subject_1", "timeout"])
             .inc_by(1);
 
         let metric_families = gather();
@@ -380,7 +367,7 @@ mod tests {
         assert!(
             output.contains("ws_streamer_metrics_subs_messages_error_rates")
         );
-        assert!(output.contains("wildcard_1"));
+        assert!(output.contains("subject_1"));
         assert!(output.contains("timeout"));
         assert!(output.contains("1"));
     }

@@ -53,11 +53,7 @@ pub async fn spawn_streamable_consumer<
         )
         .await
         {
-            eprintln!(
-                "Error in {:?} subscriptions - {:?}",
-                subject.wildcard(),
-                e
-            );
+            eprintln!("Error in {:?} subscriptions - {:?}", subject.parse(), e);
         }
     }))
 }

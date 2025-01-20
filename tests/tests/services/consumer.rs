@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use fuel_message_broker::MessageBrokerClient;
 use fuel_streams_core::{
+    inputs::InputsSubject,
+    outputs::OutputsSubject,
     subjects::{
         BlocksSubject,
-        InputsCoinSubject,
-        OutputsCoinSubject,
-        ReceiptsScriptResultSubject,
+        ReceiptsSubject,
         SubjectBuildable,
         TransactionsSubject,
         UtxosSubject,
@@ -98,7 +98,7 @@ async fn verify_receipts(
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
-    let receipts_subject = ReceiptsScriptResultSubject::new()
+    let receipts_subject = ReceiptsSubject::new()
         .with_block_height(Some(msg_payload.block_height().clone()))
         .dyn_arc();
 
@@ -139,7 +139,7 @@ async fn verify_inputs_outputs_utxos(
     let expected_utxos_count = expected_inputs_count;
 
     // Verify inputs
-    let inputs_subject = InputsCoinSubject::new()
+    let inputs_subject = InputsSubject::new()
         .with_block_height(Some(msg_payload.block_height().clone()))
         .dyn_arc();
     let inputs = fuel_stores
@@ -153,7 +153,7 @@ async fn verify_inputs_outputs_utxos(
     );
 
     // Verify outputs
-    let outputs_subject = OutputsCoinSubject::new()
+    let outputs_subject = OutputsSubject::new()
         .with_block_height(Some(msg_payload.block_height().clone()))
         .dyn_arc();
     let outputs = fuel_stores

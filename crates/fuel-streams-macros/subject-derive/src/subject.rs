@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Ident, Type};
 
+use crate::attrs::SubjectAttrs;
+
 fn create_with_methods<'a>(
     field_names: &'a [&'a Ident],
     field_types: &'a [&'a Type],
@@ -45,15 +47,25 @@ pub fn expanded<'a>(
 ) -> TokenStream {
     let with_methods = create_with_methods(field_names, field_types);
     let get_methods = create_get_methods(field_names, field_types);
-    let wildcard = crate::attrs::subject_attr("wildcard", attrs);
+    let query_all = crate::attrs::subject_attr("query_all", attrs);
     let id = crate::attrs::subject_attr("id", attrs);
     let entity = crate::attrs::subject_attr("entity", attrs);
+
+    // Get custom_where if it exists, otherwise use None
+    let custom_where = if let Some(extra) =
+        SubjectAttrs::from_attributes(attrs).get("custom_where")
+    {
+        quote! { Some(#extra) }
+    } else {
+        quote! { None }
+    };
 
     quote! {
         impl #name {
             pub const ID: &'static str = #id;
-            pub const WILDCARD: &'static str = #wildcard;
+            pub const QUERY_ALL: &'static str = #query_all;
             pub const ENTITY: &'static str = #entity;
+            pub const EXTRA_WHERE: Option<&'static str> = #custom_where;
 
             pub fn build(
                 #(#field_names: #field_types,)*
@@ -63,7 +75,7 @@ pub fn expanded<'a>(
                 }
             }
 
-            pub fn wildcard(
+            pub fn build_string(
                 #(#field_names: #field_types,)*
             ) -> String {
                 Self::build(#(#field_names,)*).parse()

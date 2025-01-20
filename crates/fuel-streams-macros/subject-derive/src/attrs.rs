@@ -4,9 +4,10 @@ use syn::{Attribute, Meta};
 #[derive(Default)]
 pub struct SubjectAttrs {
     id: Option<String>,
-    wildcard: Option<String>,
+    query_all: Option<String>,
     format: Option<String>,
     entity: Option<String>,
+    custom_where: Option<String>,
 }
 
 impl SubjectAttrs {
@@ -63,9 +64,10 @@ impl SubjectAttrs {
     fn set_attribute(&mut self, name: String, value: String) {
         match name.as_str() {
             "id" => self.id = Some(value),
-            "wildcard" => self.wildcard = Some(value),
+            "query_all" => self.query_all = Some(value),
             "format" => self.format = Some(value),
             "entity" => self.entity = Some(value),
+            "custom_where" => self.custom_where = Some(value),
             _ => {}
         }
     }
@@ -73,9 +75,10 @@ impl SubjectAttrs {
     pub fn get(&self, name: &str) -> Option<&String> {
         match name {
             "id" => self.id.as_ref(),
-            "wildcard" => self.wildcard.as_ref(),
+            "query_all" => self.query_all.as_ref(),
             "format" => self.format.as_ref(),
             "entity" => self.entity.as_ref(),
+            "custom_where" => self.custom_where.as_ref(),
             _ => None,
         }
     }

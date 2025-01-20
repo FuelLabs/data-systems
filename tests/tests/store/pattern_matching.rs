@@ -10,7 +10,7 @@ use fuel_streams_test::{
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
-async fn test_asterisk_wildcards() -> anyhow::Result<()> {
+async fn test_asterisk_subject_string() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
@@ -19,7 +19,7 @@ async fn test_asterisk_wildcards() -> anyhow::Result<()> {
     let records = create_multiple_records(3, 1);
     insert_records(&store, &prefix, &records).await?;
 
-    // Test wildcard matching
+    // Test subject matching
     let subject = BlocksSubject::new().with_height(None).dyn_arc();
     let records = store
         .find_many_by_subject(&subject, QueryOptions::default())

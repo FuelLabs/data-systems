@@ -42,7 +42,7 @@ Provides macros for implementing traits and deriving functionality in the fuel-s
 
 ## 🚀 Usage
 
-The `Subject` derive macro allows you to easily implement the `Subject` trait for your structs. It generates methods for parsing, building, and creating wildcards for your subject.
+The `Subject` derive macro allows you to easily implement the `Subject` trait for your structs. It generates methods for parsing, building, and creating subjectsfor your subject.
 
 Example:
 
@@ -52,7 +52,7 @@ use fuel_streams_macros::subject::*;
 #[derive(Subject, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[subject(id = "test")]
 #[subject(entity = "Test")]
-#[subject(wildcard = "test.>")]
+#[subject(query_all = "test.>")]
 #[subject(format = "test.{field1}.{field2}")]
 struct TestSubject {
     field1: Option<String>,
@@ -68,8 +68,8 @@ let subject = TestSubject {
 // Parse the subject
 assert_eq!(subject.parse(), "test.foo.55");
 
-// Create a wildcard
-assert_eq!(TestSubject::wildcard(None, Some(10)), "test.*.10");
+// Create a subject string
+assert_eq!(TestSubject::build_string(None, Some(10)), "test.*.10");
 
 // Create using the build method
 let subject = TestSubject::build(Some("foo".into()), Some(55));

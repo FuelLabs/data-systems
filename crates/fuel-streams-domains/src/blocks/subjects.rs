@@ -7,7 +7,7 @@ use super::types::*;
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "blocks")]
 #[subject(entity = "Block")]
-#[subject(wildcard = "blocks.>")]
+#[subject(query_all = "blocks.>")]
 #[subject(format = "blocks.{producer}.{height}")]
 pub struct BlocksSubject {
     #[subject(sql_column = "producer_address")]
