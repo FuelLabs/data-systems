@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
+use fuel_streams_macros::subject::IntoSubject;
+use futures::stream::BoxStream;
 
 use super::StoreError;
 use crate::{
-    db::Db,
+    db::{Db, DbItem},
     record::{DbTransaction, QueryOptions, Record, RecordPacket},
 };
 
@@ -53,27 +55,79 @@ impl<R: Record + DataEncoder> Store<R> {
         Ok(record)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub async fn find_many_by_subject(
         &self,
         subject: &Arc<dyn fuel_streams_macros::subject::IntoSubject>,
         mut options: QueryOptions,
-    ) -> StoreResult<Vec<R::StoreItem>> {
+    ) -> StoreResult<Vec<R::DbItem>> {
         options = options.with_namespace(self.namespace.clone());
         let mut query =
             R::build_find_many_query(subject.clone(), options.clone());
         query
-            .build_query_as::<R::StoreItem>()
+            .build_query_as::<R::DbItem>()
             .fetch_all(&self.db.pool)
             .await
             .map_err(StoreError::from)
     }
 
-    pub async fn find_last_record(&self) -> StoreResult<Option<R::DbItem>> {
-        let options =
-            QueryOptions::default().with_namespace(self.namespace.clone());
-        R::find_last_record(&self.db, options)
-            .await
-            .map_err(StoreError::from)
+    pub async fn historical_streaming(
+        &self,
+        subject: Arc<dyn IntoSubject>,
+        from_block: Option<u64>,
+    ) -> BoxStream<'static, Result<(String, Vec<u8>), StoreError>> {
+        let store = self.clone();
+        let db = self.db.clone();
+        let stream = async_stream::try_stream! {
+            let mut current_height = from_block.unwrap_or(0);
+            let mut opts = QueryOptions::default().with_from_block(Some(current_height));
+            let mut last_height = find_last_block_height(&db, opts.clone()).await?;
+            while current_height <= last_height {
+                let items = store.find_many_by_subject(&subject, opts.clone()).await?;
+                for item in items {
+                    let subject = item.subject_str();
+                    let value = item.encoded_value().to_vec();
+                    yield (subject, value);
+                    let block_height = item.get_block_height();
+                    current_height = block_height;
+                }
+                opts.increment_offset();
+                // When we reach the last known height, we need to check if any new blocks
+                // were produced while we were processing the previous ones
+                if current_height == last_height {
+                    let new_last_height = find_last_block_height(&db, opts.clone()).await?;
+                    if new_last_height > last_height {
+                        // Reset current_height back to process the blocks we haven't seen yet
+                        current_height = last_height;
+                        last_height = new_last_height;
+                    } else {
+                        tracing::debug!("No new blocks found, stopping historical streaming on block {}", current_height);
+                        break
+                    }
+                }
+            }
+        };
+        Box::pin(stream)
     }
+}
+
+pub async fn find_last_block_height(
+    db: &Db,
+    options: QueryOptions,
+) -> StoreResult<u64> {
+    let select = format!("SELECT block_height FROM blocks");
+    let mut query_builder = sqlx::QueryBuilder::new(select);
+    if let Some(ns) = options.namespace {
+        query_builder
+            .push(" WHERE subject LIKE ")
+            .push_bind(format!("{}%", ns));
+    }
+
+    query_builder.push(" ORDER BY block_height DESC LIMIT 1");
+    let query = query_builder.build_query_as::<(i64,)>();
+    let record: Option<(i64,)> = query
+        .fetch_optional(&db.pool)
+        .await
+        .map_err(StoreError::FindLastBlockHeight)?;
+
+    Ok(record.map(|(height,)| height as u64).unwrap_or(0))
 }

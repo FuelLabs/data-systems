@@ -54,7 +54,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
         .find_many_by_subject(&subject1, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(&Block::from_store_item(&records[0])?, block1);
+    assert_eq!(&Block::from_db_item(&records[0])?, block1);
 
     // Test finding by subject2
     let subject2 = BlocksSubject::build(None, Some(2.into())).dyn_arc();
@@ -62,27 +62,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
         .find_many_by_subject(&subject2, QueryOptions::default())
         .await?;
     assert_eq!(records.len(), 1);
-    assert_eq!(&Block::from_store_item(&records[0])?, block2);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_find_last_record() -> anyhow::Result<()> {
-    let prefix = create_random_db_name();
-    let mut store = setup_store::<Block>().await?;
-    store.with_namespace(&prefix);
-
-    // Insert multiple blocks
-    let blocks = create_multiple_records(4, 1);
-    let _ = insert_records(&store, &prefix, &blocks).await?;
-    let block4 = &blocks.get(3).unwrap().1;
-
-    // Test finding last record
-    let last_record = store.find_last_record().await?;
-    assert!(last_record.is_some());
-    let last_block = Block::from_db_item(&last_record.unwrap())?;
-    assert_eq!(&last_block, block4);
+    assert_eq!(&Block::from_db_item(&records[0])?, block2);
 
     Ok(())
 }
@@ -123,7 +103,7 @@ async fn test_insert_with_transaction() -> anyhow::Result<()> {
     // Verify the records match the original blocks
     for (record, item) in found_records.iter().zip(blocks.iter()) {
         let (_, block) = item;
-        assert_eq!(&Block::from_store_item(record)?, block);
+        assert_eq!(&Block::from_db_item(record)?, block);
     }
 
     Ok(())

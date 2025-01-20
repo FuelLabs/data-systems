@@ -85,6 +85,7 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
     let db = Db::new(DbConnectionOpts {
         connection_str: db_url.to_string(),
         pool_size: Some(5),
+        ..Default::default()
     })
     .await?;
     Ok(db.arc())

@@ -6,4 +6,6 @@ pub enum StoreError {
     Db(#[from] DbError),
     #[error(transparent)]
     Stream(#[from] sqlx::Error),
+    #[error("Failed to find last block height: {0}")]
+    FindLastBlockHeight(#[source] sqlx::Error),
 }

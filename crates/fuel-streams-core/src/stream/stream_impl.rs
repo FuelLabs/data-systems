@@ -2,13 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_message_broker::MessageBroker;
-use fuel_streams_domains::blocks::Block;
 use fuel_streams_macros::subject::IntoSubject;
-use fuel_streams_store::{
-    db::{Db, StoreItem},
-    record::{QueryOptions, Record},
-    store::Store,
-};
+use fuel_streams_store::{db::Db, record::Record, store::Store};
 use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,
@@ -76,12 +71,12 @@ impl<R: Record> Stream<R> {
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
     ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
-        let db = self.store.db.clone();
         let broker = self.broker.clone();
         let subject = subject.clone();
+        let store = self.store.clone();
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                let mut historical = Self::historical_streaming(&db, subject.to_owned(), Some(block_height)).await;
+                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height)).await;
                 while let Some(result) = historical.next().await {
                     yield result?;
                     let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
@@ -105,54 +100,5 @@ impl<R: Record> Stream<R> {
     ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
         let subject = Arc::new(subject);
         self.subscribe_dynamic(subject, deliver_policy).await
-    }
-
-    async fn historical_streaming(
-        db: &Arc<Db>,
-        subject: Arc<dyn IntoSubject>,
-        from_block: Option<u64>,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
-        let db = db.clone();
-        let stream = async_stream::try_stream! {
-            let mut current_height = from_block.unwrap_or(0);
-            let mut last_height = Self::find_last_block_height(&db).await?;
-            while current_height <= last_height {
-                let opts = QueryOptions::default().with_from_block(Some(current_height));
-                let mut query = R::build_find_many_query(subject.to_owned(), opts.clone());
-                let mut stream = query
-                    .build_query_as::<R::StoreItem>()
-                    .fetch(&db.pool);
-                while let Some(result) = stream.next().await {
-                    let result = result?;
-                    let subject = result.subject_str();
-                    let value = result.encoded_value().to_vec();
-                    yield (subject, value);
-                }
-                current_height += 1;
-                // When we reach the last known height, we need to check if any new blocks
-                // were produced while we were processing the previous ones
-                if current_height == last_height {
-                    let new_last_height = Self::find_last_block_height(&db).await?;
-                    if new_last_height > last_height {
-                        // Reset current_height back to process the blocks we haven't seen yet
-                        current_height = last_height;
-                        last_height = new_last_height;
-                    } else {
-                        tracing::debug!("No new blocks found, stopping historical streaming on block {}", current_height);
-                        break
-                    }
-                }
-            }
-        };
-        Box::pin(stream)
-    }
-
-    async fn find_last_block_height(db: &Arc<Db>) -> Result<u64, StreamError> {
-        let opts = QueryOptions::default();
-        let record = Block::find_last_record(db, opts).await?;
-        match record {
-            Some(record) => Ok(record.block_height as u64),
-            None => Ok(0),
-        }
     }
 }

@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Output, OutputDbItem, OutputStoreItem};
+use super::{Output, OutputDbItem};
 
 impl DataEncoder for Output {
     type Err = DbError;
@@ -14,11 +14,9 @@ impl DataEncoder for Output {
 #[async_trait]
 impl Record for Output {
     type DbItem = OutputDbItem;
-    type StoreItem = OutputStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Output;
-    const ORDER_PROPS: &'static [&'static str] =
-        &["block_height", "tx_index", "output_index"];
+    const ORDER_PROPS: &'static [&'static str] = &["tx_index", "output_index"];
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,

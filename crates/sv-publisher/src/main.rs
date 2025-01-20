@@ -11,7 +11,8 @@ use fuel_streams_core::types::*;
 use fuel_streams_domains::{Metadata, MsgPayload, MsgPayloadError};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
-    record::{DataEncoder, EncoderError, QueryOptions, Record},
+    record::{DataEncoder, EncoderError, QueryOptions},
+    store::{find_last_block_height, StoreError},
 };
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
@@ -34,6 +35,8 @@ pub enum PublishError {
     MsgPayload(#[from] MsgPayloadError),
     #[error(transparent)]
     Encoder(#[from] EncoderError),
+    #[error(transparent)]
+    Store(#[from] StoreError),
     #[error(transparent)]
     MessageBrokerClient(#[from] MessageBrokerError),
 }
@@ -119,11 +122,9 @@ async fn setup_message_broker(
 }
 
 async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
-    let record = Block::find_last_record(db, QueryOptions::default()).await?;
-    match record {
-        Some(record) => Ok(record.block_height as u32),
-        None => Ok(0),
-    }
+    let opts = QueryOptions::default();
+    let height = find_last_block_height(db, opts).await?;
+    Ok(height as u32)
 }
 
 fn get_historical_block_range(

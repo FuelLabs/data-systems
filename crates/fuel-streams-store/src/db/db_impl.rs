@@ -1,4 +1,8 @@
-use std::sync::{Arc, LazyLock};
+use std::{
+    str::FromStr,
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
 use sqlx::{Pool, Postgres};
 
@@ -37,13 +41,17 @@ pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("DB_POOL_SIZE")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(5)
+        .unwrap_or(100)
 });
 
 #[derive(Debug, Clone)]
 pub struct DbConnectionOpts {
     pub connection_str: String,
     pub pool_size: Option<u32>,
+    pub statement_timeout: Option<Duration>,
+    pub acquire_timeout: Option<Duration>,
+    pub idle_timeout: Option<Duration>,
+    pub min_connections: Option<u32>,
 }
 
 impl Default for DbConnectionOpts {
@@ -52,6 +60,10 @@ impl Default for DbConnectionOpts {
             pool_size: Some(*DB_POOL_SIZE as u32),
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
+            statement_timeout: Some(Duration::from_secs(30)),
+            acquire_timeout: Some(Duration::from_secs(10)),
+            idle_timeout: Some(Duration::from_secs(180)),
+            min_connections: Some((*DB_POOL_SIZE as u32) / 4),
         }
     }
 }
@@ -63,13 +75,11 @@ pub struct Db {
 
 impl Db {
     pub async fn new(opts: DbConnectionOpts) -> DbResult<Self> {
-        let pool = sqlx::postgres::PgPoolOptions::new()
-            .max_connections(opts.pool_size.unwrap_or_default())
-            .connect(&opts.connection_str)
-            .await
-            .map_err(DbError::Open)?;
-
-        tracing::info!("Database connected");
+        let pool = Self::create_pool(&opts).await?;
+        tracing::info!(
+            "Database connected with pool size: {}",
+            opts.pool_size.unwrap_or_default()
+        );
         Ok(Self { pool })
     }
 
@@ -77,32 +87,33 @@ impl Db {
         Arc::new(self)
     }
 
-    pub async fn truncate_table(&self, table_name: &str) -> DbResult<()> {
-        let query = format!("TRUNCATE TABLE {}", table_name);
-        sqlx::query(&query)
-            .execute(&self.pool)
-            .await
-            .map_err(DbError::TruncateTable)?;
-        Ok(())
-    }
-
     pub fn pool_ref(&self) -> &Pool<Postgres> {
         &self.pool
     }
 
-    pub async fn begin_transaction(
-        &self,
-    ) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, DbError> {
-        self.pool.begin().await.map_err(DbError::BeginTransaction)
-    }
+    async fn create_pool(opts: &DbConnectionOpts) -> DbResult<Pool<Postgres>> {
+        let statement_timeout =
+            opts.statement_timeout.unwrap_or_default().as_millis();
+        let statement_timeout = &format!("{}", statement_timeout);
+        let connections_opts =
+            sqlx::postgres::PgConnectOptions::from_str(&opts.connection_str)
+                .map_err(|e| {
+                    DbError::Open(sqlx::Error::Configuration(Box::new(e)))
+                })?
+                .application_name("fuel-streams")
+                .options([
+                    ("retry_connect_backoff", "2"),
+                    ("statement_timeout", statement_timeout),
+                ]);
 
-    pub async fn commit_transaction(
-        &self,
-        transaction: sqlx::Transaction<'static, sqlx::Postgres>,
-    ) -> Result<(), DbError> {
-        transaction
-            .commit()
+        sqlx::postgres::PgPoolOptions::new()
+            .max_connections(opts.pool_size.unwrap_or_default())
+            .min_connections(opts.min_connections.unwrap_or_default())
+            .acquire_timeout(opts.acquire_timeout.unwrap_or_default())
+            .idle_timeout(opts.idle_timeout)
+            .test_before_acquire(true)
+            .connect_with(connections_opts)
             .await
-            .map_err(DbError::CommitTransaction)
+            .map_err(DbError::Open)
     }
 }

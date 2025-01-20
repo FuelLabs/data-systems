@@ -1,3 +1,12 @@
+use std::sync::LazyLock;
+
+pub static STORE_PAGINATION_LIMIT: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("STORE_PAGINATION_LIMIT")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(100)
+});
+
 #[derive(Debug, Clone)]
 pub struct QueryOptions {
     pub offset: i64,
@@ -9,7 +18,7 @@ impl Default for QueryOptions {
     fn default() -> Self {
         Self {
             offset: 0,
-            limit: 100,
+            limit: *STORE_PAGINATION_LIMIT as i64,
             from_block: None,
             namespace: None,
         }

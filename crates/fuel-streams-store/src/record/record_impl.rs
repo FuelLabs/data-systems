@@ -6,7 +6,7 @@ use fuel_streams_macros::subject::IntoSubject;
 use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket};
-use crate::db::{Db, DbError, DbItem, DbResult, StoreItem};
+use crate::db::{DbError, DbItem, DbResult};
 
 pub trait RecordEncoder: DataEncoder<Err = DbError> {}
 impl<T: DataEncoder<Err = DbError>> RecordEncoder for T {}
@@ -17,7 +17,6 @@ pub type DbConnection = PgConnection;
 #[async_trait]
 pub trait Record: RecordEncoder + 'static {
     type DbItem: DbItem;
-    type StoreItem: StoreItem;
 
     const ENTITY: RecordEntity;
     const ORDER_PROPS: &'static [&'static str];
@@ -48,97 +47,50 @@ pub trait Record: RecordEncoder + 'static {
         Self::decode_json(record.encoded_value())
     }
 
-    fn from_store_item(item: &Self::StoreItem) -> DbResult<Self> {
-        Self::decode_json(item.encoded_value())
-    }
-
     fn build_find_many_query(
         subject: Arc<dyn IntoSubject>,
         options: QueryOptions,
     ) -> QueryBuilder<'static, Postgres> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+        let order_props = Self::ORDER_PROPS.join(", ");
 
-        query_builder.push("SELECT ");
-        query_builder.push(Self::build_select_fields());
-        query_builder.push(" FROM ");
+        if order_props != "block_height" {
+            query_builder.push("WITH items AS (");
+        }
+
+        // Internal select statement
+        query_builder.push("SELECT * FROM ");
         query_builder.push(Self::ENTITY.table_name());
-
         let mut conditions = Vec::new();
-
-        // Add subject conditions if any
         if let Some(where_clause) = subject.to_sql_where() {
             conditions.push(where_clause);
         }
-
-        // Add block conditions
         if let Some(block) = options.from_block {
-            conditions.push(format!("block_height = {}", block));
+            conditions.push(format!("block_height >= {}", block));
         }
-
-        // Add namespace condition for tests
         if cfg!(any(test, feature = "test-helpers")) {
             if let Some(ns) = options.namespace {
                 conditions.push(format!("subject LIKE '{ns}%'"));
             }
         }
-
-        // Add WHERE clause if we have any conditions
         if !conditions.is_empty() {
             query_builder.push(" WHERE ");
             query_builder.push(conditions.join(" AND "));
         }
+        query_builder.push(" ORDER BY block_height ASC");
+        query_builder.push(" LIMIT ");
+        query_builder.push_bind(options.limit);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(options.offset);
 
-        query_builder.push(" ORDER BY ");
-        query_builder.push(Self::ORDER_PROPS.join(", "));
-        query_builder.push(" ASC");
-        // query_builder.push(" LIMIT ");
-        // query_builder.push_bind(options.limit);
-        // query_builder.push(" OFFSET ");
-        // query_builder.push_bind(options.offset);
-        dbg!(&query_builder.sql());
-        query_builder
-    }
-
-    fn build_select_fields() -> String {
-        let mut select_fields = vec![
-            "_id".to_string(),
-            "subject".to_string(),
-            "value".to_string(),
-        ];
-
-        // Add order fields first
-        let order_fields: Vec<String> =
-            Self::ORDER_PROPS.iter().map(|&s| s.to_string()).collect();
-        select_fields.extend(order_fields);
-        select_fields.join(", ")
-    }
-
-    async fn find_last_record(
-        db: &Db,
-        options: QueryOptions,
-    ) -> DbResult<Option<Self::DbItem>> {
-        let mut query_builder = sqlx::QueryBuilder::new(format!(
-            "SELECT * FROM {}",
-            Self::ENTITY.table_name()
-        ));
-
-        if let Some(ns) = options.namespace {
-            query_builder
-                .push(" WHERE subject LIKE ")
-                .push_bind(format!("{}%", ns));
+        if order_props != "block_height" {
+            query_builder.push(") SELECT * FROM items ");
+            query_builder.push("ORDER BY ");
+            query_builder.push(Self::ORDER_PROPS.join(", "));
+            query_builder.push(" ASC");
         }
 
+        tracing::debug!("Query built: {}", &query_builder.sql());
         query_builder
-            .push(" ORDER BY ")
-            .push(Self::ORDER_PROPS.join(", "))
-            .push(" DESC LIMIT 1");
-
-        let query = query_builder.build_query_as::<Self::DbItem>();
-        let record = query
-            .fetch_optional(&db.pool)
-            .await
-            .map_err(DbError::FindManyByPattern)?;
-
-        Ok(record)
     }
 }

@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Block, BlockDbItem, BlockStoreItem};
+use super::{Block, BlockDbItem};
 
 impl DataEncoder for Block {
     type Err = DbError;
@@ -14,7 +14,6 @@ impl DataEncoder for Block {
 #[async_trait]
 impl Record for Block {
     type DbItem = BlockDbItem;
-    type StoreItem = BlockStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Block;
     const ORDER_PROPS: &'static [&'static str] = &["block_height"];

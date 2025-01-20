@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
@@ -35,6 +37,10 @@ impl DbItem for TransactionDbItem {
     fn subject_str(&self) -> String {
         self.subject.clone()
     }
+
+    fn get_block_height(&self) -> u64 {
+        self.block_height as u64
+    }
 }
 
 impl TryFrom<&RecordPacket> for TransactionDbItem {
@@ -57,5 +63,21 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }
+    }
+}
+
+impl PartialOrd for TransactionDbItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TransactionDbItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Order by block height first
+        self.block_height
+            .cmp(&other.block_height)
+            // Then by transaction index within the block
+            .then(self.tx_index.cmp(&other.tx_index))
     }
 }

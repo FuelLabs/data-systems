@@ -5,7 +5,7 @@ use fuel_streams_store::{
 };
 use sqlx::PgExecutor;
 
-use super::{Utxo, UtxoDbItem, UtxoStoreItem};
+use super::{Utxo, UtxoDbItem};
 
 impl DataEncoder for Utxo {
     type Err = DbError;
@@ -14,11 +14,9 @@ impl DataEncoder for Utxo {
 #[async_trait]
 impl Record for Utxo {
     type DbItem = UtxoDbItem;
-    type StoreItem = UtxoStoreItem;
 
     const ENTITY: RecordEntity = RecordEntity::Utxo;
-    const ORDER_PROPS: &'static [&'static str] =
-        &["block_height", "tx_index", "input_index"];
+    const ORDER_PROPS: &'static [&'static str] = &["tx_index", "input_index"];
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,

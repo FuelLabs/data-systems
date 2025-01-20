@@ -3834,10 +3834,12 @@ dependencies = [
 name = "fuel-streams-store"
 version = "0.0.16"
 dependencies = [
+ "async-stream",
  "async-trait",
  "dotenvy",
  "fuel-data-parser",
  "fuel-streams-macros",
+ "futures",
  "serde",
  "sqlx",
  "test-case",
