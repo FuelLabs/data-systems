@@ -1,9 +1,6 @@
 dependencies:
 - name: nats
   repository: https://nats-io.github.io/k8s/helm/charts/
-  version: 1.2.8
-- name: cockroachdb
-  repository: https://charts.cockroachdb.com/
-  version: 15.0.3
-digest: sha256:31915b4f840d27a1b3c42639e007e420b5fd4300b2038990746c9643e784a2c7
-generated: "2025-01-10T23:33:35.594199-03:00"
+  version: 1.2.9
+digest: sha256:68cbbb410fdf97d0cf025d1e9fc54dc16ad9f301927c93041629724b656c6815
+generated: "2025-01-21T15:08:31.514313-03:00"

@@ -1,30 +1,30 @@
-suite: Testing Consumer Deployment
+suite: Testing Publisher Statefulset
 templates:
-  - templates/consumer/deployment.yaml
+  - templates/publisher/statefulset.yaml
 tests:
-  - it: should not create deployment when consumer is disabled
+  - it: should not create deployment when publisher is disabled
     set:
-      consumer.enabled: false
+      publisher.enabled: false
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should create deployment with correct name
     set:
-      consumer.enabled: true
+      publisher.enabled: true
     asserts:
       - isKind:
-          of: Deployment
+          of: StatefulSet
         documentIndex: 0
       - isAPIVersion:
           of: apps/v1
         documentIndex: 0
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-consumer
+          value: RELEASE-NAME-fuel-streams-publisher
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
-          value: consumer
+          value: publisher
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
@@ -32,25 +32,25 @@ tests:
 
   - it: should set correct selector labels
     set:
-      consumer.enabled: true
+      publisher.enabled: true
     asserts:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/name"]
-          value: consumer
+          value: publisher
         documentIndex: 0
       - isSubset:
           path: spec.selector.matchLabels
           content:
-            app.kubernetes.io/name: consumer
+            app.kubernetes.io/name: publisher
             app.kubernetes.io/instance: RELEASE-NAME
         documentIndex: 0
 
   - it: should set image configuration correctly
     set:
-      consumer.enabled: true
-      consumer.image.repository: ghcr.io/fuellabs/sv-webserver
-      consumer.image.tag: latest
-      consumer.image.pullPolicy: Always
+      publisher.enabled: true
+      publisher.image.repository: ghcr.io/fuellabs/sv-webserver
+      publisher.image.tag: latest
+      publisher.image.pullPolicy: Always
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
@@ -63,9 +63,9 @@ tests:
 
   - it: should use chart version when tag is not specified
     set:
-      consumer.enabled: true
-      consumer.image.repository: ghcr.io/fuellabs/sv-webserver
-      consumer.image.tag: null
+      publisher.enabled: true
+      publisher.image.repository: ghcr.io/fuellabs/sv-webserver
+      publisher.image.tag: null
       Chart:
         Version: "1.0"
     asserts:
@@ -76,9 +76,9 @@ tests:
 
   - it: should configure ports correctly
     set:
-      consumer.enabled: true
-      consumer.port: 8082
-      consumer.ports:
+      publisher.enabled: true
+      publisher.port: 8082
+      publisher.ports:
         - name: metrics
           containerPort: 9090
           protocol: TCP
@@ -104,9 +104,9 @@ tests:
 
   - it: should set replicas when autoscaling is disabled
     set:
-      consumer.enabled: true
-      consumer.autoscaling.enabled: false
-      consumer.config.replicaCount: 3
+      publisher.enabled: true
+      publisher.autoscaling.enabled: false
+      publisher.config.replicaCount: 3
     asserts:
       - equal:
           path: spec.replicas
@@ -115,9 +115,9 @@ tests:
 
   - it: should not set replicas when autoscaling is enabled
     set:
-      consumer.enabled: true
-      consumer.autoscaling.enabled: true
-      consumer.config.replicaCount: 3
+      publisher.enabled: true
+      publisher.autoscaling.enabled: true
+      publisher.config.replicaCount: 3
     asserts:
       - isNull:
           path: spec.replicas
@@ -125,8 +125,8 @@ tests:
 
   - it: should merge environment variables correctly
     set:
-      consumer.enabled: true
-      consumer.env:
+      publisher.enabled: true
+      publisher.env:
         EXTRA_VAR: "extra-value"
         SECRET_VAR: "secret-value"
     asserts:
@@ -145,8 +145,8 @@ tests:
 
   - it: should test envFrom
     set:
-      consumer.enabled: true
-      consumer.envFrom:
+      publisher.enabled: true
+      publisher.envFrom:
         - configMapRef:
             name: RELEASE-NAME-fuel-streams-config
         - secretRef:
@@ -167,8 +167,8 @@ tests:
 
   - it: should set security context when specified
     set:
-      consumer.enabled: true
-      consumer.config.podSecurityContext:
+      publisher.enabled: true
+      publisher.config.podSecurityContext:
         runAsUser: 1000
         runAsGroup: 3000
         fsGroup: 2000
@@ -188,7 +188,7 @@ tests:
 
   - it: should use global security context when not specified
     set:
-      consumer.enabled: true
+      publisher.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.securityContext.runAsUser
@@ -197,15 +197,15 @@ tests:
 
   - it: should have probes defined by default
     set:
-      consumer.enabled: true
-      consumer.config.healthChecks: true
-      consumer.config.livenessProbe:
+      publisher.enabled: true
+      publisher.config.healthChecks: true
+      publisher.config.livenessProbe:
         httpGet:
           path: /health
-      consumer.config.readinessProbe:
+      publisher.config.readinessProbe:
         httpGet:
           path: /health
-      consumer.config.startupProbe:
+      publisher.config.startupProbe:
         httpGet:
           path: /health
     asserts:
@@ -224,8 +224,8 @@ tests:
 
   - it: should set resource limits and requests
     set:
-      consumer.enabled: true
-      consumer.config.resources:
+      publisher.enabled: true
+      publisher.config.resources:
         limits:
           cpu: 100m
           memory: 128Mi
@@ -248,93 +248,4 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.requests.memory
           value: 64Mi
-        documentIndex: 0
-
-  - it: should create HPA with correct configuration when autoscaling is enabled
-    set:
-      consumer.enabled: true
-      consumer.autoscaling.enabled: true
-      consumer.autoscaling.minReplicas: 2
-      consumer.autoscaling.maxReplicas: 5
-      consumer.autoscaling.targetCPUUtilizationPercentage: 75
-      consumer.autoscaling.targetMemoryUtilizationPercentage: 85
-    asserts:
-      - hasDocuments:
-          count: 2
-      - isKind:
-          of: HorizontalPodAutoscaler
-        documentIndex: 1
-      - equal:
-          path: spec.minReplicas
-          value: 2
-        documentIndex: 1
-      - equal:
-          path: spec.maxReplicas
-          value: 5
-        documentIndex: 1
-      - equal:
-          path: spec.metrics[0].resource.target.averageUtilization
-          value: 75
-        documentIndex: 1
-      - equal:
-          path: spec.metrics[1].resource.target.averageUtilization
-          value: 85
-        documentIndex: 1
-
-  - it: should configure HPA scaling behavior correctly
-    set:
-      consumer.enabled: true
-      consumer.autoscaling.enabled: true
-      consumer.autoscaling.behavior.scaleDown.stabilizationWindowSeconds: 400
-      consumer.autoscaling.behavior.scaleDown.percentValue: 50
-      consumer.autoscaling.behavior.scaleUp.stabilizationWindowSeconds: 60
-      consumer.autoscaling.behavior.scaleUp.percentValue: 200
-      consumer.autoscaling.behavior.scaleUp.podValue: 6
-    asserts:
-      - equal:
-          path: spec.behavior.scaleDown.stabilizationWindowSeconds
-          value: 400
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleDown.policies[0].type
-          value: Percent
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleDown.policies[0].value
-          value: 50
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.stabilizationWindowSeconds
-          value: 60
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.policies[0].type
-          value: Percent
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.policies[0].value
-          value: 200
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.policies[1].type
-          value: Pods
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.policies[1].value
-          value: 6
-        documentIndex: 1
-      - equal:
-          path: spec.behavior.scaleUp.selectPolicy
-          value: Max
-        documentIndex: 1
-
-  - it: should not create HPA when autoscaling is disabled
-    set:
-      consumer.enabled: true
-      consumer.autoscaling.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 1
-      - isKind:
-          of: Deployment
         documentIndex: 0

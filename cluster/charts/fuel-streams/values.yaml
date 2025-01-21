@@ -1,4 +1,18 @@
+# ------------------------------------------------------------------------------
+# ServiceAccount
+# ------------------------------------------------------------------------------
+
+serviceAccount:
+  create: true
+  automount: true
+
+# ------------------------------------------------------------------------------
+# Global Config
+# ------------------------------------------------------------------------------
+
 config:
+  labels: {}
+  annotations: {}
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
@@ -7,67 +21,40 @@ config:
   # Enable health checks for all services
   healthChecks: true
 
-serviceAccount:
-  create: true
-  automount: true
+  livenessProbe:
+  readinessProbe: {}
+  startupProbe: {}
 
-# ------------------------------------------------------------------------------
-# Global configurations
-# ------------------------------------------------------------------------------
+  # Default pod security context
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
 
-labels: {}
-annotations: {}
+  # Default container security context
+  containerSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
 
-securityContext:
-  fsGroup: 1000
-  runAsUser: 1000
-  runAsGroup: 1000
-  runAsNonRoot: true
-  capabilities:
-    drop: [ALL]
-  readOnlyRootFilesystem: true
-
-containerSecurityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  runAsNonRoot: true
-  capabilities:
-    drop: [ALL]
-  readOnlyRootFilesystem: true
-  allowPrivilegeEscalation: false
-
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  enabled: true
-  initialDelaySeconds: 60
-  periodSeconds: 20
-  timeoutSeconds: 10
-  failureThreshold: 6
-  successThreshold: 1
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  enabled: true
-  initialDelaySeconds: 30
-  periodSeconds: 20
-  timeoutSeconds: 10
-  failureThreshold: 6
-  successThreshold: 1
-
-startupProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  enabled: true
-  initialDelaySeconds: 30
-  periodSeconds: 20
-  timeoutSeconds: 10
-  failureThreshold: 6
-  successThreshold: 1
+  # Default pod affinity
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: publisher
+            topologyKey: topology.kubernetes.io/zone
 
 # ------------------------------------------------------------------------------
 # Global ConfigMap
@@ -103,9 +90,10 @@ monitoring:
 # ------------------------------------------------------------------------------
 
 publisher:
-  enabled: true
+  enabled: false
   network: mainnet
-  port: 8080
+  port: 9001
+  ports: []
 
   image:
     repository: ghcr.io/fuellabs/sv-publisher
@@ -115,8 +103,10 @@ publisher:
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
-  env: []
   envFrom: []
+  env:
+    TMPDIR: "/var/fuel-streams/tmp"
+    DB_PATH: /mnt/db
 
   prometheus:
     enabled: false
@@ -139,11 +129,10 @@ publisher:
     tolerations: []
     affinity: {}
     imagePullSecrets: []
-    ports: []
     livenessProbe: {}
     readinessProbe: {}
     startupProbe: {}
-    securityContext: {}
+    podSecurityContext: {}
     containerSecurityContext: {}
     resources: {}
 
@@ -169,8 +158,10 @@ publisher:
 # ------------------------------------------------------------------------------
 
 consumer:
-  enabled: true
-  port: 8080
+  enabled: false
+  port: 9002
+  ports: []
+
   image:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
@@ -179,8 +170,8 @@ consumer:
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
-  env: []
   envFrom: []
+  env: {}
 
   config:
     replicaCount: 3
@@ -191,11 +182,10 @@ consumer:
     tolerations: []
     affinity: {}
     imagePullSecrets: []
-    ports: []
     livenessProbe: {}
     readinessProbe: {}
     startupProbe: {}
-    securityContext: {}
+    podSecurityContext: {}
     containerSecurityContext: {}
     resources: {}
 
@@ -221,9 +211,10 @@ consumer:
 # ------------------------------------------------------------------------------
 
 webserver:
-  enabled: true
+  enabled: false
   network: mainnet
   port: 9003
+  ports: []
 
   image:
     repository: ghcr.io/fuellabs/sv-webserver
@@ -252,8 +243,8 @@ webserver:
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
-  env: []
   envFrom: []
+  env: {}
 
   config:
     replicaCount: 3
@@ -264,11 +255,10 @@ webserver:
     tolerations: []
     affinity: {}
     imagePullSecrets: []
-    ports: []
     livenessProbe: {}
     readinessProbe: {}
     startupProbe: {}
-    securityContext: {}
+    podSecurityContext: {}
     containerSecurityContext: {}
     resources: {}
 
@@ -363,6 +353,13 @@ nats:
         max_memory_store: << 7GiB >>
       system_account: SYS
       $include: auth.conf
+
+  statefulSet:
+    merge:
+      spec:
+        affinity:
+          $tplYaml: |
+            {{- include "k8s.default-affinity" . | nindent 4 }}
 
   configMap:
     merge:
