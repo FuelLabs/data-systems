@@ -114,7 +114,7 @@ pub async fn find_last_block_height(
     db: &Db,
     options: QueryOptions,
 ) -> StoreResult<u64> {
-    let select = format!("SELECT block_height FROM blocks");
+    let select = "SELECT block_height FROM blocks".to_string();
     let mut query_builder = sqlx::QueryBuilder::new(select);
     if let Some(ns) = options.namespace {
         query_builder

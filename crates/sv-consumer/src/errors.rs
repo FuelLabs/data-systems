@@ -32,4 +32,6 @@ pub enum ConsumerError {
     MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+    #[error("Database operation timed out")]
+    DatabaseTimeout,
 }

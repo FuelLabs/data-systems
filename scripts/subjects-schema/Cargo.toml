@@ -12,6 +12,4 @@ version = { workspace = true }
 [dependencies]
 fuel-streams-domains = { workspace = true }
 fuel-streams-macros = { workspace = true }
-fuel-streams-types = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }

@@ -19,7 +19,7 @@ use fuel_streams_store::record::{DataEncoder, QueryOptions};
 use fuel_streams_test::{create_random_db_name, setup_db};
 use fuel_web_utils::shutdown::ShutdownController;
 use pretty_assertions::assert_eq;
-use sv_consumer::{process_messages_from_broker, FuelStores};
+use sv_consumer::{BlockExecutor, FuelStores};
 
 async fn verify_blocks(
     fuel_stores: &Arc<FuelStores>,
@@ -209,18 +209,11 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     // Process messages
     tokio::spawn({
         let db = Arc::clone(&db);
-        let fuel_streams = fuel_streams.clone();
-        let fuel_stores = fuel_stores.clone();
-        async move {
-            process_messages_from_broker(
-                &db,
-                shutdown.token(),
-                &message_broker,
-                &fuel_streams,
-                &fuel_stores,
-            )
-            .await
-        }
+        let message_broker = Arc::clone(&message_broker);
+        let fuel_streams = Arc::clone(&fuel_streams);
+        let block_executor =
+            BlockExecutor::new(db, &message_broker, &fuel_streams);
+        async move { block_executor.start(shutdown.token()).await }
     });
 
     // Give some time for processing

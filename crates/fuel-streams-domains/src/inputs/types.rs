@@ -206,16 +206,10 @@ pub enum InputType {
 
 impl std::fmt::Display for InputType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-
-impl From<InputType> for String {
-    fn from(value: InputType) -> Self {
-        match value {
-            InputType::Contract => "contract".to_string(),
-            InputType::Coin => "coin".to_string(),
-            InputType::Message => "message".to_string(),
+        match self {
+            InputType::Contract => write!(f, "contract"),
+            InputType::Coin => write!(f, "coin"),
+            InputType::Message => write!(f, "message"),
         }
     }
 }

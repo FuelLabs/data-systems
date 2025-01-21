@@ -26,10 +26,6 @@ impl TelemetryMetrics for Metrics {
 }
 
 impl Metrics {
-    pub fn new_with_random_prefix() -> anyhow::Result<Self> {
-        Metrics::new(Some(Metrics::generate_random_prefix()))
-    }
-
     pub fn new(prefix: Option<String>) -> anyhow::Result<Self> {
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");

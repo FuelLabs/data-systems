@@ -32,6 +32,7 @@ impl FuelStores {
         }
     }
 
+    #[allow(unused)]
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_namespace(&mut self, namespace: &str) -> &mut Self {
         self.blocks.with_namespace(namespace);

@@ -4,18 +4,8 @@ use clap::Parser;
 use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::{
-    server::api::build_and_spawn_web_server,
-    shutdown::ShutdownController,
-    telemetry::Telemetry,
-};
-use sv_consumer::{
-    cli::Cli,
-    errors::ConsumerError,
-    process_messages_from_broker,
-    state::ServerState,
-    FuelStores,
-};
+use fuel_web_utils::shutdown::ShutdownController;
+use sv_consumer::{cli::Cli, errors::ConsumerError, BlockExecutor, Server};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
@@ -48,24 +38,15 @@ async fn main() -> anyhow::Result<()> {
     let db = setup_db(&cli.db_url).await?;
     let message_broker = setup_message_broker(&cli.nats_url).await?;
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
-    let fuel_stores = FuelStores::new(&db).arc();
+    let block_executor = BlockExecutor::new(db, &message_broker, &fuel_streams);
+    let server = Server::new(cli.port, message_broker);
 
     tracing::info!("Consumer started. Waiting for messages...");
     tokio::select! {
         result = async {
             tokio::join!(
-                process_messages_from_broker(
-                    &db,
-                    shutdown.token(),
-                    &message_broker,
-                    &fuel_streams,
-                    &fuel_stores
-                ),
-                start_web_server(
-                    cli.port,
-                    message_broker.clone(),
-                    fuel_streams.clone()
-                )
+                block_executor.start(shutdown.token()),
+                server.start()
             )
         } => {
             result.0?;
@@ -84,7 +65,6 @@ async fn main() -> anyhow::Result<()> {
 async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
     let db = Db::new(DbConnectionOpts {
         connection_str: db_url.to_string(),
-        pool_size: Some(5),
         ..Default::default()
     })
     .await?;
@@ -98,27 +78,4 @@ async fn setup_message_broker(
     let broker = broker.start(nats_url).await?;
     broker.setup().await?;
     Ok(broker)
-}
-
-async fn start_web_server(
-    port: u16,
-    message_broker: Arc<dyn MessageBroker>,
-    fuel_streams: Arc<FuelStreams>,
-) -> Result<(), ConsumerError> {
-    let telemetry = Telemetry::new(None)
-        .await
-        .map_err(|_| ConsumerError::TelemetryStart)?;
-
-    telemetry
-        .start()
-        .await
-        .map_err(|_| ConsumerError::TelemetryStart)?;
-
-    let server_state =
-        ServerState::new(message_broker, Arc::clone(&telemetry), fuel_streams);
-
-    build_and_spawn_web_server(port, server_state)
-        .await
-        .map_err(|_| ConsumerError::WebServerStart)?;
-    Ok(())
 }

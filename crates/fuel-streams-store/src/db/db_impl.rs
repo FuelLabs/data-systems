@@ -111,7 +111,7 @@ impl Db {
             .min_connections(opts.min_connections.unwrap_or_default())
             .acquire_timeout(opts.acquire_timeout.unwrap_or_default())
             .idle_timeout(opts.idle_timeout)
-            .test_before_acquire(true)
+            .test_before_acquire(false)
             .connect_with(connections_opts)
             .await
             .map_err(DbError::Open)

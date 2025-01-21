@@ -5,7 +5,6 @@ use std::{
 
 use async_trait::async_trait;
 use fuel_message_broker::MessageBroker;
-use fuel_streams_core::FuelStreams;
 use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
 
 use crate::metrics::Metrics;
@@ -14,20 +13,17 @@ pub struct ServerState {
     pub start_time: Instant,
     pub msg_broker: Arc<dyn MessageBroker>,
     pub telemetry: Arc<Telemetry<Metrics>>,
-    pub fuel_streams: Arc<FuelStreams>,
 }
 
 impl ServerState {
     pub fn new(
         msg_broker: Arc<dyn MessageBroker>,
         telemetry: Arc<Telemetry<Metrics>>,
-        fuel_streams: Arc<FuelStreams>,
     ) -> Self {
         Self {
             start_time: Instant::now(),
             msg_broker,
             telemetry,
-            fuel_streams,
         }
     }
 
