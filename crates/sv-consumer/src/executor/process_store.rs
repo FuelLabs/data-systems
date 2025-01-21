@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use fuel_streams_domains::MsgPayload;
 use fuel_streams_store::{
@@ -6,10 +6,11 @@ use fuel_streams_store::{
     record::{DbTransaction, RecordEntity, RecordPacket},
 };
 
-use super::block_stats::{ActionType, BlockStats};
+use super::{
+    block_stats::{ActionType, BlockStats},
+    retry::RetryService,
+};
 use crate::{errors::ConsumerError, FuelStores};
-
-const DB_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub async fn handle_store_insertions(
     db: &Arc<Db>,
@@ -19,12 +20,12 @@ pub async fn handle_store_insertions(
 ) -> Result<BlockStats, ConsumerError> {
     let block_height = msg_payload.block_height();
     let stats = BlockStats::new(block_height.to_owned(), ActionType::Store);
-    let result = tokio::time::timeout(
-        DB_TIMEOUT,
-        process_store_packets(db, fuel_stores, packets),
-    )
-    .await
-    .map_err(|_| ConsumerError::DatabaseTimeout)?;
+    let retry_service = RetryService::default();
+    let result = retry_service
+        .with_retry("store_insertions", || {
+            process_store_packets(db, fuel_stores, packets)
+        })
+        .await;
 
     match result {
         Ok(packet_count) => Ok(stats.finish(packet_count)),
