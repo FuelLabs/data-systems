@@ -1,21 +1,20 @@
 {{- if .Values.commonConfigMap.enabled  }}
+{{- $commonConfigMap := .Values.commonConfigMap }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-    name: fuel-streams-config
-    labels:
-        app.kubernetes.io/instance: fuel-streams
+  {{- include "k8s.resource-metadata" (dict "root" . "context" $commonConfigMap "name" "config") | nindent 2 }}
 data:
-    {{ .Values.commonConfigMap.data | toYaml | nindent 2 }}
+  {{ $commonConfigMap.data | toYaml | nindent 2 }}
 {{- end }}
 {{- if .Values.localSecrets.enabled }}
+{{- $localSecrets := .Values.localSecrets }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-    name: fuel-streams-keys
-    labels:
-        app.kubernetes.io/instance: fuel-streams
+  {{- include "k8s.resource-metadata" (dict "root" . "context" $localSecrets "name" "keys" "component" "common") | nindent 2 }}
 stringData:
-    {{ .Values.localSecrets.data | toYaml | nindent 2 }}
+  {{ $localSecrets.data | toYaml | nindent 2 }}
 {{- end }}
