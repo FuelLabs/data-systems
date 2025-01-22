@@ -3,14 +3,20 @@
 {{- $tls := $webserver.tls }}
 {{- $certificate := $tls.certificate }}
 {{- $ingress := $tls.ingress }}
+{{- $component := "webserver" -}}
+{{- $secretName := printf "%s-webserver-tls" (include "fuel-streams.fullname" .) -}}
+{{- $serviceName := printf "%s-webserver" (include "fuel-streams.fullname" .) -}}
+{{- $certificateDict := dict "root" . "context" $certificate "name" "webserver-cert" "component" $component -}}
+{{- $ingressDict := dict "root" . "context" $ingress "name" "webserver-cert-validator" "component" $component -}}
 {{- if and $webserver.enabled $service.host }}
 {{- if $tls.enabled }}
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" . "context" $certificate "name" "webserver-cert" "component" "webserver") | nindent 2 }}
+  {{- include "k8s.resource-metadata" $certificateDict | nindent 2 }}
 spec:
-  secretName: {{ include "fuel-streams.fullname" . }}-webserver-tls
+  secretName: {{ $secretName }}
   duration: {{ $certificate.duration }}
   renewBefore: {{ $certificate.renewBefore }}
   dnsNames:
@@ -23,12 +29,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" . "context" $ingress "name" "webserver-cert-validator" "component" "webserver" "noAnnotations" true) | nindent 2 }}
+  {{ include "k8s.resource-metadata.default" $ingressDict | nindent 2 }}
+  {{ include "k8s.resource-metadata.labels" $ingressDict | nindent 2 }}
   annotations:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-    nginx.ingress.kubernetes.io/websocket-services: {{ include "fuel-streams.fullname" . }}-webserver
+    nginx.ingress.kubernetes.io/websocket-services: {{ $serviceName }}
     external-dns.alpha.kubernetes.io/hostname: {{ $service.host }}
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     {{- if $tls.enabled }}
@@ -38,14 +45,14 @@ metadata:
     cert-manager.io/common-name: {{ $service.host }}
     cert-manager.io/cluster-issuer: {{ $certificate.issuer }}
     {{- end }}
-    {{- include "k8s.resource-annotations" (dict "root" . "context" $ingress) | nindent 4 }}
+    {{- include "k8s.resource-metadata.annotations-raw" $ingressDict | nindent 4 }}
 spec:
   ingressClassName: nginx
   {{- if $tls.enabled }}
   tls:
     - hosts:
         - {{ $service.host }}
-      secretName: {{ include "fuel-streams.fullname" . }}-webserver-tls
+      secretName: {{ $secretName }}
   {{- end }}
   rules:
     - host: {{ $service.host }}
@@ -55,7 +62,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "fuel-streams.fullname" . }}-webserver
+                name: {{ $serviceName }}
                 port:
                   number: {{ $service.port }}
 {{- end }}

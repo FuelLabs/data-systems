@@ -129,34 +129,16 @@ Returns: String - The name of the service account to use
 {{- end }}
 
 {{/*
-Get value from nested path with improved error handling
-
-This helper template is used to safely traverse nested YAML structures using dot notation.
-It provides robust error handling by returning empty values when paths don't exist.
+Get a value from a nested path in a context object
 
 Parameters:
-  - context: The root context object to traverse (typically .Values)
-  - path: Dot-notation string path to the desired value (e.g., "config.livenessProbe.enabled")
+  - context: The context object to traverse (required)
+  - path: Dot-notation string path to the desired value (required)
+    Example: "config.labels" will look for context.config.labels
 
-Returns: 
+Returns:
   - The value at the specified path if found
-  - Empty string if path doesn't exist or is invalid
-
-Example Usage:
-1. Basic value retrieval:
-   {{- include "get-value-from-path" (dict "context" .Values "path" "publisher.config.replicaCount") }}
-
-2. With default value:
-   {{- $replicas := include "get-value-from-path" (dict "context" .Values "path" "publisher.config.replicaCount") | default 3 }}
-
-3. In combination with other helpers:
-   {{- include "set-field-and-value" (dict "field" "nodeSelector" "path" "config.nodeSelector" "context" $publisher) }}
-
-Behavior:
-- Traverses the path one segment at a time
-- Returns empty if any segment in the path is invalid
-- Handles both missing keys and non-map types gracefully
-- Preserves the original value type (string, number, bool, map, etc.)
+  - Empty dict if path is invalid or value not found
 */}}
 {{- define "get-value-from-path" -}}
   {{- $current := .context }}
@@ -181,10 +163,6 @@ Behavior:
 {{/*
 Get context value with fallback to root values
 
-This helper template retrieves a value from a nested YAML structure using a dot-path notation,
-with fallback to root values if the value is not found in the context. It provides a robust
-way to handle configuration values that may be defined at different levels of the hierarchy.
-
 Parameters:
   - context: Value-specific context object (required)
     The immediate context containing the desired value (e.g., service-specific values)
@@ -192,21 +170,20 @@ Parameters:
     The root context containing global/default values (typically . or .Values)
   - path: Dot-notation string path to the desired value (required)
     The path to the value in dot notation (e.g., "config.labels")
+  - rootPath: Optional alternative path to check in root context
+    If provided, this path will be used instead of 'path' when checking root context
 
 Returns: 
   - The value from context if found and valid
-  - The value from root if not found in context but found in root
+  - The value from root (using rootPath if provided, otherwise path) if not found in context
   - Empty string if value is not found in either context or root
 
 Example Usage:
-1. Basic value retrieval with fallback:
+1. With same path in context and root:
    {{- include "get-context-value" (dict "context" $publisherValues "root" . "path" "config.labels") }}
 
-2. With default value:
-   {{- $labels := include "get-context-value" (dict "context" $publisherValues "root" . "path" "config.labels") | default (dict "app" "fuel-streams") }}
-
-3. In combination with other helpers:
-   {{- include "set-field-and-value" (dict "field" "nodeSelector" "path" "config.nodeSelector" "context" $publisher "root" .) }}
+2. With different root path:
+   {{- include "get-context-value" (dict "context" $publisherValues "root" . "path" "config.autoscaling" "rootPath" "config.defaultAutoscaling") }}
 */}}
 {{- define "get-context-value" -}}
 {{- $contextConfig := dict }}
@@ -214,13 +191,14 @@ Example Usage:
 {{- $context := .context }}
 {{- $root := .root }}
 {{- $path := .path }}
+{{- $rootPath := default $path .rootPath }}
 
 {{- if $context }}
   {{- $contextConfig = include "get-value-from-path" (dict "context" $context "path" $path) | fromYaml }}
 {{- end }}
 
 {{- if and $root $root.Values }}
-  {{- $rootConfig = include "get-value-from-path" (dict "context" $root.Values "path" $path) | fromYaml }}
+  {{- $rootConfig = include "get-value-from-path" (dict "context" $root.Values "path" $rootPath) | fromYaml }}
 {{- end }}
 
 {{- if and $contextConfig (not (empty $contextConfig)) }}
@@ -248,7 +226,8 @@ Example Usage:
 */}}
 {{- define "set-field-and-value" -}}
 {{- $path := default (printf "config.%s" .field) .path }}
-{{- $value := include "get-context-value" (dict "context" .context "root" .root "path" $path) | fromYaml }}
+{{- $rootPath := default $path .rootPath }}
+{{- $value := include "get-context-value" (dict "context" .context "root" .root "path" $path "rootPath" $rootPath) | fromYaml }}
 {{- if and $value (not (empty $value)) (not (eq (kindOf $value) "invalid")) }}
 {{ .field }}:
   {{- toYaml $value | nindent 2 }}
@@ -285,5 +264,7 @@ Result:
   tier: backend
 */}}
 {{- define "set-value" -}}
-{{- include "get-context-value" . }}
+{{- $path := default (printf "config.%s" .field) .path }}
+{{- $rootPath := default $path .rootPath }}
+{{- include "get-context-value" (dict "context" .context "root" .root "path" $path "rootPath" $rootPath) }}
 {{- end }}
