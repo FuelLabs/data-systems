@@ -4,74 +4,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  {{- include "k8s.metadata" (dict "context" . "suffix" "-webserver") | nindent 2 }}
-  annotations:
-    {{- include "set-value" (dict "context" $webserver "path" "config.annotations") | nindent 4 }}
-  labels:
-    {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 4 }}
-    {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 4 }}
-    app.kubernetes.io/component: webserver
+  {{- include "k8s.resource-metadata" (dict "root" . "context" $webserver "name" "webserver" "component" "webserver") | nindent 2 }}
 spec:
-  {{- if not $webserver.autoscaling.enabled }}
-  replicas: {{ $webserver.config.replicaCount }}
-  {{- end }}
-  selector:
-    matchLabels:
-      {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 6 }}
-
+  {{- include "k8s.pod-spec-common" (dict "root" . "context" $webserver "name" "webserver") | nindent 2 }}
   template:
-    metadata:
-      annotations:
-        {{- include "set-value" (dict "context" $webserver "path" "config.podAnnotations") | nindent 8 }}
-      labels:
-        {{- include "fuel-streams.labels" (dict "name" "webserver" "context" .) | nindent 8 }}
-        {{- include "set-value" (dict "context" $webserver "path" "config.labels") | nindent 8 }}
-        app.kubernetes.io/component: webserver
-
+    {{- include "k8s.template-metadata" (dict "root" . "context" $webserver "name" "webserver") | nindent 4 }}
     spec:
-      {{- if .Values.serviceAccount.create }}
-      serviceAccountName: {{ include "fuel-streams.serviceAccountName" . }}
-      {{- end }}
-
-      {{- include "set-field-and-value" (dict "context" $webserver "field" "imagePullSecrets" "path" "config.imagePullSecrets") | nindent 6 }}
-      {{- include "set-field-and-value" (dict "context" $webserver "field" "nodeSelector" "path" "config.nodeSelector") | nindent 6 }}
-      {{- include "set-field-and-value" (dict "context" $webserver "field" "affinity" "path" "config.affinity") | nindent 6 }}
-      {{- include "set-field-and-value" (dict "context" $webserver "field" "tolerations" "path" "config.tolerations") | nindent 6 }}
-      {{- include "k8s.security-context" (dict "context" . "service" "webserver") | nindent 6 }}
-
+      {{- include "k8s.pod-config" (dict "root" . "context" $webserver) | nindent 6 }} 
       containers:
         - name: webserver
           image: "{{ $webserver.image.repository }}:{{ $webserver.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $webserver.image.pullPolicy }}
-
-          ports:
-            - name: webserver
-              containerPort: {{ $webserver.port }}
-              protocol: TCP
-
-          {{- include "set-field-and-value" (dict "context" $webserver "field" "resources" "path" "config.resources") | nindent 10 }}
-          {{- include "k8s.probes" (dict "context" . "service" "webserver") | nindent 10 }}
-          {{- include "k8s.container-security-context" (dict "context" . "service" "webserver") | nindent 10 }}
-
-          envFrom:
-            - configMapRef:
-                name: {{ include "fuel-streams.fullname" $ }}-config
-                optional: true
-            - secretRef:
-                name: {{ include "fuel-streams.fullname" $ }}-keys
-                optional: true
-            {{- with $webserver.envFrom }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-
-          env:
-            - name: NETWORK
-              value: {{ $webserver.network | quote }}
-            - name: PORT
-              value: {{ $webserver.port | quote }}
-            {{- with $webserver.env }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-
-{{- include "k8s.hpa" (dict "context" . "service" (dict "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
+          {{- include "k8s.container-config" (dict "root" . "context" $webserver) | nindent 10 }}
+{{- include "k8s.hpa" (dict "context" . "service" (dict "context" $webserver "name" "webserver" "autoscaling" $webserver.autoscaling)) }}
+{{- end }}
+{{- $service := $webserver.service }}
+{{- if and $webserver.enabled $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "k8s.resource-metadata" (dict "root" . "context" $service "name" "webserver" "component" "webserver") | nindent 2 }}
+spec:
+  type: ClusterIP
+  ports:
+    - appProtocol: tcp
+      name: websocket
+      port: {{ $service.port }}
+      protocol: TCP
+      targetPort: webserver
+  selector:
+    {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 4 }}
+    app.kubernetes.io/component: webserver
 {{- end }}
