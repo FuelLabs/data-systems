@@ -13,10 +13,8 @@ usage() {
     echo "                  Default: testnet"
     echo "  --mode        : Specify the run mode (dev|profiling)"
     echo "                  Default: profiling"
-    echo "  --port        : Specify the port number"
-    echo "                  Default: 4000"
-    echo "  --telemetry-port : Specify the telemetry port number"
-    echo "                  Default: 8080"
+    echo "  --port        : Specify the port number for the webserver(telemetry, healthchecks)"
+    echo "                  Default: 9000"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
     echo "  --from-height : Specify the starting block height"
     echo "                  Default: 0"
@@ -24,9 +22,8 @@ usage() {
     echo "Examples:"
     echo "  $0                                              # Runs with all defaults"
     echo "  $0 --network mainnet                            # Runs mainnet with default settings"
-    echo "  $0 --port 4001                                  # Runs on port 4001"
-    echo "  $0 --telemetry-port 8081                        # uses telemetry port 8081"
-    echo "  $0 --network mainnet --port 4001 --telemetry-port 8081 --mode dev     # Custom network, port, telemetry-port and mode"
+    echo "  $0 --port 9000                                  # Runs on port 9000"
+    echo "  $0 --network mainnet --port 9000 --mode dev     # Custom network, port, telemetry-port and mode"
     echo "  $0 --from-height 1000                           # Start from block height 1000"
     exit 1
 }
@@ -50,10 +47,6 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --port)
             PORT="$2"
-            shift 2
-            ;;
-        --telemetry-port)
-            TELEMETRY_PORT="$2"
             shift 2
             ;;
         --extra-args)
@@ -89,7 +82,6 @@ echo "Runtime Settings:"
 echo "  → Network: $NETWORK"
 echo "  → Mode: $MODE"
 echo "  → Port: $PORT"
-echo "  → Telemetry Port: $TELEMETRY_PORT"
 echo "  → From Height: $FROM_HEIGHT"
 if [ -n "$EXTRA_ARGS" ]; then
     echo "→ Extra Arguments: $EXTRA_ARGS"
@@ -131,7 +123,6 @@ COMMON_ARGS=(
     "--graphql-max-complexity" "1000000000"
     # Application specific
     "--nats-url" "nats://localhost:4222"
-    "--telemetry-port" "${TELEMETRY_PORT}"
     "--from-height" "${FROM_HEIGHT}"
 )
 

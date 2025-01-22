@@ -17,7 +17,7 @@ use fuel_streams_core::{
 use fuel_streams_domains::{MockMsgPayload, MsgPayload};
 use fuel_streams_store::record::{DataEncoder, QueryOptions};
 use fuel_streams_test::{create_random_db_name, setup_db};
-use fuel_web_utils::shutdown::ShutdownController;
+use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
 use pretty_assertions::assert_eq;
 use sv_consumer::{BlockExecutor, FuelStores};
 
@@ -211,8 +211,9 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
         let db = Arc::clone(&db);
         let message_broker = Arc::clone(&message_broker);
         let fuel_streams = Arc::clone(&fuel_streams);
+        let telemetry = Telemetry::new(None).await?;
         let block_executor =
-            BlockExecutor::new(db, &message_broker, &fuel_streams);
+            BlockExecutor::new(db, &message_broker, &fuel_streams, telemetry);
         async move { block_executor.start(shutdown.token()).await }
     });
 

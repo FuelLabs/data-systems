@@ -21,6 +21,7 @@ $install_cmd cargo-tarpaulin
 $install_cmd samply
 $install_cmd cargo-watch
 $install_cmd knope
+$install_cmd sqlx-cli
 $install_cmd cargo-sort
 $install_cmd typos-cli
 $install_cmd cargo-nextest --secure

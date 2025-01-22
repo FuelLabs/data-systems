@@ -258,15 +258,24 @@ async fn publish_block(
     let payload = MsgPayload::new(fuel_core, sealed_block, &metadata)?;
     let encoded = payload.encode().await?;
 
-    message_broker
+    let send_success = message_broker
         .publish_block(payload.message_id(), encoded.clone())
-        .await?;
+        .await;
 
     if let Some(metrics) = telemetry.base_metrics() {
-        metrics.update_publisher_success_metrics(
-            &payload.subject(),
-            encoded.len(),
-        );
+        if send_success.is_ok() {
+            metrics.update_publisher_success_metrics(
+                &payload.subject(),
+                encoded.len(),
+            );
+        } else {
+            let err = send_success.unwrap_err();
+            metrics.update_publisher_error_metrics(
+                &payload.subject(),
+                &err.to_string(),
+            );
+            return Err(err.into())
+        }
     }
 
     tracing::info!("New block submitted: {}", payload.block_height());

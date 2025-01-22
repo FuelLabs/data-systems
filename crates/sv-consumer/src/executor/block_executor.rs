@@ -10,7 +10,10 @@ use fuel_streams_store::{
     db::Db,
     record::{DataEncoder, PacketBuilder, RecordPacket},
 };
-use fuel_web_utils::shutdown::shutdown_broker_with_timeout;
+use fuel_web_utils::{
+    shutdown::shutdown_broker_with_timeout,
+    telemetry::Telemetry,
+};
 use futures::StreamExt;
 use tokio::{
     sync::Semaphore,
@@ -23,7 +26,7 @@ use super::{
     process_store::handle_store_insertions,
     process_stream::handle_stream_publishes,
 };
-use crate::{errors::ConsumerError, FuelStores};
+use crate::{errors::ConsumerError, metrics::Metrics, FuelStores};
 
 const MAX_CONCURRENT_TASKS: usize = 32;
 const BATCH_SIZE: usize = 100;
@@ -41,6 +44,7 @@ pub struct BlockExecutor {
     fuel_stores: Arc<FuelStores>,
     semaphore: Arc<Semaphore>,
     max_tasks: usize,
+    telemetry: Arc<Telemetry<Metrics>>,
 }
 
 impl BlockExecutor {
@@ -48,6 +52,7 @@ impl BlockExecutor {
         db: Arc<Db>,
         message_broker: &Arc<dyn MessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
+        telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
         let pool_size = db.pool.size() as usize;
         let max_tasks = pool_size.saturating_sub(5).min(MAX_CONCURRENT_TASKS);
@@ -60,6 +65,7 @@ impl BlockExecutor {
             fuel_streams: fuel_streams.clone(),
             fuel_stores: fuel_stores.clone(),
             max_tasks,
+            telemetry,
         }
     }
 
@@ -72,6 +78,7 @@ impl BlockExecutor {
             "Starting consumer with max concurrent tasks: {}",
             self.max_tasks
         );
+        let telemetry = self.telemetry.clone();
         while !token.is_cancelled() {
             tokio::select! {
                 msg_result = self.message_broker.receive_blocks_stream(BATCH_SIZE) => {
@@ -86,18 +93,19 @@ impl BlockExecutor {
                     }
                 }
                 Some(result) = join_set.join_next() => {
-                    Self::handle_task_result(result).await?;
+                    Self::handle_task_result(result, &telemetry).await?;
                 }
             }
         }
 
         // Wait for all tasks to finish
         while let Some(result) = join_set.join_next().await {
-            Self::handle_task_result(result).await?;
+            Self::handle_task_result(result, &telemetry).await?;
         }
 
-        tracing::info!("Stopping actix server ...");
+        tracing::info!("Stopping broker ...");
         shutdown_broker_with_timeout(&self.message_broker).await;
+        tracing::info!("Broker stopped successfully!");
         Ok(())
     }
 
@@ -160,10 +168,16 @@ impl BlockExecutor {
 
     async fn handle_task_result(
         result: Result<Result<ProcessResult, ConsumerError>, JoinError>,
+        telemetry: &Arc<Telemetry<Metrics>>,
     ) -> Result<(), ConsumerError> {
         match result {
             Ok(Ok(ProcessResult::Store(store_result))) => {
                 let store_stats = store_result?;
+
+                if let Some(metrics) = telemetry.base_metrics() {
+                    metrics.update_from_stats(&store_stats)
+                }
+
                 match &store_stats.error {
                     Some(error) => store_stats.log_error(error),
                     None => store_stats.log_success(),
