@@ -257,7 +257,7 @@ run-consumer:
 		--port $(PORT)
 
 # ------------------------------------------------------------
-#  Streamer Run Commands
+#  Webserver Run Commands
 # ------------------------------------------------------------
 
 run-webserver: NETWORK="testnet"
@@ -279,6 +279,9 @@ run-webserver-testnet-dev:
 
 run-webserver-testnet-profiling:
 	$(MAKE) run-webserver NETWORK=testnet MODE=profiling
+
+run-key-generator:
+	@cargo run --package db-utils --bin api_key_generator -- --nkeys 10
 
 # ------------------------------------------------------------
 #  Docker Compose

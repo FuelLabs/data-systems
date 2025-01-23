@@ -209,7 +209,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "max_over_time(consumer_metrics_duration_milliseconds_sum[1m])",
+          "expr": "max by (action_type) (\n  histogram_quantile(1.0, rate(consumer_metrics_duration_milliseconds_bucket[1m]))\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -400,9 +400,7 @@
               "id": "byNames",
               "options": {
                 "mode": "exclude",
-                "names": [
-                  "{action_type=\"store\", instance=\"192.168.0.116:9002\", job=\"sv-consumer\"}"
-                ],
+                "names": ["store"],
                 "prefix": "All except:",
                 "readOnly": true
               }
@@ -443,7 +441,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "min_over_time(consumer_metrics_duration_milliseconds_sum[1m])",
+          "expr": "min by (action_type) (\n  consumer_metrics_duration_milliseconds_bucket{le!=\"0\"} > 0\n) * 1",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
