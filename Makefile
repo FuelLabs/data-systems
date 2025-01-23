@@ -285,7 +285,7 @@ run-webserver-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats docker cockroach monitoring
+DOCKER_SERVICES := nats docker postgres monitoring
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:

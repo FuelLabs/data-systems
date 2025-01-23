@@ -3887,6 +3887,7 @@ dependencies = [
  "dotenvy",
  "fuel-data-parser",
  "fuel-streams-macros",
+ "fuel-streams-types",
  "futures",
  "serde",
  "sqlx",

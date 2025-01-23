@@ -1,3 +1,4 @@
+pub mod block_height;
 pub mod bytes;
 pub mod bytes_long;
 pub mod common;
@@ -6,6 +7,7 @@ pub mod script_execution;
 pub mod tx_pointer;
 pub mod utxo_id;
 
+pub use block_height::*;
 pub use bytes::*;
 pub use bytes_long::*;
 pub use identifier::*;
