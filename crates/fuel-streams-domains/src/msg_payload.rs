@@ -123,8 +123,8 @@ impl MsgPayload {
         &self.metadata
     }
 
-    pub fn block_height(&self) -> &BlockHeight {
-        &self.block.height
+    pub fn block_height(&self) -> BlockHeight {
+        self.block.height
     }
 
     pub fn block(&self) -> &Block {

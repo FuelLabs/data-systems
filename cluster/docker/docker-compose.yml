@@ -19,22 +19,24 @@ services:
     env_file:
       - ./../../.env
 
-  cockroach:
+  postgres:
     profiles:
       - all
-      - cockroach
-    image: cockroachdb/cockroach:v23.2.2
+      - postgres
+    image: postgres:17
     ports:
-      - "26257:26257"
-      - "8080:8080"
-    command: start-single-node --insecure
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-fuel_streams}
     volumes:
-      - cockroach_data:/cockroach/cockroach-data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  cockroach_data:
+  postgres_data:

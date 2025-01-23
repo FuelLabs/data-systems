@@ -1,5 +1,7 @@
 use std::sync::LazyLock;
 
+use fuel_streams_types::BlockHeight;
+
 pub static STORE_PAGINATION_LIMIT: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("STORE_PAGINATION_LIMIT")
         .ok()
@@ -11,7 +13,7 @@ pub static STORE_PAGINATION_LIMIT: LazyLock<usize> = LazyLock::new(|| {
 pub struct QueryOptions {
     pub offset: i64,
     pub limit: i64,
-    pub from_block: Option<u64>,
+    pub from_block: Option<BlockHeight>,
     pub namespace: Option<String>,
 }
 impl Default for QueryOptions {
@@ -34,7 +36,7 @@ impl QueryOptions {
         self.limit = limit.max(1);
         self
     }
-    pub fn with_from_block(mut self, from_block: Option<u64>) -> Self {
+    pub fn with_from_block(mut self, from_block: Option<BlockHeight>) -> Self {
         self.from_block = from_block;
         self
     }

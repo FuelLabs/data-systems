@@ -1,5 +1,4 @@
-use std::str::FromStr;
-
+pub use fuel_streams_types::BlockHeight;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
 
@@ -25,7 +24,6 @@ impl Block {
     ) -> Self {
         let header: BlockHeader = block.header().into();
         let height = header.height;
-
         let version = match block {
             fuel_core_types::blockchain::block::Block::V1(_) => {
                 BlockVersion::V1
@@ -35,66 +33,12 @@ impl Block {
         Self {
             consensus,
             header: header.to_owned(),
-            height: height.into(),
+            height,
             id: header.id,
             transaction_ids,
             version,
             producer,
         }
-    }
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeight(String);
-
-impl From<FuelCoreBlockHeight> for BlockHeight {
-    fn from(value: FuelCoreBlockHeight) -> Self {
-        let height = *value;
-        BlockHeight(height.to_string())
-    }
-}
-
-impl From<i32> for BlockHeight {
-    fn from(value: i32) -> Self {
-        BlockHeight(value.to_string())
-    }
-}
-
-impl From<u32> for BlockHeight {
-    fn from(value: u32) -> Self {
-        BlockHeight(value.to_string())
-    }
-}
-
-impl From<i64> for BlockHeight {
-    fn from(value: i64) -> Self {
-        BlockHeight(value.to_string())
-    }
-}
-
-impl From<BlockHeight> for u32 {
-    fn from(value: BlockHeight) -> Self {
-        value.0.parse::<u32>().unwrap()
-    }
-}
-
-impl From<BlockHeight> for i64 {
-    fn from(value: BlockHeight) -> Self {
-        value.0.parse::<i64>().unwrap()
-    }
-}
-
-impl std::fmt::Display for BlockHeight {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for BlockHeight {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let height = s.parse::<u32>().map_err(|_| "Invalid block height")?;
-        Ok(BlockHeight(height.to_string()))
     }
 }
 
@@ -181,7 +125,7 @@ pub struct BlockHeader {
     pub da_height: u64,
     pub event_inbox_root: Bytes32,
     pub id: BlockId,
-    pub height: u32,
+    pub height: BlockHeight,
     pub message_outbox_root: Bytes32,
     pub message_receipt_count: u32,
     pub prev_root: Bytes32,

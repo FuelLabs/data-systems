@@ -3,7 +3,6 @@ use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
 use super::InputType;
-use crate::blocks::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_coin")]
