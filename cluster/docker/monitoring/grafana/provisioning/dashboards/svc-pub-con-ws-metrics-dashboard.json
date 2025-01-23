@@ -4,8 +4,8 @@
       {
         "builtIn": 1,
         "datasource": {
-          "type": "prometheus",
-          "uid": "DS__NATS-PROMETHEUS"
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
         "enable": true,
         "hide": true,
@@ -18,14 +18,26 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 5,
+  "id": 3,
   "links": [],
   "panels": [
     {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9,
+      "panels": [],
+      "title": "Consumer",
+      "type": "row"
+    },
+    {
       "datasource": {
-        "default": false,
         "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
+        "uid": "DS__PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -86,104 +98,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 0
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "max(publisher_metrics_last_published_block_timestamp{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\"})",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Last Published Block Timestamp",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "default": false,
-        "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
+        "y": 1
       },
       "id": 10,
       "options": {
@@ -198,28 +113,23 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "11.3.1",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
           "editorMode": "code",
-          "expr": "max(publisher_metrics_last_published_block_height{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\"})",
-          "instant": false,
+          "expr": "rate(consumer_metrics_duration_milliseconds_sum[5m]) / rate(consumer_metrics_duration_milliseconds_count[1m])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Last Published Block Height",
+      "title": "Consumer: Average duration [1m]",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "default": false,
         "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
+        "uid": "DS__PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -279,141 +189,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(publisher_metrics_error_rates{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\", error_type=~\"$error_type\"}[5m]))",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Error Rates ",
-      "type": "timeseries"
-    },
-    {
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 16
-      },
-      "id": 8,
-      "title": "Row title",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "default": false,
-        "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "avg(publisher_metrics_message_size_bytes_sum{chain_id=~\"0000000000000000\", block_producer=~\"0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92\", subject_wildcard=~\"blocks.>\"}) / avg(publisher_metrics_message_size_bytes_count{chain_id=~\"0000000000000000\", block_producer=~\"0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92\", subject_wildcard=~\"blocks.>\"})"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 17
+        "x": 12,
+        "y": 1
       },
       "id": 7,
       "options": {
@@ -428,54 +205,23 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "11.3.1",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
           "editorMode": "code",
-          "expr": "min(publisher_metrics_message_size_bytes_bucket{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "instant": false,
+          "expr": "max_over_time(consumer_metrics_duration_milliseconds_sum[1m])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "max(publisher_metrics_message_size_bytes_bucket{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "avg(publisher_metrics_message_size_bytes_sum{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"}) / avg(publisher_metrics_message_size_bytes_count{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "C"
         }
       ],
-      "title": "Message Size Histogram (Min, Max, Avg)",
+      "title": "Consumer: Maximum duration [1m]",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "default": false,
         "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
+        "uid": "DS__PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -538,7 +284,124 @@
               "options": {
                 "mode": "exclude",
                 "names": [
-                  "avg(publisher_metrics_block_latency_seconds_sum{chain_id=~\"0000000000000000\", block_producer=~\"0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92\", subject_wildcard=~\"blocks.>\"}) / avg(publisher_metrics_block_latency_seconds_count{chain_id=~\"0000000000000000\", block_producer=~\"0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92\", subject_wildcard=~\"blocks.>\"})"
+                  "{action_type=\"store\", instance=\"192.168.0.116:9002\", job=\"sv-consumer\"}"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "rate(consumer_metrics_packets_sum[5m]) / rate(consumer_metrics_packets_count[1m])",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Consumer: Average Packets Processed [1m]",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "DS__PROMETHEUS"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "{action_type=\"store\", instance=\"192.168.0.116:9002\", job=\"sv-consumer\"}"
                 ],
                 "prefix": "All except:",
                 "readOnly": true
@@ -561,69 +424,51 @@
         "h": 8,
         "w": 12,
         "x": 12,
+        "y": 9
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "min_over_time(consumer_metrics_duration_milliseconds_sum[1m])",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Consumer: Minimum duration [1m]",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
         "y": 17
       },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "min(publisher_metrics_block_latency_seconds_bucket{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "max(publisher_metrics_block_latency_seconds_bucket{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "avg(publisher_metrics_block_latency_seconds_sum{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"}) / avg(publisher_metrics_block_latency_seconds_count{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"})",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Publishing Latency (Min, Max, Avg)",
-      "type": "timeseries"
+      "id": 8,
+      "panels": [],
+      "title": "Publisher",
+      "type": "row"
     },
     {
       "datasource": {
-        "default": false,
         "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
+        "uid": "DS__PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -684,205 +529,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 25
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(publisher_metrics_published_messages_throughput{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\", subject_wildcard=~\"$subject_wildcard\"}[5m]))",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": " Message Throughput",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "default": false,
-        "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 25
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
-          "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "sum(rate(publisher_metrics_total_published_messages{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\"}[5m]))",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Total Published Messages",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "default": false,
-        "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 33
+        "y": 18
       },
       "id": 1,
       "options": {
@@ -897,32 +544,236 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
+            "uid": "DS__PROMETHEUS"
           },
-          "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(publisher_metrics_total_subscriptions{chain_id=~\"$chain_id\"})",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
+          "expr": "sum(publisher_metrics_messages_throughput)",
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A",
-          "useBackend": false
+          "refId": "A"
         }
       ],
-      "title": "Total Subscriptions",
+      "title": "Publisher: Total published messages",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "default": false,
         "type": "prometheus",
-        "uid": "DS__NATS-PROMETHEUS"
+        "uid": "DS__PROMETHEUS"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "{instance=\"192.168.0.116:9001\", job=\"sv-publisher\", subject=\"block_submitted\"}"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "rate(publisher_metrics_message_size_bytes_sum[5m]) / rate(publisher_metrics_message_size_bytes_count[1m])",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Publisher: Average message size [1m]",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "DS__PROMETHEUS"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(publisher_metrics_error_rates)",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Publisher: Total failed messages",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "DS__PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -983,9 +834,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 26
       },
-      "id": 4,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [],
@@ -998,133 +849,47 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "11.3.1",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "DS__NATS-PROMETHEUS"
-          },
           "editorMode": "code",
-          "expr": "sum(rate(publisher_metrics_total_failed_messages{chain_id=~\"$chain_id\", block_producer=~\"$block_producer\"}[5m]))",
-          "instant": false,
+          "expr": "sum(rate(publisher_metrics_error_rates[5m])) by (subject)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Total Failed Messages ",
+      "title": "Publisher: Error rates by subject",
       "type": "timeseries"
     },
     {
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 34
       },
-      "id": 3,
-      "title": "Messages",
+      "id": 12,
+      "panels": [],
+      "title": "Webserver",
       "type": "row"
     }
   ],
-  "schemaVersion": 39,
-  "tags": ["fuel-publisher"],
+  "preload": false,
+  "schemaVersion": 40,
+  "tags": [],
   "templating": {
-    "list": [
-      {
-        "current": {
-          "selected": true,
-          "text": "0000000000000000",
-          "value": "0000000000000000"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "DS__NATS-PROMETHEUS"
-        },
-        "definition": "label_values(publisher_metrics_total_published_messages, chain_id)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "",
-        "multi": false,
-        "name": "chain_id",
-        "options": [],
-        "query": {
-          "qryType": 3,
-          "query": "label_values(publisher_metrics_total_published_messages, chain_id)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": {
-          "selected": true,
-          "text": "0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92",
-          "value": "0xe8df6d432b2584a3ea9d0badf297c3b525bae71b577d22c1ccc12519adb64d92"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "DS__NATS-PROMETHEUS"
-        },
-        "definition": "label_values(publisher_metrics_total_published_messages, block_producer)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "",
-        "multi": false,
-        "name": "block_producer",
-        "options": [],
-        "query": {
-          "qryType": 3,
-          "query": "label_values(publisher_metrics_total_published_messages, block_producer)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": {
-          "selected": true,
-          "text": "blocks.>",
-          "value": "blocks.>"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "DS__NATS-PROMETHEUS"
-        },
-        "definition": "label_values(publisher_metrics_published_messages_throughput, subject_wildcard)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "",
-        "multi": false,
-        "name": "subject_wildcard",
-        "options": [],
-        "query": {
-          "qryType": 3,
-          "query": "label_values(publisher_metrics_published_messages_throughput, subject_wildcard)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Fuel Publisher Metrics",
-  "uid": "cdxezjtxf02kge",
-  "version": 22,
+  "title": "Fuel-data-systems",
+  "uid": "deava82svjo5cb",
+  "version": 17,
   "weekStart": ""
 }

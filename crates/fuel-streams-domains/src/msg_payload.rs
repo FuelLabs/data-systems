@@ -116,7 +116,11 @@ impl MsgPayload {
     pub fn subject(&self) -> String {
         let producer = self.metadata.block_producer.clone();
         let height = self.metadata.block_height.clone();
-        format!("block_submitted.{producer}.{height}")
+        format!("{}.{producer}.{height}", Self::subject_name())
+    }
+
+    pub fn subject_name() -> &'static str {
+        "block_submitted"
     }
 
     pub fn metadata(&self) -> &Metadata {

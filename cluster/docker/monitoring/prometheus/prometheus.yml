@@ -39,30 +39,36 @@ scrape_configs:
   - job_name: 'sv-publisher'
     scrape_interval: 5s
     scrape_timeout: 2s
+    scheme: http
+    metrics_path: /api/v1/metrics
     static_configs:
       - targets:
-          - 'sv-publisher:9001'
+          - '192.168.0.116:9001'
 
   - job_name: 'sv-consumer'
     scrape_interval: 5s
     scrape_timeout: 2s
+    scheme: http
+    metrics_path: /api/v1/metrics
     static_configs:
       - targets:
-          - 'sv-consumer:9002'
+          - '192.168.0.116:9002'
 
   - job_name: 'sv-webserver'
     scrape_interval: 5s
     scrape_timeout: 2s
+    scheme: http
+    metrics_path: /api/v1/metrics
     static_configs:
       - targets:
-          - 'sv-webserver:9003'
+          - '192.168.0.116:9003'
 
   - job_name: 'cadvisor'
     scrape_interval: 5s
     scrape_timeout: 2s
     static_configs:
       - targets:
-          - 'cadvisor:9200'
+          - 'cadvisor:8080'
 
   - job_name: 'node-exporter'
     scrape_interval: 5s

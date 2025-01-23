@@ -112,9 +112,8 @@ impl<M: TelemetryMetrics> Telemetry<M> {
         use prometheus::Encoder;
         let encoder = prometheus::TextEncoder::new();
 
-        // if no metrics, return
         if self.metrics.is_none() {
-            return "".to_string();
+            return "# EOF\n".to_string();
         }
 
         let mut result = String::new();
@@ -125,8 +124,9 @@ impl<M: TelemetryMetrics> Telemetry<M> {
         let mut buffer = Vec::new();
         if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
             tracing::error!("could not encode prometheus metrics: {}", e);
-        };
-        let res_custom = match String::from_utf8(buffer.clone()) {
+        }
+
+        let res_custom = match String::from_utf8(buffer) {
             Ok(v) => v,
             Err(e) => {
                 tracing::error!(
@@ -136,36 +136,29 @@ impl<M: TelemetryMetrics> Telemetry<M> {
                 String::default()
             }
         };
-        buffer.clear();
 
         result.push_str(&res_custom);
 
-        // now fetch and add system metrics
-        let system_metrics = match self.system.read().metrics() {
-            Ok(m) => {
-                let metrics = SystemMetricsWrapper::from(m);
-                let labels: Vec<(&str, &str)> = vec![];
-                match serde_prometheus::to_string(&metrics, None, labels) {
-                    Ok(m) => m,
-                    Err(err) => {
-                        tracing::error!(
-                            "could not encode system metrics: {:?}",
-                            err
-                        );
-                        String::default()
-                    }
-                }
-            }
-            Err(err) => {
-                tracing::error!(
-                    "prometheus system metrics could not be stringified: {:?}",
-                    err
-                );
-                String::default()
-            }
-        };
-        result.push_str(&system_metrics);
+        // let system_metrics = match self.system.read().metrics() {
+        //     Ok(m) => {
+        //         let metrics = SystemMetricsWrapper::from(m);
+        //         let labels: Vec<(&str, &str)> = vec![];
+        //         match serde_prometheus::to_string(&metrics, None, labels) {
+        //             Ok(m) => m,
+        //             Err(err) => {
+        //                 tracing::error!("could not encode system metrics: {:?}", err);
+        //                 String::default()
+        //             }
+        //         }
+        //     }
+        //     Err(err) => {
+        //         tracing::error!("prometheus system metrics could not be stringified: {:?}", err);
+        //         String::default()
+        //     }
+        // };
+        // result.push_str(&system_metrics);
 
+        result.push_str("# EOF\n");
         result
     }
 }

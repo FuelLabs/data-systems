@@ -40,7 +40,7 @@ impl ServerState {
         .arc();
 
         let fuel_streams = FuelStreams::new(&msg_broker, &db).await.arc();
-        let metrics = Metrics::new_with_random_prefix()?;
+        let metrics = Metrics::new(None)?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
 
