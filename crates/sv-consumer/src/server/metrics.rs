@@ -1,13 +1,23 @@
 use async_trait::async_trait;
 use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
-use prometheus::{register_int_counter_vec, IntCounterVec, Registry};
+use prometheus::{
+    register_histogram_vec,
+    register_int_counter_vec,
+    HistogramVec,
+    IntCounterVec,
+    Registry,
+};
 
 use crate::block_stats::BlockStats;
 
 #[derive(Clone, Debug)]
 pub struct Metrics {
     pub registry: Registry,
-    pub consumer_success_throughput: IntCounterVec,
+    // Histogram for packet counts
+    pub consumer_packets: HistogramVec,
+    // Histogram for processing duration
+    pub consumer_duration: HistogramVec,
+    // Counter for errors,
     pub consumer_error_throughput: IntCounterVec,
 }
 
@@ -29,66 +39,76 @@ impl TelemetryMetrics for Metrics {
 }
 
 impl Metrics {
+    pub fn new_with_random_prefix() -> anyhow::Result<Self> {
+        Metrics::new(Some(Metrics::generate_random_prefix()))
+    }
+
     pub fn new(prefix: Option<String>) -> anyhow::Result<Self> {
         let metric_prefix = prefix
             .clone()
             .map(|p| format!("{}_", p))
             .unwrap_or_default();
 
-        let consumer_success_throughput = register_int_counter_vec!(
-            format!("{}consumer_metrics_success_throughput", metric_prefix),
-            "A metric for the successful throughput of the consumer",
-            &["action_type", "block_height", "packets", "duration"],
-        )
-        .expect("metric must be created");
+        let packet_buckets =
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 100.0, 500.0, 1000.0];
+        let duration_buckets = vec![
+            1.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0,
+        ];
+
+        let consumer_packets = register_histogram_vec!(
+            format!("{}consumer_metrics_packets", metric_prefix),
+            "Histogram of packet counts processed by the consumer",
+            &["action_type"],
+            packet_buckets
+        )?;
+
+        let consumer_duration = register_histogram_vec!(
+            format!("{}consumer_metrics_duration_milliseconds", metric_prefix),
+            "Histogram of processing duration in milliseconds",
+            &["action_type"],
+            duration_buckets
+        )?;
 
         let consumer_error_throughput = register_int_counter_vec!(
             format!("{}consumer_metrics_error_throughput", metric_prefix),
             "A metric for the errored throughput of the consumer",
-            &["action_type", "block_height", "error", "duration"],
+            &["action_type", "error"],
         )
         .expect("metric must be created");
 
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");
-        registry.register(Box::new(consumer_success_throughput.clone()))?;
+        registry.register(Box::new(consumer_packets.clone()))?;
+        registry.register(Box::new(consumer_duration.clone()))?;
         registry.register(Box::new(consumer_error_throughput.clone()))?;
 
         Ok(Self {
             registry,
-            consumer_success_throughput,
+            consumer_packets,
+            consumer_duration,
             consumer_error_throughput,
         })
     }
 
     pub fn update_from_stats(&self, stats: &BlockStats) {
         let action_type = stats.action_type.to_string();
-        let block_height: u32 = stats.block_height.clone().into();
-        let duration = stats.duration_millis();
         match &stats.error {
             Some(error) => {
                 // error
                 let err = error.to_string();
                 self.consumer_error_throughput
-                    .with_label_values(&[
-                        &action_type,
-                        &block_height.to_string(),
-                        &err,
-                        &duration.to_string(),
-                    ])
+                    .with_label_values(&[&action_type, &err])
                     .inc();
             }
             None => {
                 // success
                 let packets = stats.packet_count;
-                self.consumer_success_throughput
-                    .with_label_values(&[
-                        &action_type,
-                        &block_height.to_string(),
-                        &packets.to_string(),
-                        &duration.to_string(),
-                    ])
-                    .inc();
+                self.consumer_packets
+                    .with_label_values(&[&action_type])
+                    .observe(packets as f64);
+                self.consumer_duration
+                    .with_label_values(&[&action_type])
+                    .observe(stats.duration_millis() as f64);
             }
         }
     }

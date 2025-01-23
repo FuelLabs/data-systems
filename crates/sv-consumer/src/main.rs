@@ -5,7 +5,13 @@ use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
-use sv_consumer::{cli::Cli, errors::ConsumerError, BlockExecutor, Server};
+use sv_consumer::{
+    cli::Cli,
+    errors::ConsumerError,
+    metrics::Metrics,
+    BlockExecutor,
+    Server,
+};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::time;
 
@@ -37,7 +43,8 @@ async fn main() -> anyhow::Result<()> {
     // Initialize shared resources
     let db = setup_db(&cli.db_url).await?;
     let message_broker = setup_message_broker(&cli.nats_url).await?;
-    let telemetry = Telemetry::new(None).await?;
+    let metrics = Metrics::new(None)?;
+    let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let block_executor = BlockExecutor::new(

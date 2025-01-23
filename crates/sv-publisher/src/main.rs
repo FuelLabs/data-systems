@@ -50,7 +50,8 @@ async fn main() -> anyhow::Result<()> {
 
     let db = setup_db(&cli.db_url).await?;
     let message_broker = setup_message_broker(&cli.nats_url).await?;
-    let telemetry = Telemetry::new(None).await?;
+    let metrics = Metrics::new(None)?;
+    let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
 
     let server_state =
@@ -265,13 +266,13 @@ async fn publish_block(
     if let Some(metrics) = telemetry.base_metrics() {
         if send_success.is_ok() {
             metrics.update_publisher_success_metrics(
-                &payload.subject(),
+                MsgPayload::subject_name(),
                 encoded.len(),
             );
         } else {
             let err = send_success.unwrap_err();
             metrics.update_publisher_error_metrics(
-                &payload.subject(),
+                MsgPayload::subject_name(),
                 &err.to_string(),
             );
             return Err(err.into())

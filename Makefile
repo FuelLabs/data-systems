@@ -225,12 +225,13 @@ bench:
 
 run-publisher: NETWORK="testnet"
 run-publisher: MODE="dev"
-run-publisher: PORT="9001"
+run-publisher: PORT="4000"
+run-publisher: TELEMETRY_PORT="9001"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
 run-publisher: FROM_HEIGHT="0"
 run-publisher: check-network
-	@./scripts/run_publisher.sh --mode $(MODE) --network $(NETWORK) --port $(PORT) --from-height $(FROM_HEIGHT) --extra-args $(EXTRA_ARGS)
+	@./scripts/run_publisher.sh --mode $(MODE) --network $(NETWORK) --telemetry-port $(TELEMETRY_PORT) --from-height $(FROM_HEIGHT) --extra-args $(EXTRA_ARGS)
 
 run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0

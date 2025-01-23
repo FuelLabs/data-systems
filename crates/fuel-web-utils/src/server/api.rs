@@ -64,7 +64,7 @@ impl<T: StateProvider> ApiServerBuilder<T> {
         let configure_routes = self.configure_routes.clone();
 
         let server = HttpServer::new(move || {
-            let state = state.clone();
+            let state = web::Data::new(state.clone());
 
             // Create CORS middleware
             let cors = Cors::default()
@@ -81,16 +81,16 @@ impl<T: StateProvider> ApiServerBuilder<T> {
                 .allowed_headers(vec![
                     http::header::AUTHORIZATION,
                     http::header::ACCEPT,
+                    http::header::CONTENT_TYPE,
                 ])
-                .allowed_header(http::header::CONTENT_TYPE)
                 .max_age(3600);
 
             App::new()
-                .app_data(web::Data::new(state))
                 .wrap(ActixLogger::default())
                 .wrap(TracingLogger::default())
                 .wrap(Compress::default())
                 .wrap(cors)
+                .app_data(web::Data::clone(&state))
                 // Mandatory routes
                 .service(
                     web::resource(with_prefixed_route("health")).route(web::get().to(get_health::<T>)),

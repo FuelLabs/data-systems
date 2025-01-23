@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use actix_web::{web, HttpResponse, Result};
 
 use crate::server::state::StateProvider;
 
 pub async fn get_metrics<T: StateProvider>(
-    state: web::Data<T>,
+    state: web::Data<Arc<T>>,
 ) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type(
@@ -13,7 +15,7 @@ pub async fn get_metrics<T: StateProvider>(
 }
 
 pub async fn get_health<T: StateProvider>(
-    state: web::Data<T>,
+    state: web::Data<Arc<T>>,
 ) -> Result<HttpResponse> {
     if !state.is_healthy().await {
         return Ok(

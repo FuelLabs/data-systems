@@ -1,4 +1,4 @@
-pub(crate) mod metrics;
+pub mod metrics;
 pub(crate) mod state;
 
 use std::sync::Arc;
