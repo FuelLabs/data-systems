@@ -80,6 +80,7 @@ commonConfigMap:
     NATS_ADMIN_USER: "admin"
     NATS_ADMIN_PASS: "admin"
     # For local purposes only, for production use fuel-streams-keys secret
+    DB_TYPE: "Aurora"
     DATABASE_URL: "postgresql://root:root@fuel-streams-cockroachdb:26257/fuel_streams?sslmode=disable"
 
 # This is a secret that is used for local development

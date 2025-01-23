@@ -60,9 +60,9 @@ impl Default for DbConnectionOpts {
             pool_size: Some(*DB_POOL_SIZE as u32),
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
-            statement_timeout: Some(Duration::from_secs(30)),
+            statement_timeout: Some(Duration::from_secs(60)),
             acquire_timeout: Some(Duration::from_secs(10)),
-            idle_timeout: Some(Duration::from_secs(180)),
+            idle_timeout: Some(Duration::from_secs(240)),
             min_connections: Some((*DB_POOL_SIZE as u32) / 4),
         }
     }
@@ -92,19 +92,13 @@ impl Db {
     }
 
     async fn create_pool(opts: &DbConnectionOpts) -> DbResult<Pool<Postgres>> {
-        let statement_timeout =
-            opts.statement_timeout.unwrap_or_default().as_millis();
-        let statement_timeout = &format!("{}", statement_timeout);
         let connections_opts =
             sqlx::postgres::PgConnectOptions::from_str(&opts.connection_str)
                 .map_err(|e| {
                     DbError::Open(sqlx::Error::Configuration(Box::new(e)))
                 })?
                 .application_name("fuel-streams")
-                .options([
-                    ("retry_connect_backoff", "2"),
-                    ("statement_timeout", statement_timeout),
-                ]);
+                .options(Self::connect_opts(&opts));
 
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(opts.pool_size.unwrap_or_default())
@@ -115,5 +109,28 @@ impl Db {
             .connect_with(connections_opts)
             .await
             .map_err(DbError::Open)
+    }
+
+    fn connect_opts(opts: &DbConnectionOpts) -> Vec<(String, String)> {
+        let db_type =
+            dotenvy::var("DB_TYPE").expect("Database type need to be defined");
+        let statement_timeout =
+            opts.statement_timeout.unwrap_or_default().as_millis();
+        let statement_timeout = format!("{}", statement_timeout);
+        let idle_timeout = opts.idle_timeout.unwrap_or_default().as_millis();
+        let idle_timeout = format!("{}", idle_timeout);
+        let mut connect_opts = vec![];
+        if db_type == "Aurora" {
+            connect_opts.push((
+                "idle_in_transaction_session_timeout".to_string(),
+                idle_timeout,
+            ));
+        }
+        if db_type == "Cockroach" {
+            connect_opts
+                .push(("retry_connect_backoff".to_string(), "2".to_string()));
+        }
+        connect_opts.push(("statement_timeout".to_string(), statement_timeout));
+        connect_opts
     }
 }
