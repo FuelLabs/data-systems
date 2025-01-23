@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use fuel_data_parser::DataEncoder;
+use fuel_streams_types::BlockHeight;
 use sqlx::postgres::PgRow;
 
 use super::DbError;
@@ -23,5 +24,5 @@ pub trait DbItem:
     fn entity(&self) -> &RecordEntity;
     fn encoded_value(&self) -> &[u8];
     fn subject_str(&self) -> String;
-    fn get_block_height(&self) -> u64;
+    fn get_block_height(&self) -> BlockHeight;
 }

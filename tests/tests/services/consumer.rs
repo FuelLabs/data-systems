@@ -26,7 +26,7 @@ async fn verify_blocks(
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let block_subject = BlocksSubject::new()
-        .with_height(Some(msg_payload.block_height().clone()))
+        .with_height(Some(msg_payload.block_height()))
         .dyn_arc();
 
     let blocks = fuel_stores
@@ -37,7 +37,7 @@ async fn verify_blocks(
 
     let msg_payload_height = msg_payload.block_height();
     let saved_height = BlockHeight::from(blocks[0].block_height as u32);
-    assert_eq!(&saved_height, msg_payload_height);
+    assert_eq!(saved_height, msg_payload_height);
 
     Ok(())
 }
@@ -47,7 +47,7 @@ async fn verify_transactions(
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let tx_subject = TransactionsSubject::new()
-        .with_block_height(Some(msg_payload.block_height().clone()))
+        .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
 
     let transactions = fuel_stores
@@ -99,7 +99,7 @@ async fn verify_receipts(
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let receipts_subject = ReceiptsSubject::new()
-        .with_block_height(Some(msg_payload.block_height().clone()))
+        .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
 
     let receipts = fuel_stores
@@ -140,7 +140,7 @@ async fn verify_inputs_outputs_utxos(
 
     // Verify inputs
     let inputs_subject = InputsSubject::new()
-        .with_block_height(Some(msg_payload.block_height().clone()))
+        .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
     let inputs = fuel_stores
         .inputs
@@ -154,7 +154,7 @@ async fn verify_inputs_outputs_utxos(
 
     // Verify outputs
     let outputs_subject = OutputsSubject::new()
-        .with_block_height(Some(msg_payload.block_height().clone()))
+        .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
     let outputs = fuel_stores
         .outputs
@@ -168,7 +168,7 @@ async fn verify_inputs_outputs_utxos(
 
     // Verify UTXOs
     let utxos_subject = UtxosSubject::new()
-        .with_block_height(Some(msg_payload.block_height().clone()))
+        .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
     let utxos = fuel_stores
         .utxos

@@ -98,7 +98,7 @@ impl Db {
                     DbError::Open(sqlx::Error::Configuration(Box::new(e)))
                 })?
                 .application_name("fuel-streams")
-                .options(Self::connect_opts(&opts));
+                .options(Self::connect_opts(opts));
 
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(opts.pool_size.unwrap_or_default())
@@ -112,25 +112,17 @@ impl Db {
     }
 
     fn connect_opts(opts: &DbConnectionOpts) -> Vec<(String, String)> {
-        let db_type =
-            dotenvy::var("DB_TYPE").expect("Database type need to be defined");
         let statement_timeout =
             opts.statement_timeout.unwrap_or_default().as_millis();
         let statement_timeout = format!("{}", statement_timeout);
         let idle_timeout = opts.idle_timeout.unwrap_or_default().as_millis();
         let idle_timeout = format!("{}", idle_timeout);
-        let mut connect_opts = vec![];
-        if db_type == "Aurora" {
-            connect_opts.push((
+        vec![
+            ("statement_timeout".to_string(), statement_timeout),
+            (
                 "idle_in_transaction_session_timeout".to_string(),
                 idle_timeout,
-            ));
-        }
-        if db_type == "Cockroach" {
-            connect_opts
-                .push(("retry_connect_backoff".to_string(), "2".to_string()));
-        }
-        connect_opts.push(("statement_timeout".to_string(), statement_timeout));
-        connect_opts
+            ),
+        ]
     }
 }

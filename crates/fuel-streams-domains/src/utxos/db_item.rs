@@ -4,6 +4,7 @@ use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
 };
+use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
 use crate::Subjects;
@@ -16,8 +17,8 @@ pub struct UtxoDbItem {
     pub value: Vec<u8>,
     pub block_height: i64,
     pub tx_id: String,
-    pub tx_index: i64,
-    pub input_index: i64,
+    pub tx_index: i32,
+    pub input_index: i32,
     pub utxo_type: String,
     pub utxo_id: String,
 }
@@ -39,8 +40,8 @@ impl DbItem for UtxoDbItem {
         self.subject.clone()
     }
 
-    fn get_block_height(&self) -> u64 {
-        self.block_height as u64
+    fn get_block_height(&self) -> BlockHeight {
+        self.block_height.into()
     }
 }
 
@@ -58,8 +59,8 @@ impl TryFrom<&RecordPacket> for UtxoDbItem {
                 value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap() as i64,
-                input_index: subject.input_index.unwrap() as i64,
+                tx_index: subject.tx_index.unwrap() as i32,
+                input_index: subject.input_index.unwrap() as i32,
                 utxo_type: subject.utxo_type.unwrap().to_string(),
                 utxo_id: subject.utxo_id.unwrap().to_string(),
             }),
