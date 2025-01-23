@@ -17,7 +17,7 @@ use metrics::TelemetryMetrics;
 // TODO: Consider using tokio's Rwlock instead
 use parking_lot::RwLock;
 use runtime::Runtime;
-use system::{System, SystemMetricsWrapper};
+use system::System;
 
 #[derive(Clone)]
 pub struct Telemetry<M: TelemetryMetrics> {
