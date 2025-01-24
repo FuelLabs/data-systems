@@ -72,6 +72,10 @@ impl ApiKey {
         }
     }
 
+    pub fn user_id(&self) -> ApiKeyId {
+        self.user_id
+    }
+
     pub fn from_req(req: &HttpRequest) -> Result<ApiKey, ApiKeyError> {
         match req.extensions().get::<ApiKey>() {
             Some(api_key) => {

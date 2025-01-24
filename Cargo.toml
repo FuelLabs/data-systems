@@ -34,23 +34,23 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15"
 displaydoc = "0.2"
 futures = "0.3"
-fuel-core-bin = { version = "0.41.2", default-features = false, features = [
+fuel-core-bin = { version = "0.40.3", default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
 ] }
-fuel-core = { version = "0.41.2", default-features = false, features = [
+fuel-core = { version = "0.40.3", default-features = false, features = [
     "p2p",
     "relayer",
     "rocksdb",
 ] }
-fuel-core-client = { version = "0.41.2", default-features = false, features = ["std"] }
-fuel-core-importer = { version = "0.41.2" }
-fuel-core-storage = { version = "0.41.2" }
-fuel-core-types = { version = "0.41.2", default-features = false, features = ["std", "serde"] }
-fuel-core-services = { version = "0.41.2", default-features = false }
-fuel-core-poa = { version = "0.41.2", default-features = false }
-fuel-core-txpool = { version = "0.41.2" }
+fuel-core-client = { version = "0.40.3", default-features = false, features = ["std"] }
+fuel-core-importer = { version = "0.40.3" }
+fuel-core-storage = { version = "0.40.3" }
+fuel-core-types = { version = "0.40.3", default-features = false, features = ["std", "serde"] }
+fuel-core-services = { version = "0.40.3", default-features = false }
+fuel-core-poa = { version = "0.40.3", default-features = false }
+fuel-core-txpool = { version = "0.40.3" }
 futures-util = "0.3"
 hex = "0.4"
 pretty_assertions = "1.4"

@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     sync::Arc,
     task::{Context, Poll},
+    time::Duration,
 };
 
 use actix_service::Transform;
@@ -13,16 +14,22 @@ use actix_web::{
 };
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 
-use super::{ApiKeyError, ApiKeysManager};
+use super::{rate_limiter::RateLimitsController, ApiKeyError, ApiKeysManager};
 
 pub struct ApiKeyAuth {
     manager: Arc<ApiKeysManager>,
+    rate_limiter_controller: Option<Arc<RateLimitsController>>,
 }
 
 impl ApiKeyAuth {
-    pub fn new(manager: &Arc<ApiKeysManager>) -> Self {
+    pub fn new(
+        manager: &Arc<ApiKeysManager>,
+        rate_limit_duration: Option<Duration>,
+    ) -> Self {
         ApiKeyAuth {
             manager: manager.to_owned(),
+            rate_limiter_controller: rate_limit_duration
+                .map(|duration| RateLimitsController::new(duration).arc()),
         }
     }
 }
@@ -46,6 +53,7 @@ where
         ready(Ok(ApiKeyAuthMiddleware {
             service: Arc::new(service),
             manager: self.manager.clone(),
+            rate_limiter_controller: self.rate_limiter_controller.clone(),
         }))
     }
 }
@@ -53,6 +61,7 @@ where
 pub struct ApiKeyAuthMiddleware<S> {
     service: Arc<S>,
     manager: Arc<ApiKeysManager>,
+    rate_limiter_controller: Option<Arc<RateLimitsController>>,
 }
 
 impl<S, B> actix_service::Service<ServiceRequest> for ApiKeyAuthMiddleware<S>
@@ -96,6 +105,7 @@ where
 
         let headers = req.headers().clone();
         let manager = self.manager.clone();
+        let rate_limiter_controller = self.rate_limiter_controller.clone();
         let service = self.service.clone();
 
         Box::pin(async move {
@@ -104,6 +114,17 @@ where
                 .validate_api_key(&api_key_str)
                 .await?
                 .ok_or_else(|| Error::from(ApiKeyError::Invalid))?;
+
+            if let Some(rate_limiter_controller) = rate_limiter_controller {
+                if !rate_limiter_controller
+                    .check_rate_limit(api_key.user_id())
+                    .await
+                {
+                    return Err(actix_web::error::ErrorTooManyRequests(
+                        "Rate limit per user exceeded",
+                    ))
+                }
+            }
 
             match api_key.validate_status() {
                 Ok(()) => {
@@ -114,7 +135,13 @@ where
                     req.extensions_mut().insert(api_key);
                     service.call(req).await
                 }
-                Err(err) => Err(Error::from(err)),
+                Err(err) => {
+                    tracing::debug!(
+                        %api_key,
+                        "Request authentication failed"
+                    );
+                    Err(Error::from(err))
+                }
             }
         })
     }
