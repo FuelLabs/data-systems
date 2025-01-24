@@ -361,6 +361,7 @@ jobs:
 
   release:
     name: Create Release with Knope
+    environment: npm-deploy
     if: >-
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -390,9 +391,9 @@ jobs:
       - name: Run Knope Action
         uses: knope-dev/action@v2.1.0
         with:
-          github-token: ${{ secrets.REPO_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Knope Release
         run: knope release
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
