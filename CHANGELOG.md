@@ -1,3 +1,9 @@
+## 0.0.19 (2025-01-24)
+
+### 🚀 Features
+
+- Removed on publish from the release workflow (#390)
+
 ## 0.0.18 (2025-01-24)
 
 ### 🐛 Fixes

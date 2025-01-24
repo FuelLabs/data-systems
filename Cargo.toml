@@ -18,7 +18,7 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.81.0"
-version = "0.0.18"
+version = "0.0.19"
 
 [workspace.dependencies]
 actix-cors = "0.7"
@@ -79,20 +79,20 @@ sqlx = { version = "0.8.3", default-features = false, features = [
     "macros",
 ] }
 
-fuel-data-parser = { version = "0.0.18", path = "crates/fuel-data-parser" }
-fuel-message-broker = { version = "0.0.18", path = "crates/fuel-message-broker" }
-fuel-streams = { version = "0.0.18", path = "crates/fuel-streams" }
-fuel-streams-core = { version = "0.0.18", path = "crates/fuel-streams-core" }
-fuel-streams-domains = { version = "0.0.18", path = "crates/fuel-streams-domains" }
-fuel-streams-macros = { version = "0.0.18", path = "crates/fuel-streams-macros" }
-fuel-streams-store = { version = "0.0.18", path = "crates/fuel-streams-store" }
-fuel-streams-types = { version = "0.0.18", path = "crates/fuel-streams-types" }
+fuel-data-parser = { version = "0.0.19", path = "crates/fuel-data-parser" }
+fuel-message-broker = { version = "0.0.19", path = "crates/fuel-message-broker" }
+fuel-streams = { version = "0.0.19", path = "crates/fuel-streams" }
+fuel-streams-core = { version = "0.0.19", path = "crates/fuel-streams-core" }
+fuel-streams-domains = { version = "0.0.19", path = "crates/fuel-streams-domains" }
+fuel-streams-macros = { version = "0.0.19", path = "crates/fuel-streams-macros" }
+fuel-streams-store = { version = "0.0.19", path = "crates/fuel-streams-store" }
+fuel-streams-types = { version = "0.0.19", path = "crates/fuel-streams-types" }
 fuel-streams-test = { version = "0.0.16", path = "crates/fuel-streams-test" }
-fuel-web-utils = { version = "0.0.18", path = "crates/fuel-web-utils" }
-subject-derive = { version = "0.0.18", path = "crates/fuel-streams-macros/subject-derive" }
-sv-consumer = { version = "0.0.18", path = "crates/sv-consumer" }
-sv-publisher = { version = "0.0.18", path = "crates/sv-publisher" }
-sv-webserver = { version = "0.0.18", path = "crates/sv-webserver" }
+fuel-web-utils = { version = "0.0.19", path = "crates/fuel-web-utils" }
+subject-derive = { version = "0.0.19", path = "crates/fuel-streams-macros/subject-derive" }
+sv-consumer = { version = "0.0.19", path = "crates/sv-consumer" }
+sv-publisher = { version = "0.0.19", path = "crates/sv-publisher" }
+sv-webserver = { version = "0.0.19", path = "crates/sv-webserver" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
