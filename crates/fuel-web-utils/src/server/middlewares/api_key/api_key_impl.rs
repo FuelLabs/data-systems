@@ -4,7 +4,7 @@ use actix_web::{HttpMessage, HttpRequest};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::ApiKeyError;
+use super::{ApiKeyError, ApiKeyUserId};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub enum ApiKeyLimit {
@@ -39,11 +39,9 @@ pub enum ApiKeyStatus {
     Deleted,
 }
 
-pub type ApiKeyId = u64;
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ApiKey {
-    user_id: ApiKeyId,
+    user_id: ApiKeyUserId,
     user_name: String,
     api_key: String,
     pub limits: ApiKeyLimits,
@@ -54,7 +52,11 @@ pub struct ApiKey {
 }
 
 impl ApiKey {
-    pub fn new(user_id: ApiKeyId, user_name: String, api_key: String) -> Self {
+    pub fn new(
+        user_id: ApiKeyUserId,
+        user_name: String,
+        api_key: String,
+    ) -> Self {
         Self {
             user_id,
             user_name,
@@ -101,7 +103,7 @@ impl ApiKey {
         }
     }
 
-    pub fn id(&self) -> ApiKeyId {
+    pub fn id(&self) -> ApiKeyUserId {
         self.user_id
     }
 
