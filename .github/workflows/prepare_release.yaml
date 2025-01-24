@@ -17,6 +17,10 @@ env:
   RUST_VERSION: 1.81.0
   RUST_NIGHTLY_VERSION: nightly-2024-11-06
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   setup:
     if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
@@ -33,7 +37,6 @@ jobs:
           echo "branch=changeset/release-main" >> $GITHUB_OUTPUT
 
   prepare-release:
-    environment: npm-deploy
     if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
     needs: setup
     runs-on: ubuntu-latest
