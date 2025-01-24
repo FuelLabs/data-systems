@@ -1,9 +1,12 @@
 name: Publish on Crates.io
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - main
+  # release:
+  #   types:
+  #     - published
 
 env:
   CI: true
@@ -12,6 +15,10 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   publish-crates:
