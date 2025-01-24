@@ -1,3 +1,26 @@
+## 0.0.17 (2025-01-24)
+
+### 🚀 Features
+
+- Added web-utils crate and added telemetry to all svc (#373)
+- Database integration (#374)
+- Added api key auth (#377)
+- Add db transaction for each block insertion (#378)
+- Added load-tester and benchmarks (#379)
+
+### 🐛 Fixes
+
+- Publish in order strictly (#372)
+- Never panic when sending wrong data format (#380)
+- Adjust historical streaming to stream block by block
+- Fix find_by_many_subject query slowness
+- Filtering on inputs, receipts and outputs
+- Db connection pool timeout
+- Add retry mechanism for DB transactions
+- Connection opts for specific databases (#384)
+- Adjust int types to fit with Aurora (#385)
+- Parsing user_id in a valid format
+
 ## 0.0.16 (2024-12-28)
 
 ### 🚀 Features
