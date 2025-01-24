@@ -38,6 +38,3 @@ tracing = { workspace = true }
 [features]
 default = []
 test-helpers = []
-
-[target.'cfg(target_os = "linux")'.dependencies]
-netlink-proto = { version = "=0.11.3", optional = true }
