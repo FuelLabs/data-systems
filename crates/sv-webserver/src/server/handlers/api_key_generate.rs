@@ -34,8 +34,6 @@ impl From<Error> for actix_web::Error {
 #[derive(Debug, Serialize, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateApiKeyRequest {
-    #[validate(range(min = 1))]
-    pub user_id: u32,
     #[validate(length(min = 6))]
     pub username: String,
 }
@@ -63,11 +61,10 @@ async fn insert_api_key(
     tx: &Pool<Postgres>,
 ) -> Result<DbUserApiKey, sqlx::Error> {
     let db_record = sqlx::query_as::<_, DbUserApiKey>(
-        "INSERT INTO api_keys (user_id, user_name, api_key)
-        VALUES ($1, $2, $3)
+        "INSERT INTO api_keys (user_name, api_key)
+        VALUES ($1, $2)
         RETURNING user_id, user_name, api_key",
     )
-    .bind(request.user_id as i32)
     .bind(&request.username)
     .bind(generate_random_api_key())
     .fetch_one(tx)
@@ -82,7 +79,6 @@ pub async fn generate_api_key(
 ) -> actix_web::Result<HttpResponse> {
     let req = req_body.into_inner();
     req.validate().map_err(Error::Validation)?;
-    // TODO: we need to ensure here that user_id does not already exist
     let db_record = insert_api_key(&req, &state.db.pool)
         .await
         .map_err(Error::Sqlx)?;

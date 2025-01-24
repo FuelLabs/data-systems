@@ -32,10 +32,10 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Generating {:?} api keys", config.api_keys.nsize);
     let user_ids = (0..config.api_keys.nsize).collect::<Vec<i32>>();
     let mut tx = db.pool.begin().await?;
-    for user_id in user_ids.iter() {
+    for _ in user_ids.iter() {
         tracing::info!(
             "Generated new db record {:?}",
-            insert_api_key(*user_id, &mut tx).await?
+            insert_api_key(&mut tx).await?
         );
     }
     if let Err(e) = tx.commit().await {
@@ -49,15 +49,13 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn insert_api_key(
-    user_id: i32,
     tx: &mut Transaction<'_, Postgres>,
 ) -> anyhow::Result<DbUserApiKey> {
     let db_record = sqlx::query_as::<_, DbUserApiKey>(
-        "INSERT INTO api_keys (user_id, user_name, api_key)
-        VALUES ($1, $2, $3)
+        "INSERT INTO api_keys (user_name, api_key)
+        VALUES ($1, $2)
         RETURNING user_id, user_name, api_key",
     )
-    .bind(user_id)
     .bind(Username().fake::<String>())
     .bind(generate_random_api_key())
     .fetch_one(tx.as_mut())

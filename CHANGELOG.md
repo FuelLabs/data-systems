@@ -33,7 +33,7 @@
 - Rollback fuel-core to v0.40.0
 - Allow healthcheck while awaiting relayer node sync (#347)
 - Update cargo.lock
-- Using fuel-core from branch release/v0.41.2
+- Using fuel-core from branch release/v0.40.3
 - Solving publisher slowness (#352)
 - Adjust DeliverPolicy to receive from WebSocket
 - S3 payload and encoding (#366)
