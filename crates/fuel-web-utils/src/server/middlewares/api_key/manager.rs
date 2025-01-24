@@ -13,7 +13,7 @@ use crate::server::middlewares::api_key::{
 
 #[derive(sqlx::FromRow, Debug, Clone, Serialize, Deserialize)]
 pub struct DbUserApiKey {
-    pub user_id: i64,
+    pub user_id: i32,
     pub user_name: String,
     pub api_key: String,
 }
@@ -53,7 +53,7 @@ impl ApiKeysManager {
             .into_iter()
             .map(|record| {
                 ApiKey::new(
-                    record.user_id as u64,
+                    record.user_id.into(),
                     record.user_name,
                     record.api_key,
                 )
@@ -73,8 +73,9 @@ impl ApiKeysManager {
         .fetch_optional(&self.db.pool)
         .await
         .map_err(ApiKeyManagerError::DatabaseError)?;
-        Ok(record
-            .map(|r| ApiKey::new(r.user_id as u64, r.user_name, r.api_key)))
+        Ok(record.map(|record| {
+            ApiKey::new(record.user_id.into(), record.user_name, record.api_key)
+        }))
     }
 
     pub async fn validate_api_key(

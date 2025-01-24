@@ -4045,6 +4045,7 @@ dependencies = [
  "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-store",
+ "fuel-streams-types",
  "futures",
  "futures-util",
  "num_cpus",

@@ -6,6 +6,7 @@ pub mod identifier;
 pub mod script_execution;
 pub mod tx_pointer;
 pub mod utxo_id;
+pub mod wrapper_int;
 
 pub use block_height::*;
 pub use bytes::*;

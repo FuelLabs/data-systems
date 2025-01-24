@@ -1,17 +1,12 @@
-use std::{ops::Deref, str::FromStr};
+use crate::{declare_integer_wrapper, fuel_core::FuelCoreBlockHeight};
 
-use serde::{Deserialize, Serialize};
-
-use crate::fuel_core::FuelCoreBlockHeight;
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Copy)]
-pub struct BlockHeight(u64);
-
-impl Default for BlockHeight {
-    fn default() -> Self {
-        0.into()
-    }
+#[derive(thiserror::Error, Debug)]
+pub enum BlockHeightError {
+    #[error("Failed to parse to block_height: {0}")]
+    InvalidFormat(String),
 }
+
+declare_integer_wrapper!(BlockHeight, u64, BlockHeightError);
 
 impl From<&FuelCoreBlockHeight> for BlockHeight {
     fn from(value: &FuelCoreBlockHeight) -> Self {
@@ -25,73 +20,6 @@ impl From<FuelCoreBlockHeight> for BlockHeight {
         BlockHeight(height as u64)
     }
 }
-
-impl std::fmt::Display for BlockHeight {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for BlockHeight {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let height = s.parse::<u64>().map_err(|_| "Invalid block height")?;
-        Ok(BlockHeight(height))
-    }
-}
-
-impl Deref for BlockHeight {
-    type Target = u64;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl AsRef<u64> for BlockHeight {
-    fn as_ref(&self) -> &u64 {
-        &self.0
-    }
-}
-
-macro_rules! impl_block_height_conversion {
-    ($($t:ty),*) => {
-        $(
-            impl From<$t> for BlockHeight {
-                fn from(value: $t) -> Self {
-                    BlockHeight(value as u64)
-                }
-            }
-
-            impl From<BlockHeight> for $t {
-                fn from(value: BlockHeight) -> Self {
-                    value.0 as $t
-                }
-            }
-
-        )*
-    };
-}
-
-impl BlockHeight {
-    // Helper method to parse the internal string to u64
-    fn as_number(&self) -> u64 {
-        self.0
-    }
-}
-
-impl PartialOrd for BlockHeight {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for BlockHeight {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.as_number().cmp(&other.as_number())
-    }
-}
-
-impl_block_height_conversion!(u32, i32, u64, i64);
 
 #[cfg(test)]
 mod tests {
@@ -145,11 +73,11 @@ mod tests {
     #[test]
     fn test_block_height_from_str() {
         // Test valid conversion
-        let height = BlockHeight::from_str("100").unwrap();
+        let height = BlockHeight::try_from("100").unwrap();
         assert_eq!(height.0, 100);
 
         // Test invalid conversion
-        assert!(BlockHeight::from_str("invalid").is_err());
+        assert!(BlockHeight::try_from("invalid").is_err());
     }
 
     #[test]
