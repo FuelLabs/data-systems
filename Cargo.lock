@@ -3781,6 +3781,7 @@ dependencies = [
  "fuel-streams-types",
  "fuel-web-utils",
  "futures",
+ "netlink-proto",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -3798,6 +3799,7 @@ dependencies = [
  "fuel-streams-macros",
  "fuel-streams-store",
  "fuel-streams-types",
+ "netlink-proto",
  "rayon",
  "serde",
  "serde_json",
@@ -3886,6 +3888,7 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-types 0.40.2",
  "hex",
+ "netlink-proto",
  "serde",
  "thiserror 2.0.11",
  "tokio",
@@ -5406,7 +5409,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
