@@ -1,9 +1,13 @@
+pub mod api_key_generate;
 pub mod websocket;
 
 use actix_web::web;
 use fuel_web_utils::server::{
     api::with_prefixed_route,
-    middlewares::api_key::middleware::ApiKeyAuth,
+    middlewares::{
+        api_key::middleware::ApiKeyAuth,
+        password::middleware::PasswordAuth,
+    },
 };
 
 use super::handlers;
@@ -22,6 +26,21 @@ pub fn create_services(
                         handlers::websocket::get_websocket(req, body, state)
                     }
                 })),
+        );
+        cfg.service(
+            web::resource(format!(
+                "{}/{}",
+                with_prefixed_route("key"),
+                "generate"
+            ))
+            .wrap(PasswordAuth::new(&state.password_manager))
+            .route(web::post().to({
+                move |req, body, state: web::Data<ServerState>| {
+                    handlers::api_key_generate::generate_api_key(
+                        req, body, state,
+                    )
+                }
+            })),
         );
     }
 }

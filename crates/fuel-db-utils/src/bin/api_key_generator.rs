@@ -1,8 +1,7 @@
-use fake::{faker::internet::en::Username, rand, Fake};
-use fuel_db_utils::config::Config;
+use fake::{faker::internet::en::Username, Fake};
+use fuel_db_utils::{config::Config, generate_random_api_key};
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::server::middlewares::api_key::DbUserApiKey;
-use rand::{distributions::Alphanumeric, Rng};
 use sqlx::{Postgres, Transaction};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
@@ -47,15 +46,6 @@ async fn main() -> anyhow::Result<()> {
         config.api_keys.nsize
     );
     Ok(())
-}
-
-fn generate_random_api_key() -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .filter(|c| c.is_ascii_alphabetic())
-        .take(12)
-        .map(char::from)
-        .collect()
 }
 
 async fn insert_api_key(

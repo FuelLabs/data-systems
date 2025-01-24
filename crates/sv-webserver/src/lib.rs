@@ -14,3 +14,6 @@ pub static STREAMER_MAX_WORKERS: LazyLock<usize> = LazyLock::new(|| {
         .and_then(|val| val.parse().ok())
         .unwrap_or(default_threads)
 });
+
+pub static API_PASSWORD: LazyLock<String> =
+    LazyLock::new(|| dotenvy::var("API_PASSWORD").ok().unwrap_or_default());
