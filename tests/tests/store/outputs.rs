@@ -193,7 +193,7 @@ async fn test_output_subject_to_db_item_conversion() -> anyhow::Result<()> {
         assert_eq!(db_item.block_height, 1);
         assert_eq!(db_item.tx_id, tx_id.to_string());
         assert_eq!(db_item.tx_index, 0);
-        assert_eq!(db_item.output_index, idx as i64);
+        assert_eq!(db_item.output_index, idx as i32);
         assert_eq!(db_item.subject, packet.subject_str());
 
         match subject {

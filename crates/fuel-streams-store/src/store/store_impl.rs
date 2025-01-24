@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
 use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_types::BlockHeight;
 use futures::stream::BoxStream;
 
 use super::StoreError;
@@ -73,12 +74,12 @@ impl<R: Record + DataEncoder> Store<R> {
     pub async fn historical_streaming(
         &self,
         subject: Arc<dyn IntoSubject>,
-        from_block: Option<u64>,
+        from_block: Option<BlockHeight>,
     ) -> BoxStream<'static, Result<(String, Vec<u8>), StoreError>> {
         let store = self.clone();
         let db = self.db.clone();
         let stream = async_stream::try_stream! {
-            let mut current_height = from_block.unwrap_or(0);
+            let mut current_height = from_block.unwrap_or_default();
             let mut opts = QueryOptions::default().with_from_block(Some(current_height));
             let mut last_height = find_last_block_height(&db, opts.clone()).await?;
             while current_height <= last_height {
@@ -113,7 +114,7 @@ impl<R: Record + DataEncoder> Store<R> {
 pub async fn find_last_block_height(
     db: &Db,
     options: QueryOptions,
-) -> StoreResult<u64> {
+) -> StoreResult<BlockHeight> {
     let select = "SELECT block_height FROM blocks".to_string();
     let mut query_builder = sqlx::QueryBuilder::new(select);
     if let Some(ns) = options.namespace {
@@ -129,5 +130,5 @@ pub async fn find_last_block_height(
         .await
         .map_err(StoreError::FindLastBlockHeight)?;
 
-    Ok(record.map(|(height,)| height as u64).unwrap_or(0))
+    Ok(record.map(|(height,)| height.into()).unwrap_or_default())
 }

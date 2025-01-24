@@ -85,7 +85,7 @@ fn test_query_builder_with_complex_ordering() {
     let options = QueryOptions {
         offset: 0,
         limit: 20,
-        from_block: Some(50),
+        from_block: Some(50.into()),
         namespace: Some("test_ns".to_string()),
     };
 

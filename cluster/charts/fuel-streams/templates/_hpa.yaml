@@ -1,37 +1,50 @@
 {{- define "k8s.hpa" -}}
-{{- $root := .context -}}
-{{- $service := .service -}}
-{{- $autoscaling := $service.autoscaling -}}
-{{- $name := $service.name -}}
+{{- $root := .root -}}
+{{- $context := .context -}}
+{{- $name := .name -}}
+{{- $component := .component -}}
+{{- $autoscaling := include "get-context-value" (dict "context" $context "root" $root "path" "autoscaling" "rootPath" "config.autoscaling") | fromYaml -}}
+
+{{/* Default values for scale down behavior */}}
+{{- $scaleDownStabilization := default 300 (dig "behavior" "scaleDown" "stabilizationWindowSeconds" nil $autoscaling) -}}
+{{- $scaleDownPercent := default 100 (dig "behavior" "scaleDown" "percentValue" nil $autoscaling) -}}
+{{- $scaleDownPeriod := default 15 (dig "behavior" "scaleDown" "periodSeconds" nil $autoscaling) -}}
+
+{{/* Default values for scale up behavior */}}
+{{- $scaleUpStabilization := default 0 (dig "behavior" "scaleUp" "stabilizationWindowSeconds" nil $autoscaling) -}}
+{{- $scaleUpPercent := default 100 (dig "behavior" "scaleUp" "percentValue" nil $autoscaling) -}}
+{{- $scaleUpPeriod := default 15 (dig "behavior" "scaleUp" "periodSeconds" nil $autoscaling) -}}
+{{- $scaleUpPods := default 4 (dig "behavior" "scaleUp" "podValue" nil $autoscaling) -}}
+
 {{- if $autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" $root "context" $service.context "name" $name) | nindent 2 }}
+  {{- include "k8s.resource-metadata" (dict "root" $root "context" $context "name" $name "component" $component) | nindent 2 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "fuel-streams.fullname" $root }}-{{ $service.name }}
+    name: {{ include "fuel-streams.fullname" $root }}-{{ $name }}
   minReplicas: {{ $autoscaling.minReplicas }}
   maxReplicas: {{ $autoscaling.maxReplicas }}
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: {{ $autoscaling.behavior.scaleDown.stabilizationWindowSeconds | default 300 }}
+      stabilizationWindowSeconds: {{ $scaleDownStabilization }}
       policies:
       - type: Percent
-        value: {{ $autoscaling.behavior.scaleDown.percentValue | default 100 }}
-        periodSeconds: {{ $autoscaling.behavior.scaleDown.periodSeconds | default 15 }}
+        value: {{ $scaleDownPercent }}
+        periodSeconds: {{ $scaleDownPeriod }}
     scaleUp:
-      stabilizationWindowSeconds: {{ $autoscaling.behavior.scaleUp.stabilizationWindowSeconds | default 0 }}
+      stabilizationWindowSeconds: {{ $scaleUpStabilization }}
       policies:
       - type: Percent
-        value: {{ $autoscaling.behavior.scaleUp.percentValue | default 100 }}
-        periodSeconds: {{ $autoscaling.behavior.scaleUp.periodSeconds | default 15 }}
+        value: {{ $scaleUpPercent }}
+        periodSeconds: {{ $scaleUpPeriod }}
       - type: Pods
-        value: {{ $autoscaling.behavior.scaleUp.podValue | default 4 }}
-        periodSeconds: {{ $autoscaling.behavior.scaleUp.periodSeconds | default 15 }}
+        value: {{ $scaleUpPods }}
+        periodSeconds: {{ $scaleUpPeriod }}
       selectPolicy: Max
   metrics:
     {{- if $autoscaling.targetCPUUtilizationPercentage }}

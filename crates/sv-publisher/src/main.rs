@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use clap::Parser;
 use fuel_core_types::blockchain::SealedBlock;
@@ -69,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             let historical = process_historical_blocks(
-                cli.from_height,
+                cli.from_height.into(),
                 &message_broker,
                 fuel_core.clone(),
                 last_block_height,
@@ -122,17 +122,19 @@ async fn setup_message_broker(
     Ok(broker)
 }
 
-async fn find_last_published_height(db: &Db) -> Result<u32, PublishError> {
+async fn find_last_published_height(
+    db: &Db,
+) -> Result<BlockHeight, PublishError> {
     let opts = QueryOptions::default();
     let height = find_last_block_height(db, opts).await?;
-    Ok(height as u32)
+    Ok(height)
 }
 
 fn get_historical_block_range(
-    from_height: u32,
-    last_published_height: Arc<u32>,
-    last_block_height: Arc<u32>,
-) -> Option<Vec<u32>> {
+    from_height: BlockHeight,
+    last_published_height: Arc<BlockHeight>,
+    last_block_height: Arc<BlockHeight>,
+) -> Option<Vec<u64>> {
     let last_published_height = if *last_published_height > from_height {
         *last_published_height
     } else {
@@ -146,14 +148,14 @@ fn get_historical_block_range(
         *last_block_height
     };
 
-    let start_height = last_published_height + 1;
-    let end_height = last_block_height;
+    let start_height = last_published_height.as_ref() + 1;
+    let end_height = *last_block_height.deref();
     if start_height > end_height {
         tracing::info!("No historical blocks to process");
         return None;
     }
     let block_count = end_height - start_height + 1;
-    let heights: Vec<u32> = (start_height..=end_height).collect();
+    let heights: Vec<u64> = (start_height..=end_height).collect();
     tracing::info!(
         "Processing {block_count} historical blocks from height {start_height} to {end_height}"
     );
@@ -161,11 +163,11 @@ fn get_historical_block_range(
 }
 
 fn process_historical_blocks(
-    from_height: u32,
+    from_height: BlockHeight,
     message_broker: &Arc<dyn MessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
-    last_block_height: Arc<u32>,
-    last_published_height: Arc<u32>,
+    last_block_height: Arc<BlockHeight>,
+    last_published_height: Arc<BlockHeight>,
     token: CancellationToken,
     telemetry: Arc<Telemetry<Metrics>>,
 ) -> tokio::task::JoinHandle<()> {
@@ -183,7 +185,8 @@ fn process_historical_blocks(
             .map(|height| {
                 let message_broker = message_broker.clone();
                 let fuel_core = fuel_core.clone();
-                let sealed_block = fuel_core.get_sealed_block_by_height(height);
+                let sealed_block =
+                    fuel_core.get_sealed_block_by_height(height.into());
                 let sealed_block = Arc::new(sealed_block);
                 let telemetry = telemetry.clone();
                 async move {

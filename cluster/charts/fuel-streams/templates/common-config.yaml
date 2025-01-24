@@ -1,20 +1,22 @@
+{{- $localSecrets := .Values.localSecrets }}
+{{- $configMap := .Values.commonConfigMap }}
+{{- $configMapDict := dict "root" . "context" $configMap "name" "config" "component" "config" -}}
+{{- $localSecretsDict := dict "root" . "context" $localSecrets "name" "keys" "component" "config" -}}
 {{- if .Values.commonConfigMap.enabled  }}
-{{- $commonConfigMap := .Values.commonConfigMap }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" . "context" $commonConfigMap "name" "config") | nindent 2 }}
+  {{- include "k8s.resource-metadata" $configMapDict | nindent 2 }}
 data:
-  {{ $commonConfigMap.data | toYaml | nindent 2 }}
+  {{ $configMap.data | toYaml | nindent 2 }}
 {{- end }}
 {{- if .Values.localSecrets.enabled }}
-{{- $localSecrets := .Values.localSecrets }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" . "context" $localSecrets "name" "keys" "component" "common") | nindent 2 }}
+  {{- include "k8s.resource-metadata" $localSecretsDict | nindent 2 }}
 stringData:
   {{ $localSecrets.data | toYaml | nindent 2 }}
 {{- end }}

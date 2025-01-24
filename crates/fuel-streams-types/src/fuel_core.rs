@@ -76,10 +76,7 @@ use fuel_core::{
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
 use fuel_core_storage::transactional::AtomicView;
-use fuel_core_types::{
-    blockchain::consensus::{Consensus, Sealed},
-    fuel_types::BlockHeight,
-};
+use fuel_core_types::blockchain::consensus::{Consensus, Sealed};
 use tokio::sync::broadcast::Receiver;
 
 #[derive(thiserror::Error, Debug)]
@@ -134,12 +131,12 @@ pub trait FuelCoreLike: Sync + Send {
         &self,
     ) -> Receiver<fuel_core_importer::ImporterResult>;
 
-    fn get_latest_block_height(&self) -> FuelCoreResult<u32> {
+    fn get_latest_block_height(&self) -> FuelCoreResult<crate::BlockHeight> {
         Ok(self
             .onchain_database()
             .latest_block_height()
             .map_err(|e| FuelCoreError::Database(e.to_string()))?
-            .map(|h| *h)
+            .map(Into::into)
             .unwrap_or_default())
     }
 
@@ -155,7 +152,7 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn get_consensus(
         &self,
-        block_height: &BlockHeight,
+        block_height: &FuelCoreBlockHeight,
     ) -> FuelCoreResult<Consensus> {
         self.onchain_database()
             .latest_view()
@@ -176,7 +173,11 @@ pub trait FuelCoreLike: Sync + Send {
         Ok((block, block_producer.into()))
     }
 
-    fn get_sealed_block_by_height(&self, height: u32) -> Sealed<FuelCoreBlock> {
+    fn get_sealed_block_by_height(
+        &self,
+        block_height: crate::BlockHeight,
+    ) -> Sealed<FuelCoreBlock> {
+        let height = block_height.as_ref().to_owned() as u32;
         self.onchain_database()
             .latest_view()
             .expect("failed to get latest db view")

@@ -2,7 +2,7 @@ use fuel_streams_macros::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{blocks::types::*, transactions::types::*};
+use crate::transactions::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "transactions")]

@@ -17,7 +17,7 @@ async fn test_block_db_item_conversion() -> anyhow::Result<()> {
     let db_item = BlockDbItem::try_from(&packet)
         .expect("Failed to convert packet to BlockDbItem");
 
-    let height: i64 = block.height.clone().into();
+    let height: i64 = block.height.into();
     assert_eq!(db_item.subject, subject.parse());
     assert_eq!(db_item.block_height, height);
     assert_eq!(db_item.producer_address, block.producer.to_string());

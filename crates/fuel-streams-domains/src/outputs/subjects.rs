@@ -3,7 +3,6 @@ use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
 use super::OutputType;
-use crate::blocks::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_coin")]

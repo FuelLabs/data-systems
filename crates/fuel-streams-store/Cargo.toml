@@ -15,6 +15,7 @@ async-trait = { workspace = true }
 dotenvy = { workspace = true }
 fuel-data-parser = { workspace = true }
 fuel-streams-macros = { workspace = true }
+fuel-streams-types = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }
 sqlx = { workspace = true, default-features = false, features = [

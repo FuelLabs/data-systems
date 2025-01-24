@@ -29,6 +29,18 @@ tests:
           path: metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
         documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: publisher
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: publisher
+        documentIndex: 0
 
   - it: should set correct selector labels
     set:
@@ -43,6 +55,37 @@ tests:
           content:
             app.kubernetes.io/name: publisher
             app.kubernetes.io/instance: RELEASE-NAME
+        documentIndex: 0
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: publisher
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: publisher
+        documentIndex: 0
+
+  - it: should ensure selector labels match template labels
+    set:
+      publisher.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: publisher
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: publisher
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: publisher
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: publisher
         documentIndex: 0
 
   - it: should set image configuration correctly
@@ -90,7 +133,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            name: server
+            name: publisher
             containerPort: 8082
             protocol: TCP
         documentIndex: 0

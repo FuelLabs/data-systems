@@ -117,7 +117,7 @@ where
 
             if let Some(rate_limiter_controller) = rate_limiter_controller {
                 if !rate_limiter_controller
-                    .check_rate_limit(api_key.user_id())
+                    .check_rate_limit(api_key.user_id().into())
                     .await
                 {
                     return Err(actix_web::error::ErrorTooManyRequests(

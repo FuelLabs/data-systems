@@ -4,6 +4,7 @@ use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
 };
+use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
 use crate::Subjects;
@@ -35,8 +36,8 @@ impl DbItem for BlockDbItem {
         self.subject.clone()
     }
 
-    fn get_block_height(&self) -> u64 {
-        self.block_height as u64
+    fn get_block_height(&self) -> BlockHeight {
+        self.block_height.into()
     }
 }
 

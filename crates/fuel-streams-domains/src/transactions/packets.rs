@@ -44,11 +44,10 @@ fn main_packet(
     tx: &Transaction,
     tx_index: usize,
 ) -> Vec<RecordPacket> {
-    let block_height = msg_payload.block_height();
     let tx_id = tx.id.clone();
     let tx_status = tx.status.clone();
     let subject = TransactionsSubject {
-        block_height: Some(block_height.to_owned()),
+        block_height: Some(msg_payload.block_height()),
         tx_index: Some(tx_index as u32),
         tx_id: Some(tx_id.to_owned()),
         tx_status: Some(tx_status),

@@ -22,8 +22,11 @@ config:
   healthChecks: true
 
   livenessProbe:
-  readinessProbe: {}
-  startupProbe: {}
+    enabled: true
+  readinessProbe:
+    enabled: true
+  startupProbe:
+    enabled: true
 
   # Default pod security context
   podSecurityContext:
@@ -56,6 +59,13 @@ config:
                 app.kubernetes.io/component: publisher
             topologyKey: topology.kubernetes.io/zone
 
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
 # ------------------------------------------------------------------------------
 # Global ConfigMap
 # ------------------------------------------------------------------------------
@@ -70,7 +80,8 @@ commonConfigMap:
     NATS_ADMIN_USER: "admin"
     NATS_ADMIN_PASS: "admin"
     # For local purposes only, for production use fuel-streams-keys secret
-    DATABASE_URL: "postgresql://root:root@fuel-streams-cockroachdb:26257/fuel_streams?sslmode=disable"
+    DB_TYPE: "Aurora"
+    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/fuel_streams?sslmode=disable"
 
 # This is a secret that is used for local development
 # It is not used in production
@@ -90,7 +101,7 @@ monitoring:
 # ------------------------------------------------------------------------------
 
 publisher:
-  enabled: false
+  enabled: true
   network: mainnet
   port: 9001
   ports: []
@@ -138,27 +149,13 @@ publisher:
 
   autoscaling:
     enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        percentValue: 100
-        periodSeconds: 15
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        percentValue: 100
-        podValue: 4
-        periodSeconds: 15
 
 # ------------------------------------------------------------------------------
 # Consumer configuration
 # ------------------------------------------------------------------------------
 
 consumer:
-  enabled: false
+  enabled: true
   port: 9002
   ports: []
 
@@ -191,27 +188,13 @@ consumer:
 
   autoscaling:
     enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        percentValue: 100
-        periodSeconds: 15
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        percentValue: 100
-        podValue: 4
-        periodSeconds: 15
 
 # ------------------------------------------------------------------------------
 # Consumer configuration
 # ------------------------------------------------------------------------------
 
 webserver:
-  enabled: false
+  enabled: true
   network: mainnet
   port: 9003
   ports: []
@@ -226,20 +209,23 @@ webserver:
     port: 8080
     type: LoadBalancer
     host: "stream-staging.fuel.network"
-    annotations: {}
-    labels: {}
+    config:
+      annotations: {}
+      labels: {}
 
   tls:
     enabled: true
     certificate:
-      issuer: "letsencrypt-prod"
-      duration: "2160h"
-      renewBefore: "360h"
-      annotations: {}
-      labels: {}
+      issuer: letsencrypt-prod
+      duration: 2160h
+      renewBefore: 360h
+      config:
+        annotations: {}
+        labels: {}
     ingress:
-      annotations: {}
-      labels: {}
+      config:
+        annotations: {}
+        labels: {}
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
@@ -264,20 +250,6 @@ webserver:
 
   autoscaling:
     enabled: true
-    minReplicas: 1
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        percentValue: 100
-        periodSeconds: 15
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        percentValue: 100
-        podValue: 4
-        periodSeconds: 15
 
 # ------------------------------------------------------------------------------
 # NATS Core configuration
@@ -359,7 +331,7 @@ nats:
       spec:
         affinity:
           $tplYaml: |
-            {{- include "k8s.default-affinity" . | nindent 4 }}
+            {{- include "k8s.pod-config.affinityy" . | nindent 4 }}
 
   configMap:
     merge:

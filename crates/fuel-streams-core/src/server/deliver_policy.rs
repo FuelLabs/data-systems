@@ -1,3 +1,4 @@
+use fuel_streams_types::BlockHeight;
 use serde::{self, Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, thiserror::Error)]
@@ -10,14 +11,14 @@ pub enum DeliverPolicyError {
     InvalidBlockHeight(String),
 }
 
-#[derive(Hash, Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Hash, Debug, Default, Serialize, Clone, PartialEq, Eq, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum DeliverPolicy {
     #[default]
     New,
     FromBlock {
         #[serde(rename = "blockHeight")]
-        block_height: u64,
+        block_height: BlockHeight,
     },
 }
 
@@ -51,15 +52,14 @@ impl std::str::FromStr for DeliverPolicy {
                     return Err(DeliverPolicyError::EmptyBlockHeight);
                 }
 
-                let height = block_height.parse::<u64>().map_err(|_| {
-                    DeliverPolicyError::InvalidBlockHeight(
-                        block_height.to_string(),
-                    )
-                })?;
+                let block_height =
+                    block_height.parse::<BlockHeight>().map_err(|_| {
+                        DeliverPolicyError::InvalidBlockHeight(
+                            block_height.to_string(),
+                        )
+                    })?;
 
-                Ok(DeliverPolicy::FromBlock {
-                    block_height: height,
-                })
+                Ok(DeliverPolicy::FromBlock { block_height })
             }
             _ => Err(DeliverPolicyError::InvalidFormat),
         }
@@ -95,7 +95,7 @@ impl<'de> Deserialize<'de> for DeliverPolicy {
             }
             PolicyHelper::Object { from_block } => {
                 Ok(DeliverPolicy::FromBlock {
-                    block_height: from_block.block_height,
+                    block_height: from_block.block_height.into(),
                 })
             }
         }
@@ -116,12 +116,16 @@ mod tests {
         // Test "from_block:123" string format
         let json = r#""from_block:123""#;
         let policy: DeliverPolicy = serde_json::from_str(json).unwrap();
-        assert_eq!(policy, DeliverPolicy::FromBlock { block_height: 123 });
+        assert_eq!(policy, DeliverPolicy::FromBlock {
+            block_height: 123.into()
+        });
 
         // Test "from_block=123" string format
         let json = r#""from_block=123""#;
         let policy: DeliverPolicy = serde_json::from_str(json).unwrap();
-        assert_eq!(policy, DeliverPolicy::FromBlock { block_height: 123 });
+        assert_eq!(policy, DeliverPolicy::FromBlock {
+            block_height: 123.into()
+        });
     }
 
     #[test]
@@ -129,7 +133,9 @@ mod tests {
         // Test object format
         let json = r#"{"fromBlock": {"blockHeight": 123}}"#;
         let policy: DeliverPolicy = serde_json::from_str(json).unwrap();
-        assert_eq!(policy, DeliverPolicy::FromBlock { block_height: 123 });
+        assert_eq!(policy, DeliverPolicy::FromBlock {
+            block_height: 123.into()
+        });
     }
 
     #[test]
@@ -158,7 +164,9 @@ mod tests {
         assert_eq!(json, r#""new""#);
 
         // Test FromBlock variant serialization
-        let policy = DeliverPolicy::FromBlock { block_height: 123 };
+        let policy = DeliverPolicy::FromBlock {
+            block_height: 123.into(),
+        };
         let json = serde_json::to_string(&policy).unwrap();
         assert_eq!(json, r#"{"fromBlock":{"blockHeight":123}}"#);
     }

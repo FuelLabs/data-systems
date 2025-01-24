@@ -1,23 +1,24 @@
 {{- if .Values.publisher.enabled -}}
 {{- $publisher := .Values.publisher -}}
+{{- $name := "publisher" -}}
+{{- $component := "publisher" -}}
+{{- $serviceDict := dict "root" . "context" $publisher "name" $name "component" $component -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  {{- include "k8s.resource-metadata" (dict "root" . "context" $publisher "name" "publisher") | nindent 2 }}
+  {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
 spec:
   serviceName: {{ include "fuel-streams.fullname" . }}-publisher
-  {{- include "k8s.pod-spec-common" (dict "root" . "context" $publisher "name" "publisher") | nindent 2 }}
+  {{- include "k8s.pod-spec" $serviceDict | nindent 2 }}
   template:
-    {{- include "k8s.template-metadata" (dict "root" . "context" $publisher "name" "publisher") | nindent 4 }}
+    {{- include "k8s.template-metadata" $serviceDict | nindent 4 }}
     spec:
-      {{- include "k8s.pod-config" (dict "root" . "context" $publisher) | nindent 6 }}
-
+      {{- include "k8s.pod-config" $serviceDict | nindent 6 }}
       volumes:
         - name: tmp-dir
           emptyDir: {}
         - name: var-dir
           emptyDir: {}
-
       initContainers:
         - name: update-{{ $publisher.storage.name }}
           image: alpine:latest
@@ -30,10 +31,10 @@ spec:
               mkdir -p {{ $publisher.storage.mountPath }} && \
               touch {{ $publisher.storage.mountPath }}/.init-complete && \
               rm {{ $publisher.storage.mountPath }}/.init-complete
-          {{- include "set-field-and-value" (dict "root" . "context" .context "field" "securityContext" "path" "config.containerSecurityContext") | nindent 10 }}
           volumeMounts:
             - name: {{ $publisher.storage.name }}
               mountPath: {{ $publisher.storage.mountPath }}
+          {{- include "k8s.container-config.securityContext" $serviceDict | nindent 10 }}
 
         - name: init-permissions
           image: alpine:latest
@@ -51,8 +52,7 @@ spec:
 
       containers:
         - name: publisher
-          image: "{{ $publisher.image.repository }}:{{ $publisher.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ $publisher.image.pullPolicy }}
+          {{- include "k8s.container-config.image" $serviceDict | nindent 10 }}
           command: ["/usr/src/sv-publisher"]
           args:
           # Common arguments
@@ -114,7 +114,7 @@ spec:
           - "--relayer-da-deploy-height"
           - "5827607"
           {{- end }}
-          {{- include "k8s.container-config" (dict "root" . "context" $publisher)  | nindent 10 }}
+          {{- include "k8s.container-config" $serviceDict  | nindent 10 }}
           volumeMounts:
             - name: {{ $publisher.storage.name }}
               mountPath: {{ $publisher.storage.mountPath }}

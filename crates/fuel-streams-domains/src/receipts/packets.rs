@@ -15,7 +15,6 @@ impl PacketBuilder for Receipt {
     fn build_packets(
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
-        let block_height = msg_payload.block_height();
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
         receipts
@@ -23,7 +22,7 @@ impl PacketBuilder for Receipt {
             .enumerate()
             .map(|(receipt_index, receipt)| {
                 let subject = main_subject(
-                    block_height.clone(),
+                    msg_payload.block_height(),
                     *tx_index as u32,
                     receipt_index as u32,
                     tx_id.clone(),

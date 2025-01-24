@@ -20,14 +20,13 @@ impl PacketBuilder for Utxo {
     fn build_packets(
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
-        let block_height = msg_payload.block_height();
         let tx_id = tx.id.clone();
         tx.inputs
             .par_iter()
             .enumerate()
             .map(|(input_index, input)| {
                 let (utxo, subject) = main_subject(
-                    block_height.clone(),
+                    msg_payload.block_height(),
                     *tx_index as u32,
                     input_index as u32,
                     tx_id.clone(),

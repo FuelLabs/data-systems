@@ -330,34 +330,34 @@ jobs:
           rustup target add ${{ matrix.platform.target }}
           cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
 
-      # - name: Strip binaries
-      #   run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
+    # - name: Strip binaries
+    #   run: ./scripts/strip-binary.sh "${{ matrix.platform.target }}"
 
-      # - name: Set Artifact Name
-      #   id: artifact-name
-      #   shell: bash
-      #   run: |
-      #     echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
+    # - name: Set Artifact Name
+    #   id: artifact-name
+    #   shell: bash
+    #   run: |
+    #     echo "value=${{ matrix.package }}-${{ matrix.platform.os_name }}" >> $GITHUB_OUTPUT
 
-      # - name: Package as archive
-      #   shell: bash
-      #   run: |
-      #     cd target/${{ matrix.platform.target }}/release
-      #     tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
-      #     cd -
+    # - name: Package as archive
+    #   shell: bash
+    #   run: |
+    #     cd target/${{ matrix.platform.target }}/release
+    #     tar czvf ../../../${{ steps.artifact-name.outputs.value }}.tar.gz ${{ matrix.package }}
+    #     cd -
 
-      # - name: Publish release artifacts
-      #   uses: actions/upload-artifact@v4
-      #   if: >-
-      #     (github.event_name == 'push' &&
-      #     github.ref == 'refs/heads/main' &&
-      #     contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
-      #     github.event_name == 'workflow_dispatch'
-      #   with:
-      #     name: ${{ steps.artifact-name.outputs.value }}
-      #     path: ${{ matrix.package }}-*
-      #     if-no-files-found: error
-      #     retention-days: 30
+    # - name: Publish release artifacts
+    #   uses: actions/upload-artifact@v4
+    #   if: >-
+    #     (github.event_name == 'push' &&
+    #     github.ref == 'refs/heads/main' &&
+    #     contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+    #     github.event_name == 'workflow_dispatch'
+    #   with:
+    #     name: ${{ steps.artifact-name.outputs.value }}
+    #     path: ${{ matrix.package }}-*
+    #     if-no-files-found: error
+    #     retention-days: 30
 
   release:
     name: Create Release with Knope
@@ -372,7 +372,7 @@ jobs:
       - build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       actions: write
     steps:
       - name: Checkout Repository
@@ -390,9 +390,9 @@ jobs:
       - name: Run Knope Action
         uses: knope-dev/action@v2.1.0
         with:
-          github-token: ${{ secrets.REPO_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Knope Release
         run: knope release
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

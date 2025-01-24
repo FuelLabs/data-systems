@@ -46,7 +46,7 @@ pub struct Cli {
         default_value = "0",
         help = "Start from block height"
     )]
-    pub from_height: u32,
+    pub from_height: u64,
     /// Use metrics
     #[arg(
         long,

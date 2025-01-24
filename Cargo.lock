@@ -2241,7 +2241,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "criterion",
  "fuel-data-parser",
@@ -3657,7 +3657,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "async-compression",
  "async-trait",
@@ -3675,7 +3675,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-db-utils"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "clap 4.5.26",
@@ -3758,7 +3758,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-message-broker"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -3799,7 +3799,7 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "fuel-streams-core",
  "fuel-streams-store",
@@ -3815,7 +3815,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -3830,6 +3830,7 @@ dependencies = [
  "fuel-streams-types",
  "fuel-web-utils",
  "futures",
+ "netlink-proto",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -3839,7 +3840,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-domains"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "async-trait",
  "fuel-core",
@@ -3847,6 +3848,7 @@ dependencies = [
  "fuel-streams-macros",
  "fuel-streams-store",
  "fuel-streams-types",
+ "netlink-proto",
  "rayon",
  "serde",
  "serde_json",
@@ -3858,7 +3860,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-examples"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "fuel-streams",
@@ -3868,7 +3870,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-macros"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "downcast-rs",
  "serde",
@@ -3880,13 +3882,14 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-store"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "async-stream",
  "async-trait",
  "dotenvy",
  "fuel-data-parser",
  "fuel-streams-macros",
+ "fuel-streams-types",
  "futures",
  "serde",
  "sqlx",
@@ -3898,7 +3901,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-test"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "fuel-core",
@@ -3922,7 +3925,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-types"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3934,6 +3937,7 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-types 0.40.3",
  "hex",
+ "netlink-proto",
  "serde",
  "thiserror 2.0.11",
  "tokio",
@@ -4076,7 +4080,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-web-utils"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "actix-cors",
  "actix-server",
@@ -4093,6 +4097,7 @@ dependencies = [
  "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-store",
+ "fuel-streams-types",
  "futures",
  "futures-util",
  "num_cpus",
@@ -5453,7 +5458,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -6041,7 +6046,7 @@ checksum = "b4ce301924b7887e9d637144fdade93f9dfff9b60981d4ac161db09720d39aa5"
 
 [[package]]
 name = "load-tester"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "chrono",
@@ -9166,7 +9171,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9175,7 +9180,7 @@ dependencies = [
 
 [[package]]
 name = "subjects-schema"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "fuel-streams-domains",
  "fuel-streams-macros",
@@ -9205,7 +9210,7 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "sv-consumer"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9232,7 +9237,7 @@ dependencies = [
 
 [[package]]
 name = "sv-publisher"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9258,7 +9263,7 @@ dependencies = [
 
 [[package]]
 name = "sv-webserver"
-version = "0.0.16"
+version = "0.0.19"
 dependencies = [
  "actix-web",
  "actix-ws",
