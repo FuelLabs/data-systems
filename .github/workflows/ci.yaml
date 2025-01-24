@@ -361,7 +361,6 @@ jobs:
 
   release:
     name: Create Release with Knope
-    environment: npm-deploy
     if: >-
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -373,7 +372,7 @@ jobs:
       - build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       actions: write
     steps:
       - name: Checkout Repository
