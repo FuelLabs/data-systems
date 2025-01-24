@@ -1,12 +1,9 @@
 name: Publish on Crates.io
 
 on:
-  push:
-    branches:
-      - main
-  # release:
-  #   types:
-  #     - published
+  release:
+    types:
+      - published
 
 env:
   CI: true
