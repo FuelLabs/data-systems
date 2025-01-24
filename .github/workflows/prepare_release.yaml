@@ -33,6 +33,7 @@ jobs:
           echo "branch=changeset/release-main" >> $GITHUB_OUTPUT
 
   prepare-release:
+    environment: npm-deploy
     if: "!startsWith(github.event.head_commit.message, 'ci(release)')"
     needs: setup
     runs-on: ubuntu-latest
@@ -41,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -63,6 +64,6 @@ jobs:
       - name: Run knope prepare release
         continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_BRANCH: ${{ needs.setup.outputs.branch }}
         run: knope prepare-release --verbose

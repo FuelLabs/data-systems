@@ -17,6 +17,7 @@ jobs:
   publish-crates:
     name: Publish on Crates.io
     runs-on: ubuntu-latest
+    environment: npm-deploy
     steps:
       - uses: actions/checkout@v4
 
