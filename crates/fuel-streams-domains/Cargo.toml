@@ -35,6 +35,3 @@ test-helpers = [
     "fuel-streams-store/test-helpers",
     "fuel-streams-types/test-helpers",
 ]
-
-[target.'cfg(target_os = "linux")'.dependencies]
-netlink-proto = { version = "=0.11.3", optional = true }
