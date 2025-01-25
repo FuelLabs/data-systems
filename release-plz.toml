@@ -42,6 +42,10 @@ name = "fuel-streams-domains"
 release = true
 
 [[package]]
+name = "subject-derive"
+release = true
+
+[[package]]
 name = "fuel-streams-macros"
 release = true
 
