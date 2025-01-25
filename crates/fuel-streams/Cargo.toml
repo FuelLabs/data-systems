@@ -1,30 +1,33 @@
 [package]
 name = "fuel-streams"
 description = "A library for working with streams of Fuel blockchain data"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-rust-version = { workspace = true }
-version = "0.0.18"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
-fuel-streams-core = { workspace = true }
-fuel-streams-store = { workspace = true }
-futures = { workspace = true }
+fuel-streams-core.workspace = true
+fuel-streams-store.workspace = true
+futures.workspace = true
 reqwest = "0.12.9"
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
 tokio-tungstenite = "0.26.1"
 url = "2.5.4"
 
 [dev-dependencies]
-tokio = { workspace = true }
+tokio.workspace = true
 
 [features]
 default = []
-test-helpers = ["fuel-streams-core/test-helpers", "fuel-streams-store/test-helpers"]
+test-helpers = [
+  "fuel-streams-core/test-helpers",
+  "fuel-streams-store/test-helpers",
+]

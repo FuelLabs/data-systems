@@ -1,36 +1,41 @@
 [package]
 name = "fuel-streams-store"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+description = "A database storage and retrieval system for Fuel blockchain data streams, providing PostgreSQL integration, async operations, and transaction management for the Fuel Data Systems ecosystem"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
-async-stream = { workspace = true }
-async-trait = { workspace = true }
-dotenvy = { workspace = true }
-fuel-data-parser = { workspace = true }
-fuel-streams-macros = { workspace = true }
-fuel-streams-types = { workspace = true }
-futures = { workspace = true }
-serde = { workspace = true }
+async-stream.workspace = true
+async-trait.workspace = true
+dotenvy.workspace = true
+fuel-data-parser.workspace = true
+fuel-streams-macros.workspace = true
+fuel-streams-types.workspace = true
+futures.workspace = true
+serde.workspace = true
 sqlx = { workspace = true, default-features = false, features = [
-    "runtime-tokio",
-    "postgres",
-    "any",
-    "tls-native-tls",
-    "macros",
+  "any",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-native-tls",
 ] }
-thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
-tracing = { workspace = true }
+thiserror.workspace = true
+tokio = { workspace = true, features = [
+  "macros",
+  "rt-multi-thread",
+  "test-util",
+] }
+tracing.workspace = true
 
 [dev-dependencies]
-test-case = { workspace = true }
+test-case.workspace = true
 
 [features]
 default = []

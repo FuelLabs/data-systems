@@ -1,24 +1,24 @@
 [package]
 name = "fuel-streams-macros"
 description = "Macros for implementing traits and deriving functionality in the fuel-streams crate"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
 downcast-rs = "2.0.1"
-serde = { workspace = true }
-serde_json = { workspace = true }
-subject-derive = { workspace = true }
-thiserror = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
+subject-derive.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
-test-case = { workspace = true }
+test-case.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["serde", "serde_json"]

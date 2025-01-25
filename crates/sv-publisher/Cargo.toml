@@ -1,14 +1,14 @@
 [package]
 name = "sv-publisher"
 description = "Service that emitts new blocks using fuel-core block subscription"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 publish = false
 
 [[bin]]
@@ -16,38 +16,41 @@ name = "sv-publisher"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = { workspace = true }
-async-trait = { workspace = true }
-clap = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
+anyhow.workspace = true
+async-trait.workspace = true
+clap.workspace = true
+fuel-core.workspace = true
 fuel-core-bin = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
+  "p2p",
+  "relayer",
+  "rocksdb",
 ] }
-fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
-fuel-message-broker = { workspace = true }
-fuel-streams-core = { workspace = true }
-fuel-streams-domains = { workspace = true }
-fuel-streams-store = { workspace = true }
-fuel-web-utils = { workspace = true }
-futures = { workspace = true }
+fuel-core-types.workspace = true
+fuel-message-broker.workspace = true
+fuel-streams-core.workspace = true
+fuel-streams-domains.workspace = true
+fuel-streams-store.workspace = true
+fuel-web-utils.workspace = true
+futures.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
 tokio-util = "0.7.13"
-tracing = { workspace = true }
+tracing.workspace = true
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+netlink-proto.workspace = true
 
 [features]
 default = []
 test-helpers = [
-    "fuel-core-types/test-helpers",
-    "fuel-core/test-helpers",
-    "fuel-message-broker/test-helpers",
-    "fuel-streams-core/test-helpers",
-    "fuel-streams-store/test-helpers",
+  "fuel-core-types/test-helpers",
+  "fuel-core/test-helpers",
+  "fuel-message-broker/test-helpers",
+  "fuel-streams-core/test-helpers",
+  "fuel-streams-store/test-helpers",
 ]
 
 [target.x86_64-unknown-linux-gnu.dependencies]

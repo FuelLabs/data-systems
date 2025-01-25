@@ -20,13 +20,13 @@ cargo install cargo-binstall
 $install_cmd cargo-tarpaulin
 $install_cmd samply
 $install_cmd cargo-watch
-$install_cmd knope
-$install_cmd cargo-sort
 $install_cmd typos-cli
 $install_cmd cargo-nextest --secure
 
 # Binstall does not support --features
 cargo install cargo-audit --locked --features=fix --force
+cargo install release-plz --locked
+cargo install taplo-cli --locked
 
 # Check Helm and install helm-unittest plugin
 if ! command -v helm &> /dev/null; then

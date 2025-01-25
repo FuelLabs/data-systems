@@ -1,14 +1,14 @@
 [package]
 name = "sv-webserver"
 description = "Fuel library for streaming data from nats and storage"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 publish = false
 
 [[bin]]
@@ -16,29 +16,32 @@ name = "sv-webserver"
 path = "src/main.rs"
 
 [dependencies]
-actix-web = { workspace = true }
+actix-web.workspace = true
 actix-ws = "0.3.0"
-anyhow = { workspace = true }
-async-trait = { workspace = true }
-bytes = { workspace = true }
-clap = { workspace = true }
-displaydoc = { workspace = true }
-dotenvy = { workspace = true }
-fuel-data-parser = { workspace = true }
-fuel-message-broker = { workspace = true }
-fuel-streams-core = { workspace = true }
-fuel-streams-domains = { workspace = true }
-fuel-streams-store = { workspace = true }
-fuel-web-utils = { workspace = true }
-futures = { workspace = true }
-num_cpus = { workspace = true }
+anyhow.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+clap.workspace = true
+displaydoc.workspace = true
+dotenvy.workspace = true
+fuel-data-parser.workspace = true
+fuel-message-broker.workspace = true
+fuel-streams-core.workspace = true
+fuel-streams-domains.workspace = true
+fuel-streams-store.workspace = true
+fuel-web-utils.workspace = true
+futures.workspace = true
+num_cpus.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
-serde_json = { workspace = true }
+serde_json.workspace = true
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
-tokio = { workspace = true }
-tracing = { workspace = true }
+tokio.workspace = true
+tracing.workspace = true
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+netlink-proto.workspace = true
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
@@ -47,11 +50,11 @@ ignored = ["fuel-data-parser"]
 [features]
 default = []
 test-helpers = [
-    "fuel-data-parser/test-helpers",
-    "fuel-message-broker/test-helpers",
-    "fuel-streams-core/test-helpers",
-    "fuel-streams-domains/test-helpers",
-    "fuel-streams-store/test-helpers",
+  "fuel-data-parser/test-helpers",
+  "fuel-message-broker/test-helpers",
+  "fuel-streams-core/test-helpers",
+  "fuel-streams-domains/test-helpers",
+  "fuel-streams-store/test-helpers",
 ]
 
 [target.x86_64-unknown-linux-gnu.dependencies]

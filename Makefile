@@ -88,15 +88,6 @@ bump-version:
 	@echo "Bumping version to $(VERSION)..."
 	@./scripts/bump-version.sh "$(VERSION)"
 
-release: validate-env test lint
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION is required"; \
-		echo "Usage: make release VERSION=X.Y.Z [dry_run=true]"; \
-		exit 1; \
-	fi
-	$(MAKE) bump-version VERSION=$(VERSION)
-	knope prepare-release $(if $(filter true,$(dry_run)),--dry-run,)
-
 # ------------------------------------------------------------
 #  Development Targets
 # ------------------------------------------------------------
@@ -145,10 +136,14 @@ helm-test:
 #  Formatting & Linting
 # ------------------------------------------------------------
 
+# Convert find output to space-separated list for taplo
+TOML_FILES := $(shell find . -not -path "./target/*" -name "*.toml" | tr '\n' ' ')
+
 fmt: fmt-cargo fmt-rust fmt-prettier fmt-markdown
 
 fmt-cargo:
-	cargo sort -w
+	@echo "Formatting TOML files..."
+	@taplo fmt $(TOML_FILES)
 
 fmt-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --color always
@@ -162,7 +157,7 @@ fmt-markdown:
 lint: lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-machete
 
 lint-cargo:
-	cargo sort --check --workspace
+	@taplo fmt --check $(TOML_FILES)
 
 lint-rust:
 	@cargo check --all-targets --all-features
