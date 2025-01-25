@@ -26,6 +26,8 @@ fuel-message-broker.workspace = true
 fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true
 fuel-streams-store.workspace = true
+fuel-tx.workspace = true
+fuel-vm.workspace = true
 fuel-web-utils.workspace = true
 futures.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
@@ -44,7 +46,8 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 # these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
-netlink-proto.workspace = true
+[target.'cfg(target_os = "linux")'.dependencies]
+netlink-proto = { version = "=0.11.3", optional = true }
 
 [features]
 default = []

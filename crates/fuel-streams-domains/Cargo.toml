@@ -17,6 +17,8 @@ fuel-core-types.workspace = true
 fuel-streams-macros.workspace = true
 fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
+fuel-tx.workspace = true
+fuel-vm.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -25,7 +27,8 @@ thiserror.workspace = true
 tracing.workspace = true
 
 # these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
-netlink-proto.workspace = true
+[target.'cfg(target_os = "linux")'.dependencies]
+netlink-proto = { version = "=0.11.3", optional = true }
 
 [dev-dependencies]
 test-case.workspace = true
