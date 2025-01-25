@@ -28,13 +28,23 @@ impl Record for Utxo {
     {
         let db_item = UtxoDbItem::try_from(packet)?;
         let record = sqlx::query_as::<_, UtxoDbItem>(
-            "INSERT INTO utxos (
-                subject, value, block_height, tx_id, tx_index,
-                input_index, utxo_type, utxo_id
+            "WITH upsert AS (
+                INSERT INTO utxos (
+                    subject, value, block_height, tx_id, tx_index,
+                    input_index, utxo_type, utxo_id
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (subject) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    block_height = EXCLUDED.block_height,
+                    tx_id = EXCLUDED.tx_id,
+                    tx_index = EXCLUDED.tx_index,
+                    input_index = EXCLUDED.input_index,
+                    utxo_type = EXCLUDED.utxo_type,
+                    utxo_id = EXCLUDED.utxo_id
+                RETURNING *
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING subject, value, block_height, tx_id, tx_index,
-                input_index, utxo_type, utxo_id",
+            SELECT * FROM upsert",
         )
         .bind(db_item.subject)
         .bind(db_item.value)
