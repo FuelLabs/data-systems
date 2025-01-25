@@ -26,9 +26,6 @@ importers:
       prettier-plugin-sh:
         specifier: ^0.14.0
         version: 0.14.0(prettier@3.4.1)
-      prettier-plugin-toml:
-        specifier: ^2.0.1
-        version: 2.0.1(prettier@3.4.1)
 
 packages:
 
@@ -116,12 +113,6 @@ packages:
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
-
-  '@taplo/core@0.1.1':
-    resolution: {integrity: sha512-BG/zLGf5wiNXGEVPvUAAX/4ilB3PwDUY2o0MV0y47mZbDZ9ad9UK/cIQsILat3bqbPJsALVbU6k3cskNZ3vAQg==}
-
-  '@taplo/lib@0.4.0-alpha.2':
-    resolution: {integrity: sha512-DV/Re3DPVY+BhBtLZ3dmP4mP6YMLSsgq9qGLXwOV38lvNF/fBlgvQswzlXmzCEefL/3q2eMoefZpOI/+GLuCNA==}
 
   '@types/conventional-commits-parser@5.0.0':
     resolution: {integrity: sha512-loB369iXNmAZglwWATL+WRe+CRMmmBPtpolYzIebFaX4YA3x+BEfLqhUAV9WanycKI3TG1IMr5bMJDajDKLlUQ==}
@@ -648,12 +639,6 @@ packages:
     peerDependencies:
       prettier: ^3.0.3
 
-  prettier-plugin-toml@2.0.1:
-    resolution: {integrity: sha512-99z1YOkViECHtXQjGIigd3talI/ybUI1zB3yniAwUrlWBXupNXThB1hM6bwSMUEj2/+tomTlMtT98F5t4s8IWA==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      prettier: ^3.0.3
-
   prettier@3.4.1:
     resolution: {integrity: sha512-G+YdqtITVZmOJje6QkXQWzl3fSfMxFwm1tjTyo9exhkmWSqC4Yhd1+lug++IlR2mvRVAxEDDWYkQdeSztajqgg==}
     engines: {node: '>=14'}
@@ -927,12 +912,6 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
-
-  '@taplo/core@0.1.1': {}
-
-  '@taplo/lib@0.4.0-alpha.2':
-    dependencies:
-      '@taplo/core': 0.1.1
 
   '@types/conventional-commits-parser@5.0.0':
     dependencies:
@@ -1522,11 +1501,6 @@ snapshots:
       mvdan-sh: 0.10.1
       prettier: 3.4.1
       sh-syntax: 0.4.2
-
-  prettier-plugin-toml@2.0.1(prettier@3.4.1):
-    dependencies:
-      '@taplo/lib': 0.4.0-alpha.2
-      prettier: 3.4.1
 
   prettier@3.4.1: {}
 

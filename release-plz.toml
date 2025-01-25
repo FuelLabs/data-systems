@@ -1,10 +1,14 @@
 [workspace]
-changelog_update = false
-git_release_enable = false
-git_tag_enable = false
-dependencies_update = false
-release = false
-semver_check = false
+changelog_update = false    # update changelog automatically
+git_release_enable = false  # create a release on github
+git_tag_enable = false      # create a tag on github
+dependencies_update = false # update dependencies automatically
+release = false             # release the package
+release_always = true       # release are made on every commit
+semver_check = false        # check if the version is a valid semver
+publish_timeout = "60m"     # timeout for the publish command
+
+pr_labels = ["release"]
 pr_name = "ci(release): Release v{{ version }}"
 git_release_body = """
 {{ changelog }}
@@ -32,14 +36,17 @@ git_tag_name = "fuel-streams/v{{ version }}"
 git_tag_enable = true
 git_release_enable = true
 release = true
+semver_check = true
 
 [[package]]
 name = "fuel-streams-core"
 release = true
+semver_check = true
 
 [[package]]
 name = "fuel-streams-domains"
 release = true
+semver_check = true
 
 [[package]]
 name = "subject-derive"
@@ -52,10 +59,12 @@ release = true
 [[package]]
 name = "fuel-streams-store"
 release = true
+semver_check = true
 
 [[package]]
 name = "fuel-streams-types"
 release = true
+semver_check = true
 
 [[package]]
 name = "fuel-web-utils"
