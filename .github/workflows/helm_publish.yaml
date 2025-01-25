@@ -37,7 +37,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: "Build chart: [${{ env.CHART_NAME }} v${{ steps.version.outputs.version }}]"
-        uses: bsord/helm-push@v4.1.0
+        uses: bsord/helm-push@v4.2.0
         with:
           useOCIRegistry: true
           registry-url: oci://ghcr.io/fuellabs/helmcharts
