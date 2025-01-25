@@ -1,13 +1,13 @@
 [workspace]
-changelog_update = false    # update changelog automatically
-git_release_enable = false  # create a release on github
-git_tag_enable = false      # create a tag on github
+changelog_update = false # update changelog automatically
+git_release_enable = false # create a release on github
+git_tag_enable = false # create a tag on github
 dependencies_update = false # update dependencies automatically
-release = false             # release the package
-release_always = false      # release are made on every commit
-semver_check = false        # check if the version is a valid semver
-publish_timeout = "60m"     # timeout for the publish command
-
+publish = false # publish the package
+release = false # release the package
+release_always = false # release are made on every commit
+semver_check = false # check if the version is a valid semver
+publish_timeout = "60m" # timeout for the publish command
 pr_labels = ["release"]
 pr_name = "ci(release): Release v{{ version }}"
 git_release_body = """
@@ -23,10 +23,12 @@ git_release_body = """
 [[package]]
 name = "fuel-data-parser"
 release = true
+publish = true
 
 [[package]]
 name = "fuel-message-broker"
 release = true
+publish = true
 
 [[package]]
 name = "fuel-streams"
@@ -36,39 +38,57 @@ git_tag_name = "fuel-streams/v{{ version }}"
 git_tag_enable = true
 git_release_enable = true
 release = true
+publish = true
 semver_check = true
 
 [[package]]
 name = "fuel-streams-core"
 release = true
+publish = true
 semver_check = true
 
 [[package]]
 name = "fuel-streams-domains"
 release = true
+publish = true
 semver_check = true
 
 [[package]]
 name = "subject-derive"
 release = true
+publish = true
 
 [[package]]
 name = "fuel-streams-macros"
 release = true
+publish = true
 
 [[package]]
 name = "fuel-streams-store"
 release = true
+publish = true
 semver_check = true
 
 [[package]]
 name = "fuel-streams-types"
 release = true
+publish = true
 semver_check = true
 
 [[package]]
 name = "fuel-web-utils"
 release = true
+publish = true
+
+[[package]]
+name = "fuel-streams-test"
+release = false
+publish = false
+
+[[package]]
+name = "subjects-schema"
+release = false
+publish = false
 
 [changelog]
 sort_commits = "newest"
