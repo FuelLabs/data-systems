@@ -314,7 +314,6 @@ impl FuelCoreLike for FuelCore {
                 _ => None,
             })
             .unwrap_or_default();
-
         Ok(receipts)
     }
 }

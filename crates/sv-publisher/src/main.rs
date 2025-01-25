@@ -258,7 +258,7 @@ async fn publish_block(
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
     let fuel_core = Arc::clone(fuel_core);
-    let payload = MsgPayload::new(fuel_core, sealed_block, &metadata)?;
+    let payload = MsgPayload::new(fuel_core, sealed_block, &metadata).await?;
     let encoded = payload.encode().await?;
 
     message_broker
