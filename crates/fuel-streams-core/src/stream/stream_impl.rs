@@ -76,7 +76,7 @@ impl<R: Record> Stream<R> {
         let store = self.store.clone();
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height)).await;
+                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None).await;
                 while let Some(result) = historical.next().await {
                     yield result?;
                     let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;

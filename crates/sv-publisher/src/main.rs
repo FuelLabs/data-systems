@@ -1,18 +1,12 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use clap::Parser;
-use fuel_core_types::blockchain::SealedBlock;
-use fuel_message_broker::{
-    MessageBroker,
-    MessageBrokerClient,
-    MessageBrokerError,
-};
+use fuel_message_broker::{MessageBroker, MessageBrokerClient};
 use fuel_streams_core::types::*;
-use fuel_streams_domains::{Metadata, MsgPayload, MsgPayloadError};
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
-    record::{DataEncoder, EncoderError, QueryOptions},
-    store::{find_last_block_height, StoreError},
+    record::QueryOptions,
+    store::find_last_block_height,
 };
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
@@ -20,26 +14,14 @@ use fuel_web_utils::{
     telemetry::Telemetry,
 };
 use futures::StreamExt;
-use sv_publisher::{cli::Cli, metrics::Metrics, state::ServerState};
+use sv_publisher::{
+    cli::Cli,
+    error::PublishError,
+    metrics::Metrics,
+    publish::{process_transactions_status_none, publish_block},
+    state::ServerState,
+};
 use tokio_util::sync::CancellationToken;
-
-#[derive(thiserror::Error, Debug)]
-pub enum PublishError {
-    #[error("Processing was cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Db(#[from] fuel_streams_store::db::DbError),
-    #[error(transparent)]
-    FuelCore(#[from] FuelCoreError),
-    #[error(transparent)]
-    MsgPayload(#[from] MsgPayloadError),
-    #[error(transparent)]
-    Encoder(#[from] EncoderError),
-    #[error(transparent)]
-    Store(#[from] StoreError),
-    #[error(transparent)]
-    MessageBrokerClient(#[from] MessageBrokerError),
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -70,24 +52,32 @@ async fn main() -> anyhow::Result<()> {
             let historical = process_historical_blocks(
                 cli.from_height.into(),
                 &message_broker,
-                fuel_core.clone(),
-                last_block_height,
-                last_published,
+                &fuel_core,
+                &last_block_height,
+                &last_published,
                 shutdown.token().clone(),
-                Arc::clone(&telemetry),
+                &telemetry,
+            );
+
+            let recover_blocks = process_transactions_status_none(
+                &db,
+                &message_broker,
+                &fuel_core,
+                &telemetry
             );
 
             let live = process_live_blocks(
                 &message_broker,
-                fuel_core.clone(),
+                &fuel_core,
                 shutdown.token().clone(),
-                Arc::clone(&telemetry)
+                &telemetry
             );
 
-            tokio::join!(historical, live)
+            tokio::join!(historical, recover_blocks, live)
         } => {
             result.0?;
             result.1?;
+            result.2?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
@@ -131,24 +121,24 @@ async fn find_last_published_height(
 
 fn get_historical_block_range(
     from_height: BlockHeight,
-    last_published_height: Arc<BlockHeight>,
-    last_block_height: Arc<BlockHeight>,
+    last_published_height: BlockHeight,
+    last_block_height: BlockHeight,
 ) -> Option<Vec<u64>> {
-    let last_published_height = if *last_published_height > from_height {
-        *last_published_height
+    let last_published_height = if last_published_height > from_height {
+        last_published_height
     } else {
         from_height
     };
 
-    let last_block_height = if *last_block_height > from_height {
+    let last_block_height = if last_block_height > from_height {
         *last_block_height
     } else {
         tracing::error!("Last block height is less than from height");
         *last_block_height
     };
 
-    let start_height = last_published_height.as_ref() + 1;
-    let end_height = *last_block_height.deref();
+    let start_height = *last_published_height + 1;
+    let end_height = last_block_height;
     if start_height > end_height {
         tracing::info!("No historical blocks to process");
         return None;
@@ -164,59 +154,66 @@ fn get_historical_block_range(
 fn process_historical_blocks(
     from_height: BlockHeight,
     message_broker: &Arc<dyn MessageBroker>,
-    fuel_core: Arc<dyn FuelCoreLike>,
-    last_block_height: Arc<BlockHeight>,
-    last_published_height: Arc<BlockHeight>,
+    fuel_core: &Arc<dyn FuelCoreLike>,
+    last_block_height: &Arc<BlockHeight>,
+    last_published_height: &Arc<BlockHeight>,
     token: CancellationToken,
-    telemetry: Arc<Telemetry<Metrics>>,
+    telemetry: &Arc<Telemetry<Metrics>>,
 ) -> tokio::task::JoinHandle<()> {
     let message_broker = message_broker.clone();
     let fuel_core = fuel_core.clone();
-    tokio::spawn(async move {
-        let Some(heights) = get_historical_block_range(
-            from_height,
-            last_published_height,
-            last_block_height,
-        ) else {
-            return;
-        };
-        futures::stream::iter(heights)
-            .map(|height| {
-                let message_broker = message_broker.clone();
-                let fuel_core = fuel_core.clone();
-                let sealed_block =
-                    fuel_core.get_sealed_block_by_height(height.into());
-                let sealed_block = Arc::new(sealed_block);
-                let telemetry = telemetry.clone();
-                async move {
-                    publish_block(
-                        &message_broker,
-                        &fuel_core,
-                        &sealed_block,
-                        telemetry,
-                    )
-                    .await
-                }
-            })
-            .buffered(100)
-            .take_until(token.cancelled())
-            .for_each(|result| async move {
-                match result {
-                    Ok(_) => tracing::debug!("Block processed successfully"),
-                    Err(e) => {
-                        tracing::error!("Error processing block: {:?}", e)
+    tokio::spawn({
+        let last_published_height = *last_published_height.clone();
+        let last_block_height = *last_block_height.clone();
+        let telemetry = telemetry.clone();
+        async move {
+            let Some(heights) = get_historical_block_range(
+                from_height,
+                last_published_height,
+                last_block_height,
+            ) else {
+                return;
+            };
+            futures::stream::iter(heights)
+                .map(|height| {
+                    let message_broker = message_broker.clone();
+                    let fuel_core = fuel_core.clone();
+                    let sealed_block =
+                        fuel_core.get_sealed_block_by_height(height.into());
+                    let sealed_block = Arc::new(sealed_block);
+                    let telemetry = telemetry.clone();
+                    async move {
+                        publish_block(
+                            &message_broker,
+                            &fuel_core,
+                            &sealed_block,
+                            &telemetry,
+                        )
+                        .await
                     }
-                }
-            })
-            .await;
+                })
+                .buffered(100)
+                .take_until(token.cancelled())
+                .for_each(|result| async move {
+                    match result {
+                        Ok(_) => {
+                            tracing::debug!("Block processed successfully")
+                        }
+                        Err(e) => {
+                            tracing::error!("Error processing block: {:?}", e)
+                        }
+                    }
+                })
+                .await;
+        }
     })
 }
 
 async fn process_live_blocks(
     message_broker: &Arc<dyn MessageBroker>,
-    fuel_core: Arc<dyn FuelCoreLike>,
+    fuel_core: &Arc<dyn FuelCoreLike>,
     token: CancellationToken,
-    telemetry: Arc<Telemetry<Metrics>>,
+    telemetry: &Arc<Telemetry<Metrics>>,
 ) -> Result<(), PublishError> {
     let mut subscription = fuel_core.blocks_subscription();
 
@@ -232,9 +229,9 @@ async fn process_live_blocks(
                         let sealed_block = Arc::new(data.sealed_block.clone());
                         publish_block(
                             message_broker,
-                            &fuel_core,
+                            fuel_core,
                             &sealed_block,
-                            telemetry.clone(),
+                            telemetry,
                         )
                         .await?;
                     }
@@ -247,31 +244,5 @@ async fn process_live_blocks(
         }
     }
 
-    Ok(())
-}
-
-async fn publish_block(
-    message_broker: &Arc<dyn MessageBroker>,
-    fuel_core: &Arc<dyn FuelCoreLike>,
-    sealed_block: &Arc<SealedBlock>,
-    telemetry: Arc<Telemetry<Metrics>>,
-) -> Result<(), PublishError> {
-    let metadata = Metadata::new(fuel_core, sealed_block);
-    let fuel_core = Arc::clone(fuel_core);
-    let payload = MsgPayload::new(fuel_core, sealed_block, &metadata)?;
-    let encoded = payload.encode().await?;
-
-    message_broker
-        .publish_block(payload.message_id(), encoded.clone())
-        .await?;
-
-    if let Some(metrics) = telemetry.base_metrics() {
-        metrics.update_publisher_success_metrics(
-            &payload.subject(),
-            encoded.len(),
-        );
-    }
-
-    tracing::info!("New block submitted: {}", payload.block_height());
     Ok(())
 }

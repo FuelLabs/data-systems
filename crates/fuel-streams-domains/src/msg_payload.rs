@@ -72,18 +72,14 @@ impl DataEncoder for MsgPayload {
 }
 
 impl MsgPayload {
-    pub fn new(
+    pub async fn new(
         fuel_core: Arc<dyn FuelCoreLike>,
         sealed_block: &FuelCoreSealedBlock,
         metadata: &Metadata,
     ) -> Result<Self, MsgPayloadError> {
         let (block, producer) =
             fuel_core.get_block_and_producer(sealed_block)?;
-        let txs = Self::txs_from_fuelcore(
-            fuel_core.to_owned(),
-            sealed_block,
-            metadata,
-        )?;
+        let txs = Self::txs_from_fuelcore(&fuel_core, sealed_block).await?;
         let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
@@ -135,31 +131,58 @@ impl MsgPayload {
         Arc::new(self.clone())
     }
 
-    pub fn txs_from_fuelcore(
-        fuel_core: Arc<dyn FuelCoreLike>,
+    pub async fn txs_from_fuelcore(
+        fuel_core: &Arc<dyn FuelCoreLike>,
         sealed_block: &FuelCoreSealedBlock,
-        metadata: &Metadata,
     ) -> Result<Vec<Transaction>, MsgPayloadError> {
         let mut transactions: Vec<Transaction> = vec![];
         let blocks_txs = sealed_block.entity.transactions_vec();
-        for tx_item in blocks_txs.iter() {
-            let tx_id = tx_item.id(&metadata.chain_id);
-            let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
-            let tx_status = fuel_core.get_tx_status(&tx_id)?;
-            let tx_status: TransactionStatus = match tx_status {
-                Some(status) => (&status).into(),
-                _ => TransactionStatus::None,
-            };
-            let new_transaction = Transaction::new(
-                &tx_id.into(),
-                tx_item,
-                &tx_status,
-                &metadata.base_asset_id,
-                &receipts,
-            );
-            transactions.push(new_transaction);
+        for tx in blocks_txs.iter() {
+            let tx = Self::tx_from_fuel_core(fuel_core, tx).await?;
+            transactions.push(tx);
         }
         Ok(transactions)
+    }
+
+    pub async fn tx_from_fuel_core(
+        fuel_core: &Arc<dyn FuelCoreLike>,
+        tx: &fuel_tx::Transaction,
+    ) -> Result<Transaction, MsgPayloadError> {
+        let chain_id = fuel_core.chain_id();
+        let base_asset_id = fuel_core.base_asset_id();
+        let tx_id = tx.id(chain_id);
+        let tx_status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
+        let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
+        Ok(Transaction::new(
+            &tx_id.into(),
+            tx,
+            &tx_status,
+            base_asset_id,
+            &receipts,
+        ))
+    }
+
+    async fn retrieve_tx_status(
+        fuel_core: &Arc<dyn FuelCoreLike>,
+        tx_id: &fuel_tx::Bytes32,
+        attempts: u8,
+    ) -> Result<TransactionStatus, MsgPayloadError> {
+        if attempts > 5 {
+            return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()))
+        }
+        let tx_status = fuel_core.get_tx_status(tx_id)?;
+        match tx_status {
+            Some(status) => Ok((&status).into()),
+            _ => {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                Box::pin(Self::retrieve_tx_status(
+                    fuel_core,
+                    tx_id,
+                    attempts + 1,
+                ))
+                .await
+            }
+        }
     }
 }
 

@@ -4,7 +4,7 @@ git_release_enable = false  # create a release on github
 git_tag_enable = false      # create a tag on github
 dependencies_update = false # update dependencies automatically
 release = false             # release the package
-release_always = true       # release are made on every commit
+release_always = false      # release are made on every commit
 semver_check = false        # check if the version is a valid semver
 publish_timeout = "60m"     # timeout for the publish command
 

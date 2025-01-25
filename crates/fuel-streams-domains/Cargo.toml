@@ -24,6 +24,7 @@ serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 
 # these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
