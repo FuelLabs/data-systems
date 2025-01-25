@@ -2,8 +2,10 @@
 changelog_update = false
 git_release_enable = false
 git_tag_enable = false
-pr_name = "ci(release): Release v{{ version }}"
 dependencies_update = false
+release = false
+semver_check = false
+pr_name = "ci(release): Release v{{ version }}"
 git_release_body = """
 {{ changelog }}
 {% if remote.contributors %}
@@ -15,12 +17,45 @@ git_release_body = """
 """
 
 [[package]]
+name = "fuel-data-parser"
+release = true
+
+[[package]]
+name = "fuel-message-broker"
+release = true
+
+[[package]]
 name = "fuel-streams"
 changelog_update = true
 changelog_path = "./CHANGELOG.md"
 git_tag_name = "fuel-streams/v{{ version }}"
 git_tag_enable = true
 git_release_enable = true
+release = true
+
+[[package]]
+name = "fuel-streams-core"
+release = true
+
+[[package]]
+name = "fuel-streams-domains"
+release = true
+
+[[package]]
+name = "fuel-streams-macros"
+release = true
+
+[[package]]
+name = "fuel-streams-store"
+release = true
+
+[[package]]
+name = "fuel-streams-types"
+release = true
+
+[[package]]
+name = "fuel-web-utils"
+release = true
 
 [changelog]
 sort_commits = "newest"

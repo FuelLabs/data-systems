@@ -11,7 +11,7 @@ fi
 pnpm install
 
 # Install fixed nightly toolchain
-rustup toolchain install nightly-2024-11-06 -c rustfmt
+rustup toolchain install nightly-2025-01-24 -c rustfmt
 
 install_cmd="cargo binstall --force --no-confirm"
 

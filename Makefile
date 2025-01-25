@@ -6,8 +6,8 @@
 VERSION := $(shell cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "fuel-streams") | .version')
 
 # Constants
-RUST_NIGHTLY_VERSION := nightly-2024-11-06
-RUST_VERSION := 1.81.0
+RUST_NIGHTLY_VERSION := nightly-2025-01-24
+RUST_VERSION := 1.84.0
 
 # ------------------------------------------------------------
 #  Phony Targets
