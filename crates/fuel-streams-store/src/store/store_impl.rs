@@ -75,12 +75,13 @@ impl<R: Record + DataEncoder> Store<R> {
         &self,
         subject: Arc<dyn IntoSubject>,
         from_block: Option<BlockHeight>,
+        query_opts: Option<QueryOptions>,
     ) -> BoxStream<'static, Result<(String, Vec<u8>), StoreError>> {
         let store = self.clone();
         let db = self.db.clone();
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
-            let mut opts = QueryOptions::default().with_from_block(Some(current_height));
+            let mut opts = query_opts.unwrap_or_default().with_from_block(Some(current_height));
             let mut last_height = find_last_block_height(&db, opts.clone()).await?;
             while current_height <= last_height {
                 let items = store.find_many_by_subject(&subject, opts.clone()).await?;
