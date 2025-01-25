@@ -1,45 +1,48 @@
 [package]
 name = "fuel-streams-core"
 description = "Core components for working with streams of Fuel blockchain data"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-async-nats = { workspace = true }
-async-stream = { workspace = true }
-bytes = { workspace = true }
-dotenvy = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
-fuel-message-broker = { workspace = true }
-fuel-streams-domains = { workspace = true }
-fuel-streams-macros = { workspace = true }
-fuel-streams-store = { workspace = true }
-fuel-streams-types = { workspace = true }
-fuel-web-utils = { workspace = true }
-futures = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
+anyhow.workspace = true
+async-nats.workspace = true
+async-stream.workspace = true
+bytes.workspace = true
+dotenvy.workspace = true
+fuel-core.workspace = true
+fuel-message-broker.workspace = true
+fuel-streams-domains.workspace = true
+fuel-streams-macros.workspace = true
+fuel-streams-store.workspace = true
+fuel-streams-types.workspace = true
+fuel-web-utils.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+netlink-proto.workspace = true
 
 [dev-dependencies]
-pretty_assertions = { workspace = true }
-serde_json = { workspace = true }
+pretty_assertions.workspace = true
+serde_json.workspace = true
 
 [features]
 default = []
 test-helpers = [
-    "fuel-core/test-helpers",
-    "fuel-message-broker/test-helpers",
-    "fuel-streams-domains/test-helpers",
-    "fuel-streams-macros/test-helpers",
-    "fuel-streams-store/test-helpers",
-    "fuel-streams-types/test-helpers",
+  "fuel-core/test-helpers",
+  "fuel-message-broker/test-helpers",
+  "fuel-streams-domains/test-helpers",
+  "fuel-streams-macros/test-helpers",
+  "fuel-streams-store/test-helpers",
+  "fuel-streams-types/test-helpers",
 ]

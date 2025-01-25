@@ -1,37 +1,40 @@
 [package]
 name = "fuel-streams-domains"
 description = "Domains definitions for fuel streams"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
-fuel-core = { workspace = true, default-features = false, features = ["p2p", "relayer", "rocksdb"] }
-fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
-fuel-streams-macros = { workspace = true }
-fuel-streams-store = { workspace = true }
-fuel-streams-types = { workspace = true }
-rayon = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "tls-native-tls", "macros"] }
-thiserror = { workspace = true }
-tracing = { workspace = true }
+async-trait.workspace = true
+fuel-core.workspace = true
+fuel-core-types.workspace = true
+fuel-streams-macros.workspace = true
+fuel-streams-store.workspace = true
+fuel-streams-types.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+netlink-proto.workspace = true
 
 [dev-dependencies]
-test-case = { workspace = true }
+test-case.workspace = true
 
 [features]
 default = []
 test-helpers = [
-    "fuel-core/test-helpers",
-    "fuel-core-types/test-helpers",
-    "fuel-streams-store/test-helpers",
-    "fuel-streams-types/test-helpers",
+  "fuel-core-types/test-helpers",
+  "fuel-core/test-helpers",
+  "fuel-streams-store/test-helpers",
+  "fuel-streams-types/test-helpers",
 ]

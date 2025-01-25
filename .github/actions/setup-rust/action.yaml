@@ -45,7 +45,7 @@ runs:
 
     - uses: taiki-e/cache-cargo-install-action@v2
       with:
-        tool: cargo-sort@1.0.9
+        tool: taplo-cli@0.9.3
 
     - uses: taiki-e/cache-cargo-install-action@v2
       with:

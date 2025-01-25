@@ -1,39 +1,42 @@
 [package]
 name = "fuel-streams-types"
 description = "Types for fuel streams"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-async-trait = { workspace = true }
+anyhow.workspace = true
+async-trait.workspace = true
 fuel-core = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-    "test-helpers",
+  "p2p",
+  "relayer",
+  "rocksdb",
+  "test-helpers",
 ] }
 fuel-core-bin = { workspace = true, default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
+  "p2p",
+  "relayer",
+  "rocksdb",
 ] }
-fuel-core-client = { workspace = true, default-features = false, features = ["std"] }
-fuel-core-importer = { workspace = true }
-fuel-core-services = { workspace = true }
-fuel-core-storage = { workspace = true }
-fuel-core-types = { workspace = true, default-features = false, features = ["std", "serde"] }
-hex = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
+fuel-core-client.workspace = true
+fuel-core-importer.workspace = true
+fuel-core-services.workspace = true
+fuel-core-storage.workspace = true
+fuel-core-types.workspace = true
+hex.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+netlink-proto.workspace = true
 
 [features]
 default = []
