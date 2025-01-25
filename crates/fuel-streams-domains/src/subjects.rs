@@ -1,8 +1,7 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use fuel_streams_macros::subject::{FromJsonString, IntoSubject};
-use fuel_streams_store::record::{RecordEntity, RecordPacket};
-use thiserror::Error;
+use fuel_streams_store::record::RecordPacket;
 
 use crate::{
     blocks::*,
@@ -11,15 +10,9 @@ use crate::{
     receipts::*,
     transactions::*,
     utxos::*,
+    SubjectPayload,
+    SubjectPayloadError,
 };
-
-#[derive(Error, Debug, PartialEq, Eq)]
-pub enum SubjectPayloadError {
-    #[error("Unknown subject: {0}")]
-    UnknownSubject(String),
-    #[error(transparent)]
-    ParseError(#[from] fuel_streams_macros::subject::SubjectError),
-}
 
 #[derive(Debug, Clone)]
 pub enum Subjects {
@@ -79,59 +72,6 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
         }
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct SubjectPayload {
-    pub subject: String,
-    pub params: serde_json::Value,
-    record_entity: RecordEntity,
-}
-impl SubjectPayload {
-    pub fn new(
-        subject: String,
-        params: serde_json::Value,
-    ) -> Result<Self, SubjectPayloadError> {
-        let record_entity = Self::record_from_subject_str(&subject)?;
-        Ok(Self {
-            record_entity,
-            subject,
-            params,
-        })
-    }
-
-    pub fn into_subject(
-        &self,
-    ) -> Result<Arc<dyn IntoSubject>, SubjectPayloadError> {
-        let subject: Subjects = self.clone().try_into()?;
-        Ok(subject.into())
-    }
-
-    pub fn record_entity(&self) -> &RecordEntity {
-        &self.record_entity
-    }
-
-    pub fn parsed_subject(&self) -> Result<String, SubjectPayloadError> {
-        let subject_item = self.into_subject()?;
-        Ok(subject_item.parse())
-    }
-
-    fn record_from_subject_str(
-        subject: &str,
-    ) -> Result<RecordEntity, SubjectPayloadError> {
-        let subject = subject.to_lowercase();
-        let subject_entity = if subject.contains("_") {
-            subject
-                .split("_")
-                .next()
-                .ok_or(SubjectPayloadError::UnknownSubject(subject.clone()))?
-        } else {
-            &subject
-        };
-        RecordEntity::from_str(subject_entity)
-            .map_err(|_| SubjectPayloadError::UnknownSubject(subject))
-    }
-}
-
 macro_rules! impl_try_from_subjects {
     ($(($subject_type:ty, $variant:ident)),+ $(,)?) => {
         // Implementation for RecordPacket
@@ -212,7 +152,7 @@ mod tests {
             json!({
                 "producer": "0x0101010101010101010101010101010101010101010101010101010101010101",
                 "height": 123
-            }),
+            }).to_string(),
         ).unwrap();
         let subject: Subjects = block_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::Block(_)));
@@ -227,21 +167,25 @@ mod tests {
                 "input_index": 1,
                 "owner": "0x0303030303030303030303030303030303030303030303030303030303030303",
                 "asset_id": "0x0404040404040404040404040404040404040404040404040404040404040404"
-            }),
+            }).to_string(),
         ).unwrap();
         let subject: Subjects = inputs_coin_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::InputsCoin(_)));
 
         // Test with empty params
-        let empty_block_json =
-            SubjectPayload::new(BlocksSubject::ID.to_string(), json!({}))
-                .unwrap();
+        let empty_block_json = SubjectPayload::new(
+            BlocksSubject::ID.to_string(),
+            json!({}).to_string(),
+        )
+        .unwrap();
         let subject: Subjects = empty_block_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::Block(_)));
 
         // Test invalid subject
-        let result =
-            SubjectPayload::new("invalid_subject".to_string(), json!({}));
+        let result = SubjectPayload::new(
+            "invalid_subject".to_string(),
+            json!({}).to_string(),
+        );
         assert!(matches!(
             result,
             Err(SubjectPayloadError::UnknownSubject(_))

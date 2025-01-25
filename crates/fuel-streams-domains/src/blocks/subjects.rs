@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::types::*;
 
-#[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(
+    Subject, Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq,
+)]
 #[subject(id = "blocks")]
 #[subject(entity = "Block")]
 #[subject(query_all = "blocks.>")]

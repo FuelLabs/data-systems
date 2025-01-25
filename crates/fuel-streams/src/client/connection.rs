@@ -90,10 +90,9 @@ impl Connection {
         let message = ClientMessage::Subscribe(SubscriptionPayload {
             deliver_policy,
             subject: subject.id().to_string(),
-            params: subject.to_json().into(),
+            params: subject.to_json(),
         });
         self.send_client_message(message).await?;
-
         let stream = self.read_stream.by_ref().filter_map(|msg| async move {
             match msg {
                 Ok(TungsteniteMessage::Binary(bin)) => {
@@ -143,7 +142,7 @@ impl Connection {
     ) -> Result<(), ClientError> {
         let message = ClientMessage::Unsubscribe(SubscriptionPayload {
             subject: subject.id().to_string(),
-            params: subject.to_json().into(),
+            params: subject.to_json(),
             deliver_policy,
         });
         self.send_client_message(message).await?;
