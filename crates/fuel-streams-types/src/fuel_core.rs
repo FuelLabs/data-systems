@@ -75,7 +75,11 @@ use fuel_core::{
 };
 use fuel_core_bin::FuelService;
 use fuel_core_importer::ports::ImporterDatabase;
-use fuel_core_storage::transactional::AtomicView;
+use fuel_core_storage::{
+    tables::Transactions,
+    transactional::AtomicView,
+    StorageAsRef,
+};
 use fuel_core_types::blockchain::consensus::{Consensus, Sealed};
 use tokio::sync::broadcast::Receiver;
 
@@ -95,6 +99,10 @@ pub enum FuelCoreError {
     OffchainSync(String),
     #[error("Failed to get block producer from consensus")]
     GetBlockProducer,
+    #[error("Failed to get item from storage: {0}")]
+    Storage(fuel_core_storage::Error),
+    #[error("Failed to find transactions with tx_id: {0}")]
+    TransactionNotFound(String),
 }
 
 pub type FuelCoreResult<T> = Result<T, FuelCoreError>;
@@ -139,6 +147,11 @@ pub trait FuelCoreLike: Sync + Send {
             .map(Into::into)
             .unwrap_or_default())
     }
+
+    fn get_tx_by_id(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<FuelCoreTransaction>;
 
     fn get_tx_status(
         &self,
@@ -289,6 +302,19 @@ impl FuelCoreLike for FuelCore {
             .block_importer
             .block_importer
             .subscribe()
+    }
+
+    fn get_tx_by_id(
+        &self,
+        tx_id: &FuelCoreBytes32,
+    ) -> FuelCoreResult<FuelCoreTransaction> {
+        let storage =
+            self.database().on_chain().storage_as_ref::<Transactions>();
+        let tx = storage.get(tx_id).map_err(FuelCoreError::Storage)?;
+        match tx {
+            Some(tx) => Ok(tx.into_owned()),
+            None => Err(FuelCoreError::TransactionNotFound(tx_id.to_string())),
+        }
     }
 
     fn get_tx_status(

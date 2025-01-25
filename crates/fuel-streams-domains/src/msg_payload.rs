@@ -79,8 +79,7 @@ impl MsgPayload {
     ) -> Result<Self, MsgPayloadError> {
         let (block, producer) =
             fuel_core.get_block_and_producer(sealed_block)?;
-        let txs =
-            Self::txs_from_fuelcore(&fuel_core, sealed_block, metadata).await?;
+        let txs = Self::txs_from_fuelcore(&fuel_core, sealed_block).await?;
         let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
@@ -135,25 +134,32 @@ impl MsgPayload {
     pub async fn txs_from_fuelcore(
         fuel_core: &Arc<dyn FuelCoreLike>,
         sealed_block: &FuelCoreSealedBlock,
-        metadata: &Metadata,
     ) -> Result<Vec<Transaction>, MsgPayloadError> {
         let mut transactions: Vec<Transaction> = vec![];
         let blocks_txs = sealed_block.entity.transactions_vec();
-        for tx_item in blocks_txs.iter() {
-            let tx_id = tx_item.id(&metadata.chain_id);
-            let tx_status =
-                Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
-            let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
-            let new_transaction = Transaction::new(
-                &tx_id.into(),
-                tx_item,
-                &tx_status,
-                &metadata.base_asset_id,
-                &receipts,
-            );
-            transactions.push(new_transaction);
+        for tx in blocks_txs.iter() {
+            let tx = Self::tx_from_fuel_core(fuel_core, tx).await?;
+            transactions.push(tx);
         }
         Ok(transactions)
+    }
+
+    pub async fn tx_from_fuel_core(
+        fuel_core: &Arc<dyn FuelCoreLike>,
+        tx: &fuel_tx::Transaction,
+    ) -> Result<Transaction, MsgPayloadError> {
+        let chain_id = fuel_core.chain_id();
+        let base_asset_id = fuel_core.base_asset_id();
+        let tx_id = tx.id(chain_id);
+        let tx_status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
+        let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
+        Ok(Transaction::new(
+            &tx_id.into(),
+            tx,
+            &tx_status,
+            base_asset_id,
+            &receipts,
+        ))
     }
 
     async fn retrieve_tx_status(
