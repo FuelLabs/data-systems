@@ -9,7 +9,7 @@ use super::DeliverPolicy;
 pub struct SubscriptionPayload {
     pub deliver_policy: DeliverPolicy,
     pub subject: String,
-    pub params: serde_json::Value,
+    pub params: String,
 }
 impl TryFrom<SubscriptionPayload> for SubjectPayload {
     type Error = SubjectPayloadError;
@@ -21,12 +21,6 @@ impl std::fmt::Display for SubscriptionPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{s}")
-    }
-}
-impl TryFrom<String> for SubscriptionPayload {
-    type Error = serde_json::Error;
-    fn try_from(subscription_id: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&subscription_id)
     }
 }
 
@@ -91,14 +85,22 @@ pub struct ResponseMessage {
 
 #[cfg(test)]
 mod tests {
+    use fuel_streams_domains::{
+        blocks::BlocksSubject,
+        SubjectPayload,
+        Subjects,
+    };
+    use serde_json::json;
+
     use super::{ClientMessage, DeliverPolicy, SubscriptionPayload};
+    use crate::subjects::*;
 
     #[test]
     fn test_sub_ser() {
         let stream_topic_subject = "blocks.*.*".to_owned();
         let msg = ClientMessage::Subscribe(SubscriptionPayload {
             subject: stream_topic_subject.clone(),
-            params: serde_json::Value::Null,
+            params: json!({}).to_string(),
             deliver_policy: DeliverPolicy::New,
         });
         let ser_str_value = serde_json::to_string(&msg).unwrap();
@@ -106,7 +108,7 @@ mod tests {
         let expected_value = serde_json::json!({
             "subscribe": {
                 "subject": stream_topic_subject,
-                "params": serde_json::Value::Null,
+                "params": json!({}).to_string(),
                 "deliverPolicy": "new"
             }
         });
@@ -117,5 +119,36 @@ mod tests {
         let deser_msg_str =
             serde_json::from_str::<ClientMessage>(&ser_str_value).unwrap();
         assert!(msg.eq(&deser_msg_str));
+    }
+
+    #[test]
+    fn test_converting_subject_to_payloads() {
+        let subject = BlocksSubject::build(None, Some(1.into()));
+        let sub_payload = SubscriptionPayload {
+            deliver_policy: DeliverPolicy::New,
+            subject: BlocksSubject::ID.to_string(),
+            params: subject.to_json(),
+        };
+
+        // Ensure that the SubscriptionPayload can be converted to a SubjectPayload
+        let payload: SubjectPayload = sub_payload.try_into().unwrap();
+        assert_eq!(payload.params, subject.to_json());
+        assert_eq!(payload.subject, BlocksSubject::ID.to_string());
+
+        // Ensure that the SubjectPayload can be converted to a Subjects
+        let converted_subject: Subjects = payload.clone().try_into().unwrap();
+        match converted_subject {
+            Subjects::Block(block_subject) => {
+                assert_eq!(
+                    block_subject,
+                    BlocksSubject::build(None, Some(1.into()))
+                );
+            }
+            _ => panic!("Expected Subjects::Blocks variant"),
+        }
+
+        // Ensure that the SubjectPayload can be converted to a Subjects
+        let dyn_subject = payload.into_subject();
+        assert!(dyn_subject.is_ok());
     }
 }
