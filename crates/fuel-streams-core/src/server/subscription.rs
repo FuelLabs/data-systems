@@ -1,16 +1,54 @@
 use fuel_streams_domains::{SubjectPayload, SubjectPayloadError};
 use fuel_web_utils::server::middlewares::api_key::ApiKey;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use super::DeliverPolicy;
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone, Hash)]
+#[derive(Eq, PartialEq, Debug, Serialize, Clone, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPayload {
     pub deliver_policy: DeliverPolicy,
     pub subject: String,
     pub params: String,
 }
+
+impl<'de> Deserialize<'de> for SubscriptionPayload {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RawPayload {
+            deliver_policy: DeliverPolicy,
+            subject: String,
+            params: serde_json::Value,
+        }
+
+        let raw = RawPayload::deserialize(deserializer)?;
+
+        // Convert params to a string if it's not already one
+        let params = if raw.params.is_string() {
+            raw.params
+                .as_str()
+                .ok_or_else(|| {
+                    serde::de::Error::custom("params string conversion failed")
+                })?
+                .to_string()
+        } else {
+            // If it's not a string, serialize it to a JSON string
+            serde_json::to_string(&raw.params)
+                .map_err(serde::de::Error::custom)?
+        };
+
+        Ok(SubscriptionPayload {
+            deliver_policy: raw.deliver_policy,
+            subject: raw.subject,
+            params,
+        })
+    }
+}
+
 impl TryFrom<SubscriptionPayload> for SubjectPayload {
     type Error = SubjectPayloadError;
     fn try_from(payload: SubscriptionPayload) -> Result<Self, Self::Error> {
@@ -151,5 +189,38 @@ mod tests {
         // Ensure that the SubjectPayload can be converted to a Subjects
         let dyn_subject = payload.into_subject();
         assert!(dyn_subject.is_ok());
+    }
+
+    #[test]
+    fn test_subscription_payload_deserialization() {
+        // Test with JSON object params
+        let json = json!({
+            "subject": "blocks",
+            "deliverPolicy": "new",
+            "params": { "height": 123 }
+        });
+        let payload: SubscriptionPayload =
+            serde_json::from_value(json).unwrap();
+        assert_eq!(payload.params, r#"{"height":123}"#);
+
+        // Test with string params
+        let json = json!({
+            "subject": "blocks",
+            "deliverPolicy": "new",
+            "params": "{\"height\":123}"
+        });
+        let payload: SubscriptionPayload =
+            serde_json::from_value(json).unwrap();
+        assert_eq!(payload.params, r#"{"height":123}"#);
+
+        // Test with empty object params
+        let json = json!({
+            "subject": "blocks",
+            "deliverPolicy": "new",
+            "params": {}
+        });
+        let payload: SubscriptionPayload =
+            serde_json::from_value(json).unwrap();
+        assert_eq!(payload.params, "{}");
     }
 }
