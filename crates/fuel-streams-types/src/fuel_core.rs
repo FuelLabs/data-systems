@@ -186,7 +186,7 @@ pub trait FuelCoreLike: Sync + Send {
         Ok((block, block_producer.into()))
     }
 
-    fn get_sealed_block_by_height(
+    fn get_sealed_block(
         &self,
         block_height: crate::BlockHeight,
     ) -> Sealed<FuelCoreBlock> {

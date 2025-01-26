@@ -23,4 +23,6 @@ pub enum PublishError {
     BlockHeight(#[from] BlockHeightError),
     #[error("Failed to get sealed block from block height")]
     BlockNotFound,
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 }
