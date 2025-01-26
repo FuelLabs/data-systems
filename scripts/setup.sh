@@ -11,7 +11,7 @@ fi
 pnpm install
 
 # Install fixed nightly toolchain
-rustup toolchain install nightly-2024-11-06 -c rustfmt
+rustup toolchain install nightly-2025-01-24 -c rustfmt
 
 install_cmd="cargo binstall --force --no-confirm"
 
@@ -28,6 +28,8 @@ $install_cmd cargo-nextest --secure
 
 # Binstall does not support --features
 cargo install cargo-audit --locked --features=fix --force
+cargo install release-plz --locked
+cargo install taplo-cli --locked
 
 # Check Helm and install helm-unittest plugin
 if ! command -v helm &> /dev/null; then

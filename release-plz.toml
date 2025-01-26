@@ -1,0 +1,147 @@
+[workspace]
+changelog_update = false # update changelog automatically
+git_release_enable = false # create a release on github
+git_tag_enable = false # create a tag on github
+dependencies_update = false # update dependencies automatically
+publish = false # publish the package
+release = false # release the package
+release_always = false # release are made on every commit
+semver_check = false # check if the version is a valid semver
+publish_timeout = "60m" # timeout for the publish command
+pr_labels = ["release"]
+pr_name = "ci(release): Release v{{ version }}"
+git_release_body = """
+{{ changelog }}
+{% if remote.contributors %}
+### Contributors
+{% for contributor in remote.contributors %}
+* @{{ contributor.username }}
+{% endfor %}
+{% endif %}
+"""
+
+[[package]]
+name = "fuel-data-parser"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-message-broker"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-streams"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+git_tag_name = "fuel-streams/v{{ version }}"
+git_tag_enable = true
+git_release_enable = true
+release = true
+publish = true
+semver_check = true
+
+[[package]]
+name = "fuel-streams-core"
+release = true
+publish = true
+semver_check = true
+
+[[package]]
+name = "fuel-streams-domains"
+release = true
+publish = true
+semver_check = true
+
+[[package]]
+name = "subject-derive"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-streams-macros"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-streams-store"
+release = true
+publish = true
+semver_check = true
+
+[[package]]
+name = "fuel-streams-types"
+release = true
+publish = true
+semver_check = true
+
+[[package]]
+name = "fuel-web-utils"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-streams-test"
+release = false
+publish = false
+
+[[package]]
+name = "subjects-schema"
+release = false
+publish = false
+
+[changelog]
+sort_commits = "newest"
+header = """# Changelog
+
+## [Unreleased]
+"""
+
+body = """
+
+{% macro print_commit(commit) -%}
+    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+      {% if commit.breaking %}[**breaking**] {% endif %}\
+      {{ commit.message | upper_first }} - \
+      ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }}))\
+{% endmacro -%}
+
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="v") }}]({{ release_link }})
+    {% else %}\
+        ## [{{ version | trim_start_matches(pat="v") }}]
+    {% endif %}\
+{% endif %}\
+
+{% for group, commits in commits
+| filter(attribute="merge_commit", value=false)
+| unique(attribute="message")
+| group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits
+    | filter(attribute="scope")
+    | sort(attribute="scope") %}
+        {{ self::print_commit(commit=commit) }}
+    {%- endfor -%}
+    {% raw %}\n{% endraw %}\
+    {%- for commit in commits %}
+        {%- if not commit.scope -%}
+            {{ self::print_commit(commit=commit) }}
+        {% endif -%}
+    {% endfor -%}
+{% endfor %}\n
+"""
+
+commit_parsers = [
+  { message = "^.*", group = "<!-- 8 -->📋 Other" },
+  { message = "^build", group = "<!-- 5 -->🏗️ Build" },
+  { message = "^ci", group = "<!-- 7 -->📟 CI" },
+  { message = "^ci\\(release\\)", skip = true },
+  { message = "^docs", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^feat", group = "<!-- 0 -->⭐ Features" },
+  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^perf", group = "<!-- 4 -->🚀 Performance" },
+  { message = "^refactor", group = "<!-- 2 -->🔄 Refactor" },
+  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+]

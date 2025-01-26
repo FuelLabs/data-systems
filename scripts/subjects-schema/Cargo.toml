@@ -1,15 +1,16 @@
 [package]
 name = "subjects-schema"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-rust-version = { workspace = true }
-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish = false
 
 [dependencies]
-fuel-streams-domains = { workspace = true }
-fuel-streams-macros = { workspace = true }
-serde_json = { workspace = true }
+fuel-streams-domains.workspace = true
+fuel-streams-macros.workspace = true
+serde_json.workspace = true

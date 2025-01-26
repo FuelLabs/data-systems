@@ -28,15 +28,31 @@ impl Record for Receipt {
     {
         let db_item = ReceiptDbItem::try_from(packet)?;
         let record = sqlx::query_as::<_, ReceiptDbItem>(
-            "INSERT INTO receipts (
-                subject, value, block_height, tx_id, tx_index, receipt_index,
-                receipt_type, from_contract_id, to_contract_id, to_address,
-                asset_id, contract_id, sub_id, sender_address, recipient_address
+            "WITH upsert AS (
+                INSERT INTO receipts (
+                    subject, value, block_height, tx_id, tx_index, receipt_index,
+                    receipt_type, from_contract_id, to_contract_id, to_address,
+                    asset_id, contract_id, sub_id, sender_address, recipient_address
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                ON CONFLICT (subject) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    block_height = EXCLUDED.block_height,
+                    tx_id = EXCLUDED.tx_id,
+                    tx_index = EXCLUDED.tx_index,
+                    receipt_index = EXCLUDED.receipt_index,
+                    receipt_type = EXCLUDED.receipt_type,
+                    from_contract_id = EXCLUDED.from_contract_id,
+                    to_contract_id = EXCLUDED.to_contract_id,
+                    to_address = EXCLUDED.to_address,
+                    asset_id = EXCLUDED.asset_id,
+                    contract_id = EXCLUDED.contract_id,
+                    sub_id = EXCLUDED.sub_id,
+                    sender_address = EXCLUDED.sender_address,
+                    recipient_address = EXCLUDED.recipient_address
+                RETURNING *
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            RETURNING subject, value, block_height, tx_id, tx_index, receipt_index,
-                receipt_type, from_contract_id, to_contract_id, to_address,
-                asset_id, contract_id, sub_id, sender_address, recipient_address"
+            SELECT * FROM upsert"
         )
         .bind(db_item.subject)
         .bind(db_item.value)

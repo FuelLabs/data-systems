@@ -1,17 +1,17 @@
+edition = "2021"
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+imports_layout = "HorizontalVertical"
 max_width = 80
 normalize_comments = true
-imports_layout = "HorizontalVertical"
-imports_granularity = "Crate"
-group_imports = "StdExternalCrate"
-trailing_semicolon = false
-use_try_shorthand = true
-edition = "2021"
-use_field_init_shorthand = true
 reorder_imports = true
 reorder_modules = true
 tab_spaces = 4
+trailing_semicolon = false
+use_field_init_shorthand = true
+use_try_shorthand = true
 # Add these new settings
-format_macro_matchers = true
 format_macro_bodies = true
+format_macro_matchers = true
 # If you want macros to ignore the max_width setting
 overflow_delimited_expr = true

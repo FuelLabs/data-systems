@@ -1,20 +1,20 @@
 [package]
 name = "fuel-streams-examples"
-authors = { workspace = true }
-keywords = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-version = { workspace = true }
-rust-version = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 publish = false
 
 [dependencies]
-anyhow = { workspace = true }
+anyhow.workspace = true
 fuel-streams = { workspace = true, features = ["test-helpers"] }
-futures = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+futures.workspace = true
+tokio.workspace = true
 
 [[example]]
 name = "blocks"

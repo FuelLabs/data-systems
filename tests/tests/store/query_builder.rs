@@ -23,6 +23,7 @@ fn test_query_builder_simple() {
         limit: 10,
         from_block: None,
         namespace: Some("test_ns".to_string()),
+        distinct: false,
     };
 
     let sql_statement = subject.to_sql_select();
@@ -87,6 +88,7 @@ fn test_query_builder_with_complex_ordering() {
         limit: 20,
         from_block: Some(50.into()),
         namespace: Some("test_ns".to_string()),
+        distinct: false,
     };
 
     let query = Input::build_find_many_query(subject, options);

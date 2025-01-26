@@ -1,0 +1,21 @@
+[formatting]
+align_comments = true
+align_entries = false
+reorder_arrays = true
+reorder_keys = false
+
+[[rule]]
+include = ["**/**/Cargo.toml", "**/Cargo.toml", "Cargo.toml"]
+keys = [
+  "build-dependencies",
+  "dependencies",
+  "dev-dependencies",
+  "optional-dependencies",
+  "workspace.build-dependencies",
+  "workspace.dependencies",
+  "workspace.dev-dependencies",
+  "workspace.optional-dependencies",
+]
+
+[rule.formatting]
+reorder_keys = true

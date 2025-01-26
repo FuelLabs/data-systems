@@ -7,20 +7,20 @@ protocol = "sparse"
 linker = "aarch64-linux-gnu-gcc"
 
 [profile.profiling]
-inherits = "release"
 debug = 1
+inherits = "release"
 
 [profile.ci]
-inherits = "dev"
-debug = 0
-opt-level = 0
-debug-assertions = true
 codegen-units = 32
+debug = 0
+debug-assertions = true
 incremental = true
-rpath = false
+inherits = "dev"
 lto = false
-panic = 'unwind'
+opt-level = 0
 overflow-checks = true
+panic = 'unwind'
+rpath = false
 
 [net]
 git-fetch-with-cli = true

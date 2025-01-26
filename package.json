@@ -8,8 +8,8 @@
     "node": ">=22.11.0"
   },
   "scripts": {
-    "prettier:fix": "prettier --write \"**/*.@(json|md|sh|toml)\"",
-    "prettier:validate": "prettier --check \"**/*.@(json|md|sh|toml)\"",
+    "prettier:fix": "prettier --write \"**/*.@(json|md|sh)\"",
+    "prettier:validate": "prettier --check \"**/*.@(json|md|sh)\"",
     "md:lint": "markdownlint -c .markdownlint.json **/*.md -d -i target -i node_modules -i CHANGELOG.md",
     "md:fix": "pnpm md:lint --fix"
   },
@@ -19,7 +19,6 @@
     "markdownlint": "0.37.3",
     "markdownlint-cli": "^0.43.0",
     "prettier": "^3.4.1",
-    "prettier-plugin-sh": "^0.14.0",
-    "prettier-plugin-toml": "^2.0.1"
+    "prettier-plugin-sh": "^0.14.0"
   }
 }

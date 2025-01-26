@@ -1,48 +1,48 @@
 [cov_fuel_streams]
-name = "Fuel Streams Coverage Analysis"
-packages = ["fuel-streams"]
 all-features = true
-run-types = ["Lib", "Tests"]
-timeout = "120s"
 color = "Always"
-locked = true
 count = true
-no-dead-code = true
-fail-immediately = true
-skip-clean = true
 engine = "Llvm"
+fail-immediately = true
+locked = true
+name = "Fuel Streams Coverage Analysis"
+no-dead-code = true
+packages = ["fuel-streams"]
+run-types = ["Lib", "Tests"]
+skip-clean = true
+timeout = "120s"
 #fail-under = 80
 
 # ==========================================
 [cov_fuel_streams_core]
-name = "Fuel Streams Core Coverage Analysis"
-packages = ["fuel-streams-core"]
 all-features = true
-run-types = ["Lib", "Tests"]
-timeout = "120s"
 color = "Always"
-locked = true
 count = true
-no-dead-code = true
-fail-immediately = true
-skip-clean = true
 engine = "Llvm"
+fail-immediately = true
+locked = true
+name = "Fuel Streams Core Coverage Analysis"
+no-dead-code = true
+packages = ["fuel-streams-core"]
+run-types = ["Lib", "Tests"]
+skip-clean = true
+timeout = "120s"
 #fail-under = 80
 
 # ==========================================
 [cov_fuel_streams_macros]
-name = "Fuel Streams Macros Coverage Analysis"
-packages = ["fuel-streams-macros"]
 all-features = true
-run-types = ["Lib", "Tests"]
-timeout = "120s"
 color = "Always"
-locked = true
 count = true
-no-dead-code = true
-fail-immediately = true
-skip-clean = true
 engine = "Llvm"
+fail-immediately = true
+locked = true
+name = "Fuel Streams Macros Coverage Analysis"
+no-dead-code = true
+packages = ["fuel-streams-macros"]
+run-types = ["Lib", "Tests"]
+skip-clean = true
+timeout = "120s"
 #fail-under = 80
 
 # ==========================================
@@ -68,21 +68,21 @@ engine = "Llvm"
 
 # ==========================================
 [cov_fuel_streams_tests]
-name = "Fuel Data Systems Tests Coverage Analysis"
-packages = ["streams-tests"]
 all-features = true
-run-types = ["Lib", "Tests"]
-timeout = "120s"
 color = "Always"
-locked = true
 count = true
-no-dead-code = true
-fail-immediately = true
-skip-clean = true
 engine = "Llvm"
+fail-immediately = true
+locked = true
+name = "Fuel Data Systems Tests Coverage Analysis"
+no-dead-code = true
+packages = ["streams-tests"]
+run-types = ["Lib", "Tests"]
+skip-clean = true
+timeout = "120s"
 #fail-under = 80
 
 # ==========================================
 [report]
-output-dir = "./cov-reports"
 out = ["Html", "Xml"]
+output-dir = "./cov-reports"
