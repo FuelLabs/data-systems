@@ -25,11 +25,11 @@ fuel-data-parser = { workspace = true }
 fuel-streams-store = { workspace = true }
 fuel-web-utils = { workspace = true }
 sqlx = { workspace = true, default-features = false, features = [
-    "runtime-tokio",
-    "postgres",
-    "any",
-    "tls-native-tls",
-    "macros",
+  "any",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-native-tls",
 ] }
 thiserror = "2.0"
 tokio = { workspace = true }

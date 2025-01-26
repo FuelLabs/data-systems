@@ -18,14 +18,6 @@ path = "src/main.rs"
 [dependencies]
 actix-web.workspace = true
 actix-ws = "0.3.0"
-serde.workspace = true
-sqlx = { workspace = true, default-features = false, features = [
-    "runtime-tokio",
-    "postgres",
-    "any",
-    "tls-native-tls",
-    "macros",
-] }
 anyhow.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
@@ -33,6 +25,7 @@ clap.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
+fuel-db-utils.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true
@@ -40,11 +33,18 @@ fuel-streams-store.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 fuel-web-utils.workspace = true
-fuel-db-utils.workspace = true
 futures.workspace = true
 num_cpus.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
+serde.workspace = true
 serde_json.workspace = true
+sqlx = { workspace = true, default-features = false, features = [
+  "any",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-native-tls",
+] }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true

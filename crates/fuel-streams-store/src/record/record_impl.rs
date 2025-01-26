@@ -59,7 +59,11 @@ pub trait Record: RecordEncoder + 'static {
         }
 
         // Internal select statement
-        query_builder.push("SELECT * FROM ");
+        query_builder.push("SELECT ");
+        if options.distinct {
+            query_builder.push("DISTINCT ON (block_height) ");
+        }
+        query_builder.push("* FROM ");
         query_builder.push(Self::ENTITY.table_name());
         let mut conditions = Vec::new();
         if let Some(where_clause) = subject.to_sql_where() {

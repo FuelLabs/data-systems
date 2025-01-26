@@ -93,6 +93,7 @@ fuel-tx = { version = "0.58.2" }
 fuel-vm = { version = "0.58.2" }
 
 fuel-data-parser = { version = "0.0.22", path = "crates/fuel-data-parser" }
+fuel-db-utils = { version = "0.0.22", path = "crates/fuel-db-utils" }
 fuel-message-broker = { version = "0.0.22", path = "crates/fuel-message-broker" }
 fuel-streams = { version = "0.0.22", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.22", path = "crates/fuel-streams-core" }

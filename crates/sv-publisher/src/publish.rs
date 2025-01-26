@@ -57,7 +57,8 @@ pub async fn process_transactions_status_none(
         .with_tx_status(Some(TransactionStatus::None))
         .dyn_arc();
 
-    let query_opts = QueryOptions::default().with_limit(500);
+    let query_opts =
+        QueryOptions::default().with_limit(500).with_distinct(true);
     let mut historical = store
         .historical_streaming(
             subject.to_owned(),
@@ -87,5 +88,5 @@ pub async fn process_transactions_status_none(
         publish_block(message_broker, fuel_core, &sealed_block, telemetry)
             .await?;
     }
-    todo!()
+    Ok(())
 }
