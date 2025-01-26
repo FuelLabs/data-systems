@@ -109,10 +109,10 @@ header = """# Changelog
 
 body = """
 {% macro print_commit(commit) -%}
-    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
-      {% if commit.breaking %}[**breaking**] {% endif %}\
+    - {% if commit.breaking %}[**breaking**] {% endif %}\
+      {% if commit.scope %}*({{ commit.scope }})*: {% endif %}\
       {{ commit.message | upper_first }} \
-      ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }})){{ self::username(commit=commit) }}{{ self::pr(commit=commit) }}
+      ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }})) {{ self::username(commit=commit) }}
 {% endmacro -%}
 
 {% if version %}\
@@ -128,13 +128,8 @@ body = """
 | unique(attribute="message")
 | group_by(attribute="group") %}
     ### {{ group | striptags | trim | upper_first }}
-    {% for message, similar_commits in commits
-    | group_by(attribute="message") %}
-        - {% if similar_commits[0].breaking %}[**breaking**] {% endif %}{{ message | upper_first }}
-        {% for commit in similar_commits %}
-            - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
-              ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }})){{ self::username(commit=commit) }}{{ self::pr(commit=commit) }}
-        {%- endfor %}
+    {% for commit in commits %}
+        {{ self::print_commit(commit=commit) }}
     {% endfor %}
 {% endfor %}
 
@@ -147,9 +142,6 @@ body = """
 {% endif -%}
 {%- macro username(commit) -%}
     {% if commit.remote.username %} (by @{{ commit.remote.username }}){% endif -%}
-{% endmacro -%}
-{%- macro pr(commit) -%}
-    {% if commit.remote.pr_number %} - #{{ commit.remote.pr_number }}{% endif -%}
 {% endmacro -%}
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!\n
