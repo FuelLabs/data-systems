@@ -10,6 +10,7 @@ use fuel_streams_store::{
     store::Store,
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
+use pretty_assertions::assert_eq;
 
 async fn insert_transaction(tx: &Transaction) -> anyhow::Result<()> {
     let prefix = create_random_db_name();

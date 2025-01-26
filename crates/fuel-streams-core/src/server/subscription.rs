@@ -90,6 +90,7 @@ mod tests {
         SubjectPayload,
         Subjects,
     };
+    use pretty_assertions::assert_eq;
     use serde_json::json;
 
     use super::{ClientMessage, DeliverPolicy, SubscriptionPayload};

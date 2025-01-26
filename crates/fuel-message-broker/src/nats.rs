@@ -260,6 +260,7 @@ impl MessageBroker for NatsMessageBroker {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rand::Rng;
 
     use super::*;

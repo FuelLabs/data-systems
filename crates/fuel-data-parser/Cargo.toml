@@ -24,6 +24,9 @@ strum_macros.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 
+[dev-dependencies]
+pretty_assertions.workspace = true
+
 [features]
 all = [
   "bincode",

@@ -19,6 +19,7 @@ use fuel_streams_store::{
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
 use fuel_streams_types::{Address, HexData, TxId};
+use pretty_assertions::assert_eq;
 
 async fn insert_utxo(utxo: Utxo, utxo_type: UtxoType) -> anyhow::Result<()> {
     let prefix = create_random_db_name();

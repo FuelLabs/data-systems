@@ -19,6 +19,14 @@ disallowed-macros = [
   { reason = "Use tracing instead of log", path = "tracing::log::log_enabled" },
   { reason = "Use tracing instead of log", path = "tracing::log::trace" },
   { reason = "Use tracing instead of log", path = "tracing::log::warn" },
+
+  { reason = "Do not commit TODOs in code", path = "std::todo" },
+  { reason = "Do not commit debug prints", path = "std::dbg" },
+  { reason = "Do not commit unimplemented blocks", path = "std::unimplemented" },
+
+  # Enforce pretty_assertions in tests
+  { reason = "Use pretty_assertions::assert_eq instead", path = "std::assert_eq" },
+  { reason = "Use pretty_assertions::assert_ne instead", path = "std::assert_ne" },
 ]
 disallowed-methods = [
   { path = "std::iter::Iterator::for_each", reason = "prefer `for` for side-effects" },

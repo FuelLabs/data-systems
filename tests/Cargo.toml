@@ -55,7 +55,7 @@ tokio = { workspace = true, features = [
 
 [dev-dependencies]
 mockall = "0.13.1"
-pretty_assertions = { workspace = true }
+pretty_assertions.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["fuel-streams-macros"]

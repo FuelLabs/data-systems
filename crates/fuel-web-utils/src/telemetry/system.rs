@@ -514,6 +514,7 @@ fn decimal(current: f32) -> Decimal {
 mod tests {
     use std::path::PathBuf;
 
+    use pretty_assertions::assert_eq;
     use rust_decimal::Decimal;
     use serde::Serialize;
 

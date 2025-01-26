@@ -1,4 +1,5 @@
 use fuel_streams_macros::subject::*;
+use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]

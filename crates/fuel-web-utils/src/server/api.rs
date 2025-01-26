@@ -140,6 +140,7 @@ mod tests {
     use std::time::Duration;
 
     use actix_web::{http, test, web, App, HttpResponse};
+    use pretty_assertions::assert_eq;
 
     use crate::server::{
         api::with_prefixed_route,
