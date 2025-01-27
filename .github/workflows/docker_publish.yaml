@@ -31,6 +31,7 @@ concurrency:
 jobs:
   build-and-publish-image:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         package:
