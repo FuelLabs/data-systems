@@ -124,7 +124,7 @@ impl ApiKey {
         let random_num = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .filter(|c| c.is_ascii_alphabetic())
-            .take(12)
+            .take(32)
             .map(char::from)
             .collect::<String>();
         format!("fuel-{}", random_num)

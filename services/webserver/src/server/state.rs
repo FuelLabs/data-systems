@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
@@ -23,7 +23,7 @@ use crate::{config::Config, metrics::Metrics, API_PASSWORD};
 #[derive(Clone)]
 pub struct ServerState {
     pub start_time: Instant,
-    pub msg_broker: Arc<dyn MessageBroker>,
+    pub msg_broker: Arc<NatsMessageBroker>,
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
@@ -33,9 +33,8 @@ pub struct ServerState {
 
 impl ServerState {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
-        let msg_broker =
-            MessageBrokerClient::Nats.start(&config.broker.url).await?;
-
+        let url = &config.broker.url;
+        let msg_broker = NatsMessageBroker::setup(url, None).await?;
         let db = Db::new(DbConnectionOpts {
             connection_str: config.db.url.clone(),
             ..Default::default()

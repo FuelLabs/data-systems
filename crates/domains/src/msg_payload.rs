@@ -104,21 +104,6 @@ impl MsgPayload {
             .collect::<Vec<_>>()
     }
 
-    pub fn message_id(&self) -> String {
-        let height = self.metadata.block_height.clone();
-        format!("block_{height}")
-    }
-
-    pub fn subject(&self) -> String {
-        let producer = self.metadata.block_producer.clone();
-        let height = self.metadata.block_height.clone();
-        format!("{}.{producer}.{height}", Self::subject_name())
-    }
-
-    pub fn subject_name() -> &'static str {
-        "block_submitted"
-    }
-
     pub fn metadata(&self) -> &Metadata {
         &self.metadata
     }

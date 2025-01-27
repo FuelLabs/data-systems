@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
-use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::types::*;
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
@@ -19,7 +19,7 @@ use sv_publisher::{
     error::PublishError,
     metrics::Metrics,
     publish::publish_block,
-    recover::recover_block_with_tx_status_none,
+    recover::recover_tx_status_none,
     state::ServerState,
 };
 use tokio_util::sync::CancellationToken;
@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     fuel_core.start().await?;
 
     let db = setup_db(&cli.db_url).await?;
-    let message_broker = setup_message_broker(&cli.nats_url).await?;
+    let message_broker = NatsMessageBroker::setup(&cli.nats_url, None).await?;
     let metrics = Metrics::new(None)?;
     let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Last block height: {}", last_block_height);
     tokio::select! {
         result = async {
-            let recover_blocks = recover_block_with_tx_status_none(
+            let recover_blocks = recover_tx_status_none(
                 &db,
                 &message_broker,
                 &fuel_core,
@@ -104,15 +104,6 @@ async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
     Ok(db)
 }
 
-async fn setup_message_broker(
-    nats_url: &str,
-) -> Result<Arc<dyn MessageBroker>, PublishError> {
-    let broker = MessageBrokerClient::Nats;
-    let broker = broker.start(nats_url).await?;
-    broker.setup().await?;
-    Ok(broker)
-}
-
 async fn find_last_published_height(
     db: &Db,
 ) -> Result<BlockHeight, PublishError> {
@@ -155,7 +146,7 @@ fn get_historical_block_range(
 
 fn process_historical_blocks(
     from_height: BlockHeight,
-    message_broker: &Arc<dyn MessageBroker>,
+    message_broker: &Arc<NatsMessageBroker>,
     fuel_core: &Arc<dyn FuelCoreLike>,
     last_block_height: &Arc<BlockHeight>,
     last_published_height: &Arc<BlockHeight>,
@@ -180,11 +171,11 @@ fn process_historical_blocks(
                 .map(|height| {
                     let message_broker = message_broker.clone();
                     let fuel_core = fuel_core.clone();
-                    let sealed_block =
-                        fuel_core.get_sealed_block(height.into());
-                    let sealed_block = Arc::new(sealed_block);
                     let telemetry = telemetry.clone();
                     async move {
+                        let sealed_block =
+                            fuel_core.get_sealed_block(height.into())?;
+                        let sealed_block = Arc::new(sealed_block);
                         publish_block(
                             &message_broker,
                             &fuel_core,
@@ -212,7 +203,7 @@ fn process_historical_blocks(
 }
 
 async fn process_live_blocks(
-    message_broker: &Arc<dyn MessageBroker>,
+    message_broker: &Arc<NatsMessageBroker>,
     fuel_core: &Arc<dyn FuelCoreLike>,
     token: CancellationToken,
     telemetry: &Arc<Telemetry<Metrics>>,

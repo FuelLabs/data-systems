@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_message_broker::{Message, MessageBroker};
+use fuel_message_broker::{Message, NatsMessageBroker, NatsQueue};
 use fuel_streams_core::{
     types::{Block, Transaction},
     FuelStreams,
@@ -39,7 +39,7 @@ enum ProcessResult {
 
 pub struct BlockExecutor {
     db: Arc<Db>,
-    message_broker: Arc<dyn MessageBroker>,
+    message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
     fuel_stores: Arc<FuelStores>,
     semaphore: Arc<Semaphore>,
@@ -50,7 +50,7 @@ pub struct BlockExecutor {
 impl BlockExecutor {
     pub fn new(
         db: Arc<Db>,
-        message_broker: &Arc<dyn MessageBroker>,
+        message_broker: &Arc<NatsMessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
@@ -79,9 +79,10 @@ impl BlockExecutor {
             self.max_tasks
         );
         let telemetry = self.telemetry.clone();
+        let queue = NatsQueue::BlockImporter(self.message_broker.clone());
         while !token.is_cancelled() {
             tokio::select! {
-                msg_result = self.message_broker.receive_blocks_stream(BATCH_SIZE) => {
+                msg_result = queue.subscribe(BATCH_SIZE) => {
                     let mut messages = msg_result?;
                     while let Some(msg) = messages.next().await {
                         let msg = msg?;

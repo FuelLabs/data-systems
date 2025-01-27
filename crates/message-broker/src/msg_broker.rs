@@ -1,4 +1,4 @@
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 use async_trait::async_trait;
 use futures::Stream;
@@ -56,6 +56,12 @@ pub enum MessageBrokerError {
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Other(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error(transparent)]
+    NatsSubscribe(#[from] async_nats::client::SubscribeError),
+    #[error(transparent)]
+    NatsPublish(
+        #[from] async_nats::error::Error<async_nats::client::PublishErrorKind>,
+    ),
 }
 
 #[async_trait]
@@ -76,95 +82,3 @@ pub type MessageStream = Box<
         + Send
         + Unpin,
 >;
-
-#[async_trait]
-pub trait MessageBroker: std::fmt::Debug + Send + Sync + 'static {
-    /// Get the current namespace
-    fn namespace(&self) -> &Namespace;
-
-    /// Setup required infrastructure (queues, exchanges, etc)
-    async fn setup(&self) -> Result<(), MessageBrokerError>;
-
-    /// Check if the broker is connected
-    fn is_connected(&self) -> bool;
-
-    /// Publish a block to the work queue for processing
-    /// Used by publisher to send blocks to consumers
-    async fn publish_block(
-        &self,
-        id: String,
-        payload: Vec<u8>,
-    ) -> Result<(), MessageBrokerError>;
-
-    /// Receive a stream of blocks from the work queue
-    /// Used by consumer to process blocks
-    async fn receive_blocks_stream(
-        &self,
-        batch_size: usize,
-    ) -> Result<MessageBlockStream, MessageBrokerError>;
-
-    /// Publish an event to a topic for subscribers
-    /// Used by Stream implementation for pub/sub
-    async fn publish_event(
-        &self,
-        topic: &str,
-        payload: bytes::Bytes,
-    ) -> Result<(), MessageBrokerError>;
-
-    /// Subscribe to events on a topic
-    /// Used by Stream implementation for pub/sub
-    async fn subscribe_to_events(
-        &self,
-        topic: &str,
-    ) -> Result<MessageStream, MessageBrokerError>;
-
-    /// Flush all in-flight messages
-    async fn flush(&self) -> Result<(), MessageBrokerError>;
-
-    /// Check if the broker is healthy
-    async fn is_healthy(&self) -> bool;
-
-    /// Get health info
-    async fn get_health_info(
-        &self,
-        uptime_secs: u64,
-    ) -> Result<serde_json::Value, MessageBrokerError>;
-}
-
-#[derive(Debug, Clone, Default)]
-pub enum MessageBrokerClient {
-    #[default]
-    Nats,
-}
-
-impl MessageBrokerClient {
-    pub async fn start(
-        &self,
-        url: &str,
-    ) -> Result<Arc<dyn MessageBroker>, MessageBrokerError> {
-        match self {
-            MessageBrokerClient::Nats => {
-                let opts = crate::NatsOpts::new(url.to_string());
-                let broker = crate::NatsMessageBroker::new(&opts).await?;
-                broker.setup().await?;
-                Ok(broker.arc())
-            }
-        }
-    }
-
-    pub async fn start_with_namespace(
-        &self,
-        url: &str,
-        namespace: &str,
-    ) -> Result<Arc<dyn MessageBroker>, MessageBrokerError> {
-        match self {
-            MessageBrokerClient::Nats => {
-                let opts = crate::NatsOpts::new(url.to_string())
-                    .with_namespace(namespace);
-                let broker = crate::NatsMessageBroker::new(&opts).await?;
-                broker.setup().await?;
-                Ok(broker.arc())
-            }
-        }
-    }
-}

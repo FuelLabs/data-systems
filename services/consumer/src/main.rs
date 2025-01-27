@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
-use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
@@ -12,26 +12,10 @@ use sv_consumer::{
     BlockExecutor,
     Server,
 };
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::fmt::time;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing subscriber
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with_timer(time::LocalTime::rfc_3339())
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(true)
-        .with_line_number(true)
-        .with_level(true)
-        .init();
-
+    fuel_web_utils::tracing::init_tracing();
     if let Err(err) = dotenvy::dotenv() {
         tracing::warn!("File .env not found: {:?}", err);
     }
@@ -42,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize shared resources
     let db = setup_db(&cli.db_url).await?;
-    let message_broker = setup_message_broker(&cli.nats_url).await?;
+    let message_broker = NatsMessageBroker::setup(&cli.nats_url, None).await?;
     let metrics = Metrics::new(None)?;
     let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
@@ -83,13 +67,4 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
     })
     .await?;
     Ok(db.arc())
-}
-
-async fn setup_message_broker(
-    nats_url: &str,
-) -> Result<Arc<dyn MessageBroker>, ConsumerError> {
-    let broker = MessageBrokerClient::Nats;
-    let broker = broker.start(nats_url).await?;
-    broker.setup().await?;
-    Ok(broker)
 }

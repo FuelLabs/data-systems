@@ -189,14 +189,21 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_sealed_block(
         &self,
         block_height: crate::BlockHeight,
-    ) -> Sealed<FuelCoreBlock> {
+    ) -> FuelCoreResult<FuelCoreSealedBlock> {
         let height = block_height.as_ref().to_owned() as u32;
-        self.onchain_database()
+        let latest_view = self
+            .onchain_database()
             .latest_view()
-            .expect("failed to get latest db view")
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?;
+
+        let sealed_block = latest_view
             .get_sealed_block_by_height(&height.into())
-            .expect("Failed to get latest block height")
-            .expect("NATS Publisher: no block at height {height}")
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?
+            .ok_or_else(|| {
+                FuelCoreError::Database(format!("No block at height {height}"))
+            })?;
+
+        Ok(sealed_block)
     }
 }
 

@@ -63,8 +63,7 @@ use futures::StreamExt;
 async fn main() -> anyhow::Result<()> {
     // Connect to NATS server
     let db = Db::new(DbConnectionOpts::default()).await?;
-    let broker = MessageBrokerClient::Nats.start("nats://localhost:4222").await?;
-    broker.setup().await?;
+    let broker = NatsMessageBroker::setup("nats://localhost:4222", None).await?;
 
     // Create or get existing stream for blocks
     let stream = Stream::<Block>::get_or_init(&broker, &db.arc()).await;

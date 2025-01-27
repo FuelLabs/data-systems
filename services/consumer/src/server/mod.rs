@@ -3,7 +3,7 @@ pub(crate) mod state;
 
 use std::sync::Arc;
 
-use fuel_message_broker::MessageBroker;
+use fuel_message_broker::NatsMessageBroker;
 use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
     telemetry::Telemetry,
@@ -14,14 +14,14 @@ use crate::{errors::ConsumerError, state::ServerState};
 
 pub struct Server {
     port: u16,
-    message_broker: Arc<dyn MessageBroker>,
+    message_broker: Arc<NatsMessageBroker>,
     telemetry: Arc<Telemetry<Metrics>>,
 }
 
 impl Server {
     pub fn new(
         port: u16,
-        message_broker: Arc<dyn MessageBroker>,
+        message_broker: Arc<NatsMessageBroker>,
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
         Self {

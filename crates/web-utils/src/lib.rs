@@ -1,6 +1,7 @@
 pub mod server;
 pub mod shutdown;
 pub mod telemetry;
+pub mod tracing;
 
 use std::sync::LazyLock;
 

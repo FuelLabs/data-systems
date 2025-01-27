@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use fuel_message_broker::MessageBroker;
+use fuel_message_broker::NatsMessageBroker;
 use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
 use serde::{Deserialize, Serialize};
 
@@ -18,13 +18,13 @@ pub struct HealthResponse {
 
 pub struct ServerState {
     pub start_time: Instant,
-    pub msg_broker: Arc<dyn MessageBroker>,
+    pub msg_broker: Arc<NatsMessageBroker>,
     pub telemetry: Arc<Telemetry<Metrics>>,
 }
 
 impl ServerState {
     pub fn new(
-        msg_broker: Arc<dyn MessageBroker>,
+        msg_broker: Arc<NatsMessageBroker>,
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
         Self {
