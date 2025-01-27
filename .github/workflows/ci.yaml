@@ -48,6 +48,7 @@ jobs:
             fuel-streams-store
             fuel-streams-types
             fuel-streams-test
+            fuel-web-utils
             sv-webserver
             sv-publisher
             sv-consumer

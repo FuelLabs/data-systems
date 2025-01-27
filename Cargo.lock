@@ -211,20 +211,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-ws"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3a1fb4f9f2794b0aadaf2ba5f14a6f034c7e86957b458c506a8cb75953f2d99"
-dependencies = [
- "actix-codec",
- "actix-http",
- "actix-web",
- "bytestring",
- "futures-core",
- "tokio",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7327,7 +7313,6 @@ dependencies = [
  "proc-macro-error-attr2",
  "proc-macro2",
  "quote",
- "syn 2.0.96",
 ]
 
 [[package]]
@@ -9244,72 +9229,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sv-publisher"
-version = "0.0.22"
-dependencies = [
- "anyhow",
- "async-trait",
- "clap 4.5.27",
- "fuel-core",
- "fuel-core-bin",
- "fuel-core-types 0.40.3",
- "fuel-message-broker",
- "fuel-streams-core",
- "fuel-streams-domains",
- "fuel-streams-store",
- "fuel-tx 0.58.2",
- "fuel-vm 0.58.2",
- "fuel-web-utils",
- "futures",
- "netlink-proto",
- "openssl",
- "prometheus",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror 2.0.11",
- "tokio",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
-name = "sv-webserver"
-version = "0.0.22"
-dependencies = [
- "actix-web",
- "actix-ws",
- "anyhow",
- "async-trait",
- "bytes",
- "clap 4.5.27",
- "displaydoc",
- "dotenvy",
- "fuel-data-parser",
- "fuel-message-broker",
- "fuel-streams-core",
- "fuel-streams-domains",
- "fuel-streams-store",
- "fuel-tx 0.58.2",
- "fuel-vm 0.58.2",
- "fuel-web-utils",
- "futures",
- "netlink-proto",
- "num_cpus",
- "openssl",
- "prometheus",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror 2.0.11",
- "time",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "validator",
-]
-
-[[package]]
 name = "symbolic-common"
 version = "12.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10462,36 +10381,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3758f5e68192bb96cc8f9b7e2c2cfdabb435499a28499a42f8f984092adad4b"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "validator"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0b4a29d8709210980a09379f27ee31549b73292c87ab9899beee1c0d3be6303"
-dependencies = [
- "idna 1.0.3",
- "once_cell",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "url",
- "validator_derive",
-]
-
-[[package]]
-name = "validator_derive"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bac855a2ce6f843beb229757e6e570a42e837bcb15e5f449dd48d5747d41bf77"
-dependencies = [
- "darling 0.20.10",
- "once_cell",
- "proc-macro-error2",
- "proc-macro2",
- "quote",
- "syn 2.0.96",
 ]
 
 [[package]]
