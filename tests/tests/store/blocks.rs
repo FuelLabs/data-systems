@@ -6,6 +6,7 @@ use fuel_streams_domains::blocks::{
 };
 use fuel_streams_store::record::Record;
 use fuel_streams_test::{create_random_db_name, setup_store};
+use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn test_block_db_item_conversion() -> anyhow::Result<()> {

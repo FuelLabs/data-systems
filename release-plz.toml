@@ -21,16 +21,6 @@ git_release_body = """
 """
 
 [[package]]
-name = "fuel-data-parser"
-release = true
-publish = true
-
-[[package]]
-name = "fuel-message-broker"
-release = true
-publish = true
-
-[[package]]
 name = "fuel-streams"
 changelog_update = true
 changelog_path = "./CHANGELOG.md"
@@ -40,6 +30,26 @@ git_release_enable = true
 release = true
 publish = true
 semver_check = true
+changelog_include = [
+  "fuel-data-parser",
+  "fuel-message-broker",
+  "fuel-streams-core",
+  "fuel-streams-domains",
+  "fuel-streams-macros",
+  "fuel-streams-store",
+  "fuel-streams-types",
+  "fuel-web-utils",
+]
+
+[[package]]
+name = "fuel-data-parser"
+release = true
+publish = true
+
+[[package]]
+name = "fuel-message-broker"
+release = true
+publish = true
 
 [[package]]
 name = "fuel-streams-core"
@@ -81,6 +91,11 @@ release = true
 publish = true
 
 [[package]]
+name = "fuel-db-utils"
+release = true
+publish = true
+
+[[package]]
 name = "fuel-streams-test"
 release = false
 publish = false
@@ -98,50 +113,54 @@ header = """# Changelog
 """
 
 body = """
-
 {% macro print_commit(commit) -%}
-    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
-      {% if commit.breaking %}[**breaking**] {% endif %}\
-      {{ commit.message | upper_first }} - \
-      ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }}))\
+    - {% if commit.breaking %}[**breaking**] {% endif %}\
+      {% if commit.scope %}*({{ commit.scope }})*: {% endif %}\
+      {{ commit.message | upper_first }} \
+      ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }})) {{ self::username(commit=commit) }}
 {% endmacro -%}
 
 {% if version %}\
     {% if previous.version %}\
-        ## [{{ version | trim_start_matches(pat="v") }}]({{ release_link }})
+        ## [{{ version | trim_start_matches(pat="v") }}]({{ release_link }}) - {{ timestamp | date(format="%Y-%m-%d") }}
     {% else %}\
-        ## [{{ version | trim_start_matches(pat="v") }}]
-    {% endif %}\
-{% endif %}\
+        ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% endif %}
+{% endif %}
 
 {% for group, commits in commits
 | filter(attribute="merge_commit", value=false)
 | unique(attribute="message")
 | group_by(attribute="group") %}
     ### {{ group | striptags | trim | upper_first }}
-    {% for commit in commits
-    | filter(attribute="scope")
-    | sort(attribute="scope") %}
+    {% for commit in commits %}
         {{ self::print_commit(commit=commit) }}
-    {%- endfor -%}
-    {% raw %}\n{% endraw %}\
-    {%- for commit in commits %}
-        {%- if not commit.scope -%}
-            {{ self::print_commit(commit=commit) }}
-        {% endif -%}
-    {% endfor -%}
-{% endfor %}\n
+    {% endfor %}
+{% endfor %}
+
+{%- if remote.contributors %}
+### 💪🏼 Contributors
+{% for contributor in remote.contributors %}
+    * @{{ contributor.username }}
+{%- endfor %}
+
+{% endif -%}
+{%- macro username(commit) -%}
+    {% if commit.remote.username %} (by @{{ commit.remote.username }}){% endif -%}
+{% endmacro -%}
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!\n
 """
 
 commit_parsers = [
-  { message = "^.*", group = "<!-- 8 -->📋 Other" },
-  { message = "^build", group = "<!-- 5 -->🏗️ Build" },
-  { message = "^ci", group = "<!-- 7 -->📟 CI" },
-  { message = "^ci\\(release\\)", skip = true },
-  { message = "^docs", group = "<!-- 3 -->📚 Documentation" },
   { message = "^feat", group = "<!-- 0 -->⭐ Features" },
   { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
-  { message = "^perf", group = "<!-- 4 -->🚀 Performance" },
   { message = "^refactor", group = "<!-- 2 -->🔄 Refactor" },
+  { message = "^docs", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^perf", group = "<!-- 4 -->🚀 Performance" },
+  { message = "^build", group = "<!-- 5 -->🏗️ Build" },
   { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^ci", group = "<!-- 7 -->📟 CI" },
+  { message = "^ci\\(release\\)", skip = true },
+  { message = "^.*", group = "<!-- 8 -->📋 Other" },
 ]

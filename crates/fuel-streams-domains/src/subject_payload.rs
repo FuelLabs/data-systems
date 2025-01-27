@@ -66,6 +66,7 @@ impl SubjectPayload {
     }
 }
 
+#[allow(clippy::disallowed_macros)]
 #[cfg(test)]
 mod tests {
     use fuel_streams_store::record::RecordEntity;

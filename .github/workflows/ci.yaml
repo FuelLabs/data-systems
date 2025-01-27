@@ -38,21 +38,19 @@ jobs:
             refactor
             test
           scopes: |
-            benches
             repo
-            deps
-            release
-            data-parser
-            message-broker
+            fuel-data-parser
+            fuel-message-broker
             fuel-streams
-            core
-            domains
-            macros
-            store
-            types
-            consumer
-            publisher
-            webserver
+            fuel-streams-core
+            fuel-streams-domains
+            fuel-streams-macros
+            fuel-streams-store
+            fuel-streams-types
+            fuel-streams-test
+            sv-webserver
+            sv-publisher
+            sv-consumer
 
   lockfile:
     name: Validate Lockfile

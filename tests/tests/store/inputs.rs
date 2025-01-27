@@ -16,6 +16,7 @@ use fuel_streams_store::{
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
 use fuel_streams_types::TxId;
+use pretty_assertions::assert_eq;
 
 async fn insert_input(input: Input) -> anyhow::Result<()> {
     let prefix = create_random_db_name();

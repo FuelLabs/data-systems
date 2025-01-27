@@ -1,5 +1,6 @@
 use proc_macro2::{TokenStream, TokenTree};
-use syn::{Attribute, Meta};
+use proc_macro_error::abort;
+use syn::{spanned::Spanned, Attribute, Meta};
 
 #[derive(Default)]
 pub struct SubjectAttrs {
@@ -87,6 +88,12 @@ impl SubjectAttrs {
 pub fn subject_attr(name: &str, attrs: &[Attribute]) -> String {
     let subject_attrs = SubjectAttrs::from_attributes(attrs);
     subject_attrs.get(name).cloned().unwrap_or_else(|| {
-        panic!("No {} parameter found in #[subject] attribute", name)
+        abort!(
+            attrs[0].span(),
+            "No {} parameter found in #[subject] attribute", name;
+            help = "Add the `{}` parameter to your #[subject] attribute", name;
+            note = "Example: #[subject({}=\"value\")]", name;
+            hint = "Available parameters are: id, query_all, format, entity, custom_where"
+        )
     })
 }

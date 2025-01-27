@@ -54,6 +54,9 @@ tracing-actix-web.workspace = true
 url = "2.5"
 urlencoding = "2.1"
 
+[dev-dependencies]
+pretty_assertions.workspace = true
+
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
 ignored = ["fuel-data-parser"]

@@ -22,6 +22,7 @@ use fuel_streams_store::{
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
 use fuel_streams_types::{ContractId, TxId};
+use pretty_assertions::assert_eq;
 
 async fn insert_output(output: Output) -> anyhow::Result<()> {
     let prefix = create_random_db_name();

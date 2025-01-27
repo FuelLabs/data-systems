@@ -389,6 +389,8 @@ impl DataParser {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]

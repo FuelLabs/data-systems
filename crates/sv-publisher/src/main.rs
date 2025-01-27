@@ -18,7 +18,8 @@ use sv_publisher::{
     cli::Cli,
     error::PublishError,
     metrics::Metrics,
-    publish::{process_transactions_status_none, publish_block},
+    publish::publish_block,
+    recover::recover_block_with_tx_status_none,
     state::ServerState,
 };
 use tokio_util::sync::CancellationToken;
@@ -50,6 +51,13 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Last block height: {}", last_block_height);
     tokio::select! {
         result = async {
+            let recover_blocks = recover_block_with_tx_status_none(
+                &db,
+                &message_broker,
+                &fuel_core,
+                &telemetry
+            );
+
             let historical = process_historical_blocks(
                 cli.from_height.into(),
                 &message_broker,
@@ -60,13 +68,6 @@ async fn main() -> anyhow::Result<()> {
                 &telemetry,
             );
 
-            let recover_blocks = process_transactions_status_none(
-                &db,
-                &message_broker,
-                &fuel_core,
-                &telemetry
-            );
-
             let live = process_live_blocks(
                 &message_broker,
                 &fuel_core,
@@ -74,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
                 &telemetry
             );
 
-            tokio::join!(historical, recover_blocks, live)
+            tokio::join!(recover_blocks, historical, live)
         } => {
             result.0?;
             result.1?;
@@ -180,7 +181,7 @@ fn process_historical_blocks(
                     let message_broker = message_broker.clone();
                     let fuel_core = fuel_core.clone();
                     let sealed_block =
-                        fuel_core.get_sealed_block_by_height(height.into());
+                        fuel_core.get_sealed_block(height.into());
                     let sealed_block = Arc::new(sealed_block);
                     let telemetry = telemetry.clone();
                     async move {
