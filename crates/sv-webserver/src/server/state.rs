@@ -9,13 +9,16 @@ use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     server::{
-        middlewares::api_key::{ApiKeysManager, KeyStorage},
+        middlewares::{
+            api_key::{ApiKeysManager, KeyStorage},
+            password::PasswordManager,
+        },
         state::StateProvider,
     },
     telemetry::Telemetry,
 };
 
-use crate::{config::Config, metrics::Metrics};
+use crate::{config::Config, metrics::Metrics, API_PASSWORD};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -25,6 +28,7 @@ pub struct ServerState {
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
     pub api_keys_manager: Arc<ApiKeysManager>,
+    pub password_manager: Arc<PasswordManager>,
 }
 
 impl ServerState {
@@ -40,7 +44,7 @@ impl ServerState {
         .arc();
 
         let fuel_streams = FuelStreams::new(&msg_broker, &db).await.arc();
-        let metrics = Metrics::new_with_random_prefix()?;
+        let metrics = Metrics::new(None)?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
 
@@ -54,6 +58,8 @@ impl ServerState {
                 );
             }
         }
+        let password_manager =
+            Arc::new(PasswordManager::new(API_PASSWORD.clone()));
 
         Ok(Self {
             db,
@@ -62,6 +68,7 @@ impl ServerState {
             fuel_streams,
             telemetry,
             api_keys_manager,
+            password_manager,
         })
     }
 

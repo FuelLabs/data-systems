@@ -33,7 +33,8 @@ async fn main() -> anyhow::Result<()> {
 
     let db = setup_db(&cli.db_url).await?;
     let message_broker = setup_message_broker(&cli.nats_url).await?;
-    let telemetry = Telemetry::new(None).await?;
+    let metrics = Metrics::new(None)?;
+    let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
 
     let server_state =

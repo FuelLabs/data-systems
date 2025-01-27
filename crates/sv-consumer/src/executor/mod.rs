@@ -1,5 +1,5 @@
 mod block_executor;
-mod block_stats;
+pub(crate) mod block_stats;
 mod process_store;
 mod process_stream;
 mod retry;

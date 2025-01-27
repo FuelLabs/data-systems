@@ -90,6 +90,7 @@ impl System {
         self.system.refresh_specifics(self.specifics);
     }
 
+    #[allow(dead_code)]
     pub fn metrics(&self) -> Result<SystemMetrics, Error> {
         SystemMetrics::try_from(self)
     }

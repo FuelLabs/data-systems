@@ -2,10 +2,19 @@ use fuel_streams_core::types::BlockHeight;
 
 use crate::errors::ConsumerError;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ActionType {
     Store,
     Stream,
+}
+
+impl std::fmt::Display for ActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ActionType::Store => write!(f, "store"),
+            ActionType::Stream => write!(f, "stream"),
+        }
+    }
 }
 
 #[derive(Debug)]

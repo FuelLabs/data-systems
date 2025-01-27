@@ -47,6 +47,7 @@ pub trait Record: RecordEncoder + 'static {
         Self::decode_json(record.encoded_value())
     }
 
+    // TODO: remove complexity here; make each record type have its own query builder
     fn build_find_many_query(
         subject: Arc<dyn IntoSubject>,
         options: QueryOptions,

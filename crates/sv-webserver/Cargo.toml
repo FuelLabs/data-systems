@@ -35,12 +35,21 @@ fuel-web-utils.workspace = true
 futures.workspace = true
 num_cpus.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
+serde.workspace = true
 serde_json.workspace = true
+sqlx = { workspace = true, default-features = false, features = [
+  "any",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-native-tls",
+] }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+validator = { version = "0.19", features = ["derive"] }
 
 # these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
 [target.'cfg(target_os = "linux")'.dependencies]

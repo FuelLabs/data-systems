@@ -226,7 +226,7 @@ run-publisher: NATS_URL="localhost:4222"
 run-publisher: EXTRA_ARGS=""
 run-publisher: FROM_HEIGHT="0"
 run-publisher: check-network
-	@./scripts/run_publisher.sh
+	@./scripts/run_publisher.sh --mode $(MODE) --network $(NETWORK) --telemetry-port $(TELEMETRY_PORT) --from-height $(FROM_HEIGHT) --extra-args $(EXTRA_ARGS)
 
 run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0
@@ -252,7 +252,7 @@ run-consumer:
 		--port $(PORT)
 
 # ------------------------------------------------------------
-#  Streamer Run Commands
+#  Webserver Run Commands
 # ------------------------------------------------------------
 
 run-webserver: NETWORK="testnet"
@@ -280,7 +280,7 @@ run-webserver-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats docker postgres
+DOCKER_SERVICES := nats docker postgres monitoring
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:
@@ -312,6 +312,7 @@ reset-nats: clean-nats start-nats
 setup-db:
 	@echo "Setting up database..."
 	@cargo sqlx migrate run --source crates/fuel-streams-store/migrations
+	@cargo run --package generate-api-keys -- --nkeys 10
 	# I removed this for now because it was not working on CI
 	# @cargo sqlx prepare --workspace -- --all-features
 

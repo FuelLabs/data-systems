@@ -1,4 +1,4 @@
-pub(crate) mod metrics;
+pub mod metrics;
 pub(crate) mod state;
 
 use std::sync::Arc;
@@ -8,34 +8,32 @@ use fuel_web_utils::{
     server::api::build_and_spawn_web_server,
     telemetry::Telemetry,
 };
+use metrics::Metrics;
 
 use crate::{errors::ConsumerError, state::ServerState};
 
 pub struct Server {
     port: u16,
     message_broker: Arc<dyn MessageBroker>,
+    telemetry: Arc<Telemetry<Metrics>>,
 }
 
 impl Server {
-    pub fn new(port: u16, message_broker: Arc<dyn MessageBroker>) -> Self {
+    pub fn new(
+        port: u16,
+        message_broker: Arc<dyn MessageBroker>,
+        telemetry: Arc<Telemetry<Metrics>>,
+    ) -> Self {
         Self {
             port,
             message_broker,
+            telemetry,
         }
     }
 
     pub async fn start(self) -> Result<(), ConsumerError> {
-        let telemetry = Telemetry::new(None)
-            .await
-            .map_err(|_| ConsumerError::TelemetryStart)?;
-
-        telemetry
-            .start()
-            .await
-            .map_err(|_| ConsumerError::TelemetryStart)?;
-
         let server_state =
-            ServerState::new(self.message_broker, Arc::clone(&telemetry));
+            ServerState::new(self.message_broker, Arc::clone(&self.telemetry));
 
         build_and_spawn_web_server(self.port, server_state)
             .await

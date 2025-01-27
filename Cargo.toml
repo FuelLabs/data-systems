@@ -5,6 +5,7 @@ members = [
   "crates/*",
   "crates/fuel-streams-macros/subject-derive",
   "examples",
+  "scripts/generate-api-keys",
   "scripts/subjects-schema",
   "tests",
 ]
@@ -39,6 +40,7 @@ futures-util = "0.3"
 hex = "0.4"
 moka = { version = "0.12.9", features = ["sync"] }
 num_cpus = "1.16"
+pretty_assertions = "1.4"
 rand = "0.8"
 rayon = "1.10.0"
 regex = "1.10.3"
@@ -64,7 +66,10 @@ tokio = { version = "1.41", features = [
 tokio-stream = "0.1"
 tracing = "0.1"
 tracing-actix-web = "0.7"
-tracing-subscriber = { version = "0.3", features = ["local-time"] }
+tracing-subscriber = { version = "0.3", features = [
+  "local-time",
+  "env-filter",
+] }
 
 # Fuel Core dependencies
 fuel-core = { version = "0.40.3", default-features = false, features = [
@@ -91,7 +96,6 @@ fuel-core-types = { version = "0.40.3", default-features = false, features = [
 ] }
 fuel-tx = { version = "0.58.2" }
 fuel-vm = { version = "0.58.2" }
-pretty_assertions = "1.4"
 
 # Internal dependencies
 fuel-data-parser = { version = "0.0.22", path = "crates/fuel-data-parser" }
@@ -105,7 +109,6 @@ fuel-streams-test = { version = "0.0.22", path = "crates/fuel-streams-test" }
 fuel-streams-types = { version = "0.0.22", path = "crates/fuel-streams-types" }
 fuel-web-utils = { version = "0.0.22", path = "crates/fuel-web-utils" }
 subject-derive = { version = "0.0.22", path = "crates/fuel-streams-macros/subject-derive" }
-
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

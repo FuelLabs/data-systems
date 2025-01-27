@@ -8,10 +8,13 @@ services:
     restart: always
     ports:
       - 4222:4222
+      - 8222:8222
     volumes:
       - ./nats-config/core.conf:/etc/nats/nats.conf
       - ./nats-config/accounts.conf:/etc/nats/accounts.conf
     command:
+      - -m
+      - '8222'
       - --name=fuel-streams-nats
       - --js
       - --config=/etc/nats/nats.conf
@@ -24,6 +27,7 @@ services:
       - all
       - postgres
     image: postgres:17
+    container_name: postgres
     ports:
       - "5432:5432"
     environment:
@@ -38,5 +42,106 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+      profiles:
+        - all
+        - monitoring
+      image: prom/prometheus:latest
+      container_name: prometheus
+      restart: always
+      volumes:
+        - ./monitoring/prometheus/:/etc/prometheus/
+        - prometheus_data:/prometheus
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+        - '--storage.tsdb.retention.time=200h'
+        - '--web.enable-lifecycle'
+      ports:
+        - 9090:9090
+
+  node-exporter:
+    profiles:
+      - all
+      - monitoring
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  cadvisor:
+    profiles:
+      - all
+      - monitoring
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 9200:8080
+    depends_on:
+      - prometheus
+    deploy:
+      mode: global
+
+  alertmanager:
+    profiles:
+      - all
+      - monitoring
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: always
+    volumes:
+      - ./monitoring/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
+    ports:
+      - 9093:9093
+
+  grafana:
+    profiles:
+      - all
+      - monitoring
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: '472'
+    restart: always
+    environment:
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./monitoring/grafana/config.monitoring
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+
 volumes:
+  prometheus_data:
+  grafana_data:
   postgres_data:
