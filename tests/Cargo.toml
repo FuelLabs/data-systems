@@ -46,7 +46,7 @@ fuel-web-utils = { workspace = true, features = ["test-helpers"] }
 futures.workspace = true
 rand.workspace = true
 serde_json.workspace = true
-sv-consumer = { path = "../crates/sv-consumer", features = ["test-helpers"] }
+sv-consumer = { path = "../services/consumer", features = ["test-helpers"] }
 tokio = { workspace = true, features = [
   "macros",
   "rt-multi-thread",

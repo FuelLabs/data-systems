@@ -311,7 +311,7 @@ reset-nats: clean-nats start-nats
 
 setup-db:
 	@echo "Setting up database..."
-	@cargo sqlx migrate run --source crates/fuel-streams-store/migrations
+	@cargo sqlx migrate run --source crates/store/migrations
 	@cargo run --package generate-api-keys -- --nkeys 10
 	# I removed this for now because it was not working on CI
 	# @cargo sqlx prepare --workspace -- --all-features

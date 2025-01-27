@@ -59,23 +59,27 @@ You can check the [./scripts/setup.sh](./scripts/setup.sh) file to see what is b
 Here's an overview of the project's directory structure:
 
 - `crates/`: Contains the main Rust crates for the project
-    - `fuel-data-parser/`: Utility library for encoding/decoding data
-    - `fuel-message-broker/`: Message broker implementation
+    - `data-parser/`: Utility library for encoding/decoding data
+    - `message-broker/`: Message broker implementation
     - `fuel-streams/`: Main fuel-streams package
-    - `fuel-streams-core/`: Core components for working with streams
-    - `fuel-streams-domains/`: Domain-specific implementations
-    - `fuel-streams-macros/`: Macro utilities for the project
-    - `fuel-streams-store/`: Storage implementations
-    - `fuel-streams-types/`: Common types and traits
-    - `fuel-streams-test/`: Testing utilities
-    - `sv-publisher/`: Publisher service implementation
-    - `sv-consumer/`: Consumer service implementation
-    - `sv-webserver/`: WebSocket server implementation
+    - `core/`: Core components for working with streams
+    - `domains/`: Domain-specific implementations
+    - `macros/`: Macro utilities for the project
+    - `store/`: Storage implementations
+    - `types/`: Common types and traits
+    - `web-utils/`: Web utilities
+    - `test/`: Testing utilities
+- `services/`: Contains the services for the project
+    - `publisher/`: Publisher service implementation
+    - `consumer/`: Consumer service implementation
+    - `webserver/`: WebSocket server implementation
 - `benches/`: Benchmarking code
 - `tests/`: Integration and end-to-end tests
 - `examples/`: Example code and usage demonstrations
 - `cluster/`: Kubernetes cluster configuration and deployment files
 - `scripts/`: Utility scripts for setup, deployment, and maintenance
+    - `generate-api-keys/`: Script for generating API keys
+    - `subjects-schema/`: Script for generating subjects schema
 
 ## 🧪 Running Tests
 
@@ -321,15 +325,16 @@ The scope field is mandatory and must be one of the following:
 
 **Service Packages:**
 
-- `sv-publisher`: Publisher service
-- `sv-consumer`: Consumer service
-- `sv-webserver`: WebSocket server
+- `publisher`: Publisher service
+- `consumer`: Consumer service
+- `webserver`: WebSocket server
 
 **Support Packages:**
 
 - `fuel-data-parser`: Data parser utilities
 - `fuel-message-broker`: Message broker implementation
 - `fuel-streams-test`: Testing utilities
+- `fuel-web-utils`: Web utilities
 
 **Repository:**
 
