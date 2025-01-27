@@ -74,7 +74,7 @@ impl ApiKey {
         }
     }
 
-    pub fn user_id(&self) -> ApiKeyId {
+    pub fn user_id(&self) -> ApiKeyUserId {
         self.user_id
     }
 

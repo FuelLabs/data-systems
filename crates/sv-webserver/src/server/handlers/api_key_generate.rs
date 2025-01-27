@@ -49,7 +49,7 @@ pub struct GenerateApiKeyResponse {
 impl From<&DbUserApiKey> for GenerateApiKeyResponse {
     fn from(api_key: &DbUserApiKey) -> Self {
         Self {
-            user_id: api_key.user_id,
+            user_id: api_key.user_id as i64,
             username: api_key.user_name.clone(),
             api_key: api_key.api_key.clone(),
         }

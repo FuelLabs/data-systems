@@ -190,7 +190,7 @@ consumer:
     enabled: false
 
 # ------------------------------------------------------------------------------
-# Consumer configuration
+# Webserver configuration
 # ------------------------------------------------------------------------------
 
 webserver:
@@ -337,3 +337,114 @@ nats:
     merge:
       $tplYaml: |
         {{- include "nats-accounts" . | nindent 8 }}
+
+# ------------------------------------------------------------------------------
+# Prometheus & Monitoring configuration
+# ------------------------------------------------------------------------------
+
+prometheus:
+  enabled: true
+  
+  # Prometheus Operator configuration
+  prometheusOperator:
+    enabled: true
+    serviceAccount:
+      create: true
+    admissionWebhooks:
+      enabled: true
+    tls:
+      enabled: false
+
+  # Prometheus server configuration
+  prometheus:
+    enabled: true
+    serviceAccount:
+      create: true
+    serviceMonitor:
+      enabled: true
+    ingress:
+      enabled: false
+    retention: 10d
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+
+  # Alertmanager configuration
+  alertmanager:
+    enabled: true
+    serviceAccount:
+      create: true
+    ingress:
+      enabled: false
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+
+  # Grafana configuration
+  grafana:
+    enabled: true
+    adminPassword: admin
+    ingress:
+      enabled: false
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+    
+  # Node exporter for hardware and OS metrics
+  nodeExporter:
+    enabled: true
+    resources:
+      requests:
+        memory: 32Mi
+        cpu: 50m
+      limits:
+        memory: 64Mi
+        cpu: 100m
+
+  # Kubelet metrics
+  kubelet:
+    enabled: true
+    serviceMonitor:
+      https: true
+
+  # Default scrape configs
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: true
+      general: true
+      k8s: true
+      kubeApiserver: true
+      kubePrometheusNodeAlerting: true
+      kubePrometheusNodeRecording: true
+      kubernetesAbsent: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      kubeScheduler: true
+      network: true
+      node: true
+      prometheus: true
