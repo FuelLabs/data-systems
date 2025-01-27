@@ -1,14 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use async_nats::{
-    jetstream::{
-        consumer::{pull::Config as ConsumerConfig, AckPolicy, PullConsumer},
-        context::Publish,
-        stream::{Config as StreamConfig, RetentionPolicy},
-        Context,
-    },
-    Client,
-};
+use async_nats::{jetstream::Context, Client};
 use async_trait::async_trait;
 use futures::StreamExt;
 use tracing::info;
@@ -16,16 +8,15 @@ use tracing::info;
 use crate::{
     nats_metrics::{NatsHealthInfo, StreamInfo},
     Message,
-    MessageBlockStream,
-    MessageBroker,
     MessageBrokerError,
     MessageStream,
     Namespace,
     NatsOpts,
+    NatsQueue,
 };
 
 #[derive(Debug)]
-pub struct NatsMessage(async_nats::jetstream::Message);
+pub struct NatsMessage(pub async_nats::jetstream::Message);
 
 #[derive(Debug, Clone)]
 pub struct NatsMessageBroker {
@@ -36,10 +27,7 @@ pub struct NatsMessageBroker {
 }
 
 impl NatsMessageBroker {
-    const BLOCKS_STREAM: &'static str = "block_importer";
-    const BLOCKS_SUBJECT: &'static str = "block_submitted";
-
-    pub async fn new(opts: &NatsOpts) -> Result<Self, MessageBrokerError> {
+    async fn new(opts: &NatsOpts) -> Result<Self, MessageBrokerError> {
         let url = &opts.url();
         let client = opts.connect_opts().connect(url).await.map_err(|e| {
             MessageBrokerError::Connection(format!(
@@ -57,58 +45,85 @@ impl NatsMessageBroker {
         })
     }
 
-    fn stream_name(&self) -> String {
-        self.namespace().queue_name(Self::BLOCKS_STREAM)
+    async fn with_url(url: &str) -> Result<Self, MessageBrokerError> {
+        let opts = NatsOpts::new(url.to_string());
+        Self::new(&opts).await
     }
 
-    fn consumer_name(&self) -> String {
-        format!("{}_consumer", self.stream_name())
+    async fn with_namespace(
+        url: &str,
+        namespace: &str,
+    ) -> Result<Self, MessageBrokerError> {
+        let opts =
+            crate::NatsOpts::new(url.to_string()).with_namespace(namespace);
+        Self::new(&opts).await
     }
 
-    fn blocks_subject(&self) -> String {
-        self.namespace().subject_name(Self::BLOCKS_SUBJECT)
-    }
-
-    async fn get_blocks_stream(
-        &self,
-    ) -> Result<async_nats::jetstream::stream::Stream, MessageBrokerError> {
-        let subject_name = format!("{}.>", self.blocks_subject());
-        let stream_name = self.stream_name();
-        let stream = self
-            .jetstream
-            .get_or_create_stream(StreamConfig {
-                name: stream_name,
-                subjects: vec![subject_name],
-                retention: RetentionPolicy::WorkQueue,
-                duplicate_window: Duration::from_secs(1),
-                allow_direct: true,
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| MessageBrokerError::Setup(e.to_string()))?;
-        Ok(stream)
-    }
-
-    async fn get_blocks_consumer(
-        &self,
-    ) -> Result<PullConsumer, MessageBrokerError> {
-        let consumer_name = self.consumer_name();
-        let stream = self.get_blocks_stream().await?;
-        let mut config = ConsumerConfig {
-            durable_name: Some(consumer_name.to_string()),
-            ack_policy: AckPolicy::Explicit,
-            ..Default::default()
+    pub async fn setup(
+        url: &str,
+        namespace: Option<&str>,
+    ) -> Result<Arc<NatsMessageBroker>, MessageBrokerError> {
+        let broker = match namespace {
+            Some(namespace) => Self::with_namespace(url, namespace).await?,
+            None => Self::with_url(url).await?,
         };
-        if let Some(ack_wait) = self.opts.ack_wait_secs {
-            config.ack_wait = Duration::from_secs(ack_wait);
-        }
-        stream
-            .get_or_create_consumer(&consumer_name, config)
-            .await
-            .map_err(|e| MessageBrokerError::Setup(e.to_string()))
+        broker.setup_queues().await?;
+        Ok(broker.arc())
     }
 
-    pub async fn get_stream_info(
+    async fn setup_queues(&self) -> Result<(), MessageBrokerError> {
+        let block_importer = NatsQueue::BlockImporter(self.arc());
+        let block_retrier = NatsQueue::BlockRetrier(self.arc());
+        block_importer.setup().await?;
+        block_retrier.setup().await?;
+        Ok(())
+    }
+
+    pub fn client(&self) -> Arc<Client> {
+        Arc::new(self.client.to_owned())
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        Arc::new(self.clone())
+    }
+
+    pub fn namespace(&self) -> &Namespace {
+        &self.namespace
+    }
+
+    pub fn is_connected(&self) -> bool {
+        let state = self.client.connection_state();
+        state == async_nats::connection::State::Connected
+    }
+
+    pub async fn publish(
+        &self,
+        topic: &str,
+        payload: bytes::Bytes,
+    ) -> Result<(), MessageBrokerError> {
+        let subject = self.namespace().subject_name(topic);
+        self.client
+            .publish(subject, payload)
+            .await
+            .map_err(|e| MessageBrokerError::Publishing(e.to_string()))?;
+        Ok(())
+    }
+
+    pub async fn subscribe(
+        &self,
+        topic: &str,
+    ) -> Result<MessageStream, MessageBrokerError> {
+        let subject = self.namespace().subject_name(topic);
+        let stream = self
+            .client
+            .subscribe(subject)
+            .await
+            .map_err(|e| MessageBrokerError::Subscription(e.to_string()))?
+            .map(|msg| Ok((msg.subject.to_string(), msg.payload.to_vec())));
+        Ok(Box::new(stream))
+    }
+
+    pub async fn get_streams_info(
         &self,
     ) -> Result<Vec<StreamInfo>, MessageBrokerError> {
         let mut streams = self.jetstream.streams();
@@ -124,8 +139,31 @@ impl NatsMessageBroker {
         Ok(infos)
     }
 
-    pub fn arc(&self) -> Arc<Self> {
-        Arc::new(self.clone())
+    pub async fn flush(&self) -> Result<(), MessageBrokerError> {
+        self.client.flush().await.map_err(|e| {
+            MessageBrokerError::Flush(format!(
+                "Failed to flush NATS client: {}",
+                e
+            ))
+        })?;
+        Ok(())
+    }
+
+    pub async fn is_healthy(&self) -> bool {
+        self.is_connected()
+    }
+
+    pub async fn get_health_info(
+        &self,
+        uptime_secs: u64,
+    ) -> Result<serde_json::Value, MessageBrokerError> {
+        let infos = self.get_streams_info().await?;
+        let health_info = NatsHealthInfo {
+            uptime_secs,
+            is_healthy: self.is_healthy().await,
+            streams_info: infos,
+        };
+        Ok(serde_json::to_value(health_info)?)
     }
 }
 
@@ -147,123 +185,15 @@ impl Message for NatsMessage {
     }
 }
 
-#[async_trait]
-impl MessageBroker for NatsMessageBroker {
-    fn namespace(&self) -> &Namespace {
-        &self.namespace
-    }
-
-    fn is_connected(&self) -> bool {
-        let state = self.client.connection_state();
-        state == async_nats::connection::State::Connected
-    }
-
-    async fn setup(&self) -> Result<(), MessageBrokerError> {
-        let _ = self.get_blocks_stream().await?;
-        let _ = self.get_blocks_consumer().await?;
-        Ok(())
-    }
-
-    async fn publish_block(
-        &self,
-        id: String,
-        payload: Vec<u8>,
-    ) -> Result<(), MessageBrokerError> {
-        let subject = format!("{}.{}", self.blocks_subject(), id);
-        let payload_id = format!("{}.block_{}", self.namespace(), id);
-        let publish = Publish::build()
-            .message_id(payload_id)
-            .payload(payload.into());
-        self.jetstream
-            .send_publish(subject, publish)
-            .await
-            .map_err(|e| MessageBrokerError::Publishing(e.to_string()))?
-            .await
-            .map_err(|e| MessageBrokerError::Publishing(e.to_string()))?;
-
-        Ok(())
-    }
-
-    async fn receive_blocks_stream(
-        &self,
-        batch_size: usize,
-    ) -> Result<MessageBlockStream, MessageBrokerError> {
-        let consumer = self.get_blocks_consumer().await?;
-        let stream = consumer
-            .fetch()
-            .max_messages(batch_size)
-            .messages()
-            .await
-            .map_err(|e| MessageBrokerError::Receiving(e.to_string()))?
-            .filter_map(|msg| async {
-                msg.ok()
-                    .map(|m| Ok(Box::new(NatsMessage(m)) as Box<dyn Message>))
-            })
-            .boxed();
-        Ok(Box::new(stream))
-    }
-
-    async fn publish_event(
-        &self,
-        topic: &str,
-        payload: bytes::Bytes,
-    ) -> Result<(), MessageBrokerError> {
-        let subject = self.namespace().subject_name(topic);
-        self.client
-            .publish(subject, payload)
-            .await
-            .map_err(|e| MessageBrokerError::Publishing(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn subscribe_to_events(
-        &self,
-        topic: &str,
-    ) -> Result<MessageStream, MessageBrokerError> {
-        let subject = self.namespace().subject_name(topic);
-        let stream = self
-            .client
-            .subscribe(subject)
-            .await
-            .map_err(|e| MessageBrokerError::Subscription(e.to_string()))?
-            .map(|msg| Ok((msg.subject.to_string(), msg.payload.to_vec())));
-        Ok(Box::new(stream))
-    }
-
-    async fn flush(&self) -> Result<(), MessageBrokerError> {
-        self.client.flush().await.map_err(|e| {
-            MessageBrokerError::Flush(format!(
-                "Failed to flush NATS client: {}",
-                e
-            ))
-        })?;
-        Ok(())
-    }
-
-    async fn is_healthy(&self) -> bool {
-        self.is_connected()
-    }
-
-    async fn get_health_info(
-        &self,
-        uptime_secs: u64,
-    ) -> Result<serde_json::Value, MessageBrokerError> {
-        let infos = self.get_stream_info().await?;
-        let health_info = NatsHealthInfo {
-            uptime_secs,
-            is_healthy: self.is_healthy().await,
-            streams_info: infos,
-        };
-        Ok(serde_json::to_value(health_info)?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use pretty_assertions::assert_eq;
     use rand::Rng;
 
     use super::*;
+    use crate::NatsSubject;
     const NATS_URL: &str = "nats://localhost:4222";
 
     async fn setup_broker() -> Result<NatsMessageBroker, MessageBrokerError> {
@@ -271,7 +201,7 @@ mod tests {
             .with_rdn_namespace()
             .with_ack_wait(1);
         let broker = NatsMessageBroker::new(&opts).await?;
-        broker.setup().await?;
+        broker.setup_queues().await?;
         Ok(broker)
     }
 
@@ -288,9 +218,7 @@ mod tests {
 
         // Spawn a task to receive events
         let receiver = tokio::spawn(async move {
-            let mut events =
-                broker_clone.subscribe_to_events("test.topic").await?;
-
+            let mut events = broker_clone.subscribe("test.topic").await?;
             tokio::time::timeout(Duration::from_secs(5), events.next())
                 .await
                 .map_err(|_| {
@@ -306,9 +234,7 @@ mod tests {
         // Add a small delay to ensure subscriber is ready
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        broker
-            .publish_event("test.topic", vec![4, 5, 6].into())
-            .await?;
+        broker.publish("test.topic", vec![4, 5, 6].into()).await?;
         let result = receiver.await.expect("receiver task panicked")?;
         let topic = format!("{}.{}", broker.namespace(), "test.topic");
         assert_eq!(result, (topic, vec![4, 5, 6]));
@@ -319,16 +245,23 @@ mod tests {
     async fn test_work_queue_batch_size_limiting(
     ) -> Result<(), MessageBrokerError> {
         let broker = setup_broker().await?;
+        let queue = NatsQueue::BlockImporter(broker.arc());
 
         // Publish 3 messages
-        broker.publish_block("1".to_string(), vec![1]).await?;
-        broker.publish_block("2".to_string(), vec![2]).await?;
-        broker.publish_block("3".to_string(), vec![3]).await?;
+        queue
+            .publish(&NatsSubject::BlockSubmitted(1_u64), vec![1])
+            .await?;
+        queue
+            .publish(&NatsSubject::BlockSubmitted(2_u64), vec![2])
+            .await?;
+        queue
+            .publish(&NatsSubject::BlockSubmitted(3_u64), vec![3])
+            .await?;
 
         // Receive with batch size of 2
-        let mut stream = broker.receive_blocks_stream(2).await?;
+        let mut message_stream = queue.subscribe(2).await?;
         let mut received = Vec::new();
-        while let Some(msg) = stream.next().await {
+        while let Some(msg) = message_stream.next().await {
             let msg = msg?;
             received.push(msg.payload().to_vec());
             msg.ack().await?;
@@ -339,7 +272,6 @@ mod tests {
             2,
             "Should only receive batch_size messages"
         );
-
         Ok(())
     }
 
@@ -347,11 +279,15 @@ mod tests {
     async fn test_work_queue_unacked_message_redelivery(
     ) -> Result<(), MessageBrokerError> {
         let broker = setup_broker().await?;
-        broker.publish_block("1".to_string(), vec![1]).await?;
+        let queue = NatsQueue::BlockImporter(broker.arc());
+
+        queue
+            .publish(&NatsSubject::BlockSubmitted(1_u64), vec![1])
+            .await?;
 
         {
-            let mut stream = broker.receive_blocks_stream(1).await?;
-            let msg = stream.next().await.unwrap();
+            let mut message_stream = queue.subscribe(1).await?;
+            let msg = message_stream.next().await.unwrap();
             assert!(msg.is_ok());
             let msg = msg.unwrap();
             assert_eq!(msg.payload(), &[1]);
@@ -361,8 +297,8 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         // Receive message again
-        let mut stream = broker.receive_blocks_stream(1).await?;
-        let msg = stream.next().await.unwrap();
+        let mut message_stream = queue.subscribe(1).await?;
+        let msg = message_stream.next().await.unwrap();
         assert!(msg.is_ok());
         Ok(())
     }
@@ -371,14 +307,15 @@ mod tests {
     async fn test_work_queue_multiple_consumers(
     ) -> Result<(), MessageBrokerError> {
         let broker = setup_broker().await?;
-        let broker1 = broker.clone();
-        let broker2 = broker.clone();
-        let broker3 = broker.clone();
+        let stream1 = NatsQueue::BlockImporter(broker.arc());
+        let stream2 = NatsQueue::BlockImporter(broker.arc());
+        let stream3 = NatsQueue::BlockImporter(broker.arc());
+        let queue = NatsQueue::BlockImporter(broker.arc());
 
         // Spawn three consumer tasks
         let consumer1 = tokio::spawn(async move {
-            let mut stream = broker1.receive_blocks_stream(1).await?;
-            let msg = stream.next().await.ok_or_else(|| {
+            let mut message_stream = stream1.subscribe(1).await?;
+            let msg = message_stream.next().await.ok_or_else(|| {
                 MessageBrokerError::Receiving("No message received".into())
             })??;
             msg.ack().await?;
@@ -386,8 +323,8 @@ mod tests {
         });
 
         let consumer2 = tokio::spawn(async move {
-            let mut stream = broker2.receive_blocks_stream(1).await?;
-            let msg = stream.next().await.ok_or_else(|| {
+            let mut message_stream = stream2.subscribe(1).await?;
+            let msg = message_stream.next().await.ok_or_else(|| {
                 MessageBrokerError::Receiving("No message received".into())
             })??;
             msg.ack().await?;
@@ -395,8 +332,8 @@ mod tests {
         });
 
         let consumer3 = tokio::spawn(async move {
-            let mut stream = broker3.receive_blocks_stream(1).await?;
-            let msg = stream.next().await.ok_or_else(|| {
+            let mut message_stream = stream3.subscribe(1).await?;
+            let msg = message_stream.next().await.ok_or_else(|| {
                 MessageBrokerError::Receiving("No message received".into())
             })??;
             msg.ack().await?;
@@ -406,15 +343,14 @@ mod tests {
         let heights = (0..3).map(|_| random_height() as u8).collect::<Vec<_>>();
 
         // Publish three messages
-        broker
-            .publish_block(heights[0].to_string(), vec![heights[0]])
-            .await?;
-        broker
-            .publish_block(heights[1].to_string(), vec![heights[1]])
-            .await?;
-        broker
-            .publish_block(heights[2].to_string(), vec![heights[2]])
-            .await?;
+        for height in &heights {
+            queue
+                .publish(
+                    &NatsSubject::BlockSubmitted(height.to_owned() as u64),
+                    vec![*height],
+                )
+                .await?;
+        }
 
         // Collect results from all consumers
         let msg1 = consumer1.await.expect("consumer1 task panicked")?;

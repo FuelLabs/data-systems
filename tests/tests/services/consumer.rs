@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_message_broker::MessageBrokerClient;
+use fuel_message_broker::{NatsMessageBroker, NatsQueue, NatsSubject};
 use fuel_streams_core::{
     inputs::InputsSubject,
     outputs::OutputsSubject,
@@ -191,9 +191,9 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     shutdown.clone().spawn_signal_handler();
 
     // Setup real NATS broker
-    let message_broker = MessageBrokerClient::Nats
-        .start_with_namespace("nats://localhost:4222", &prefix)
-        .await?;
+    let message_broker =
+        NatsMessageBroker::setup("nats://localhost:4222", Some(&prefix))
+            .await?;
 
     // Setup FuelStreams & FuelStores
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
@@ -202,9 +202,10 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     // Create and publish test message
     let msg_payload = MockMsgPayload::build(1).with_namespace(&prefix);
     let encoded_payload = msg_payload.encode().await?;
-    message_broker
-        .publish_block(msg_payload.message_id(), encoded_payload)
-        .await?;
+    let queue = NatsQueue::BlockImporter(message_broker.clone());
+    let block_height = msg_payload.block_height().into();
+    let subject = NatsSubject::BlockSubmitted(block_height);
+    queue.publish(&subject, encoded_payload).await?;
 
     // Process messages
     tokio::spawn({

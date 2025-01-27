@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_message_broker::MessageBroker;
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_store::db::Db;
 
 use super::Stream;
@@ -14,12 +14,12 @@ pub struct FuelStreams {
     pub outputs: Stream<Output>,
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
-    pub msg_broker: Arc<dyn MessageBroker>,
+    pub msg_broker: Arc<NatsMessageBroker>,
     pub db: Arc<Db>,
 }
 
 impl FuelStreams {
-    pub async fn new(broker: &Arc<dyn MessageBroker>, db: &Arc<Db>) -> Self {
+    pub async fn new(broker: &Arc<NatsMessageBroker>, db: &Arc<Db>) -> Self {
         Self {
             blocks: Stream::<Block>::get_or_init(broker, db).await,
             transactions: Stream::<Transaction>::get_or_init(broker, db).await,
@@ -36,7 +36,7 @@ impl FuelStreams {
         Arc::new(self.clone())
     }
 
-    pub fn broker(&self) -> Arc<dyn MessageBroker> {
+    pub fn broker(&self) -> Arc<NatsMessageBroker> {
         self.msg_broker.clone()
     }
 }

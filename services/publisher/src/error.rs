@@ -1,3 +1,5 @@
+use std::str::Utf8Error;
+
 use fuel_message_broker::MessageBrokerError;
 use fuel_streams_core::types::*;
 use fuel_streams_domains::MsgPayloadError;
@@ -25,4 +27,6 @@ pub enum PublishError {
     BlockNotFound,
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+    #[error("Failed to get block height from encoded utf8 string")]
+    BlockHeightFromUtf8(#[from] Utf8Error),
 }

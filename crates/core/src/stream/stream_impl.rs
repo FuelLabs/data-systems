@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
-use fuel_message_broker::MessageBroker;
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{db::Db, record::Record, store::Store};
 use futures::{
@@ -19,7 +19,7 @@ pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 #[derive(Debug, Clone)]
 pub struct Stream<S: Record> {
     store: Arc<Store<S>>,
-    broker: Arc<dyn MessageBroker>,
+    broker: Arc<NatsMessageBroker>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -28,7 +28,7 @@ impl<R: Record> Stream<R> {
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
     pub async fn get_or_init(
-        broker: &Arc<dyn MessageBroker>,
+        broker: &Arc<NatsMessageBroker>,
         db: &Arc<Db>,
     ) -> Self {
         let cell = Self::INSTANCE;
@@ -37,7 +37,7 @@ impl<R: Record> Stream<R> {
             .to_owned()
     }
 
-    pub async fn new(broker: &Arc<dyn MessageBroker>, db: &Arc<Db>) -> Self {
+    pub async fn new(broker: &Arc<NatsMessageBroker>, db: &Arc<Db>) -> Self {
         let store = Arc::new(Store::new(db));
         let broker = Arc::clone(broker);
         Self {
@@ -62,7 +62,7 @@ impl<R: Record> Stream<R> {
         payload: bytes::Bytes,
     ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
-        broker.publish_event(subject, payload).await?;
+        broker.publish(subject, payload).await?;
         Ok(())
     }
 
@@ -83,7 +83,7 @@ impl<R: Record> Stream<R> {
                     sleep(Duration::from_millis(throttle_time as u64)).await;
                 }
             }
-            let mut live = broker.subscribe_to_events(&subject.parse()).await?;
+            let mut live = broker.subscribe(&subject.parse()).await?;
             while let Some(msg) = live.next().await {
                 yield msg?;
                 let throttle_time = *config::STREAM_THROTTLE_LIVE;

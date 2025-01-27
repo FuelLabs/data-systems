@@ -3,7 +3,7 @@ mod fuel_core_helpers;
 use std::sync::Arc;
 
 pub use fuel_core_helpers::*;
-use fuel_message_broker::{MessageBroker, MessageBrokerClient};
+use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::{stream::*, subjects::IntoSubject, types::Block};
 use fuel_streams_domains::blocks::{
     subjects::BlocksSubject,
@@ -35,18 +35,13 @@ pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
     Ok(store)
 }
 
-pub async fn setup_message_broker(
+pub async fn setup_stream(
     nats_url: &str,
-) -> anyhow::Result<Arc<dyn MessageBroker>> {
-    let broker = MessageBrokerClient::Nats.start(nats_url).await?;
-    broker.setup().await?;
-    Ok(broker)
-}
-
-pub async fn setup_stream(nats_url: &str) -> anyhow::Result<Stream<Block>> {
+    prefix: &str,
+) -> anyhow::Result<Stream<Block>> {
     let db = setup_db().await?;
-    let nats_client = setup_message_broker(nats_url).await?;
-    let stream = Stream::<Block>::get_or_init(&nats_client, &db.arc()).await;
+    let broker = NatsMessageBroker::setup(nats_url, Some(prefix)).await?;
+    let stream = Stream::<Block>::get_or_init(&broker, &db.arc()).await;
     Ok(stream)
 }
 
