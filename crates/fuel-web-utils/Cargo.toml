@@ -23,6 +23,7 @@ derive_more = { version = "1.0", features = ["full"] }
 displaydoc.workspace = true
 dotenvy.workspace = true
 elasticsearch = "8.15.0-alpha.1"
+fake = { version = "3.1.0", features = ["derive"] }
 fuel-data-parser.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-store.workspace = true

@@ -3676,25 +3676,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-db-utils"
-version = "0.0.22"
-dependencies = [
- "anyhow",
- "clap 4.5.27",
- "displaydoc",
- "dotenvy",
- "fake",
- "fuel-data-parser",
- "fuel-streams-store",
- "fuel-web-utils",
- "sqlx",
- "thiserror 2.0.11",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "fuel-derive"
 version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4106,6 +4087,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "elasticsearch",
+ "fake",
  "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-store",
@@ -4299,6 +4281,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
+]
+
+[[package]]
+name = "generate-api-keys"
+version = "0.0.22"
+dependencies = [
+ "anyhow",
+ "clap 4.5.27",
+ "displaydoc",
+ "dotenvy",
+ "fuel-data-parser",
+ "fuel-streams-store",
+ "fuel-web-utils",
+ "sqlx",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -9286,7 +9286,6 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-data-parser",
- "fuel-db-utils",
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",

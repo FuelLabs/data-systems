@@ -25,7 +25,6 @@ clap.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
-fuel-db-utils.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true

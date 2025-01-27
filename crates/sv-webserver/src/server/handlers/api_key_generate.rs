@@ -1,6 +1,5 @@
 use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse, Result};
-use fuel_db_utils::generate_random_api_key;
-use fuel_web_utils::server::middlewares::api_key::DbUserApiKey;
+use fuel_web_utils::server::middlewares::api_key::{ApiKey, DbUserApiKey};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use validator::Validate;
@@ -66,7 +65,7 @@ async fn insert_api_key(
         RETURNING user_id, user_name, api_key",
     )
     .bind(&request.username)
-    .bind(generate_random_api_key())
+    .bind(ApiKey::generate_random_api_key())
     .fetch_one(tx)
     .await?;
     Ok(db_record)

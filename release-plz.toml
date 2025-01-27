@@ -91,11 +91,6 @@ release = true
 publish = true
 
 [[package]]
-name = "fuel-db-utils"
-release = true
-publish = true
-
-[[package]]
 name = "fuel-streams-test"
 release = false
 publish = false

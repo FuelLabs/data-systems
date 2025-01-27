@@ -1,7 +1,6 @@
-use fake::{faker::internet::en::Username, Fake};
-use fuel_db_utils::{config::Config, generate_random_api_key};
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::server::middlewares::api_key::DbUserApiKey;
+use fuel_web_utils::server::middlewares::api_key::{ApiKey, DbUserApiKey};
+use generate_api_keys::config::Config;
 use sqlx::{Postgres, Transaction};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
@@ -32,10 +31,10 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Generating {:?} api keys", config.api_keys.nsize);
     let user_ids = (0..config.api_keys.nsize).collect::<Vec<i32>>();
     let mut tx = db.pool.begin().await?;
-    for _ in user_ids.iter() {
+    for (index, _) in user_ids.iter().enumerate() {
         tracing::info!(
             "Generated new db record {:?}",
-            insert_api_key(&mut tx).await?
+            insert_api_key(&mut tx, index).await?
         );
     }
     if let Err(e) = tx.commit().await {
@@ -50,14 +49,15 @@ async fn main() -> anyhow::Result<()> {
 
 async fn insert_api_key(
     tx: &mut Transaction<'_, Postgres>,
+    index: usize,
 ) -> anyhow::Result<DbUserApiKey> {
     let db_record = sqlx::query_as::<_, DbUserApiKey>(
         "INSERT INTO api_keys (user_name, api_key)
         VALUES ($1, $2)
         RETURNING user_id, user_name, api_key",
     )
-    .bind(Username().fake::<String>())
-    .bind(generate_random_api_key())
+    .bind(format!("fuel-{}", index + 1))
+    .bind(ApiKey::generate_random_api_key())
     .fetch_one(tx.as_mut())
     .await?;
     Ok(db_record)

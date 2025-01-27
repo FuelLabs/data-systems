@@ -6,8 +6,8 @@ pub struct Cli {
     /// API keys number
     #[arg(
         long,
-        value_name = "NKEYS",
-        env = "NKEYS",
+        value_name = "GENERATED_KEYS",
+        env = "GENERATED_KEYS",
         default_value = "10",
         help = "Number of api keys to generate"
     )]

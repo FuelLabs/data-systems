@@ -118,6 +118,17 @@ impl ApiKey {
     pub fn storage_key(&self) -> String {
         format!("{}-{}", self.id(), self.user())
     }
+
+    pub fn generate_random_api_key() -> String {
+        use fake::rand::{self, distributions::Alphanumeric, Rng};
+        let random_num = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .filter(|c| c.is_ascii_alphabetic())
+            .take(12)
+            .map(char::from)
+            .collect::<String>();
+        format!("fuel-{}", random_num)
+    }
 }
 
 impl std::fmt::Display for ApiKey {
