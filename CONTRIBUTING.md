@@ -270,37 +270,141 @@ For local development, a typical setup would be:
 2. Run the consumer service to process the data
 3. Start the webserver to expose the processed data via WebSocket
 
-## 📇 Code conventions
+## 📇 Code Conventions
 
-We enforce some conventions to ensure code quality, sustainability, and maintainability. The following tools help us with that:
+We enforce strict code conventions to ensure quality, sustainability, and maintainability. The following tools help automate our standards:
 
-- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) - Ensures that commit messages are clear and understandable.
-- [Pre-commit](https://pre-commit.com/) - Ensures that the code is formatted and linted before being committed.
-- [Commitlint](https://commitlint.js.org/) - Lints commit messages to ensure they follow the Conventional Commits specification.
+### 🔧 Development Tools
 
-### 📝 Writing your Commits & Pull Requests
+- [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) - Standardizes commit message formats
+- [Pre-commit](https://pre-commit.com/) - Runs automated checks before commits
+- [Commitlint](https://commitlint.js.org/) - Enforces commit message standards
+- [Release-plz](https://release-plz.ieni.dev/) - Automates our release process
 
-When creating a commit, please follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Use `category(scope or module): message` in your commit message with one of the following categories:
+### 📝 Commit Message Structure
 
-- `build`: Changes regarding the build of the software, dependencies, or the addition of new dependencies.
-- `ci`: Changes regarding the configuration of continuous integration (e.g., GitHub Actions, CI systems).
-- `docs`: Changes to existing documentation or creation of new documentation (e.g., README, usage docs).
-- `feat`: All changes that introduce completely new code or new features.
-- `fix`: Changes that fix a bug (ideally referencing an issue if present).
-- `perf`: Changes that improve the performance of the software.
-- `refactor`: Any code-related change that is not a fix or a feature.
-- `test`: Changes regarding tests (adding new tests or changing existing ones).
+All commits must follow the Conventional Commits specification using this format:
 
-This is a general rule used for commits. When you are creating a PR, ensure that the title follows the same pattern, but in terms of PR, the scope is a mandatory field. That's the scopes allowed at the moment:
+```
+type(scope): subject
 
-- `repo`: Changes that affect a global scope of the repository.
-- `release`: Scoped used for automatic release pull requests.
-- `core`: Changes that affect the core package.
-- `publisher`: Changes that affect the publisher package.
-- `fuel-streams`: Changes that affect the fuel-streams package.
-- `benches`: Changes related to benchmarks.
-- `deps`: Changes related to dependencies.
-- `macros`: Changes that affect the macros package.
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Commit Types
+
+Choose the appropriate type that best describes your changes:
+
+- `feat`: New features or significant functionality additions
+- `fix`: Bug fixes and error corrections
+- `docs`: Documentation changes only
+- `refactor`: Code changes that neither fix bugs nor add features
+- `perf`: Performance improvements
+- `test`: Adding or modifying tests
+- `build`: Changes affecting build system or dependencies
+- `ci`: Changes to CI configuration files and scripts
+
+#### Commit Scopes
+
+The scope field is mandatory and must be one of the following:
+
+**Core Packages:**
+
+- `fuel-streams`: Main fuel-streams package
+- `fuel-streams-core`: Core components and utilities
+- `fuel-streams-domains`: Domain-specific implementations
+- `fuel-streams-types`: Common types and traits
+- `fuel-streams-macros`: Macro utilities
+- `fuel-streams-store`: Storage implementations
+
+**Service Packages:**
+
+- `sv-publisher`: Publisher service
+- `sv-consumer`: Consumer service
+- `sv-webserver`: WebSocket server
+
+**Support Packages:**
+
+- `fuel-data-parser`: Data parser utilities
+- `fuel-message-broker`: Message broker implementation
+- `fuel-streams-test`: Testing utilities
+
+**Repository:**
+
+- `repo`: Global repository changes
+- `release`: Automated release pull requests
+
+### 🚨 Breaking Changes
+
+For breaking changes:
+
+1. Add a `!` after the type/scope
+2. Include a `BREAKING CHANGE:` footer
+3. Clearly explain the changes and migration path
+
+Example of a breaking change commit:
+
+```
+feat(fuel-streams-core)!: implement new streaming protocol
+
+[optional body explaining the changes in detail]
+
+BREAKING CHANGE: The streaming protocol has been completely redesigned.
+Users need to:
+1. Update client implementations to use the new StreamingClient
+2. Migrate existing stream configurations
+3. Update any custom protocol handlers
+```
+
+### 🤖 Automated Release Process
+
+We use release-plz to automate our release workflow. This tool:
+
+1. Generates changelogs based on conventional commits
+2. Groups changes by scope in the changelog
+3. Determines version bumps based on commit types
+4. Creates release pull requests
+
+For this automation to work effectively:
+
+- Always use the correct commit type and scope
+- Write clear, descriptive commit messages
+- Include all necessary details for breaking changes
+- Ensure PR titles follow the same conventional commit format
+
+Example of how commits affect releases:
+
+```
+feat(fuel-streams): add new feature  // Minor version bump
+fix(sv-publisher): fix bug           // Patch version bump
+feat(fuel-streams-core)!: breaking   // Major version bump
+```
+
+### 📋 Pull Request Guidelines
+
+When creating a PR:
+
+1. Use the same conventional commit format in the PR title
+2. Include the mandatory scope field
+3. Reference related issues
+4. Provide detailed description of changes
+5. Add breaking change warnings if applicable
+
+Example PR title:
+
+```
+feat(fuel-streams-core)!: implement new streaming protocol
+```
+
+This structured approach to commits and PRs ensures:
+
+- Clear and searchable project history
+- Automated and accurate changelog generation
+- Proper semantic versioning
+- Easy identification of breaking changes
+- Efficient code review process
 
 ## 🚀 Running Local Cluster
 
@@ -314,15 +418,6 @@ make minikube-start
 ```
 
 For detailed information about the necessary tools to install, cluster configuration, deployment options, and troubleshooting, please refer to the [Cluster Documentation](./cluster/README.md).
-
-## 📬 Open a Pull Request
-
-1. Fork this repository and clone your fork.
-2. Create a new branch out of the `main` branch with the naming convention `<username>/<category>/<branch-name>`.
-3. Make and commit your changes following the conventions described above.
-4. Ensure the title of your PR is clear, concise, and follows the pattern `<category(scope): message>`.
-5. Ensure pre-commit checks pass by running `make lint`.
-6. Push your changes and open a pull request.
 
 ## 🛠 Troubleshooting
 
