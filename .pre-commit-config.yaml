@@ -8,9 +8,9 @@ exclude: |
   (?x)^(
     CHANGELOG.md|
     pnpm-lock.yaml|
-    cluster/charts/.*|
-    node_modules/.*|
-    target/*
+    cluster/charts|
+    node_modules|
+    target
   )$
 
 repos:
