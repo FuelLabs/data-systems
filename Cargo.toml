@@ -20,7 +20,7 @@ keywords = ["blockchain", "cryptocurrencies", "data-stream"]
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.84.0"
-version = "0.0.22"
+version = "0.0.23"
 
 [workspace.dependencies]
 actix-cors = "0.7"
@@ -100,17 +100,17 @@ fuel-tx = { version = "0.58.2" }
 fuel-vm = { version = "0.58.2" }
 
 # Internal dependencies
-fuel-data-parser = { version = "0.0.22", path = "crates/data-parser" }
-fuel-message-broker = { version = "0.0.22", path = "crates/message-broker" }
-fuel-streams = { version = "0.0.22", path = "crates/fuel-streams" }
-fuel-streams-core = { version = "0.0.22", path = "crates/core" }
-fuel-streams-domains = { version = "0.0.22", path = "crates/domains" }
-fuel-streams-macros = { version = "0.0.22", path = "crates/macros" }
-fuel-streams-store = { version = "0.0.22", path = "crates/store" }
+fuel-data-parser = { version = "0.0.23", path = "crates/data-parser" }
+fuel-message-broker = { version = "0.0.23", path = "crates/message-broker" }
+fuel-streams = { version = "0.0.23", path = "crates/fuel-streams" }
+fuel-streams-core = { version = "0.0.23", path = "crates/core" }
+fuel-streams-domains = { version = "0.0.23", path = "crates/domains" }
+fuel-streams-macros = { version = "0.0.23", path = "crates/macros" }
+fuel-streams-store = { version = "0.0.23", path = "crates/store" }
 fuel-streams-test = { version = "0.0.22", path = "crates/test" }
-fuel-streams-types = { version = "0.0.22", path = "crates/types" }
-fuel-web-utils = { version = "0.0.22", path = "crates/web-utils" }
-subject-derive = { version = "0.0.22", path = "crates/macros/subject-derive" }
+fuel-streams-types = { version = "0.0.23", path = "crates/types" }
+fuel-web-utils = { version = "0.0.23", path = "crates/web-utils" }
+subject-derive = { version = "0.0.23", path = "crates/macros/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

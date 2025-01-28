@@ -1,3 +1,46 @@
+# Changelog
+
+## [Unreleased]
+## [0.0.23](https://github.com/FuelLabs/data-systems/compare/v0.0.22...v0.0.23) - 2025-01-28
+
+
+
+
+### ⭐ Features
+
+- *(macros)*: Add description field on subjects ([0a4ccdd](https://github.com/FuelLabs/data-systems/commit/0a4ccdd875076390b99922e94ba93974605e34e3))  (by @pedronauck)
+
+
+
+### 🐛 Bug Fixes
+
+- *(sv-publisher)*: Recover mechanism for tx status none (#396) ([1b1083d](https://github.com/FuelLabs/data-systems/commit/1b1083dbda9791e27d2e00a9e16b91662dbf86e7))  (by @pedronauck)
+
+
+
+### 🔄 Refactor
+
+- *(repo)*: Move services to a specific folder ([d62e206](https://github.com/FuelLabs/data-systems/commit/d62e20688490b1d99427c111a7e7d0a3896308e0))  (by @pedronauck)
+
+
+- *(macros)*: Use IndexMap when building subjects schema ([90e9866](https://github.com/FuelLabs/data-systems/commit/90e986686c8802132fa643f2ff77c04108a31e2d))  (by @pedronauck)
+
+
+
+### 🏗️ Build
+
+- *(repo)*: Fix docs.rs build generation ([b93f057](https://github.com/FuelLabs/data-systems/commit/b93f0578914c370e14606cbc855feeba396c694d))  (by @pedronauck)
+
+
+- *(repo)*: Change mainnet endpoint ([097201f](https://github.com/FuelLabs/data-systems/commit/097201f51382e640ea42cd0ecfe0ac0d2c275da4))  (by @pedronauck)
+
+
+
+### 💪🏼 Contributors
+
+* @pedronauck
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 ## 0.0.18 (2025-01-24)
 
 ### 🐛 Fixes
