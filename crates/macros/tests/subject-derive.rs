@@ -230,12 +230,15 @@ fn subject_derive_schema() {
     let mut fields = IndexMap::new();
     fields.insert("field1".to_string(), FieldSchema {
         type_name: "String".to_string(),
+        description: None,
     });
     fields.insert("field2".to_string(), FieldSchema {
         type_name: "u32".to_string(),
+        description: None,
     });
     fields.insert("field3".to_string(), FieldSchema {
         type_name: "String".to_string(),
+        description: None,
     });
 
     let expected_schema = Schema {
@@ -325,4 +328,51 @@ fn subject_derive_sql_where_with_custom_where() {
         subject.to_sql_where(),
         Some("deleted_at IS NULL".to_string())
     );
+}
+
+#[test]
+fn subject_derive_schema_with_descriptions() {
+    #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+    #[subject(id = "test")]
+    #[subject(entity = "Test")]
+    #[subject(query_all = "test.>")]
+    #[subject(format = "test.{field1}.{field2}.{field3}")]
+    struct TestSubjectWithDesc {
+        #[subject(sql_column = "field_id1")]
+        #[subject(description = "The first field description")]
+        pub field1: Option<String>,
+        #[subject(sql_column = "field_id2", description = "A numeric field")]
+        pub field2: Option<u32>,
+        #[subject(sql_column = "field_id3", description = "The last field")]
+        pub field3: Option<String>,
+    }
+
+    let subject = TestSubjectWithDesc::new();
+    let schema = subject.schema();
+
+    let mut fields = IndexMap::new();
+    fields.insert("field1".to_string(), FieldSchema {
+        type_name: "String".to_string(),
+        description: Some("The first field description".to_string()),
+    });
+    fields.insert("field2".to_string(), FieldSchema {
+        type_name: "u32".to_string(),
+        description: Some("A numeric field".to_string()),
+    });
+    fields.insert("field3".to_string(), FieldSchema {
+        type_name: "String".to_string(),
+        description: Some("The last field".to_string()),
+    });
+
+    let expected_schema = Schema {
+        id: "test".to_string(),
+        entity: "Test".to_string(),
+        subject: "TestSubjectWithDesc".to_string(),
+        format: "test.{field1}.{field2}.{field3}".to_string(),
+        query_all: "test.>".to_string(),
+        fields,
+        variants: None,
+    };
+
+    assert_eq!(schema, expected_schema);
 }

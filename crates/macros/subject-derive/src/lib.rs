@@ -24,7 +24,13 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
     let to_sql_select_fn = into_subject::to_sql_select_fn(&field_infos);
     let from_json_fn = into_subject::from_json_fn(&field_names);
     let to_json_fn = into_subject::to_json_fn();
-    let schema_fn = into_subject::schema_fn(&input, &field_names, &field_types);
+    let schema_fn = into_subject::schema_fn(
+        &input,
+        &field_infos,
+        &field_names,
+        &field_types,
+    );
+
     let subject_expanded =
         subject::expanded(name, &field_names, &field_types, &input.attrs);
 

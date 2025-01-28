@@ -12,9 +12,15 @@ use super::types::*;
 #[subject(query_all = "blocks.>")]
 #[subject(format = "blocks.{producer}.{height}")]
 pub struct BlocksSubject {
-    #[subject(sql_column = "producer_address")]
+    #[subject(
+        sql_column = "producer_address",
+        description = "The address of the producer that created the block"
+    )]
     pub producer: Option<Address>,
-    #[subject(sql_column = "block_height")]
+    #[subject(
+        sql_column = "block_height",
+        description = "The height of the block as unsigned 64 bit integer"
+    )]
     pub height: Option<BlockHeight>,
 }
 

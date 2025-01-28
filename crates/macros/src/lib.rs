@@ -13,6 +13,7 @@ pub mod subject {
     pub struct FieldSchema {
         #[serde(rename = "type")]
         pub type_name: String,
+        pub description: Option<String>,
     }
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]

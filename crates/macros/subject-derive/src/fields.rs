@@ -16,18 +16,21 @@ use syn::{
 #[derive(Debug, Default)]
 pub struct FieldAttributes {
     pub sql_column: Option<String>,
+    pub description: Option<String>,
 }
 
 impl FieldAttributes {
     fn from_field(field: &Field) -> Self {
-        field
+        let attrs = field
             .attrs
             .iter()
             .filter(|attr| attr.meta.path().is_ident("subject"))
             .fold(FieldAttributes::default(), |mut attrs, attr| {
                 Self::parse_attr_values(attr, &mut attrs);
                 attrs
-            })
+            });
+
+        attrs
     }
 
     fn parse_token_stream(&mut self, tokens: &TokenStream) {
@@ -63,27 +66,42 @@ impl FieldAttributes {
     }
 
     fn set_attribute(&mut self, name: String, value: String) {
-        if name.as_str() == "sql_column" {
-            self.sql_column = Some(value)
+        match name.as_str() {
+            "sql_column" => self.sql_column = Some(value),
+            "description" => self.description = Some(value),
+            _ => {}
         }
     }
 
     fn parse_attr_values(attr: &syn::Attribute, attrs: &mut FieldAttributes) {
+        // Try parsing as a Meta first (handles #[subject(sql_column = "...")] format)
         if let Ok(meta) = attr.parse_args::<Meta>() {
             match meta {
                 Meta::List(list) => {
                     attrs.parse_token_stream(&list.tokens);
                 }
                 Meta::NameValue(name_value) => {
-                    if name_value.path.is_ident("sql_column") {
-                        if let syn::Expr::Lit(expr_lit) = name_value.value {
-                            if let syn::Lit::Str(lit_str) = expr_lit.lit {
+                    if let syn::Expr::Lit(expr_lit) = name_value.value {
+                        if let syn::Lit::Str(lit_str) = expr_lit.lit {
+                            if name_value.path.is_ident("sql_column") {
                                 attrs.sql_column = Some(lit_str.value());
+                            } else if name_value.path.is_ident("description") {
+                                attrs.description = Some(lit_str.value());
                             }
                         }
                     }
                 }
-                _ => {}
+                // Handle direct attribute format #[subject(sql_column = "...", description = "...")]
+                Meta::Path(_) => {
+                    if let Ok(tokens) = attr.meta.require_list() {
+                        attrs.parse_token_stream(&tokens.tokens);
+                    }
+                }
+            }
+        } else {
+            // Try parsing the attribute tokens directly as a fallback
+            if let Ok(tokens) = attr.meta.require_list() {
+                attrs.parse_token_stream(&tokens.tokens);
             }
         }
     }

@@ -12,7 +12,7 @@ version.workspace = true
 
 [dependencies]
 downcast-rs = "2.0.1"
-indexmap = "2.7.1"
+indexmap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 subject-derive.workspace = true

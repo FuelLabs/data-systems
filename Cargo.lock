@@ -9191,6 +9191,7 @@ version = "0.0.22"
 dependencies = [
  "fuel-streams-domains",
  "fuel-streams-macros",
+ "indexmap 2.7.1",
  "serde_json",
 ]
 

@@ -155,6 +155,7 @@ pub fn to_json_fn() -> TokenStream {
 
 pub fn schema_fn(
     input: &DeriveInput,
+    field_infos: &[FieldInfo],
     field_names: &[&Ident],
     field_types: &[&Type],
 ) -> TokenStream {
@@ -175,11 +176,20 @@ pub fn schema_fn(
                     .replace("Option < ", "")
                     .replace(" >", "");
 
+                let field_info = field_infos.iter().find(|i| i.ident == *name);
+                let description =
+                    field_info.and_then(|i| i.attributes.description.clone());
+                let description_quote = match description {
+                    Some(desc) => quote!(Some(#desc.to_string())),
+                    None => quote!(None),
+                };
+
                 quote! {
                     fields.insert(
                         #name_str.to_string(),
                         fuel_streams_macros::subject::FieldSchema {
                             type_name: #type_str.to_string(),
+                            description: #description_quote,
                         }
                     );
                 }
