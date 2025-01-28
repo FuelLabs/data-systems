@@ -195,7 +195,7 @@ audit-fix:
 build:
 	cargo build --release
 
-docs: doc
+docs:
 	@echo "Generating additional documentation..."
 	@cargo doc --no-deps --document-private-items
 	@cargo doc --workspace --no-deps
