@@ -13,7 +13,7 @@ spec:
   template:
     {{- include "k8s.template-metadata" $serviceDict | nindent 4 }}
     spec:
-      {{- include "k8s.pod-config" $serviceDict | nindent 6 }} 
+      {{- include "k8s.pod-config" $serviceDict | nindent 6 }}
       containers:
         - name: webserver
           {{- include "k8s.container-config.image" $serviceDict | nindent 10 }}
@@ -33,7 +33,7 @@ spec:
   type: ClusterIP
   ports:
     - appProtocol: tcp
-      name: {{ $name }} 
+      name: {{ $name }}
       port: {{ $port }}
       protocol: TCP
       targetPort: {{ $name }}

@@ -64,4 +64,4 @@ spec:
           averageUtilization: {{ $autoscaling.targetMemoryUtilizationPercentage }}
     {{- end }}
 {{- end }}
-{{- end }} 
+{{- end }}

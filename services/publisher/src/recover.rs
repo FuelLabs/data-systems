@@ -61,7 +61,6 @@ pub async fn recover_tx_status_none(
                         anyhow::anyhow!("Semaphore error: {}", e)
                     })?;
 
-                    let block_height_str = block_height.to_string();
                     let sealed_block = fuel_core.get_sealed_block(block_height.into()).map_err(|e| {
                         tracing::error!("Failed to get sealed block #{}: {}", block_height, e);
                         anyhow::anyhow!("Get sealed block error: {}", e)
@@ -78,7 +77,7 @@ pub async fn recover_tx_status_none(
                     sqlx::query(
                         "DELETE FROM transactions WHERE block_height = $1 AND tx_status = 'none'"
                     )
-                    .bind(block_height_str)
+                    .bind(block_height)
                     .execute(&db.pool)
                     .await
                     .map_err(|e| {

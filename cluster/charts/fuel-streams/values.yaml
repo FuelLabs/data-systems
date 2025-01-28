@@ -344,7 +344,7 @@ nats:
 
 prometheus:
   enabled: true
-  
+
   # Prometheus Operator configuration
   prometheusOperator:
     enabled: true
@@ -410,7 +410,7 @@ prometheus:
         label: grafana_dashboard
         labelValue: "1"
         searchNamespace: ALL
-    
+
   # Node exporter for hardware and OS metrics
   nodeExporter:
     enabled: true

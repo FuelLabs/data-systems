@@ -42,7 +42,7 @@ app: {{ .root.Chart.Name }}
 {{/*
 Configure resource annotations with proper indentation
 Parameters:
-  - root: Root context object for fallback values 
+  - root: Root context object for fallback values
   - context: Service-specific context object containing configuration
   - name: Name of the service
   - component: Optional component name

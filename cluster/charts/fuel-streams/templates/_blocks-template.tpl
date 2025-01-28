@@ -1,7 +1,7 @@
 {{/*
 Configure pod template metadata including annotations and labels
 Parameters:
-  - root: Root context object for fallback values 
+  - root: Root context object for fallback values
   - context: Service-specific context object containing configuration
   - name: Name of the service for labels
   - component: Optional component name for labels
@@ -20,7 +20,7 @@ labels:
 {{/*
 Configure pod template metadata including annotations and labels
 Parameters:
-  - root: Root context object for fallback values 
+  - root: Root context object for fallback values
   - context: Service-specific context object containing configuration
   - name: Name of the service for labels
 Returns: YAML configuration for pod template metadata

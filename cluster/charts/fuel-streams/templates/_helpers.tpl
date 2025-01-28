@@ -173,7 +173,7 @@ Parameters:
   - rootPath: Optional alternative path to check in root context
     If provided, this path will be used instead of 'path' when checking root context
 
-Returns: 
+Returns:
   - The value from context if found and valid
   - The value from root (using rootPath if provided, otherwise path) if not found in context
   - Empty string if value is not found in either context or root
@@ -220,7 +220,7 @@ Returns: Field and value if value exists and is not empty
 Example Usage:
   # With explicit path:
   {{- include "set-field-and-value" (dict "field" "labels" "path" "config.labels" "context" $publisher "root" .) | nindent 6 }}
-  
+
   # Without path (automatically uses "config.labels"):
   {{- include "set-field-and-value" (dict "field" "labels" "context" $publisher "root" .) | nindent 6 }}
 */}}
@@ -248,7 +248,7 @@ Returns: The YAML value if it exists and is valid, otherwise returns nothing
 Example Usage:
   # With root fallback:
   {{- include "set-value" (dict "context" $publisher "root" . "path" "config.labels") | nindent 4 }}
-  
+
   # Without root fallback:
   {{- include "set-value" (dict "context" $publisher "path" "config.labels") | nindent 4 }}
 
