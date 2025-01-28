@@ -1,10 +1,10 @@
 #![doc = include_str!("../README.md")]
 
 pub mod subject {
-    use std::collections::HashMap;
     pub use std::fmt::Debug;
 
     use downcast_rs::{impl_downcast, Downcast};
+    pub use indexmap::IndexMap;
     use serde::{Deserialize, Serialize};
     pub use serde_json;
     pub use subject_derive::*;
@@ -21,9 +21,11 @@ pub mod subject {
         pub entity: String,
         pub subject: String,
         pub format: String,
+        #[serde(rename = "wildcard")]
         pub query_all: String,
-        pub fields: HashMap<String, FieldSchema>,
-        pub variants: Option<HashMap<String, Schema>>,
+        pub fields: IndexMap<String, FieldSchema>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub variants: Option<IndexMap<String, Schema>>,
     }
     impl Schema {
         pub fn to_json(&self) -> String {
@@ -35,7 +37,7 @@ pub mod subject {
             variant: Schema,
         ) -> &mut Self {
             if self.variants.is_none() {
-                self.variants = Some(HashMap::new());
+                self.variants = Some(IndexMap::new());
             }
             self.variants.as_mut().unwrap().insert(name, variant);
             self

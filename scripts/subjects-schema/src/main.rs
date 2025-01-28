@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, path::Path};
+use std::{env, fs, path::Path};
 
 use fuel_streams_domains::{
     blocks::subjects::*,
@@ -8,7 +8,7 @@ use fuel_streams_domains::{
     transactions::subjects::*,
     utxos::subjects::*,
 };
-use fuel_streams_macros::subject::*;
+use fuel_streams_macros::subject::{IndexMap, *};
 
 fn main() {
     let block_schema = BlocksSubject::new().schema();
@@ -77,7 +77,7 @@ fn main() {
     receipts_schema.set_variant("mint".to_string(), receipts_mint_schema);
     receipts_schema.set_variant("burn".to_string(), receipts_burn_schema);
 
-    let final_schema = HashMap::from([
+    let final_schema = IndexMap::from([
         ("blocks".to_string(), block_schema),
         ("transactions".to_string(), transaction_schema),
         ("inputs".to_string(), inputs_schema),

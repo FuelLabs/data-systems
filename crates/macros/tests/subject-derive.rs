@@ -1,4 +1,4 @@
-use fuel_streams_macros::subject::*;
+use fuel_streams_macros::subject::{IndexMap, *};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
@@ -227,7 +227,7 @@ fn subject_derive_schema() {
     let subject = TestSubject::new();
     let schema = subject.schema();
 
-    let mut fields = std::collections::HashMap::new();
+    let mut fields = IndexMap::new();
     fields.insert("field1".to_string(), FieldSchema {
         type_name: "String".to_string(),
     });

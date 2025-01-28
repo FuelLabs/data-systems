@@ -187,7 +187,7 @@ pub fn schema_fn(
 
     quote! {
         fn schema(&self) -> fuel_streams_macros::subject::Schema {
-            let mut fields = std::collections::HashMap::new();
+            let mut fields = fuel_streams_macros::subject::IndexMap::new();
             #(#field_entries)*
 
             fuel_streams_macros::subject::Schema {

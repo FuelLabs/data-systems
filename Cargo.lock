@@ -3862,6 +3862,7 @@ name = "fuel-streams-macros"
 version = "0.0.22"
 dependencies = [
  "downcast-rs",
+ "indexmap 2.7.1",
  "pretty_assertions",
  "serde",
  "serde_json",
