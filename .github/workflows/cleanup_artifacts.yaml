@@ -37,7 +37,7 @@ jobs:
           # Debug information
           echo "Repository Owner: ${REPO_OWNER}"
           echo "Repository Name: ${REPO_NAME}"
-          make cleanup_artifacts \
+          make cleanup-artifacts \
             REPO_OWNER="${REPO_OWNER}" \
             REPO_NAME="${REPO_NAME}" \
             DAYS_TO_KEEP="${DAYS_TO_KEEP}"
