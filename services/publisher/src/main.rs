@@ -19,7 +19,6 @@ use sv_publisher::{
     error::PublishError,
     metrics::Metrics,
     publish::publish_block,
-    recover::recover_tx_status_none,
     state::ServerState,
 };
 use tokio_util::sync::CancellationToken;
@@ -51,13 +50,6 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Last block height: {}", last_block_height);
     tokio::select! {
         result = async {
-            let recover_blocks = recover_tx_status_none(
-                &db,
-                &message_broker,
-                &fuel_core,
-                &telemetry
-            );
-
             let historical = process_historical_blocks(
                 cli.from_height.into(),
                 &message_broker,
@@ -75,11 +67,10 @@ async fn main() -> anyhow::Result<()> {
                 &telemetry
             );
 
-            tokio::join!(recover_blocks, historical, live)
+            tokio::join!(historical, live)
         } => {
             result.0?;
             result.1?;
-            result.2?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");

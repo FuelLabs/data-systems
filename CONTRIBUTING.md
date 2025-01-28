@@ -325,9 +325,9 @@ The scope field is mandatory and must be one of the following:
 
 **Service Packages:**
 
-- `publisher`: Publisher service
-- `consumer`: Consumer service
-- `webserver`: WebSocket server
+- `sv-publisher`: Publisher service
+- `sv-consumer`: Consumer service
+- `sv-webserver`: WebSocket server
 
 **Support Packages:**
 

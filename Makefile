@@ -146,7 +146,7 @@ fmt-cargo:
 	@taplo fmt $(TOML_FILES)
 
 fmt-rust:
-	cargo +$(RUST_NIGHTLY_VERSION) fmt -- --color always
+	cargo +$(RUST_NIGHTLY_VERSION) fmt --all -- --color always
 
 fmt-prettier:
 	pnpm prettier:fix
