@@ -2,15 +2,15 @@ apiVersion: v2
 appVersion: "1.0"
 description: A Helm chart for Kubernetes
 name: fuel-streams
-version: 0.9.5
+version: 0.10.0
 dependencies:
   - name: nats
-    version: 1.2.9
+    version: 1.2.10
     repository: https://nats-io.github.io/k8s/helm/charts/
     alias: nats
     condition: nats.enabled
   - name: kube-prometheus-stack
-    version: 68.3.2
+    version: 27.1.0
     repository: https://prometheus-community.github.io/helm-charts
     alias: prometheus
     condition: prometheus.enabled

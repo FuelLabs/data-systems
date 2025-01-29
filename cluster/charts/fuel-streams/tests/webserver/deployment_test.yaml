@@ -303,7 +303,7 @@ tests:
       webserver.autoscaling.targetMemoryUtilizationPercentage: 85
     asserts:
       - hasDocuments:
-          count: 3
+          count: 4
       - isKind:
           of: HorizontalPodAutoscaler
         documentIndex: 1
@@ -377,7 +377,7 @@ tests:
       webserver.autoscaling.enabled: false
     asserts:
       - hasDocuments:
-          count: 2
+          count: 3
       - isKind:
           of: Deployment
         documentIndex: 0

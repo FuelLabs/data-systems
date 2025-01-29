@@ -1,0 +1,52 @@
+{{- define "k8s.service" -}}
+{{- $root := .root -}}
+{{- $context := .context -}}
+{{- $name := .name -}}
+{{- $component := .component -}}
+{{- $prometheus := $context.prometheus -}}
+{{- $service := include "get-context-value" (dict "context" $context "root" $root "path" "service" "rootPath" "config.service") | fromYaml -}}
+{{- $serviceDict := dict "root" $root "context" $context "name" $name "component" $component -}}
+
+{{- if $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
+spec:
+  type: {{ $service.type }}
+  ports:
+    - appProtocol: tcp
+      name: {{ $name }}
+      port: {{ $service.port }}
+      protocol: TCP
+      targetPort: {{ $name }}
+    {{- with $context.ports }}
+    {{- range . }}
+    - name: {{ .name }}
+      port: {{ .containerPort }}
+      protocol: {{ .protocol }}
+      targetPort: {{ .name }}
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "fuel-streams.selectorLabels" (dict "name" $name "context" $root) | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}
+{{- if $prometheus.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "fuel-streams.selectorLabels" (dict "name" $name "context" $root) | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  endpoints:
+    - port: {{ $name }}
+      path: {{ $prometheus.path | default "/metrics" }}
+      interval: 15s
+{{- end }}
+{{- end }}

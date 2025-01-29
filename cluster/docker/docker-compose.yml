@@ -14,7 +14,7 @@ services:
       - ./nats-config/accounts.conf:/etc/nats/accounts.conf
     command:
       - -m
-      - '8222'
+      - "8222"
       - --name=fuel-streams-nats
       - --js
       - --config=/etc/nats/nats.conf
@@ -34,6 +34,14 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-fuel_streams}
+      POSTGRES_MAX_CONNECTIONS: "500"
+      POSTGRES_SHARED_BUFFERS: "512MB"
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=500"
+      - "-c"
+      - "shared_buffers=512MB"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -43,24 +51,24 @@ services:
       retries: 5
 
   prometheus:
-      profiles:
-        - all
-        - monitoring
-      image: prom/prometheus:latest
-      container_name: prometheus
-      restart: always
-      volumes:
-        - ./monitoring/prometheus/:/etc/prometheus/
-        - prometheus_data:/prometheus
-      command:
-        - '--config.file=/etc/prometheus/prometheus.yml'
-        - '--storage.tsdb.path=/prometheus'
-        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-        - '--web.console.templates=/usr/share/prometheus/consoles'
-        - '--storage.tsdb.retention.time=200h'
-        - '--web.enable-lifecycle'
-      ports:
-        - 9090:9090
+    profiles:
+      - all
+      - monitoring
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+    ports:
+      - 9090:9090
 
   node-exporter:
     profiles:
@@ -74,8 +82,8 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
     ports:
@@ -114,8 +122,8 @@ services:
     volumes:
       - ./monitoring/alertmanager/:/etc/alertmanager/
     command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
+      - "--config.file=/etc/alertmanager/config.yml"
+      - "--storage.path=/alertmanager"
     depends_on:
       - prometheus
     ports:
@@ -127,7 +135,7 @@ services:
       - monitoring
     image: grafana/grafana:latest
     container_name: grafana
-    user: '472'
+    user: "472"
     restart: always
     environment:
       GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"

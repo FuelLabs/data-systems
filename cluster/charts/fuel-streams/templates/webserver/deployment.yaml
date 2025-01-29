@@ -18,26 +18,6 @@ spec:
         - name: webserver
           {{- include "k8s.container-config.image" $serviceDict | nindent 10 }}
           {{- include "k8s.container-config" $serviceDict | nindent 10 }}
-{{- include "k8s.hpa" $serviceDict }}
-{{- end }}
-
-{{- $service := $webserver.service }}
-{{- $port := $service.port -}}
-{{- if and $webserver.enabled $service.enabled }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  {{- include "k8s.resource-metadata" (merge $serviceDict (dict "context" $service)) | nindent 2 }}
-spec:
-  type: ClusterIP
-  ports:
-    - appProtocol: tcp
-      name: {{ $name }}
-      port: {{ $port }}
-      protocol: TCP
-      targetPort: {{ $name }}
-  selector:
-    {{- include "fuel-streams.selectorLabels" (dict "name" "webserver" "context" .) | nindent 4 }}
-    app.kubernetes.io/component: {{ $component }}
+{{ include "k8s.hpa" $serviceDict }}
+{{ include "k8s.service" $serviceDict }}
 {{- end }}

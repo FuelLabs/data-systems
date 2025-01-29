@@ -8,4 +8,4 @@ metadata:
     app.kubernetes.io/part-of: {{ .Release.Name }}
 data:
   svc-pub-con-ws-metrics-dashboard.json: |-
-    {{ .Files.Get "dashboards/svc-pub-con-ws-metrics-dashboard.json" | indent 4 }}
+    {{- .Files.Get "dashboards/svc-pub-con-ws-metrics-dashboard.json" | nindent 4 }}

@@ -59,12 +59,18 @@ config:
                 app.kubernetes.io/component: publisher
             topologyKey: topology.kubernetes.io/zone
 
+  # Default autoscaling configuration
   autoscaling:
     enabled: false
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+
+  # Default service configuration
+  service:
+    port: 8080
+    type: ClusterIP
 
 # ------------------------------------------------------------------------------
 # Global ConfigMap
@@ -90,20 +96,15 @@ localSecrets:
   data: {}
 
 # ------------------------------------------------------------------------------
-# Monitoring
-# ------------------------------------------------------------------------------
-
-monitoring:
-  enabled: false
-
-# ------------------------------------------------------------------------------
 # Publisher configuration
 # ------------------------------------------------------------------------------
 
 publisher:
   enabled: true
   network: mainnet
-  port: 9001
+
+  fuelCorePort: 4004
+  port: 8080
   ports: []
 
   image:
@@ -119,8 +120,16 @@ publisher:
     TMPDIR: "/var/fuel-streams/tmp"
     DB_PATH: /mnt/db
 
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    config:
+      annotations: {}
+      labels: {}
+
   prometheus:
-    enabled: false
+    enabled: true
     scrape: true
     path: /metrics
 
@@ -156,7 +165,9 @@ publisher:
 
 consumer:
   enabled: true
-  port: 9002
+  network: mainnet
+
+  port: 8080
   ports: []
 
   image:
@@ -169,6 +180,19 @@ consumer:
   # using a map or an array of key-value pairs
   envFrom: []
   env: {}
+
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    config:
+      annotations: {}
+      labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /metrics
 
   config:
     replicaCount: 3
@@ -196,7 +220,8 @@ consumer:
 webserver:
   enabled: true
   network: mainnet
-  port: 9003
+
+  port: 8080
   ports: []
 
   image:
@@ -212,6 +237,11 @@ webserver:
     config:
       annotations: {}
       labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /metrics
 
   tls:
     enabled: true
@@ -343,7 +373,7 @@ nats:
 # ------------------------------------------------------------------------------
 
 prometheus:
-  enabled: true
+  enabled: false
 
   # Prometheus Operator configuration
   prometheusOperator:
