@@ -37,7 +37,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -129,7 +129,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -246,7 +246,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -363,7 +363,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -465,7 +465,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "Fuel-data-systems-webserver",
+    "title": "Fuel Streams / Webserver Metrics",
     "uid": "webserver-metrics",
     "version": 1,
     "weekStart": ""

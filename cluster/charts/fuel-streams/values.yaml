@@ -8,6 +8,9 @@ config:
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
+
+  # Prometheus datasource for Grafana dashboards
+  prometheusDataSource: "DS__PROMETHEUS"
   # Enable probes and health checks for all services
   healthChecks: true
 

@@ -37,7 +37,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -129,7 +129,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -221,7 +221,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -338,7 +338,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -465,7 +465,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "Fuel-data-systems-consumer",
+    "title": "Fuel Streams / Consumer Metrics",
     "uid": "consumer-metrics",
     "version": 1,
     "weekStart": ""

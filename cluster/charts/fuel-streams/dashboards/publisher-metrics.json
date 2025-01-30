@@ -37,7 +37,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -118,7 +118,7 @@
                 {
                     "datasource": {
                         "type": "prometheus",
-                        "uid": "DS__PROMETHEUS"
+                        "uid": "{{ .context.prometheusDataSource }}"
                     },
                     "editorMode": "code",
                     "expr": "sum(publisher_metrics_messages_throughput)",
@@ -133,7 +133,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -250,7 +250,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -342,7 +342,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "DS__PROMETHEUS"
+                "uid": "{{ .context.prometheusDataSource }}"
             },
             "fieldConfig": {
                 "defaults": {
@@ -444,7 +444,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "Fuel-data-systems-publisher",
+    "title": "Fuel Streams / Publisher Metrics",
     "uid": "publisher-metrics",
     "version": 1,
     "weekStart": ""
