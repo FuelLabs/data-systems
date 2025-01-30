@@ -24,7 +24,8 @@ spec:
           {{- toYaml . | nindent 10 }}
           {{- end }}
           {{ include "k8s.container-config" $serviceDict | nindent 10 }}
-
 {{ include "k8s.hpa" $serviceDict }}
 {{ include "k8s.service" $serviceDict }}
+{{ include "k8s.pod-monitor" $serviceDict }}
+{{ include "k8s.grafana-dashboard" $serviceDict }}
 {{- end }}

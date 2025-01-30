@@ -22,9 +22,11 @@ tests:
       - equal:
           path: metadata.name
           value: RELEASE-NAME-fuel-streams-webserver
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
           value: webserver
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
@@ -133,7 +135,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            name: webserver
+            name: http
             containerPort: 8082
             protocol: TCP
         documentIndex: 0
@@ -303,7 +305,7 @@ tests:
       webserver.autoscaling.targetMemoryUtilizationPercentage: 85
     asserts:
       - hasDocuments:
-          count: 4
+          count: 5
       - isKind:
           of: HorizontalPodAutoscaler
         documentIndex: 1
@@ -377,7 +379,7 @@ tests:
       webserver.autoscaling.enabled: false
     asserts:
       - hasDocuments:
-          count: 3
+          count: 4
       - isKind:
           of: Deployment
         documentIndex: 0

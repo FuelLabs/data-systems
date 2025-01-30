@@ -134,4 +134,6 @@ spec:
           requests:
             storage: {{ $publisher.storage.size }}
 {{ include "k8s.service" $serviceDict }}
+{{ include "k8s.pod-monitor" $serviceDict }}
+{{ include "k8s.grafana-dashboard" $serviceDict }}
 {{- end -}}

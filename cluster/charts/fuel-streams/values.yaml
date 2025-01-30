@@ -1,10 +1,12 @@
 # ------------------------------------------------------------------------------
-# ServiceAccount
+# Namespace
 # ------------------------------------------------------------------------------
 
-serviceAccount:
-  create: true
-  automount: true
+namespace:
+  name: fuel-streams
+  config:
+    labels: {}
+    annotations: {}
 
 # ------------------------------------------------------------------------------
 # Global Config
@@ -16,17 +18,41 @@ config:
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
-  # Create roles and rolebindings for the fuel-streams serviceaccount
-  createRoles: true
-  # Enable health checks for all services
+  # Enable probes and health checks for all services
   healthChecks: true
 
+  # Default liveness probe
   livenessProbe:
     enabled: true
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Default readiness probe
   readinessProbe:
     enabled: true
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Default startup probe
   startupProbe:
     enabled: true
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
 
   # Default pod security context
   podSecurityContext:
@@ -96,6 +122,14 @@ localSecrets:
   data: {}
 
 # ------------------------------------------------------------------------------
+# ServiceAccount
+# ------------------------------------------------------------------------------
+
+serviceAccount:
+  create: true
+  automount: true
+
+# ------------------------------------------------------------------------------
 # Publisher configuration
 # ------------------------------------------------------------------------------
 
@@ -132,6 +166,10 @@ publisher:
     enabled: true
     scrape: true
     path: /metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   storage:
     name: rocks-db
@@ -193,6 +231,10 @@ consumer:
     enabled: true
     scrape: true
     path: /metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   config:
     replicaCount: 3
@@ -242,6 +284,10 @@ webserver:
     enabled: true
     scrape: true
     path: /metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   tls:
     enabled: true
@@ -292,16 +338,17 @@ nats:
     enabled: false
 
   promExporter:
-    enabled: false
+    enabled: true
     port: 6777
     image:
       repository: natsio/prometheus-nats-exporter
       tag: 0.15.0
     podMonitor:
-      enabled: false
-      metadata:
-        labels:
-          release: kube-prometheus-stack
+      enabled: true
+      merge:
+        metadata:
+          labels:
+            release: kube-prometheus-stack
 
   container:
     image:
@@ -323,7 +370,7 @@ nats:
       cluster:
         enabled: true
       monitor:
-        enabled: false
+        enabled: true
 
   config:
     cluster:
@@ -339,19 +386,17 @@ nats:
         dir: /data
         pvc:
           enabled: true
-          size: 2000Gi
+          size: 100Gi
           storageClassName: "gp3-generic"
 
     monitor:
-      enabled: false
+      enabled: true
       port: 8222
 
     merge:
-      max_payload: << 32MiB >>
+      max_payload: << 8MiB >>
       jetstream:
-        sync_interval: always
-        max_outstanding_catchup: << 512MiB >>
-        max_file_store: << 2000GiB >>
+        max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
       $include: auth.conf
@@ -388,6 +433,9 @@ prometheus:
   # Prometheus server configuration
   prometheus:
     enabled: true
+    prometheusSpec:
+      podMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelectorNilUsesHelmValues: false
     serviceAccount:
       create: true
     serviceMonitor:
@@ -426,7 +474,12 @@ prometheus:
       enabled: false
     persistence:
       enabled: true
+      storageClassName: gp3-generic
+      accessModes:
+        - ReadWriteOnce
       size: 10Gi
+      finalizers:
+        - kubernetes.io/pvc-protection
     resources:
       requests:
         memory: 128Mi
