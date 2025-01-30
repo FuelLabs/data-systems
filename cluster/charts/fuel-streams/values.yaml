@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 
 namespace:
+  enabled: true
   name: fuel-streams
   config:
     labels: {}
