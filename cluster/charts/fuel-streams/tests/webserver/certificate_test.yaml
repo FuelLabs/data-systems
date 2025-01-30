@@ -91,7 +91,7 @@ tests:
         documentIndex: 0
       - equal:
           path: metadata.namespace
-          value: fuel-streams
+          value: NAMESPACE
         documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
@@ -120,7 +120,7 @@ tests:
         documentIndex: 1
       - equal:
           path: metadata.namespace
-          value: fuel-streams
+          value: NAMESPACE
         documentIndex: 1
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]

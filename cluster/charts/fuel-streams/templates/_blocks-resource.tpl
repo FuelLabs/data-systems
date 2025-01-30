@@ -35,11 +35,7 @@ Returns: Basic resource metadata including:
 {{ $fullname := include "fuel-streams.fullname" .root -}}
 {{ $name := printf "%s-%s" $fullname .name -}}
 name: {{ $name }}
-{{- if .root.Values.namespace.enabled -}}
-namespace: {{ default .root.Release.Namespace .root.Values.namespace.name }}
-{{- else -}}
 namespace: {{ .root.Release.Namespace }}
-{{- end }}
 app: {{ .root.Chart.Name }}
 {{- end }}
 
