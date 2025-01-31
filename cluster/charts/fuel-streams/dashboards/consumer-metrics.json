@@ -12,20 +12,6 @@
                 "iconColor": "rgba(0, 211, 255, 1)",
                 "name": "Annotations & Alerts",
                 "type": "dashboard"
-            },
-            {
-                "datasource": {
-                    "type": "prometheus",
-                    "uid": "DS__PROMETHEUS"
-                },
-                "enable": true,
-                "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=\"consumer\"}[5m])) by (deployment)",
-                "iconColor": "#5794F2",
-                "name": "Deployments",
-                "tagKeys": [
-                    "deployment"
-                ],
-                "titleFormat": "Consumer Deployment"
             }
         ]
     },
