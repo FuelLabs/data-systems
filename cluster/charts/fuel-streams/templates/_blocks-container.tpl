@@ -35,7 +35,7 @@ Parameters:
 {{- define "k8s.container-config.ports" -}}
 ports:
 {{- if .context.port }}
-- name: {{ .context.name | default .name }}
+- name: http
   containerPort: {{ .context.port }}
   protocol: TCP
 {{- end }}

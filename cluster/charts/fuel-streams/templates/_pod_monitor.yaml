@@ -1,0 +1,32 @@
+{{- define "k8s.pod-monitor" -}}
+{{- $root := .root -}}
+{{- $context := .context -}}
+{{- $name := .name -}}
+{{- $component := .component -}}
+{{- $prometheus := $context.prometheus -}}
+{{- $podDict := dict "root" $root "context" $context "name" $name "component" $component -}}
+{{- if $prometheus.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  {{- include "k8s.resource-metadata.default" $podDict | nindent 2 }}
+  labels:
+    {{- include "k8s.resource-metadata.labels-raw" $podDict | nindent 4 }}
+    {{- include "set-value" (dict "root" $root "context" $prometheus "path" "config.labels") | nindent 4 }}
+  annotations:
+    {{- include "k8s.resource-metadata.annotations-raw" $podDict | nindent 4 }}
+    {{- include "set-value" (dict "root" $root "context" $prometheus "path" "config.annotations") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "fuel-streams.selectorLabels" (dict "name" $name "context" $root) | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  podMetricsEndpoints:
+    - port: http
+      {{- if $prometheus.path }}
+      path: {{ $prometheus.path }}
+      {{- end }}
+      interval: 15s
+{{- end }}
+{{- end }}

@@ -65,7 +65,7 @@ spec:
           - "--ip"
           - "0.0.0.0"
           - "--port"
-          - "$(PORT)"
+          - "{{ $publisher.fuelCorePort }}"
           - "--peering-port"
           - "30333"
           - "--utxo-validation"
@@ -75,6 +75,8 @@ spec:
           - "$(DB_PATH)"
           - "--nats-url"
           - "$(NATS_URL)"
+          - "--telemetry-port"
+          - "{{ $publisher.port }}"
           - "--sync-header-batch-size"
           - "100"
           - "--relayer-log-page-size"
@@ -131,4 +133,7 @@ spec:
         resources:
           requests:
             storage: {{ $publisher.storage.size }}
+{{ include "k8s.service" $serviceDict }}
+{{ include "k8s.pod-monitor" $serviceDict }}
+{{ include "k8s.grafana-dashboard" $serviceDict }}
 {{- end -}}

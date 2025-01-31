@@ -1,12 +1,4 @@
 # ------------------------------------------------------------------------------
-# ServiceAccount
-# ------------------------------------------------------------------------------
-
-serviceAccount:
-  create: true
-  automount: true
-
-# ------------------------------------------------------------------------------
 # Global Config
 # ------------------------------------------------------------------------------
 
@@ -16,17 +8,46 @@ config:
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
-  # Create roles and rolebindings for the fuel-streams serviceaccount
-  createRoles: true
-  # Enable health checks for all services
-  healthChecks: true
 
+  # Enable probes and health checks for all services
+  healthChecks: true
+  # Enable Prometheus for all services
+  prometheus:
+    enabled: true
+    dataSource: "DS__PROMETHEUS"
+
+  # Default liveness probe
   livenessProbe:
     enabled: true
+    httpGet:
+      path: /api/v1/health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Default readiness probe
   readinessProbe:
     enabled: true
+    httpGet:
+      path: /api/v1/health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Default startup probe
   startupProbe:
     enabled: true
+    httpGet:
+      path: /api/v1/health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
 
   # Default pod security context
   podSecurityContext:
@@ -59,12 +80,18 @@ config:
                 app.kubernetes.io/component: publisher
             topologyKey: topology.kubernetes.io/zone
 
+  # Default autoscaling configuration
   autoscaling:
     enabled: false
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+
+  # Default service configuration
+  service:
+    port: 8080
+    type: ClusterIP
 
 # ------------------------------------------------------------------------------
 # Global ConfigMap
@@ -90,11 +117,12 @@ localSecrets:
   data: {}
 
 # ------------------------------------------------------------------------------
-# Monitoring
+# ServiceAccount
 # ------------------------------------------------------------------------------
 
-monitoring:
-  enabled: false
+serviceAccount:
+  create: true
+  automount: true
 
 # ------------------------------------------------------------------------------
 # Publisher configuration
@@ -103,7 +131,9 @@ monitoring:
 publisher:
   enabled: true
   network: mainnet
-  port: 9001
+
+  fuelCorePort: 4004
+  port: 8080
   ports: []
 
   image:
@@ -119,10 +149,22 @@ publisher:
     TMPDIR: "/var/fuel-streams/tmp"
     DB_PATH: /mnt/db
 
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    config:
+      annotations: {}
+      labels: {}
+
   prometheus:
-    enabled: false
+    enabled: true
     scrape: true
-    path: /metrics
+    path: /api/v1/metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   storage:
     name: rocks-db
@@ -156,7 +198,9 @@ publisher:
 
 consumer:
   enabled: true
-  port: 9002
+  network: mainnet
+
+  port: 8080
   ports: []
 
   image:
@@ -169,6 +213,23 @@ consumer:
   # using a map or an array of key-value pairs
   envFrom: []
   env: {}
+
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    config:
+      annotations: {}
+      labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /api/v1/metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   config:
     replicaCount: 3
@@ -196,7 +257,8 @@ consumer:
 webserver:
   enabled: true
   network: mainnet
-  port: 9003
+
+  port: 8080
   ports: []
 
   image:
@@ -209,9 +271,19 @@ webserver:
     port: 8080
     type: LoadBalancer
     host: "stream-staging.fuel.network"
+    loadBalancerClass: service.k8s.aws/nlb
     config:
       annotations: {}
       labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /api/v1/metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
 
   tls:
     enabled: true
@@ -262,16 +334,17 @@ nats:
     enabled: false
 
   promExporter:
-    enabled: false
+    enabled: true
     port: 6777
     image:
       repository: natsio/prometheus-nats-exporter
       tag: 0.15.0
     podMonitor:
-      enabled: false
-      metadata:
-        labels:
-          release: kube-prometheus-stack
+      enabled: true
+      merge:
+        metadata:
+          labels:
+            release: kube-prometheus-stack
 
   container:
     image:
@@ -293,7 +366,7 @@ nats:
       cluster:
         enabled: true
       monitor:
-        enabled: false
+        enabled: true
 
   config:
     cluster:
@@ -309,19 +382,17 @@ nats:
         dir: /data
         pvc:
           enabled: true
-          size: 2000Gi
+          size: 100Gi
           storageClassName: "gp3-generic"
 
     monitor:
-      enabled: false
+      enabled: true
       port: 8222
 
     merge:
-      max_payload: << 32MiB >>
+      max_payload: << 8MiB >>
       jetstream:
-        sync_interval: always
-        max_outstanding_catchup: << 512MiB >>
-        max_file_store: << 2000GiB >>
+        max_file_store: << 100GiB >>
         max_memory_store: << 7GiB >>
       system_account: SYS
       $include: auth.conf
@@ -343,7 +414,7 @@ nats:
 # ------------------------------------------------------------------------------
 
 prometheus:
-  enabled: true
+  enabled: false
 
   # Prometheus Operator configuration
   prometheusOperator:
@@ -358,6 +429,9 @@ prometheus:
   # Prometheus server configuration
   prometheus:
     enabled: true
+    prometheusSpec:
+      podMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelectorNilUsesHelmValues: false
     serviceAccount:
       create: true
     serviceMonitor:
@@ -396,7 +470,12 @@ prometheus:
       enabled: false
     persistence:
       enabled: true
+      storageClassName: gp3-generic
+      accessModes:
+        - ReadWriteOnce
       size: 10Gi
+      finalizers:
+        - kubernetes.io/pvc-protection
     resources:
       requests:
         memory: 128Mi
@@ -410,6 +489,10 @@ prometheus:
         label: grafana_dashboard
         labelValue: "1"
         searchNamespace: ALL
+        folderAnnotation: "grafana_folder"
+        provider:
+          foldersFromFilesStructure: true
+        defaultFolderName: "Fuel Streams"
 
   # Node exporter for hardware and OS metrics
   nodeExporter:

@@ -22,9 +22,11 @@ tests:
       - equal:
           path: metadata.name
           value: RELEASE-NAME-fuel-streams-publisher
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
           value: publisher
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
@@ -133,7 +135,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
-            name: publisher
+            name: http
             containerPort: 8082
             protocol: TCP
         documentIndex: 0

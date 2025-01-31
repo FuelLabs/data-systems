@@ -1,8 +1,8 @@
-{{- $localSecrets := .Values.localSecrets }}
-{{- $configMap := .Values.commonConfigMap }}
+{{- $localSecrets := .Values.localSecrets -}}
+{{- $configMap := .Values.commonConfigMap -}}
 {{- $configMapDict := dict "root" . "context" $configMap "name" "config" "component" "config" -}}
 {{- $localSecretsDict := dict "root" . "context" $localSecrets "name" "keys" "component" "config" -}}
-{{- if .Values.commonConfigMap.enabled  }}
+{{- if .Values.commonConfigMap.enabled }}
 ---
 apiVersion: v1
 kind: ConfigMap

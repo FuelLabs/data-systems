@@ -1,0 +1,49 @@
+{{- define "k8s.service" -}}
+{{- $root := .root -}}
+{{- $context := .context -}}
+{{- $name := .name -}}
+{{- $component := .component -}}
+{{- $service := include "get-context-value" (dict "context" $context "root" $root "path" "service" "rootPath" "config.service") | fromYaml -}}
+{{- $serviceDict := dict "root" $root "context" $context "name" $name "component" $component -}}
+{{- if $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "k8s.resource-metadata.default" $serviceDict | nindent 2 }}
+  labels:
+    {{- include "k8s.resource-metadata.labels-raw" $serviceDict | nindent 4 }}
+  annotations:
+    {{- include "k8s.resource-metadata.annotations-raw" $serviceDict | nindent 4 }}
+    {{- if eq $service.type "LoadBalancer" }}
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: {{ default "internal" $service.scheme }}
+    {{- if $service.host }}
+    external-dns.alpha.kubernetes.io/hostname: {{ $service.host }}
+    {{- end }}
+    {{- end }}
+spec:
+  type: {{ $service.type }}
+  {{- if eq $service.type "LoadBalancer" }}
+  loadBalancerClass: {{ default "service.k8s.aws/nlb" $service.loadBalancerClass }}
+  {{- end }}
+  ports:
+    - appProtocol: tcp
+      name: http
+      port: {{ $service.port }}
+      protocol: TCP
+      targetPort: http
+    {{- with $context.ports }}
+    {{- range . }}
+    - name: {{ .name }}
+      port: {{ .containerPort }}
+      protocol: {{ .protocol }}
+      targetPort: {{ .name }}
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "fuel-streams.selectorLabels" (dict "name" $name "context" $root) | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}
+{{- end }}

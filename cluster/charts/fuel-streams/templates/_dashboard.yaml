@@ -1,0 +1,26 @@
+{{- define "k8s.grafana-dashboard" -}}
+{{- $root := .root -}}
+{{- $context := .context -}}
+{{- $name := .name -}}
+{{- $component := .component -}}
+{{- $dashboardName := printf "%s-metrics" $name -}}
+{{- $serviceDict := dict "root" $root "context" $context "name" $dashboardName "component" $component -}}
+{{- if $context.prometheus.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "k8s.resource-metadata.default" $serviceDict | nindent 2 }}
+  annotations:
+    grafana_folder: "Fuel Streams"
+    {{- include "k8s.resource-metadata.annotations-raw" $serviceDict | nindent 4 }}
+  labels:
+    grafana_dashboard: "1"
+    {{- include "k8s.resource-metadata.labels-raw" $serviceDict | nindent 4 }}
+data:
+  {{ $dashboardName }}.json: |-
+    {{- $dashboard := $root.Files.Get (printf "dashboards/%s.json" $dashboardName) }}
+    {{- $dashboard := replace "DS__PROMETHEUS" .root.Values.config.prometheus.dataSource $dashboard }}
+    {{- $dashboard | nindent 4 }}
+{{- end }}
+{{- end }}

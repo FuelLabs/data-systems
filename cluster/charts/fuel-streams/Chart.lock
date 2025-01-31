@@ -1,6 +1,9 @@
 dependencies:
 - name: nats
   repository: https://nats-io.github.io/k8s/helm/charts/
-  version: 1.2.9
-digest: sha256:68cbbb410fdf97d0cf025d1e9fc54dc16ad9f301927c93041629724b656c6815
-generated: "2025-01-21T15:08:31.514313-03:00"
+  version: 1.2.10
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 27.1.0
+digest: sha256:468763a486889cc59f0b66d52658c3f5d17b6af398ba03c522c0a4effee36f52
+generated: "2025-01-29T18:33:41.743952-03:00"
