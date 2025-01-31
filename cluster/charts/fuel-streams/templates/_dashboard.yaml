@@ -6,7 +6,7 @@
 {{- $dashboardName := printf "%s-metrics" $name -}}
 {{- $serviceDict := dict "root" $root "context" $context "name" $dashboardName "component" $component -}}
 {{- $grafanaDict := dict "context" (dict
-  "prometheusDataSource" .root.Values.config.prometheusDataSource
+  "prometheusDataSource" .root.Values.config.prometheus.dataSource
 ) -}}
 {{- if $context.prometheus.enabled }}
 ---

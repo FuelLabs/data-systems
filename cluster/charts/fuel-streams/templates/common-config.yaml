@@ -20,3 +20,22 @@ metadata:
 stringData:
   {{ $localSecrets.data | toYaml | nindent 2 }}
 {{- end }}
+---
+{{- $grafanaDict := dict "context" (dict
+  "prometheusDataSource" .Values.config.prometheus.dataSource
+) -}}
+{{- if .Values.config.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fuel-streams.fullname" $root }}-overview-metrics
+  annotations:
+    grafana_folder: "Fuel Streams"
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: {{ include "fuel-streams.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  overview-metrics.json: |-
+    {{- tpl (.Files.Get "dashboards/overview-metrics.json") $grafanaDict | nindent 4 }}
+{{- end }}

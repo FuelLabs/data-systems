@@ -1,0 +1,239 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            },
+            {
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "enable": true,
+                "expr": "changes(kube_deployment_status_observed_generation{deployment=~\"webserver|publisher|consumer\"}[5m])",
+                "iconColor": "#5794F2",
+                "name": "Deployments",
+                "tagKeys": [
+                    "deployment"
+                ],
+                "titleFormat": "{{deployment}} Deployment"
+            }
+        ]
+    },
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "title": "System Health",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 80
+                            },
+                            {
+                                "color": "green",
+                                "value": 90
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                }
+            },
+            "type": "stat",
+            "title": "Overall System Health",
+            "targets": [
+                {
+                    "expr": "avg(up{deployment=~\"webserver|publisher|consumer\"}) * 100",
+                    "legendFormat": "System Availability"
+                }
+            ]
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 1
+            },
+            "title": "Message Flow",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20
+                    }
+                }
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(publisher_metrics_messages_throughput{subject=~\"$subject\"}[5m]))",
+                    "legendFormat": "Published"
+                },
+                {
+                    "expr": "sum(rate(consumer_metrics_messages_processed_total{subject=~\"$subject\"}[5m]))",
+                    "legendFormat": "Consumed"
+                }
+            ],
+            "title": "End-to-End Message Flow [5m]",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 2
+            },
+            "title": "Resource Usage & Costs",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "currencyUSD"
+                }
+            },
+            "targets": [
+                {
+                    "expr": "sum(container_cpu_usage_seconds_total{container=~\"webserver|publisher|consumer\"}) * 0.0458",
+                    "legendFormat": "CPU Cost"
+                },
+                {
+                    "expr": "sum(container_memory_working_set_bytes{container=~\"webserver|publisher|consumer\"}) * 0.0000000125",
+                    "legendFormat": "Memory Cost"
+                }
+            ],
+            "title": "Estimated Infrastructure Costs",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 3
+            },
+            "title": "Performance & SLOs",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "ms",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "yellow",
+                                "value": 100
+                            },
+                            {
+                                "color": "red",
+                                "value": 200
+                            }
+                        ]
+                    }
+                }
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(consumer_metrics_duration_milliseconds_bucket[5m])) by (le))",
+                    "legendFormat": "p95 Processing Time"
+                }
+            ],
+            "title": "End-to-End Processing Latency",
+            "type": "gauge"
+        }
+    ],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "selected": false,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "definition": "label_values(publisher_metrics_messages_throughput, subject)",
+                "hide": 0,
+                "includeAll": true,
+                "name": "subject",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            }
+        ]
+    },
+    "refresh": "10s",
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "tags": [
+        "fuel-streams",
+        "overview"
+    ],
+    "title": "Fuel Streams / System Overview",
+    "uid": "fuel-streams-overview",
+    "version": 1
+}

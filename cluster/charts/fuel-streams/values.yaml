@@ -9,10 +9,12 @@ config:
   nameOverride: ""
   fullnameOverride: ""
 
-  # Prometheus datasource for Grafana dashboards
-  prometheusDataSource: "DS__PROMETHEUS"
   # Enable probes and health checks for all services
   healthChecks: true
+  # Enable Prometheus for all services
+  prometheus:
+    enabled: true
+    dataSource: "DS__PROMETHEUS"
 
   # Default liveness probe
   livenessProbe:
@@ -486,6 +488,10 @@ prometheus:
         label: grafana_dashboard
         labelValue: "1"
         searchNamespace: ALL
+        folderAnnotation: "grafana_folder"
+        provider:
+          foldersFromFilesStructure: true
+        defaultFolderName: "Fuel Streams"
 
   # Node exporter for hardware and OS metrics
   nodeExporter:

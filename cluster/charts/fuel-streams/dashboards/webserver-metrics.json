@@ -12,14 +12,37 @@
                 "iconColor": "rgba(0, 211, 255, 1)",
                 "name": "Annotations & Alerts",
                 "type": "dashboard"
+            },
+            {
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "enable": true,
+                "expr": "changes(kube_deployment_status_observed_generation{deployment=\"webserver\"}[5m])",
+                "iconColor": "#5794F2",
+                "name": "Deployments",
+                "tagKeys": [
+                    "deployment"
+                ],
+                "titleFormat": "Webserver Deployment"
             }
         ]
     },
-    "editable": true,
-    "fiscalYearStartMonth": 0,
-    "graphTooltip": 0,
-    "id": 1,
-    "links": [],
+    "links": [
+        {
+            "asDropdown": true,
+            "icon": "external-link-alt",
+            "includeVars": true,
+            "keepTime": true,
+            "tags": [
+                "fuel-streams"
+            ],
+            "targetBlank": false,
+            "title": "Related Dashboards",
+            "type": "dashboards"
+        }
+    ],
     "panels": [
         {
             "collapsed": false,
@@ -29,9 +52,7 @@
                 "x": 0,
                 "y": 0
             },
-            "id": 1,
-            "panels": [],
-            "title": "Webserver",
+            "title": "Resource Usage",
             "type": "row"
         },
         {
@@ -41,43 +62,16 @@
             },
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
                     "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
+                        "axisLabel": "CPU Cores",
                         "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
                         "scaleDistribution": {
                             "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
                         }
                     },
-                    "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
@@ -86,13 +80,17 @@
                                 "value": null
                             },
                             {
-                                "color": "red",
+                                "color": "yellow",
                                 "value": 80
+                            },
+                            {
+                                "color": "red",
+                                "value": 90
                             }
                         ]
-                    }
-                },
-                "overrides": []
+                    },
+                    "unit": "cores"
+                }
             },
             "gridPos": {
                 "h": 8,
@@ -100,30 +98,14 @@
                 "x": 0,
                 "y": 1
             },
-            "id": 2,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "mode": "single",
-                    "sort": "none"
-                }
-            },
-            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "sum(rate(ws_streamer_metrics_total_subscriptions[5m]))",
-                    "legendFormat": "__auto",
-                    "range": true,
-                    "refId": "A"
+                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"webserver\", pod=~\"$pod\"}[5m]))",
+                    "legendFormat": "{{pod}}"
                 }
             ],
-            "title": "Webserver: Total Subscriptions [5m]",
+            "title": "CPU Usage by Pod [5m]",
+            "description": "CPU consumption in cores per pod",
             "type": "timeseries"
         },
         {
@@ -133,83 +115,18 @@
             },
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
                     "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
+                        "axisLabel": "Memory",
                         "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
                         "scaleDistribution": {
                             "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
                         }
                     },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": [
-                    {
-                        "__systemRef": "hideSeriesFrom",
-                        "matcher": {
-                            "id": "byNames",
-                            "options": {
-                                "mode": "exclude",
-                                "names": [
-                                    "caleb_similique"
-                                ],
-                                "prefix": "All except:",
-                                "readOnly": true
-                            }
-                        },
-                        "properties": [
-                            {
-                                "id": "custom.hideFrom",
-                                "value": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": true
-                                }
-                            }
-                        ]
-                    }
-                ]
+                    "unit": "bytes"
+                }
             },
             "gridPos": {
                 "h": 8,
@@ -217,30 +134,18 @@
                 "x": 12,
                 "y": 1
             },
-            "id": 3,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "mode": "single",
-                    "sort": "none"
-                }
-            },
-            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "avg(ws_user_active_subscriptions) by (user_name)",
-                    "legendFormat": "__auto",
-                    "range": true,
-                    "refId": "A"
+                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"webserver\", pod=~\"$pod\"})",
+                    "legendFormat": "{{pod}} - usage"
+                },
+                {
+                    "expr": "sum by (pod) (kube_pod_container_resource_limits{container=\"webserver\", pod=~\"$pod\", resource=\"memory\"})",
+                    "legendFormat": "{{pod}} - limit"
                 }
             ],
-            "title": "Webserver: Active Subscriptions by User [5m]",
+            "title": "Memory Usage by Pod",
+            "description": "Memory usage and limits per pod",
             "type": "timeseries"
         },
         {
@@ -250,83 +155,18 @@
             },
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
                     "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
+                        "axisLabel": "Network I/O",
                         "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
                         "scaleDistribution": {
                             "type": "linear"
-                        },
-                        "showPoints": "auto",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
                         }
                     },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": [
-                    {
-                        "__systemRef": "hideSeriesFrom",
-                        "matcher": {
-                            "id": "byNames",
-                            "options": {
-                                "mode": "exclude",
-                                "names": [
-                                    "{__name__=\"ws_streamer_metrics_total_subscriptions\", instance=\"192.168.1.143:9003\", job=\"sv-webserver\"}"
-                                ],
-                                "prefix": "All except:",
-                                "readOnly": true
-                            }
-                        },
-                        "properties": [
-                            {
-                                "id": "custom.hideFrom",
-                                "value": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": true
-                                }
-                            }
-                        ]
-                    }
-                ]
+                    "unit": "Bps"
+                }
             },
             "gridPos": {
                 "h": 8,
@@ -334,30 +174,18 @@
                 "x": 0,
                 "y": 9
             },
-            "id": 4,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "mode": "single",
-                    "sort": "none"
-                }
-            },
-            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "sum(rate(ws_streamer_metrics_active_connections[5m]))",
-                    "legendFormat": "__auto",
-                    "range": true,
-                    "refId": "A"
+                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{container=\"webserver\", pod=~\"$pod\"}[5m]))",
+                    "legendFormat": "{{pod}} - receive"
+                },
+                {
+                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{container=\"webserver\", pod=~\"$pod\"}[5m]))",
+                    "legendFormat": "{{pod}} - transmit"
                 }
             ],
-            "title": "Webserver: Active Connections [5m]",
+            "title": "Network I/O by Pod [5m]",
+            "description": "Network traffic in/out per pod",
             "type": "timeseries"
         },
         {
@@ -367,43 +195,239 @@
             },
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
                     "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "barAlignment": 0,
-                        "barWidthFactor": 0.6,
+                        "axisLabel": "Percentage",
                         "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "insertNulls": false,
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
                         "scaleDistribution": {
                             "type": "linear"
                         },
-                        "showPoints": "auto",
+                        "max": 100,
+                        "min": 0
+                    },
+                    "unit": "percent"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 9
+            },
+            "targets": [
+                {
+                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"webserver\", pod=~\"$pod\"}[5m])) / sum by (pod) (container_spec_cpu_quota{container=\"webserver\", pod=~\"$pod\"}) * 100",
+                    "legendFormat": "{{pod}} - CPU %"
+                },
+                {
+                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"webserver\", pod=~\"$pod\"}) / sum by (pod) (kube_pod_container_resource_limits{container=\"webserver\", pod=~\"$pod\", resource=\"memory\"}) * 100",
+                    "legendFormat": "{{pod}} - Memory %"
+                }
+            ],
+            "title": "Resource Usage Percentage",
+            "description": "CPU and Memory usage as percentage of limits",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 18
+            },
+            "title": "Connection Metrics",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Duration (seconds)",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
                         "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
+                        "scaleDistribution": {
+                            "type": "log"
                         }
                     },
-                    "mappings": [],
+                    "unit": "s"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 19
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, sum by (le, user_name) (rate(ws_connection_duration_seconds_bucket{user_name=~\"$user\"}[5m])))",
+                    "legendFormat": "p95 - {{user_name}}"
+                },
+                {
+                    "expr": "histogram_quantile(0.50, sum by (le, user_name) (rate(ws_connection_duration_seconds_bucket{user_name=~\"$user\"}[5m])))",
+                    "legendFormat": "p50 - {{user_name}}"
+                }
+            ],
+            "title": "WebSocket Connection Duration by User [5m]",
+            "description": "Distribution of how long WebSocket connections stay alive",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Connections",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    },
+                    "unit": "short"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 19
+            },
+            "targets": [
+                {
+                    "expr": "sum by (user_name) (ws_active_connections{user_name=~\"$user\"})",
+                    "legendFormat": "{{user_name}}"
+                }
+            ],
+            "title": "Active Connections by User",
+            "description": "Number of current WebSocket connections per user",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 27
+            },
+            "title": "Subscription Metrics",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Subscriptions",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    },
+                    "unit": "short"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 28
+            },
+            "targets": [
+                {
+                    "expr": "sum by (user_name) (ws_user_active_subscriptions{user_name=~\"$user\"})",
+                    "legendFormat": "{{user_name}}"
+                }
+            ],
+            "title": "Active Subscriptions by User",
+            "description": "Number of current active subscriptions per user",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Duration (seconds)",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    },
+                    "unit": "s"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 28
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, sum by (le, user_name) (rate(ws_subscription_lifetime_seconds_bucket{user_name=~\"$user\"}[5m])))",
+                    "legendFormat": "p95 - {{user_name}}"
+                }
+            ],
+            "title": "Subscription Lifetime by User [5m]",
+            "description": "How long subscriptions typically stay active",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 36
+            },
+            "title": "Error and Warning Metrics",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Attempts/sec",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    },
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
@@ -413,57 +437,179 @@
                             },
                             {
                                 "color": "red",
-                                "value": 80
+                                "value": 1
                             }
                         ]
-                    }
-                },
-                "overrides": []
+                    },
+                    "unit": "ops"
+                }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 37
+            },
+            "targets": [
+                {
+                    "expr": "sum by (user_name, subscription_id) (rate(ws_duplicate_subscription_attempts{user_name=~\"$user\"}[5m]))",
+                    "legendFormat": "{{user_name}} - {{subscription_id}}"
+                }
+            ],
+            "title": "Duplicate Subscription Attempts [5m]",
+            "description": "Rate of attempts to create already existing subscriptions",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "{{ .context.prometheusDataSource }}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "axisLabel": "Errors/sec",
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 20,
+                        "spanNulls": false,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    "unit": "errors/s"
+                }
             },
             "gridPos": {
                 "h": 8,
                 "w": 12,
                 "x": 12,
-                "y": 9
+                "y": 37
             },
-            "id": 5,
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": true
-                },
-                "tooltip": {
-                    "mode": "single",
-                    "sort": "none"
-                }
-            },
-            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "editorMode": "code",
-                    "expr": "rate(ws_connection_duration_seconds_sum[5m]) / rate(ws_connection_duration_seconds_count[5m])",
-                    "legendFormat": "__auto",
-                    "range": true,
-                    "refId": "A"
+                    "expr": "sum by (subject, error_type) (rate(ws_streamer_metrics_subs_messages_error_rates{subject=~\"$subject\"}[5m]))",
+                    "legendFormat": "{{subject}} - {{error_type}}"
                 }
             ],
-            "title": "Webserver: Average Connection Duration [5m]",
+            "title": "Subscription Message Errors [5m]",
+            "description": "Rate of errors in subscription message processing",
             "type": "timeseries"
         }
     ],
-    "preload": false,
-    "schemaVersion": 40,
-    "tags": [],
     "templating": {
-        "list": []
+        "list": [
+            {
+                "current": {
+                    "selected": false,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "definition": "label_values(container_cpu_usage_seconds_total{container=\"webserver\"}, pod)",
+                "hide": 0,
+                "includeAll": true,
+                "name": "pod",
+                "query": "label_values(container_cpu_usage_seconds_total{container=\"webserver\"}, pod)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "definition": "label_values(ws_streamer_metrics_subs_messages_throughput, subject)",
+                "hide": 0,
+                "includeAll": true,
+                "name": "subject",
+                "query": "label_values(ws_streamer_metrics_subs_messages_throughput, subject)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "{{ .context.prometheusDataSource }}"
+                },
+                "definition": "label_values(ws_active_connections, user_name)",
+                "hide": 0,
+                "includeAll": true,
+                "name": "user",
+                "query": "label_values(ws_active_connections, user_name)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            }
+        ]
+    },
+    "refresh": "10s",
+    "timepicker": {
+        "refresh_intervals": [
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h"
+        ],
+        "time_options": [
+            "5m",
+            "15m",
+            "1h",
+            "6h",
+            "12h",
+            "24h",
+            "2d",
+            "7d",
+            "30d"
+        ]
     },
     "time": {
         "from": "now-6h",
         "to": "now"
     },
-    "timepicker": {},
+    "tags": [
+        "fuel-streams",
+        "webserver"
+    ],
     "timezone": "browser",
     "title": "Fuel Streams / Webserver Metrics",
     "uid": "webserver-metrics",
