@@ -16,7 +16,7 @@
             {
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "{{ .context.prometheusDataSource }}"
+                    "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "enable": true,
                 "expr": "changes(kube_deployment_status_observed_generation{deployment=~\"webserver|publisher|consumer\"}[5m])",
@@ -44,7 +44,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -94,7 +94,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -132,7 +132,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -166,7 +166,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -210,7 +210,7 @@
                 },
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "{{ .context.prometheusDataSource }}"
+                    "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "definition": "label_values(publisher_metrics_messages_throughput, subject)",
                 "hide": 0,

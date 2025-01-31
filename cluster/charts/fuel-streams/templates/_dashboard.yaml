@@ -5,9 +5,6 @@
 {{- $component := .component -}}
 {{- $dashboardName := printf "%s-metrics" $name -}}
 {{- $serviceDict := dict "root" $root "context" $context "name" $dashboardName "component" $component -}}
-{{- $grafanaDict := dict "context" (dict
-  "prometheusDataSource" .root.Values.config.prometheus.dataSource
-) -}}
 {{- if $context.prometheus.enabled }}
 ---
 apiVersion: v1
@@ -22,6 +19,8 @@ metadata:
     {{- include "k8s.resource-metadata.labels-raw" $serviceDict | nindent 4 }}
 data:
   {{ $dashboardName }}.json: |-
-    {{- tpl ($root.Files.Get (printf "dashboards/%s.json" $dashboardName)) $grafanaDict | nindent 4 }}
+    {{- $dashboard := $root.Files.Get (printf "dashboards/%s.json" $dashboardName) }}
+    {{- $dashboard := replace "__PROMETHEUS_DATA_SOURCE__" .root.Values.config.prometheus.dataSource $dashboard }}
+    {{- $dashboard | nindent 4 }}
 {{- end }}
 {{- end }}

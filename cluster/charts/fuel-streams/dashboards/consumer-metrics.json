@@ -16,7 +16,7 @@
             {
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "{{ .context.prometheusDataSource }}"
+                    "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "enable": true,
                 "expr": "changes(kube_deployment_status_observed_generation{deployment=\"consumer\"}[5m])",
@@ -58,7 +58,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -111,7 +111,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -151,7 +151,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -191,7 +191,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -244,7 +244,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -280,7 +280,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -348,7 +348,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -384,7 +384,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "{{ .context.prometheusDataSource }}"
+                "uid": "__PROMETHEUS_DATA_SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
@@ -447,7 +447,7 @@
                 },
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "{{ .context.prometheusDataSource }}"
+                    "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "definition": "label_values(container_cpu_usage_seconds_total{container=\"consumer\"}, pod)",
                 "hide": 0,
@@ -468,7 +468,7 @@
                 },
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "{{ .context.prometheusDataSource }}"
+                    "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "definition": "label_values(consumer_metrics_messages_processed_total, subject)",
                 "hide": 0,
