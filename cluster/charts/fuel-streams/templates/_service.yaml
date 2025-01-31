@@ -25,6 +25,9 @@ metadata:
     {{- end }}
 spec:
   type: {{ $service.type }}
+  {{- if eq $service.type "LoadBalancer" }}
+  loadBalancerClass: {{ default "service.k8s.aws/nlb" $service.loadBalancerClass }}
+  {{- end }}
   ports:
     - appProtocol: tcp
       name: http
