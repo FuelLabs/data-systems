@@ -20,7 +20,7 @@ metadata:
 data:
   {{ $dashboardName }}.json: |-
     {{- $dashboard := $root.Files.Get (printf "dashboards/%s.json" $dashboardName) }}
-    {{- $dashboard := replace "__PROMETHEUS_DATA_SOURCE__" .root.Values.config.prometheus.dataSource $dashboard }}
+    {{- $dashboard := replace "DS__PROMETHEUS" .root.Values.config.prometheus.dataSource $dashboard }}
     {{- $dashboard | nindent 4 }}
 {{- end }}
 {{- end }}

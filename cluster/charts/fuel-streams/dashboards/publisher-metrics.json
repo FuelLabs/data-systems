@@ -16,7 +16,7 @@
             {
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
+                    "uid": "DS__PROMETHEUS"
                 },
                 "enable": true,
                 "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=\"publisher\"}[5m])) by (deployment)",
@@ -45,33 +45,49 @@
     ],
     "panels": [
         {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 0
-            },
-            "title": "Resource Usage",
-            "type": "row"
-        },
-        {
             "datasource": {
                 "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
                     "custom": {
-                        "axisLabel": "CPU Cores",
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
                         "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
                         }
                     },
+                    "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
@@ -80,273 +96,352 @@
                                 "value": null
                             },
                             {
-                                "color": "yellow",
-                                "value": 80
-                            },
-                            {
                                 "color": "red",
-                                "value": 90
+                                "value": 80
                             }
                         ]
-                    },
-                    "unit": "cores"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 1
-            },
-            "targets": [
-                {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"publisher\", pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}}"
-                }
-            ],
-            "title": "CPU Usage by Pod [5m]",
-            "description": "CPU consumption in cores per pod",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Memory",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "bytes"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 1
-            },
-            "targets": [
-                {
-                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"}[5m])",
-                    "legendFormat": "{{pod}} - usage"
+                    }
                 },
-                {
-                    "expr": "avg_over_time(kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"}[5m])",
-                    "legendFormat": "{{pod}} - limit"
-                }
-            ],
-            "title": "Memory Usage by Pod",
-            "description": "Memory usage and limits per pod",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Network I/O",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "Bps"
-                }
+                "overrides": []
             },
             "gridPos": {
                 "h": 8,
                 "w": 12,
-                "x": 0,
-                "y": 9
-            },
-            "targets": [
-                {
-                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}} - receive"
-                },
-                {
-                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}} - transmit"
-                }
-            ],
-            "title": "Network I/O by Pod [5m]",
-            "description": "Network traffic in/out per pod",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Percentage",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "max": 100,
-                        "min": 0
-                    },
-                    "unit": "percent"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 9
-            },
-            "targets": [
-                {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"publisher\", pod=~\"$pod\"}[5m])) / sum by (pod) (kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"cpu\"}) * 100",
-                    "legendFormat": "{{pod}} - CPU %"
-                },
-                {
-                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"}[5m]) / avg_over_time(kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"}[5m]) * 100",
-                    "legendFormat": "{{pod}} - Memory %"
-                }
-            ],
-            "title": "Resource Usage Percentage",
-            "description": "CPU and Memory usage as percentage of limits",
-            "type": "timeseries"
-        },
-        {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
                 "x": 0,
                 "y": 18
             },
-            "title": "Message Metrics",
-            "type": "row"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "sum by (subject) (rate(publisher_metrics_messages_throughput{subject=~\"$subject\"}[5m]))",
-                    "legendFormat": "{{subject}} - msgs/sec"
+            "id": 1,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
                 },
-                {
-                    "expr": "sum(publisher_metrics_messages_throughput{subject=~\"$subject\"})",
-                    "legendFormat": "{{subject}} - total"
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
                 }
-            ],
-            "title": "Message Throughput",
-            "description": "Message rate per second and total messages by subject"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "rate(publisher_metrics_message_size_bytes_sum{subject=~\"$subject\"}[5m]) / rate(publisher_metrics_message_size_bytes_count{subject=~\"$subject\"}[5m])",
-                    "legendFormat": "{{subject}} - avg"
-                },
-                {
-                    "expr": "histogram_quantile(0.95, sum by (le, subject) (rate(publisher_metrics_message_size_bytes_bucket{subject=~\"$subject\"}[5m])))",
-                    "legendFormat": "{{subject}} - p95"
-                }
-            ],
-            "title": "Message Size Distribution [5m]",
-            "description": "Average and 95th percentile of message sizes in bytes"
-        },
-        {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 27
             },
-            "title": "Error Metrics",
-            "type": "row"
-        },
-        {
+            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "expr": "sum by (subject, error_type) (rate(publisher_metrics_error_rates{subject=~\"$subject\"}[5m]))",
-                    "legendFormat": "{{subject}} - {{error_type}}"
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "__PROMETHEUS_DATA__SOURCE__"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(publisher_metrics_messages_throughput)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
                 }
             ],
-            "title": "Error Rates by Type [5m]",
-            "description": "Error rates broken down by subject and error type"
+            "title": "Publisher: Total published messages",
+            "type": "timeseries"
         },
         {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "__systemRef": "hideSeriesFrom",
+                        "matcher": {
+                            "id": "byNames",
+                            "options": {
+                                "mode": "exclude",
+                                "names": [
+                                    "{instance=\"192.168.1.143:9001\", job=\"sv-publisher\", subject=\"block_submitted\"}"
+                                ],
+                                "prefix": "All except:",
+                                "readOnly": true
+                            }
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 18
+            },
+            "id": 2,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "expr": "100 * (1 - (sum(rate(publisher_metrics_error_rates[5m])) / sum(rate(publisher_metrics_messages_throughput[5m]))))",
-                    "legendFormat": "Success Rate"
+                    "editorMode": "code",
+                    "expr": "rate(publisher_metrics_message_size_bytes_sum[5m]) / rate(publisher_metrics_message_size_bytes_count[1m])",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
                 }
             ],
-            "title": "Message Success Rate [5m]",
-            "description": "Percentage of successfully published messages"
+            "title": "Publisher: Average message size [1m]",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 26
+            },
+            "id": 4,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "sum(publisher_metrics_error_rates)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Publisher: Total failed messages",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 26
+            },
+            "id": 3,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "sum(rate(publisher_metrics_error_rates[5m])) by (subject)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Publisher: Error rates by subject",
+            "type": "timeseries"
         }
     ],
-    "templating": {
-        "list": [
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
-                },
-                "definition": "label_values(container_cpu_usage_seconds_total{container=\"publisher\"}, pod)",
-                "hide": 0,
-                "includeAll": true,
-                "name": "pod",
-                "query": "label_values(container_cpu_usage_seconds_total{container=\"publisher\"}, pod)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 1,
-                "type": "query"
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
-                },
-                "definition": "label_values(publisher_metrics_messages_throughput, subject)",
-                "hide": 0,
-                "includeAll": true,
-                "name": "subject",
-                "query": "label_values(publisher_metrics_messages_throughput, subject)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 1,
-                "type": "query"
-            }
-        ]
-    },
     "time": {
         "from": "now-6h",
         "to": "now"
@@ -375,6 +470,9 @@
             "30d"
         ]
     },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
     "tags": [
         "fuel-streams",
         "publisher"
@@ -386,8 +484,5 @@
     "weekStart": "",
     "schemaVersion": 36,
     "style": "dark",
-    "graphTooltip": 1,
-    "editable": true,
-    "fiscalYearStartMonth": 0,
     "liveNow": false
 }

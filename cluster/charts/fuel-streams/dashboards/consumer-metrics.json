@@ -16,7 +16,7 @@
             {
                 "datasource": {
                     "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
+                    "uid": "DS__PROMETHEUS"
                 },
                 "enable": true,
                 "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=\"consumer\"}[5m])) by (deployment)",
@@ -45,33 +45,49 @@
     ],
     "panels": [
         {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 0
-            },
-            "title": "Resource Usage",
-            "type": "row"
-        },
-        {
             "datasource": {
                 "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
                     "custom": {
-                        "axisLabel": "CPU Cores",
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
                         "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
                         }
                     },
+                    "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
@@ -80,17 +96,13 @@
                                 "value": null
                             },
                             {
-                                "color": "yellow",
-                                "value": 80
-                            },
-                            {
                                 "color": "red",
-                                "value": 90
+                                "value": 80
                             }
                         ]
-                    },
-                    "unit": "cores"
-                }
+                    }
+                },
+                "overrides": []
             },
             "gridPos": {
                 "h": 8,
@@ -98,117 +110,325 @@
                 "x": 0,
                 "y": 1
             },
-            "targets": [
-                {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"consumer\", pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}}"
-                }
-            ],
-            "title": "CPU Usage by Pod [5m]",
-            "description": "CPU consumption in cores per pod",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Memory",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "bytes"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 1
-            },
-            "targets": [
-                {
-                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"}[5m])",
-                    "legendFormat": "{{pod}} - usage"
+            "id": 10,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
                 },
-                {
-                    "expr": "avg_over_time(kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"}[5m])",
-                    "legendFormat": "{{pod}} - limit"
-                }
-            ],
-            "title": "Memory Usage by Pod",
-            "description": "Memory usage and limits per pod",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Network I/O",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "Bps"
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
                 }
             },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 9
-            },
+            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}} - receive"
-                },
-                {
-                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{pod=~\"$pod\"}[5m]))",
-                    "legendFormat": "{{pod}} - transmit"
+                    "editorMode": "code",
+                    "expr": "rate(consumer_metrics_duration_milliseconds_sum[5m]) / rate(consumer_metrics_duration_milliseconds_count[1m])",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
                 }
             ],
-            "title": "Network I/O by Pod [5m]",
-            "description": "Network traffic in/out per pod",
+            "title": "Consumer: Average duration [1m]",
             "type": "timeseries"
         },
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
             },
             "fieldConfig": {
                 "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
                     "custom": {
-                        "axisLabel": "Percentage",
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
                         "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
                         },
-                        "max": 100,
-                        "min": 0
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
                     },
-                    "unit": "percent"
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 1
+            },
+            "id": 7,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
                 }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "max by (action_type) (\n  histogram_quantile(1.0, rate(consumer_metrics_duration_milliseconds_bucket[1m]))\n)",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Consumer: Maximum duration [1m]",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "__systemRef": "hideSeriesFrom",
+                        "matcher": {
+                            "id": "byNames",
+                            "options": {
+                                "mode": "exclude",
+                                "names": [
+                                    "{action_type=\"store\", instance=\"192.168.1.143:9002\", job=\"sv-consumer\"}"
+                                ],
+                                "prefix": "All except:",
+                                "readOnly": true
+                            }
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 9
+            },
+            "id": 5,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "expr": "rate(consumer_metrics_packets_sum[5m]) / rate(consumer_metrics_packets_count[1m])",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Consumer: Average Packets Processed [1m]",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "__PROMETHEUS_DATA__SOURCE__"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "__systemRef": "hideSeriesFrom",
+                        "matcher": {
+                            "id": "byNames",
+                            "options": {
+                                "mode": "exclude",
+                                "names": [
+                                    "store"
+                                ],
+                                "prefix": "All except:",
+                                "readOnly": true
+                            }
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
             },
             "gridPos": {
                 "h": 8,
@@ -216,137 +436,33 @@
                 "x": 12,
                 "y": 9
             },
+            "id": 11,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "11.3.1",
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"consumer\", pod=~\"$pod\"}[5m])) / sum by (pod) (kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"cpu\"}) * 100",
-                    "legendFormat": "{{pod}} - CPU %"
-                },
-                {
-                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"}[5m]) / avg_over_time(kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"}[5m]) * 100",
-                    "legendFormat": "{{pod}} - Memory %"
+                    "editorMode": "code",
+                    "expr": "min by (action_type) (\n  consumer_metrics_duration_milliseconds_bucket{le!=\"0\"} > 0\n) * 1",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
                 }
             ],
-            "title": "Resource Usage Percentage",
-            "description": "CPU and Memory usage as percentage of limits",
+            "title": "Consumer: Minimum duration [1m]",
             "type": "timeseries"
-        },
-        {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 18
-            },
-            "title": "Processing Metrics",
-            "type": "row"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "rate(consumer_metrics_duration_milliseconds_sum{subject=~\"$subject\"}[5m]) / rate(consumer_metrics_duration_milliseconds_count{subject=~\"$subject\"}[5m])",
-                    "legendFormat": "{{subject}} - avg"
-                },
-                {
-                    "expr": "rate(consumer_metrics_packets_sum{subject=~\"$subject\"}[5m]) / rate(consumer_metrics_packets_count{subject=~\"$subject\"}[5m])",
-                    "legendFormat": "{{subject}} - packets"
-                }
-            ],
-            "title": "Processing Duration and Packets [5m]",
-            "description": "Average processing time and packet count per subject"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "histogram_quantile(0.95, sum by (le, subject) (rate(consumer_metrics_duration_milliseconds_bucket{subject=~\"$subject\"}[5m])))",
-                    "legendFormat": "p95 - {{subject}}"
-                },
-                {
-                    "expr": "histogram_quantile(0.99, sum by (le, subject) (rate(consumer_metrics_duration_milliseconds_bucket{subject=~\"$subject\"}[5m])))",
-                    "legendFormat": "p99 - {{subject}}"
-                }
-            ],
-            "title": "Processing Duration Percentiles [5m]",
-            "description": "95th and 99th percentiles of processing duration"
-        },
-        {
-            "collapsed": false,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 27
-            },
-            "title": "Throughput and Errors",
-            "type": "row"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "sum by (subject) (rate(consumer_metrics_messages_processed_total{subject=~\"$subject\"}[5m]))",
-                    "legendFormat": "{{subject}}"
-                }
-            ],
-            "title": "Message Processing Rate [5m]",
-            "description": "Number of messages processed per second by subject"
-        },
-        {
-            "targets": [
-                {
-                    "expr": "100 * (1 - (sum(rate(consumer_metrics_error_total{subject=~\"$subject\"}[5m])) / sum(rate(consumer_metrics_messages_processed_total{subject=~\"$subject\"}[5m]))))",
-                    "legendFormat": "Success Rate"
-                }
-            ],
-            "title": "Message Processing Success Rate [5m]",
-            "description": "Percentage of successfully processed messages"
         }
     ],
-    "templating": {
-        "list": [
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
-                },
-                "definition": "label_values(kube_pod_status_phase{phase=\"Running\", pod=~\".*consumer.*\"}, pod)",
-                "hide": 0,
-                "includeAll": true,
-                "name": "pod",
-                "query": "label_values(kube_pod_status_phase{phase=\"Running\", pod=~\".*consumer.*\"}, pod)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 1,
-                "type": "query"
-            },
-            {
-                "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "datasource": {
-                    "type": "prometheus",
-                    "uid": "__PROMETHEUS_DATA_SOURCE__"
-                },
-                "definition": "label_values(consumer_metrics_messages_processed_total, subject)",
-                "hide": 0,
-                "includeAll": true,
-                "name": "subject",
-                "query": "label_values(consumer_metrics_messages_processed_total, subject)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 1,
-                "type": "query"
-            }
-        ]
-    },
     "refresh": "10s",
     "timepicker": {
         "refresh_intervals": [
@@ -372,6 +488,9 @@
             "30d"
         ]
     },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
     "time": {
         "from": "now-6h",
         "to": "now"
@@ -387,8 +506,5 @@
     "weekStart": "",
     "schemaVersion": 36,
     "style": "dark",
-    "graphTooltip": 1,
-    "editable": true,
-    "fiscalYearStartMonth": 0,
     "liveNow": false
 }
