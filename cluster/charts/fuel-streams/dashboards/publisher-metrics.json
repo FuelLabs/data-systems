@@ -19,7 +19,7 @@
                     "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "enable": true,
-                "expr": "changes(kube_deployment_status_observed_generation{deployment=\"publisher\"}[5m])",
+                "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=\"publisher\"}[5m])) by (deployment)",
                 "iconColor": "#5794F2",
                 "name": "Deployments",
                 "tagKeys": [
@@ -136,11 +136,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"})",
+                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"}[5m])",
                     "legendFormat": "{{pod}} - usage"
                 },
                 {
-                    "expr": "sum by (pod) (kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"})",
+                    "expr": "avg_over_time(kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"}[5m])",
                     "legendFormat": "{{pod}} - limit"
                 }
             ],
@@ -176,11 +176,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{container=\"publisher\", pod=~\"$pod\"}[5m]))",
+                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{pod=~\"$pod\"}[5m]))",
                     "legendFormat": "{{pod}} - receive"
                 },
                 {
-                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{container=\"publisher\", pod=~\"$pod\"}[5m]))",
+                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{pod=~\"$pod\"}[5m]))",
                     "legendFormat": "{{pod}} - transmit"
                 }
             ],
@@ -218,11 +218,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"publisher\", pod=~\"$pod\"}[5m])) / sum by (pod) (container_spec_cpu_quota{container=\"publisher\", pod=~\"$pod\"}) * 100",
+                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"publisher\", pod=~\"$pod\"}[5m])) / sum by (pod) (kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"cpu\"}) * 100",
                     "legendFormat": "{{pod}} - CPU %"
                 },
                 {
-                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"}) / sum by (pod) (kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"}) * 100",
+                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"publisher\", pod=~\"$pod\"}[5m]) / avg_over_time(kube_pod_container_resource_limits{container=\"publisher\", pod=~\"$pod\", resource=\"memory\"}[5m]) * 100",
                     "legendFormat": "{{pod}} - Memory %"
                 }
             ],
@@ -242,80 +242,32 @@
             "type": "row"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Messages/sec",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "msgs/s"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 19
-            },
             "targets": [
                 {
                     "expr": "sum by (subject) (rate(publisher_metrics_messages_throughput{subject=~\"$subject\"}[5m]))",
-                    "legendFormat": "{{subject}}"
-                }
-            ],
-            "title": "Message Rate by Subject [5m]",
-            "description": "Number of messages published per second by subject",
-            "type": "timeseries"
-        },
-        {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Bytes",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "bytes"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 19
-            },
-            "targets": [
-                {
-                    "expr": "histogram_quantile(0.95, sum by (le, subject) (rate(publisher_metrics_message_size_bytes_bucket{subject=~\"$subject\"}[5m])))",
-                    "legendFormat": "p95 - {{subject}}"
+                    "legendFormat": "{{subject}} - msgs/sec"
                 },
                 {
-                    "expr": "histogram_quantile(0.50, sum by (le, subject) (rate(publisher_metrics_message_size_bytes_bucket{subject=~\"$subject\"}[5m])))",
-                    "legendFormat": "p50 - {{subject}}"
+                    "expr": "sum(publisher_metrics_messages_throughput{subject=~\"$subject\"})",
+                    "legendFormat": "{{subject}} - total"
+                }
+            ],
+            "title": "Message Throughput",
+            "description": "Message rate per second and total messages by subject"
+        },
+        {
+            "targets": [
+                {
+                    "expr": "rate(publisher_metrics_message_size_bytes_sum{subject=~\"$subject\"}[5m]) / rate(publisher_metrics_message_size_bytes_count{subject=~\"$subject\"}[5m])",
+                    "legendFormat": "{{subject}} - avg"
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum by (le, subject) (rate(publisher_metrics_message_size_bytes_bucket{subject=~\"$subject\"}[5m])))",
+                    "legendFormat": "{{subject}} - p95"
                 }
             ],
             "title": "Message Size Distribution [5m]",
-            "description": "50th and 95th percentile of message sizes in bytes",
-            "type": "timeseries"
+            "description": "Average and 95th percentile of message sizes in bytes"
         },
         {
             "collapsed": false,
@@ -329,99 +281,16 @@
             "type": "row"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Errors/sec",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 1
-                            }
-                        ]
-                    },
-                    "unit": "errors/s"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 28
-            },
             "targets": [
                 {
                     "expr": "sum by (subject, error_type) (rate(publisher_metrics_error_rates{subject=~\"$subject\"}[5m]))",
                     "legendFormat": "{{subject}} - {{error_type}}"
                 }
             ],
-            "title": "Error Rate by Type [5m]",
-            "description": "Number of errors per second by subject and error type",
-            "type": "timeseries"
+            "title": "Error Rates by Type [5m]",
+            "description": "Error rates broken down by subject and error type"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Success Rate %",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "max": 100,
-                        "min": 0
-                    },
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "red",
-                                "value": null
-                            },
-                            {
-                                "color": "yellow",
-                                "value": 95
-                            },
-                            {
-                                "color": "green",
-                                "value": 99
-                            }
-                        ]
-                    },
-                    "unit": "percent"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 28
-            },
             "targets": [
                 {
                     "expr": "100 * (1 - (sum(rate(publisher_metrics_error_rates[5m])) / sum(rate(publisher_metrics_messages_throughput[5m]))))",
@@ -429,8 +298,7 @@
                 }
             ],
             "title": "Message Success Rate [5m]",
-            "description": "Percentage of successfully published messages",
-            "type": "timeseries"
+            "description": "Percentage of successfully published messages"
         }
     ],
     "templating": {
@@ -515,5 +383,11 @@
     "title": "Fuel Streams / Publisher Metrics",
     "uid": "publisher-metrics",
     "version": 1,
-    "weekStart": ""
+    "weekStart": "",
+    "schemaVersion": 36,
+    "style": "dark",
+    "graphTooltip": 1,
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "liveNow": false
 }

@@ -19,7 +19,7 @@
                     "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "enable": true,
-                "expr": "changes(kube_deployment_status_observed_generation{deployment=\"consumer\"}[5m])",
+                "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=\"consumer\"}[5m])) by (deployment)",
                 "iconColor": "#5794F2",
                 "name": "Deployments",
                 "tagKeys": [
@@ -136,11 +136,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"})",
+                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"}[5m])",
                     "legendFormat": "{{pod}} - usage"
                 },
                 {
-                    "expr": "sum by (pod) (kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"})",
+                    "expr": "avg_over_time(kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"}[5m])",
                     "legendFormat": "{{pod}} - limit"
                 }
             ],
@@ -176,11 +176,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{container=\"consumer\", pod=~\"$pod\"}[5m]))",
+                    "expr": "sum by (pod) (rate(container_network_receive_bytes_total{pod=~\"$pod\"}[5m]))",
                     "legendFormat": "{{pod}} - receive"
                 },
                 {
-                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{container=\"consumer\", pod=~\"$pod\"}[5m]))",
+                    "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{pod=~\"$pod\"}[5m]))",
                     "legendFormat": "{{pod}} - transmit"
                 }
             ],
@@ -218,11 +218,11 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"consumer\", pod=~\"$pod\"}[5m])) / sum by (pod) (container_spec_cpu_quota{container=\"consumer\", pod=~\"$pod\"}) * 100",
+                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{container=\"consumer\", pod=~\"$pod\"}[5m])) / sum by (pod) (kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"cpu\"}) * 100",
                     "legendFormat": "{{pod}} - CPU %"
                 },
                 {
-                    "expr": "sum by (pod) (container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"}) / sum by (pod) (kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"}) * 100",
+                    "expr": "avg_over_time(container_memory_working_set_bytes{container=\"consumer\", pod=~\"$pod\"}[5m]) / avg_over_time(kube_pod_container_resource_limits{container=\"consumer\", pod=~\"$pod\", resource=\"memory\"}[5m]) * 100",
                     "legendFormat": "{{pod}} - Memory %"
                 }
             ],
@@ -238,88 +238,24 @@
                 "x": 0,
                 "y": 18
             },
-            "title": "Latency Metrics",
+            "title": "Processing Metrics",
             "type": "row"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Duration (ms)",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "ms"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 19
-            },
             "targets": [
                 {
                     "expr": "rate(consumer_metrics_duration_milliseconds_sum{subject=~\"$subject\"}[5m]) / rate(consumer_metrics_duration_milliseconds_count{subject=~\"$subject\"}[5m])",
-                    "legendFormat": "{{subject}}"
+                    "legendFormat": "{{subject}} - avg"
+                },
+                {
+                    "expr": "rate(consumer_metrics_packets_sum{subject=~\"$subject\"}[5m]) / rate(consumer_metrics_packets_count{subject=~\"$subject\"}[5m])",
+                    "legendFormat": "{{subject}} - packets"
                 }
             ],
-            "title": "Average Processing Duration by Subject [5m]",
-            "description": "Average time taken to process messages per subject",
-            "type": "timeseries"
+            "title": "Processing Duration and Packets [5m]",
+            "description": "Average processing time and packet count per subject"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Duration (ms)",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "yellow",
-                                "value": 45
-                            },
-                            {
-                                "color": "red",
-                                "value": 50
-                            }
-                        ]
-                    },
-                    "unit": "ms"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 19
-            },
             "targets": [
                 {
                     "expr": "histogram_quantile(0.95, sum by (le, subject) (rate(consumer_metrics_duration_milliseconds_bucket{subject=~\"$subject\"}[5m])))",
@@ -331,8 +267,7 @@
                 }
             ],
             "title": "Processing Duration Percentiles [5m]",
-            "description": "95th and 99th percentile of message processing duration",
-            "type": "timeseries"
+            "description": "95th and 99th percentiles of processing duration"
         },
         {
             "collapsed": false,
@@ -346,31 +281,6 @@
             "type": "row"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Messages/sec",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    },
-                    "unit": "msgs/s"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 28
-            },
             "targets": [
                 {
                     "expr": "sum by (subject) (rate(consumer_metrics_messages_processed_total{subject=~\"$subject\"}[5m]))",
@@ -378,54 +288,9 @@
                 }
             ],
             "title": "Message Processing Rate [5m]",
-            "description": "Number of messages processed per second by subject",
-            "type": "timeseries"
+            "description": "Number of messages processed per second by subject"
         },
         {
-            "datasource": {
-                "type": "prometheus",
-                "uid": "__PROMETHEUS_DATA_SOURCE__"
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "axisLabel": "Success Rate %",
-                        "drawStyle": "line",
-                        "lineInterpolation": "smooth",
-                        "fillOpacity": 20,
-                        "spanNulls": false,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "max": 100,
-                        "min": 0
-                    },
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "red",
-                                "value": null
-                            },
-                            {
-                                "color": "yellow",
-                                "value": 95
-                            },
-                            {
-                                "color": "green",
-                                "value": 99
-                            }
-                        ]
-                    },
-                    "unit": "percent"
-                }
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 28
-            },
             "targets": [
                 {
                     "expr": "100 * (1 - (sum(rate(consumer_metrics_error_total{subject=~\"$subject\"}[5m])) / sum(rate(consumer_metrics_messages_processed_total{subject=~\"$subject\"}[5m]))))",
@@ -433,8 +298,7 @@
                 }
             ],
             "title": "Message Processing Success Rate [5m]",
-            "description": "Percentage of successfully processed messages",
-            "type": "timeseries"
+            "description": "Percentage of successfully processed messages"
         }
     ],
     "templating": {
@@ -449,11 +313,11 @@
                     "type": "prometheus",
                     "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
-                "definition": "label_values(container_cpu_usage_seconds_total{container=\"consumer\"}, pod)",
+                "definition": "label_values(kube_pod_status_phase{phase=\"Running\", pod=~\".*consumer.*\"}, pod)",
                 "hide": 0,
                 "includeAll": true,
                 "name": "pod",
-                "query": "label_values(container_cpu_usage_seconds_total{container=\"consumer\"}, pod)",
+                "query": "label_values(kube_pod_status_phase{phase=\"Running\", pod=~\".*consumer.*\"}, pod)",
                 "refresh": 2,
                 "regex": "",
                 "skipUrlSync": false,
@@ -520,5 +384,11 @@
     "title": "Fuel Streams / Consumer Metrics",
     "uid": "consumer-metrics",
     "version": 1,
-    "weekStart": ""
+    "weekStart": "",
+    "schemaVersion": 36,
+    "style": "dark",
+    "graphTooltip": 1,
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "liveNow": false
 }

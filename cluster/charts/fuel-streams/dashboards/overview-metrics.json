@@ -19,7 +19,7 @@
                     "uid": "__PROMETHEUS_DATA_SOURCE__"
                 },
                 "enable": true,
-                "expr": "changes(kube_deployment_status_observed_generation{deployment=~\"webserver|publisher|consumer\"}[5m])",
+                "expr": "sum(changes(kube_deployment_status_observed_generation{deployment=~\"webserver|publisher|consumer\"}[5m])) by (deployment)",
                 "iconColor": "#5794F2",
                 "name": "Deployments",
                 "tagKeys": [
@@ -71,6 +71,12 @@
                     "unit": "percent"
                 }
             },
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 1
+            },
             "type": "stat",
             "title": "Overall System Health",
             "targets": [
@@ -86,7 +92,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 1
+                "y": 5
             },
             "title": "Message Flow",
             "type": "row"
@@ -104,6 +110,12 @@
                         "fillOpacity": 20
                     }
                 }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 6
             },
             "targets": [
                 {
@@ -124,7 +136,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 2
+                "y": 14
             },
             "title": "Resource Usage & Costs",
             "type": "row"
@@ -138,6 +150,12 @@
                 "defaults": {
                     "unit": "currencyUSD"
                 }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 15
             },
             "targets": [
                 {
@@ -158,7 +176,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 3
+                "y": 23
             },
             "title": "Performance & SLOs",
             "type": "row"
@@ -189,6 +207,12 @@
                         ]
                     }
                 }
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 24
             },
             "targets": [
                 {
@@ -235,5 +259,13 @@
     ],
     "title": "Fuel Streams / System Overview",
     "uid": "fuel-streams-overview",
-    "version": 1
+    "version": 1,
+    "schemaVersion": 36,
+    "style": "dark",
+    "graphTooltip": 1,
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "liveNow": false,
+    "timezone": "browser",
+    "weekStart": ""
 }
