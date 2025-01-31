@@ -18,7 +18,7 @@ config:
   livenessProbe:
     enabled: true
     httpGet:
-      path: /health
+      path: /api/v1/health
       port: http
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -29,7 +29,7 @@ config:
   readinessProbe:
     enabled: true
     httpGet:
-      path: /health
+      path: /api/v1/health
       port: http
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -40,7 +40,7 @@ config:
   startupProbe:
     enabled: true
     httpGet:
-      path: /health
+      path: /api/v1/health
       port: http
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -158,7 +158,7 @@ publisher:
   prometheus:
     enabled: true
     scrape: true
-    path: /metrics
+    path: /api/v1/metrics
     config:
       annotations: {}
       labels:
@@ -223,7 +223,7 @@ consumer:
   prometheus:
     enabled: true
     scrape: true
-    path: /metrics
+    path: /api/v1/metrics
     config:
       annotations: {}
       labels:
@@ -276,7 +276,7 @@ webserver:
   prometheus:
     enabled: true
     scrape: true
-    path: /metrics
+    path: /api/v1/metrics
     config:
       annotations: {}
       labels:
