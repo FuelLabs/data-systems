@@ -3,7 +3,7 @@ pub mod config;
 pub mod metrics;
 pub mod server;
 
-use std::{sync::LazyLock, time::Duration};
+use std::sync::LazyLock;
 
 pub static STREAMER_MAX_WORKERS: LazyLock<usize> = LazyLock::new(|| {
     let available_cpus = num_cpus::get();
@@ -18,9 +18,9 @@ pub static STREAMER_MAX_WORKERS: LazyLock<usize> = LazyLock::new(|| {
 pub static API_PASSWORD: LazyLock<String> =
     LazyLock::new(|| dotenvy::var("API_PASSWORD").ok().unwrap_or_default());
 
-pub static API_RATE_LIMIT_DURATION_MILLIS: LazyLock<Option<Duration>> =
+pub static API_KEY_MAX_CONN_LIMIT: LazyLock<Option<u64>> =
     LazyLock::new(|| {
-        dotenvy::var("API_RATE_LIMIT_DURATION_MILLIS")
+        dotenvy::var("API_KEY_MAX_CONN_LIMIT")
             .ok()
-            .and_then(|val| val.parse::<u64>().ok().map(Duration::from_millis))
+            .and_then(|val| val.parse::<u64>().ok())
     });

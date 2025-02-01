@@ -18,7 +18,12 @@ use fuel_web_utils::{
     telemetry::Telemetry,
 };
 
-use crate::{config::Config, metrics::Metrics, API_PASSWORD};
+use crate::{
+    config::Config,
+    metrics::Metrics,
+    API_KEY_MAX_CONN_LIMIT,
+    API_PASSWORD,
+};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -47,7 +52,8 @@ impl ServerState {
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
 
-        let api_keys_manager = Arc::new(ApiKeysManager::new(&db));
+        let api_keys_manager =
+            Arc::new(ApiKeysManager::new(&db, *API_KEY_MAX_CONN_LIMIT));
         let initial_keys = api_keys_manager.load_from_db().await?;
         for key in initial_keys {
             if let Err(e) = api_keys_manager.storage.insert(&key) {

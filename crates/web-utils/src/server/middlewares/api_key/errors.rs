@@ -18,6 +18,8 @@ pub enum ApiKeyError {
     Manager(#[from] ApiKeyManagerError),
     #[error(transparent)]
     InvalidHeader(#[from] InvalidHeaderValue),
+    #[error("API key rate limit exceeded: {0}")]
+    RateLimitExceeded(String),
 }
 
 impl From<ApiKeyError> for actix_web::Error {
@@ -43,6 +45,9 @@ impl From<ApiKeyError> for actix_web::Error {
             }
             ApiKeyError::InvalidHeader(e) => {
                 actix_web::error::ErrorUnauthorized(e.to_string())
+            }
+            ApiKeyError::RateLimitExceeded(info) => {
+                actix_web::error::ErrorTooManyRequests(info)
             }
         }
     }
