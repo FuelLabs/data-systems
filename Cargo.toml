@@ -74,25 +74,25 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 
 # Fuel Core dependencies
-fuel-core = { version = "0.40.3", default-features = false, features = [
+fuel-core = { version = "=0.40.4", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "0.40.3", default-features = false, features = [
+fuel-core-bin = { version = "=0.40.4", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "0.40.3", default-features = false, features = [
+fuel-core-client = { version = "=0.40.4", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "0.40.3" }
-fuel-core-poa = { version = "0.40.3", default-features = false }
-fuel-core-services = { version = "0.40.3", default-features = false }
-fuel-core-storage = { version = "0.40.3" }
-fuel-core-txpool = { version = "0.40.3" }
-fuel-core-types = { version = "0.40.3", default-features = false, features = [
+fuel-core-importer = { version = "=0.40.4" }
+fuel-core-poa = { version = "=0.40.4", default-features = false }
+fuel-core-services = { version = "=0.40.4", default-features = false }
+fuel-core-storage = { version = "=0.40.4" }
+fuel-core-txpool = { version = "=0.40.4" }
+fuel-core-types = { version = "=0.40.4", default-features = false, features = [
   "serde",
   "std",
 ] }

@@ -64,6 +64,7 @@ pub type FuelCoreOffchainDatabase = GenericDatabase<
     IterableKeyValueViewWrapper<
         fuel_core::fuel_core_graphql_api::storage::Column,
     >,
+    FuelCoreBlockHeight,
 >;
 
 use std::sync::Arc;
@@ -127,12 +128,12 @@ pub trait FuelCoreLike: Sync + Send {
     fn offchain_database(
         &self,
     ) -> FuelCoreResult<Arc<FuelCoreOffchainDatabase>> {
-        Ok(Arc::new(
-            self.database()
-                .off_chain()
-                .latest_view()
-                .map_err(|e| FuelCoreError::Database(e.to_string()))?,
-        ))
+        let database = self
+            .database()
+            .off_chain()
+            .latest_view()
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?;
+        Ok(Arc::new(database))
     }
 
     fn blocks_subscription(
