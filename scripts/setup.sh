@@ -3,12 +3,12 @@
 # Install pre-commit hooks
 pre-commit install
 
-# Install PNPM as package manager for NodeJS if it doesn't exist
-if ! command -v pnpm &> /dev/null; then
-    npm install -g pnpm
+# Install Bun as package manager for NodeJS if it doesn't exist
+if ! command -v bun &> /dev/null; then
+    curl -fsSL https://bun.sh/install | bash
 fi
 
-pnpm install
+bun install
 
 # Install fixed nightly toolchain
 rustup toolchain install nightly-2025-01-24 -c rustfmt

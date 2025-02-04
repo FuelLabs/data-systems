@@ -24,3 +24,4 @@ values-secrets.yaml
 values-publisher-env.yaml
 .vscode
 .sqlx
+.aider*

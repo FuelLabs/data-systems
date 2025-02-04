@@ -149,10 +149,10 @@ fmt-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt --all -- --color always
 
 fmt-prettier:
-	pnpm prettier:fix
+	bun run prettier:fix
 
 fmt-markdown:
-	pnpm md:fix
+	bun run md:fix
 
 lint: lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-machete
 
@@ -167,10 +167,10 @@ lint-clippy:
 	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 lint-prettier:
-	pnpm prettier:validate
+	bun run prettier:validate
 
 lint-markdown:
-	pnpm md:lint
+	bun run md:lint
 
 lint-machete:
 	cargo machete --skip-target-dir
