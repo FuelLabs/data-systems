@@ -2,27 +2,22 @@
 
 ## [0.0.24](https://github.com/FuelLabs/data-systems/compare/v0.0.23...v0.0.24) - 2025-02-04
 
-
-
-
-
 ### ⭐ Features
 
-- *(repo)*: Added API key rate limiting on active ws sessions (#398) ([5f02830](https://github.com/FuelLabs/data-systems/commit/5f02830cf76051f4f8395cd84874a7a3586db8dd)  @0xterminator)
+- _(repo)_: Added API key rate limiting on active ws sessions (#398) ([5f02830](https://github.com/FuelLabs/data-systems/commit/5f02830cf76051f4f8395cd84874a7a3586db8dd) @0xterminator)
 
 ### 🐛 Bug Fixes
 
-- *(repo)*: Bump fuel-core to v0.40.4 ([49ee9e9](https://github.com/FuelLabs/data-systems/commit/49ee9e9d366bc5c1f79a5ff360b3ebf6f29334f8)  @pedronauck)
+- _(repo)_: Bump fuel-core to v0.40.4 ([49ee9e9](https://github.com/FuelLabs/data-systems/commit/49ee9e9d366bc5c1f79a5ff360b3ebf6f29334f8) @pedronauck)
 
 ### 📚 Documentation
 
-- *(repo)*: Change Fuel logo on READMEs ([9b50b8f](https://github.com/FuelLabs/data-systems/commit/9b50b8f207296edbabfca80d3e25f0776a3e882c)  @pedronauck)
+- _(repo)_: Change Fuel logo on READMEs ([9b50b8f](https://github.com/FuelLabs/data-systems/commit/9b50b8f207296edbabfca80d3e25f0776a3e882c) @pedronauck)
 
 ### 💪🏼 Contributors
 
-* @pedronauck
-* @0xterminator
-
+- @pedronauck
+- @0xterminator
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
