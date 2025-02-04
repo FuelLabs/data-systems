@@ -316,7 +316,9 @@ setup-db:
 	# I removed this for now because it was not working on CI
 	# @cargo sqlx prepare --workspace -- --all-features
 
-reset-db: clean-docker start-docker setup-db
+reset-db: clean-docker start-docker
+	@sleep 1
+	@$(MAKE) setup-db
 
 # ------------------------------------------------------------
 #  Local cluster (Minikube)
