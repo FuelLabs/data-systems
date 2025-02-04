@@ -4,7 +4,11 @@ use actix_web::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use fuel_streams_store::db::Db;
 use serde::{Deserialize, Serialize};
 
-use super::{ApiKeyError, ApiKeyStorageError};
+use super::{
+    rate_limiter::RateLimitsController,
+    ApiKeyError,
+    ApiKeyStorageError,
+};
 use crate::server::middlewares::api_key::{
     ApiKey,
     InMemoryApiKeyStorage,
@@ -32,14 +36,20 @@ const BEARER: &str = "Bearer";
 pub struct ApiKeysManager {
     pub db: Arc<Db>,
     pub storage: Arc<InMemoryApiKeyStorage>,
+    pub rate_limiter_controller: Option<Arc<RateLimitsController>>,
 }
 
 impl ApiKeysManager {
-    pub fn new(db: &Arc<Db>) -> Self {
+    pub fn new(db: &Arc<Db>, max_requests_per_key: Option<u64>) -> Self {
         let storage = Arc::new(InMemoryApiKeyStorage::new());
         Self {
             db: db.to_owned(),
             storage,
+            rate_limiter_controller: max_requests_per_key.map(
+                |max_requests_per_key| {
+                    RateLimitsController::new(max_requests_per_key).arc()
+                },
+            ),
         }
     }
 
@@ -102,6 +112,22 @@ impl ApiKeysManager {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn check_rate_limit(
+        &self,
+        api_key: &ApiKey,
+    ) -> Result<(), ApiKeyError> {
+        if let Some(rate_limiter_controller) =
+            self.rate_limiter_controller.as_ref()
+        {
+            let (is_ok, max_requests_per_key) = rate_limiter_controller
+                .check_rate_limit(api_key.user_id().into());
+            if !is_ok {
+                return Err(ApiKeyError::RateLimitExceeded(format!("Exceeded limit of {max_requests_per_key} active sessions per api key")));
+            }
+        }
+        Ok(())
     }
 
     pub fn key_from_headers(

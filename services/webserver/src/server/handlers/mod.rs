@@ -11,7 +11,7 @@ use fuel_web_utils::server::{
 };
 
 use super::handlers;
-use crate::{server::state::ServerState, API_RATE_LIMIT_DURATION_MILLIS};
+use crate::server::state::ServerState;
 
 pub fn create_services(
     state: ServerState,
@@ -20,10 +20,7 @@ pub fn create_services(
         cfg.app_data(web::Data::new(state.clone()));
         cfg.service(
             web::resource(with_prefixed_route("ws"))
-                .wrap(ApiKeyAuth::new(
-                    &state.api_keys_manager,
-                    *API_RATE_LIMIT_DURATION_MILLIS,
-                ))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
                 .route(web::get().to({
                     move |req, body, state: web::Data<ServerState>| {
                         handlers::websocket::get_websocket(req, body, state)

@@ -1,22 +1,21 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
 };
 
 use dashmap::DashMap;
-use tokio::sync::RwLock;
 
 #[derive(Clone, Debug)]
 struct RateLimiter {
-    last_request_time: Arc<RwLock<Instant>>,
-    rate_limit: Duration,
+    requests_per_key: Arc<AtomicU64>,
+    max_requests_per_key: u64,
 }
 
 impl RateLimiter {
-    fn new(rate_limit: Duration) -> Self {
+    fn new(max_requests_per_key: u64) -> Self {
         RateLimiter {
-            last_request_time: Arc::new(RwLock::new(Instant::now())),
-            rate_limit,
+            requests_per_key: Arc::new(AtomicU64::new(0)),
+            max_requests_per_key,
         }
     }
 }
@@ -24,14 +23,14 @@ impl RateLimiter {
 #[derive(Debug, Default)]
 pub struct RateLimitsController {
     map: DashMap<u64, RateLimiter>,
-    rate_limit: Duration,
+    max_requests_per_key: u64,
 }
 
 impl RateLimitsController {
-    pub fn new(rate_limit: Duration) -> Self {
+    pub fn new(max_requests_per_key: u64) -> Self {
         Self {
             map: DashMap::new(),
-            rate_limit,
+            max_requests_per_key,
         }
     }
 
@@ -39,22 +38,37 @@ impl RateLimitsController {
         Arc::new(self)
     }
 
-    pub async fn check_rate_limit(&self, user_id: u64) -> bool {
+    pub fn add_active_key_sub(&self, user_id: u64) {
+        if let Some(user_rate_limiter) = self.map.get_mut(&user_id) {
+            user_rate_limiter
+                .requests_per_key
+                .fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    pub fn remove_active_key_sub(&self, user_id: u64) {
+        if let Some(user_rate_limiter) = self.map.get_mut(&user_id) {
+            user_rate_limiter
+                .requests_per_key
+                .fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+
+    pub fn check_rate_limit(&self, user_id: u64) -> (bool, u64) {
         let user_rate_limiter = self.map.get(&user_id);
         match user_rate_limiter {
             Some(rate_limiter) => {
-                let last_request_time =
-                    rate_limiter.last_request_time.read().await;
-                let elapsed = last_request_time.elapsed();
-                if elapsed < rate_limiter.rate_limit {
-                    return false;
+                let requests_per_key =
+                    rate_limiter.requests_per_key.load(Ordering::Relaxed);
+                if requests_per_key >= rate_limiter.max_requests_per_key {
+                    return (false, rate_limiter.max_requests_per_key);
                 }
-                true
+                (true, self.max_requests_per_key)
             }
             None => {
-                let rate_limiter = RateLimiter::new(self.rate_limit);
+                let rate_limiter = RateLimiter::new(self.max_requests_per_key);
                 self.map.insert(user_id, rate_limiter);
-                true
+                (true, self.max_requests_per_key)
             }
         }
     }
@@ -64,7 +78,7 @@ impl Clone for RateLimitsController {
     fn clone(&self) -> Self {
         Self {
             map: self.map.clone(),
-            rate_limit: self.rate_limit,
+            max_requests_per_key: self.max_requests_per_key,
         }
     }
 }

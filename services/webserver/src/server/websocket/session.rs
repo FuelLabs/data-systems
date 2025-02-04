@@ -10,7 +10,10 @@ use fuel_streams_core::{
     FuelStreams,
 };
 use fuel_web_utils::{
-    server::middlewares::api_key::ApiKey,
+    server::middlewares::api_key::{
+        rate_limiter::RateLimitsController,
+        ApiKey,
+    },
     telemetry::Telemetry,
 };
 use tokio::sync::{broadcast, Mutex};
@@ -129,6 +132,7 @@ struct ConnectionManager {
     tx: broadcast::Sender<ApiKey>,
     active_subscriptions: Arc<Mutex<HashSet<Subscription>>>,
     metrics_handler: MetricsHandler,
+    rate_limiter_controller: Option<Arc<RateLimitsController>>,
 }
 
 impl ConnectionManager {
@@ -137,7 +141,11 @@ impl ConnectionManager {
     pub const MAX_FRAME_SIZE: usize = 8 * 1024 * 1024; // 8MB
     pub const CHANNEL_CAPACITY: usize = 100;
 
-    fn new(api_key: &ApiKey, metrics_handler: MetricsHandler) -> Self {
+    fn new(
+        api_key: &ApiKey,
+        metrics_handler: MetricsHandler,
+        rate_limiter_controller: Option<Arc<RateLimitsController>>,
+    ) -> Self {
         let (tx, _) = broadcast::channel(Self::CHANNEL_CAPACITY);
         Self {
             api_key: api_key.to_owned(),
@@ -145,6 +153,7 @@ impl ConnectionManager {
             tx,
             active_subscriptions: Arc::new(Mutex::new(HashSet::new())),
             metrics_handler,
+            rate_limiter_controller,
         }
     }
 
@@ -171,6 +180,11 @@ impl ConnectionManager {
             .lock()
             .await
             .insert(subscription.to_owned());
+
+        if let Some(user_rate_limiter) = self.rate_limiter_controller.as_ref() {
+            user_rate_limiter.add_active_key_sub(self.api_key.user_id().into());
+        }
+
         self.metrics_handler
             .track_subscription(subscription, SubscriptionChange::Added);
         Ok(())
@@ -181,6 +195,10 @@ impl ConnectionManager {
         if self.active_subscriptions.lock().await.remove(subscription) {
             self.metrics_handler
                 .track_subscription(subscription, SubscriptionChange::Removed);
+        }
+        if let Some(user_rate_limiter) = self.rate_limiter_controller.as_ref() {
+            user_rate_limiter
+                .remove_active_key_sub(self.api_key.user_id().into());
         }
     }
 
@@ -248,9 +266,11 @@ impl WsSession {
         api_key: &ApiKey,
         telemetry: Arc<Telemetry<Metrics>>,
         streams: Arc<FuelStreams>,
+        rate_limiter_controller: Option<Arc<RateLimitsController>>,
     ) -> Self {
         let metrics = MetricsHandler::new(telemetry, api_key);
-        let connection = ConnectionManager::new(api_key, metrics);
+        let connection =
+            ConnectionManager::new(api_key, metrics, rate_limiter_controller);
         let messaging = MessageHandler::new(api_key);
         Self {
             api_key: api_key.to_owned(),
@@ -292,11 +312,12 @@ impl WsSession {
         &self,
         subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
-        self.connection.add_subscription(subscription).await
+        self.connection.add_subscription(subscription).await?;
+        Ok(())
     }
 
     pub async fn remove_subscription(&self, subscription: &Subscription) {
-        self.connection.remove_subscription(subscription).await
+        self.connection.remove_subscription(subscription).await;
     }
 
     pub async fn check_duplicate_subscription(
