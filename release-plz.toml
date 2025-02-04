@@ -125,6 +125,10 @@ header = """# Changelog
 """
 
 body = """
+{%- macro username(commit) -%}
+    {%- if commit.remote.username %} @{{ commit.remote.username }}{% endif -%}
+{%- endmacro -%}
+
 {% macro print_commit(commit) -%}
     {%- if commit.id %}
     - {% if commit.breaking %}[**breaking**] {% endif %}\
