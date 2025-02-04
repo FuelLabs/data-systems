@@ -39,6 +39,9 @@ changelog_include = [
   "fuel-streams-store",
   "fuel-streams-types",
   "fuel-web-utils",
+  "sv-consumer",
+  "sv-publisher",
+  "sv-webserver",
 ]
 
 [[package]]
@@ -100,6 +103,21 @@ name = "subjects-schema"
 release = false
 publish = false
 
+[[package]]
+name = "sv-consumer"
+release = false
+publish = false
+
+[[package]]
+name = "sv-publisher"
+release = false
+publish = false
+
+[[package]]
+name = "sv-webserver"
+release = false
+publish = false
+
 [changelog]
 sort_commits = "newest"
 header = """# Changelog
@@ -108,10 +126,12 @@ header = """# Changelog
 
 body = """
 {% macro print_commit(commit) -%}
+    {%- if commit.id %}
     - {% if commit.breaking %}[**breaking**] {% endif %}\
       {% if commit.scope %}*({{ commit.scope }})*: {% endif %}\
       {{ commit.message | upper_first }} \
       ([{{ commit.id | truncate(length=7, end="") }}]({{ remote.link }}/commit/{{ commit.id }}) {{ self::username(commit=commit) }})
+    {%- endif %}
 {%- endmacro -%}
 
 {% if version %}\
@@ -125,37 +145,36 @@ body = """
 {% for group, commits in commits
 | filter(attribute="merge_commit", value=false)
 | unique(attribute="message")
-| group_by(attribute="group") -%}
-    ### {{ group | striptags | trim | upper_first }}
+| group_by(attribute="group") %}
+
+### {{ group | striptags | trim | upper_first }}
     {%- for commit in commits %}
         {{ self::print_commit(commit=commit) }}
     {%- endfor %}
-{% endfor %}
+{%- endfor %}
 
 {%- if remote.contributors %}
+
 ### 💪🏼 Contributors
 {% for contributor in remote.contributors %}
     * @{{ contributor.username }}
 {%- endfor %}
+{% endif %}
 
-{% endif -%}
-{%- macro username(commit) -%}
-    {% if commit.remote.username %} @{{ commit.remote.username }}{% endif -%}
-{% endmacro -%}
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
-Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!\n\n
 ---
 """
 
 commit_parsers = [
-  { message = "^feat", group = "<!-- 0 -->⭐ Features" },
-  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
-  { message = "^refactor", group = "<!-- 2 -->🔄 Refactor" },
-  { message = "^docs", group = "<!-- 3 -->📚 Documentation" },
-  { message = "^perf", group = "<!-- 4 -->🚀 Performance" },
-  { message = "^build", group = "<!-- 5 -->🏗️ Build" },
-  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
-  { message = "^ci", group = "<!-- 7 -->📟 CI" },
+  { message = "^feat\\((.*?)\\)", group = "<!-- 0 -->⭐ Features" },
+  { message = "^fix\\((.*?)\\)", group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^refactor\\((.*?)\\)", group = "<!-- 2 -->🔄 Refactor" },
+  { message = "^docs\\((.*?)\\)", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^perf\\((.*?)\\)", group = "<!-- 4 -->🚀 Performance" },
+  { message = "^build\\((.*?)\\)", group = "<!-- 5 -->🏗️ Build" },
+  { message = "^test\\((.*?)\\)", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^ci\\((.*?)\\)", group = "<!-- 7 -->📟 CI" },
   { message = "^ci\\(release\\)", skip = true },
-  { message = "^.*", group = "<!-- 8 -->📋 Other" },
+  { message = "^.*\\((.*?)\\)", group = "<!-- 8 -->📋 Other" },
 ]
