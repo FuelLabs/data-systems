@@ -22,5 +22,21 @@ pub async fn subscribe_mult(
             })
         })
         .collect();
-    let res = futures::future::join_all(handles).await;
+    // Wait for all subscriptions to complete or fail
+    let results = futures::future::join_all(handles).await;
+    
+    // Check if any subscription failed
+    for result in results {
+        // Propagate any errors from the spawned tasks
+        if let Err(e) = result {
+            return Err(WebsocketError::Internal(format!(
+                "Subscription task panicked: {}", 
+                e
+            )));
+        }
+        // Propagate WebsocketError from within the task
+        result.unwrap()?;
+    }
+
+    Ok(())
 }
