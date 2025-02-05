@@ -21,7 +21,9 @@
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
----## [0.0.23](https://github.com/FuelLabs/data-systems/compare/v0.0.22...v0.0.23) - 2025-01-28
+---
+
+## [0.0.23](https://github.com/FuelLabs/data-systems/compare/v0.0.22...v0.0.23) - 2025-01-28
 
 ### ⭐ Features
 
