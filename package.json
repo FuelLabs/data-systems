@@ -3,22 +3,31 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
-  "packageManager": "pnpm@10.2.0",
+  "packageManager": "bun@1.0.30",
   "engines": {
-    "node": ">=22.11.0"
+    "bun": ">=1.0.30"
   },
+  "type": "module",
   "scripts": {
-    "prettier:fix": "prettier --write \"**/*.@(json|md|sh)\"",
-    "prettier:validate": "prettier --check \"**/*.@(json|md|sh)\"",
-    "md:lint": "markdownlint -c .markdownlint.json **/*.md -d -i target -i node_modules -i CHANGELOG.md",
-    "md:fix": "pnpm md:lint --fix"
+    "prettier:fix": "bun x prettier --write \"**/*.@(json|md|sh)\"",
+    "prettier:validate": "bun x prettier --check \"**/*.@(json|md|sh)\"",
+    "md:lint": "bun x markdownlint -c .markdownlint.json **/*.md -d -i target -i node_modules -i CHANGELOG.md",
+    "md:fix": "bun run md:lint --fix",
+    "postinstall": "bun run prettier:fix",
+    "clean": "rm -rf node_modules bun.lockb",
+    "fresh": "bun run clean && bun install",
+    "update:deps": "bun x updates -uG"
   },
+  "trustedDependencies": [
+    "markdownlint-cli"
+  ],
   "devDependencies": {
-    "@commitlint/config-conventional": "^19.6.0",
-    "commitlint": "^19.6.0",
-    "markdownlint": "0.37.3",
-    "markdownlint-cli": "^0.43.0",
-    "prettier": "^3.4.1",
-    "prettier-plugin-sh": "^0.14.0"
+    "@commitlint/config-conventional": "19.7.1",
+    "commitlint": "19.7.1",
+    "markdownlint": "0.37.4",
+    "markdownlint-cli": "0.44.0",
+    "prettier": "3.4.2",
+    "prettier-plugin-sh": "0.14.0",
+    "updates": "16.4.1"
   }
 }

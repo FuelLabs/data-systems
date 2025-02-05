@@ -19,8 +19,8 @@ REPO_OWNER="$1"
 REPO_NAME="$2"
 DAYS_TO_KEEP="$3"
 
-# Debug: Print input parameters
-echo "Debug: Script parameters:"
+# Debug: Print input parameters using bun
+echo "Debug: Script parameters (using bun):"
 echo "  REPO_OWNER: ${REPO_OWNER}"
 echo "  REPO_NAME: ${REPO_NAME}"
 echo "  DAYS_TO_KEEP: ${DAYS_TO_KEEP}"

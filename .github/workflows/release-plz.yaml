@@ -62,9 +62,26 @@ jobs:
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
 
       - name: Run release-plz
+        id: release-plz
         uses: release-plz/action@v0.5
         with:
           command: release-pr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Update README in the release PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.release-plz.outputs.pr }}
+        run: |-
+          set -e
+
+          pr_number=${{ fromJSON(steps.release-plz.outputs.pr).number }}
+          if [[ -n "$pr_number" ]]; then
+            gh pr checkout $pr_number
+            make fmt
+            git add .
+            git commit -m "ci(repo): Format files in the release PR"
+            git push
+          fi
