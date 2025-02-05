@@ -3,7 +3,7 @@ use serde::{self, Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DeliverPolicyError {
-    #[error("Invalid delivery policy format. Expected 'new', 'from_block:<height>', or 'from_block=<height>'")]
+    #[error("Invalid deliver policy format. Expected 'new', 'from_block:<height>', or 'from_block=<height>'")]
     InvalidFormat,
     #[error("Block height cannot be empty")]
     EmptyBlockHeight,

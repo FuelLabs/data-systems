@@ -1,5 +1,5 @@
 use actix_ws::{CloseCode, CloseReason, Closed, ProtocolError};
-use fuel_streams_core::stream::StreamError;
+use fuel_streams_core::{stream::StreamError, types::MessagePayloadError};
 use fuel_streams_domains::SubjectPayloadError;
 use fuel_streams_store::{
     db::DbError,
@@ -16,6 +16,8 @@ pub enum WebsocketError {
     UnserializablePayload(#[from] serde_json::Error),
     #[error("Connection closed with reason: {code} - {description}")]
     ClosedWithReason { code: u16, description: String },
+    #[error("Subscription failed: {0}")]
+    MultSubscription(String),
     #[error(transparent)]
     Encoder(#[from] EncoderError),
     #[error(transparent)]
@@ -24,6 +26,8 @@ pub enum WebsocketError {
     Store(#[from] StoreError),
     #[error(transparent)]
     SubjectPayload(#[from] SubjectPayloadError),
+    #[error(transparent)]
+    MessagePayload(#[from] MessagePayloadError),
     #[error("Connection closed")]
     Closed(#[from] Closed),
     #[error("Unsupported message type")]
@@ -42,11 +46,13 @@ impl From<WebsocketError> for CloseReason {
             code: match &error {
                 // Stream and data handling errors
                 WebsocketError::StreamError(_) => CloseCode::Error,
+                WebsocketError::MultSubscription(_) => CloseCode::Error,
                 WebsocketError::UnserializablePayload(_) => {
                     CloseCode::Unsupported
                 }
                 WebsocketError::Encoder(_) => CloseCode::Invalid,
                 WebsocketError::SubjectPayload(_) => CloseCode::Invalid,
+                WebsocketError::MessagePayload(_) => CloseCode::Invalid,
 
                 // Connection state errors
                 WebsocketError::ClosedWithReason { code, .. } => {
@@ -68,6 +74,9 @@ impl From<WebsocketError> for CloseReason {
                 WebsocketError::StreamError(e) => {
                     format!("Stream error: {}", e)
                 }
+                WebsocketError::MultSubscription(e) => {
+                    format!("Subscription error: {}", e)
+                }
                 WebsocketError::UnserializablePayload(e) => {
                     format!("Failed to serialize payload: {}", e)
                 }
@@ -79,6 +88,9 @@ impl From<WebsocketError> for CloseReason {
                 WebsocketError::Store(e) => format!("Store error: {}", e),
                 WebsocketError::SubjectPayload(e) => {
                     format!("Subject payload error: {}", e)
+                }
+                WebsocketError::MessagePayload(e) => {
+                    format!("Message payload error: {}", e)
                 }
                 WebsocketError::Closed(_) => {
                     "Connection closed by peer".to_string()

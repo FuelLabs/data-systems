@@ -26,8 +26,6 @@ impl<'de> Deserialize<'de> for SubscriptionPayload {
         }
 
         let raw = RawPayload::deserialize(deserializer)?;
-
-        // Convert params to a string if it's not already one
         let params = if raw.params.is_string() {
             raw.params
                 .as_str()
@@ -55,6 +53,7 @@ impl TryFrom<SubscriptionPayload> for SubjectPayload {
         SubjectPayload::new(payload.subject, payload.params)
     }
 }
+
 impl std::fmt::Display for SubscriptionPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
@@ -99,28 +98,6 @@ impl From<(ApiKey, SubscriptionPayload)> for Subscription {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ClientMessage {
-    Subscribe(SubscriptionPayload),
-    Unsubscribe(SubscriptionPayload),
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ServerMessage {
-    Subscribed(SubscriptionPayload),
-    Unsubscribed(SubscriptionPayload),
-    Error(String),
-    Response(ResponseMessage),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResponseMessage {
-    pub key: String,
-    pub data: serde_json::Value,
-}
-
 #[cfg(test)]
 mod tests {
     use fuel_streams_domains::{
@@ -131,34 +108,8 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
-    use super::{ClientMessage, DeliverPolicy, SubscriptionPayload};
+    use super::{DeliverPolicy, SubscriptionPayload};
     use crate::subjects::*;
-
-    #[test]
-    fn test_sub_ser() {
-        let stream_topic_subject = "blocks.*.*".to_owned();
-        let msg = ClientMessage::Subscribe(SubscriptionPayload {
-            subject: stream_topic_subject.clone(),
-            params: json!({}).to_string(),
-            deliver_policy: DeliverPolicy::New,
-        });
-        let ser_str_value = serde_json::to_string(&msg).unwrap();
-        println!("Ser value {:?}", ser_str_value);
-        let expected_value = serde_json::json!({
-            "subscribe": {
-                "subject": stream_topic_subject,
-                "params": json!({}).to_string(),
-                "deliverPolicy": "new"
-            }
-        });
-        let deser_msg_val =
-            serde_json::from_value::<ClientMessage>(expected_value).unwrap();
-        assert!(msg.eq(&deser_msg_val));
-
-        let deser_msg_str =
-            serde_json::from_str::<ClientMessage>(&ser_str_value).unwrap();
-        assert!(msg.eq(&deser_msg_str));
-    }
 
     #[test]
     fn test_converting_subject_to_payloads() {

@@ -1,15 +1,15 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use fuel_streams_macros::subject::IntoSubject;
-use fuel_streams_store::record::RecordEntity;
+use fuel_streams_store::record::{RecordEntity, RecordEntityError};
 use thiserror::Error;
 
 use crate::Subjects;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum SubjectPayloadError {
-    #[error("Unknown subject: {0}")]
-    UnknownSubject(String),
+    #[error(transparent)]
+    RecordEntity(#[from] RecordEntityError),
     #[error(transparent)]
     ParseError(#[from] fuel_streams_macros::subject::SubjectError),
 }
@@ -25,7 +25,7 @@ impl SubjectPayload {
         subject: String,
         params: String,
     ) -> Result<Self, SubjectPayloadError> {
-        let record_entity = Self::record_from_subject_str(&subject)?;
+        let record_entity = RecordEntity::from_subject_id(&subject)?;
         Ok(Self {
             record_entity,
             subject,
@@ -47,22 +47,6 @@ impl SubjectPayload {
     pub fn parsed_subject(&self) -> Result<String, SubjectPayloadError> {
         let subject_item = self.into_subject()?;
         Ok(subject_item.parse())
-    }
-
-    pub fn record_from_subject_str(
-        subject: &str,
-    ) -> Result<RecordEntity, SubjectPayloadError> {
-        let subject = subject.to_lowercase();
-        let subject_entity = if subject.contains("_") {
-            subject
-                .split("_")
-                .next()
-                .ok_or(SubjectPayloadError::UnknownSubject(subject.clone()))?
-        } else {
-            &subject
-        };
-        RecordEntity::from_str(subject_entity)
-            .map_err(|_| SubjectPayloadError::UnknownSubject(subject))
     }
 }
 
@@ -120,7 +104,9 @@ mod tests {
         );
         assert!(matches!(
             result,
-            Err(SubjectPayloadError::UnknownSubject(_))
+            Err(SubjectPayloadError::RecordEntity(
+                RecordEntityError::UnknownSubject(_)
+            ))
         ));
     }
 
@@ -153,12 +139,12 @@ mod tests {
     #[test_case("Inputs_Coin" => Ok(RecordEntity::Input); "mixed case subject")]
     #[test_case("RECEIPTS_TRANSFER" => Ok(RecordEntity::Receipt); "uppercase with underscore")]
     // Invalid cases
-    #[test_case("invalid" => Err(SubjectPayloadError::UnknownSubject("invalid".to_string())); "invalid subject")]
-    #[test_case("invalid_subject" => Err(SubjectPayloadError::UnknownSubject("invalid_subject".to_string())); "invalid subject with type")]
-    #[test_case("" => Err(SubjectPayloadError::UnknownSubject("".to_string())); "empty subject")]
+    #[test_case("invalid" => Err(RecordEntityError::UnknownSubject("invalid".to_string())); "invalid subject")]
+    #[test_case("invalid_subject" => Err(RecordEntityError::UnknownSubject("invalid_subject".to_string())); "invalid subject with type")]
+    #[test_case("" => Err(RecordEntityError::UnknownSubject("".to_string())); "empty subject")]
     fn test_record_entity_parsing(
         input: &str,
-    ) -> Result<RecordEntity, SubjectPayloadError> {
-        SubjectPayload::record_from_subject_str(input)
+    ) -> Result<RecordEntity, RecordEntityError> {
+        RecordEntity::from_subject_id(input)
     }
 }

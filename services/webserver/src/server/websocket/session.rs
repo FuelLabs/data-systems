@@ -6,7 +6,7 @@ use std::{
 
 use actix_ws::{CloseCode, CloseReason, Session};
 use fuel_streams_core::{
-    server::{ServerMessage, Subscription},
+    server::{ServerResponse, Subscription},
     FuelStreams,
 };
 use fuel_web_utils::{
@@ -38,7 +38,7 @@ impl MessageHandler {
     async fn send_message(
         &self,
         session: &mut Session,
-        message: ServerMessage,
+        message: ServerResponse,
     ) -> Result<(), WebsocketError> {
         let msg_encoded = serde_json::to_vec(&message)
             .map_err(WebsocketError::UnserializablePayload)?;
@@ -52,7 +52,7 @@ impl MessageHandler {
         error: &WebsocketError,
     ) -> Result<(), WebsocketError> {
         let api_key = self.api_key.to_owned();
-        let error_msg = ServerMessage::Error(error.to_string());
+        let error_msg = ServerResponse::Error(error.to_string());
         if let Err(send_err) = self.send_message(session, error_msg).await {
             tracing::error!(
                 %api_key,
@@ -224,7 +224,7 @@ impl ConnectionManager {
         if self.is_subscribed(subscription).await {
             self.metrics_handler
                 .track_duplicate_subscription(subscription);
-            let warning_msg = ServerMessage::Error(format!(
+            let warning_msg = ServerResponse::Error(format!(
                 "Already subscribed to {}",
                 subscription
             ));
@@ -291,7 +291,7 @@ impl WsSession {
     pub async fn send_message(
         &self,
         session: &mut Session,
-        message: ServerMessage,
+        message: ServerResponse,
     ) -> Result<(), WebsocketError> {
         self.messaging.send_message(session, message).await
     }
@@ -341,7 +341,7 @@ impl WsSession {
     ) -> Result<(), WebsocketError> {
         let api_key = self.api_key();
         if !self.is_subscribed(subscription).await {
-            let warning_msg = ServerMessage::Error(format!(
+            let warning_msg = ServerResponse::Error(format!(
                 "No active subscription found for {}",
                 subscription
             ));

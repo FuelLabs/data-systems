@@ -1,53 +1,22 @@
-use fuel_streams_core::{
-    server::{ResponseMessage, ServerMessage, SubscriptionPayload},
-    types::*,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::SubjectPayload;
-use fuel_streams_store::record::{DataEncoder, RecordEntity};
+use fuel_web_utils::server::api::API_VERSION;
 
 use crate::server::errors::WebsocketError;
 
 pub async fn decode_and_respond(
     payload: SubscriptionPayload,
     (subject, data): (String, Vec<u8>),
-) -> Result<ServerMessage, WebsocketError> {
-    let payload = decode_to_json_value(&payload.try_into()?, data).await?;
-    let response_message = ResponseMessage {
-        key: subject,
-        data: payload,
+) -> Result<ServerResponse, WebsocketError> {
+    let subject_payload: SubjectPayload = payload.try_into()?;
+    let subject_dyn = subject_payload.into_subject()?;
+    let subject_id = subject_dyn.id();
+    let data = MessagePayload::new(subject_id, &data)?;
+    let response_message = StreamMessage {
+        subject,
+        ty: subject_id.to_string(),
+        version: API_VERSION.to_string(),
+        payload: data,
     };
-    Ok(ServerMessage::Response(response_message))
-}
-
-async fn decode_to_json_value(
-    payload: &SubjectPayload,
-    data: Vec<u8>,
-) -> Result<serde_json::Value, WebsocketError> {
-    let value = match payload.record_entity() {
-        RecordEntity::Block => {
-            let payload: Block = Block::decode(&data).await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Transaction => {
-            let payload: Transaction = Transaction::decode(&data).await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Input => {
-            let payload: Input = Input::decode(&data).await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Output => {
-            let payload: Output = Output::decode(&data).await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Receipt => {
-            let payload: Receipt = Receipt::decode(&data).await?;
-            payload.to_json_value()?
-        }
-        RecordEntity::Utxo => {
-            let payload: Utxo = Utxo::decode(&data).await?;
-            payload.to_json_value()?
-        }
-    };
-    Ok(value)
+    Ok(ServerResponse::Response(response_message))
 }

@@ -1,6 +1,10 @@
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
+
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum RecordEntityError {
+    #[error("Unknown subject: {0}")]
+    UnknownSubject(String),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "record_entity", rename_all = "lowercase")]
@@ -34,19 +38,35 @@ impl RecordEntity {
     pub fn table_name(&self) -> String {
         format!("{}{}", self.as_str(), "s")
     }
+
+    pub fn from_subject_id(
+        subject: &str,
+    ) -> Result<RecordEntity, RecordEntityError> {
+        let subject = subject.to_lowercase();
+        let subject_entity = if subject.contains("_") {
+            subject
+                .split("_")
+                .next()
+                .ok_or(RecordEntityError::UnknownSubject(subject.clone()))?
+        } else {
+            &subject
+        };
+        RecordEntity::try_from(subject_entity)
+            .map_err(|_| RecordEntityError::UnknownSubject(subject))
+    }
 }
 
-impl FromStr for RecordEntity {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl TryFrom<&str> for RecordEntity {
+    type Error = RecordEntityError;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "block" | "blocks" => Ok(Self::Block),
-            "transaction" | "transactions" => Ok(Self::Transaction),
-            "input" | "inputs" => Ok(Self::Input),
-            "output" | "outputs" => Ok(Self::Output),
-            "receipt" | "receipts" => Ok(Self::Receipt),
-            "utxo" | "utxos" => Ok(Self::Utxo),
-            _ => Err(format!("Invalid record entity: {}", s)),
+            s if s.contains("block") => Ok(Self::Block),
+            s if s.contains("transaction") => Ok(Self::Transaction),
+            s if s.contains("input") => Ok(Self::Input),
+            s if s.contains("output") => Ok(Self::Output),
+            s if s.contains("receipt") => Ok(Self::Receipt),
+            s if s.contains("utxo") => Ok(Self::Utxo),
+            _ => Err(RecordEntityError::UnknownSubject(s.to_string())),
         }
     }
 }

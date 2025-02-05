@@ -7,7 +7,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize a client connection to the Fuel streaming service
-    let mut client = Client::new(FuelNetwork::Mainnet).with_api_key("your_key");
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("test");
     let mut connection = client.connect().await?;
 
     println!("Listening for blocks...");
@@ -15,12 +15,16 @@ async fn main() -> anyhow::Result<()> {
     let subject = BlocksSubject::new();
     // Subscribe to the block stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Block>(subject, DeliverPolicy::New)
+        .subscribe(subject, DeliverPolicy::FromBlock {
+            block_height: 0.into(),
+        })
         .await?;
 
     // Process incoming blocks
     while let Some(msg) = stream.next().await {
-        println!("Received block: {:?}", msg.data);
+        let msg = msg?;
+        let block = msg.payload.as_block()?;
+        println!("Received block: {:?}", block);
     }
 
     Ok(())

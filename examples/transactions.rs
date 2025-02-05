@@ -17,13 +17,13 @@ async fn main() -> anyhow::Result<()> {
         TransactionsSubject::new().with_kind(Some(TransactionKind::Script)); // Example: filter for script transactions
 
     // Subscribe to the transaction stream with the specified configuration
-    let mut stream = connection
-        .subscribe::<Transaction>(subject, DeliverPolicy::New)
-        .await?;
+    let mut stream = connection.subscribe(subject, DeliverPolicy::New).await?;
 
     // Process incoming transactions
     while let Some(msg) = stream.next().await {
-        println!("Received transaction: {:?}", msg.data);
+        let msg = msg?;
+        let transaction = msg.payload.as_transaction()?;
+        println!("Received transaction: {:?}", transaction);
     }
 
     Ok(())

@@ -72,18 +72,20 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
         }
     }
 }
+
 macro_rules! impl_try_from_subjects {
     ($(($subject_type:ty, $variant:ident)),+ $(,)?) => {
         // Implementation for RecordPacket
         impl TryFrom<RecordPacket> for Subjects {
             type Error = SubjectPayloadError;
             fn try_from(packet: RecordPacket) -> Result<Self, Self::Error> {
+                use fuel_streams_store::record::RecordEntityError;
                 $(
                     if let Ok(subject) = packet.subject_matches::<$subject_type>() {
                         return Ok(Subjects::$variant(subject));
                     }
                 )+
-                Err(SubjectPayloadError::UnknownSubject(packet.subject_str()))
+                Err(RecordEntityError::UnknownSubject(packet.subject_str()).into())
             }
         }
 
@@ -91,11 +93,12 @@ macro_rules! impl_try_from_subjects {
         impl TryFrom<SubjectPayload> for Subjects {
             type Error = SubjectPayloadError;
             fn try_from(json: SubjectPayload) -> Result<Self, Self::Error> {
+                use fuel_streams_store::record::RecordEntityError;
                 match json.subject.as_str() {
                     $(<$subject_type>::ID => Ok(Subjects::$variant(
                         <$subject_type>::from_json(&json.params.to_string())?
                     )),)+
-                    _ => Err(SubjectPayloadError::UnknownSubject(json.subject))
+                    _ => Err(RecordEntityError::UnknownSubject(json.subject).into())
                 }
             }
         }
@@ -139,7 +142,7 @@ impl_try_from_subjects!(
 #[allow(clippy::disallowed_macros)]
 #[cfg(test)]
 mod tests {
-    use fuel_streams_store::record::RecordEntity;
+    use fuel_streams_store::record::{RecordEntity, RecordEntityError};
     use serde_json::json;
     use test_case::test_case;
 
@@ -189,7 +192,9 @@ mod tests {
         );
         assert!(matches!(
             result,
-            Err(SubjectPayloadError::UnknownSubject(_))
+            Err(SubjectPayloadError::RecordEntity(
+                RecordEntityError::UnknownSubject(_)
+            ))
         ));
     }
 
@@ -222,12 +227,12 @@ mod tests {
     #[test_case("Inputs_Coin" => Ok(RecordEntity::Input); "mixed case subject")]
     #[test_case("RECEIPTS_TRANSFER" => Ok(RecordEntity::Receipt); "uppercase with underscore")]
     // Invalid cases
-    #[test_case("invalid" => Err(SubjectPayloadError::UnknownSubject("invalid".to_string())); "invalid subject")]
-    #[test_case("invalid_subject" => Err(SubjectPayloadError::UnknownSubject("invalid_subject".to_string())); "invalid subject with type")]
-    #[test_case("" => Err(SubjectPayloadError::UnknownSubject("".to_string())); "empty subject")]
+    #[test_case("invalid" => Err(RecordEntityError::UnknownSubject("invalid".to_string())); "invalid subject")]
+    #[test_case("invalid_subject" => Err(RecordEntityError::UnknownSubject("invalid_subject".to_string())); "invalid subject with type")]
+    #[test_case("" => Err(RecordEntityError::UnknownSubject("".to_string())); "empty subject")]
     fn test_record_entity_parsing(
         input: &str,
-    ) -> Result<RecordEntity, SubjectPayloadError> {
-        SubjectPayload::record_from_subject_str(input)
+    ) -> Result<RecordEntity, RecordEntityError> {
+        RecordEntity::from_subject_id(input)
     }
 }

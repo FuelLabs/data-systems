@@ -19,10 +19,11 @@ pub mod types {
         receipts::types::*,
         transactions::types::*,
         utxos::types::*,
+        SubjectPayload,
     };
     pub use fuel_streams_types::*;
 
-    pub use crate::server::DeliverPolicy;
+    pub use crate::server::*;
 }
 
 pub mod subjects {

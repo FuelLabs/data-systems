@@ -21,12 +21,11 @@ pub async fn run_streamable_consumer<
 ) -> Result<()> {
     let mut client = Client::new(network).with_api_key(api_key);
     let mut connection = client.connect().await?;
-    let mut stream = connection
-        .subscribe::<T>(subject, DeliverPolicy::New)
-        .await?;
+    let mut stream = connection.subscribe(subject, DeliverPolicy::New).await?;
 
     while let Some(msg) = stream.next().await {
-        println!("Received entity: {:?}", msg.data);
+        let msg = msg?;
+        println!("Received entity: {:?}", msg.payload);
         load_test_tracker.increment_message_count();
         load_test_tracker
             .add_publish_time(Utc::now().timestamp_millis() as u128);

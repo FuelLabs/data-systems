@@ -1,5 +1,7 @@
-use fuel_streams_core::subjects::*;
-use fuel_streams_store::record::Record;
+use fuel_streams_core::{
+    subjects::*,
+    types::{StreamMessage, SubjectPayload},
+};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt,
@@ -15,7 +17,12 @@ use tokio_tungstenite::{
 
 use super::{
     error::ClientError,
-    types::{ClientMessage, DeliverPolicy, ServerMessage, SubscriptionPayload},
+    types::{
+        DeliverPolicy,
+        ServerRequest,
+        ServerResponse,
+        SubscriptionPayload,
+    },
 };
 use crate::FuelNetwork;
 
@@ -46,12 +53,6 @@ type WriteSink = RwLock<
     >,
 >;
 
-#[derive(Debug, Clone)]
-pub struct Message<T> {
-    pub key: String,
-    pub data: T,
-}
-
 #[derive(Debug)]
 pub struct Connection {
     pub read_stream: ReadStream,
@@ -71,7 +72,7 @@ impl Connection {
 
     async fn send_client_message(
         &self,
-        message: ClientMessage,
+        message: &ServerRequest,
     ) -> Result<(), ClientError> {
         let mut write_guard = self.write_sink.write().await;
         let serialized = serde_json::to_vec(&message)?;
@@ -81,58 +82,52 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn subscribe<T: Record>(
+    async fn stream_with_message(
         &mut self,
-        subject: impl IntoSubject + FromJsonString,
-        deliver_policy: DeliverPolicy,
-    ) -> Result<impl Stream<Item = Message<T>> + '_ + Send + Unpin, ClientError>
-    {
-        let message = ClientMessage::Subscribe(SubscriptionPayload {
-            deliver_policy,
-            subject: subject.id().to_string(),
-            params: subject.to_json(),
-        });
+        message: &ServerRequest,
+    ) -> Result<
+        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
+        ClientError,
+    > {
         self.send_client_message(message).await?;
-        let stream = self.read_stream.by_ref().filter_map(|msg| async move {
+        let stream = self.read_stream.by_ref().filter_map(|msg| async {
             match msg {
                 Ok(TungsteniteMessage::Binary(bin)) => {
-                    match serde_json::from_slice::<ServerMessage>(&bin) {
-                        Ok(ServerMessage::Response(value)) => {
-                            match serde_json::from_value::<T>(value.data) {
-                                Ok(parsed) => Some(Message {
-                                    key: value.key,
-                                    data: parsed,
-                                }),
-                                Err(e) => {
-                                    eprintln!("Failed to parse value: {:?}", e);
-                                    None
-                                }
-                            }
-                        }
-                        Ok(ServerMessage::Error(e)) => {
-                            eprintln!("Server error: {}", e);
-                            None
-                        }
-                        Ok(_) => None,
-                        Err(e) => {
-                            eprintln!("Unparsable server message: {:?}", e);
-                            None
-                        }
+                    match handle_binary_message(bin) {
+                        Ok(Some(message)) => Some(Ok(message)),
+                        Ok(None) => None,
+                        Err(e) => Some(Err(e)),
                     }
                 }
-                Ok(TungsteniteMessage::Close(_)) => None,
-                Ok(msg) => {
-                    println!("Received message: {:?}", msg);
-                    None
+                Ok(TungsteniteMessage::Close(frame)) => {
+                    Some(Err(ClientError::ConnectionClosed(
+                        frame
+                            .map(|f| f.to_string())
+                            .unwrap_or_else(|| "Connection closed".to_string()),
+                    )))
                 }
-                Err(e) => {
-                    eprintln!("WebSocket error: {:?}", e);
-                    None
-                }
+                Ok(_) => None, // Ignore other message types
+                Err(e) => Some(Err(ClientError::from(e))),
             }
         });
 
         Ok(Box::pin(stream))
+    }
+
+    pub async fn subscribe(
+        &mut self,
+        subject: impl IntoSubject + FromJsonString,
+        deliver_policy: DeliverPolicy,
+    ) -> Result<
+        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
+        ClientError,
+    > {
+        let message = ServerRequest::Subscribe(SubscriptionPayload {
+            deliver_policy,
+            subject: subject.id().to_string(),
+            params: subject.to_json(),
+        });
+        self.stream_with_message(&message).await
     }
 
     pub async fn unsubscribe(
@@ -140,12 +135,43 @@ impl Connection {
         subject: impl IntoSubject + FromJsonString,
         deliver_policy: DeliverPolicy,
     ) -> Result<(), ClientError> {
-        let message = ClientMessage::Unsubscribe(SubscriptionPayload {
+        let message = ServerRequest::Unsubscribe(SubscriptionPayload {
             subject: subject.id().to_string(),
             params: subject.to_json(),
             deliver_policy,
         });
-        self.send_client_message(message).await?;
+        self.send_client_message(&message).await?;
         Ok(())
+    }
+
+    pub async fn subscribe_mult<T>(
+        &mut self,
+        subjects: Vec<SubjectPayload>,
+        deliver_policy: DeliverPolicy,
+    ) -> Result<
+        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
+        ClientError,
+    > {
+        let sub_payloads: Vec<_> = subjects
+            .into_iter()
+            .map(|subject| SubscriptionPayload {
+                deliver_policy,
+                subject: subject.subject,
+                params: subject.params,
+            })
+            .collect();
+        let message = ServerRequest::Subscriptions(sub_payloads);
+        self.stream_with_message(&message).await
+    }
+}
+
+fn handle_binary_message(
+    bin: tokio_tungstenite::tungstenite::Bytes,
+) -> Result<Option<StreamMessage>, ClientError> {
+    match serde_json::from_slice::<ServerResponse>(&bin) {
+        Ok(ServerResponse::Response(response)) => Ok(Some(response)),
+        Ok(ServerResponse::Error(e)) => Err(ClientError::Server(e)),
+        Ok(_) => Ok(None),
+        Err(e) => Err(ClientError::Server(e.to_string())),
     }
 }

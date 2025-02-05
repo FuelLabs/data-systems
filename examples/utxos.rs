@@ -16,13 +16,13 @@ async fn main() -> anyhow::Result<()> {
     let subject = UtxosSubject::new().with_utxo_type(Some(UtxoType::Message)); // Example: filter for message UTXOs
 
     // Subscribe to the UTXO stream with the specified configuration
-    let mut stream = connection
-        .subscribe::<Utxo>(subject, DeliverPolicy::New)
-        .await?;
+    let mut stream = connection.subscribe(subject, DeliverPolicy::New).await?;
 
     // Process incoming UTXOs
     while let Some(msg) = stream.next().await {
-        println!("Received UTXO: {:?}", msg.data);
+        let msg = msg?;
+        let utxo = msg.payload.as_utxo()?;
+        println!("Received UTXO: {:?}", utxo);
     }
 
     Ok(())

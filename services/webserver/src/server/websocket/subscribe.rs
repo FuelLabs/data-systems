@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_ws::{CloseReason, Session};
 use fuel_streams_core::{
-    server::{DeliverPolicy, ServerMessage, Subscription},
+    server::{DeliverPolicy, ServerResponse, Subscription},
     BoxedStream,
     FuelStreams,
 };
@@ -20,7 +20,7 @@ pub async fn unsubscribe(
 ) -> Result<(), WebsocketError> {
     ctx.remove_subscription(subscription).await;
     let payload = subscription.payload();
-    let msg = ServerMessage::Unsubscribed(payload.clone());
+    let msg = ServerResponse::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())
 }
@@ -49,7 +49,7 @@ pub async fn subscribe(
     .await?;
 
     // Send the subscription message to the client
-    let subscribed_msg = ServerMessage::Subscribed(payload.clone());
+    let subscribed_msg = ServerResponse::Subscribed(payload.clone());
     ctx.send_message(session, subscribed_msg).await?;
     ctx.add_subscription(subscription).await?;
 
@@ -118,7 +118,7 @@ async fn process_msgs(
 
     tracing::debug!(?payload, "Stream ended, removing subscription");
     ctx.remove_subscription(subscription).await;
-    let msg = ServerMessage::Unsubscribed(payload.clone());
+    let msg = ServerResponse::Unsubscribed(payload.clone());
     ctx.send_message(session, msg).await?;
     Ok(())
 }

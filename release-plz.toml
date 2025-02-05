@@ -167,7 +167,7 @@ body = """
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
----
+---\n
 """
 
 commit_parsers = [

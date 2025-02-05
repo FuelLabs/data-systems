@@ -16,13 +16,13 @@ async fn main() -> anyhow::Result<()> {
     let subject = ReceiptsReturnSubject::new().with_tx_id(Some(TX_ID.into()));
 
     // Subscribe to the receipt stream with the specified configuration
-    let mut stream = connection
-        .subscribe::<Receipt>(subject, DeliverPolicy::New)
-        .await?;
+    let mut stream = connection.subscribe(subject, DeliverPolicy::New).await?;
 
     // Process incoming receipts
     while let Some(msg) = stream.next().await {
-        println!("Received receipt: {:?}", msg.data);
+        let msg = msg?;
+        let receipt = msg.payload.as_receipt()?;
+        println!("Received receipt: {:?}", receipt);
     }
 
     Ok(())

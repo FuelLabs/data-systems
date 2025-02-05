@@ -35,7 +35,7 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 - Historical streaming of Fuel blockchain data
 - Support for various Fuel-specific data types
 - Customizable filters for targeted data retrieval
-- Flexible delivery policies for historical and real-time data
+- Flexible deliver policies for historical and real-time data
 - Seamless integration with other Fuel ecosystem tools
 
 ## ⚡ Getting Started
@@ -63,7 +63,7 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
         // Create a subject for all blocks
         let subject = BlocksSubject::new();
 
-        // Subscribe to blocks with last delivery policy
+        // Subscribe to blocks with last deliver policy
         let mut stream = connection
             .subscribe::<Block>(subject, DeliverPolicy::New)
             .await?;
@@ -83,7 +83,7 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 
 This example connects to the Fuel Network and listens for new blocks. You can customize the data types or apply filters based on your specific requirements.
 
-For advanced usage, including custom filters and delivery policies, refer to the [`fuel-streams` documentation](https://docs.rs/fuel-streams).
+For advanced usage, including custom filters and deliver policies, refer to the [`fuel-streams` documentation](https://docs.rs/fuel-streams).
 
 ## 💪 Contributing
 

@@ -39,3 +39,8 @@ path = "outputs.rs"
 [[example]]
 name = "utxos"
 path = "utxos.rs"
+
+
+[[example]]
+name = "subscribe_mult"
+path = "subscribe_mult.rs"

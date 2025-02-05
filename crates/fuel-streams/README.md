@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a subject for all blocks
     let subject = BlocksSubject::new();
 
-    // Subscribe to blocks with last delivery policy
+    // Subscribe to blocks with last deliver policy
     let mut stream = connection
         .subscribe::<Block>(subject, DeliverPolicy::New)
         .await?;
@@ -146,7 +146,7 @@ Each subject builder provides specific filtering methods relevant to its data ty
 
 ### `DeliverPolicy` Options
 
-The `DeliverPolicy` enum provides control over message delivery in your subscriptions:
+The `DeliverPolicy` enum provides control over message Deliver in your subscriptions:
 
 - `All`: Delivers all messages in the stream
 - `Last`: Delivers only the last message for the selected subjects
