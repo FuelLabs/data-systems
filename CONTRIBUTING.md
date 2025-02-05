@@ -9,7 +9,7 @@ Most projects under the umbrella of data systems are written in Rust, so we pref
 - [Rust](https://www.rust-lang.org/tools/install) (version 1.84.0)
 - [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2025-01-24)
 - [NodeJS](https://nodejs.org/en/download/) (version >=22.11.0)
-- [PNPM](https://pnpm.io/installation) (version 10.2.0)
+- [Bun](https://bun.sh/docs/installation) (version 1.0.30)
 - [Make](https://www.gnu.org/software/make/)
 - [Pre-commit](https://pre-commit.com/#install)
 - [NATS](https://nats.io/download/)

@@ -4,5 +4,5 @@ extend-exclude = [
   "crates/sv-webserver/README.md",
   "docker/chain-config",
   "docker/monitoring",
-  "pnpm-lock.yaml",
+  "bun.lockb",
 ]
