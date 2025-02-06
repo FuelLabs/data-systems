@@ -50,6 +50,7 @@ pub fn expanded<'a>(
     let query_all = crate::attrs::subject_attr("query_all", attrs);
     let id = crate::attrs::subject_attr("id", attrs);
     let entity = crate::attrs::subject_attr("entity", attrs);
+    let crate_path = quote!(fuel_streams_macros::subject);
 
     // Get custom_where if it exists, otherwise use None
     let custom_where = if let Some(extra) =
@@ -104,6 +105,12 @@ pub fn expanded<'a>(
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.parse())
+            }
+        }
+
+        impl From<#crate_path::SubjectPayload> for #name {
+            fn from(payload: #crate_path::SubjectPayload) -> Self {
+                #crate_path::serde_json::from_value(payload.params).expect(&format!("Failed to deserialize {}", stringify!(#name)))
             }
         }
     }

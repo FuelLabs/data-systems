@@ -1,7 +1,4 @@
-use fuel_streams_core::{
-    subjects::*,
-    types::{StreamMessage, SubjectPayload},
-};
+use fuel_streams_core::{subjects::*, types::StreamMessage};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt,
@@ -17,12 +14,7 @@ use tokio_tungstenite::{
 
 use super::{
     error::ClientError,
-    types::{
-        DeliverPolicy,
-        ServerRequest,
-        ServerResponse,
-        SubscriptionPayload,
-    },
+    types::{DeliverPolicy, ServerRequest, ServerResponse},
 };
 use crate::FuelNetwork;
 
@@ -116,51 +108,20 @@ impl Connection {
 
     pub async fn subscribe(
         &mut self,
-        subject: impl IntoSubject + FromJsonString,
-        deliver_policy: DeliverPolicy,
-    ) -> Result<
-        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
-        ClientError,
-    > {
-        let message = ServerRequest::Subscribe(SubscriptionPayload {
-            deliver_policy,
-            subject: subject.id().to_string(),
-            params: subject.to_json(),
-        });
-        self.stream_with_message(&message).await
-    }
-
-    pub async fn unsubscribe(
-        &self,
-        subject: impl IntoSubject + FromJsonString,
-        deliver_policy: DeliverPolicy,
-    ) -> Result<(), ClientError> {
-        let message = ServerRequest::Unsubscribe(SubscriptionPayload {
-            subject: subject.id().to_string(),
-            params: subject.to_json(),
-            deliver_policy,
-        });
-        self.send_client_message(&message).await?;
-        Ok(())
-    }
-
-    pub async fn subscribe_mult<T>(
-        &mut self,
         subjects: Vec<SubjectPayload>,
         deliver_policy: DeliverPolicy,
     ) -> Result<
         impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
         ClientError,
     > {
-        let sub_payloads: Vec<_> = subjects
+        let subjects: Vec<_> = subjects
             .into_iter()
-            .map(|subject| SubscriptionPayload {
-                deliver_policy,
-                subject: subject.subject,
-                params: subject.params,
-            })
+            .filter_map(|subject| subject.try_into().ok())
             .collect();
-        let message = ServerRequest::Subscriptions(sub_payloads);
+        let message = ServerRequest {
+            deliver_policy,
+            subscribe: subjects,
+        };
         self.stream_with_message(&message).await
     }
 }

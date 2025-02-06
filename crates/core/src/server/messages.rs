@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use fuel_streams_macros::subject::SubjectPayload;
 use fuel_streams_store::{
     db::DbError,
     record::{DataEncoder, RecordEntity, RecordEntityError},
@@ -108,7 +109,22 @@ impl MessagePayload {
 pub struct StreamMessage {
     #[serde(rename = "type")]
     pub ty: String,
-    pub subject: String,
     pub version: String,
+    pub subject: String,
     pub payload: MessagePayload,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerRequest {
+    pub deliver_policy: DeliverPolicy,
+    pub subscribe: Vec<SubjectPayload>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ServerResponse {
+    Subscribed(SubjectPayload),
+    Response(StreamMessage),
+    Error(String),
 }

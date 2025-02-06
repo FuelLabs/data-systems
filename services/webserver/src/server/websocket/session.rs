@@ -85,7 +85,7 @@ impl MetricsHandler {
         change: SubscriptionChange,
     ) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            let subject = subscription.payload().subject.clone();
+            let subject = subscription.payload.subject.clone();
             metrics.update_user_subscription_count(
                 self.api_key.id(),
                 &self.api_key.user(),

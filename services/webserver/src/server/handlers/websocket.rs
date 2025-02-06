@@ -24,7 +24,7 @@ use crate::{
     server::{
         errors::WebsocketError,
         state::ServerState,
-        websocket::{subscribe, subscribe_mult, unsubscribe, WsSession},
+        websocket::{subscribe_mult, WsSession},
     },
 };
 
@@ -32,7 +32,6 @@ use crate::{
 enum CloseAction {
     Error(WebsocketError),
     Closed(Option<CloseReason>),
-    Unsubscribe,
     Timeout,
 }
 impl From<CloseAction> for CloseReason {
@@ -42,7 +41,6 @@ impl From<CloseAction> for CloseReason {
                 reason.unwrap_or(CloseCode::Normal.into())
             }
             CloseAction::Error(_) => CloseCode::Away.into(),
-            CloseAction::Unsubscribe => CloseCode::Normal.into(),
             CloseAction::Timeout => CloseCode::Away.into(),
         }
     }
@@ -180,21 +178,7 @@ async fn handle_websocket_request(
     msg: Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
-    let msg = serde_json::from_slice(&msg)?;
-    match msg {
-        ServerRequest::Subscribe(payload) => {
-            let api_key = ctx.api_key();
-            subscribe(session, ctx, &(api_key, payload).into()).await?;
-            Ok(None)
-        }
-        ServerRequest::Unsubscribe(payload) => {
-            let api_key = ctx.api_key();
-            unsubscribe(session, ctx, &(api_key, payload).into()).await?;
-            Ok(Some(CloseAction::Unsubscribe))
-        }
-        ServerRequest::Subscriptions(subs) => {
-            subscribe_mult(session, ctx, subs).await?;
-            Ok(None)
-        }
-    }
+    let server_request: ServerRequest = serde_json::from_slice(&msg)?;
+    subscribe_mult(session, ctx, &server_request).await?;
+    Ok(None)
 }

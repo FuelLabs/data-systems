@@ -1,6 +1,7 @@
 use fuel_streams_macros::subject::{IndexMap, *};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "test")]
@@ -118,40 +119,6 @@ fn subject_derive_sql_where_table_only() {
 }
 
 #[test]
-fn subject_derive_from_json() {
-    // Test with all fields
-    let subject = TestSubject::from_json(
-        r#"{"field1": "foo", "field2": 55, "field3": "bar"}"#,
-    )
-    .unwrap();
-    assert_eq!(subject.parse(), "test.foo.55.bar");
-
-    // Test with partial fields
-    let subject = TestSubject::from_json(r#"{"field1": "foo"}"#).unwrap();
-    assert_eq!(subject.parse(), "test.foo.*.*");
-
-    // Test with empty object
-    let subject = TestSubject::from_json("{}").unwrap();
-    assert_eq!(subject.parse(), "test.>");
-}
-
-#[test]
-fn subject_derive_from_json_error() {
-    // Test error cases
-    let invalid_json = TestSubject::from_json("{invalid}");
-    assert!(matches!(
-        invalid_json,
-        Err(SubjectError::InvalidJsonConversion(_))
-    ));
-
-    let invalid_type = TestSubject::from_json("[1, 2, 3]");
-    assert!(matches!(
-        invalid_type,
-        Err(SubjectError::ExpectedJsonObject)
-    ));
-}
-
-#[test]
 fn subject_derive_id() {
     let subject = TestSubject::new();
     assert_eq!(TestSubject::ID, "test");
@@ -159,60 +126,63 @@ fn subject_derive_id() {
 }
 
 #[test]
-fn subject_derive_to_json() {
+fn subject_derive_to_payload() {
     // Test with all fields
     let subject = TestSubject {
         field1: Some("foo".to_string()),
         field2: Some(55),
         field3: Some("bar".to_string()),
     };
-    assert_eq!(
-        subject.to_json(),
-        r#"{"field1":"foo","field2":55,"field3":"bar"}"#
-    );
-
-    // Test with partial fields
-    let subject = TestSubject {
-        field1: Some("foo".to_string()),
-        field2: None,
-        field3: None,
-    };
-    assert_eq!(
-        subject.to_json(),
-        r#"{"field1":"foo","field2":null,"field3":null}"#
-    );
+    assert_eq!(subject.to_payload(), SubjectPayload {
+        subject: subject.id().to_string(),
+        params: json!({"field1":"foo","field2":55,"field3":"bar"})
+    });
 
     // Test with no fields
     let subject = TestSubject::new();
-    assert_eq!(
-        subject.to_json(),
-        r#"{"field1":null,"field2":null,"field3":null}"#
-    );
+    assert_eq!(subject.to_payload(), SubjectPayload {
+        subject: subject.id().to_string(),
+        params: json!({"field1":null,"field2":null,"field3":null})
+    });
 }
 
 #[test]
-fn subject_derive_json_roundtrip() {
-    // Create a subject with mixed values and nulls
-    let original = TestSubject {
-        field1: Some("test".to_string()),
-        field2: None,
-        field3: Some("value".to_string()),
+fn subject_derive_roundtrip() {
+    // Create original subject with all fields
+    let original_subject = TestSubject {
+        field1: Some("foo".to_string()),
+        field2: Some(55),
+        field3: Some("bar".to_string()),
     };
 
-    // Convert to JSON string
-    let json_str = original.to_json();
+    // Convert to payload
+    let payload = original_subject.to_payload();
 
-    // Convert back from JSON string
-    let roundtrip = TestSubject::from_json(&json_str).unwrap();
+    // Convert back to subject
+    let reconstructed_subject = TestSubject::from(payload);
 
-    // Verify the fields match
-    assert_eq!(roundtrip.field1, original.field1);
-    assert_eq!(roundtrip.field2, original.field2);
-    assert_eq!(roundtrip.field3, original.field3);
+    // Verify the roundtrip conversion preserved all data
+    assert_eq!(original_subject.field1, reconstructed_subject.field1);
+    assert_eq!(original_subject.field2, reconstructed_subject.field2);
+    assert_eq!(original_subject.field3, reconstructed_subject.field3);
 
-    // Verify the parsed subject string is the same
-    assert_eq!(roundtrip.parse(), "test.test.*.value");
-    assert_eq!(original.parse(), "test.test.*.value");
+    // Test with empty subject
+    let original_empty_subject = TestSubject::new();
+    let empty_payload = original_empty_subject.to_payload();
+    let reconstructed_empty_subject = TestSubject::from(empty_payload);
+
+    assert_eq!(
+        original_empty_subject.field1,
+        reconstructed_empty_subject.field1
+    );
+    assert_eq!(
+        original_empty_subject.field2,
+        reconstructed_empty_subject.field2
+    );
+    assert_eq!(
+        original_empty_subject.field3,
+        reconstructed_empty_subject.field3
+    );
 }
 
 #[test]

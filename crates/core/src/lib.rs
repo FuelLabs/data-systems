@@ -19,7 +19,6 @@ pub mod types {
         receipts::types::*,
         transactions::types::*,
         utxos::types::*,
-        SubjectPayload,
     };
     pub use fuel_streams_types::*;
 

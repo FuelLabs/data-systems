@@ -100,43 +100,6 @@ pub fn to_sql_select_fn(fields: &[FieldInfo]) -> TokenStream {
     }
 }
 
-pub fn from_json_fn(field_names: &[&Ident]) -> TokenStream {
-    let parse_fields = field_names.iter().map(|name| {
-        let name_str = name.to_string();
-        quote! {
-            let #name = if let Some(value) = obj.get(#name_str) {
-                if value.is_null() {
-                    None
-                } else {
-                    let str_val = value.to_string().trim_matches('"').to_string();
-                    Some(str_val)
-                }
-            } else {
-                None
-            };
-        }
-    });
-
-    quote! {
-        fn from_json(json: &str) -> Result<Self, SubjectError> {
-            let parsed: fuel_streams_macros::subject::serde_json::Value =
-                fuel_streams_macros::subject::serde_json::from_str(json)
-                    .map_err(|e| SubjectError::InvalidJsonConversion(e.to_string()))?;
-
-            let obj = match parsed.as_object() {
-                Some(obj) => obj,
-                None => return Err(SubjectError::ExpectedJsonObject),
-            };
-
-            #(#parse_fields)*
-
-            Ok(Self::build(
-                #(#field_names.and_then(|v| v.parse().ok()),)*
-            ))
-        }
-    }
-}
-
 pub fn id_fn() -> TokenStream {
     quote! {
         fn id(&self) -> &'static str {
@@ -145,10 +108,16 @@ pub fn id_fn() -> TokenStream {
     }
 }
 
-pub fn to_json_fn() -> TokenStream {
+pub fn to_payload_fn(input: &DeriveInput) -> TokenStream {
+    let name = &input.ident.to_string();
+    let crate_path = quote!(fuel_streams_macros::subject);
     quote! {
-        fn to_json(&self) -> String {
-            fuel_streams_macros::subject::serde_json::to_string(self).unwrap()
+        fn to_payload(&self) -> #crate_path::SubjectPayload {
+            let params = #crate_path::serde_json::to_value(self).expect(&format!("Failed to serialize {}", stringify!(#name)));
+            #crate_path::SubjectPayload {
+                params: params.to_owned(),
+                subject: self.id().to_string(),
+            }
         }
     }
 }

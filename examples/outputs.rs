@@ -13,8 +13,12 @@ async fn main() -> anyhow::Result<()> {
     println!("Listening for outputs...");
 
     let subject = OutputsCoinSubject::new();
+    let filter_subjects = vec![subject.into()];
+
     // Subscribe to the output stream with the specified configuration
-    let mut stream = connection.subscribe(subject, DeliverPolicy::New).await?;
+    let mut stream = connection
+        .subscribe(filter_subjects, DeliverPolicy::New)
+        .await?;
 
     // Process incoming outputs
     while let Some(msg) = stream.next().await {

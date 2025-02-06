@@ -12,12 +12,13 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Listening for blocks...");
 
+    // Create a filter subject for the block stream
     let subject = BlocksSubject::new();
+    let filter_subjects = vec![subject.into()];
+
     // Subscribe to the block stream with the specified configuration
     let mut stream = connection
-        .subscribe(subject, DeliverPolicy::FromBlock {
-            block_height: 0.into(),
-        })
+        .subscribe(filter_subjects, DeliverPolicy::New)
         .await?;
 
     // Process incoming blocks

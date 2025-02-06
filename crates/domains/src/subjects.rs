@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use fuel_streams_macros::subject::{FromJsonString, IntoSubject};
+use fuel_streams_macros::subject::{
+    IntoSubject,
+    SubjectPayload,
+    SubjectPayloadError,
+};
 use fuel_streams_store::record::RecordPacket;
 
 use crate::{
@@ -10,9 +14,15 @@ use crate::{
     receipts::*,
     transactions::*,
     utxos::*,
-    SubjectPayload,
-    SubjectPayloadError,
 };
+
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+pub enum SubjectsError {
+    #[error("Unknown subject: {0}")]
+    UnknownSubject(String),
+    #[error(transparent)]
+    SubjectPayload(#[from] SubjectPayloadError),
+}
 
 #[derive(Debug, Clone)]
 pub enum Subjects {
@@ -77,35 +87,30 @@ macro_rules! impl_try_from_subjects {
     ($(($subject_type:ty, $variant:ident)),+ $(,)?) => {
         // Implementation for RecordPacket
         impl TryFrom<RecordPacket> for Subjects {
-            type Error = SubjectPayloadError;
+            type Error = SubjectsError;
             fn try_from(packet: RecordPacket) -> Result<Self, Self::Error> {
-                use fuel_streams_store::record::RecordEntityError;
                 $(
                     if let Ok(subject) = packet.subject_matches::<$subject_type>() {
                         return Ok(Subjects::$variant(subject));
                     }
                 )+
-                Err(RecordEntityError::UnknownSubject(packet.subject_str()).into())
+                Err(SubjectsError::UnknownSubject(packet.subject_str()))
             }
         }
 
         // Implementation for SubjectPayload
         impl TryFrom<SubjectPayload> for Subjects {
-            type Error = SubjectPayloadError;
-            fn try_from(json: SubjectPayload) -> Result<Self, Self::Error> {
-                use fuel_streams_store::record::RecordEntityError;
-                match json.subject.as_str() {
-                    $(<$subject_type>::ID => Ok(Subjects::$variant(
-                        <$subject_type>::from_json(&json.params.to_string())?
-                    )),)+
-                    _ => Err(RecordEntityError::UnknownSubject(json.subject).into())
+            type Error = SubjectsError;
+            fn try_from(payload: SubjectPayload) -> Result<Self, Self::Error> {
+                match payload.subject.as_str() {
+                    $(<$subject_type>::ID => Ok(Subjects::$variant(payload.into())),)+
+                    _ => Err(SubjectsError::UnknownSubject(payload.subject))
                 }
             }
         }
     };
 }
 
-// Usage: call the macro with all subject types and their corresponding variants
 impl_try_from_subjects!(
     // Block subjects
     (BlocksSubject, Block),
@@ -151,51 +156,40 @@ mod tests {
     #[test]
     fn test_subject_json_conversion() {
         // Test block subject
-        let block_json = SubjectPayload::new(
-            BlocksSubject::ID.to_string(),
-            json!({
+        let block_json = SubjectPayload {
+            subject: BlocksSubject::ID.to_string(),
+            params: json!({
                 "producer": "0x0101010101010101010101010101010101010101010101010101010101010101",
                 "height": 123
-            }).to_string(),
-        ).unwrap();
+            }),
+        };
+
         let subject: Subjects = block_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::Block(_)));
 
         // Test inputs_coin subject
-        let inputs_coin_json = SubjectPayload::new(
-            InputsCoinSubject::ID.to_string(),
-            json!({
+        let inputs_coin_json = SubjectPayload {
+            subject: InputsCoinSubject::ID.to_string(),
+            params: json!({
                 "block_height": 123,
                 "tx_id": "0x0202020202020202020202020202020202020202020202020202020202020202",
                 "tx_index": 0,
                 "input_index": 1,
                 "owner": "0x0303030303030303030303030303030303030303030303030303030303030303",
                 "asset_id": "0x0404040404040404040404040404040404040404040404040404040404040404"
-            }).to_string(),
-        ).unwrap();
+            }),
+        };
+
         let subject: Subjects = inputs_coin_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::InputsCoin(_)));
 
         // Test with empty params
-        let empty_block_json = SubjectPayload::new(
-            BlocksSubject::ID.to_string(),
-            json!({}).to_string(),
-        )
-        .unwrap();
+        let empty_block_json = SubjectPayload {
+            subject: BlocksSubject::ID.to_string(),
+            params: json!({}),
+        };
         let subject: Subjects = empty_block_json.try_into().unwrap();
         assert!(matches!(subject, Subjects::Block(_)));
-
-        // Test invalid subject
-        let result = SubjectPayload::new(
-            "invalid_subject".to_string(),
-            json!({}).to_string(),
-        );
-        assert!(matches!(
-            result,
-            Err(SubjectPayloadError::RecordEntity(
-                RecordEntityError::UnknownSubject(_)
-            ))
-        ));
     }
 
     #[test_case("blocks" => Ok(RecordEntity::Block); "blocks subject")]

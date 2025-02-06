@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+mod payload;
 
 pub mod subject {
     pub use std::fmt::Debug;
@@ -8,6 +9,8 @@ pub mod subject {
     use serde::{Deserialize, Serialize};
     pub use serde_json;
     pub use subject_derive::*;
+
+    pub use crate::payload::*;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
     pub struct FieldSchema {
@@ -60,21 +63,14 @@ pub mod subject {
         fn to_sql_where(&self) -> Option<String>;
         fn to_sql_select(&self) -> Option<String>;
         fn schema(&self) -> Schema;
+        fn to_payload(&self) -> SubjectPayload;
     }
     impl_downcast!(IntoSubject);
 
-    pub trait FromJsonString:
-        serde::Serialize
-        + serde::de::DeserializeOwned
-        + Clone
-        + Sized
-        + Debug
-        + Send
-        + Sync
-        + 'static
-    {
-        fn from_json(json: &str) -> Result<Self, SubjectError>;
-        fn to_json(&self) -> String;
+    impl<T: IntoSubject> From<T> for SubjectPayload {
+        fn from(value: T) -> Self {
+            value.to_payload()
+        }
     }
 
     pub trait SubjectBuildable: Debug {
