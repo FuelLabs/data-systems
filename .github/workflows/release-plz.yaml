@@ -56,8 +56,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node && Bun
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -80,7 +80,6 @@ jobs:
           PR: ${{ steps.release-plz.outputs.pr }}
         run: |-
           set -e
-
           pr_number=${{ fromJSON(steps.release-plz.outputs.pr).number }}
           if [[ -n "$pr_number" ]]; then
             gh pr checkout $pr_number

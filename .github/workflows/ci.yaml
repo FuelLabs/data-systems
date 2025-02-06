@@ -83,8 +83,8 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
 
-      - name: Setup Node && Bun
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Run Pre Commit
         uses: pre-commit/action@v3.0.1
@@ -97,8 +97,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node && Bun
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
@@ -150,8 +150,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
-      - name: Setup Node && Bun
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Check for typos
         uses: crate-ci/typos@master

@@ -7,7 +7,7 @@ default_stages:
 exclude: |
   (?x)^(
     CHANGELOG.md|
-    bun.lockb|
+    bun.lock|
     cluster/charts|
     node_modules|
     target
