@@ -3,12 +3,10 @@ pub mod inputs;
 mod msg_payload;
 pub mod outputs;
 pub mod receipts;
-mod subject_payload;
 pub mod transactions;
 pub mod utxos;
 
 pub use msg_payload::*;
-pub use subject_payload::*;
 pub use subjects::*;
 
 mod subjects;

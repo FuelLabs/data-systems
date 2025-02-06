@@ -35,55 +35,20 @@ With Fuel Data Systems, developers can build sophisticated applications that lev
 - Historical streaming of Fuel blockchain data
 - Support for various Fuel-specific data types
 - Customizable filters for targeted data retrieval
-- Flexible delivery policies for historical and real-time data
+- Flexible deliver policies for historical and real-time data
 - Seamless integration with other Fuel ecosystem tools
 
-## ⚡ Getting Started
+## 📚 Documentation
 
-1. Add `fuel-streams` to your project:
-
-    ```sh
-    cargo add fuel-streams futures tokio
-    ```
-
-2. Create a new Rust file (e.g., `src/main.rs`) with the following code to subscribe to new blocks:
-
-    ```rust
-    use fuel_streams::prelude::*;
-    use futures::StreamExt;
-
-    #[tokio::main]
-    async fn main() -> Result<(), Box<dyn std::error::Error>> {
-        // Create a client and establish connection
-        let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
-        let mut connection = client.connect().await?;
-
-        println!("Listening for blocks...");
-
-        // Create a subject for all blocks
-        let subject = BlocksSubject::new();
-
-        // Subscribe to blocks with last delivery policy
-        let mut stream = connection
-            .subscribe::<Block>(subject, DeliverPolicy::New)
-            .await?;
-
-        while let Some(block) = stream.next().await {
-            println!("Received block: {:?}", block);
-        }
-
-        Ok(())
-    }
-    ```
-
-3. Run your project:
-    ```sh
-    cargo run
-    ```
-
-This example connects to the Fuel Network and listens for new blocks. You can customize the data types or apply filters based on your specific requirements.
-
-For advanced usage, including custom filters and delivery policies, refer to the [`fuel-streams` documentation](https://docs.rs/fuel-streams).
+- [fuel-streams](crates/fuel-streams/README.md#fuel-streams)
+    - [About The Project](crates/fuel-streams/README.md#about-the-project)
+    - [Features](crates/fuel-streams/README.md#features)
+    - [Installing](crates/fuel-streams/README.md#installing)
+    - [Usage](crates/fuel-streams/README.md#usage)
+        - [Basic Connection and Subscription](crates/fuel-streams/README.md#basic-connection-and-subscription)
+        - [Subject Types and Filtering](crates/fuel-streams/README.md#subject-types-and-filtering)
+        - [Multiple Subscriptions](crates/fuel-streams/README.md#multiple-subscriptions)
+        - [`DeliverPolicy` Options](crates/fuel-streams/README.md#deliverpolicy-options)
 
 ## 💪 Contributing
 

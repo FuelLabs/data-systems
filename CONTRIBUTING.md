@@ -64,7 +64,7 @@ Here's an overview of the project's directory structure:
     - `fuel-streams/`: Main fuel-streams package
     - `core/`: Core components for working with streams
     - `domains/`: Domain-specific implementations
-    - `macros/`: Macro utilities for the project
+    - `subject/`: Macro utilities for the project
     - `store/`: Storage implementations
     - `types/`: Common types and traits
     - `web-utils/`: Web utilities
@@ -320,7 +320,7 @@ The scope field is mandatory and must be one of the following:
 - `fuel-streams-core`: Core components and utilities
 - `fuel-streams-domains`: Domain-specific implementations
 - `fuel-streams-types`: Common types and traits
-- `fuel-streams-macros`: Macro utilities
+- `fuel-streams-subject`: Macro utilities
 - `fuel-streams-store`: Storage implementations
 
 **Service Packages:**

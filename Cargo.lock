@@ -3785,6 +3785,7 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 name = "fuel-streams"
 version = "0.0.24"
 dependencies = [
+ "anyhow",
  "fuel-streams-core",
  "fuel-streams-store",
  "futures",
@@ -3809,8 +3810,8 @@ dependencies = [
  "fuel-core",
  "fuel-message-broker",
  "fuel-streams-domains",
- "fuel-streams-macros",
  "fuel-streams-store",
+ "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-tx 0.58.2",
  "fuel-vm 0.58.2",
@@ -3831,8 +3832,8 @@ dependencies = [
  "async-trait",
  "fuel-core",
  "fuel-core-types 0.40.4",
- "fuel-streams-macros",
  "fuel-streams-store",
+ "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-tx 0.58.2",
  "fuel-vm 0.58.2",
@@ -3858,7 +3859,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-streams-macros"
+name = "fuel-streams-store"
+version = "0.0.24"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "dotenvy",
+ "fuel-data-parser",
+ "fuel-streams-subject",
+ "fuel-streams-types",
+ "futures",
+ "serde",
+ "sqlx",
+ "test-case",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fuel-streams-subject"
 version = "0.0.24"
 dependencies = [
  "downcast-rs",
@@ -3872,25 +3892,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-streams-store"
-version = "0.0.24"
-dependencies = [
- "async-stream",
- "async-trait",
- "dotenvy",
- "fuel-data-parser",
- "fuel-streams-macros",
- "fuel-streams-types",
- "futures",
- "serde",
- "sqlx",
- "test-case",
- "thiserror 2.0.11",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "fuel-streams-test"
 version = "0.0.24"
 dependencies = [
@@ -3901,8 +3902,8 @@ dependencies = [
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-macros",
  "fuel-streams-store",
+ "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-web-utils",
  "futures",
@@ -6068,7 +6069,6 @@ dependencies = [
  "clap 4.5.27",
  "fuel-streams",
  "fuel-streams-core",
- "fuel-streams-store",
  "futures",
  "statrs",
  "tokio",
@@ -9190,7 +9190,7 @@ name = "subjects-schema"
 version = "0.0.24"
 dependencies = [
  "fuel-streams-domains",
- "fuel-streams-macros",
+ "fuel-streams-subject",
  "indexmap 2.7.1",
  "serde_json",
 ]

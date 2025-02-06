@@ -1,8 +1,8 @@
-use std::{fmt::Debug, str::FromStr, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
-use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_subject::subject::IntoSubject;
 
-use super::{Record, RecordEntity};
+use super::{Record, RecordEntity, RecordEntityError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RecordPacketError {
@@ -10,8 +10,8 @@ pub enum RecordPacketError {
     DowncastError,
     #[error("Subject mismatch")]
     SubjectMismatch,
-    #[error("Entity not found: {0}")]
-    EntityNotFound(String),
+    #[error(transparent)]
+    RecordEntity(#[from] RecordEntityError),
 }
 
 pub trait PacketBuilder: Send + Sync + 'static {
@@ -66,10 +66,11 @@ impl RecordPacket {
             None => subject_str.split('.').next(),
         };
         match first_part {
-            Some(value) => RecordEntity::from_str(value)
-                .map_err(RecordPacketError::EntityNotFound),
-            _ => Err(RecordPacketError::EntityNotFound(
-                "not_defined".to_string(),
+            Some(value) => {
+                RecordEntity::try_from(value).map_err(RecordPacketError::from)
+            }
+            _ => Err(RecordPacketError::RecordEntity(
+                RecordEntityError::UnknownSubject("not_defined".to_string()),
             )),
         }
     }

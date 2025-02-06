@@ -1,6 +1,4 @@
-pub use fuel_streams_core::server::{
-    ClientMessage,
-    DeliverPolicy,
-    ServerMessage,
-    SubscriptionPayload,
+pub use fuel_streams_core::{
+    server::{DeliverPolicy, ServerRequest, ServerResponse},
+    subjects::SubjectPayload,
 };

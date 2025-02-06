@@ -44,7 +44,7 @@ jobs:
             fuel-streams
             fuel-streams-core
             fuel-streams-domains
-            fuel-streams-macros
+            fuel-streams-subject
             fuel-streams-store
             fuel-streams-types
             fuel-streams-test
@@ -218,7 +218,7 @@ jobs:
           - fuel-streams
           - fuel-streams-core
           - fuel-streams-domains
-          - fuel-streams-macros
+          - fuel-streams-subject
           - fuel-streams-store
           - fuel-streams-types
           - fuel-streams-test

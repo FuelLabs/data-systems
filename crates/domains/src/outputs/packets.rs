@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
+use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::{ContractId, TxId};
 use rayon::prelude::*;
 

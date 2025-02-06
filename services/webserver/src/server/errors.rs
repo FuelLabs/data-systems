@@ -1,9 +1,13 @@
 use actix_ws::{CloseCode, CloseReason, Closed, ProtocolError};
-use fuel_streams_core::stream::StreamError;
-use fuel_streams_domains::SubjectPayloadError;
+use fuel_streams_core::{
+    prelude::SubjectPayloadError,
+    stream::StreamError,
+    types::MessagePayloadError,
+};
+use fuel_streams_domains::SubjectsError;
 use fuel_streams_store::{
     db::DbError,
-    record::EncoderError,
+    record::{EncoderError, RecordEntityError},
     store::StoreError,
 };
 
@@ -16,14 +20,6 @@ pub enum WebsocketError {
     UnserializablePayload(#[from] serde_json::Error),
     #[error("Connection closed with reason: {code} - {description}")]
     ClosedWithReason { code: u16, description: String },
-    #[error(transparent)]
-    Encoder(#[from] EncoderError),
-    #[error(transparent)]
-    Database(#[from] DbError),
-    #[error(transparent)]
-    Store(#[from] StoreError),
-    #[error(transparent)]
-    SubjectPayload(#[from] SubjectPayloadError),
     #[error("Connection closed")]
     Closed(#[from] Closed),
     #[error("Unsupported message type")]
@@ -34,66 +30,61 @@ pub enum WebsocketError {
     SendError,
     #[error("Client timeout")]
     Timeout,
+    #[error("Subscribe failed: {0}")]
+    Subscribe(String),
+
+    #[error(transparent)]
+    Encoder(#[from] EncoderError),
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error(transparent)]
+    Store(#[from] StoreError),
+    #[error(transparent)]
+    SubjectPayload(#[from] SubjectPayloadError),
+    #[error(transparent)]
+    MessagePayload(#[from] MessagePayloadError),
+    #[error(transparent)]
+    Subjects(#[from] SubjectsError),
+    #[error(transparent)]
+    RecordEntity(#[from] RecordEntityError),
 }
 
 impl From<WebsocketError> for CloseReason {
     fn from(error: WebsocketError) -> Self {
         CloseReason {
             code: match &error {
-                // Stream and data handling errors
-                WebsocketError::StreamError(_) => CloseCode::Error,
-                WebsocketError::UnserializablePayload(_) => {
+                // Error type
+                WebsocketError::StreamError(_)
+                | WebsocketError::Subscribe(_)
+                | WebsocketError::Database(_)
+                | WebsocketError::Store(_)
+                | WebsocketError::SendError => CloseCode::Error,
+
+                // Invalid type
+                WebsocketError::Encoder(_)
+                | WebsocketError::SubjectPayload(_)
+                | WebsocketError::MessagePayload(_) => CloseCode::Invalid,
+
+                // Unsupported type
+                WebsocketError::UnserializablePayload(_)
+                | WebsocketError::UnsupportedMessageType => {
                     CloseCode::Unsupported
                 }
-                WebsocketError::Encoder(_) => CloseCode::Invalid,
-                WebsocketError::SubjectPayload(_) => CloseCode::Invalid,
 
-                // Connection state errors
+                // Away type
+                WebsocketError::Closed(_) | WebsocketError::Timeout => {
+                    CloseCode::Away
+                }
+
+                // Other types
                 WebsocketError::ClosedWithReason { code, .. } => {
                     CloseCode::Other(code.to_owned())
                 }
-                WebsocketError::Closed(_) => CloseCode::Away,
-
-                // Infrastructure errors
-                WebsocketError::Database(_) => CloseCode::Error,
-                WebsocketError::Store(_) => CloseCode::Error,
-                WebsocketError::UnsupportedMessageType => {
-                    CloseCode::Unsupported
-                }
                 WebsocketError::ProtocolError(_) => CloseCode::Protocol,
-                WebsocketError::SendError => CloseCode::Error,
-                WebsocketError::Timeout => CloseCode::Away,
+                WebsocketError::Subjects(_) => CloseCode::Error,
+                WebsocketError::RecordEntity(_) => CloseCode::Error,
             },
-            description: Some(match &error {
-                WebsocketError::StreamError(e) => {
-                    format!("Stream error: {}", e)
-                }
-                WebsocketError::UnserializablePayload(e) => {
-                    format!("Failed to serialize payload: {}", e)
-                }
-                WebsocketError::ClosedWithReason { description, .. } => {
-                    description.clone()
-                }
-                WebsocketError::Encoder(e) => format!("Encoding error: {}", e),
-                WebsocketError::Database(e) => format!("Database error: {}", e),
-                WebsocketError::Store(e) => format!("Store error: {}", e),
-                WebsocketError::SubjectPayload(e) => {
-                    format!("Subject payload error: {}", e)
-                }
-                WebsocketError::Closed(_) => {
-                    "Connection closed by peer".to_string()
-                }
-                WebsocketError::UnsupportedMessageType => {
-                    "Unsupported message type".to_string()
-                }
-                WebsocketError::ProtocolError(_) => {
-                    "Protocol error".to_string()
-                }
-                WebsocketError::SendError => {
-                    "Failed to send message".to_string()
-                }
-                WebsocketError::Timeout => "Client timeout".to_string(),
-            }),
+            description: Some(error.to_string()),
         }
     }
 }

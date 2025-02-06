@@ -72,31 +72,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Listening for blocks...");
 
-    // Create a subject for all blocks
-    let subject = BlocksSubject::new();
+    // Choose which subjects do you wanna filter
+    let subjects = vec![BlocksSubject::new().into()];
 
-    // Subscribe to blocks with last delivery policy
+    // Subscribe to blocks with last deliver policy
     let mut stream = connection
-        .subscribe::<Block>(subject, DeliverPolicy::New)
+        .subscribe(subjects, DeliverPolicy::New)
         .await?;
 
     while let Some(block) = stream.next().await {
         println!("Received block: {:?}", block);
     }
 
-    Ok(())
-}
-```
-
-### Custom Connection Options
-
-```rust,no_run
-use fuel_streams::prelude::*;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create client with custom connection options
-    let mut client = Client::new(FuelNetwork::Local).with_api_key("your_key");
     Ok(())
 }
 ```
@@ -117,12 +104,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Listening for transactions...");
 
     // Create a subject for script transactions
-    let subject = TransactionsSubject::new()
-        .with_kind(Some(TransactionKind::Script));
+    let subjects = vec![
+        TransactionsSubject::new()
+            .with_kind(Some(TransactionKind::Script))
+            .into()
+    ];
 
     // Subscribe to the filtered transaction stream
     let mut stream = connection
-        .subscribe::<Transaction>(subject, DeliverPolicy::New)
+        .subscribe(subjects, DeliverPolicy::New)
         .await?;
 
     while let Some(transaction) = stream.next().await {
@@ -144,15 +134,56 @@ Available subject builders include:
 
 Each subject builder provides specific filtering methods relevant to its data type. For example, `TransactionsSubject` allows filtering by transaction kind using the `with_kind()` method.
 
+### Multiple Subscriptions
+
+The Fuel Streams library allows you to subscribe to multiple types of data simultaneously. You can create instances of different subjects, such as `BlocksSubject` and `TransactionsSubject`, and pass them as a vector to the `subscribe` method:
+
+```rust,no_run
+use fuel_streams::prelude::*;
+use futures::StreamExt;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let mut client = Client::new(FuelNetwork::Local).with_api_key("test");
+    let mut connection = client.connect().await?;
+
+    println!("Listening for blocks and transactions...");
+
+    let block_subject = BlocksSubject::new();
+    let tx_subject = TransactionsSubject::new();
+    let filter_subjects = vec![block_subject.into(), tx_subject.into()];
+
+    // Subscribe to the block and transaction streams with the specified configuration
+    let mut stream = connection
+        .subscribe(filter_subjects, DeliverPolicy::FromBlock {
+            block_height: 0.into(),
+        })
+        .await?;
+
+    // Process incoming blocks and transactions
+    while let Some(msg) = stream.next().await {
+        let msg = msg?;
+        match &msg.payload {
+            MessagePayload::Block(block) => {
+                println!("Received block: {:?}", block)
+            }
+            MessagePayload::Transaction(tx) => {
+                println!("Received transaction: {:?}", tx)
+            }
+            _ => panic!("Wrong data"),
+        };
+    }
+
+    Ok(())
+}
+```
+
 ### `DeliverPolicy` Options
 
-The `DeliverPolicy` enum provides control over message delivery in your subscriptions:
+The `DeliverPolicy` enum provides control over message Deliver in your subscriptions:
 
-- `All`: Delivers all messages in the stream
-- `Last`: Delivers only the last message for the selected subjects
 - `New`: Delivers only new messages that arrive after subscription
-- `ByStartSequence(u64)`: Delivers messages starting from a specific sequence number
-- `ByStartTime(DateTime<Utc>)`: Delivers messages starting from a specific time
+- `FromHeight(u64)`: Delivers messages starting from a specific block height
 
 ## 🤝 Contributing
 

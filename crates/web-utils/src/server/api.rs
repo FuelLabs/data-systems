@@ -21,7 +21,7 @@ use super::{
 };
 use crate::MAX_WORKERS;
 
-const API_VERSION: &str = "v1";
+pub const API_VERSION: &str = "v1";
 
 pub fn with_prefixed_route(route: &str) -> String {
     format!("/api/{}/{}", API_VERSION, route)

@@ -27,7 +27,7 @@ Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ### ⭐ Features
 
-- **(macros)**: Add description field on subjects ([0a4ccdd](https://github.com/FuelLabs/data-systems/commit/0a4ccdd875076390b99922e94ba93974605e34e3) by @pedronauck)
+- **(subject)**: Add description field on subjects ([0a4ccdd](https://github.com/FuelLabs/data-systems/commit/0a4ccdd875076390b99922e94ba93974605e34e3) by @pedronauck)
 
 ### 🐛 Bug Fixes
 
@@ -36,7 +36,7 @@ Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 ### 🔄 Refactor
 
 - **(repo)**: Move services to a specific folder ([d62e206](https://github.com/FuelLabs/data-systems/commit/d62e20688490b1d99427c111a7e7d0a3896308e0) by @pedronauck)
-- **(macros)**: Use IndexMap when building subjects schema ([90e9866](https://github.com/FuelLabs/data-systems/commit/90e986686c8802132fa643f2ff77c04108a31e2d) by @pedronauck)
+- **(subject)**: Use IndexMap when building subjects schema ([90e9866](https://github.com/FuelLabs/data-systems/commit/90e986686c8802132fa643f2ff77c04108a31e2d) by @pedronauck)
 
 ### 🏗️ Build
 

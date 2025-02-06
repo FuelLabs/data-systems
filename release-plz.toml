@@ -35,7 +35,7 @@ changelog_include = [
   "fuel-message-broker",
   "fuel-streams-core",
   "fuel-streams-domains",
-  "fuel-streams-macros",
+  "fuel-streams-subject",
   "fuel-streams-store",
   "fuel-streams-types",
   "fuel-web-utils",
@@ -72,7 +72,7 @@ release = true
 publish = true
 
 [[package]]
-name = "fuel-streams-macros"
+name = "fuel-streams-subject"
 release = true
 publish = true
 
@@ -167,7 +167,7 @@ body = """
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
----
+---\n
 """
 
 commit_parsers = [

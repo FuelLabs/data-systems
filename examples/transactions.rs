@@ -12,18 +12,21 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Listening for transactions...");
 
-    // Create a subject for all transactions
+    // Create a subject for all transactions of a specific kind
     let subject =
         TransactionsSubject::new().with_kind(Some(TransactionKind::Script)); // Example: filter for script transactions
+    let filter_subjects = vec![subject.into()];
 
     // Subscribe to the transaction stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Transaction>(subject, DeliverPolicy::New)
+        .subscribe(filter_subjects, DeliverPolicy::New)
         .await?;
 
     // Process incoming transactions
     while let Some(msg) = stream.next().await {
-        println!("Received transaction: {:?}", msg.data);
+        let msg = msg?;
+        let transaction = msg.payload.as_transaction()?;
+        println!("Received transaction: {:?}", transaction);
     }
 
     Ok(())

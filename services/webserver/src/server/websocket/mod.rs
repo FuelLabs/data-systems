@@ -1,4 +1,3 @@
-pub(super) mod decoder;
 mod session;
 mod subscribe;
 

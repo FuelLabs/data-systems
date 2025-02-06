@@ -14,15 +14,18 @@ async fn main() -> anyhow::Result<()> {
 
     // Create a subject for all receipt types related to the contract
     let subject = ReceiptsReturnSubject::new().with_tx_id(Some(TX_ID.into()));
+    let filter_subjects = vec![subject.into()];
 
     // Subscribe to the receipt stream with the specified configuration
     let mut stream = connection
-        .subscribe::<Receipt>(subject, DeliverPolicy::New)
+        .subscribe(filter_subjects, DeliverPolicy::New)
         .await?;
 
     // Process incoming receipts
     while let Some(msg) = stream.next().await {
-        println!("Received receipt: {:?}", msg.data);
+        let msg = msg?;
+        let receipt = msg.payload.as_receipt()?;
+        println!("Received receipt: {:?}", receipt);
     }
 
     Ok(())

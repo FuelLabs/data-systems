@@ -7,7 +7,6 @@ use fuel_streams_core::{
     inputs::InputsCoinSubject,
     outputs::OutputsCoinSubject,
     subjects::{ReceiptsLogSubject, SubjectBuildable, TransactionsSubject},
-    types::{Block, Input, Output, Receipt, Transaction, Utxo},
     utxos::UtxosSubject,
 };
 use tokio::task::JoinHandle;
@@ -113,7 +112,7 @@ impl LoadTesterEngine {
             for _ in 0..current_subs {
                 // blocks
                 handles.push(
-                    spawn_streamable_consumer::<BlocksSubject, Block>(
+                    spawn_streamable_consumer(
                         self.network,
                         self.api_key.clone(),
                         BlocksSubject::new().with_height(None),
@@ -124,7 +123,7 @@ impl LoadTesterEngine {
 
                 // inputs
                 handles.push(
-                    spawn_streamable_consumer::<InputsCoinSubject, Input>(
+                    spawn_streamable_consumer(
                         self.network,
                         self.api_key.clone(),
                         InputsCoinSubject::new(),
@@ -134,11 +133,19 @@ impl LoadTesterEngine {
                 );
 
                 // txs
-                handles.push(spawn_streamable_consumer::<TransactionsSubject, Transaction>(self.network,  self.api_key.clone(), TransactionsSubject::new(),  Arc::clone(&txs_test_tracker)).await?);
+                handles.push(
+                    spawn_streamable_consumer(
+                        self.network,
+                        self.api_key.clone(),
+                        TransactionsSubject::new(),
+                        Arc::clone(&txs_test_tracker),
+                    )
+                    .await?,
+                );
 
                 // outputs
                 handles.push(
-                    spawn_streamable_consumer::<OutputsCoinSubject, Output>(
+                    spawn_streamable_consumer(
                         self.network,
                         self.api_key.clone(),
                         OutputsCoinSubject::new(),
@@ -149,7 +156,7 @@ impl LoadTesterEngine {
 
                 // utxos
                 handles.push(
-                    spawn_streamable_consumer::<UtxosSubject, Utxo>(
+                    spawn_streamable_consumer(
                         self.network,
                         self.api_key.clone(),
                         UtxosSubject::new(),
@@ -160,7 +167,7 @@ impl LoadTesterEngine {
 
                 // receipts
                 handles.push(
-                    spawn_streamable_consumer::<ReceiptsLogSubject, Receipt>(
+                    spawn_streamable_consumer(
                         self.network,
                         self.api_key.clone(),
                         ReceiptsLogSubject::new(),

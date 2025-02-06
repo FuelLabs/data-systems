@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
-use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockHeight;
 use futures::stream::BoxStream;
 
@@ -58,7 +58,7 @@ impl<R: Record + DataEncoder> Store<R> {
 
     pub async fn find_many_by_subject(
         &self,
-        subject: &Arc<dyn fuel_streams_macros::subject::IntoSubject>,
+        subject: &Arc<dyn fuel_streams_subject::subject::IntoSubject>,
         mut options: QueryOptions,
     ) -> StoreResult<Vec<R::DbItem>> {
         options = options.with_namespace(self.namespace.clone());

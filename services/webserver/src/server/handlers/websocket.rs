@@ -6,7 +6,7 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
-use fuel_streams_core::{server::ClientMessage, FuelStreams};
+use fuel_streams_core::{server::ServerRequest, FuelStreams};
 use fuel_web_utils::{
     server::middlewares::api_key::{
         rate_limiter::RateLimitsController,
@@ -24,7 +24,7 @@ use crate::{
     server::{
         errors::WebsocketError,
         state::ServerState,
-        websocket::{subscribe, unsubscribe, WsSession},
+        websocket::{subscribe_mult, WsSession},
     },
 };
 
@@ -32,7 +32,6 @@ use crate::{
 enum CloseAction {
     Error(WebsocketError),
     Closed(Option<CloseReason>),
-    Unsubscribe,
     Timeout,
 }
 impl From<CloseAction> for CloseReason {
@@ -42,7 +41,6 @@ impl From<CloseAction> for CloseReason {
                 reason.unwrap_or(CloseCode::Normal.into())
             }
             CloseAction::Error(_) => CloseCode::Away.into(),
-            CloseAction::Unsubscribe => CloseCode::Normal.into(),
             CloseAction::Timeout => CloseCode::Away.into(),
         }
     }
@@ -116,14 +114,14 @@ async fn handle_messages(
             Either::Left((Some(Ok(msg)), _)) => match msg {
                 Message::Text(msg) => {
                     let msg = Bytes::from(msg.as_bytes().to_vec());
-                    match handle_client_msg(session, ctx, msg).await {
+                    match handle_websocket_request(session, ctx, msg).await {
                         Err(err) => break Some(CloseAction::Error(err)),
                         Ok(Some(close_action)) => break Some(close_action),
                         Ok(None) => {}
                     }
                 }
                 Message::Binary(msg) => {
-                    match handle_client_msg(session, ctx, msg).await {
+                    match handle_websocket_request(session, ctx, msg).await {
                         Err(err) => break Some(CloseAction::Error(err)),
                         Ok(Some(close_action)) => break Some(close_action),
                         Ok(None) => {}
@@ -174,23 +172,13 @@ async fn handle_messages(
     }
 }
 
-async fn handle_client_msg(
+async fn handle_websocket_request(
     session: &mut Session,
     ctx: &mut WsSession,
     msg: Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
-    let msg = serde_json::from_slice(&msg)?;
-    match msg {
-        ClientMessage::Subscribe(payload) => {
-            let api_key = ctx.api_key();
-            subscribe(session, ctx, &(api_key, payload).into()).await?;
-            Ok(None)
-        }
-        ClientMessage::Unsubscribe(payload) => {
-            let api_key = ctx.api_key();
-            unsubscribe(session, ctx, &(api_key, payload).into()).await?;
-            Ok(Some(CloseAction::Unsubscribe))
-        }
-    }
+    let server_request: ServerRequest = serde_json::from_slice(&msg)?;
+    subscribe_mult(session, ctx, &server_request).await?;
+    Ok(None)
 }
