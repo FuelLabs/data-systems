@@ -8,7 +8,7 @@ use fuel_streams_domains::{
     transactions::subjects::*,
     utxos::subjects::*,
 };
-use fuel_streams_macros::subject::{IndexMap, *};
+use fuel_streams_subject::subject::{IndexMap, *};
 
 fn main() {
     let block_schema = BlocksSubject::new().schema();

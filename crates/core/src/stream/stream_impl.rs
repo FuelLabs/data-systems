@@ -2,8 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_macros::subject::IntoSubject;
 use fuel_streams_store::{db::Db, record::Record, store::Store};
+use fuel_streams_subject::subject::IntoSubject;
 use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,

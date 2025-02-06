@@ -3,7 +3,7 @@ default-members = ["crates/fuel-streams"]
 members = [
   "benches/*",
   "crates/*",
-  "crates/macros/subject-derive",
+  "crates/subject/subject-derive",
   "examples",
   "scripts/generate-api-keys",
   "scripts/subjects-schema",
@@ -105,12 +105,12 @@ fuel-message-broker = { version = "0.0.24", path = "crates/message-broker" }
 fuel-streams = { version = "0.0.24", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.24", path = "crates/core" }
 fuel-streams-domains = { version = "0.0.24", path = "crates/domains" }
-fuel-streams-macros = { version = "0.0.24", path = "crates/macros" }
 fuel-streams-store = { version = "0.0.24", path = "crates/store" }
+fuel-streams-subject = { version = "0.0.24", path = "crates/subject" }
 fuel-streams-test = { version = "0.0.22", path = "crates/test" }
 fuel-streams-types = { version = "0.0.24", path = "crates/types" }
 fuel-web-utils = { version = "0.0.24", path = "crates/web-utils" }
-subject-derive = { version = "0.0.24", path = "crates/macros/subject-derive" }
+subject-derive = { version = "0.0.24", path = "crates/subject/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]

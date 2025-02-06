@@ -114,10 +114,7 @@ impl Connection {
         impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
         ClientError,
     > {
-        let subjects: Vec<_> = subjects
-            .into_iter()
-            .filter_map(|subject| subject.try_into().ok())
-            .collect();
+        let subjects: Vec<_> = subjects.into_iter().collect();
         let message = ServerRequest {
             deliver_policy,
             subscribe: subjects,

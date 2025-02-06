@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use fuel_streams_macros::subject::{
+use fuel_streams_store::record::RecordPacket;
+use fuel_streams_subject::subject::{
     IntoSubject,
     SubjectPayload,
     SubjectPayloadError,
 };
-use fuel_streams_store::record::RecordPacket;
 
 use crate::{
     blocks::*,

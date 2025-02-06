@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use fuel_streams_macros::subject::SubjectPayload;
 use fuel_streams_store::{
     db::DbError,
     record::{DataEncoder, RecordEntity, RecordEntityError},
 };
+use fuel_streams_subject::subject::SubjectPayload;
 use serde::{Deserialize, Serialize};
 
 use crate::types::*;

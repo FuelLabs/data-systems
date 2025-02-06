@@ -8,7 +8,7 @@ pub fn parse_fn(input: &DeriveInput, field_names: &[&Ident]) -> TokenStream {
     let format_str = super::attrs::subject_attr("format", &input.attrs);
     let parse_fields = field_names.iter().map(|name| {
         quote! {
-            let #name = fuel_streams_macros::subject::parse_param(&self.#name);
+            let #name = fuel_streams_subject::subject::parse_param(&self.#name);
         }
     });
 
@@ -110,7 +110,7 @@ pub fn id_fn() -> TokenStream {
 
 pub fn to_payload_fn(input: &DeriveInput) -> TokenStream {
     let name = &input.ident.to_string();
-    let crate_path = quote!(fuel_streams_macros::subject);
+    let crate_path = quote!(fuel_streams_subject::subject);
     quote! {
         fn to_payload(&self) -> #crate_path::SubjectPayload {
             let params = #crate_path::serde_json::to_value(self).expect(&format!("Failed to serialize {}", stringify!(#name)));
@@ -156,7 +156,7 @@ pub fn schema_fn(
                 quote! {
                     fields.insert(
                         #name_str.to_string(),
-                        fuel_streams_macros::subject::FieldSchema {
+                        fuel_streams_subject::subject::FieldSchema {
                             type_name: #type_str.to_string(),
                             description: #description_quote,
                         }
@@ -165,11 +165,11 @@ pub fn schema_fn(
             });
 
     quote! {
-        fn schema(&self) -> fuel_streams_macros::subject::Schema {
-            let mut fields = fuel_streams_macros::subject::IndexMap::new();
+        fn schema(&self) -> fuel_streams_subject::subject::Schema {
+            let mut fields = fuel_streams_subject::subject::IndexMap::new();
             #(#field_entries)*
 
-            fuel_streams_macros::subject::Schema {
+            fuel_streams_subject::subject::Schema {
                 id: #id.to_string(),
                 entity: #entity.to_string(),
                 subject: #struct_name.to_string(),

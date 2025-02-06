@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
-use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_subject::subject::IntoSubject;
 use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket};

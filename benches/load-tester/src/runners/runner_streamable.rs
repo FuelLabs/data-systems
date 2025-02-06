@@ -17,7 +17,7 @@ pub async fn run_streamable_consumer(
 ) -> Result<()> {
     let mut client = Client::new(network).with_api_key(api_key);
     let mut connection = client.connect().await?;
-    let subjects = vec![subject.into()];
+    let subjects = vec![subject];
     let mut stream = connection.subscribe(subjects, DeliverPolicy::New).await?;
     while let Some(msg) = stream.next().await {
         let msg = msg?;

@@ -12,6 +12,6 @@ publish = false
 
 [dependencies]
 fuel-streams-domains.workspace = true
-fuel-streams-macros.workspace = true
+fuel-streams-subject.workspace = true
 indexmap.workspace = true
 serde_json.workspace = true

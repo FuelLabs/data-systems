@@ -39,8 +39,8 @@ fuel-core-types = { workspace = true, features = [
 fuel-message-broker = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
-fuel-streams-macros = { workspace = true, features = ["test-helpers"] }
 fuel-streams-store = { workspace = true, features = ["test-helpers"] }
+fuel-streams-subject = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
 futures.workspace = true
@@ -58,4 +58,4 @@ mockall = "0.13.1"
 pretty_assertions.workspace = true
 
 [package.metadata.cargo-machete]
-ignored = ["fuel-streams-macros"]
+ignored = ["fuel-streams-subject"]

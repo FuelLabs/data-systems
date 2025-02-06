@@ -30,7 +30,7 @@ timeout = "120s"
 #fail-under = 80
 
 # ==========================================
-[cov_fuel_streams_macros]
+[cov_fuel_streams_subject]
 all-features = true
 color = "Always"
 count = true
@@ -39,7 +39,7 @@ fail-immediately = true
 locked = true
 name = "Fuel Streams Macros Coverage Analysis"
 no-dead-code = true
-packages = ["fuel-streams-macros"]
+packages = ["fuel-streams-subject"]
 run-types = ["Lib", "Tests"]
 skip-clean = true
 timeout = "120s"

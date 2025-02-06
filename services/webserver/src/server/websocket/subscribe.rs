@@ -21,7 +21,6 @@ pub async fn subscribe_mult(
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
     let subjects = server_request.subscribe.clone();
-    let deliver_policy = server_request.deliver_policy.clone();
     if subjects.is_empty() {
         tracing::debug!("No subscriptions requested");
         return Ok(());
@@ -33,10 +32,13 @@ pub async fn subscribe_mult(
             let mut ctx = ctx.clone();
             let mut session = session.clone();
             let api_key = ctx.api_key().clone();
-            let subscription =
-                Subscription::new(&api_key, &deliver_policy, &payload);
+            let subscription = Subscription::new(
+                &api_key,
+                &server_request.deliver_policy,
+                &payload,
+            );
             actix_web::rt::spawn(async move {
-                subscribe(&mut session, &mut ctx, &subscription.into()).await
+                subscribe(&mut session, &mut ctx, &subscription).await
             })
         })
         .collect();

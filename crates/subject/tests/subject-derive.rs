@@ -1,4 +1,4 @@
-use fuel_streams_macros::subject::{IndexMap, *};
+use fuel_streams_subject::subject::{IndexMap, *};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

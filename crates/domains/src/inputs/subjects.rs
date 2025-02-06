@@ -1,4 +1,4 @@
-use fuel_streams_macros::subject::*;
+use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 

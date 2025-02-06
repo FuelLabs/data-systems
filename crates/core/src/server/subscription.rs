@@ -1,4 +1,4 @@
-use fuel_streams_macros::subject::SubjectPayload;
+use fuel_streams_subject::subject::SubjectPayload;
 use fuel_web_utils::server::middlewares::api_key::ApiKey;
 
 use super::DeliverPolicy;

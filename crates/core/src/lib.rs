@@ -6,7 +6,7 @@ pub mod stream;
 pub use stream::*;
 
 pub mod prelude {
-    pub use fuel_streams_macros::subject::*;
+    pub use fuel_streams_subject::subject::*;
 
     pub use crate::{stream::*, subjects::*, types::*};
 }
@@ -34,7 +34,7 @@ pub mod subjects {
         transactions::subjects::*,
         utxos::subjects::*,
     };
-    pub use fuel_streams_macros::subject::*;
+    pub use fuel_streams_subject::subject::*;
 }
 
 macro_rules! export_module {

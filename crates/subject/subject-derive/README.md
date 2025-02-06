@@ -35,6 +35,6 @@
 
 # Subject Derive Macro
 
-This is a macro that is part of the [fuel-streams-macros](https://github.com/fuellabs/data-systems/tree/main/crates/fuel-streams-macros) crate. It provides functionality for deriving the `Subject` trait on structs.
+This is a macro that is part of the [fuel-streams-subject](https://github.com/fuellabs/data-systems/tree/main/crates/fuel-streams-subject) crate. It provides functionality for deriving the `Subject` trait on structs.
 
-For more information and usage examples, please refer to the [fuel-streams-macros documentation](https://docs.rs/fuel-streams-macros/).
+For more information and usage examples, please refer to the [fuel-streams-subject documentation](https://docs.rs/fuel-streams-subject/).

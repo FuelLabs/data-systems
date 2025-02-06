@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use fuel_streams_macros::subject::IntoSubject;
+use fuel_streams_subject::subject::IntoSubject;
 
 use super::{Record, RecordEntity, RecordEntityError};
 
