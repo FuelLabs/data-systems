@@ -3785,6 +3785,7 @@ checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
 name = "fuel-streams"
 version = "0.0.24"
 dependencies = [
+ "anyhow",
  "fuel-streams-core",
  "fuel-streams-store",
  "futures",

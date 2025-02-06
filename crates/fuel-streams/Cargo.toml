@@ -23,6 +23,7 @@ tokio-tungstenite = "0.26.1"
 url = "2.5.4"
 
 [dev-dependencies]
+anyhow.workspace = true
 tokio.workspace = true
 
 [features]
