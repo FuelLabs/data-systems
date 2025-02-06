@@ -254,6 +254,10 @@ jobs:
     needs: install-deps
     name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
     runs-on: ${{ matrix.platform.os }}
+    if: >-
+      matrix.platform.build_on_pr == true ||
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -261,8 +265,6 @@ jobs:
           - sv-consumer
           - sv-publisher
           - sv-webserver
-        is_release:
-          - ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu
@@ -274,16 +276,6 @@ jobs:
             target: x86_64-unknown-linux-musl
             build_on_pr: false
 
-          # linux aarch64
-          - os_name: Linux-aarch64-gnu
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            build_on_pr: false
-          - os_name: Linux-aarch64-musl
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            build_on_pr: false
-
           # macOS
           - os_name: macOS-x86_64
             os: macOS-latest
@@ -293,9 +285,6 @@ jobs:
             os: macOS-latest
             target: aarch64-apple-darwin
             build_on_pr: false
-        exclude:
-          - is_release: false
-            platform: {build_on_pr: false}
     steps:
       - uses: actions/checkout@v4
 
