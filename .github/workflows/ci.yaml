@@ -254,10 +254,6 @@ jobs:
     needs: install-deps
     name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
     runs-on: ${{ matrix.platform.os }}
-    if: >-
-      matrix.platform.build_on_pr == true ||
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -285,6 +281,13 @@ jobs:
             os: macOS-latest
             target: aarch64-apple-darwin
             build_on_pr: false
+        include:
+          - platform:
+              build_on_pr: true
+            if: >-
+              matrix.platform.build_on_pr == true ||
+              github.ref == 'refs/heads/main' ||
+              github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
