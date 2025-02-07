@@ -174,6 +174,8 @@ impl From<FuelCoreClientTransactionStatus> for TransactionStatus {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     #[derive(Deserialize, Debug)]

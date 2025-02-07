@@ -269,7 +269,7 @@ webserver:
   service:
     enabled: true
     port: 8080
-    type: LoadBalancer
+    type: ClusterIP
     host: "stream-staging.fuel.network"
     loadBalancerClass: service.k8s.aws/nlb
     config:

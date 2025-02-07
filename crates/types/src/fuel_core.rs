@@ -1,12 +1,23 @@
-use fuel_core::state::{
-    generic_database::GenericDatabase,
-    iterable_key_value_view::IterableKeyValueViewWrapper,
+use std::sync::Arc;
+
+use fuel_core::{
+    combined_database::CombinedDatabase,
+    database::{database_description::on_chain::OnChain, Database},
+    fuel_core_graphql_api::ports::DatabaseBlocks,
 };
+use fuel_core_bin::FuelService;
 pub use fuel_core_client::client::{
     schema::Tai64Timestamp as FuelCoreTai64Timestamp,
     types::TransactionStatus as FuelCoreClientTransactionStatus,
 };
+use fuel_core_importer::ports::ImporterDatabase;
 pub use fuel_core_importer::ImporterResult as FuelCoreImporterResult;
+use fuel_core_storage::{
+    tables::Transactions,
+    transactional::AtomicView,
+    StorageAsRef,
+};
+use fuel_core_types::blockchain::consensus::{Consensus, Sealed};
 pub use fuel_core_types::{
     blockchain::{
         block::Block as FuelCoreBlock,
@@ -59,29 +70,6 @@ pub use fuel_core_types::{
     },
     tai64::Tai64 as FuelCoreTai64,
 };
-
-pub type FuelCoreOffchainDatabase = GenericDatabase<
-    IterableKeyValueViewWrapper<
-        fuel_core::fuel_core_graphql_api::storage::Column,
-    >,
-    FuelCoreBlockHeight,
->;
-
-use std::sync::Arc;
-
-use fuel_core::{
-    combined_database::CombinedDatabase,
-    database::{database_description::on_chain::OnChain, Database},
-    fuel_core_graphql_api::ports::DatabaseBlocks,
-};
-use fuel_core_bin::FuelService;
-use fuel_core_importer::ports::ImporterDatabase;
-use fuel_core_storage::{
-    tables::Transactions,
-    transactional::AtomicView,
-    StorageAsRef,
-};
-use fuel_core_types::blockchain::consensus::{Consensus, Sealed};
 use tokio::sync::broadcast::Receiver;
 
 #[derive(thiserror::Error, Debug)]
@@ -123,17 +111,6 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn onchain_database(&self) -> &Database<OnChain> {
         self.database().on_chain()
-    }
-
-    fn offchain_database(
-        &self,
-    ) -> FuelCoreResult<Arc<FuelCoreOffchainDatabase>> {
-        let database = self
-            .database()
-            .off_chain()
-            .latest_view()
-            .map_err(|e| FuelCoreError::Database(e.to_string()))?;
-        Ok(Arc::new(database))
     }
 
     fn blocks_subscription(
@@ -329,7 +306,12 @@ impl FuelCoreLike for FuelCore {
         &self,
         tx_id: &FuelCoreBytes32,
     ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>> {
-        self.offchain_database()?
+        let offchain_database = self
+            .database()
+            .off_chain()
+            .latest_view()
+            .map_err(|e| FuelCoreError::Database(e.to_string()))?;
+        offchain_database
             .get_tx_status(tx_id)
             .map_err(|e| FuelCoreError::Database(e.to_string()))
     }
