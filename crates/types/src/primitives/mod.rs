@@ -4,7 +4,9 @@ pub mod bytes_long;
 pub mod common;
 pub mod identifier;
 pub mod script_execution;
+pub mod tx_kind;
 pub mod tx_pointer;
+pub mod tx_status;
 pub mod utxo_id;
 pub mod wrapper_int;
 
@@ -13,7 +15,9 @@ pub use bytes::*;
 pub use bytes_long::*;
 pub use identifier::*;
 pub use script_execution::*;
+pub use tx_kind::*;
 pub use tx_pointer::*;
+pub use tx_status::*;
 pub use utxo_id::*;
 
 pub type BoxedError = Box<dyn std::error::Error>;

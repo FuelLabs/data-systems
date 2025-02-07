@@ -33,6 +33,7 @@ fuel-tx.workspace = true
 fuel-vm.workspace = true
 hex.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
