@@ -11,9 +11,9 @@ COPY --from=xx / /
 # hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        lld \
-        clang \
-        libclang-dev \
+    lld \
+    clang \
+    libclang-dev \
     && xx-apt-get update \
     && xx-apt-get install -y libc6-dev g++ binutils \
     && apt-get clean \
@@ -54,10 +54,10 @@ RUN \
 # Stage 2: Run
 FROM ubuntu:22.04 AS run
 
-ARG PORT=4000
+ARG FUEL_CORE_PORT=4000
 ARG P2P_PORT=30333
 ARG DB_PATH=/mnt/db
-ENV PORT="${PORT}"
+ENV FUEL_CORE_PORT="${FUEL_CORE_PORT}"
 
 WORKDIR /usr/src
 
@@ -71,8 +71,8 @@ COPY --from=builder /root/sv-publisher .
 COPY --from=builder /root/sv-publisher.d .
 
 COPY /cluster/chain-config ./chain-config
-EXPOSE ${PORT}
+EXPOSE ${FUEL_CORE_PORT}
 EXPOSE ${P2P_PORT}
 
 WORKDIR /usr/src
-CMD ["./sv-publisher", "--port", "${PORT}", "--peering-port", "${P2P_PORT}", "--db-path", "${DB_PATH}"]
+CMD ["./sv-publisher", "--port", "${FUEL_CORE_PORT}", "--peering-port", "${P2P_PORT}", "--db-path", "${DB_PATH}"]

@@ -132,9 +132,8 @@ publisher:
   enabled: true
   network: mainnet
 
-  fuelCorePort: 4004
-  port: 8080
   ports: []
+  port: 8080
 
   image:
     repository: ghcr.io/fuellabs/sv-publisher
@@ -148,6 +147,7 @@ publisher:
   env:
     TMPDIR: "/var/fuel-streams/tmp"
     DB_PATH: /mnt/db
+    FUEL_CORE_PORT: 4004
 
   service:
     enabled: true
@@ -182,9 +182,15 @@ publisher:
     tolerations: []
     affinity: {}
     imagePullSecrets: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
+    livenessProbe:
+      httpGet:
+        path: /health
+    readinessProbe:
+      httpGet:
+        path: /health
+    startupProbe:
+      httpGet:
+        path: /health
     podSecurityContext: {}
     containerSecurityContext: {}
     resources: {}
