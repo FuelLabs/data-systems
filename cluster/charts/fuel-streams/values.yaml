@@ -185,12 +185,15 @@ publisher:
     livenessProbe:
       httpGet:
         path: /health
+        port: 8080
     readinessProbe:
       httpGet:
         path: /health
+        port: 8080
     startupProbe:
       httpGet:
         path: /health
+        port: 8080
     podSecurityContext: {}
     containerSecurityContext: {}
     resources: {}

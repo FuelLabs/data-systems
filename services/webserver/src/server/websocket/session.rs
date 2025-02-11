@@ -20,7 +20,7 @@ use tokio::sync::{broadcast, Mutex};
 
 use crate::{
     metrics::{Metrics, SubscriptionChange},
-    server::errors::WebsocketError,
+    server::{errors::WebsocketError, handlers::websocket::CloseAction},
 };
 
 #[derive(Clone)]
@@ -40,8 +40,8 @@ impl MessageHandler {
         session: &mut Session,
         message: ServerResponse,
     ) -> Result<(), WebsocketError> {
-        let msg_encoded = serde_json::to_vec(&message)
-            .map_err(WebsocketError::UnserializablePayload)?;
+        let msg_encoded =
+            serde_json::to_vec(&message).map_err(WebsocketError::Serde)?;
         session.binary(msg_encoded).await?;
         Ok(())
     }
@@ -126,7 +126,7 @@ impl MetricsHandler {
 
 // Connection management
 #[derive(Clone)]
-struct ConnectionManager {
+pub struct ConnectionManager {
     api_key: ApiKey,
     start_time: Instant,
     tx: broadcast::Sender<ApiKey>,
@@ -191,6 +191,7 @@ impl ConnectionManager {
     }
 
     async fn remove_subscription(&self, subscription: &Subscription) {
+        tracing::info!("Removing subscription: {:?}", subscription);
         self.shutdown(&self.api_key).await;
         if self.active_subscriptions.lock().await.remove(subscription) {
             self.metrics_handler
@@ -202,7 +203,7 @@ impl ConnectionManager {
         }
     }
 
-    async fn clear_subscriptions(&self) {
+    pub async fn clear_subscriptions(&self) {
         let subscriptions = self.active_subscriptions.lock().await;
         for item in subscriptions.iter() {
             self.remove_subscription(item).await;
@@ -257,7 +258,7 @@ impl ConnectionManager {
 pub struct WsSession {
     api_key: ApiKey,
     messaging: MessageHandler,
-    connection: ConnectionManager,
+    pub connection: ConnectionManager,
     pub streams: Arc<FuelStreams>,
 }
 
@@ -334,44 +335,19 @@ impl WsSession {
             .await
     }
 
-    pub async fn shutdown_subscription(
-        &self,
-        session: &mut Session,
-        subscription: &Subscription,
-    ) -> Result<(), WebsocketError> {
-        let api_key = self.api_key();
-        if !self.is_subscribed(subscription).await {
-            let warning_msg = ServerResponse::Error(format!(
-                "No active subscription found for {}",
-                subscription
-            ));
-            self.send_message(session, warning_msg).await?;
-            return Ok(());
-        }
-        self.connection.shutdown(&api_key).await;
-        Ok(())
-    }
-
-    pub async fn close_session(
-        self,
-        session: Session,
-        close_reason: CloseReason,
-    ) {
-        let _ = session.close(Some(close_reason.clone())).await;
+    pub async fn close_session(self, session: Session, action: &CloseAction) {
+        let _ = session.close(Some(action.into())).await;
         self.connection.clear_subscriptions().await;
         let duration = self.connection.connection_duration();
         self.connection
             .metrics_handler
             .track_connection_duration(duration);
-        self.log_connection_close(duration, &close_reason);
+        self.log_connection_close(duration, action);
     }
 
-    fn log_connection_close(
-        &self,
-        duration: Duration,
-        close_reason: &CloseReason,
-    ) {
+    fn log_connection_close(&self, duration: Duration, action: &CloseAction) {
         let api_key = self.api_key();
+        let close_reason: CloseReason = action.into();
         let description = close_reason.description.as_deref();
         if close_reason.code == CloseCode::Normal {
             tracing::info!(

@@ -1,4 +1,7 @@
-use fuel_streams_core::{subjects::*, types::StreamMessage};
+use fuel_streams_core::{
+    subjects::*,
+    types::{StreamResponse, SubscribeRequest},
+};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt,
@@ -78,7 +81,7 @@ impl Connection {
         &mut self,
         message: &ServerRequest,
     ) -> Result<
-        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
+        impl Stream<Item = Result<StreamResponse, ClientError>> + '_ + Send + Unpin,
         ClientError,
     > {
         self.send_client_message(message).await?;
@@ -111,21 +114,21 @@ impl Connection {
         subjects: Vec<SubjectPayload>,
         deliver_policy: DeliverPolicy,
     ) -> Result<
-        impl Stream<Item = Result<StreamMessage, ClientError>> + '_ + Send + Unpin,
+        impl Stream<Item = Result<StreamResponse, ClientError>> + '_ + Send + Unpin,
         ClientError,
     > {
         let subjects: Vec<_> = subjects.into_iter().collect();
-        let message = ServerRequest {
+        let message = ServerRequest::Subscribe(SubscribeRequest {
             deliver_policy,
             subscribe: subjects,
-        };
+        });
         self.stream_with_message(&message).await
     }
 }
 
 fn handle_binary_message(
     bin: tokio_tungstenite::tungstenite::Bytes,
-) -> Result<Option<StreamMessage>, ClientError> {
+) -> Result<Option<StreamResponse>, ClientError> {
     match serde_json::from_slice::<ServerResponse>(&bin) {
         Ok(ServerResponse::Response(response)) => Ok(Some(response)),
         Ok(ServerResponse::Error(e)) => Err(ClientError::Server(e)),

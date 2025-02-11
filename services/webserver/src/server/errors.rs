@@ -2,7 +2,7 @@ use actix_ws::{CloseCode, CloseReason, Closed, ProtocolError};
 use fuel_streams_core::{
     prelude::SubjectPayloadError,
     stream::StreamError,
-    types::MessagePayloadError,
+    types::{MessagePayloadError, ServerRequestError},
 };
 use fuel_streams_domains::SubjectsError;
 use fuel_streams_store::{
@@ -10,14 +10,11 @@ use fuel_streams_store::{
     record::{EncoderError, RecordEntityError},
     store::StoreError,
 };
+use tokio::task::JoinError;
 
 /// Ws Subscription-related errors
 #[derive(Debug, thiserror::Error)]
 pub enum WebsocketError {
-    #[error("Stream error: {0}")]
-    StreamError(#[from] StreamError),
-    #[error("Unserializable payload: {0}")]
-    UnserializablePayload(#[from] serde_json::Error),
     #[error("Connection closed with reason: {code} - {description}")]
     ClosedWithReason { code: u16, description: String },
     #[error("Connection closed")]
@@ -32,7 +29,17 @@ pub enum WebsocketError {
     Timeout,
     #[error("Subscribe failed: {0}")]
     Subscribe(String),
+    #[error("Unsubscribe failed: {0}")]
+    Unsubscribe(String),
 
+    #[error(transparent)]
+    JoinHandle(#[from] JoinError),
+    #[error(transparent)]
+    ServerRequest(#[from] ServerRequestError),
+    #[error(transparent)]
+    StreamError(#[from] StreamError),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Encoder(#[from] EncoderError),
     #[error(transparent)]
@@ -55,7 +62,9 @@ impl From<WebsocketError> for CloseReason {
             code: match &error {
                 // Error type
                 WebsocketError::StreamError(_)
+                | WebsocketError::JoinHandle(_)
                 | WebsocketError::Subscribe(_)
+                | WebsocketError::Unsubscribe(_)
                 | WebsocketError::Database(_)
                 | WebsocketError::Store(_)
                 | WebsocketError::SendError => CloseCode::Error,
@@ -66,7 +75,8 @@ impl From<WebsocketError> for CloseReason {
                 | WebsocketError::MessagePayload(_) => CloseCode::Invalid,
 
                 // Unsupported type
-                WebsocketError::UnserializablePayload(_)
+                WebsocketError::Serde(_)
+                | WebsocketError::ServerRequest(_)
                 | WebsocketError::UnsupportedMessageType => {
                     CloseCode::Unsupported
                 }

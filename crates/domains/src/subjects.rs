@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 pub enum SubjectsError {
-    #[error("Unknown subject: {0}")]
+    #[error("Unknown subject when converting to Subjects: {0}")]
     UnknownSubject(String),
     #[error(transparent)]
     SubjectPayload(#[from] SubjectPayloadError),
@@ -27,14 +27,17 @@ pub enum SubjectsError {
 #[derive(Debug, Clone)]
 pub enum Subjects {
     Block(BlocksSubject),
+    Inputs(InputsSubject),
     InputsCoin(InputsCoinSubject),
     InputsContract(InputsContractSubject),
     InputsMessage(InputsMessageSubject),
+    Outputs(OutputsSubject),
     OutputsCoin(OutputsCoinSubject),
     OutputsContract(OutputsContractSubject),
     OutputsChange(OutputsChangeSubject),
     OutputsVariable(OutputsVariableSubject),
     OutputsContractCreated(OutputsContractCreatedSubject),
+    Receipts(ReceiptsSubject),
     ReceiptsCall(ReceiptsCallSubject),
     ReceiptsReturn(ReceiptsReturnSubject),
     ReceiptsReturnData(ReceiptsReturnDataSubject),
@@ -56,14 +59,17 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
     fn from(subject: Subjects) -> Self {
         match subject {
             Subjects::Block(s) => s.dyn_arc(),
+            Subjects::Inputs(s) => s.dyn_arc(),
             Subjects::InputsCoin(s) => s.dyn_arc(),
             Subjects::InputsContract(s) => s.dyn_arc(),
             Subjects::InputsMessage(s) => s.dyn_arc(),
+            Subjects::Outputs(s) => s.dyn_arc(),
             Subjects::OutputsCoin(s) => s.dyn_arc(),
             Subjects::OutputsContract(s) => s.dyn_arc(),
             Subjects::OutputsChange(s) => s.dyn_arc(),
             Subjects::OutputsVariable(s) => s.dyn_arc(),
             Subjects::OutputsContractCreated(s) => s.dyn_arc(),
+            Subjects::Receipts(s) => s.dyn_arc(),
             Subjects::ReceiptsCall(s) => s.dyn_arc(),
             Subjects::ReceiptsReturn(s) => s.dyn_arc(),
             Subjects::ReceiptsReturnData(s) => s.dyn_arc(),
@@ -115,16 +121,19 @@ impl_try_from_subjects!(
     // Block subjects
     (BlocksSubject, Block),
     // Input subjects
+    (InputsSubject, Inputs),
     (InputsCoinSubject, InputsCoin),
     (InputsContractSubject, InputsContract),
     (InputsMessageSubject, InputsMessage),
     // Output subjects
+    (OutputsSubject, Outputs),
     (OutputsCoinSubject, OutputsCoin),
     (OutputsContractSubject, OutputsContract),
     (OutputsChangeSubject, OutputsChange),
     (OutputsVariableSubject, OutputsVariable),
     (OutputsContractCreatedSubject, OutputsContractCreated),
     // Receipt subjects
+    (ReceiptsSubject, Receipts),
     (ReceiptsCallSubject, ReceiptsCall),
     (ReceiptsReturnSubject, ReceiptsReturn),
     (ReceiptsReturnDataSubject, ReceiptsReturnData),

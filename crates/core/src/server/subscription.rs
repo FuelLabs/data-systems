@@ -1,9 +1,10 @@
 use fuel_streams_subject::subject::SubjectPayload;
 use fuel_web_utils::server::middlewares::api_key::ApiKey;
+use serde::{Deserialize, Serialize};
 
 use super::DeliverPolicy;
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
     pub deliver_policy: DeliverPolicy,

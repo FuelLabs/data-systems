@@ -3,8 +3,8 @@ use std::sync::Arc;
 use actix_ws::{CloseReason, Session};
 use fuel_streams_core::{
     prelude::{IntoSubject, SubjectPayload},
-    server::{DeliverPolicy, ServerResponse, Subscription},
-    types::{MessagePayload, ServerRequest, StreamMessage},
+    server::{ServerResponse, Subscription},
+    types::{MessagePayload, ServerRequest, StreamResponse},
     BoxedStream,
     FuelStreams,
 };
@@ -13,45 +13,44 @@ use fuel_streams_store::record::RecordEntity;
 use fuel_web_utils::server::api::API_VERSION;
 use futures::{future::try_join_all, StreamExt};
 
-use crate::server::{errors::WebsocketError, websocket::WsSession};
+use crate::server::{
+    errors::WebsocketError,
+    websocket::{unsubscribe, WsSession},
+};
 
 pub async fn subscribe_mult(
     session: &mut Session,
     ctx: &mut WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
-    let subjects = server_request.subscribe.clone();
-    if subjects.is_empty() {
-        tracing::debug!("No subscriptions requested");
-        return Ok(());
-    }
-
-    let handles: Vec<_> = subjects
+    let subscriptions = server_request.subscriptions(&ctx.api_key());
+    let handles: Vec<_> = subscriptions
         .into_iter()
-        .map(|payload| {
+        .map(|subscription| {
             let mut ctx = ctx.clone();
             let mut session = session.clone();
-            let api_key = ctx.api_key().clone();
-            let subscription = Subscription::new(
-                &api_key,
-                &server_request.deliver_policy,
-                &payload,
-            );
             actix_web::rt::spawn(async move {
                 subscribe(&mut session, &mut ctx, &subscription).await
             })
         })
         .collect();
 
+    let api_key = ctx.api_key();
     match try_join_all(handles).await {
-        Ok(_) => {
-            tracing::info!("All subscriptions completed successfully");
+        Ok(results) => {
+            if let Some(err) = results.into_iter().find_map(|r| r.err()) {
+                tracing::error!(%api_key, "Subscription task failed: {}", err);
+                return Err(WebsocketError::Subscribe(format!(
+                    "Subscription task failed: {err}"
+                )));
+            }
+            tracing::info!(%api_key, "Subscriptions running");
             Ok(())
         }
         Err(err) => {
-            tracing::error!("Subscription task failed: {}", err);
+            tracing::error!(%api_key, "Subscriptions failed: {}", err);
             Err(WebsocketError::Subscribe(format!(
-                "Subscription task failed: {err}"
+                "Subscriptions failed: {err}"
             )))
         }
     }
@@ -72,92 +71,74 @@ async fn subscribe(
     }
 
     // Subscribe to the subject
-    let sub = create_subscriber(
-        &ctx.streams,
-        &subscription.payload,
-        subscription.deliver_policy,
-    )
-    .await?;
-
-    // Send the subscription message to the client
-    let subscribed_msg =
-        ServerResponse::Subscribed(subscription.payload.clone());
+    let sub = create_subscriber(&ctx.streams, subscription).await?;
+    let subscribed_msg = ServerResponse::Subscribed(subscription.clone());
     ctx.send_message(session, subscribed_msg).await?;
     ctx.add_subscription(subscription).await?;
 
     // Spawn a task to process messages
-    spawn_subscription_process(session, ctx, subscription, sub);
-    Ok(())
-}
-
-fn spawn_subscription_process(
-    session: &mut Session,
-    ctx: &mut WsSession,
-    subscription: &Subscription,
-    mut sub: BoxedStream,
-) -> tokio::task::JoinHandle<()> {
-    let api_key = ctx.api_key();
-    let mut shutdown_rx = ctx.receiver();
-    let payload = &subscription.payload;
-    tracing::debug!(%api_key, ?payload, "Starting subscription process");
     actix_web::rt::spawn({
         let mut session = session.to_owned();
         let mut ctx = ctx.to_owned();
         let subscription = subscription.clone();
+        let api_key = ctx.api_key();
         async move {
-            let result: Result<(), WebsocketError> = tokio::select! {
-                shutdown = shutdown_rx.recv() => {
-                    match shutdown {
-                        Ok(shutdown_api_key) if shutdown_api_key == api_key => {
-                            tracing::info!(%api_key, "Subscription gracefully shutdown");
-                            Ok(())
-                        }
-                        other => {
-                            tracing::debug!(%api_key, ?other, "Unexpected shutdown value, falling back to process_msgs");
-                            process_msgs(&mut session, &mut ctx, &mut sub, &subscription).await
-                        }
-                    }
-                },
-                process_result = process_msgs(&mut session, &mut ctx, &mut sub, &subscription) => {
-                    tracing::debug!(%api_key, ?process_result, "Process messages completed");
-                    process_result
-                }
-            };
-
+            let result = process_subscription(
+                &mut session,
+                &mut ctx,
+                &subscription,
+                sub,
+            )
+            .await;
             if let Err(err) = result {
                 tracing::error!(%api_key, error = %err, "Subscription processing error");
                 let _ = session.close(Some(CloseReason::from(err))).await;
             }
         }
-    })
+    });
+
+    Ok(())
 }
 
-async fn process_msgs(
+async fn process_subscription(
     session: &mut Session,
     ctx: &mut WsSession,
-    sub: &mut BoxedStream,
     subscription: &Subscription,
+    mut sub: BoxedStream,
 ) -> Result<(), WebsocketError> {
-    let payload = &subscription.payload;
-    tracing::debug!(?payload, "Starting to process messages");
-    while let Some(result) = sub.next().await {
-        let result = result?;
-        tracing::debug!(?payload, ?result, "Received message from stream");
-        let payload = decode_and_respond(payload.clone(), result).await?;
-        tracing::debug!("Sending message to client: {:?}", payload);
-        ctx.send_message(session, payload).await?;
+    let payload = subscription.payload.clone();
+    let mut shutdown_rx = ctx.receiver();
+    let api_key = ctx.api_key();
+    tracing::debug!(%api_key, ?payload, "Starting subscription process");
+    loop {
+        tokio::select! {
+            Some(result) = sub.next() => {
+                let result = result?;
+                tracing::debug!(?payload, ?result, "Received message from stream");
+                let payload = decode_and_respond(subscription.payload.clone(), result).await?;
+                tracing::debug!("Sending message to client: {:?}", payload);
+                ctx.send_message(session, payload).await?;
+            }
+            Ok(shutdown_api_key) = shutdown_rx.recv() => {
+                if shutdown_api_key == api_key {
+                    tracing::info!(%api_key, "Subscription gracefully shutdown");
+                    return Ok(());
+                }
+            }
+            else => {
+                tracing::debug!(?payload, "Stream ended, removing subscription");
+                return unsubscribe(session, ctx, subscription).await;
+            }
+        }
     }
-
-    tracing::debug!(?payload, "Stream ended, removing subscription");
-    ctx.remove_subscription(subscription).await;
-    Ok(())
 }
 
 async fn create_subscriber(
     streams: &Arc<FuelStreams>,
-    subject_payload: &SubjectPayload,
-    deliver_policy: DeliverPolicy,
+    subscription: &Subscription,
 ) -> Result<BoxedStream, WebsocketError> {
+    let subject_payload = subscription.payload.clone();
+    let deliver_policy = subscription.deliver_policy;
     let subject: Subjects = subject_payload.clone().try_into()?;
     let subject: Arc<dyn IntoSubject> = subject.into();
     let subject_id = subject_payload.subject.as_str();
@@ -209,7 +190,7 @@ pub async fn decode_and_respond(
 ) -> Result<ServerResponse, WebsocketError> {
     let subject_id = subject_payload.subject.as_str();
     let data = MessagePayload::new(subject_id, &data)?;
-    let response_message = StreamMessage {
+    let response_message = StreamResponse {
         subject,
         ty: subject_id.to_string(),
         version: API_VERSION.to_string(),

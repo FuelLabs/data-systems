@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum RecordEntityError {
-    #[error("Unknown subject: {0}")]
+    #[error("Unknown subject when converting to RecordEntity: {0}")]
     UnknownSubject(String),
 }
 

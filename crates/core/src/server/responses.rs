@@ -4,7 +4,6 @@ use fuel_streams_store::{
     db::DbError,
     record::{DataEncoder, RecordEntity, RecordEntityError},
 };
-use fuel_streams_subject::subject::SubjectPayload;
 use serde::{Deserialize, Serialize};
 
 use crate::types::*;
@@ -106,7 +105,7 @@ impl MessagePayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamMessage {
+pub struct StreamResponse {
     #[serde(rename = "type")]
     pub ty: String,
     pub version: String,
@@ -114,17 +113,11 @@ pub struct StreamMessage {
     pub payload: MessagePayload,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerRequest {
-    pub deliver_policy: DeliverPolicy,
-    pub subscribe: Vec<SubjectPayload>,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ServerResponse {
-    Subscribed(SubjectPayload),
-    Response(StreamMessage),
+    Subscribed(Subscription),
+    Unsubscribed(Subscription),
+    Response(StreamResponse),
     Error(String),
 }

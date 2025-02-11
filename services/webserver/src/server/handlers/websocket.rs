@@ -24,22 +24,22 @@ use crate::{
     server::{
         errors::WebsocketError,
         state::ServerState,
-        websocket::{subscribe_mult, WsSession},
+        websocket::{subscribe_mult, unsubscribe_mult, WsSession},
     },
 };
 
 #[derive(Debug)]
-enum CloseAction {
+pub enum CloseAction {
     Error(WebsocketError),
-    Closed(Option<CloseReason>),
+    Closed(CloseReason),
+    Disconnect,
     Timeout,
 }
-impl From<CloseAction> for CloseReason {
-    fn from(action: CloseAction) -> Self {
+impl From<&CloseAction> for CloseReason {
+    fn from(action: &CloseAction) -> Self {
         match action {
-            CloseAction::Closed(reason) => {
-                reason.unwrap_or(CloseCode::Normal.into())
-            }
+            CloseAction::Closed(reason) => reason.clone(),
+            CloseAction::Disconnect => CloseCode::Normal.into(),
             CloseAction::Error(_) => CloseCode::Away.into(),
             CloseAction::Timeout => CloseCode::Away.into(),
         }
@@ -89,12 +89,17 @@ async fn handler(
     );
 
     let action = handle_messages(&mut ctx, &mut session, msg_stream).await;
-    if let Some(action) = action {
-        if let CloseAction::Error(err) = &action {
-            ctx.send_error_msg(&mut session, err).await?;
+    if let Some(action) = &action {
+        match action {
+            CloseAction::Error(err) => {
+                ctx.send_error_msg(&mut session, err).await?;
+                ctx.close_session(session, action).await;
+            }
+            _ => {
+                ctx.close_session(session, action).await;
+            }
         }
-        ctx.close_session(session, action.into()).await;
-    }
+    };
     Ok(())
 }
 
@@ -138,7 +143,10 @@ async fn handle_messages(
                     last_heartbeat = Instant::now();
                 }
                 Message::Close(reason) => {
-                    break Some(CloseAction::Closed(reason));
+                    break match reason {
+                        Some(reason) => Some(CloseAction::Closed(reason)),
+                        None => Some(CloseAction::Disconnect),
+                    }
                 }
                 Message::Continuation(_) => {
                     let api_key = ctx.api_key();
@@ -156,7 +164,7 @@ async fn handle_messages(
             Either::Left((None, _)) => {
                 let api_key = ctx.api_key();
                 tracing::info!(%api_key, "Client disconnected");
-                break None;
+                break Some(CloseAction::Disconnect);
             }
             Either::Right((_inst, _)) => {
                 if let Err(err) = ctx.heartbeat(session, last_heartbeat).await {
@@ -178,7 +186,15 @@ async fn handle_websocket_request(
     msg: Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received binary {:?}", msg);
-    let server_request: ServerRequest = serde_json::from_slice(&msg)?;
-    subscribe_mult(session, ctx, &server_request).await?;
-    Ok(None)
+    let server_request: ServerRequest = msg.as_ref().try_into()?;
+    match server_request {
+        ServerRequest::Subscribe(_) => {
+            subscribe_mult(session, ctx, &server_request).await?;
+            Ok(None)
+        }
+        ServerRequest::Unsubscribe(_) => {
+            unsubscribe_mult(session, ctx, &server_request).await?;
+            Ok(None)
+        }
+    }
 }
