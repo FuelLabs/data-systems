@@ -2,36 +2,32 @@
 
 ## [0.0.25](https://github.com/FuelLabs/data-systems/compare/v0.0.24...v0.0.25) - 2025-02-12
 
-
-
-
-
 ### ⭐ Features
 
-- *(repo)*: Add support to subscribe to multiple subjects at once (#402) ([aefdd0c](https://github.com/FuelLabs/data-systems/commit/aefdd0c80429bb40a1b240f49cef0f64dc5145ad)  @pedronauck)
+- _(repo)_: Add support to subscribe to multiple subjects at once (#402) ([aefdd0c](https://github.com/FuelLabs/data-systems/commit/aefdd0c80429bb40a1b240f49cef0f64dc5145ad) @pedronauck)
 
 ### 🐛 Bug Fixes
 
-- *(fuel-streams)*: Network and connection definition ([abbb143](https://github.com/FuelLabs/data-systems/commit/abbb1439366497fa0ca37d2e9c68ce9a6dbba477)  @pedronauck)
+- _(fuel-streams)_: Network and connection definition ([abbb143](https://github.com/FuelLabs/data-systems/commit/abbb1439366497fa0ca37d2e9c68ce9a6dbba477) @pedronauck)
 
-- *(webserver)*: Handle unsubscribe messages ([1d2da62](https://github.com/FuelLabs/data-systems/commit/1d2da62a8e51fc71699daaa2906bf1d81cac2945)  @pedronauck)
+- _(webserver)_: Handle unsubscribe messages ([1d2da62](https://github.com/FuelLabs/data-systems/commit/1d2da62a8e51fc71699daaa2906bf1d81cac2945) @pedronauck)
 
-- *(domains)*: Implement custom deserializer for transaction ([f913749](https://github.com/FuelLabs/data-systems/commit/f9137493f9d6c932004889754e4bc2eff26f3e4b)  @pedronauck)
+- _(domains)_: Implement custom deserializer for transaction ([f913749](https://github.com/FuelLabs/data-systems/commit/f9137493f9d6c932004889754e4bc2eff26f3e4b) @pedronauck)
 
-- *(repo)*: Rollback fuel-core to v0.40.3 ([014ac20](https://github.com/FuelLabs/data-systems/commit/014ac2015befafc9364fb5ed5737c97efed21a0c)  @pedronauck)
+- _(repo)_: Rollback fuel-core to v0.40.3 ([014ac20](https://github.com/FuelLabs/data-systems/commit/014ac2015befafc9364fb5ed5737c97efed21a0c) @pedronauck)
 
 ### 🏗️ Build
 
-- *(repo)*: Change from PNPM to Bun (#400) ([6e23dfe](https://github.com/FuelLabs/data-systems/commit/6e23dfe45119bc66081da069348b1cc3cc97219f)  @pedronauck)
+- _(repo)_: Change from PNPM to Bun (#400) ([6e23dfe](https://github.com/FuelLabs/data-systems/commit/6e23dfe45119bc66081da069348b1cc3cc97219f) @pedronauck)
 
 ### 💪🏼 Contributors
 
-* @pedronauck
-
+- @pedronauck
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ---
+
 ## [0.0.24](https://github.com/FuelLabs/data-systems/compare/v0.0.23...v0.0.24) - 2025-02-04
 
 ### ⭐ Features
