@@ -17,7 +17,7 @@ use tokio_tungstenite::{
 
 use super::{
     error::ClientError,
-    types::{DeliverPolicy, ServerRequest, ServerResponse},
+    types::{DeliverPolicy, ServerResponse},
 };
 use crate::FuelNetwork;
 
@@ -58,7 +58,6 @@ impl Connection {
     pub async fn new(req: Request<()>) -> Result<Self, ClientError> {
         let (socket, _response) = connect_async(req).await?;
         let (write, read) = socket.split();
-
         Ok(Self {
             read_stream: read,
             write_sink: RwLock::new(write),
@@ -67,7 +66,7 @@ impl Connection {
 
     async fn send_client_message(
         &self,
-        message: &ServerRequest,
+        message: &SubscribeRequest,
     ) -> Result<(), ClientError> {
         let mut write_guard = self.write_sink.write().await;
         let serialized = serde_json::to_vec(&message)?;
@@ -79,7 +78,7 @@ impl Connection {
 
     async fn stream_with_message(
         &mut self,
-        message: &ServerRequest,
+        message: &SubscribeRequest,
     ) -> Result<
         impl Stream<Item = Result<StreamResponse, ClientError>> + '_ + Send + Unpin,
         ClientError,
@@ -118,10 +117,10 @@ impl Connection {
         ClientError,
     > {
         let subjects: Vec<_> = subjects.into_iter().collect();
-        let message = ServerRequest::Subscribe(SubscribeRequest {
+        let message = SubscribeRequest {
             deliver_policy,
             subscribe: subjects,
-        });
+        };
         self.stream_with_message(&message).await
     }
 }

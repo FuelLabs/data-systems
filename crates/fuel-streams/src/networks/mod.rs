@@ -17,7 +17,6 @@ pub enum FuelNetwork {
     #[default]
     Local,
     Staging,
-    // Testnet,
     Mainnet,
 }
 
@@ -28,7 +27,6 @@ impl FromStr for FuelNetwork {
         match s {
             "local" => Ok(FuelNetwork::Local),
             "staging" => Ok(FuelNetwork::Staging),
-            // "testnet" => Ok(FuelNetwork::Testnet),
             "mainnet" => Ok(FuelNetwork::Mainnet),
             _ => Err(format!("unknown network: {}", s)),
         }
@@ -40,7 +38,6 @@ impl std::fmt::Display for FuelNetwork {
         match self {
             FuelNetwork::Local => write!(f, "local"),
             FuelNetwork::Staging => write!(f, "staging"),
-            // FuelNetwork::Testnet => write!(f, "testnet"),
             FuelNetwork::Mainnet => write!(f, "mainnet"),
         }
     }
@@ -49,7 +46,6 @@ impl std::fmt::Display for FuelNetwork {
 impl FuelNetwork {
     pub fn load_from_env() -> Self {
         match std::env::var("NETWORK").as_deref() {
-            // Ok("testnet") => FuelNetwork::Testnet,
             Ok("mainnet") => FuelNetwork::Mainnet,
             Ok("staging") => FuelNetwork::Staging,
             _ => FuelNetwork::Local,
@@ -60,7 +56,6 @@ impl FuelNetwork {
         match self {
             FuelNetwork::Local => "nats://localhost:4222",
             FuelNetwork::Staging => "nats://stream-staging.fuel.network:4222",
-            // FuelNetwork::Testnet => "nats://stream-testnet.fuel.network:4222",
             FuelNetwork::Mainnet => "nats://stream-mainnet.fuel.network:4222",
         }
         .to_string()
@@ -72,15 +67,11 @@ impl FuelNetwork {
                 Url::parse("http://localhost:9003").expect("working url")
             }
             FuelNetwork::Staging => {
-                Url::parse("http://stream-staging.fuel.network:9003")
+                Url::parse("https://stream-staging.fuel.network")
                     .expect("working url")
             }
-            // FuelNetwork::Testnet => {
-            //     Url::parse("http://stream-testnet.fuel.network:9003")
-            //         .expect("working url")
-            // }
             FuelNetwork::Mainnet => {
-                Url::parse("http://stream-mainnet.fuel.network:9003")
+                Url::parse("https://stream-mainnet.fuel.network")
                     .expect("working url")
             }
         }
@@ -92,15 +83,11 @@ impl FuelNetwork {
                 Url::parse("ws://0.0.0.0:9003").expect("working url")
             }
             FuelNetwork::Staging => {
-                Url::parse("ws://stream-staging.fuel.network:9003")
+                Url::parse("wss://stream-staging.fuel.network")
                     .expect("working url")
             }
-            // FuelNetwork::Testnet => {
-            //     Url::parse("ws://stream-testnet.fuel.network:9003")
-            //         .expect("working url")
-            // }
             FuelNetwork::Mainnet => {
-                Url::parse("ws://stream-mainnet.fuel.network:9003")
+                Url::parse("wss://stream-mainnet.fuel.network")
                     .expect("working url")
             }
         }

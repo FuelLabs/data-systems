@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Process incoming blocks
     while let Some(block) = subscription.next().await {
-        dbg!(block?);
+        println!("Received block: {:?}", block?);
     }
 
     Ok(())
