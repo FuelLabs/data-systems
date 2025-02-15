@@ -1,12 +1,6 @@
-use std::sync::Arc;
-
-use fuel_streams_core::{
-    inputs::{InputsCoinSubject, InputsContractSubject, InputsMessageSubject},
-    subjects::IntoSubject,
-    types::{Input, Transaction},
-};
+use fuel_streams_core::types::{Input, Transaction};
 use fuel_streams_domains::{
-    inputs::{types::MockInput, InputDbItem},
+    inputs::{types::MockInput, DynInputSubject, InputDbItem},
     transactions::types::MockTransaction,
     Subjects,
 };
@@ -36,7 +30,8 @@ async fn insert_input(input: Input) -> anyhow::Result<()> {
         packet
     );
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_item = db_item.unwrap();
+    let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
     Ok(())
@@ -58,35 +53,14 @@ fn create_packets(
         .into_iter()
         .enumerate()
         .map(|(input_index, input)| {
-            let subject: Arc<dyn IntoSubject> = match &input {
-                Input::Coin(coin) => InputsCoinSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    input_index: Some(input_index as u32),
-                    owner: Some(coin.owner.to_owned()),
-                    asset: Some(coin.asset_id.to_owned()),
-                }
-                .arc(),
-                Input::Contract(contract) => InputsContractSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    input_index: Some(input_index as u32),
-                    contract: Some(contract.contract_id.to_owned().into()),
-                }
-                .arc(),
-                Input::Message(message) => InputsMessageSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    input_index: Some(input_index as u32),
-                    sender: Some(message.sender.to_owned()),
-                    recipient: Some(message.recipient.to_owned()),
-                }
-                .arc(),
-            };
-            input.to_packet(&subject).with_namespace(prefix)
+            let subject = DynInputSubject::from((
+                &input,
+                1.into(),
+                tx_id.clone(),
+                0,
+                input_index as u32,
+            ));
+            input.to_packet(&subject.into()).with_namespace(prefix)
         })
         .collect::<Vec<_>>()
 }
@@ -120,8 +94,11 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
     ]);
     let packets = create_packets(&tx, &tx_id, &prefix);
     for packet in packets {
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
+        let subject = subject.into();
         let _ = store
-            .find_many_by_subject(&packet.subject, QueryOptions::default())
+            .find_many_by_subject(&subject, QueryOptions::default())
             .await?;
     }
 
@@ -145,11 +122,10 @@ async fn test_input_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let packets = create_packets(&tx, &tx_id, &prefix);
 
     for (idx, packet) in packets.into_iter().enumerate() {
-        let subject: Subjects = packet.clone().try_into()?;
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
         let db_item = InputDbItem::try_from(&packet)?;
-
-        // Assert store insert
-        let inserted = store.insert_record(&packet).await?;
+        let inserted = store.insert_record(&db_item).await?;
         assert_eq!(db_item, inserted);
 
         // Verify common fields

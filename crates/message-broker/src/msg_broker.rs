@@ -78,7 +78,5 @@ pub type MessageBlockStream = Box<
 >;
 
 pub type MessageStream = Box<
-    dyn Stream<Item = Result<(String, Vec<u8>), MessageBrokerError>>
-        + Send
-        + Unpin,
+    dyn Stream<Item = Result<bytes::Bytes, MessageBrokerError>> + Send + Unpin,
 >;

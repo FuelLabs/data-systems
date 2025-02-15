@@ -11,13 +11,11 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-async-stream.workspace = true
 async-trait.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
 fuel-streams-subject.workspace = true
 fuel-streams-types.workspace = true
-futures.workspace = true
 serde.workspace = true
 sqlx = { workspace = true, default-features = false, features = [
   "any",

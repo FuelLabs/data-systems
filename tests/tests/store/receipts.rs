@@ -1,26 +1,6 @@
-use std::sync::Arc;
-
-use fuel_streams_core::{
-    subjects::{
-        IntoSubject,
-        ReceiptsBurnSubject,
-        ReceiptsCallSubject,
-        ReceiptsLogDataSubject,
-        ReceiptsLogSubject,
-        ReceiptsMessageOutSubject,
-        ReceiptsMintSubject,
-        ReceiptsPanicSubject,
-        ReceiptsReturnDataSubject,
-        ReceiptsReturnSubject,
-        ReceiptsRevertSubject,
-        ReceiptsScriptResultSubject,
-        ReceiptsTransferOutSubject,
-        ReceiptsTransferSubject,
-    },
-    types::{MockReceipt, Receipt, Transaction},
-};
+use fuel_streams_core::types::{MockReceipt, Receipt, Transaction};
 use fuel_streams_domains::{
-    receipts::ReceiptDbItem,
+    receipts::{DynReceiptSubject, ReceiptDbItem},
     transactions::types::MockTransaction,
     Subjects,
 };
@@ -49,7 +29,8 @@ async fn insert_receipt(receipt: Receipt) -> anyhow::Result<()> {
         packet
     );
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_item = db_item.unwrap();
+    let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
     Ok(())
@@ -71,121 +52,14 @@ fn create_packets(
         .into_iter()
         .enumerate()
         .map(|(receipt_index, receipt)| {
-            let subject: Arc<dyn IntoSubject> = match &receipt {
-                Receipt::Call(data) => ReceiptsCallSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    from: Some(data.id.to_owned()),
-                    to: Some(data.to.to_owned()),
-                    asset: Some(data.asset_id.to_owned()),
-                }
-                .arc(),
-                Receipt::Return(data) => ReceiptsReturnSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::ReturnData(data) => ReceiptsReturnDataSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::Panic(data) => ReceiptsPanicSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::Revert(data) => ReceiptsRevertSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::Log(data) => ReceiptsLogSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::LogData(data) => ReceiptsLogDataSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.id.to_owned()),
-                }
-                .arc(),
-                Receipt::Transfer(data) => ReceiptsTransferSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    from: Some(data.id.to_owned()),
-                    to: Some(data.to.to_owned()),
-                    asset: Some(data.asset_id.to_owned()),
-                }
-                .arc(),
-                Receipt::TransferOut(data) => ReceiptsTransferOutSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    from: Some(data.id.to_owned()),
-                    to_address: Some(data.to.to_owned()),
-                    asset: Some(data.asset_id.to_owned()),
-                }
-                .arc(),
-                Receipt::ScriptResult(_) => ReceiptsScriptResultSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                }
-                .arc(),
-                Receipt::MessageOut(data) => ReceiptsMessageOutSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    sender: Some(data.sender.to_owned()),
-                    recipient: Some(data.recipient.to_owned()),
-                }
-                .arc(),
-                Receipt::Mint(data) => ReceiptsMintSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.contract_id.to_owned()),
-                    sub_id: Some(data.sub_id.to_owned()),
-                }
-                .arc(),
-                Receipt::Burn(data) => ReceiptsBurnSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    receipt_index: Some(receipt_index as u32),
-                    contract: Some(data.contract_id.to_owned()),
-                    sub_id: Some(data.sub_id.to_owned()),
-                }
-                .arc(),
-            };
-            receipt.to_packet(&subject).with_namespace(prefix)
+            let subject = DynReceiptSubject::from((
+                &receipt,
+                1.into(),
+                tx_id.clone(),
+                0,
+                receipt_index as u32,
+            ));
+            receipt.to_packet(&subject.into()).with_namespace(prefix)
         })
         .collect()
 }
@@ -281,8 +155,11 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
     let packets = create_packets(&tx, &tx_id, &prefix);
 
     for packet in packets {
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
+        let subject = subject.into();
         let _ = store
-            .find_many_by_subject(&packet.subject, QueryOptions::default())
+            .find_many_by_subject(&subject, QueryOptions::default())
             .await?;
     }
 
@@ -316,11 +193,10 @@ async fn test_receipt_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let packets = create_packets(&tx, &tx_id, &prefix);
 
     for (idx, packet) in packets.into_iter().enumerate() {
-        let subject: Subjects = packet.clone().try_into()?;
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
         let db_item = ReceiptDbItem::try_from(&packet)?;
-
-        // Add store insert verification
-        let inserted = store.insert_record(&packet).await?;
+        let inserted = store.insert_record(&db_item).await?;
         assert_eq!(db_item, inserted);
 
         // Verify common fields

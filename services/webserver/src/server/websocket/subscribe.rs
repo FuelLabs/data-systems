@@ -2,15 +2,14 @@ use std::sync::Arc;
 
 use actix_ws::{CloseReason, Session};
 use fuel_streams_core::{
-    prelude::{IntoSubject, SubjectPayload},
+    prelude::IntoSubject,
     server::{ServerResponse, Subscription},
-    types::{MessagePayload, ServerRequest, StreamResponse},
+    types::ServerRequest,
     BoxedStream,
     FuelStreams,
 };
 use fuel_streams_domains::Subjects;
 use fuel_streams_store::record::RecordEntity;
-use fuel_web_utils::server::api::API_VERSION;
 use futures::{future::try_join_all, StreamExt};
 
 use crate::server::{
@@ -115,7 +114,7 @@ async fn process_subscription(
             Some(result) = sub.next() => {
                 let result = result?;
                 tracing::debug!(?payload, ?result, "Received message from stream");
-                let payload = decode_and_respond(subscription.payload.clone(), result).await?;
+                let payload = ServerResponse::Response(result);
                 tracing::debug!("Sending message to client: {:?}", payload);
                 ctx.send_message(session, payload).await?;
             }
@@ -182,19 +181,4 @@ async fn create_subscriber(
         }
     };
     Ok(Box::new(stream))
-}
-
-pub async fn decode_and_respond(
-    subject_payload: SubjectPayload,
-    (subject, data): (String, Vec<u8>),
-) -> Result<ServerResponse, WebsocketError> {
-    let subject_id = subject_payload.subject.as_str();
-    let data = MessagePayload::new(subject_id, &data)?;
-    let response_message = StreamResponse {
-        subject,
-        ty: subject_id.to_string(),
-        version: API_VERSION.to_string(),
-        payload: data,
-    };
-    Ok(ServerResponse::Response(response_message))
 }

@@ -14,7 +14,6 @@ version.workspace = true
 anyhow.workspace = true
 async-nats.workspace = true
 async-stream.workspace = true
-bytes.workspace = true
 dotenvy.workspace = true
 fuel-core.workspace = true
 fuel-message-broker.workspace = true

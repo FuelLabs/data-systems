@@ -5,7 +5,7 @@ pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_subject::subject::IntoSubject;
 use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
-use super::{QueryOptions, RecordEntity, RecordPacket};
+use super::{QueryOptions, RecordEntity, RecordPacket, RecordPointer};
 use crate::db::{DbError, DbItem, DbResult};
 
 pub trait RecordEncoder: DataEncoder<Err = DbError> {}
@@ -16,14 +16,14 @@ pub type DbConnection = PgConnection;
 
 #[async_trait]
 pub trait Record: RecordEncoder + 'static {
-    type DbItem: DbItem;
+    type DbItem: DbItem + Into<RecordPointer>;
 
     const ENTITY: RecordEntity;
     const ORDER_PROPS: &'static [&'static str];
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,
-        packet: &RecordPacket,
+        db_item: Self::DbItem,
     ) -> DbResult<Self::DbItem>
     where
         'c: 'e,
@@ -31,16 +31,16 @@ pub trait Record: RecordEncoder + 'static {
 
     async fn insert_with_transaction(
         tx: &mut DbTransaction,
-        packet: &RecordPacket,
+        db_item: &Self::DbItem,
     ) -> DbResult<Self::DbItem> {
-        Self::insert(&mut **tx, packet).await
+        Self::insert(&mut **tx, db_item.to_owned()).await
     }
 
     fn to_packet(&self, subject: &Arc<dyn IntoSubject>) -> RecordPacket {
         let value = self
             .encode_json()
             .unwrap_or_else(|_| panic!("Encode failed for {}", Self::ENTITY));
-        RecordPacket::new(subject.to_owned(), value)
+        RecordPacket::new(subject.parse(), subject.to_payload(), value)
     }
 
     fn from_db_item(record: &Self::DbItem) -> DbResult<Self> {

@@ -25,15 +25,15 @@ impl PacketBuilder for Output {
             .par_iter()
             .enumerate()
             .map(|(output_index, output)| {
-                let subject = main_subject(
+                let subject = DynOutputSubject::from((
+                    output,
                     msg_payload.block_height(),
+                    tx_id.to_owned(),
                     *tx_index as u32,
                     output_index as u32,
-                    tx_id.to_owned(),
                     tx,
-                    output,
-                );
-                let packet = output.to_packet(&subject);
+                ));
+                let packet = output.to_packet(&subject.into());
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -43,79 +43,76 @@ impl PacketBuilder for Output {
     }
 }
 
-fn main_subject(
-    block_height: BlockHeight,
-    tx_index: u32,
-    output_index: u32,
-    tx_id: TxId,
-    transaction: &Transaction,
-    output: &Output,
-) -> Arc<dyn IntoSubject> {
-    match output {
-        Output::Coin(OutputCoin { to, asset_id, .. }) => OutputsCoinSubject {
-            block_height: Some(block_height),
-            tx_id: Some(tx_id),
-            tx_index: Some(tx_index),
-            output_index: Some(output_index),
-            to: Some(to.to_owned()),
-            asset: Some(asset_id.to_owned()),
-        }
-        .arc(),
-        Output::Contract(contract) => {
-            let contract_id =
-                match find_output_contract_id(transaction, contract) {
-                    Some(contract_id) => contract_id,
-                    None => {
-                        tracing::warn!(
-                            "Contract ID not found for output: {:?}",
-                            output
-                        );
+pub struct DynOutputSubject(Arc<dyn IntoSubject>);
+impl From<(&Output, BlockHeight, TxId, u32, u32, &Transaction)>
+    for DynOutputSubject
+{
+    fn from(
+        (output, block_height, tx_id, tx_index, output_index, transaction): (
+            &Output,
+            BlockHeight,
+            TxId,
+            u32,
+            u32,
+            &Transaction,
+        ),
+    ) -> Self {
+        DynOutputSubject(match output {
+            Output::Coin(coin) => OutputsCoinSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
+                to: Some(coin.to.to_owned()),
+                asset: Some(coin.asset_id.to_owned()),
+            }
+            .arc(),
+            Output::Contract(contract) => {
+                let contract_id =
+                    find_output_contract_id(transaction, contract)
+                        .unwrap_or_default();
+                OutputsContractSubject {
+                    block_height: Some(block_height),
+                    tx_id: Some(tx_id),
+                    tx_index: Some(tx_index),
+                    output_index: Some(output_index),
+                    contract: Some(contract_id),
+                }
+                .arc()
+            }
+            Output::Change(change) => OutputsChangeSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
+                to: Some(change.to.to_owned()),
+                asset: Some(change.asset_id.to_owned()),
+            }
+            .arc(),
+            Output::Variable(variable) => OutputsVariableSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
+                to: Some(variable.to.to_owned()),
+                asset: Some(variable.asset_id.to_owned()),
+            }
+            .arc(),
+            Output::ContractCreated(created) => OutputsContractCreatedSubject {
+                block_height: Some(block_height),
+                tx_id: Some(tx_id),
+                tx_index: Some(tx_index),
+                output_index: Some(output_index),
+                contract: Some(created.contract_id.to_owned()),
+            }
+            .arc(),
+        })
+    }
+}
 
-                        Default::default()
-                    }
-                };
-
-            OutputsContractSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                output_index: Some(output_index),
-                contract: Some(contract_id),
-            }
-            .arc()
-        }
-        Output::Change(OutputChange { to, asset_id, .. }) => {
-            OutputsChangeSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                output_index: Some(output_index),
-                to: Some(to.to_owned()),
-                asset: Some(asset_id.to_owned()),
-            }
-            .arc()
-        }
-        Output::Variable(OutputVariable { to, asset_id, .. }) => {
-            OutputsVariableSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                output_index: Some(output_index),
-                to: Some(to.to_owned()),
-                asset: Some(asset_id.to_owned()),
-            }
-            .arc()
-        }
-        Output::ContractCreated(OutputContractCreated {
-            contract_id, ..
-        }) => OutputsContractCreatedSubject {
-            block_height: Some(block_height),
-            tx_id: Some(tx_id),
-            tx_index: Some(tx_index),
-            output_index: Some(output_index),
-            contract: Some(contract_id.to_owned()),
-        }
-        .arc(),
+impl From<DynOutputSubject> for Arc<dyn IntoSubject> {
+    fn from(subject: DynOutputSubject) -> Self {
+        subject.0
     }
 }
 

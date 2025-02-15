@@ -2,11 +2,17 @@ use std::cmp::Ordering;
 
 use fuel_streams_store::{
     db::{DbError, DbItem},
-    record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
+    record::{
+        DataEncoder,
+        RecordEntity,
+        RecordPacket,
+        RecordPacketError,
+        RecordPointer,
+    },
 };
-use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
+use super::subjects::*;
 use crate::Subjects;
 
 #[derive(
@@ -40,8 +46,8 @@ impl DbItem for UtxoDbItem {
         self.subject.clone()
     }
 
-    fn get_block_height(&self) -> BlockHeight {
-        self.block_height.into()
+    fn subject_id(&self) -> String {
+        UtxosSubject::ID.to_string()
     }
 }
 
@@ -49,6 +55,7 @@ impl TryFrom<&RecordPacket> for UtxoDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .subject_payload
             .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
@@ -84,5 +91,17 @@ impl Ord for UtxoDbItem {
             .then(self.tx_index.cmp(&other.tx_index))
             // Finally by input index within the transaction
             .then(self.input_index.cmp(&other.input_index))
+    }
+}
+
+impl From<UtxoDbItem> for RecordPointer {
+    fn from(val: UtxoDbItem) -> Self {
+        RecordPointer {
+            block_height: val.block_height.into(),
+            tx_index: Some(val.tx_index as u32),
+            input_index: Some(val.input_index as u32),
+            output_index: None,
+            receipt_index: None,
+        }
     }
 }

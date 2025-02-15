@@ -54,7 +54,6 @@ fn main_packet(
         kind: Some(tx.kind.to_owned()),
     }
     .dyn_arc();
-
     let packet = tx.to_packet(&subject);
     let packet = match msg_payload.namespace.clone() {
         Some(ns) => packet.with_namespace(&ns),

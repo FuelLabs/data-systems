@@ -2,8 +2,13 @@ use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_store::{db::Db, record::Record, store::Store};
+use fuel_streams_store::{
+    db::{Db, DbItem},
+    record::{DataEncoder, QueryOptions, Record},
+    store::{find_last_block_height, Store},
+};
 use fuel_streams_subject::subject::IntoSubject;
+use fuel_streams_types::BlockHeight;
 use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,
@@ -11,9 +16,9 @@ use futures::{
 use tokio::{sync::OnceCell, time::sleep};
 
 use super::{config, StreamError};
-use crate::server::DeliverPolicy;
+use crate::{server::DeliverPolicy, types::StreamResponse};
 
-pub type BoxedStoreItem = Result<(String, Vec<u8>), StreamError>;
+pub type BoxedStoreItem = Result<StreamResponse, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
@@ -59,24 +64,34 @@ impl<R: Record> Stream<R> {
     pub async fn publish(
         &self,
         subject: &str,
-        payload: bytes::Bytes,
+        response: &StreamResponse,
     ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
-        broker.publish(subject, payload).await?;
+        let payload = response.encode_json()?;
+        broker.publish(subject, payload.into()).await?;
         Ok(())
+    }
+
+    pub async fn subscribe<S: IntoSubject>(
+        &self,
+        subject: S,
+        deliver_policy: DeliverPolicy,
+    ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
+        let subject = Arc::new(subject);
+        self.subscribe_dynamic(subject, deliver_policy).await
     }
 
     pub async fn subscribe_dynamic(
         &self,
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
+    ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let broker = self.broker.clone();
         let subject = subject.clone();
-        let store = self.store.clone();
+        let store = self.clone();
         let stream = async_stream::try_stream! {
             if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None).await;
+                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None);
                 while let Some(result) = historical.next().await {
                     yield result?;
                     let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
@@ -85,7 +100,9 @@ impl<R: Record> Stream<R> {
             }
             let mut live = broker.subscribe(&subject.parse()).await?;
             while let Some(msg) = live.next().await {
-                yield msg?;
+                let msg = msg?;
+                let stream_response = StreamResponse::decode_json(&msg)?;
+                yield stream_response;
                 let throttle_time = *config::STREAM_THROTTLE_LIVE;
                 sleep(Duration::from_millis(throttle_time as u64)).await;
             }
@@ -93,12 +110,45 @@ impl<R: Record> Stream<R> {
         Box::pin(stream)
     }
 
-    pub async fn subscribe<S: IntoSubject>(
+    pub fn historical_streaming(
         &self,
-        subject: S,
-        deliver_policy: DeliverPolicy,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StreamError>> {
-        let subject = Arc::new(subject);
-        self.subscribe_dynamic(subject, deliver_policy).await
+        subject: Arc<dyn IntoSubject>,
+        from_block: Option<BlockHeight>,
+        query_opts: Option<QueryOptions>,
+    ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
+        let store = self.store.clone();
+        let db = self.store.db.clone();
+        let stream = async_stream::try_stream! {
+            let mut current_height = from_block.unwrap_or_default();
+            let mut opts = query_opts.unwrap_or_default().with_from_block(Some(current_height));
+            let mut last_height = find_last_block_height(&db, opts.clone()).await?;
+            while current_height <= last_height {
+                let items = store.find_many_by_subject(&subject, opts.clone()).await?;
+                for item in items {
+                    let subject = item.subject_str();
+                    let subject_id = item.subject_id();
+                    let value = item.encoded_value().to_vec();
+                    let pointer = item.into();
+                    let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned())?;
+                    yield response;
+                    current_height = pointer.block_height;
+                }
+                opts.increment_offset();
+                // When we reach the last known height, we need to check if any new blocks
+                // were produced while we were processing the previous ones
+                if current_height == last_height {
+                    let new_last_height = find_last_block_height(&db, opts.clone()).await?;
+                    if new_last_height > last_height {
+                        // Reset current_height back to process the blocks we haven't seen yet
+                        current_height = last_height;
+                        last_height = new_last_height;
+                    } else {
+                        tracing::debug!("No new blocks found, stopping historical streaming on block {}", current_height);
+                        break
+                    }
+                }
+            }
+        };
+        Box::pin(stream)
     }
 }

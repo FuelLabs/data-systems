@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use fuel_streams_core::{
-    subjects::{IntoSubject, SubjectBuildable, TransactionsSubject},
+    subjects::{SubjectBuildable, TransactionsSubject},
     types::{MockInput, MockOutput, MockReceipt, MockTransaction, Transaction},
 };
 use fuel_streams_domains::{transactions::TransactionDbItem, Subjects};
@@ -28,21 +26,21 @@ async fn insert_transaction(tx: &Transaction) -> anyhow::Result<()> {
         packet
     );
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_item = db_item.unwrap();
+    let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
     Ok(())
 }
 
 fn create_packets(tx: &Transaction, prefix: &str) -> Vec<RecordPacket> {
-    let subject: Arc<dyn IntoSubject> = TransactionsSubject::new()
+    let subject = TransactionsSubject::new()
         .with_block_height(Some(1.into()))
         .with_tx_id(Some(tx.id.clone()))
         .with_tx_index(Some(0))
         .with_tx_status(Some(tx.status.clone()))
         .with_kind(Some(tx.kind.clone()))
         .dyn_arc();
-
     vec![tx.to_packet(&subject).with_namespace(prefix)]
 }
 
@@ -149,8 +147,11 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
     for tx in transactions {
         let packets = create_packets(&tx, &prefix);
         for packet in packets {
+            let payload = packet.subject_payload.clone();
+            let subject: Subjects = payload.try_into()?;
+            let subject = subject.into();
             let _ = store
-                .find_many_by_subject(&packet.subject, QueryOptions::default())
+                .find_many_by_subject(&subject, QueryOptions::default())
                 .await?;
         }
     }
@@ -202,12 +203,10 @@ async fn test_transaction_subject_to_db_item_conversion() -> anyhow::Result<()>
     for tx in transactions {
         let packets = create_packets(&tx, &prefix);
         let packet = packets.first().unwrap();
-
-        let subject: Subjects = packet.clone().try_into()?;
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
         let db_item = TransactionDbItem::try_from(packet)?;
-
-        // Assert store insert
-        let inserted = store.insert_record(packet).await?;
+        let inserted = store.insert_record(&db_item).await?;
         assert_eq!(db_item, inserted);
 
         // Verify common fields

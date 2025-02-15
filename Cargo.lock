@@ -3805,7 +3805,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "async-stream",
- "bytes",
  "dotenvy",
  "fuel-core",
  "fuel-message-broker",
@@ -3846,7 +3845,6 @@ dependencies = [
  "test-case",
  "thiserror 2.0.11",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3863,13 +3861,11 @@ dependencies = [
 name = "fuel-streams-store"
 version = "0.0.24"
 dependencies = [
- "async-stream",
  "async-trait",
  "dotenvy",
  "fuel-data-parser",
  "fuel-streams-subject",
  "fuel-streams-types",
- "futures",
  "serde",
  "sqlx",
  "test-case",

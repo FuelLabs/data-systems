@@ -16,7 +16,7 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
     let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
 
-    let blocks = create_multiple_records(2, 1);
+    let blocks = create_multiple_records(2, 1, &prefix);
     let db_items = insert_records(&store, &prefix, &blocks).await?;
 
     // Verify both records exist and are correct
@@ -43,7 +43,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
     let mut store = setup_store::<Block>().await?;
     store.with_namespace(&prefix);
 
-    let blocks = create_multiple_records(2, 1);
+    let blocks = create_multiple_records(2, 1, &prefix);
     let _ = insert_records(&store, &prefix, &blocks).await?;
     let block1 = &blocks.first().unwrap().1;
     let block2 = &blocks.get(1).unwrap().1;
@@ -72,11 +72,7 @@ async fn test_subject_matching() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
     let packet = block.to_packet(&subject);
-
-    // Test subject matching
-    let matched_subject: BlocksSubject = packet
-        .subject_matches()
-        .expect("Failed to match BlocksSubject");
+    let matched_subject: BlocksSubject = packet.subject_payload.into();
     assert_eq!(matched_subject.parse(), subject.parse());
     Ok(())
 }
@@ -89,7 +85,7 @@ async fn test_insert_with_transaction() -> anyhow::Result<()> {
 
     // Start a transaction
     let mut tx = store.db.pool.begin().await?;
-    let blocks = create_multiple_records(4, 1);
+    let blocks = create_multiple_records(4, 1, &prefix);
     insert_records_with_transaction(&store, &mut tx, &prefix, &blocks).await?;
     tx.commit().await?;
 
@@ -102,7 +98,7 @@ async fn test_insert_with_transaction() -> anyhow::Result<()> {
 
     // Verify the records match the original blocks
     for (record, item) in found_records.iter().zip(blocks.iter()) {
-        let (_, block) = item;
+        let (_, block, _) = item;
         assert_eq!(&Block::from_db_item(record)?, block);
     }
 
