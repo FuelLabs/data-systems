@@ -60,6 +60,20 @@ webserver:
   tls:
     enabled: false
 
+api:
+  enabled: false
+  image:
+    repository: sv-api
+    pullPolicy: IfNotPresent
+    tag: latest
+
+  service:
+    enabled: true
+    port: 9004
+
+  tls:
+    enabled: false
+
 # NATS Core configuration for local development
 nats:
   enabled: false

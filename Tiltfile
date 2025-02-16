@@ -80,6 +80,29 @@ custom_build(
     ignore=['./target']
 )
 
+# api server
+custom_build(
+    ref='sv-api:latest',
+    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
+    command=[
+        './cluster/scripts/build_docker.sh',
+        '--dockerfile', './cluster/docker/sv-api.Dockerfile'
+    ],
+    deps=[
+        './src',
+        './Cargo.toml',
+        './Cargo.lock',
+        './cluster/docker/sv-api.Dockerfile'
+    ],
+    live_update=[
+        sync('./src', '/usr/src'),
+        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
+        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
+        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
+    ],
+    ignore=['./target']
+)
+
 # Deploy the Helm chart with values from .env
 # Get deployment mode from environment variable, default to 'full'
 config_mode = os.getenv('CLUSTER_MODE', 'full')
@@ -106,6 +129,13 @@ RESOURCES = {
         'labels': 'ws',
         'config_mode': ['minimal', 'full'],
         'deps': ['fuel-streams-nats']
+    },
+    'sv-api': {
+        'name': 'fuel-streams-sv-api',
+        'ports': ['9004:9004'],
+        'labels': 'api',
+        'config_mode': ['minimal', 'full'],
+        'deps': ['fuel-streams-sv-publisher', 'fuel-streams-sv-consumer']
     },
     'nats': {
         'name': 'fuel-streams-nats',
