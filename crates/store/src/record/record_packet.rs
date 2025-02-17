@@ -1,8 +1,9 @@
 use std::{fmt::Debug, sync::Arc};
 
-use fuel_streams_subject::subject::IntoSubject;
-
-use super::{Record, RecordEntity, RecordEntityError};
+use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
+use fuel_streams_subject::subject::SubjectPayload;
+use fuel_streams_types::BlockHeight;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RecordPacketError {
@@ -11,7 +12,7 @@ pub enum RecordPacketError {
     #[error("Subject mismatch")]
     SubjectMismatch,
     #[error(transparent)]
-    RecordEntity(#[from] RecordEntityError),
+    EncodeError(#[from] EncoderError),
 }
 
 pub trait PacketBuilder: Send + Sync + 'static {
@@ -19,18 +20,41 @@ pub trait PacketBuilder: Send + Sync + 'static {
     fn build_packets(opts: &Self::Opts) -> Vec<RecordPacket>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct RecordPointer {
+    pub block_height: BlockHeight,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt_index: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordPacket {
     pub value: Vec<u8>,
-    pub subject: Arc<dyn IntoSubject>,
+    pub subject: String,
+    pub subject_payload: SubjectPayload,
     namespace: Option<String>,
 }
 
+impl DataEncoder for RecordPacket {
+    type Err = RecordPacketError;
+}
+
 impl RecordPacket {
-    pub fn new(subject: Arc<dyn IntoSubject>, value: Vec<u8>) -> Self {
+    pub fn new(
+        subject: impl ToString,
+        subject_payload: SubjectPayload,
+        value: Vec<u8>,
+    ) -> Self {
         Self {
             value,
-            subject,
+            subject: subject.to_string(),
+            subject_payload,
             namespace: None,
         }
     }
@@ -39,51 +63,24 @@ impl RecordPacket {
         Arc::new(self.to_owned())
     }
 
-    pub fn to_record<R: Record>(&self) -> R {
-        R::decode_json(&self.value)
-            .unwrap_or_else(|_| panic!("Decoded failed for {}", R::ENTITY))
-    }
-
     pub fn with_namespace(mut self, namespace: &str) -> Self {
         self.namespace = Some(namespace.to_string());
         self
     }
 
-    pub fn subject_matches<S: IntoSubject + Clone>(
-        &self,
-    ) -> Result<S, RecordPacketError> {
-        if let Some(subject) = self.subject.downcast_ref::<S>() {
-            Ok(subject.clone())
-        } else {
-            Err(RecordPacketError::DowncastError)
-        }
-    }
-
-    pub fn get_entity(&self) -> Result<RecordEntity, RecordPacketError> {
-        let subject_str = self.subject_str();
-        let first_part = match self.namespace {
-            Some(_) => subject_str.split('.').nth(1),
-            None => subject_str.split('.').next(),
-        };
-        match first_part {
-            Some(value) => {
-                RecordEntity::try_from(value).map_err(RecordPacketError::from)
-            }
-            _ => Err(RecordPacketError::RecordEntity(
-                RecordEntityError::UnknownSubject("not_defined".to_string()),
-            )),
-        }
+    pub fn subject_id(&self) -> String {
+        self.subject_payload.subject.to_string()
     }
 
     pub fn subject_str(&self) -> String {
         if cfg!(any(test, feature = "test-helpers")) {
-            let mut subject = self.subject.parse();
+            let mut subject = self.subject.to_owned();
             if let Some(namespace) = &self.namespace {
                 subject = format!("{}.{}", namespace, subject);
             }
             subject
         } else {
-            self.subject.parse()
+            self.subject.to_owned()
         }
     }
 

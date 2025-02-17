@@ -16,7 +16,6 @@ impl PacketBuilder for Block {
             producer: Some(block_producer),
         }
         .dyn_arc();
-
         let packet = block.to_packet(&subject);
         let packet = match msg_payload.namespace.clone() {
             Some(ns) => packet.with_namespace(&ns),

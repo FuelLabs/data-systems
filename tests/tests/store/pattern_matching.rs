@@ -16,7 +16,7 @@ async fn test_asterisk_subject_string() -> anyhow::Result<()> {
     store.with_namespace(&prefix);
 
     // Create and insert test blocks with different subjects
-    let records = create_multiple_records(3, 1);
+    let records = create_multiple_records(3, 1, &prefix);
     insert_records(&store, &prefix, &records).await?;
 
     // Test subject matching

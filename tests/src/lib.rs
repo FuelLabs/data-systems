@@ -12,7 +12,7 @@ use fuel_streams_domains::blocks::{
 };
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
-    record::{DbTransaction, Record},
+    record::{DbTransaction, Record, RecordPacket},
     store::Store,
 };
 use rand::Rng;
@@ -49,30 +49,37 @@ pub async fn setup_stream(
 // Test data
 // -----------------------------------------------------------------------------
 
-pub fn create_record(height: u32) -> (Arc<dyn IntoSubject>, Block) {
+pub fn create_record(
+    height: u32,
+    prefix: &str,
+) -> (Arc<dyn IntoSubject>, Block, RecordPacket) {
     let block = MockBlock::build(height);
-    let subject = BlocksSubject::from(&block).dyn_arc();
-    (subject, block)
+    let subject = BlocksSubject::from(&block);
+    let subject = subject.dyn_arc();
+    let packet = block.to_packet(&subject).with_namespace(prefix);
+    (subject, block, packet)
 }
 
 pub fn create_multiple_records(
     count: usize,
     start_height: u32,
-) -> Vec<(Arc<dyn IntoSubject>, Block)> {
+    prefix: &str,
+) -> Vec<(Arc<dyn IntoSubject>, Block, RecordPacket)> {
     (0..count)
-        .map(|idx| create_record(start_height + idx as u32))
+        .map(|idx| create_record(start_height + idx as u32, prefix))
         .collect()
 }
 
 pub async fn insert_records(
     store: &Store<Block>,
     prefix: &str,
-    records: &[(Arc<dyn IntoSubject>, Block)],
+    records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
 ) -> anyhow::Result<Vec<BlockDbItem>> {
     let mut final_records = vec![];
-    for (subject, block) in records {
-        let packet = block.to_packet(subject).with_namespace(prefix);
-        let record = store.insert_record(&packet).await?;
+    for record in records {
+        let packet = record.2.to_owned().with_namespace(prefix);
+        let db_item: BlockDbItem = (&packet).try_into()?;
+        let record = store.insert_record(&db_item).await?;
         final_records.push(record);
     }
     Ok(final_records)
@@ -82,12 +89,13 @@ pub async fn insert_records_with_transaction(
     store: &Store<Block>,
     tx: &mut DbTransaction,
     prefix: &str,
-    records: &[(Arc<dyn IntoSubject>, Block)],
+    records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
 ) -> anyhow::Result<()> {
     let mut final_records = vec![];
-    for (subject, block) in records {
-        let packet = block.to_packet(subject).with_namespace(prefix);
-        let record = store.insert_record_with_transaction(tx, &packet).await?;
+    for record in records {
+        let packet = record.2.to_owned().with_namespace(prefix);
+        let db_item: BlockDbItem = (&packet).try_into()?;
+        let record = store.insert_record_with_transaction(tx, &db_item).await?;
         final_records.push(record);
     }
     Ok(())

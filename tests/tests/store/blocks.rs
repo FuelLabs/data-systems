@@ -35,10 +35,12 @@ async fn store_can_record_blocks() -> anyhow::Result<()> {
     let store = setup_store::<Block>().await?;
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
+    let packet = block.to_packet(&subject);
     let prefix = create_random_db_name();
-    let packet = block.to_packet(&subject).with_namespace(&prefix);
-
-    let db_record: BlockDbItem = store.insert_record(&packet).await?;
+    let packet = packet.with_namespace(&prefix);
+    let db_item = BlockDbItem::try_from(&packet)?;
+    let db_record: BlockDbItem = store.insert_record(&db_item).await?;
+    assert_eq!(db_record, db_item);
     assert_eq!(db_record.subject, packet.subject_str());
     assert_eq!(Block::from_db_item(&db_record)?, block);
 

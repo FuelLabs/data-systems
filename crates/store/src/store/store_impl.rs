@@ -3,12 +3,11 @@ use std::sync::Arc;
 use fuel_data_parser::DataEncoder;
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockHeight;
-use futures::stream::BoxStream;
 
 use super::StoreError;
 use crate::{
-    db::{Db, DbItem},
-    record::{DbTransaction, QueryOptions, Record, RecordPacket},
+    db::Db,
+    record::{DbTransaction, QueryOptions, Record},
 };
 
 pub type StoreResult<T> = Result<T, StoreError>;
@@ -41,24 +40,24 @@ impl<R: Record + DataEncoder> Store<R> {
 
     pub async fn insert_record(
         &self,
-        packet: &RecordPacket,
+        db_item: &R::DbItem,
     ) -> StoreResult<R::DbItem> {
-        let record = R::insert(&self.db.pool, packet).await?;
+        let record = R::insert(&self.db.pool, db_item.to_owned()).await?;
         Ok(record)
     }
 
     pub async fn insert_record_with_transaction(
         &self,
         tx: &mut DbTransaction,
-        packet: &RecordPacket,
+        db_item: &R::DbItem,
     ) -> StoreResult<R::DbItem> {
-        let record = R::insert_with_transaction(tx, packet).await?;
+        let record = R::insert_with_transaction(tx, db_item).await?;
         Ok(record)
     }
 
     pub async fn find_many_by_subject(
         &self,
-        subject: &Arc<dyn fuel_streams_subject::subject::IntoSubject>,
+        subject: &Arc<dyn IntoSubject>,
         mut options: QueryOptions,
     ) -> StoreResult<Vec<R::DbItem>> {
         options = options.with_namespace(self.namespace.clone());
@@ -69,46 +68,6 @@ impl<R: Record + DataEncoder> Store<R> {
             .fetch_all(&self.db.pool)
             .await
             .map_err(StoreError::from)
-    }
-
-    pub async fn historical_streaming(
-        &self,
-        subject: Arc<dyn IntoSubject>,
-        from_block: Option<BlockHeight>,
-        query_opts: Option<QueryOptions>,
-    ) -> BoxStream<'static, Result<(String, Vec<u8>), StoreError>> {
-        let store = self.clone();
-        let db = self.db.clone();
-        let stream = async_stream::try_stream! {
-            let mut current_height = from_block.unwrap_or_default();
-            let mut opts = query_opts.unwrap_or_default().with_from_block(Some(current_height));
-            let mut last_height = find_last_block_height(&db, opts.clone()).await?;
-            while current_height <= last_height {
-                let items = store.find_many_by_subject(&subject, opts.clone()).await?;
-                for item in items {
-                    let subject = item.subject_str();
-                    let value = item.encoded_value().to_vec();
-                    yield (subject, value);
-                    let block_height = item.get_block_height();
-                    current_height = block_height;
-                }
-                opts.increment_offset();
-                // When we reach the last known height, we need to check if any new blocks
-                // were produced while we were processing the previous ones
-                if current_height == last_height {
-                    let new_last_height = find_last_block_height(&db, opts.clone()).await?;
-                    if new_last_height > last_height {
-                        // Reset current_height back to process the blocks we haven't seen yet
-                        current_height = last_height;
-                        last_height = new_last_height;
-                    } else {
-                        tracing::debug!("No new blocks found, stopping historical streaming on block {}", current_height);
-                        break
-                    }
-                }
-            }
-        };
-        Box::pin(stream)
     }
 }
 

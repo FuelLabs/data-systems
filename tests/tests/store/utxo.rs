@@ -1,30 +1,21 @@
-use std::sync::Arc;
-
-use fuel_streams_core::{
-    subjects::IntoSubject,
-    types::{Transaction, Utxo},
-};
+use fuel_streams_core::types::{Input, MockInput, Transaction, Utxo};
 use fuel_streams_domains::{
     transactions::types::MockTransaction,
-    utxos::{
-        subjects::UtxosSubject,
-        types::{MockUtxo, UtxoType},
-        UtxoDbItem,
-    },
+    utxos::{DynUtxoSubject, UtxoDbItem},
     Subjects,
 };
 use fuel_streams_store::{
-    record::{QueryOptions, Record, RecordPacket},
+    record::{QueryOptions, RecordPacket},
     store::Store,
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
-use fuel_streams_types::{Address, HexData, TxId};
+use fuel_streams_types::TxId;
 use pretty_assertions::assert_eq;
 
-async fn insert_utxo(utxo: Utxo, utxo_type: UtxoType) -> anyhow::Result<()> {
+async fn insert_utxo(input: &Input) -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let (_, tx_id) = create_tx();
-    let packets = create_packets(&tx_id, utxo, utxo_type, &prefix);
+    let packets = create_packets(input, &tx_id, &prefix, 0);
     assert_eq!(packets.len(), 1);
 
     let mut store = setup_store::<Utxo>().await?;
@@ -38,7 +29,8 @@ async fn insert_utxo(utxo: Utxo, utxo_type: UtxoType) -> anyhow::Result<()> {
         packet
     );
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_item = db_item.unwrap();
+    let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
     Ok(())
@@ -51,42 +43,29 @@ fn create_tx() -> (Transaction, TxId) {
 }
 
 fn create_packets(
+    input: &Input,
     tx_id: &TxId,
-    utxo: Utxo,
-    utxo_type: UtxoType,
     prefix: &str,
+    input_index: u32,
 ) -> Vec<RecordPacket> {
-    let subject: Arc<dyn IntoSubject> = UtxosSubject {
-        block_height: Some(1.into()),
-        tx_id: Some(tx_id.clone()),
-        tx_index: Some(0),
-        input_index: Some(0),
-        utxo_type: Some(utxo_type),
-        utxo_id: Some(HexData::default()),
-    }
-    .dyn_arc();
-
-    vec![utxo.to_packet(&subject).with_namespace(prefix)]
+    let subject =
+        DynUtxoSubject::from((input, 1.into(), tx_id.clone(), 0, input_index));
+    vec![subject.packet().with_namespace(prefix)]
 }
 
 #[tokio::test]
 async fn store_can_record_coin_utxo() -> anyhow::Result<()> {
-    let recipient = Address::default();
-    insert_utxo(MockUtxo::coin(100, recipient), UtxoType::Coin).await
+    insert_utxo(&MockInput::coin_signed()).await
 }
 
 #[tokio::test]
 async fn store_can_record_contract_utxo() -> anyhow::Result<()> {
-    let contract_id = Address::default();
-    insert_utxo(MockUtxo::contract(contract_id), UtxoType::Contract).await
+    insert_utxo(&MockInput::contract()).await
 }
 
 #[tokio::test]
 async fn store_can_record_message_utxo() -> anyhow::Result<()> {
-    let sender = Address::default();
-    let recipient = Address::default();
-    insert_utxo(MockUtxo::message(100, sender, recipient), UtxoType::Message)
-        .await
+    insert_utxo(&MockInput::message_data_signed()).await
 }
 
 #[tokio::test]
@@ -96,20 +75,20 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
     store.with_namespace(&prefix);
 
     let (_, tx_id) = create_tx();
-    let utxos = vec![
-        (MockUtxo::coin(100, Address::default()), UtxoType::Coin),
-        (MockUtxo::contract(Address::default()), UtxoType::Contract),
-        (
-            MockUtxo::message(100, Address::default(), Address::default()),
-            UtxoType::Message,
-        ),
+    let inputs = vec![
+        (MockInput::coin_signed(), 0),
+        (MockInput::contract(), 1),
+        (MockInput::message_data_signed(), 2),
     ];
 
-    for (utxo, utxo_type) in utxos {
-        let packets = create_packets(&tx_id, utxo, utxo_type, &prefix);
+    for (input, input_index) in inputs {
+        let packets = create_packets(&input, &tx_id, &prefix, input_index);
         for packet in packets {
+            let payload = packet.subject_payload.clone();
+            let subject: Subjects = payload.try_into()?;
+            let subject = subject.into();
             let _ = store
-                .find_many_by_subject(&packet.subject, QueryOptions::default())
+                .find_many_by_subject(&subject, QueryOptions::default())
                 .await?;
         }
     }
@@ -124,31 +103,27 @@ async fn test_utxo_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let mut store = Store::<Utxo>::new(&db.arc());
     store.with_namespace(&prefix);
 
-    let utxos = vec![
-        (MockUtxo::coin(100, Address::default()), UtxoType::Coin),
-        (MockUtxo::contract(Address::default()), UtxoType::Contract),
-        (
-            MockUtxo::message(100, Address::default(), Address::default()),
-            UtxoType::Message,
-        ),
+    let inputs = vec![
+        (MockInput::coin_signed(), 0),
+        (MockInput::contract(), 1),
+        (MockInput::message_data_signed(), 2),
     ];
 
-    for (utxo, utxo_type) in utxos {
+    for (input, input_index) in inputs {
         let (_, tx_id) = create_tx();
-        let packets = create_packets(&tx_id, utxo, utxo_type, &prefix);
+        let packets = create_packets(&input, &tx_id, &prefix, input_index);
         let packet = packets.first().unwrap();
-        let subject: Subjects = packet.clone().try_into()?;
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
         let db_item = UtxoDbItem::try_from(packet)?;
-
-        // Assert store insert
-        let inserted = store.insert_record(packet).await?;
+        let inserted = store.insert_record(&db_item).await?;
         assert_eq!(db_item, inserted);
 
         // Verify common fields
         assert_eq!(db_item.block_height, 1);
         assert_eq!(db_item.tx_id, tx_id.to_string());
         assert_eq!(db_item.tx_index, 0);
-        assert_eq!(db_item.input_index, 0);
+        assert_eq!(db_item.input_index, input_index as i32);
         assert_eq!(db_item.subject, packet.subject_str());
 
         match subject {

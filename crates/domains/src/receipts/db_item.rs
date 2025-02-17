@@ -2,11 +2,17 @@ use std::cmp::Ordering;
 
 use fuel_streams_store::{
     db::{DbError, DbItem},
-    record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
+    record::{
+        DataEncoder,
+        RecordEntity,
+        RecordPacket,
+        RecordPacketError,
+        RecordPointer,
+    },
 };
-use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
+use super::subjects::*;
 use crate::Subjects;
 
 #[derive(
@@ -47,8 +53,24 @@ impl DbItem for ReceiptDbItem {
         self.subject.clone()
     }
 
-    fn get_block_height(&self) -> BlockHeight {
-        self.block_height.into()
+    fn subject_id(&self) -> String {
+        match self.receipt_type.as_str() {
+            "call" => ReceiptsCallSubject::ID,
+            "return" => ReceiptsReturnSubject::ID,
+            "return_data" => ReceiptsReturnDataSubject::ID,
+            "panic" => ReceiptsPanicSubject::ID,
+            "revert" => ReceiptsRevertSubject::ID,
+            "log" => ReceiptsLogSubject::ID,
+            "log_data" => ReceiptsLogDataSubject::ID,
+            "transfer" => ReceiptsTransferSubject::ID,
+            "transfer_out" => ReceiptsTransferOutSubject::ID,
+            "script_result" => ReceiptsScriptResultSubject::ID,
+            "message_out" => ReceiptsMessageOutSubject::ID,
+            "mint" => ReceiptsMintSubject::ID,
+            "burn" => ReceiptsBurnSubject::ID,
+            _ => ReceiptsSubject::ID,
+        }
+        .to_string()
     }
 }
 
@@ -56,6 +78,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .subject_payload
             .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
@@ -302,5 +325,17 @@ impl Ord for ReceiptDbItem {
             .then(self.tx_index.cmp(&other.tx_index))
             // Finally by receipt index within the transaction
             .then(self.receipt_index.cmp(&other.receipt_index))
+    }
+}
+
+impl From<ReceiptDbItem> for RecordPointer {
+    fn from(val: ReceiptDbItem) -> Self {
+        RecordPointer {
+            block_height: val.block_height.into(),
+            tx_index: Some(val.tx_index as u32),
+            input_index: None,
+            output_index: None,
+            receipt_index: Some(val.receipt_index as u32),
+        }
     }
 }
