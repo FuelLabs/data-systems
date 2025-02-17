@@ -332,6 +332,80 @@ webserver:
   autoscaling:
     enabled: true
 
+
+# ------------------------------------------------------------------------------
+# Api configuration
+# ------------------------------------------------------------------------------
+
+api:
+  enabled: true
+  network: mainnet
+
+  port: 8080
+  ports: []
+
+  image:
+    repository: ghcr.io/fuellabs/sv-api
+    pullPolicy: Always
+    tag: latest
+
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    host: "stream-staging.fuel.network"
+    loadBalancerClass: service.k8s.aws/nlb
+    config:
+      annotations: {}
+      labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /api/v1/metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
+
+  tls:
+    enabled: true
+    certificate:
+      issuer: letsencrypt-prod
+      duration: 2160h
+      renewBefore: 360h
+      config:
+        annotations: {}
+        labels: {}
+    ingress:
+      config:
+        annotations: {}
+        labels: {}
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  envFrom: []
+  env: {}
+
+  config:
+    replicaCount: 3
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+    podSecurityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: true
+
 # ------------------------------------------------------------------------------
 # NATS Core configuration
 # ------------------------------------------------------------------------------

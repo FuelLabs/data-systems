@@ -276,6 +276,29 @@ run-webserver-testnet-profiling:
 	$(MAKE) run-webserver NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
+#  Api Run Commands
+# ------------------------------------------------------------
+
+run-api: NETWORK="testnet"
+run-api: MODE="dev"
+run-api: PORT="9004"
+run-api: EXTRA_ARGS=""
+run-api: check-network
+	@./scripts/run_api.sh --mode $(MODE) --port $(PORT) --extra-args $(EXTRA_ARGS)
+
+run-api-mainnet-dev:
+	$(MAKE) run-api NETWORK=mainnet MODE=dev
+
+run-api-mainnet-profiling:
+	$(MAKE) run-api NETWORK=mainnet MODE=profiling
+
+run-api-testnet-dev:
+	$(MAKE) run-api NETWORK=testnet MODE=dev
+
+run-api-testnet-profiling:
+	$(MAKE) run-api NETWORK=testnet MODE=profiling
+
+# ------------------------------------------------------------
 #  Docker Compose
 # ------------------------------------------------------------
 

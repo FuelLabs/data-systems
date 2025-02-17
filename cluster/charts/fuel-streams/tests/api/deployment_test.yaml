@@ -1,0 +1,385 @@
+suite: Testing Api Deployment
+templates:
+  - templates/api/deployment.yaml
+tests:
+  - it: should not create deployment when api is disabled
+    set:
+      api.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create deployment with correct name
+    set:
+      api.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+      - isAPIVersion:
+          of: apps/v1
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-api
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: api
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: api
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: api
+        documentIndex: 0
+
+  - it: should set correct selector labels
+    set:
+      api.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+          value: api
+        documentIndex: 0
+      - isSubset:
+          path: spec.selector.matchLabels
+          content:
+            app.kubernetes.io/name: api
+            app.kubernetes.io/instance: RELEASE-NAME
+        documentIndex: 0
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: api
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: api
+        documentIndex: 0
+
+  - it: should ensure selector labels match template labels
+    set:
+      api.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: api
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: api
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: api
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: api
+        documentIndex: 0
+
+  - it: should set image configuration correctly
+    set:
+      api.enabled: true
+      api.image.repository: ghcr.io/fuellabs/sv-api
+      api.image.tag: latest
+      api.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/sv-api:latest
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        documentIndex: 0
+
+  - it: should use chart version when tag is not specified
+    set:
+      api.enabled: true
+      api.image.repository: ghcr.io/fuellabs/sv-api
+      api.image.tag: null
+      Chart:
+        Version: "1.0"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/fuellabs/sv-api:1.0
+        documentIndex: 0
+
+  - it: should configure ports correctly
+    set:
+      api.enabled: true
+      api.port: 8082
+      api.ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 2
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: http
+            containerPort: 8082
+            protocol: TCP
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: metrics
+            containerPort: 9090
+            protocol: TCP
+        documentIndex: 0
+
+  - it: should set replicas when autoscaling is disabled
+    set:
+      api.enabled: true
+      api.autoscaling.enabled: false
+      api.config.replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+        documentIndex: 0
+
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      api.enabled: true
+      api.autoscaling.enabled: true
+      api.config.replicaCount: 3
+    asserts:
+      - isNull:
+          path: spec.replicas
+        documentIndex: 0
+
+  - it: should merge environment variables correctly
+    set:
+      api.enabled: true
+      api.env:
+        EXTRA_VAR: "extra-value"
+        SECRET_VAR: "secret-value"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_VAR
+            value: "extra-value"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SECRET_VAR
+            value: "secret-value"
+        documentIndex: 0
+
+  - it: should test envFrom
+    set:
+      api.enabled: true
+      api.envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-fuel-streams-config
+        - secretRef:
+            name: RELEASE-NAME-fuel-streams-keys
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: RELEASE-NAME-fuel-streams-config
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: RELEASE-NAME-fuel-streams-keys
+        documentIndex: 0
+
+  - it: should set security context when specified
+    set:
+      api.enabled: true
+      api.config.podSecurityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.securityContext.runAsGroup
+          value: 3000
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 2000
+        documentIndex: 0
+
+  - it: should use global security context when not specified
+    set:
+      api.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: should have probes defined by default
+    set:
+      api.enabled: true
+      api.config.healthChecks: true
+      api.config.livenessProbe:
+        httpGet:
+          path: /health
+      api.config.readinessProbe:
+        httpGet:
+          path: /health
+      api.config.startupProbe:
+        httpGet:
+          path: /health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /health
+        documentIndex: 0
+
+  - it: should set resource limits and requests
+    set:
+      api.enabled: true
+      api.config.resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 100m
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 128Mi
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 50m
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi
+        documentIndex: 0
+
+  - it: should create HPA with correct configuration when autoscaling is enabled
+    set:
+      api.enabled: true
+      api.autoscaling.enabled: true
+      api.autoscaling.minReplicas: 2
+      api.autoscaling.maxReplicas: 5
+      api.autoscaling.targetCPUUtilizationPercentage: 75
+      api.autoscaling.targetMemoryUtilizationPercentage: 85
+    asserts:
+      - hasDocuments:
+          count: 5
+      - isKind:
+          of: HorizontalPodAutoscaler
+        documentIndex: 1
+      - equal:
+          path: spec.minReplicas
+          value: 2
+        documentIndex: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 5
+        documentIndex: 1
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 75
+        documentIndex: 1
+      - equal:
+          path: spec.metrics[1].resource.target.averageUtilization
+          value: 85
+        documentIndex: 1
+
+  - it: should configure HPA scaling behavior correctly
+    set:
+      api.enabled: true
+      api.autoscaling.enabled: true
+      api.autoscaling.behavior.scaleDown.stabilizationWindowSeconds: 400
+      api.autoscaling.behavior.scaleDown.percentValue: 50
+      api.autoscaling.behavior.scaleUp.stabilizationWindowSeconds: 60
+      api.autoscaling.behavior.scaleUp.percentValue: 200
+      api.autoscaling.behavior.scaleUp.podValue: 6
+    asserts:
+      - equal:
+          path: spec.behavior.scaleDown.stabilizationWindowSeconds
+          value: 400
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleDown.policies[0].type
+          value: Percent
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleDown.policies[0].value
+          value: 50
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.stabilizationWindowSeconds
+          value: 60
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.policies[0].type
+          value: Percent
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.policies[0].value
+          value: 200
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.policies[1].type
+          value: Pods
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.policies[1].value
+          value: 6
+        documentIndex: 1
+      - equal:
+          path: spec.behavior.scaleUp.selectPolicy
+          value: Max
+        documentIndex: 1
+
+  - it: should not create HPA when autoscaling is disabled
+    set:
+      api.enabled: true
+      api.autoscaling.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 4
+      - isKind:
+          of: Deployment
+        documentIndex: 0

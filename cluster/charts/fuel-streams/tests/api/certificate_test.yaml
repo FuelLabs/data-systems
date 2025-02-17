@@ -1,0 +1,148 @@
+suite: Testing Api Certificate and Ingress
+templates:
+  - api/certificate.yaml
+tests:
+  - it: should not create certificate and ingress when api is disabled
+    set:
+      api:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create certificate and ingress when service.host is not set
+    set:
+      api:
+        enabled: true
+        service:
+          host: ""
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create only ingress when TLS is disabled
+    set:
+      api:
+        enabled: true
+        service:
+          host: "test.example.com"
+          port: 8080
+        tls:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.rules[0].host
+          value: test.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 8080
+
+  - it: should create both certificate and ingress when TLS is enabled
+    set:
+      api:
+        enabled: true
+        service:
+          host: "test.example.com"
+          port: 8080
+        tls:
+          enabled: true
+          certificate:
+            duration: 2160h
+            renewBefore: 360h
+            issuer: letsencrypt-prod
+            config:
+              annotations:
+                custom.annotation: "test"
+              labels:
+                custom.label: "test"
+          ingress:
+            config:
+              annotations:
+                custom.annotation: "test"
+              labels:
+                custom.label: "test"
+    asserts:
+      - hasDocuments:
+          count: 2
+      # Certificate tests
+      - isKind:
+          of: Certificate
+        documentIndex: 0
+      - equal:
+          path: spec.dnsNames[0]
+          value: test.example.com
+        documentIndex: 0
+      - equal:
+          path: spec.issuerRef.name
+          value: letsencrypt-prod
+        documentIndex: 0
+      - equal:
+          path: spec.duration
+          value: 2160h
+        documentIndex: 0
+      # Certificate metadata tests
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-api-cert
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: api-cert
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: api
+        documentIndex: 0
+      # Ingress tests
+      - isKind:
+          of: Ingress
+        documentIndex: 1
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: test.example.com
+        documentIndex: 1
+      # Ingress metadata tests
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-api-cert-validator
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: api-cert-validator
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: api
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["custom.label"]
+          value: test
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations["custom.annotation"]
+          value: test
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.class"]
+          value: nginx
+        documentIndex: 1
