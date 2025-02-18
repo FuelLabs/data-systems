@@ -2,6 +2,7 @@ pub mod blocks;
 pub mod inputs;
 mod msg_payload;
 pub mod outputs;
+pub mod queryable;
 pub mod receipts;
 pub mod transactions;
 pub mod utxos;
