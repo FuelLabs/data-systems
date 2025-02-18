@@ -3830,6 +3830,7 @@ name = "fuel-streams-domains"
 version = "0.0.25"
 dependencies = [
  "async-trait",
+ "chrono",
  "fuel-core",
  "fuel-core-types 0.40.4",
  "fuel-streams-store",
@@ -3839,8 +3840,10 @@ dependencies = [
  "fuel-vm 0.58.2",
  "netlink-proto",
  "rayon",
+ "sea-query",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
  "test-case",
  "thiserror 2.0.11",
@@ -5256,6 +5259,17 @@ dependencies = [
  "portable-atomic",
  "unicode-width",
  "web-time",
+]
+
+[[package]]
+name = "inherent"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0122b7114117e64a63ac49f752a5ca4624d534c7b1c7de796ac196381cd2d947"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
 ]
 
 [[package]]
@@ -8421,6 +8435,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "sea-query"
+version = "0.32.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b731192738ebf56d20580fc8ba2d23940333befe900b04dd08a26a77cd056f02"
+dependencies = [
+ "inherent",
+ "sea-query-derive",
+]
+
+[[package]]
+name = "sea-query-derive"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9834af2c4bd8c5162f00c89f1701fb6886119a88062cf76fe842ea9e232b9839"
+dependencies = [
+ "darling 0.20.10",
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8890,6 +8928,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a007b6936676aa9ab40207cde35daab0a04b823be8ae004368c0793b96a61e0"
 dependencies = [
  "bytes",
+ "chrono",
  "crc",
  "crossbeam-queue",
  "either",
@@ -8947,7 +8986,9 @@ dependencies = [
  "serde_json",
  "sha2 0.10.8",
  "sqlx-core",
+ "sqlx-mysql",
  "sqlx-postgres",
+ "sqlx-sqlite",
  "syn 2.0.96",
  "tempfile",
  "tokio",
@@ -8965,6 +9006,7 @@ dependencies = [
  "bitflags 2.8.0",
  "byteorder",
  "bytes",
+ "chrono",
  "crc",
  "digest 0.10.7",
  "dotenvy",
@@ -8985,6 +9027,7 @@ dependencies = [
  "percent-encoding",
  "rand",
  "rsa",
+ "serde",
  "sha1",
  "sha2 0.10.8",
  "smallvec",
@@ -9005,6 +9048,7 @@ dependencies = [
  "base64 0.22.1",
  "bitflags 2.8.0",
  "byteorder",
+ "chrono",
  "crc",
  "dotenvy",
  "etcetera",
@@ -9039,6 +9083,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f85ca71d3a5b24e64e1d08dd8fe36c6c95c339a896cc33068148906784620540"
 dependencies = [
  "atoi",
+ "chrono",
  "flume",
  "futures-channel",
  "futures-core",
@@ -9048,6 +9093,7 @@ dependencies = [
  "libsqlite3-sys",
  "log",
  "percent-encoding",
+ "serde",
  "serde_urlencoded",
  "sqlx-core",
  "tracing",
@@ -9225,6 +9271,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-data-parser",
+ "fuel-streams-domains",
  "fuel-streams-store",
  "fuel-tx 0.58.2",
  "fuel-vm 0.58.2",
