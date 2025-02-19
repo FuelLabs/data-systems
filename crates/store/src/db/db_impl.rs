@@ -61,7 +61,7 @@ impl Default for DbConnectionOpts {
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
             statement_timeout: Some(Duration::from_secs(120)),
-            acquire_timeout: Some(Duration::from_secs(10)),
+            acquire_timeout: Some(Duration::from_secs(120)),
             idle_timeout: Some(Duration::from_secs(240)),
             min_connections: Some((*DB_POOL_SIZE as u32) / 4),
         }

@@ -27,7 +27,10 @@ pub use fuel_core_types::{
             Genesis as FuelCoreGenesis,
         },
         header::BlockHeader as FuelCoreBlockHeader,
-        primitives::BlockId as FuelCoreBlockId,
+        primitives::{
+            BlockId as FuelCoreBlockId,
+            DaBlockHeight as FuelCoreDaBlockHeight,
+        },
         SealedBlock as FuelCoreSealedBlock,
     },
     fuel_asm::Word as FuelCoreWord,

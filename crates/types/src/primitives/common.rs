@@ -5,35 +5,6 @@ macro_rules! common_wrapper_type {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $wrapper_type(pub $inner_type);
 
-        // Custom serialization
-        impl serde::Serialize for $wrapper_type {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                if serializer.is_human_readable() {
-                    serializer.serialize_str(&format!("0x{}", self.0))
-                } else {
-                    self.0.serialize(serializer)
-                }
-            }
-        }
-
-        // Custom deserialization using FromStr
-        impl<'de> serde::Deserialize<'de> for $wrapper_type {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                if deserializer.is_human_readable() {
-                    let s = String::deserialize(deserializer)?;
-                    s.parse().map_err(serde::de::Error::custom)
-                } else {
-                    Ok($wrapper_type(<$inner_type>::deserialize(deserializer)?))
-                }
-            }
-        }
-
         impl From<$inner_type> for $wrapper_type {
             fn from(value: $inner_type) -> Self {
                 $wrapper_type(value)
@@ -107,6 +78,35 @@ macro_rules! generate_byte_type_wrapper {
     ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
         $crate::common_wrapper_type!($wrapper_type, $inner_type);
 
+        // Custom serialization
+        impl serde::Serialize for $wrapper_type {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                if serializer.is_human_readable() {
+                    serializer.serialize_str(&format!("0x{}", self.0))
+                } else {
+                    self.0.serialize(serializer)
+                }
+            }
+        }
+
+        // Custom deserialization using FromStr
+        impl<'de> serde::Deserialize<'de> for $wrapper_type {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                if deserializer.is_human_readable() {
+                    let s = String::deserialize(deserializer)?;
+                    s.parse().map_err(serde::de::Error::custom)
+                } else {
+                    Ok($wrapper_type(<$inner_type>::deserialize(deserializer)?))
+                }
+            }
+        }
+
         impl From<[u8; $byte_size]> for $wrapper_type {
             fn from(value: [u8; $byte_size]) -> Self {
                 $wrapper_type(<$inner_type>::from(value))
@@ -139,6 +139,91 @@ macro_rules! generate_byte_type_wrapper {
     // Pattern without byte_size
     ($wrapper_type:ident, $inner_type:ty) => {
         $crate::common_wrapper_type!($wrapper_type, $inner_type);
+
+        impl serde::Serialize for $wrapper_type {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                if serializer.is_human_readable() {
+                    serializer.serialize_str(&format!("0x{}", self.0))
+                } else {
+                    self.0.serialize(serializer)
+                }
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $wrapper_type {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                use serde::Deserialize;
+                struct WrapperVisitor;
+
+                impl<'de> serde::de::Visitor<'de> for WrapperVisitor {
+                    type Value = $wrapper_type;
+
+                    fn expecting(
+                        &self,
+                        formatter: &mut std::fmt::Formatter,
+                    ) -> std::fmt::Result {
+                        write!(formatter, "a string, bytes, sequence, or null")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        value.parse().map_err(serde::de::Error::custom)
+                    }
+
+                    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        Ok($wrapper_type(<$inner_type>::from(v.to_vec())))
+                    }
+
+                    fn visit_seq<A>(
+                        self,
+                        mut seq: A,
+                    ) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::SeqAccess<'de>,
+                    {
+                        let mut bytes = Vec::new();
+                        while let Some(byte) = seq.next_element()? {
+                            bytes.push(byte);
+                        }
+                        Ok($wrapper_type(<$inner_type>::from(bytes)))
+                    }
+
+                    fn visit_none<E>(self) -> Result<Self::Value, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        Ok($wrapper_type::zeroed())
+                    }
+
+                    fn visit_some<D>(
+                        self,
+                        deserializer: D,
+                    ) -> Result<Self::Value, D::Error>
+                    where
+                        D: serde::Deserializer<'de>,
+                    {
+                        $wrapper_type::deserialize(deserializer)
+                    }
+                }
+
+                if deserializer.is_human_readable() {
+                    deserializer.deserialize_any(WrapperVisitor)
+                } else {
+                    Ok($wrapper_type(<$inner_type>::deserialize(deserializer)?))
+                }
+            }
+        }
 
         impl From<Vec<u8>> for $wrapper_type {
             fn from(value: Vec<u8>) -> Self {

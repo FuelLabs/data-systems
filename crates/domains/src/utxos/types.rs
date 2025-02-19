@@ -9,7 +9,7 @@ pub struct Utxo {
     pub recipient: Option<Address>,
     pub nonce: Option<Nonce>,
     pub data: Option<HexData>,
-    pub amount: Option<u64>,
+    pub amount: Option<Amount>,
     pub tx_id: TxId,
 }
 
@@ -59,7 +59,7 @@ impl MockUtxo {
             recipient: Some(recipient),
             nonce: None,
             data: None,
-            amount: Some(amount),
+            amount: Some(amount.into()),
             tx_id: TxId::default(),
         }
     }
@@ -71,7 +71,7 @@ impl MockUtxo {
             recipient: Some(recipient),
             nonce: Some(Nonce::default()),
             data: None,
-            amount: Some(amount),
+            amount: Some(amount.into()),
             tx_id: TxId::default(),
         }
     }

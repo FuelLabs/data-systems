@@ -47,9 +47,9 @@ pub struct Transaction {
     pub is_upgrade: bool,
     pub is_upload: bool,
     pub maturity: Option<u32>,
-    pub mint_amount: Option<u64>,
+    pub mint_amount: Option<Amount>,
     pub mint_asset_id: Option<AssetId>,
-    pub mint_gas_price: Option<u64>,
+    pub mint_gas_price: Option<Amount>,
     pub policies: Option<FuelCorePolicies>,
     pub proof_set: Vec<Bytes32>,
     pub raw_payload: HexData,
@@ -57,7 +57,7 @@ pub struct Transaction {
     pub salt: Option<Salt>,
     pub script: Option<HexData>,
     pub script_data: Option<HexData>,
-    pub script_gas_limit: Option<u64>,
+    pub script_gas_limit: Option<GasAmount>,
     pub status: TransactionStatus,
     pub storage_slots: Vec<StorageSlot>,
     pub subsection_index: Option<u16>,
@@ -390,9 +390,9 @@ impl Transaction {
             is_upgrade: transaction.is_upgrade(),
             is_upload: transaction.is_upload(),
             maturity,
-            mint_amount,
+            mint_amount: mint_amount.map(|amount| amount.into()),
             mint_asset_id,
-            mint_gas_price,
+            mint_gas_price: mint_gas_price.map(|amount| amount.into()),
             policies,
             proof_set,
             raw_payload,
@@ -400,7 +400,7 @@ impl Transaction {
             salt,
             script,
             script_data,
-            script_gas_limit,
+            script_gas_limit: script_gas_limit.map(|amount| amount.into()),
             status: status.to_owned(),
             storage_slots,
             subsection_index,
@@ -496,7 +496,7 @@ impl MockTransaction {
     ) -> Transaction {
         tx.script = Some(HexData(script.into()));
         tx.script_data = Some(HexData(script_data.into()));
-        tx.script_gas_limit = Some(1000);
+        tx.script_gas_limit = Some(1000.into());
         tx
     }
 
@@ -521,9 +521,9 @@ impl MockTransaction {
             tx_pointer: TxPointer::default(),
             utxo_id: UtxoId::default(),
         });
-        tx.mint_amount = Some(1000);
+        tx.mint_amount = Some(1000.into());
         tx.mint_asset_id = Some(AssetId::default());
-        tx.mint_gas_price = Some(100);
+        tx.mint_gas_price = Some(100.into());
         tx.tx_pointer = Some(TxPointer::default());
         tx
     }

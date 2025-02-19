@@ -1,3 +1,4 @@
+use super::BlockHeight;
 use crate::fuel_core::*;
 
 #[derive(
@@ -14,14 +15,14 @@ use crate::fuel_core::*;
     serde::Serialize,
 )]
 pub struct TxPointer {
-    block_height: FuelCoreBlockHeight,
+    block_height: BlockHeight,
     tx_index: u16,
 }
 
 impl From<FuelCoreTxPointer> for TxPointer {
     fn from(value: FuelCoreTxPointer) -> Self {
         Self {
-            block_height: value.block_height(),
+            block_height: value.block_height().into(),
             tx_index: value.tx_index(),
         }
     }
