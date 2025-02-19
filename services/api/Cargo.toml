@@ -1,0 +1,64 @@
+[package]
+name = "sv-api"
+description = "Fuel library for retrieving data from a fuel indexed database"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish = false
+
+[[bin]]
+name = "sv-api"
+path = "src/main.rs"
+
+[dependencies]
+actix-web.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+clap.workspace = true
+displaydoc.workspace = true
+dotenvy.workspace = true
+fuel-data-parser.workspace = true
+fuel-streams-store.workspace = true
+fuel-tx.workspace = true
+fuel-vm.workspace = true
+fuel-web-utils.workspace = true
+num_cpus.workspace = true
+prometheus = { version = "0.13", features = ["process"] }
+serde.workspace = true
+serde_json.workspace = true
+sqlx = { workspace = true, default-features = false, features = [
+  "any",
+  "macros",
+  "postgres",
+  "runtime-tokio",
+  "tls-native-tls",
+] }
+thiserror = "2.0"
+time = { version = "0.3", features = ["serde"] }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+validator = { version = "0.19", features = ["derive"] }
+
+# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
+[target.'cfg(target_os = "linux")'.dependencies]
+netlink-proto = { version = "=0.11.3", optional = true }
+
+# in an individual package Cargo.toml
+[package.metadata.cargo-machete]
+ignored = ["fuel-data-parser"]
+
+[features]
+default = []
+test-helpers = ["fuel-data-parser/test-helpers"]
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }
+
+[target.x86_64-unknown-linux-musl.dependencies]
+openssl = { version = "0.10.68", features = ["vendored"] }

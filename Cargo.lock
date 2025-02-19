@@ -3805,7 +3805,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "async-stream",
- "bytes",
  "dotenvy",
  "fuel-core",
  "fuel-message-broker",
@@ -3846,7 +3845,6 @@ dependencies = [
  "test-case",
  "thiserror 2.0.11",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3863,13 +3861,11 @@ dependencies = [
 name = "fuel-streams-store"
 version = "0.0.25"
 dependencies = [
- "async-stream",
  "async-trait",
  "dotenvy",
  "fuel-data-parser",
  "fuel-streams-subject",
  "fuel-streams-types",
- "futures",
  "serde",
  "sqlx",
  "test-case",
@@ -9217,6 +9213,36 @@ name = "subtle-ng"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
+
+[[package]]
+name = "sv-api"
+version = "0.0.25"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "async-trait",
+ "clap 4.5.27",
+ "displaydoc",
+ "dotenvy",
+ "fuel-data-parser",
+ "fuel-streams-store",
+ "fuel-tx 0.58.2",
+ "fuel-vm 0.58.2",
+ "fuel-web-utils",
+ "netlink-proto",
+ "num_cpus",
+ "openssl",
+ "prometheus",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.11",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "validator",
+]
 
 [[package]]
 name = "sv-consumer"

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use fuel_streams_store::{
     db::{DbError, DbResult},
-    record::{DataEncoder, Record, RecordEntity, RecordPacket},
+    record::{DataEncoder, Record, RecordEntity},
 };
 use sqlx::PgExecutor;
 
@@ -20,13 +20,12 @@ impl Record for Receipt {
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,
-        packet: &RecordPacket,
+        db_item: Self::DbItem,
     ) -> DbResult<Self::DbItem>
     where
         'c: 'e,
         E: PgExecutor<'c>,
     {
-        let db_item = ReceiptDbItem::try_from(packet)?;
         let record = sqlx::query_as::<_, ReceiptDbItem>(
             "WITH upsert AS (
                 INSERT INTO receipts (

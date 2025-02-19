@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_store::db::Db;
+use fuel_streams_store::{
+    db::Db,
+    record::{RecordEntity, RecordPacket},
+};
 
-use super::Stream;
+use super::{Stream, StreamError};
 use crate::types::*;
 
 #[derive(Clone, Debug)]
@@ -38,5 +41,33 @@ impl FuelStreams {
 
     pub fn broker(&self) -> Arc<NatsMessageBroker> {
         self.msg_broker.clone()
+    }
+
+    pub async fn publish_by_entity(
+        &self,
+        packet: Arc<RecordPacket>,
+    ) -> Result<(), StreamError> {
+        let subject = (*packet).subject_str();
+        let subject_id = (*packet).subject_id();
+        let entity = RecordEntity::from_subject_id(&subject_id)?;
+        let response = StreamResponse::try_from(&*packet)?;
+        match entity {
+            RecordEntity::Block => {
+                self.blocks.publish(&subject, &response).await
+            }
+            RecordEntity::Transaction => {
+                self.transactions.publish(&subject, &response).await
+            }
+            RecordEntity::Input => {
+                self.inputs.publish(&subject, &response).await
+            }
+            RecordEntity::Receipt => {
+                self.receipts.publish(&subject, &response).await
+            }
+            RecordEntity::Output => {
+                self.outputs.publish(&subject, &response).await
+            }
+            RecordEntity::Utxo => self.utxos.publish(&subject, &response).await,
+        }
     }
 }

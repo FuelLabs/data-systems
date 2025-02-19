@@ -14,7 +14,7 @@ use fuel_web_utils::{
     shutdown::shutdown_broker_with_timeout,
     telemetry::Telemetry,
 };
-use futures::StreamExt;
+use futures::{future::try_join_all, StreamExt};
 use tokio::{
     sync::Semaphore,
     task::{JoinError, JoinSet},
@@ -22,9 +22,8 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 
 use super::{
-    block_stats::BlockStats,
-    process_store::handle_store_insertions,
-    process_stream::handle_stream_publishes,
+    block_stats::{ActionType, BlockStats},
+    retry::RetryService,
 };
 use crate::{errors::ConsumerError, metrics::Metrics, FuelStores};
 
@@ -122,7 +121,6 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode(&payload).await?.arc();
         let packets = Self::build_packets(&msg_payload);
-
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
@@ -131,13 +129,9 @@ impl BlockExecutor {
             let fuel_stores = fuel_stores.clone();
             async move {
                 let _permit = semaphore.acquire().await?;
-                let result = handle_store_insertions(
-                    &db,
-                    &fuel_stores,
-                    &packets,
-                    &msg_payload,
-                )
-                .await;
+                let result =
+                    handle_stores(&db, &fuel_stores, &packets, &msg_payload)
+                        .await;
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -149,12 +143,8 @@ impl BlockExecutor {
             let fuel_streams = fuel_streams.clone();
             async move {
                 let _permit = semaphore.acquire_owned().await?;
-                let result = handle_stream_publishes(
-                    &fuel_streams,
-                    &packets,
-                    &msg_payload,
-                )
-                .await;
+                let result =
+                    handle_streams(&fuel_streams, &packets, &msg_payload).await;
                 Ok(ProcessResult::Stream(result))
             }
         });
@@ -174,7 +164,6 @@ impl BlockExecutor {
         match result {
             Ok(Ok(ProcessResult::Store(store_result))) => {
                 let store_stats = store_result?;
-
                 if let Some(metrics) = telemetry.base_metrics() {
                     metrics.update_from_stats(&store_stats)
                 }
@@ -205,5 +194,49 @@ impl BlockExecutor {
             .chain(tx_packets)
             .collect::<Vec<_>>();
         Arc::new(packets)
+    }
+}
+
+async fn handle_stores(
+    db: &Arc<Db>,
+    fuel_stores: &Arc<FuelStores>,
+    packets: &Arc<Vec<RecordPacket>>,
+    msg_payload: &Arc<MsgPayload>,
+) -> Result<BlockStats, ConsumerError> {
+    let block_height = msg_payload.block_height();
+    let stats = BlockStats::new(block_height.to_owned(), ActionType::Store);
+    let retry_service = RetryService::default();
+    let result = retry_service
+        .with_retry("store_insertions", || async {
+            let mut tx = db.pool.begin().await?;
+            for packet in packets.iter() {
+                fuel_stores.insert_by_entity(&mut tx, packet).await?;
+            }
+            tx.commit().await?;
+            Ok(packets.len())
+        })
+        .await;
+
+    match result {
+        Ok(packet_count) => Ok(stats.finish(packet_count)),
+        Err(e) => Ok(stats.finish_with_error(e)),
+    }
+}
+
+async fn handle_streams(
+    fuel_streams: &Arc<FuelStreams>,
+    packets: &Arc<Vec<RecordPacket>>,
+    msg_payload: &Arc<MsgPayload>,
+) -> Result<BlockStats, ConsumerError> {
+    let block_height = msg_payload.block_height();
+    let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
+    let publish_futures = packets.iter().map(|packet| {
+        let packet = packet.to_owned();
+        fuel_streams.publish_by_entity(packet.arc())
+    });
+
+    match try_join_all(publish_futures).await {
+        Ok(_) => Ok(stats.finish(packets.len())),
+        Err(e) => Ok(stats.finish_with_error(ConsumerError::from(e))),
     }
 }

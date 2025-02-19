@@ -22,16 +22,18 @@ use pretty_assertions::assert_eq;
 use sv_consumer::{BlockExecutor, FuelStores};
 
 async fn verify_blocks(
+    prefix: &str,
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let block_subject = BlocksSubject::new()
         .with_height(Some(msg_payload.block_height()))
         .dyn_arc();
-
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let blocks = fuel_stores
         .blocks
-        .find_many_by_subject(&block_subject, QueryOptions::default())
+        .find_many_by_subject(&block_subject, options)
         .await?;
     assert!(!blocks.is_empty(), "Expected blocks to be inserted");
 
@@ -43,16 +45,18 @@ async fn verify_blocks(
 }
 
 async fn verify_transactions(
+    prefix: &str,
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let tx_subject = TransactionsSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
-
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let transactions = fuel_stores
         .transactions
-        .find_many_by_subject(&tx_subject, QueryOptions::default())
+        .find_many_by_subject(&tx_subject, options)
         .await?;
     assert!(
         !transactions.is_empty(),
@@ -95,16 +99,18 @@ async fn verify_transactions(
 }
 
 async fn verify_receipts(
+    prefix: &str,
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
     let receipts_subject = ReceiptsSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
-
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let receipts = fuel_stores
         .receipts
-        .find_many_by_subject(&receipts_subject, QueryOptions::default())
+        .find_many_by_subject(&receipts_subject, options)
         .await?;
 
     let expected_receipts_count: usize = msg_payload
@@ -123,6 +129,7 @@ async fn verify_receipts(
 }
 
 async fn verify_inputs_outputs_utxos(
+    prefix: &str,
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
@@ -142,9 +149,11 @@ async fn verify_inputs_outputs_utxos(
     let inputs_subject = InputsSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let inputs = fuel_stores
         .inputs
-        .find_many_by_subject(&inputs_subject, QueryOptions::default())
+        .find_many_by_subject(&inputs_subject, options.clone())
         .await?;
     assert_eq!(
         inputs.len(),
@@ -158,7 +167,7 @@ async fn verify_inputs_outputs_utxos(
         .dyn_arc();
     let outputs = fuel_stores
         .outputs
-        .find_many_by_subject(&outputs_subject, QueryOptions::default())
+        .find_many_by_subject(&outputs_subject, options.clone())
         .await?;
     assert_eq!(
         outputs.len(),
@@ -172,7 +181,7 @@ async fn verify_inputs_outputs_utxos(
         .dyn_arc();
     let utxos = fuel_stores
         .utxos
-        .find_many_by_subject(&utxos_subject, QueryOptions::default())
+        .find_many_by_subject(&utxos_subject, options)
         .await?;
     assert_eq!(
         utxos.len(),
@@ -219,13 +228,13 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     });
 
     // Give some time for processing
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Verify all records were inserted correctly
-    verify_blocks(&fuel_stores, &msg_payload).await?;
-    verify_transactions(&fuel_stores, &msg_payload).await?;
-    verify_receipts(&fuel_stores, &msg_payload).await?;
-    verify_inputs_outputs_utxos(&fuel_stores, &msg_payload).await?;
+    verify_blocks(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_transactions(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_receipts(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_inputs_outputs_utxos(&prefix, &fuel_stores, &msg_payload).await?;
 
     Ok(())
 }

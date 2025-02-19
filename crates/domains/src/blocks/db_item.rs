@@ -2,11 +2,17 @@ use std::cmp::Ordering;
 
 use fuel_streams_store::{
     db::{DbError, DbItem},
-    record::{DataEncoder, RecordEntity, RecordPacket, RecordPacketError},
+    record::{
+        DataEncoder,
+        RecordEntity,
+        RecordPacket,
+        RecordPacketError,
+        RecordPointer,
+    },
 };
-use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
+use super::BlocksSubject;
 use crate::Subjects;
 
 #[derive(
@@ -36,8 +42,8 @@ impl DbItem for BlockDbItem {
         self.subject.clone()
     }
 
-    fn get_block_height(&self) -> BlockHeight {
-        self.block_height.into()
+    fn subject_id(&self) -> String {
+        BlocksSubject::ID.to_string()
     }
 }
 
@@ -45,6 +51,7 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
+            .subject_payload
             .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
@@ -70,5 +77,17 @@ impl PartialOrd for BlockDbItem {
 impl Ord for BlockDbItem {
     fn cmp(&self, other: &Self) -> Ordering {
         self.block_height.cmp(&other.block_height)
+    }
+}
+
+impl From<BlockDbItem> for RecordPointer {
+    fn from(val: BlockDbItem) -> Self {
+        RecordPointer {
+            block_height: val.block_height.into(),
+            tx_index: None,
+            input_index: None,
+            output_index: None,
+            receipt_index: None,
+        }
     }
 }

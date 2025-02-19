@@ -1,18 +1,6 @@
-use std::sync::Arc;
-
-use fuel_streams_core::{
-    outputs::{
-        OutputsChangeSubject,
-        OutputsCoinSubject,
-        OutputsContractCreatedSubject,
-        OutputsContractSubject,
-        OutputsVariableSubject,
-    },
-    subjects::IntoSubject,
-    types::{Output, Transaction},
-};
+use fuel_streams_core::types::{Output, Transaction};
 use fuel_streams_domains::{
-    outputs::{types::MockOutput, OutputDbItem},
+    outputs::{types::MockOutput, DynOutputSubject, OutputDbItem},
     transactions::types::MockTransaction,
     Subjects,
 };
@@ -21,7 +9,7 @@ use fuel_streams_store::{
     store::Store,
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
-use fuel_streams_types::{ContractId, TxId};
+use fuel_streams_types::TxId;
 use pretty_assertions::assert_eq;
 
 async fn insert_output(output: Output) -> anyhow::Result<()> {
@@ -41,7 +29,8 @@ async fn insert_output(output: Output) -> anyhow::Result<()> {
         packet
     );
 
-    let db_record = store.insert_record(&packet).await?;
+    let db_item = db_item.unwrap();
+    let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
     Ok(())
@@ -63,54 +52,15 @@ fn create_packets(
         .into_iter()
         .enumerate()
         .map(|(output_index, output)| {
-            let subject: Arc<dyn IntoSubject> = match &output {
-                Output::Coin(coin) => OutputsCoinSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    output_index: Some(output_index as u32),
-                    to: Some(coin.to.to_owned()),
-                    asset: Some(coin.asset_id.to_owned()),
-                }
-                .arc(),
-                Output::Contract(_) => OutputsContractSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    output_index: Some(output_index as u32),
-                    contract: Some(ContractId::default()),
-                }
-                .arc(),
-                Output::Change(change) => OutputsChangeSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    output_index: Some(output_index as u32),
-                    to: Some(change.to.to_owned()),
-                    asset: Some(change.asset_id.to_owned()),
-                }
-                .arc(),
-                Output::Variable(variable) => OutputsVariableSubject {
-                    block_height: Some(1.into()),
-                    tx_id: Some(tx_id.clone()),
-                    tx_index: Some(0),
-                    output_index: Some(output_index as u32),
-                    to: Some(variable.to.to_owned()),
-                    asset: Some(variable.asset_id.to_owned()),
-                }
-                .arc(),
-                Output::ContractCreated(contract_created) => {
-                    OutputsContractCreatedSubject {
-                        block_height: Some(1.into()),
-                        tx_id: Some(tx_id.clone()),
-                        tx_index: Some(0),
-                        output_index: Some(output_index as u32),
-                        contract: Some(contract_created.contract_id.to_owned()),
-                    }
-                    .arc()
-                }
-            };
-            output.to_packet(&subject).with_namespace(prefix)
+            let subject = DynOutputSubject::from((
+                &output,
+                1.into(),
+                tx_id.clone(),
+                0,
+                output_index as u32,
+                tx,
+            ));
+            output.to_packet(&subject.into()).with_namespace(prefix)
         })
         .collect()
 }
@@ -156,8 +106,11 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
     ]);
     let packets = create_packets(&tx, &tx_id, &prefix);
     for packet in packets {
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
+        let subject = subject.into();
         let _ = store
-            .find_many_by_subject(&packet.subject, QueryOptions::default())
+            .find_many_by_subject(&subject, QueryOptions::default())
             .await?;
     }
 
@@ -183,11 +136,10 @@ async fn test_output_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let packets = create_packets(&tx, &tx_id, &prefix);
 
     for (idx, packet) in packets.into_iter().enumerate() {
-        let subject: Subjects = packet.clone().try_into()?;
+        let payload = packet.subject_payload.clone();
+        let subject: Subjects = payload.try_into()?;
         let db_item = OutputDbItem::try_from(&packet)?;
-
-        // Assert store insert
-        let inserted = store.insert_record(&packet).await?;
+        let inserted = store.insert_record(&db_item).await?;
         assert_eq!(db_item, inserted);
 
         // Verify common fields

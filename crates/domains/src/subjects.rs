@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use fuel_streams_store::record::RecordPacket;
 use fuel_streams_subject::subject::{
     IntoSubject,
     SubjectPayload,
@@ -91,19 +90,6 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
 
 macro_rules! impl_try_from_subjects {
     ($(($subject_type:ty, $variant:ident)),+ $(,)?) => {
-        // Implementation for RecordPacket
-        impl TryFrom<RecordPacket> for Subjects {
-            type Error = SubjectsError;
-            fn try_from(packet: RecordPacket) -> Result<Self, Self::Error> {
-                $(
-                    if let Ok(subject) = packet.subject_matches::<$subject_type>() {
-                        return Ok(Subjects::$variant(subject));
-                    }
-                )+
-                Err(SubjectsError::UnknownSubject(packet.subject_str()))
-            }
-        }
-
         // Implementation for SubjectPayload
         impl TryFrom<SubjectPayload> for Subjects {
             type Error = SubjectsError;

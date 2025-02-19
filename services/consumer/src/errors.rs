@@ -1,6 +1,9 @@
 use fuel_streams_core::StreamError;
 use fuel_streams_domains::MsgPayloadError;
-use fuel_streams_store::{record::RecordPacketError, store::StoreError};
+use fuel_streams_store::{
+    record::{RecordEntityError, RecordPacketError},
+    store::StoreError,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConsumerError {
@@ -32,6 +35,8 @@ pub enum ConsumerError {
     MessageBrokerClient(#[from] fuel_message_broker::MessageBrokerError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+    #[error(transparent)]
+    RecordEntity(#[from] RecordEntityError),
     #[error("Database operation timed out")]
     DatabaseTimeout,
 }

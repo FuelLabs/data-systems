@@ -1,5 +1,8 @@
-use fuel_streams_core::{server::DeliverPolicy, subjects::*, types::Block};
-use fuel_streams_store::record::{DataEncoder, Record};
+use fuel_streams_core::{
+    server::DeliverPolicy,
+    subjects::*,
+    types::StreamResponse,
+};
 use fuel_streams_test::{
     create_multiple_records,
     create_random_db_name,
@@ -14,7 +17,7 @@ const NATS_URL: &str = "nats://localhost:4222";
 async fn test_streaming_live_data() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let stream = setup_stream(NATS_URL, &prefix).await?;
-    let data = create_multiple_records(10, 0);
+    let data = create_multiple_records(10, 0, &prefix);
 
     tokio::spawn({
         let data = data.clone();
@@ -29,8 +32,8 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
             while let Some((index, record)) = subscriber.next().await {
                 let record = record.unwrap();
                 let expected_block = &data[index].1;
-                let decoded_block = Block::decode(&record.1).await.unwrap();
-                assert_eq!(decoded_block, *expected_block);
+                let block = record.payload.as_block().unwrap();
+                assert_eq!((*block).clone(), *expected_block);
                 if index == data.len() - 1 {
                     break;
                 }
@@ -38,10 +41,11 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         }
     });
 
-    for (subject, block) in data {
-        let packet = block.to_packet(&subject);
+    for record in data {
+        let packet = record.2.to_owned().with_namespace(&prefix);
         let subject = packet.subject_str();
-        stream.publish(&subject, packet.value.into()).await?;
+        let response = StreamResponse::try_from(&packet)?;
+        stream.publish(&subject, &response).await?;
     }
 
     Ok(())
