@@ -20,7 +20,7 @@ impl From<&FuelCoreOutput> for Output {
                 asset_id,
                 to,
             } => Output::Coin(OutputCoin {
-                amount: *amount,
+                amount: (*amount).into(),
                 asset_id: asset_id.into(),
                 to: to.into(),
             }),
@@ -32,7 +32,7 @@ impl From<&FuelCoreOutput> for Output {
                 asset_id,
                 to,
             } => Output::Change(OutputChange {
-                amount: *amount,
+                amount: (*amount).into(),
                 asset_id: asset_id.into(),
                 to: to.into(),
             }),
@@ -41,7 +41,7 @@ impl From<&FuelCoreOutput> for Output {
                 asset_id,
                 to,
             } => Output::Variable(OutputVariable {
-                amount: *amount,
+                amount: (*amount).into(),
                 asset_id: asset_id.into(),
                 to: to.into(),
             }),
@@ -59,7 +59,7 @@ impl From<&FuelCoreOutput> for Output {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputCoin {
-    pub amount: u64,
+    pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
@@ -67,7 +67,7 @@ pub struct OutputCoin {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputChange {
-    pub amount: u64,
+    pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
@@ -75,7 +75,7 @@ pub struct OutputChange {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputVariable {
-    pub amount: u64,
+    pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
@@ -110,7 +110,7 @@ pub struct MockOutput;
 impl MockOutput {
     pub fn coin(amount: u64) -> Output {
         Output::Coin(OutputCoin {
-            amount,
+            amount: amount.into(),
             asset_id: AssetId::default(),
             to: Address::default(),
         })
@@ -126,7 +126,7 @@ impl MockOutput {
 
     pub fn change(amount: u64) -> Output {
         Output::Change(OutputChange {
-            amount,
+            amount: amount.into(),
             asset_id: AssetId::default(),
             to: Address::default(),
         })
@@ -134,7 +134,7 @@ impl MockOutput {
 
     pub fn variable(amount: u64) -> Output {
         Output::Variable(OutputVariable {
-            amount,
+            amount: amount.into(),
             asset_id: AssetId::default(),
             to: Address::default(),
         })

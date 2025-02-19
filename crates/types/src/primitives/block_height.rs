@@ -24,6 +24,7 @@ impl From<FuelCoreBlockHeight> for BlockHeight {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use serde_json;
 
     use super::*;
 
@@ -86,5 +87,55 @@ mod tests {
     fn test_block_height_display() {
         let height = BlockHeight::from(100u32);
         assert_eq!(format!("{}", height), "100");
+    }
+
+    #[test]
+    fn test_block_height_serialization() {
+        let height = BlockHeight(7938487056892322000);
+        let serialized = serde_json::to_string(&height).unwrap();
+        let deserialized: BlockHeight =
+            serde_json::from_str(&serialized).unwrap();
+        assert_eq!(height, deserialized);
+
+        // Test backwards compatibility with number format
+        let json_number = "7938487056892322000";
+        let deserialized: BlockHeight =
+            serde_json::from_str(json_number).unwrap();
+        assert_eq!(deserialized.0, 7938487056892322000);
+    }
+
+    #[test]
+    fn test_block_height_option_conversions() {
+        // From Option to BlockHeight
+        let some_value = Some(42u64);
+        let height: BlockHeight = some_value.into();
+        assert_eq!(height.0, 42);
+
+        let none_value: Option<u64> = None;
+        let height: BlockHeight = none_value.into();
+        assert_eq!(height.0, 0);
+
+        // From BlockHeight to Option
+        let height = BlockHeight(42);
+        let option: Option<u64> = height.into();
+        assert_eq!(option, Some(42));
+    }
+
+    #[test]
+    fn test_block_height_null_deserialization() {
+        // Test null
+        let json_null = "null";
+        let deserialized: BlockHeight =
+            serde_json::from_str(json_null).unwrap();
+        assert_eq!(deserialized, BlockHeight::default());
+
+        // Test JSON with null field
+        let json_obj = r#"{"height": null}"#;
+        #[derive(serde::Deserialize)]
+        struct Test {
+            height: BlockHeight,
+        }
+        let deserialized: Test = serde_json::from_str(json_obj).unwrap();
+        assert_eq!(deserialized.height, BlockHeight::default());
     }
 }

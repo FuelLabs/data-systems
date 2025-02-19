@@ -63,7 +63,7 @@ mod tests {
 
         // Test serialization
         let json = serde_json::to_string(&subscription).unwrap();
-        let expected = r#"{"id":"2-test_user-test_subject:{}","deliverPolicy":{"fromBlock":{"blockHeight":123}},"payload":{"subject":"test_subject","params":{}}}"#;
+        let expected = r#"{"id":"2-test_user-test_subject:{}","deliverPolicy":{"fromBlock":{"blockHeight":"123"}},"payload":{"subject":"test_subject","params":{}}}"#;
         assert_eq!(json, expected);
 
         // Test deserialization
