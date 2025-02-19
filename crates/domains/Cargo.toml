@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 async-trait.workspace = true
+chrono.workspace = true
 fuel-core.workspace = true
 fuel-core-types.workspace = true
 fuel-streams-store.workspace = true
@@ -20,6 +21,7 @@ fuel-streams-types.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 rayon.workspace = true
+sea-query = "0.32.2"
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
@@ -31,6 +33,8 @@ tokio.workspace = true
 netlink-proto = { version = "=0.11.3", optional = true }
 
 [dev-dependencies]
+pretty_assertions.workspace = true
+serde_urlencoded = "0.7.1"
 test-case.workspace = true
 
 [features]
