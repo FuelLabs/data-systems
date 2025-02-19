@@ -280,7 +280,6 @@ webserver:
     port: 8080
     type: ClusterIP
     host: "stream-staging.fuel.network"
-    loadBalancerClass: service.k8s.aws/nlb
     config:
       annotations: {}
       labels: {}
@@ -354,7 +353,6 @@ api:
     port: 8080
     type: ClusterIP
     host: "stream-staging.fuel.network"
-    loadBalancerClass: service.k8s.aws/nlb
     config:
       annotations: {}
       labels: {}

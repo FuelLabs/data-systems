@@ -78,14 +78,24 @@ impl<'de> Deserialize<'de> for DeliverPolicy {
             String(String),
             Object {
                 #[serde(rename = "fromBlock")]
-                from_block: BlockHeight,
+                from_block: BlockHeightU64,
+            },
+            ObjectString {
+                #[serde(rename = "fromBlock")]
+                from_block: BlockHeightStr,
             },
         }
 
         #[derive(Deserialize)]
-        struct BlockHeight {
+        struct BlockHeightU64 {
             #[serde(rename = "blockHeight")]
             block_height: u64,
+        }
+
+        #[derive(Deserialize)]
+        struct BlockHeightStr {
+            #[serde(rename = "blockHeight")]
+            block_height: String,
         }
 
         let helper = PolicyHelper::deserialize(deserializer)?;
@@ -96,6 +106,14 @@ impl<'de> Deserialize<'de> for DeliverPolicy {
             PolicyHelper::Object { from_block } => {
                 Ok(DeliverPolicy::FromBlock {
                     block_height: from_block.block_height.into(),
+                })
+            }
+            PolicyHelper::ObjectString { from_block } => {
+                Ok(DeliverPolicy::FromBlock {
+                    block_height: from_block
+                        .block_height
+                        .parse::<BlockHeight>()
+                        .map_err(serde::de::Error::custom)?,
                 })
             }
         }
@@ -170,6 +188,6 @@ mod tests {
             block_height: 123.into(),
         };
         let json = serde_json::to_string(&policy).unwrap();
-        assert_eq!(json, r#"{"fromBlock":{"blockHeight":123}}"#);
+        assert_eq!(json, r#"{"fromBlock":{"blockHeight":"123"}}"#);
     }
 }
