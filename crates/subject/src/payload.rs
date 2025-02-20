@@ -8,6 +8,10 @@ pub enum SubjectPayloadError {
     Serialization(String),
     #[error("Failed to deserialize payload: {0}")]
     Deserialization(String),
+    #[error("Invalid subject parameters: {0}")]
+    InvalidParams(String),
+    #[error("Expected JSON object")]
+    ExpectedJsonObject,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]

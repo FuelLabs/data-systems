@@ -27,6 +27,7 @@ pub struct TransactionsSubject {
     )]
     pub tx_status: Option<TransactionStatus>,
     #[subject(description = "The type of transaction (create, mint, script)")]
+    #[subject(alias = "type")]
     pub kind: Option<TransactionKind>,
 }
 

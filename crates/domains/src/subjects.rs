@@ -95,7 +95,9 @@ macro_rules! impl_try_from_subjects {
             type Error = SubjectsError;
             fn try_from(payload: SubjectPayload) -> Result<Self, Self::Error> {
                 match payload.subject.as_str() {
-                    $(<$subject_type>::ID => Ok(Subjects::$variant(payload.into())),)+
+                    $(<$subject_type>::ID => {
+                        Ok(Subjects::$variant(payload.try_into()?))
+                    },)+
                     _ => Err(SubjectsError::UnknownSubject(payload.subject))
                 }
             }

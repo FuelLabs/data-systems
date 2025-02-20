@@ -17,6 +17,7 @@ use syn::{
 pub struct FieldAttributes {
     pub sql_column: Option<String>,
     pub description: Option<String>,
+    pub alias: Option<String>,
 }
 
 impl FieldAttributes {
@@ -69,6 +70,7 @@ impl FieldAttributes {
         match name.as_str() {
             "sql_column" => self.sql_column = Some(value),
             "description" => self.description = Some(value),
+            "alias" => self.alias = Some(value),
             _ => {}
         }
     }
@@ -87,6 +89,8 @@ impl FieldAttributes {
                                 attrs.sql_column = Some(lit_str.value());
                             } else if name_value.path.is_ident("description") {
                                 attrs.description = Some(lit_str.value());
+                            } else if name_value.path.is_ident("alias") {
+                                attrs.alias = Some(lit_str.value());
                             }
                         }
                     }

@@ -95,7 +95,7 @@ pub trait Record: RecordEncoder + 'static {
             query_builder.push(" ASC");
         }
 
-        tracing::debug!("Query built: {}", &query_builder.sql());
+        tracing::info!("Query built: {}", &query_builder.sql());
         query_builder
     }
 }

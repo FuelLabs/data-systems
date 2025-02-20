@@ -30,8 +30,13 @@ pub fn subject_derive(input: TokenStream) -> TokenStream {
         &field_types,
     );
 
-    let subject_expanded =
-        subject::expanded(name, &field_names, &field_types, &input.attrs);
+    let subject_expanded = subject::expanded(
+        name,
+        &field_names,
+        &field_types,
+        &field_infos,
+        &input.attrs,
+    );
 
     quote! {
         #subject_expanded
