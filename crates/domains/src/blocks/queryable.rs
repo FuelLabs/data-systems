@@ -3,7 +3,7 @@ use std::{
     ops::Deref,
 };
 
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Duration, Utc};
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use sea_query::{
@@ -16,100 +16,10 @@ use sea_query::{
     Query,
     SelectStatement,
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-use super::{types::*, BlockDbItem};
+use super::{block_timestamp::BlockTimestamp, types::*, BlockDbItem};
 use crate::queryable::Queryable;
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TimestampWrapper(DateTime<Utc>);
-
-// Custom serialization to convert DateTime to i64
-impl Serialize for TimestampWrapper {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.timestamp().serialize(serializer)
-    }
-}
-
-// Custom deserialization to convert i64 to DateTime
-impl<'de> Deserialize<'de> for TimestampWrapper {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let timestamp = i64::deserialize(deserializer)?;
-        Ok(TimestampWrapper(
-            Utc.timestamp_opt(timestamp, 0)
-                .single()
-                .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))?,
-        ))
-    }
-}
-
-// Implement Display to always show as integer
-impl fmt::Display for TimestampWrapper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.timestamp())
-    }
-}
-
-// Add convenience methods
-impl TimestampWrapper {
-    pub fn new(dt: DateTime<Utc>) -> Self {
-        Self(dt)
-    }
-
-    pub fn into_inner(self) -> DateTime<Utc> {
-        self.0
-    }
-
-    pub fn as_inner(&self) -> &DateTime<Utc> {
-        &self.0
-    }
-
-    pub fn to_seconds(&self) -> i64 {
-        self.0.timestamp()
-    }
-
-    pub fn from_secs(secs: i64) -> Self {
-        Self(
-            Utc.timestamp_opt(secs, 0)
-                .single()
-                .expect("invalid timestamp"),
-        )
-    }
-
-    pub fn try_from_secs(secs: i64) -> Option<Self> {
-        Utc.timestamp_opt(secs, 0).single().map(Self)
-    }
-}
-
-impl Default for TimestampWrapper {
-    fn default() -> Self {
-        Self(Utc::now())
-    }
-}
-
-impl From<DateTime<Utc>> for TimestampWrapper {
-    fn from(dt: DateTime<Utc>) -> Self {
-        Self(dt)
-    }
-}
-
-impl From<TimestampWrapper> for DateTime<Utc> {
-    fn from(wrapper: TimestampWrapper) -> Self {
-        wrapper.0
-    }
-}
-
-impl AsRef<DateTime<Utc>> for TimestampWrapper {
-    fn as_ref(&self) -> &DateTime<Utc> {
-        &self.0
-    }
-}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TimeRange {
@@ -214,7 +124,7 @@ enum Blocks {
 pub struct BlocksQuery {
     pub producer: Option<Address>,
     pub height: Option<BlockHeight>,
-    pub timestamp: Option<TimestampWrapper>,
+    pub timestamp: Option<BlockTimestamp>,
     pub time_range: Option<TimeRange>,
     pub after: Option<i32>,
     pub before: Option<i32>,
@@ -227,10 +137,7 @@ impl From<&Block> for BlocksQuery {
         BlocksQuery {
             producer: Some(block.producer.to_owned()),
             height: Some(block.height.to_owned()),
-            timestamp: Some(TimestampWrapper::new(
-                Utc.timestamp_opt(block.header.time.clone().to_unix(), 0)
-                    .unwrap(),
-            )),
+            timestamp: Some(BlockTimestamp::from(block)),
             time_range: Some(TimeRange::default()),
             ..Default::default()
         }
@@ -256,8 +163,9 @@ impl BlocksQuery {
         }
 
         if let Some(timestamp) = &self.timestamp {
-            condition = condition
-                .add(Expr::col(Blocks::Timestamp).gte(timestamp.to_seconds()));
+            condition = condition.add(
+                Expr::col(Blocks::Timestamp).gte(timestamp.unix_timestamp()),
+            );
         }
 
         // Add time range condition
@@ -333,7 +241,10 @@ mod test {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        blocks::queryable::{BlocksQuery, TimeRange, TimestampWrapper},
+        blocks::{
+            queryable::{BlocksQuery, TimeRange},
+            BlockTimestamp,
+        },
         queryable::Queryable,
     };
 
@@ -386,7 +297,7 @@ mod test {
         let after_timestamp_query = BlocksQuery {
             producer: None,
             height: None,
-            timestamp: Some(TimestampWrapper::from_secs(TEST_TIMESTAMP)),
+            timestamp: Some(BlockTimestamp::from_secs(TEST_TIMESTAMP)),
             time_range: None,
             after: None,
             before: None,
@@ -402,7 +313,7 @@ mod test {
         let before_timestamp_query = BlocksQuery {
             producer: None,
             height: None,
-            timestamp: Some(TimestampWrapper::from_secs(TEST_TIMESTAMP)),
+            timestamp: Some(BlockTimestamp::from_secs(TEST_TIMESTAMP)),
             time_range: None,
             after: None,
             before: None,
@@ -457,7 +368,7 @@ mod test {
         assert_eq!(query.time_range, Some(TimeRange::OneHour));
         assert_eq!(
             query.timestamp,
-            Some(TimestampWrapper::from_secs(TEST_TIMESTAMP))
+            Some(BlockTimestamp::from_secs(TEST_TIMESTAMP))
         );
         assert_eq!(query.after, Some(AFTER_POINTER));
         assert_eq!(query.before, Some(BEFORE_POINTER));

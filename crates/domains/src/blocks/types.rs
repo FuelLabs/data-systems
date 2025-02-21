@@ -194,4 +194,10 @@ impl MockBlock {
 
         Block::new(&block, Consensus::default(), Vec::new(), Address::default())
     }
+
+    pub fn build_with_timestamp(height: u32, timestamp: i64) -> Block {
+        let mut block = Self::build(height);
+        block.header.time = FuelCoreTai64Timestamp::from_unix(timestamp);
+        block
+    }
 }

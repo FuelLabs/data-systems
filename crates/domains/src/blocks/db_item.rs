@@ -13,7 +13,7 @@ use fuel_streams_store::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::BlocksSubject;
+use super::{Block, BlockTimestamp, BlocksSubject};
 use crate::Subjects;
 
 #[derive(
@@ -58,13 +58,16 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
+        let block =
+            Block::decode_json(&packet.value).expect("Failed to decode block");
+        let timestamp = BlockTimestamp::from(&block);
         match subject {
             Subjects::Block(subject) => Ok(BlockDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
                 block_height: subject.height.unwrap().into(),
                 producer_address: subject.producer.unwrap().to_string(),
-                timestamp: Utc::now(),
+                timestamp: timestamp.into_inner(),
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

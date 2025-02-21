@@ -44,6 +44,7 @@ async fn store_can_record_blocks() -> anyhow::Result<()> {
     assert_eq!(db_record.producer_address, db_item.producer_address);
     assert_eq!(db_record.subject, db_item.subject);
     assert_eq!(db_record.value, db_item.value);
+    assert_eq!(db_record.timestamp, db_item.timestamp);
     assert_eq!(db_record.subject, packet.subject_str());
     assert_eq!(Block::from_db_item(&db_record)?, block);
 
