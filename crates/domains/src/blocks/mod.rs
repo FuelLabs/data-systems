@@ -1,5 +1,6 @@
 mod db_item;
 mod packets;
+pub mod queryable;
 mod record_impl;
 pub mod subjects;
 pub mod types;

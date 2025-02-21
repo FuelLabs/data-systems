@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use chrono::{DateTime, Utc};
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{
@@ -23,6 +24,7 @@ pub struct BlockDbItem {
     pub value: Vec<u8>,
     pub block_height: i64,
     pub producer_address: String,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl DataEncoder for BlockDbItem {
@@ -62,6 +64,7 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
                 value: packet.value.to_owned(),
                 block_height: subject.height.unwrap().into(),
                 producer_address: subject.producer.unwrap().to_string(),
+                timestamp: Utc::now(),
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

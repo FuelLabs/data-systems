@@ -28,12 +28,13 @@ impl Record for Block {
     {
         let record = sqlx::query_as::<_, BlockDbItem>(
             "WITH upsert AS (
-                INSERT INTO blocks (subject, producer_address, block_height, value)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO blocks (subject, producer_address, block_height, value, timestamp)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (subject) DO UPDATE SET
                     producer_address = EXCLUDED.producer_address,
                     block_height = EXCLUDED.block_height,
-                    value = EXCLUDED.value
+                    value = EXCLUDED.value,
+                    timestamp = NOW()
                 RETURNING *
             )
             SELECT * FROM upsert"
@@ -42,6 +43,7 @@ impl Record for Block {
         .bind(db_item.producer_address)
         .bind(db_item.block_height)
         .bind(db_item.value)
+        .bind(db_item.timestamp)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

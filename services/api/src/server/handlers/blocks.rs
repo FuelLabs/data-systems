@@ -1,7 +1,10 @@
-use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse, Result};
+use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse};
+use fuel_streams_domains::{
+    blocks::{queryable::BlocksQuery, BlockDbItem},
+    queryable::Queryable,
+};
 use fuel_web_utils::server::middlewares::api_key::ApiKey;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
 
 use crate::server::state::ServerState;
 
@@ -31,30 +34,18 @@ impl From<Error> for actix_web::Error {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetBlocksTestRequest {
-    pub id: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBlocksTestResponse {
-    value: i32,
-}
-
-async fn select_one(tx: &Pool<Postgres>) -> Result<i32, sqlx::Error> {
-    let value = sqlx::query_scalar::<_, i32>("SELECT 1")
-        .fetch_one(tx)
-        .await?;
-    Ok(value)
+pub struct GetBlocksResponse {
+    data: Vec<BlockDbItem>,
 }
 
 pub async fn get_blocks(
     req: HttpRequest,
-    req_body: web::Json<GetBlocksTestRequest>,
+    req_query: web::Query<BlocksQuery>,
     state: web::Data<ServerState>,
 ) -> actix_web::Result<HttpResponse> {
     let _api_key = ApiKey::from_req(&req)?;
-    let _req = req_body.into_inner();
-    let one = select_one(&state.db.pool).await.map_err(Error::Sqlx)?;
-    Ok(HttpResponse::Ok().json(GetBlocksTestResponse { value: one }))
+    let query = req_query.into_inner();
+    let db_records =
+        query.execute(&state.db.pool).await.map_err(Error::Sqlx)?;
+    Ok(HttpResponse::Ok().json(GetBlocksResponse { data: db_records }))
 }
