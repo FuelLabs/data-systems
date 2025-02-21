@@ -10,6 +10,7 @@ use serde::{
 use crate::fuel_core::FuelCoreTransaction;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TransactionKind {
     #[default]
     Create,
@@ -200,7 +201,7 @@ mod tests {
     fn test_serialize() {
         let kind = TransactionKind::Mint;
         let serialized = serde_json::to_value(kind).unwrap();
-        assert_eq!(serialized, json!("Mint"));
+        assert_eq!(serialized, json!("mint"));
     }
     #[test]
     fn test_deserialize_whole_json_lowercase() {

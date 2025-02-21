@@ -13,6 +13,7 @@ use crate::fuel_core::{
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TransactionStatus {
     Failed,
     Submitted,
@@ -226,7 +227,7 @@ mod tests {
     fn test_serialize() {
         let status = TransactionStatus::SqueezedOut;
         let serialized = serde_json::to_value(status).unwrap();
-        assert_eq!(serialized, json!("SqueezedOut"));
+        assert_eq!(serialized, json!("squeezed_out"));
     }
 
     #[test]

@@ -66,13 +66,7 @@ pub fn expanded<'a>(
         let name_str = name.to_string();
         let value_getter = if let Some(alias) = &field_info.attributes.alias {
             quote! {
-                if let Some(value) = obj.get(#name_str) {
-                    Some(value)
-                } else if let Some(value) = obj.get(#alias) {
-                    Some(value)
-                } else {
-                    None
-                }
+                obj.get(#name_str).or_else(|| obj.get(#alias))
             }
         } else {
             quote! {
@@ -81,16 +75,14 @@ pub fn expanded<'a>(
         };
 
         quote! {
-            let #name = if let Some(value) = #value_getter {
-                if value.is_null() {
-                    None
-                } else {
-                    let str_val = value.to_string().trim_matches('"').to_string();
-                    Some(str_val)
-                }
-            } else {
-                None
-            };
+            let #name = #value_getter
+                .and_then(|value| {
+                    if value.is_null() {
+                        None
+                    } else {
+                        Some(value.to_string().trim_matches('"').to_string())
+                    }
+                });
         }
     });
 
@@ -188,9 +180,8 @@ pub fn expanded<'a>(
                 #validate_fields
                 #(#parse_fields)*
 
-                Ok(Self::build(
-                    #(#field_names.and_then(|v| v.parse().ok()),)*
-                ))
+                let payload = Self::build(#(#field_names.and_then(|v| v.parse().ok()),)*);
+                Ok(payload)
             }
         }
     }

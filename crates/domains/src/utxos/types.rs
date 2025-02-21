@@ -14,6 +14,7 @@ pub struct Utxo {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UtxoType {
     Contract,
     Coin,
