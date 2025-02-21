@@ -159,7 +159,7 @@ fn subject_derive_roundtrip() {
     let payload = original_subject.to_payload();
 
     // Convert back to subject
-    let reconstructed_subject = TestSubject::from(payload);
+    let reconstructed_subject = TestSubject::try_from(payload).unwrap();
 
     // Verify the roundtrip conversion preserved all data
     assert_eq!(original_subject.field1, reconstructed_subject.field1);
@@ -169,7 +169,8 @@ fn subject_derive_roundtrip() {
     // Test with empty subject
     let original_empty_subject = TestSubject::new();
     let empty_payload = original_empty_subject.to_payload();
-    let reconstructed_empty_subject = TestSubject::from(empty_payload);
+    let reconstructed_empty_subject =
+        TestSubject::try_from(empty_payload).unwrap();
 
     assert_eq!(
         original_empty_subject.field1,
@@ -345,4 +346,89 @@ fn subject_derive_schema_with_descriptions() {
     };
 
     assert_eq!(schema, expected_schema);
+}
+
+#[test]
+fn subject_derive_invalid_params() {
+    // Test with invalid JSON params
+    let invalid_payload = SubjectPayload {
+        subject: "test".to_string(),
+        params: json!("not an object"),
+    };
+    assert!(TestSubject::try_from(invalid_payload).is_err());
+
+    // Test with missing required fields
+    let missing_fields_payload = SubjectPayload {
+        subject: "test".to_string(),
+        params: json!({"unknown_field": "value"}),
+    };
+    assert!(TestSubject::try_from(missing_fields_payload).is_err());
+}
+
+#[test]
+fn subject_derive_with_alias() {
+    #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
+    #[subject(id = "test")]
+    #[subject(entity = "Test")]
+    #[subject(query_all = "test.>")]
+    #[subject(format = "test.{field1}.{field2}.{field3}")]
+    struct TestSubjectWithAlias {
+        #[subject(sql_column = "field_id1")]
+        #[subject(alias = "first_field")]
+        pub field1: Option<String>,
+        #[subject(sql_column = "field_id2")]
+        #[subject(alias = "number")]
+        pub field2: Option<u32>,
+        #[subject(sql_column = "field_id3")]
+        pub field3: Option<String>,
+    }
+
+    // Test creating subject using regular field names
+    let payload1 = SubjectPayload {
+        subject: "test".to_string(),
+        params: json!({
+            "field1": "foo",
+            "field2": 55,
+            "field3": "bar"
+        }),
+    };
+    let subject1 = TestSubjectWithAlias::try_from(payload1).unwrap();
+    assert_eq!(subject1.parse(), "test.foo.55.bar");
+    assert_eq!(
+        subject1.to_sql_where(),
+        Some(
+            "field_id1 = 'foo' AND field_id2 = '55' AND field_id3 = 'bar'"
+                .to_string()
+        )
+    );
+
+    // Test creating subject using alias names
+    let payload2 = SubjectPayload {
+        subject: "test".to_string(),
+        params: json!({
+            "first_field": "foo",
+            "number": 55,
+        }),
+    };
+    let subject2 = TestSubjectWithAlias::try_from(payload2).unwrap();
+    assert_eq!(subject2.parse(), "test.foo.55.*");
+    assert_eq!(
+        subject2.to_sql_where(),
+        Some("field_id1 = 'foo' AND field_id2 = '55'".to_string())
+    );
+
+    // Test that both regular field names and aliases work together
+    let payload3 = SubjectPayload {
+        subject: "test".to_string(),
+        params: json!({
+            "first_field": "foo",
+            "number": 55,
+        }),
+    };
+    let subject3 = TestSubjectWithAlias::try_from(payload3).unwrap();
+    assert_eq!(subject3.parse(), "test.foo.55.*");
+    assert_eq!(
+        subject3.to_sql_where(),
+        Some("field_id1 = 'foo' AND field_id2 = '55'".to_string())
+    );
 }

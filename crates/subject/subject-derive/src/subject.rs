@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Ident, Type};
 
-use crate::attrs::SubjectAttrs;
+use crate::{attrs::SubjectAttrs, fields::FieldInfo};
 
 fn create_with_methods<'a>(
     field_names: &'a [&'a Ident],
@@ -43,6 +43,7 @@ pub fn expanded<'a>(
     name: &'a Ident,
     field_names: &'a [&'a Ident],
     field_types: &'a [&'a syn::Type],
+    field_infos: &'a [FieldInfo<'a>],
     attrs: &'a [syn::Attribute],
 ) -> TokenStream {
     let with_methods = create_with_methods(field_names, field_types);
@@ -52,13 +53,73 @@ pub fn expanded<'a>(
     let entity = crate::attrs::subject_attr("entity", attrs);
     let crate_path = quote!(fuel_streams_subject::subject);
 
-    // Get custom_where if it exists, otherwise use None
     let custom_where = if let Some(extra) =
         SubjectAttrs::from_attributes(attrs).get("custom_where")
     {
         quote! { Some(#extra) }
     } else {
         quote! { None }
+    };
+
+    let parse_fields = field_infos.iter().map(|field_info| {
+        let name = field_info.ident;
+        let name_str = name.to_string();
+        let value_getter = if let Some(alias) = &field_info.attributes.alias {
+            quote! {
+                obj.get(#name_str).or_else(|| obj.get(#alias))
+            }
+        } else {
+            quote! {
+                obj.get(#name_str)
+            }
+        };
+
+        quote! {
+            let #name = #value_getter
+                .and_then(|value| {
+                    if value.is_null() {
+                        None
+                    } else {
+                        Some(value.to_string().trim_matches('"').to_string())
+                    }
+                });
+        }
+    });
+
+    let validate_fields = {
+        let field_name_strings: Vec<String> =
+            field_names.iter().map(|f| f.to_string()).collect();
+        let aliases: Vec<String> = field_infos
+            .iter()
+            .filter_map(|f| f.attributes.alias.as_ref())
+            .map(|a| a.to_string())
+            .collect();
+
+        quote! {
+            fn validate_obj(obj: &serde_json::Map<String, serde_json::Value>) -> Result<(), #crate_path::SubjectPayloadError> {
+                let valid_keys: std::collections::HashSet<String> = obj.keys()
+                    .map(|k| k.to_string())
+                    .collect();
+
+                let valid_field_names = [#(#field_name_strings),*];
+                let valid_aliases = [#(#aliases),*];
+                for key in valid_keys.iter() {
+                    let is_valid = valid_field_names.iter()
+                        .chain(valid_aliases.iter())
+                        .any(|valid| valid == key);
+
+                    if !is_valid {
+                        return Err(#crate_path::SubjectPayloadError::InvalidParams(format!(
+                            "Unknown field in params: {}",
+                            key
+                        )));
+                    }
+                }
+                Ok(())
+            }
+
+            validate_obj(obj)?;
+        }
     };
 
     quote! {
@@ -108,9 +169,19 @@ pub fn expanded<'a>(
             }
         }
 
-        impl From<#crate_path::SubjectPayload> for #name {
-            fn from(payload: #crate_path::SubjectPayload) -> Self {
-                #crate_path::serde_json::from_value(payload.params).expect(&format!("Failed to deserialize {}", stringify!(#name)))
+        impl TryFrom<#crate_path::SubjectPayload> for #name {
+            type Error = #crate_path::SubjectPayloadError;
+            fn try_from(payload: #crate_path::SubjectPayload) -> Result<Self, Self::Error> {
+                let obj = match payload.params.as_object() {
+                    Some(obj) => obj,
+                    None => return Err(#crate_path::SubjectPayloadError::ExpectedJsonObject),
+                };
+
+                #validate_fields
+                #(#parse_fields)*
+
+                let payload = Self::build(#(#field_names.and_then(|v| v.parse().ok()),)*);
+                Ok(payload)
             }
         }
     }

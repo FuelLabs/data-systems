@@ -72,7 +72,7 @@ async fn test_subject_matching() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
     let packet = block.to_packet(&subject);
-    let matched_subject: BlocksSubject = packet.subject_payload.into();
+    let matched_subject: BlocksSubject = packet.subject_payload.try_into()?;
     assert_eq!(matched_subject.parse(), subject.parse());
     Ok(())
 }

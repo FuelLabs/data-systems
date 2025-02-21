@@ -95,7 +95,9 @@ macro_rules! impl_try_from_subjects {
             type Error = SubjectsError;
             fn try_from(payload: SubjectPayload) -> Result<Self, Self::Error> {
                 match payload.subject.as_str() {
-                    $(<$subject_type>::ID => Ok(Subjects::$variant(payload.into())),)+
+                    $(<$subject_type>::ID => {
+                        Ok(Subjects::$variant(payload.try_into()?))
+                    },)+
                     _ => Err(SubjectsError::UnknownSubject(payload.subject))
                 }
             }
@@ -171,7 +173,7 @@ mod tests {
                 "tx_index": 0,
                 "input_index": 1,
                 "owner": "0x0303030303030303030303030303030303030303030303030303030303030303",
-                "asset_id": "0x0404040404040404040404040404040404040404040404040404040404040404"
+                "asset": "0x0404040404040404040404040404040404040404040404040404040404040404"
             }),
         };
 
