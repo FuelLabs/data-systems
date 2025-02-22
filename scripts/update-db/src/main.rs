@@ -13,8 +13,14 @@ struct BlockRecord {
     value: Vec<u8>,
 }
 
+#[derive(Debug, sqlx::FromRow)]
+struct HeightRange {
+    min_height: i64,
+    max_height: i64,
+}
+
 const QUERY_BATCH_SIZE: i64 = 10000;
-const UPDATE_BATCH_SIZE: usize = 1000;
+const UPDATE_BATCH_SIZE: usize = 10000;
 
 async fn fetch_block_chunk(
     pool: &PgPool,
@@ -86,26 +92,6 @@ async fn update_block_range(
     Ok(updates.len())
 }
 
-#[derive(Debug, sqlx::FromRow)]
-struct BlockHeightRange {
-    min_height: Option<i64>,
-    max_height: Option<i64>,
-}
-
-async fn get_block_height_range(pool: &PgPool) -> Result<(i64, i64)> {
-    let range = sqlx::query_as::<_, BlockHeightRange>(
-        "SELECT MIN(block_height) as min_height, MAX(block_height) as max_height
-         FROM blocks
-         WHERE timestamp IS NULL"
-    )
-    .fetch_one(pool)
-    .await?;
-
-    let min_height = range.min_height.unwrap_or(0);
-    let max_height = range.max_height.unwrap_or(0);
-    Ok((min_height, max_height))
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let database_url =
@@ -115,33 +101,49 @@ async fn main() -> Result<()> {
         .await
         .expect("Failed to connect to database");
 
-    let (min_height, max_height) = get_block_height_range(&pool).await?;
+    // Get the minimum height with null timestamp and maximum height overall
+    let HeightRange { min_height, max_height } = sqlx::query_as::<_, HeightRange>(
+        "SELECT
+            (SELECT MIN(block_height) FROM blocks WHERE timestamp IS NULL) as min_height,
+            (SELECT MAX(block_height) FROM blocks) as max_height"
+    )
+    .fetch_one(&pool)
+    .await?;
+
     println!(
         "Processing blocks from height {} to {}",
         min_height, max_height
     );
 
-    let semaphore = Arc::new(Semaphore::new(100));
+    let semaphore = Arc::new(Semaphore::new(30));
     let mut join_set = JoinSet::new();
-    let mut current_height = min_height;
-    while current_height <= max_height {
-        let chunk_end = (current_height + QUERY_BATCH_SIZE).min(max_height + 1);
+
+    // Calculate total chunks needed starting from min_height
+    let total_chunks = ((max_height - min_height + 1) + QUERY_BATCH_SIZE - 1)
+        / QUERY_BATCH_SIZE;
+
+    // Spawn tasks for all chunks, starting from min_height
+    for chunk_idx in 0..total_chunks {
+        let chunk_start = min_height + (chunk_idx * QUERY_BATCH_SIZE);
+        let chunk_end = (chunk_start + QUERY_BATCH_SIZE).min(max_height + 1);
+
         let pool = pool.clone();
         let permit = semaphore.clone().acquire_owned().await?;
         join_set.spawn(async move {
             let updated =
-                update_block_range(&pool, current_height, chunk_end).await?;
+                update_block_range(&pool, chunk_start, chunk_end).await?;
             println!(
                 "Completed chunk {}-{}, updated {} blocks",
-                current_height,
+                chunk_start,
                 chunk_end - 1,
                 updated
             );
-            drop(permit); // Release the permit when done
+            drop(permit);
             Ok::<usize, anyhow::Error>(updated)
         });
-        current_height = chunk_end;
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Small delay to prevent overwhelming the database with initial connections
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
     }
 
     // Wait for remaining tasks to complete
