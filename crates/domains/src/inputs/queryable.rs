@@ -54,6 +54,11 @@ pub struct InputsQuery {
     pub input_index: Option<i32>,
     pub input_type: Option<InputType>,
     pub block_height: Option<BlockHeight>,
+    pub owner_id: Option<String>, // for coin inputs
+    pub asset_id: Option<String>, // for coin inputs
+    pub contract_id: Option<String>, // for contract inputs
+    pub sender_address: Option<String>, // for message inputs
+    pub recipient_address: Option<String>, // for message inputs
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
@@ -67,6 +72,10 @@ impl InputsQuery {
 
     pub fn set_tx_id(&mut self, tx_id: &str) {
         self.tx_id = Some(tx_id.into());
+    }
+
+    pub fn set_input_type(&mut self, input_type: Option<InputType>) {
+        self.input_type = input_type;
     }
 
     pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
@@ -99,6 +108,37 @@ impl InputsQuery {
         if let Some(input_type) = &self.input_type {
             condition = condition
                 .add(Expr::col(Inputs::InputType).eq(input_type.to_string()));
+        }
+
+        // unique conditions
+        if let Some(owner_id) = &self.owner_id {
+            condition = condition
+                .add(Expr::col(Inputs::InputOwnerId).eq(owner_id.clone()));
+        }
+
+        if let Some(asset_id) = &self.asset_id {
+            condition = condition
+                .add(Expr::col(Inputs::InputAssetId).eq(asset_id.clone()));
+        }
+
+        if let Some(contract_id) = &self.contract_id {
+            condition = condition.add(
+                Expr::col(Inputs::InputContractId).eq(contract_id.clone()),
+            );
+        }
+
+        if let Some(sender_address) = &self.sender_address {
+            condition = condition.add(
+                Expr::col(Inputs::InputSenderAddress)
+                    .eq(sender_address.clone()),
+            );
+        }
+
+        if let Some(recipient_address) = &self.recipient_address {
+            condition = condition.add(
+                Expr::col(Inputs::InputRecipientAddress)
+                    .eq(recipient_address.clone()),
+            );
         }
 
         condition

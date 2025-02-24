@@ -1,6 +1,8 @@
 pub mod blocks;
+pub mod inputs;
 pub mod transactions;
 use actix_web::{http::StatusCode, web};
+use fuel_streams_domains::inputs::InputType;
 use fuel_streams_store::db::DbItem;
 use fuel_web_utils::server::{
     api::with_prefixed_route,
@@ -101,6 +103,61 @@ pub fn create_services(
                             handlers::transactions::get_transaction_outputs(req, path, query, state)
                         }
                     }))
+        );
+
+        // inputs
+        cfg.service(
+            web::scope(&with_prefixed_route("inputs"))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .route(
+                    "",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::inputs::get_inputs(
+                                req, query, state, None,
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/message",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::inputs::get_inputs(
+                                req,
+                                query,
+                                state,
+                                Some(InputType::Message),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/contract",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::inputs::get_inputs(
+                                req,
+                                query,
+                                state,
+                                Some(InputType::Contract),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/coin",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::inputs::get_inputs(
+                                req,
+                                query,
+                                state,
+                                Some(InputType::Coin),
+                            )
+                        }
+                    }),
+                ),
         );
     }
 }
