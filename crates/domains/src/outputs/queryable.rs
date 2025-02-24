@@ -50,6 +50,9 @@ pub struct OutputsQuery {
     pub output_index: Option<i32>,
     pub output_type: Option<OutputType>,
     pub block_height: Option<BlockHeight>,
+    pub to_address: Option<String>, // for coin, change, and variable outputs
+    pub asset_id: Option<String>,   // for coin, change, and variable outputs
+    pub contract_id: Option<String>, /* for contract and contract_created outputs */
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
@@ -63,6 +66,10 @@ impl OutputsQuery {
 
     pub fn set_tx_id(&mut self, tx_id: &str) {
         self.tx_id = Some(tx_id.into());
+    }
+
+    pub fn set_output_type(&mut self, output_type: Option<OutputType>) {
+        self.output_type = output_type;
     }
 
     pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
@@ -96,6 +103,24 @@ impl OutputsQuery {
         if let Some(output_type) = &self.output_type {
             condition = condition.add(
                 Expr::col(Outputs::OutputType).eq(output_type.to_string()),
+            );
+        }
+
+        // unique conditions
+        if let Some(to_address) = &self.to_address {
+            condition = condition.add(
+                Expr::col(Outputs::OutputToAddress).eq(to_address.clone()),
+            );
+        }
+
+        if let Some(asset_id) = &self.asset_id {
+            condition = condition
+                .add(Expr::col(Outputs::OutputAssetId).eq(asset_id.clone()));
+        }
+
+        if let Some(contract_id) = &self.contract_id {
+            condition = condition.add(
+                Expr::col(Outputs::OutputContractId).eq(contract_id.clone()),
             );
         }
 

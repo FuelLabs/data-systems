@@ -1,8 +1,9 @@
 pub mod blocks;
 pub mod inputs;
+pub mod outputs;
 pub mod transactions;
 use actix_web::{http::StatusCode, web};
-use fuel_streams_domains::inputs::InputType;
+use fuel_streams_domains::{inputs::InputType, outputs::OutputType};
 use fuel_streams_store::db::DbItem;
 use fuel_web_utils::server::{
     api::with_prefixed_route,
@@ -154,6 +155,87 @@ pub fn create_services(
                                 query,
                                 state,
                                 Some(InputType::Coin),
+                            )
+                        }
+                    }),
+                ),
+        );
+
+        // outputs
+        cfg.service(
+            web::scope(&with_prefixed_route("outputs"))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .route(
+                    "",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req, query, state, None,
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/change",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req,
+                                query,
+                                state,
+                                Some(OutputType::Change),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/coin",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req,
+                                query,
+                                state,
+                                Some(OutputType::Coin),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/contract",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req,
+                                query,
+                                state,
+                                Some(OutputType::Contract),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/contract-created",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req,
+                                query,
+                                state,
+                                Some(OutputType::ContractCreated),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/variable",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::outputs::get_outputs(
+                                req,
+                                query,
+                                state,
+                                Some(OutputType::Variable),
                             )
                         }
                     }),
