@@ -107,6 +107,7 @@ impl TryFrom<&str> for TimeRange {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Iden)]
 enum Blocks {
     #[iden = "blocks"]
@@ -117,6 +118,8 @@ enum Blocks {
     Height,
     #[iden = "timestamp"]
     Timestamp,
+    #[iden = "value"]
+    Value,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq)]
