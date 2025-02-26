@@ -51,10 +51,6 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 validator = { version = "0.19", features = ["derive"] }
 
-# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
-[target.'cfg(target_os = "linux")'.dependencies]
-netlink-proto = { version = "=0.11.3", optional = true }
-
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
 ignored = ["fuel-data-parser"]
