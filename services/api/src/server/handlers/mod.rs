@@ -2,6 +2,7 @@ pub mod blocks;
 pub mod inputs;
 pub mod outputs;
 pub mod transactions;
+pub mod utxos;
 use actix_web::{http::StatusCode, web};
 use fuel_streams_domains::{inputs::InputType, outputs::OutputType};
 use fuel_streams_store::db::DbItem;
@@ -237,6 +238,20 @@ pub fn create_services(
                                 state,
                                 Some(OutputType::Variable),
                             )
+                        }
+                    }),
+                ),
+        );
+
+        // utxos
+        cfg.service(
+            web::scope(&with_prefixed_route("utxos"))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .route(
+                    "",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::utxos::get_utxos(req, query, state)
                         }
                     }),
                 ),
