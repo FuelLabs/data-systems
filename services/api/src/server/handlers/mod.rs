@@ -1,3 +1,4 @@
+pub mod accounts;
 pub mod blocks;
 pub mod inputs;
 pub mod outputs;
@@ -256,5 +257,31 @@ pub fn create_services(
                     }),
                 ),
         );
+
+        // accounts
+        cfg.service(
+            web::scope(&with_prefixed_route("accounts"))
+                    .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                    .route("/{address}/transactions", web::get().to({
+                        move |req, path, query, state: web::Data<ServerState>| {
+                            handlers::accounts::get_accounts_transactions(req, path, query, state)
+                        }
+                    }))
+                    .route("/{address}/inputs", web::get().to({
+                        move |req, path, query, state: web::Data<ServerState>| {
+                            handlers::accounts::get_accounts_inputs(req, path, query, state)
+                        }
+                    }))
+                    .route("/{address}/outputs", web::get().to({
+                        move |req, path, query, state: web::Data<ServerState>| {
+                            handlers::accounts::get_accounts_outputs(req, path, query, state)
+                        }
+                    }))
+                    .route("/{address}/utxos", web::get().to({
+                        move |req, path, query, state: web::Data<ServerState>| {
+                            handlers::accounts::get_accounts_utxos(req, path, query, state)
+                        }
+                    }))
+                );
     }
 }
