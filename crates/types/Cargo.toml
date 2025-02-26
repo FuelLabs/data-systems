@@ -13,17 +13,8 @@ version.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-fuel-core = { workspace = true, default-features = false, features = [
-  "p2p",
-  "relayer",
-  "rocksdb",
-  "test-helpers",
-] }
-fuel-core-bin = { workspace = true, default-features = false, features = [
-  "p2p",
-  "relayer",
-  "rocksdb",
-] }
+fuel-core.workspace = true
+fuel-core-bin.workspace = true
 fuel-core-client.workspace = true
 fuel-core-importer.workspace = true
 fuel-core-services.workspace = true
@@ -43,4 +34,4 @@ pretty_assertions.workspace = true
 
 [features]
 default = []
-test-helpers = []
+test-helpers = ["fuel-core/test-helpers"]
