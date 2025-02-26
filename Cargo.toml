@@ -27,11 +27,11 @@ actix-cors = "0.7"
 actix-server = "2.5"
 actix-web = "4.9"
 anyhow = "1.0"
-async-nats = "0.38"
+async-nats = "0.39"
 async-stream = "0.3"
 async-trait = "0.1"
 bincode = "1.3"
-bytes = "1.9"
+bytes = "1.10"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 displaydoc = "0.2"
@@ -75,31 +75,31 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 
 # Fuel Core dependencies
-fuel-core = { version = "=0.40.4", default-features = false, features = [
+fuel-core = { version = "=0.41.7", default-features = false, features = [
 
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "=0.40.4", default-features = false, features = [
+fuel-core-bin = { version = "=0.41.7", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "=0.40.4", default-features = false, features = [
+fuel-core-client = { version = "=0.41.7", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "=0.40.4" }
-fuel-core-poa = { version = "=0.40.4", default-features = false }
-fuel-core-services = { version = "=0.40.4", default-features = false }
-fuel-core-storage = { version = "=0.40.4" }
-fuel-core-txpool = { version = "=0.40.4" }
-fuel-core-types = { version = "=0.40.4", default-features = false, features = [
+fuel-core-importer = { version = "=0.41.7" }
+fuel-core-poa = { version = "=0.41.7", default-features = false }
+fuel-core-services = { version = "=0.41.7", default-features = false }
+fuel-core-storage = { version = "=0.41.7" }
+fuel-core-txpool = { version = "=0.41.7" }
+fuel-core-types = { version = "=0.41.7", default-features = false, features = [
   "serde",
   "std",
 ] }
-fuel-tx = { version = "0.58.2" }
-fuel-vm = { version = "0.58.2" }
+fuel-tx = { version = "0.59.2" }
+fuel-vm = { version = "0.59.2" }
 
 # Internal dependencies
 fuel-data-parser = { version = "0.0.25", path = "crates/data-parser" }

@@ -44,10 +44,6 @@ tokio.workspace = true
 tokio-util = "0.7.13"
 tracing.workspace = true
 
-# these dependencies need to update in the future when fuel-core 0.41.4 is on mainnet
-[target.'cfg(target_os = "linux")'.dependencies]
-netlink-proto = { version = "=0.11.3", optional = true }
-
 [features]
 default = []
 test-helpers = [

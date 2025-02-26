@@ -24,7 +24,7 @@
     "markdownlint": "0.37.4",
     "markdownlint-cli": "0.44.0",
     "prettier": "3.4.2",
-    "prettier-plugin-sh": "0.14.0",
+    "prettier-plugin-sh": "0.15.0",
     "updates": "16.4.1"
   }
 }
