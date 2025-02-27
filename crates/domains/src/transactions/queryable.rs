@@ -30,8 +30,8 @@ enum Transactions {
     TxIndex,
     #[iden = "tx_status"]
     TxStatus,
-    #[iden = "kind"]
-    Kind,
+    #[iden = "type"]
+    Type,
     #[iden = "value"]
     Value,
 }
@@ -43,7 +43,7 @@ pub struct TransactionsQuery {
     pub tx_index: Option<u32>,
     pub tx_status: Option<TransactionStatus>,
     #[serde(rename = "type")]
-    pub tx_kind: Option<TransactionKind>,
+    pub tx_type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
     pub after: Option<i32>,
     pub before: Option<i32>,
@@ -80,9 +80,9 @@ impl TransactionsQuery {
                 condition.add(Expr::col(Transactions::TxIndex).eq(*tx_index));
         }
 
-        if let Some(tx_kind) = &self.tx_kind {
+        if let Some(tx_kind) = &self.tx_type {
             condition = condition
-                .add(Expr::col(Transactions::Kind).eq(tx_kind.to_string()));
+                .add(Expr::col(Transactions::Type).eq(tx_kind.to_string()));
         }
 
         if let Some(tx_status) = &self.tx_status {

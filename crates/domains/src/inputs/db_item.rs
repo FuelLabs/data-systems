@@ -10,6 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
@@ -31,6 +32,8 @@ pub struct InputDbItem {
     pub contract_id: Option<String>, // for contract inputs
     pub sender_address: Option<String>, // for message inputs
     pub recipient_address: Option<String>, // for message inputs
+    pub created_at: BlockTimestamp,
+    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for InputDbItem {
@@ -59,6 +62,14 @@ impl DbItem for InputDbItem {
         }
         .to_string()
     }
+
+    fn created_at(&self) -> BlockTimestamp {
+        self.created_at
+    }
+
+    fn published_at(&self) -> BlockTimestamp {
+        self.published_at
+    }
 }
 
 impl TryFrom<&RecordPacket> for InputDbItem {
@@ -84,6 +95,8 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 contract_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::InputsContract(subject) => Ok(InputDbItem {
                 subject: packet.subject_str(),
@@ -98,6 +111,8 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 contract_id: Some(subject.contract.unwrap().to_string()),
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::InputsMessage(subject) => Ok(InputDbItem {
                 subject: packet.subject_str(),
@@ -112,6 +127,8 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 contract_id: None,
                 sender_address: Some(subject.sender.unwrap().to_string()),
                 recipient_address: Some(subject.recipient.unwrap().to_string()),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

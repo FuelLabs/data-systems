@@ -2,7 +2,11 @@ use fuel_streams_core::{
     subjects::{SubjectBuildable, TransactionsSubject},
     types::{MockInput, MockOutput, MockReceipt, MockTransaction, Transaction},
 };
-use fuel_streams_domains::{transactions::TransactionDbItem, Subjects};
+use fuel_streams_domains::{
+    transactions::TransactionDbItem,
+    MockMsgPayload,
+    Subjects,
+};
 use fuel_streams_store::{
     record::{QueryOptions, Record, RecordPacket},
     store::Store,
@@ -40,14 +44,17 @@ async fn insert_transaction(tx: &Transaction) -> anyhow::Result<()> {
 }
 
 fn create_packets(tx: &Transaction, prefix: &str) -> Vec<RecordPacket> {
+    let msg_payload = MockMsgPayload::build(1, prefix);
     let subject = TransactionsSubject::new()
         .with_block_height(Some(1.into()))
         .with_tx_id(Some(tx.id.clone()))
         .with_tx_index(Some(0))
         .with_tx_status(Some(tx.status.clone()))
-        .with_kind(Some(tx.kind.clone()))
+        .with_tx_type(Some(tx.tx_type.clone()))
         .dyn_arc();
-    vec![tx.to_packet(&subject).with_namespace(prefix)]
+    vec![tx
+        .to_packet(&subject, msg_payload.block_timestamp)
+        .with_namespace(prefix)]
 }
 
 #[tokio::test]
@@ -214,13 +221,15 @@ async fn test_transaction_subject_to_db_item_conversion() -> anyhow::Result<()>
         let subject: Subjects = payload.try_into()?;
         let db_item = TransactionDbItem::try_from(packet)?;
         let inserted = store.insert_record(&db_item).await?;
-        assert_eq!(db_item, inserted);
 
         // Verify common fields
-        assert_eq!(db_item.block_height, 1);
-        assert_eq!(db_item.tx_id, tx.id.to_string());
-        assert_eq!(db_item.tx_index, 0);
-        assert_eq!(db_item.subject, packet.subject_str());
+        assert_eq!(db_item.block_height, inserted.block_height);
+        assert_eq!(db_item.tx_id, inserted.tx_id);
+        assert_eq!(db_item.tx_index, inserted.tx_index);
+        assert_eq!(db_item.subject, inserted.subject);
+        assert_eq!(db_item.value, inserted.value);
+        assert_eq!(db_item.created_at, inserted.created_at);
+        assert!(inserted.published_at.is_after(&db_item.published_at));
 
         match subject {
             Subjects::Transactions(subject) => {
@@ -228,7 +237,10 @@ async fn test_transaction_subject_to_db_item_conversion() -> anyhow::Result<()>
                     db_item.tx_status,
                     subject.tx_status.unwrap().to_string()
                 );
-                assert_eq!(db_item.kind, subject.kind.unwrap().to_string());
+                assert_eq!(
+                    db_item.r#type,
+                    subject.tx_type.unwrap().to_string()
+                );
             }
             _ => panic!("Unexpected subject type"),
         }

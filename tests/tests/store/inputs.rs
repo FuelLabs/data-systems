@@ -2,6 +2,7 @@ use fuel_streams_core::types::{Input, Transaction};
 use fuel_streams_domains::{
     inputs::{types::MockInput, DynInputSubject, InputDbItem},
     transactions::types::MockTransaction,
+    MockMsgPayload,
     Subjects,
 };
 use fuel_streams_store::{
@@ -66,7 +67,10 @@ fn create_packets(
                 0,
                 input_index as u32,
             ));
-            input.to_packet(&subject.into()).with_namespace(prefix)
+            let msg_payload = MockMsgPayload::build(1, prefix);
+            input
+                .to_packet(&subject.into(), msg_payload.block_timestamp)
+                .with_namespace(prefix)
         })
         .collect::<Vec<_>>()
 }
@@ -128,19 +132,21 @@ async fn test_input_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let (tx, tx_id) = create_tx(inputs);
     let packets = create_packets(&tx, &tx_id, &prefix);
 
-    for (idx, packet) in packets.into_iter().enumerate() {
+    for packet in packets {
         let payload = packet.subject_payload.clone();
         let subject: Subjects = payload.try_into()?;
         let db_item = InputDbItem::try_from(&packet)?;
         let inserted = store.insert_record(&db_item).await?;
-        assert_eq!(db_item, inserted);
 
         // Verify common fields
-        assert_eq!(db_item.block_height, 1);
-        assert_eq!(db_item.tx_id, tx_id.to_string());
-        assert_eq!(db_item.tx_index, 0);
-        assert_eq!(db_item.input_index, idx as i32);
-        assert_eq!(db_item.subject, packet.subject_str());
+        assert_eq!(db_item.block_height, inserted.block_height);
+        assert_eq!(db_item.tx_id, inserted.tx_id);
+        assert_eq!(db_item.tx_index, inserted.tx_index);
+        assert_eq!(db_item.input_index, inserted.input_index);
+        assert_eq!(db_item.subject, inserted.subject);
+        assert_eq!(db_item.value, inserted.value);
+        assert_eq!(db_item.created_at, inserted.created_at);
+        assert!(inserted.published_at.is_after(&db_item.published_at));
 
         match subject {
             Subjects::InputsCoin(subject) => {

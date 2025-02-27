@@ -106,7 +106,44 @@ pub struct OutputContractCreated {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum OutputType {
+    Coin,
+    Contract,
+    Change,
+    Variable,
+    ContractCreated,
+}
+
+impl std::fmt::Display for OutputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OutputType::Coin => write!(f, "coin"),
+            OutputType::Contract => write!(f, "contract"),
+            OutputType::Change => write!(f, "change"),
+            OutputType::Variable => write!(f, "variable"),
+            OutputType::ContractCreated => write!(f, "contract_created"),
+        }
+    }
+}
+
+impl std::str::FromStr for OutputType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coin" => Ok(OutputType::Coin),
+            "contract" => Ok(OutputType::Contract),
+            "change" => Ok(OutputType::Change),
+            "variable" => Ok(OutputType::Variable),
+            "contract_created" => Ok(OutputType::ContractCreated),
+            _ => Err(format!("Invalid output type: {}", s)),
+        }
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockOutput;
+#[cfg(any(test, feature = "test-helpers"))]
 impl MockOutput {
     pub fn coin(amount: u64) -> Output {
         Output::Coin(OutputCoin {
@@ -155,40 +192,5 @@ impl MockOutput {
             Self::variable(3000),
             Self::contract_created(),
         ]
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum OutputType {
-    Coin,
-    Contract,
-    Change,
-    Variable,
-    ContractCreated,
-}
-
-impl std::fmt::Display for OutputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OutputType::Coin => write!(f, "coin"),
-            OutputType::Contract => write!(f, "contract"),
-            OutputType::Change => write!(f, "change"),
-            OutputType::Variable => write!(f, "variable"),
-            OutputType::ContractCreated => write!(f, "contract_created"),
-        }
-    }
-}
-
-impl std::str::FromStr for OutputType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "coin" => Ok(OutputType::Coin),
-            "contract" => Ok(OutputType::Contract),
-            "change" => Ok(OutputType::Change),
-            "variable" => Ok(OutputType::Variable),
-            "contract_created" => Ok(OutputType::ContractCreated),
-            _ => Err(format!("Invalid output type: {}", s)),
-        }
     }
 }

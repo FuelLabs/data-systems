@@ -5,7 +5,7 @@ use std::{
 
 use chrono::{DateTime, Duration, Utc};
 use fuel_streams_subject::subject::*;
-use fuel_streams_types::*;
+use fuel_streams_types::{BlockTimestamp, *};
 use sea_query::{
     Asterisk,
     Condition,
@@ -18,7 +18,7 @@ use sea_query::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{block_timestamp::BlockTimestamp, types::*, BlockDbItem};
+use super::{types::*, BlockDbItem};
 use crate::queryable::Queryable;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -140,7 +140,7 @@ impl From<&Block> for BlocksQuery {
         BlocksQuery {
             producer: Some(block.producer.to_owned()),
             height: Some(block.height.to_owned()),
-            timestamp: Some(BlockTimestamp::from(block)),
+            timestamp: Some(BlockTimestamp::from(&block.header)),
             time_range: Some(TimeRange::default()),
             ..Default::default()
         }
@@ -240,14 +240,11 @@ impl Queryable for BlocksQuery {
 #[cfg(test)]
 mod test {
     use chrono::Utc;
-    use fuel_streams_types::{Address, BlockHeight};
+    use fuel_streams_types::{Address, BlockHeight, BlockTimestamp};
     use pretty_assertions::assert_eq;
 
     use crate::{
-        blocks::{
-            queryable::{BlocksQuery, TimeRange},
-            BlockTimestamp,
-        },
+        blocks::queryable::{BlocksQuery, TimeRange},
         queryable::Queryable,
     };
 

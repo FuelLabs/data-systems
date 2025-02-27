@@ -1,6 +1,6 @@
 use fuel_core_types::fuel_tx;
 use fuel_streams_types::{fuel_core::*, primitives::*};
-pub use fuel_streams_types::{TransactionKind, TransactionStatus};
+pub use fuel_streams_types::{TransactionStatus, TransactionType};
 use serde::{Deserialize, Serialize};
 
 use crate::{inputs::types::*, outputs::types::*, receipts::types::*};
@@ -31,7 +31,7 @@ impl From<&FuelCoreStorageSlot> for StorageSlot {
 pub struct Transaction {
     pub id: TxId,
     #[serde(rename = "type")]
-    pub kind: TransactionKind,
+    pub tx_type: TransactionType,
     pub bytecode_root: Option<Bytes32>,
     pub bytecode_witness_index: Option<u16>,
     pub blob_id: Option<BlobId>,
@@ -374,7 +374,7 @@ impl Transaction {
 
         Transaction {
             id: id.to_owned().into(),
-            kind: transaction.into(),
+            tx_type: transaction.into(),
             bytecode_root,
             bytecode_witness_index,
             blob_id,
@@ -445,13 +445,15 @@ impl FuelCoreTransactionExt for FuelCoreTransaction {
     }
 }
 
+#[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockTransaction;
+#[cfg(any(test, feature = "test-helpers"))]
 impl MockTransaction {
-    fn base_transaction(kind: TransactionKind) -> Transaction {
+    fn base_transaction(tx_type: TransactionType) -> Transaction {
         Transaction {
-            id: TxId::default(),
-            kind: kind.clone(),
+            id: TxId::random(),
+            tx_type: tx_type.clone(),
             bytecode_root: None,
             bytecode_witness_index: None,
             blob_id: None,
@@ -461,11 +463,11 @@ impl MockTransaction {
             inputs: vec![MockInput::coin_signed()],
             output_contract: None,
             outputs: vec![MockOutput::coin(100)],
-            is_create: kind == TransactionKind::Create,
-            is_mint: kind == TransactionKind::Mint,
-            is_script: kind == TransactionKind::Script,
-            is_upgrade: kind == TransactionKind::Upgrade,
-            is_upload: kind == TransactionKind::Upload,
+            is_create: tx_type == TransactionType::Create,
+            is_mint: tx_type == TransactionType::Mint,
+            is_script: tx_type == TransactionType::Script,
+            is_upgrade: tx_type == TransactionType::Upgrade,
+            is_upload: tx_type == TransactionType::Upload,
             maturity: Some(0),
             mint_amount: None,
             mint_asset_id: None,
@@ -534,7 +536,7 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::with_script_data(
-            Self::base_transaction(TransactionKind::Script),
+            Self::base_transaction(TransactionType::Script),
             vec![1, 2, 3],
             vec![4, 5, 6],
         );
@@ -549,7 +551,7 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
-        let mut tx = Self::base_transaction(TransactionKind::Create);
+        let mut tx = Self::base_transaction(TransactionType::Create);
         tx.salt = Some(Salt::default());
         tx.inputs = inputs;
         tx.outputs = outputs;
@@ -562,7 +564,7 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
-        let mut tx = Self::base_transaction(TransactionKind::Mint);
+        let mut tx = Self::base_transaction(TransactionType::Mint);
         tx.inputs = inputs;
         tx.outputs = outputs;
         tx.receipts = receipts;
@@ -574,7 +576,7 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
-        let mut tx = Self::base_transaction(TransactionKind::Upgrade);
+        let mut tx = Self::base_transaction(TransactionType::Upgrade);
         tx.upgrade_purpose = Some(FuelCoreUpgradePurpose::StateTransition {
             root: FuelCoreBytes32::default(),
         });
@@ -589,7 +591,7 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
-        let mut tx = Self::base_transaction(TransactionKind::Upload);
+        let mut tx = Self::base_transaction(TransactionType::Upload);
         tx.bytecode_root = Some(Bytes32::default());
         tx.bytecode_witness_index = Some(0);
         tx.proof_set = vec![Bytes32::default()];
@@ -606,7 +608,7 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
-        let mut tx = Self::base_transaction(TransactionKind::Blob);
+        let mut tx = Self::base_transaction(TransactionType::Blob);
         tx.blob_id = Some(BlobId::default());
         tx.inputs = inputs;
         tx.outputs = outputs;
@@ -626,5 +628,56 @@ impl MockTransaction {
             Self::upload(inputs.clone(), outputs.clone(), receipts.clone()),
             Self::blob(inputs.clone(), outputs.clone(), receipts.clone()),
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_transaction_serialization_deserialization() {
+        // Create a mock transaction
+        let original_tx = MockTransaction::script(
+            MockInput::all(),
+            MockOutput::all(),
+            MockReceipt::all(),
+        );
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_tx).unwrap();
+
+        // Deserialize back to Transaction
+        let deserialized: Transaction =
+            serde_json::from_str(&serialized).unwrap();
+
+        // Verify the deserialized transaction matches the original
+        assert_eq!(deserialized, original_tx);
+
+        // Verify specific fields are correctly serialized
+        let json_value: serde_json::Value =
+            serde_json::from_str(&serialized).unwrap();
+
+        // Check transaction type is serialized as lowercase string
+        assert_eq!(json_value["type"], json!("script"));
+
+        // Check transaction status is serialized as lowercase string
+        assert_eq!(json_value["status"], json!("success"));
+
+        // Test with all transaction types
+        for tx in MockTransaction::all() {
+            let serialized = serde_json::to_string(&tx).unwrap();
+            let deserialized: Transaction =
+                serde_json::from_str(&serialized).unwrap();
+            assert_eq!(deserialized, tx);
+
+            // Verify type field is correctly serialized as lowercase
+            let json_value: serde_json::Value =
+                serde_json::from_str(&serialized).unwrap();
+            assert_eq!(json_value["type"], json!(tx.tx_type.as_str()));
+        }
     }
 }

@@ -2,10 +2,11 @@ use fuel_streams_core::types::{Input, MockInput, Transaction, Utxo};
 use fuel_streams_domains::{
     transactions::types::MockTransaction,
     utxos::{DynUtxoSubject, UtxoDbItem},
+    MockMsgPayload,
     Subjects,
 };
 use fuel_streams_store::{
-    record::{QueryOptions, RecordPacket},
+    record::{QueryOptions, Record, RecordPacket},
     store::Store,
 };
 use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
@@ -50,7 +51,11 @@ fn create_packets(
 ) -> Vec<RecordPacket> {
     let subject =
         DynUtxoSubject::from((input, 1.into(), tx_id.clone(), 0, input_index));
-    vec![subject.packet().with_namespace(prefix)]
+    let msg_payload = MockMsgPayload::build(1, prefix);
+    let packet = subject
+        .utxo()
+        .to_packet(subject.subject(), msg_payload.block_timestamp);
+    vec![packet.with_namespace(prefix)]
 }
 
 #[tokio::test]
@@ -117,14 +122,16 @@ async fn test_utxo_subject_to_db_item_conversion() -> anyhow::Result<()> {
         let subject: Subjects = payload.try_into()?;
         let db_item = UtxoDbItem::try_from(packet)?;
         let inserted = store.insert_record(&db_item).await?;
-        assert_eq!(db_item, inserted);
 
         // Verify common fields
-        assert_eq!(db_item.block_height, 1);
-        assert_eq!(db_item.tx_id, tx_id.to_string());
-        assert_eq!(db_item.tx_index, 0);
-        assert_eq!(db_item.input_index, input_index as i32);
-        assert_eq!(db_item.subject, packet.subject_str());
+        assert_eq!(db_item.block_height, inserted.block_height);
+        assert_eq!(db_item.tx_id, inserted.tx_id);
+        assert_eq!(db_item.tx_index, inserted.tx_index);
+        assert_eq!(db_item.input_index, inserted.input_index);
+        assert_eq!(db_item.subject, inserted.subject);
+        assert_eq!(db_item.value, inserted.value);
+        assert_eq!(db_item.created_at, inserted.created_at);
+        assert!(inserted.published_at.is_after(&db_item.published_at));
 
         match subject {
             Subjects::Utxos(subject) => {

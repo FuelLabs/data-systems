@@ -33,7 +33,8 @@ impl PacketBuilder for Output {
                     output_index as u32,
                     tx,
                 ));
-                let packet = output.to_packet(&subject.into());
+                let packet = output
+                    .to_packet(&subject.into(), msg_payload.block_timestamp);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,

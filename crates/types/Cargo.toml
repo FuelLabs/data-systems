@@ -13,6 +13,7 @@ version.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+chrono.workspace = true
 fuel-core.workspace = true
 fuel-core-bin.workspace = true
 fuel-core-client.workspace = true
@@ -23,6 +24,7 @@ fuel-core-types.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 hex.workspace = true
+rand = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
@@ -32,7 +34,8 @@ tracing.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+serde_urlencoded.workspace = true
 
 [features]
 default = []
-test-helpers = ["fuel-core/test-helpers"]
+test-helpers = ["fuel-core/test-helpers", "rand"]

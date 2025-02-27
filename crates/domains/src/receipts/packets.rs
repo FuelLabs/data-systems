@@ -28,7 +28,8 @@ impl PacketBuilder for Receipt {
                     *tx_index as u32,
                     receipt_index as u32,
                 ));
-                let packet = receipt.to_packet(&subject.into());
+                let packet = receipt
+                    .to_packet(&subject.into(), msg_payload.block_timestamp);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
