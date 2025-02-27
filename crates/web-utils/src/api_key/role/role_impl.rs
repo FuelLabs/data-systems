@@ -183,7 +183,6 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for ApiKeyRole {
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub struct MockApiKeyRole(ApiKeyRole);
-#[cfg(any(test, feature = "test-helpers"))]
 impl MockApiKeyRole {
     pub fn new(role: ApiKeyRole) -> Self {
         Self(role)

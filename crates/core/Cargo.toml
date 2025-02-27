@@ -44,4 +44,5 @@ test-helpers = [
   "fuel-streams-subject/test-helpers",
   "fuel-streams-store/test-helpers",
   "fuel-streams-types/test-helpers",
+  "fuel-web-utils/test-helpers",
 ]
