@@ -20,6 +20,7 @@ fuel-data-parser.workspace = true
 fuel-streams-store.workspace = true
 fuel-web-utils.workspace = true
 sqlx.workspace = true
+strum.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

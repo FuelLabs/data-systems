@@ -19,7 +19,9 @@ async fn test_block_db_item_conversion() -> anyhow::Result<()> {
         .expect("Failed to convert packet to BlockDbItem");
 
     let height: i64 = block.height.into();
+    let da_height: i64 = block.header.da_height.into();
     assert_eq!(db_item.subject, subject.parse());
+    assert_eq!(db_item.block_da_height, da_height);
     assert_eq!(db_item.block_height, height);
     assert_eq!(db_item.producer_address, block.producer.to_string());
 
@@ -41,6 +43,7 @@ async fn store_can_record_blocks() -> anyhow::Result<()> {
     let packet = packet.with_namespace(&prefix);
     let db_item = BlockDbItem::try_from(&packet)?;
     let inserted = store.insert_record(&db_item).await?;
+    assert_eq!(inserted.block_da_height, db_item.block_da_height);
     assert_eq!(inserted.block_height, db_item.block_height);
     assert_eq!(inserted.producer_address, db_item.producer_address);
     assert_eq!(inserted.subject, db_item.subject);

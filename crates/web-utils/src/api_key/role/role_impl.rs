@@ -1,3 +1,4 @@
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::api_key::{
@@ -5,6 +6,7 @@ use crate::api_key::{
     ApiKeyRoleId,
     ApiKeyRoleName,
     ApiKeyRoleScope,
+    HistoricalDaysLimit,
     RateLimitPerMinute,
     SubscriptionCount,
 };
@@ -18,6 +20,7 @@ pub struct ApiKeyRole {
     scopes: Vec<ApiKeyRoleScope>,
     subscription_limit: Option<SubscriptionCount>,
     rate_limit_per_minute: Option<RateLimitPerMinute>,
+    historical_days_limit: Option<HistoricalDaysLimit>,
 }
 
 impl ApiKeyRole {
@@ -27,6 +30,7 @@ impl ApiKeyRole {
         scopes: Vec<ApiKeyRoleScope>,
         subscription_limit: Option<SubscriptionCount>,
         rate_limit_per_minute: Option<RateLimitPerMinute>,
+        historical_days_limit: Option<HistoricalDaysLimit>,
     ) -> Self {
         Self {
             id,
@@ -34,6 +38,7 @@ impl ApiKeyRole {
             scopes,
             subscription_limit,
             rate_limit_per_minute,
+            historical_days_limit,
         }
     }
 
@@ -55,6 +60,10 @@ impl ApiKeyRole {
 
     pub fn rate_limit_per_minute(&self) -> Option<RateLimitPerMinute> {
         self.rate_limit_per_minute
+    }
+
+    pub fn historical_days_limit(&self) -> Option<HistoricalDaysLimit> {
+        self.historical_days_limit
     }
 
     pub fn has_scopes(
@@ -82,7 +91,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
              FROM api_key_roles
              ORDER BY name",
         )
@@ -99,7 +108,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
              FROM api_key_roles
              WHERE name = $1::api_role",
         )
@@ -117,7 +126,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
              FROM api_key_roles
              WHERE id = $1",
         )
@@ -151,6 +160,21 @@ impl ApiKeyRole {
         }
         Ok(current_count)
     }
+
+    pub fn validate_historical_days_limit(
+        &self,
+        block_timestamp: BlockTimestamp,
+    ) -> Result<(), ApiKeyError> {
+        if let Some(limit) = self.historical_days_limit() {
+            let is_within_limit = block_timestamp.is_within_days(limit.into());
+            if !is_within_limit {
+                return Err(ApiKeyError::HistoricalDaysLimitExceeded(
+                    limit.to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl sqlx::Type<sqlx::Postgres> for ApiKeyRole {
@@ -163,20 +187,28 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for ApiKeyRole {
     fn decode(
         value: sqlx::postgres::PgValueRef<'r>,
     ) -> Result<Self, sqlx::error::BoxDynError> {
-        let (id, name, scopes, subscription_limit, rate_limit_per_minute) =
-            <(
-                ApiKeyRoleId,
-                ApiKeyRoleName,
-                Vec<ApiKeyRoleScope>,
-                Option<SubscriptionCount>,
-                Option<RateLimitPerMinute>,
-            )>::decode(value)?;
+        let (
+            id,
+            name,
+            scopes,
+            subscription_limit,
+            rate_limit_per_minute,
+            historical_days_limit,
+        ) = <(
+            ApiKeyRoleId,
+            ApiKeyRoleName,
+            Vec<ApiKeyRoleScope>,
+            Option<SubscriptionCount>,
+            Option<RateLimitPerMinute>,
+            Option<HistoricalDaysLimit>,
+        )>::decode(value)?;
         Ok(Self {
             id,
             name,
             scopes,
             subscription_limit,
             rate_limit_per_minute,
+            historical_days_limit,
         })
     }
 }
@@ -197,7 +229,28 @@ impl MockApiKeyRole {
         Self(ApiKeyRole::new(
             ApiKeyRoleId::from(1),
             ApiKeyRoleName::Admin,
-            vec![ApiKeyRoleScope::Full],
+            vec![
+                ApiKeyRoleScope::ManageApiKeys,
+                ApiKeyRoleScope::HistoricalData,
+                ApiKeyRoleScope::LiveData,
+                ApiKeyRoleScope::RestApi,
+            ],
+            None,
+            None,
+            None,
+        ))
+    }
+
+    pub fn amm() -> Self {
+        Self(ApiKeyRole::new(
+            ApiKeyRoleId::from(2),
+            ApiKeyRoleName::Amm,
+            vec![
+                ApiKeyRoleScope::HistoricalData,
+                ApiKeyRoleScope::LiveData,
+                ApiKeyRoleScope::RestApi,
+            ],
+            None,
             None,
             None,
         ))
@@ -205,29 +258,36 @@ impl MockApiKeyRole {
 
     pub fn builder() -> Self {
         Self(ApiKeyRole::new(
-            ApiKeyRoleId::from(2),
+            ApiKeyRoleId::from(3),
             ApiKeyRoleName::Builder,
-            vec![ApiKeyRoleScope::Full],
+            vec![
+                ApiKeyRoleScope::HistoricalData,
+                ApiKeyRoleScope::LiveData,
+                ApiKeyRoleScope::RestApi,
+            ],
             Some(SubscriptionCount::from(50)),
             Some(RateLimitPerMinute::from(7)),
+            Some(HistoricalDaysLimit::from(7)),
         ))
     }
 
     pub fn web_client() -> Self {
         Self(ApiKeyRole::new(
-            ApiKeyRoleId::from(3),
+            ApiKeyRoleId::from(4),
             ApiKeyRoleName::WebClient,
             vec![ApiKeyRoleScope::LiveData, ApiKeyRoleScope::RestApi],
             None,
             Some(RateLimitPerMinute::from(1000)),
+            None,
         ))
     }
 
     pub fn no_scopes() -> Self {
         Self(ApiKeyRole::new(
-            ApiKeyRoleId::from(4),
+            ApiKeyRoleId::from(5),
             ApiKeyRoleName::WebClient,
             vec![],
+            None,
             None,
             None,
         ))

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::api_key::ApiKey;
+use fuel_web_utils::api_key::{ApiKey, ApiKeyRoleName};
 use generate_api_keys::config::Config;
 use sqlx::{Postgres, Transaction};
+use strum::IntoEnumIterator;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
@@ -14,9 +15,8 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::load()?;
     let db = connect_to_database(&config).await?;
-
-    let roles = ["ADMIN", "BUILDER", "WEB_CLIENT"];
-    let keys_per_role = 3;
+    let roles = ApiKeyRoleName::iter().collect::<Vec<_>>();
+    let keys_per_role = roles.len();
 
     tracing::info!(
         "Generating {} API keys for each role ({} total)",
@@ -72,8 +72,7 @@ async fn connect_to_database(config: &Config) -> anyhow::Result<Arc<Db>> {
 async fn add_special_test_key(
     tx: &mut Transaction<'_, Postgres>,
 ) -> anyhow::Result<()> {
-    let admin_role_id = get_role_id(tx, "ADMIN").await?;
-
+    let admin_role_id = get_role_id(tx, &ApiKeyRoleName::Admin).await?;
     tracing::info!("Adding special test key with ADMIN role");
     sqlx::query(
         "INSERT INTO api_keys (user_name, api_key, role_id)
@@ -91,7 +90,7 @@ async fn add_special_test_key(
 
 async fn generate_keys_for_roles(
     tx: &mut Transaction<'_, Postgres>,
-    roles: &[&str],
+    roles: &[ApiKeyRoleName],
     keys_per_role: usize,
 ) -> anyhow::Result<()> {
     for role in roles.iter() {
@@ -99,7 +98,7 @@ async fn generate_keys_for_roles(
         tracing::info!("Generating {} keys for role: {}", keys_per_role, role);
 
         for i in 0..keys_per_role {
-            let user_name = format!("{}-{}", role.to_lowercase(), i + 1);
+            let user_name = format!("{}-{}", role, i + 1);
             tracing::info!("Generated new db record for {}", user_name);
             insert_api_key(tx, &user_name, role_id).await?;
         }
@@ -110,7 +109,7 @@ async fn generate_keys_for_roles(
 
 async fn get_role_id(
     tx: &mut Transaction<'_, Postgres>,
-    role_name: &str,
+    role_name: &ApiKeyRoleName,
 ) -> anyhow::Result<i32> {
     let role_id: i32 = sqlx::query_scalar(
         "SELECT id FROM api_key_roles WHERE name = $1::api_role",

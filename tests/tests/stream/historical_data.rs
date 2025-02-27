@@ -3,11 +3,12 @@ use std::{sync::Arc, time::Duration};
 use fuel_streams_core::{
     server::DeliverPolicy,
     subjects::*,
-    types::Block,
+    types::{Block, MockBlock},
     Stream,
     StreamError,
 };
-use fuel_streams_store::record::RecordPacket;
+use fuel_streams_domains::MockMsgPayload;
+use fuel_streams_store::record::{Record, RecordPacket};
 use fuel_streams_test::{
     close_db,
     create_multiple_records,
@@ -15,7 +16,7 @@ use fuel_streams_test::{
     insert_records,
     setup_stream,
 };
-use fuel_streams_types::BlockHeight;
+use fuel_streams_types::{BlockHeight, BlockTime};
 use fuel_web_utils::api_key::{ApiKeyError, MockApiKeyRole};
 use futures::StreamExt;
 use pretty_assertions::assert_eq;
@@ -133,6 +134,107 @@ async fn test_streaming_historical_data_without_proper_role(
     matches!(
         error.unwrap_err(),
         StreamError::ApiKey(ApiKeyError::ScopePermission(_))
+    );
+
+    close_db(&stream.store().db).await;
+    Ok(())
+}
+
+async fn insert_custom_block(
+    prefix: &str,
+    height: BlockHeight,
+    time: BlockTime,
+) -> anyhow::Result<()> {
+    let stream = setup_stream(NATS_URL, prefix).await?;
+    let mut block = MockBlock::build(height.into());
+    block.header.time = time;
+    let subject = BlocksSubject::from(&block).dyn_arc();
+    let msg_payload = MockMsgPayload::build(height.into(), prefix);
+    let packet = block
+        .to_packet(&subject, msg_payload.block_timestamp)
+        .with_namespace(prefix);
+    insert_records(stream.store(), prefix, &[(subject, block, packet)]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_streaming_historical_outside_limit() -> anyhow::Result<()> {
+    // Create a random prefix for this test
+    let prefix = create_random_db_name();
+    let stream = setup_stream(NATS_URL, &prefix).await?;
+
+    // Create blocks with different timestamps
+    let now = chrono::Utc::now();
+    let eight_days_ago = now - chrono::Duration::days(8);
+    let old_time = BlockTime::from_unix(eight_days_ago.timestamp());
+    let block_height = BlockHeight::from(1);
+
+    // First block with old timestamp (8 days ago) + 4 more recent blocks
+    insert_custom_block(&prefix, block_height, old_time).await?;
+    create_multiple_records(4, 2, &prefix);
+
+    // Use the builder role which has a 7-day historical limit
+    let role = MockApiKeyRole::builder().into_inner();
+    let subject = BlocksSubject::new();
+
+    // Try to subscribe and access the historical data
+    let mut subscriber = stream
+        .subscribe(subject, DeliverPolicy::FromBlock { block_height }, &role)
+        .await;
+
+    // We should get an error when trying to access the first block
+    let result = subscriber.next().await;
+    assert!(result.is_some(), "Expected an error response");
+    let error = result.unwrap();
+    assert!(error.is_err(), "Expected an error, got success");
+
+    // Check for the correct error type - should be HistoricalDaysLimitExceeded
+    match error.unwrap_err() {
+        StreamError::ApiKey(ApiKeyError::HistoricalDaysLimitExceeded(
+            limit,
+        )) => {
+            assert_eq!(limit, "7", "Expected limit to be 7 days");
+        }
+        err => {
+            panic!("Expected HistoricalDaysLimitExceeded error, got: {:?}", err)
+        }
+    }
+
+    close_db(&stream.store().db).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_streaming_historical_with_no_limit() -> anyhow::Result<()> {
+    // Create a random prefix for this test
+    let prefix = create_random_db_name();
+    let stream = setup_stream(NATS_URL, &prefix).await?;
+
+    // Create blocks with different timestamps
+    let now = chrono::Utc::now();
+    let last_year = now - chrono::Duration::days(365);
+    let old_time = BlockTime::from_unix(last_year.timestamp());
+    let block_height = BlockHeight::from(1);
+
+    // First block with old timestamp (8 days ago) + 4 more recent blocks
+    insert_custom_block(&prefix, block_height, old_time.clone()).await?;
+    create_multiple_records(4, 2, &prefix);
+
+    // Use the builder role which has a 7-day historical limit
+    let role = MockApiKeyRole::admin().into_inner();
+    let subject = BlocksSubject::new();
+
+    // Try to subscribe and access the historical data
+    let mut subscriber = stream
+        .subscribe(subject, DeliverPolicy::FromBlock { block_height }, &role)
+        .await;
+    // We should be able to access the first block since we're using admin role
+    let result = subscriber.next().await;
+    assert!(result.is_some(), "Expected a block response");
+    let response = result.unwrap();
+    assert!(
+        response.is_ok(),
+        "Expected block to be retrieved successfully"
     );
 
     close_db(&stream.store().db).await;

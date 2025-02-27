@@ -95,11 +95,10 @@ impl<R: Record> Stream<R> {
         let store = self.clone();
         let role = api_key_role.clone();
         let stream = async_stream::try_stream! {
-            match role.has_scopes(&[ApiKeyRoleScope::HistoricalData,
-                ApiKeyRoleScope::Full]) {
+            match role.has_scopes(&[ApiKeyRoleScope::HistoricalData]) {
                 Ok(_) => {
                     if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                        let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None);
+                        let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None, &role);
                         while let Some(result) = historical.next().await {
                             yield result?;
                             let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
@@ -113,8 +112,7 @@ impl<R: Record> Stream<R> {
                 }
             }
 
-            match role.has_scopes(&[ApiKeyRoleScope::LiveData,
-                ApiKeyRoleScope::Full]) {
+            match role.has_scopes(&[ApiKeyRoleScope::LiveData]) {
                 Ok(_) => {
                     let mut live = broker.subscribe(&subject.parse()).await?;
                     while let Some(msg) = live.next().await {
@@ -139,9 +137,11 @@ impl<R: Record> Stream<R> {
         subject: Arc<dyn IntoSubject>,
         from_block: Option<BlockHeight>,
         query_opts: Option<QueryOptions>,
+        role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let store = self.store.clone();
         let db = self.store.db.clone();
+        let role = role.clone();
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
             let mut opts = query_opts.unwrap_or_default().with_from_block(Some(current_height));
@@ -151,6 +151,9 @@ impl<R: Record> Stream<R> {
                 for item in items {
                     let subject = item.subject_str();
                     let subject_id = item.subject_id();
+                    let block_timestamp = item.created_at();
+                    role.validate_historical_days_limit(block_timestamp)?;
+
                     let value = item.encoded_value().to_vec();
                     let pointer = item.into();
                     let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned())?;

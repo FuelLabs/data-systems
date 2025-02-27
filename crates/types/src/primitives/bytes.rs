@@ -1,4 +1,5 @@
 use fuel_core_types::fuel_types;
+use rand::prelude::*;
 
 use super::{LongBytes, UtxoId};
 use crate::{
@@ -21,10 +22,8 @@ generate_byte_type_wrapper!(Signature, fuel_types::Bytes64, 64);
 generate_byte_type_wrapper!(TxId, fuel_types::TxId, 32);
 generate_byte_type_wrapper!(HexData, LongBytes);
 
-#[cfg(any(test, feature = "test-helpers"))]
 impl TxId {
     pub fn random() -> Self {
-        use rand::prelude::*;
         let mut rng = rand::rng();
         let bytes: [u8; 32] = rng.random();
         Self(fuel_types::TxId::from(bytes))

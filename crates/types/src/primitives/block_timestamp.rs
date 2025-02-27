@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Days, TimeZone, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::FuelCoreTai64;
@@ -11,6 +11,14 @@ pub enum BlockTimestampError {
     ParseError(String),
     #[error("Timestamp value out of range")]
     OutOfRange,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeUnit {
+    Seconds,
+    Minutes,
+    Hours,
+    Days,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
@@ -83,10 +91,24 @@ impl BlockTimestamp {
         self.0 <= other.0
     }
 
-    pub fn add_seconds(
+    pub fn add(
         &self,
-        seconds: i64,
+        value: i64,
+        unit: TimeUnit,
     ) -> Result<Self, BlockTimestampError> {
+        let seconds = match unit {
+            TimeUnit::Seconds => value,
+            TimeUnit::Minutes => value
+                .checked_mul(60)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+            TimeUnit::Hours => value
+                .checked_mul(3600)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+            TimeUnit::Days => value
+                .checked_mul(86400)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+        };
+
         let new_timestamp = self
             .unix_timestamp()
             .checked_add(seconds)
@@ -94,10 +116,24 @@ impl BlockTimestamp {
         Self::from_unix_timestamp(new_timestamp)
     }
 
-    pub fn subtract_seconds(
+    pub fn subtract(
         &self,
-        seconds: i64,
+        value: i64,
+        unit: TimeUnit,
     ) -> Result<Self, BlockTimestampError> {
+        let seconds = match unit {
+            TimeUnit::Seconds => value,
+            TimeUnit::Minutes => value
+                .checked_mul(60)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+            TimeUnit::Hours => value
+                .checked_mul(3600)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+            TimeUnit::Days => value
+                .checked_mul(86400)
+                .ok_or(BlockTimestampError::OutOfRange)?,
+        };
+
         let new_timestamp = self
             .unix_timestamp()
             .checked_sub(seconds)
@@ -115,6 +151,17 @@ impl BlockTimestamp {
 
     pub fn is_strictly_between(&self, start: &Self, end: &Self) -> bool {
         self.is_after(start) && self.is_before(end)
+    }
+
+    pub fn is_within_days(&self, days: u32) -> bool {
+        let now = Utc::now();
+        let days = Days::new(days as u64);
+        let days_ago = now.checked_sub_days(days);
+        if let Some(days_ago) = days_ago {
+            self.is_at_or_after(&days_ago.into())
+        } else {
+            false
+        }
     }
 }
 
@@ -215,6 +262,7 @@ impl sqlx::Encode<'_, sqlx::Postgres> for BlockTimestamp {
 mod tests {
     use std::str::FromStr;
 
+    use chrono::Duration;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -413,20 +461,35 @@ mod tests {
     }
 
     #[test]
-    fn test_time_arithmetic() {
+    fn test_time_arithmetic_with_units() {
         let ts = BlockTimestamp::from_unix_timestamp(1000).unwrap();
 
-        // Test adding seconds
-        let ts_plus = ts.add_seconds(500).unwrap();
-        assert_eq!(ts_plus.unix_timestamp(), 1500);
+        // Test adding with different units
+        let ts_plus_seconds = ts.add(500, TimeUnit::Seconds).unwrap();
+        assert_eq!(ts_plus_seconds.unix_timestamp(), 1500);
 
-        // Test subtracting seconds
-        let ts_minus = ts.subtract_seconds(500).unwrap();
-        assert_eq!(ts_minus.unix_timestamp(), 500);
+        let ts_plus_minutes = ts.add(5, TimeUnit::Minutes).unwrap();
+        assert_eq!(ts_plus_minutes.unix_timestamp(), 1300); // 1000 + 5*60
+
+        let ts_plus_hours = ts.add(1, TimeUnit::Hours).unwrap();
+        assert_eq!(ts_plus_hours.unix_timestamp(), 4600); // 1000 + 1*3600
+
+        let ts_plus_days = ts.add(1, TimeUnit::Days).unwrap();
+        assert_eq!(ts_plus_days.unix_timestamp(), 87400); // 1000 + 1*86400
+
+        // Test subtracting with different units
+        let ts_minus_seconds = ts.subtract(500, TimeUnit::Seconds).unwrap();
+        assert_eq!(ts_minus_seconds.unix_timestamp(), 500);
+
+        let ts_minus_minutes = ts.subtract(5, TimeUnit::Minutes).unwrap();
+        assert_eq!(ts_minus_minutes.unix_timestamp(), 700); // 1000 - 5*60
+
+        let ts_minus_hours = ts.subtract(0, TimeUnit::Hours).unwrap();
+        assert_eq!(ts_minus_hours.unix_timestamp(), 1000); // 1000 - 0*3600
 
         // Test overflow/underflow handling
-        assert!(ts.add_seconds(i64::MAX).is_err());
-        assert!(ts.subtract_seconds(i64::MAX).is_err());
+        assert!(ts.add(i64::MAX, TimeUnit::Days).is_err());
+        assert!(ts.subtract(i64::MAX, TimeUnit::Hours).is_err());
     }
 
     #[test]
@@ -459,5 +522,33 @@ mod tests {
         assert!(middle.is_strictly_between(&start, &end));
         assert!(!start.is_strictly_between(&start, &end));
         assert!(!end.is_strictly_between(&start, &end));
+    }
+
+    #[test]
+    fn test_is_within_days() {
+        let now = Utc::now();
+        let timestamp = BlockTimestamp::new(now);
+
+        // Current timestamp should be within any positive number of days
+        assert!(timestamp.is_within_days(1));
+        assert!(timestamp.is_within_days(7));
+        assert!(timestamp.is_within_days(30));
+
+        // Test timestamp from 5 days ago
+        let five_days_ago = now - Duration::days(5);
+        let old_timestamp = BlockTimestamp::new(five_days_ago);
+
+        assert!(old_timestamp.is_within_days(7)); // Should be within 7 days
+        assert!(!old_timestamp.is_within_days(3)); // Should not be within 3 days
+
+        // Test timestamp from future
+        let future = now + Duration::days(1);
+        let future_timestamp = BlockTimestamp::new(future);
+        assert!(future_timestamp.is_within_days(7)); // Future timestamps count as within range
+
+        // Test very old timestamp
+        let very_old = now - Duration::days(100);
+        let very_old_timestamp = BlockTimestamp::new(very_old);
+        assert!(!very_old_timestamp.is_within_days(30)); // Should not be within 30 days
     }
 }

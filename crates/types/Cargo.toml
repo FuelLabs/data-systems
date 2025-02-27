@@ -24,7 +24,7 @@ fuel-core-types.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 hex.workspace = true
-rand = { workspace = true, optional = true }
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
@@ -38,4 +38,4 @@ serde_urlencoded.workspace = true
 
 [features]
 default = []
-test-helpers = ["fuel-core/test-helpers", "rand"]
+test-helpers = ["fuel-core/test-helpers"]
