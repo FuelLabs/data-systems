@@ -32,21 +32,22 @@ enum Receipts {
     ReceiptIndex,
     #[iden = "receipt_type"]
     ReceiptType,
-    #[iden = "from_contract_id"]
+    #[iden = "from_contract_id"] //  ContractId for call/transfer/transfer_out
     FromContractId,
-    #[iden = "to_contract_id"]
+    #[iden = "to_contract_id"] // ContractId for call/transfer
     ToContractId,
-    #[iden = "to_address"]
+    #[iden = "to_address"] // Address for transfer_out
     ToAddress,
-    #[iden = "asset_id"]
+    #[iden = "asset_id"] // for call/transfer/transfer_out
     ReceiptAssetId,
     #[iden = "contract_id"]
+    // ContractId for return/return_data/panic/revert/log/log_data/mint/burn
     ReceiptContractId,
-    #[iden = "sub_id"]
+    #[iden = "sub_id"] // for mint/burn
     ReceiptSubId,
-    #[iden = "sender_address"]
+    #[iden = "sender_address"] //  Address for message_out
     ReceiptSenderAddress,
-    #[iden = "recipient_address"]
+    #[iden = "recipient_address"] // Address for message_out
     ReceiptRecipientAddress,
     #[iden = "value"]
     Value,
@@ -60,6 +61,15 @@ pub struct ReceiptsQuery {
     pub receipt_index: Option<i32>,
     pub receipt_type: Option<ReceiptType>,
     pub block_height: Option<BlockHeight>,
+
+    pub from: Option<ContractId>,
+    pub to: Option<ContractId>,
+    pub contract: Option<ContractId>,
+    pub asset: Option<AssetId>,
+    pub sender: Option<Address>,
+    pub recipient: Option<Address>,
+    pub sub_id: Option<Bytes32>,
+
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
@@ -67,6 +77,10 @@ pub struct ReceiptsQuery {
 }
 
 impl ReceiptsQuery {
+    pub fn set_receipt_type(&mut self, receipt_type: Option<ReceiptType>) {
+        self.receipt_type = receipt_type;
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }

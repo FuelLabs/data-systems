@@ -1,10 +1,15 @@
 pub mod blocks;
 pub mod inputs;
 pub mod outputs;
+pub mod receipts;
 pub mod transactions;
 pub mod utxos;
 use actix_web::{http::StatusCode, web};
-use fuel_streams_domains::{inputs::InputType, outputs::OutputType};
+use fuel_streams_domains::{
+    inputs::InputType,
+    outputs::OutputType,
+    receipts::ReceiptType,
+};
 use fuel_streams_store::db::DbItem;
 use fuel_web_utils::server::{
     api::with_prefixed_route,
@@ -252,6 +257,191 @@ pub fn create_services(
                     web::get().to({
                         move |req, query, state: web::Data<ServerState>| {
                             handlers::utxos::get_utxos(req, query, state)
+                        }
+                    }),
+                ),
+        );
+
+        // receipts
+        cfg.service(
+            web::scope(&with_prefixed_route("receipts"))
+                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .route(
+                    "",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req, query, state, None,
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/burn",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Burn),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/mint",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Mint),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/message-out",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::MessageOut),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/script-result",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::ScriptResult),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/transfer-out",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::TransferOut),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/transfer",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Transfer),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/logdata",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::LogData),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/log",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Log),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/revert",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Revert),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/panic",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Panic),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/return-data",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::ReturnData),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/return",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Return),
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/call",
+                    web::get().to({
+                        move |req, query, state: web::Data<ServerState>| {
+                            handlers::receipts::get_receipts(
+                                req,
+                                query,
+                                state,
+                                Some(ReceiptType::Call),
+                            )
                         }
                     }),
                 ),
