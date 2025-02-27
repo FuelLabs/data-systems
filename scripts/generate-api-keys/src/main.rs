@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::server::middlewares::api_key::{ApiKey, DbUserApiKey};
+use fuel_web_utils::api_key::ApiKey;
 use generate_api_keys::config::Config;
 use sqlx::{Postgres, Transaction};
 use tracing::level_filters::LevelFilter;
@@ -7,7 +9,41 @@ use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // init tracing
+    setup_tracing();
+    load_env_file();
+
+    let config = Config::load()?;
+    let db = connect_to_database(&config).await?;
+
+    let roles = ["ADMIN", "BUILDER", "WEB_CLIENT"];
+    let keys_per_role = 3;
+
+    tracing::info!(
+        "Generating {} API keys for each role ({} total)",
+        keys_per_role,
+        keys_per_role * roles.len()
+    );
+
+    let mut tx = db.pool.begin().await?;
+
+    // Add special test key
+    add_special_test_key(&mut tx).await?;
+
+    // Generate regular keys for each role
+    generate_keys_for_roles(&mut tx, &roles, keys_per_role).await?;
+
+    if let Err(e) = tx.commit().await {
+        tracing::error!("Failed to commit transaction: {:?}", e);
+    }
+
+    tracing::info!(
+        "Generated {} API keys and stored into db",
+        keys_per_role * roles.len() + 1 // +1 for the special test key
+    );
+    Ok(())
+}
+
+fn setup_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
@@ -16,49 +52,90 @@ async fn main() -> anyhow::Result<()> {
         )
         .with_span_events(FmtSpan::CLOSE)
         .init();
+}
 
+fn load_env_file() {
     if let Err(err) = dotenvy::dotenv() {
         tracing::warn!("File .env not found: {:?}", err);
     }
+}
 
-    let config = Config::load()?;
+async fn connect_to_database(config: &Config) -> anyhow::Result<Arc<Db>> {
     let db = Db::new(DbConnectionOpts {
         connection_str: config.db.url.clone(),
         ..Default::default()
     })
     .await?;
+    Ok(db)
+}
 
-    tracing::info!("Generating {:?} api keys", config.api_keys.nsize);
-    let user_ids = (0..config.api_keys.nsize).collect::<Vec<i32>>();
-    let mut tx = db.pool.begin().await?;
-    for (index, _) in user_ids.iter().enumerate() {
-        tracing::info!(
-            "Generated new db record {:?}",
-            insert_api_key(&mut tx, index).await?
-        );
-    }
-    if let Err(e) = tx.commit().await {
-        tracing::error!("Failed to commit transaction: {:?}", e);
-    }
-    tracing::info!(
-        "Generated {:?} api keys and stored into db",
-        config.api_keys.nsize
-    );
+async fn add_special_test_key(
+    tx: &mut Transaction<'_, Postgres>,
+) -> anyhow::Result<()> {
+    let admin_role_id = get_role_id(tx, "ADMIN").await?;
+
+    tracing::info!("Adding special test key with ADMIN role");
+    sqlx::query(
+        "INSERT INTO api_keys (user_name, api_key, role_id)
+        VALUES ($1, $2, $3)
+        RETURNING id, user_name, api_key",
+    )
+    .bind("test")
+    .bind("your_key")
+    .bind(admin_role_id)
+    .fetch_one(&mut **tx)
+    .await?;
+
     Ok(())
+}
+
+async fn generate_keys_for_roles(
+    tx: &mut Transaction<'_, Postgres>,
+    roles: &[&str],
+    keys_per_role: usize,
+) -> anyhow::Result<()> {
+    for role in roles.iter() {
+        let role_id = get_role_id(tx, role).await?;
+        tracing::info!("Generating {} keys for role: {}", keys_per_role, role);
+
+        for i in 0..keys_per_role {
+            let user_name = format!("{}-{}", role.to_lowercase(), i + 1);
+            tracing::info!("Generated new db record for {}", user_name);
+            insert_api_key(tx, &user_name, role_id).await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn get_role_id(
+    tx: &mut Transaction<'_, Postgres>,
+    role_name: &str,
+) -> anyhow::Result<i32> {
+    let role_id: i32 = sqlx::query_scalar(
+        "SELECT id FROM api_key_roles WHERE name = $1::api_role",
+    )
+    .bind(role_name)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(role_id)
 }
 
 async fn insert_api_key(
     tx: &mut Transaction<'_, Postgres>,
-    index: usize,
-) -> anyhow::Result<DbUserApiKey> {
-    let db_record = sqlx::query_as::<_, DbUserApiKey>(
-        "INSERT INTO api_keys (user_name, api_key)
-        VALUES ($1, $2)
-        RETURNING user_id, user_name, api_key",
+    user_name: &str,
+    role_id: i32,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "INSERT INTO api_keys (user_name, api_key, role_id)
+        VALUES ($1, $2, $3)
+        RETURNING id, user_name, api_key",
     )
-    .bind(format!("fuel-{}", index + 1))
+    .bind(user_name)
     .bind(ApiKey::generate_random_api_key())
+    .bind(role_id)
     .fetch_one(tx.as_mut())
     .await?;
-    Ok(db_record)
+    Ok(())
 }

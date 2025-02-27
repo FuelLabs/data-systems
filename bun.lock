@@ -9,7 +9,7 @@
         "markdownlint": "0.37.4",
         "markdownlint-cli": "0.44.0",
         "prettier": "3.4.2",
-        "prettier-plugin-sh": "0.14.0",
+        "prettier-plugin-sh": "0.15.0",
         "updates": "16.4.1",
       },
     },
@@ -328,7 +328,7 @@
 
     "prettier": ["prettier@3.4.2", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-e9MewbtFo+Fevyuxn/4rrcDAaq0IYxPGLvObpQjiZBMAzB9IGmzlnG9RZy3FFas+eBMu2vA0CszMeduow5dIuQ=="],
 
-    "prettier-plugin-sh": ["prettier-plugin-sh@0.14.0", "", { "dependencies": { "mvdan-sh": "^0.10.1", "sh-syntax": "^0.4.1" }, "peerDependencies": { "prettier": "^3.0.3" } }, "sha512-hfXulj5+zEl/ulrO5kMuuTPKmXvOg0bnLHY1hKFNN/N+/903iZbNp8NyZBTsgI8dtkSgFfAEIQq0IQTyP1ZVFQ=="],
+    "prettier-plugin-sh": ["prettier-plugin-sh@0.15.0", "", { "dependencies": { "mvdan-sh": "^0.10.1", "sh-syntax": "^0.4.2" }, "peerDependencies": { "prettier": "^3.0.3" } }, "sha512-U0PikJr/yr2bzzARl43qI0mApBj0C1xdAfA04AZa6LnvIKawXHhuy2fFo6LNA7weRzGlAiNbaEFfKMFo0nZr/A=="],
 
     "punycode.js": ["punycode.js@2.3.1", "", {}, "sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA=="],
 

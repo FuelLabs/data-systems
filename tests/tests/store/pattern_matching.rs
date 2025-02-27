@@ -2,6 +2,7 @@ use fuel_streams_core::{subjects::*, types::Block};
 use fuel_streams_domains::blocks::subjects::BlocksSubject;
 use fuel_streams_store::record::QueryOptions;
 use fuel_streams_test::{
+    close_db,
     create_multiple_records,
     create_random_db_name,
     insert_records,
@@ -26,6 +27,7 @@ async fn test_asterisk_subject_string() -> anyhow::Result<()> {
         .await?;
     assert_eq!(records.len(), 3);
 
+    close_db(&store.db).await;
     Ok(())
 }
 
@@ -43,5 +45,6 @@ async fn test_nonexistent_subjects() -> anyhow::Result<()> {
         .await?;
     assert!(records.is_empty());
 
+    close_db(&store.db).await;
     Ok(())
 }

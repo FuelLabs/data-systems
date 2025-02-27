@@ -11,17 +11,21 @@ use actix_web::{
     Error,
     HttpMessage,
 };
+use fuel_streams_store::db::Db;
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 
-use super::{ApiKeyError, ApiKeysManager};
+use super::ApiKeysManager;
 
+#[derive(Clone)]
 pub struct ApiKeyAuth {
+    db: Arc<Db>,
     manager: Arc<ApiKeysManager>,
 }
 
 impl ApiKeyAuth {
-    pub fn new(manager: &Arc<ApiKeysManager>) -> Self {
+    pub fn new(manager: &Arc<ApiKeysManager>, db: &Arc<Db>) -> Self {
         ApiKeyAuth {
+            db: db.to_owned(),
             manager: manager.to_owned(),
         }
     }
@@ -46,6 +50,7 @@ where
         ready(Ok(ApiKeyAuthMiddleware {
             service: Arc::new(service),
             manager: self.manager.clone(),
+            db: self.db.clone(),
         }))
     }
 }
@@ -53,6 +58,7 @@ where
 pub struct ApiKeyAuthMiddleware<S> {
     service: Arc<S>,
     manager: Arc<ApiKeysManager>,
+    db: Arc<Db>,
 }
 
 impl<S, B> actix_service::Service<ServiceRequest> for ApiKeyAuthMiddleware<S>
@@ -97,15 +103,13 @@ where
         let headers = req.headers().clone();
         let manager = self.manager.clone();
         let service = self.service.clone();
+        let db = self.db.clone();
 
         Box::pin(async move {
             let api_key_str = manager.key_from_headers((headers, query_map))?;
-            let api_key = manager
-                .validate_api_key(&api_key_str)
-                .await?
-                .ok_or_else(|| Error::from(ApiKeyError::Invalid))?;
-
-            manager.check_rate_limit(&api_key)?;
+            let api_key = manager.validate_api_key(&api_key_str, &db).await?;
+            manager.check_subscriptions(api_key.id(), api_key.role())?;
+            manager.check_rate_limit(api_key.id(), api_key.role())?;
 
             match api_key.validate_status() {
                 Ok(()) => {

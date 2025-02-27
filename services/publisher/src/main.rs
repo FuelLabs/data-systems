@@ -86,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_db(db_url: &str) -> Result<Db, PublishError> {
+async fn setup_db(db_url: &str) -> Result<Arc<Db>, PublishError> {
     let db = Db::new(DbConnectionOpts {
         connection_str: db_url.to_string(),
         ..Default::default()

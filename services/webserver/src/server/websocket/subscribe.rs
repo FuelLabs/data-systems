@@ -10,6 +10,7 @@ use fuel_streams_core::{
 };
 use fuel_streams_domains::Subjects;
 use fuel_streams_store::record::RecordEntity;
+use fuel_web_utils::api_key::ApiKeyRole;
 use futures::{future::try_join_all, StreamExt};
 
 use crate::server::{
@@ -22,7 +23,7 @@ pub async fn subscribe_mult(
     ctx: &mut WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
-    let subscriptions = server_request.subscriptions(&ctx.api_key());
+    let subscriptions = server_request.subscriptions(ctx.api_key());
     let handles: Vec<_> = subscriptions
         .into_iter()
         .map(|subscription| {
@@ -70,7 +71,9 @@ async fn subscribe(
     }
 
     // Subscribe to the subject
-    let sub = create_subscriber(&ctx.streams, subscription).await?;
+    let api_key_role = ctx.api_key().role();
+    let sub =
+        create_subscriber(api_key_role, &ctx.streams, subscription).await?;
     let subscribed_msg = ServerResponse::Subscribed(subscription.clone());
     ctx.send_message(session, subscribed_msg).await?;
     ctx.add_subscription(subscription).await?;
@@ -80,7 +83,7 @@ async fn subscribe(
         let mut session = session.to_owned();
         let mut ctx = ctx.to_owned();
         let subscription = subscription.clone();
-        let api_key = ctx.api_key();
+        let api_key = ctx.api_key().clone();
         async move {
             let result = process_subscription(
                 &mut session,
@@ -107,7 +110,7 @@ async fn process_subscription(
 ) -> Result<(), WebsocketError> {
     let payload = subscription.payload.clone();
     let mut shutdown_rx = ctx.receiver();
-    let api_key = ctx.api_key();
+    let api_key = ctx.api_key().clone();
     tracing::debug!(%api_key, ?payload, "Starting subscription process");
     loop {
         tokio::select! {
@@ -133,6 +136,7 @@ async fn process_subscription(
 }
 
 async fn create_subscriber(
+    api_key_role: &ApiKeyRole,
     streams: &Arc<FuelStreams>,
     subscription: &Subscription,
 ) -> Result<BoxedStream, WebsocketError> {
@@ -146,37 +150,37 @@ async fn create_subscriber(
         RecordEntity::Block => {
             streams
                 .blocks
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
         RecordEntity::Transaction => {
             streams
                 .transactions
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
         RecordEntity::Input => {
             streams
                 .inputs
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
         RecordEntity::Output => {
             streams
                 .outputs
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
         RecordEntity::Receipt => {
             streams
                 .receipts
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
         RecordEntity::Utxo => {
             streams
                 .utxos
-                .subscribe_dynamic(subject, deliver_policy)
+                .subscribe_dynamic(subject, deliver_policy, api_key_role)
                 .await
         }
     };

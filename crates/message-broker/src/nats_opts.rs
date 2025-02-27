@@ -82,6 +82,6 @@ impl NatsOpts {
 
     fn random_int() -> u32 {
         use rand::Rng;
-        rand::thread_rng().gen_range(0..1000000)
+        rand::rng().random_range(0..1000000)
     }
 }

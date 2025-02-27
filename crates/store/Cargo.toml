@@ -37,4 +37,8 @@ test-case.workspace = true
 
 [features]
 default = []
-test-helpers = ["fuel-data-parser/test-helpers"]
+test-helpers = [
+  "fuel-data-parser/test-helpers",
+  "fuel-streams-types/test-helpers",
+  "fuel-streams-subject/test-helpers",
+]

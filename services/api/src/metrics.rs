@@ -1,10 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use fuel_web_utils::{
-    server::middlewares::api_key::ApiKeyUserId,
-    telemetry::metrics::TelemetryMetrics,
-};
+use fuel_web_utils::{api_key::ApiKeyId, telemetry::metrics::TelemetryMetrics};
 use prometheus::{
     register_histogram_vec,
     register_int_counter_vec,
@@ -83,7 +80,7 @@ impl Metrics {
 
     pub fn track_connection_duration(
         &self,
-        user_id: ApiKeyUserId,
+        user_id: ApiKeyId,
         user_name: &str,
         duration: Duration,
     ) {

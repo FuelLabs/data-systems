@@ -51,7 +51,6 @@ pub struct DbConnectionOpts {
     pub statement_timeout: Option<Duration>,
     pub acquire_timeout: Option<Duration>,
     pub idle_timeout: Option<Duration>,
-    pub min_connections: Option<u32>,
 }
 
 impl Default for DbConnectionOpts {
@@ -61,9 +60,8 @@ impl Default for DbConnectionOpts {
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
             statement_timeout: Some(Duration::from_secs(120)),
-            acquire_timeout: Some(Duration::from_secs(120)),
+            acquire_timeout: Some(Duration::from_secs(10)),
             idle_timeout: Some(Duration::from_secs(240)),
-            min_connections: Some((*DB_POOL_SIZE as u32) / 4),
         }
     }
 }
@@ -74,17 +72,9 @@ pub struct Db {
 }
 
 impl Db {
-    pub async fn new(opts: DbConnectionOpts) -> DbResult<Self> {
+    pub async fn new(opts: DbConnectionOpts) -> DbResult<Arc<Self>> {
         let pool = Self::create_pool(&opts).await?;
-        tracing::info!(
-            "Database connected with pool size: {}",
-            opts.pool_size.unwrap_or_default()
-        );
-        Ok(Self { pool })
-    }
-
-    pub fn arc(self) -> Arc<Self> {
-        Arc::new(self)
+        Ok(Arc::new(Self { pool }))
     }
 
     pub fn pool_ref(&self) -> &Pool<Postgres> {
@@ -102,7 +92,6 @@ impl Db {
 
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(opts.pool_size.unwrap_or_default())
-            .min_connections(opts.min_connections.unwrap_or_default())
             .acquire_timeout(opts.acquire_timeout.unwrap_or_default())
             .idle_timeout(opts.idle_timeout)
             .test_before_acquire(false)
@@ -124,5 +113,9 @@ impl Db {
                 idle_timeout,
             ),
         ]
+    }
+
+    pub async fn close(&self) {
+        self.pool.close().await;
     }
 }
