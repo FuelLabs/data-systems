@@ -343,6 +343,12 @@ reset-db: clean-docker start-docker
 	@sleep 1
 	@$(MAKE) setup-db
 
+reset-db-minimal:
+	@docker compose -f cluster/docker/docker-compose.yml --profile nats --profile postgres --env-file .env down -v --remove-orphans
+	@docker compose -f cluster/docker/docker-compose.yml --profile nats --profile postgres --env-file .env up -d
+	@docker compose -f cluster/docker/docker-compose.yml exec -T postgres pg_isready -U postgres -h localhost -q
+	@$(MAKE) setup-db
+
 # ------------------------------------------------------------
 #  Local cluster (Minikube)
 # ------------------------------------------------------------

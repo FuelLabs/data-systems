@@ -213,17 +213,20 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - fuel-data-parser
-          - fuel-message-broker
-          - fuel-streams
           - fuel-streams-core
+          - fuel-data-parser
           - fuel-streams-domains
-          - fuel-streams-subject
+          - fuel-streams
+          - fuel-message-broker
           - fuel-streams-store
+          - fuel-streams-subject
           - fuel-streams-types
           - fuel-streams-test
-          - sv-webserver
+          - fuel-web-utils
+          - sv-api
+          - sv-consumer
           - sv-publisher
+          - sv-webserver
     steps:
       - uses: actions/checkout@v4
 

@@ -13,6 +13,7 @@ pub mod tx_status;
 pub mod utxo_id;
 pub mod word;
 pub mod wrapped_int;
+pub mod wrapper_str;
 
 pub use amount::*;
 pub use block_height::*;
@@ -27,6 +28,7 @@ pub use tx_pointer::*;
 pub use tx_status::*;
 pub use utxo_id::*;
 pub use word::*;
+pub use wrapper_str::*;
 
 pub type BoxedError = Box<dyn std::error::Error>;
 pub type BoxedResult<T> = Result<T, BoxedError>;

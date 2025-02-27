@@ -56,6 +56,7 @@ Here's a simple example to get you started with Fuel Streams Core:
 ```rust,no_run
 use fuel_streams_core::prelude::*;
 use fuel_streams_store::db::*;
+use fuel_web_utils::api_key::*;
 use fuel_message_broker::*;
 use futures::StreamExt;
 
@@ -66,11 +67,17 @@ async fn main() -> anyhow::Result<()> {
     let broker = NatsMessageBroker::setup("nats://localhost:4222", None).await?;
 
     // Create or get existing stream for blocks
-    let stream = Stream::<Block>::get_or_init(&broker, &db.arc()).await;
+    let stream = Stream::<Block>::get_or_init(&broker, &db).await;
 
     // Subscribe to the stream
     let subject = BlocksSubject::new(); // blocks.*.*
-    let mut subscription = stream.subscribe(subject, DeliverPolicy::New).await;
+    let api_key_role = ApiKeyRole::default();
+    let mut subscription = stream.subscribe(
+        subject,
+        DeliverPolicy::New,
+        &api_key_role
+    )
+    .await;
 
     // Process incoming blocks
     while let Some(block) = subscription.next().await {

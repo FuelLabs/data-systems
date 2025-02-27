@@ -2,6 +2,7 @@ use fuel_streams_core::{subjects::*, types::Block};
 use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
 use fuel_streams_store::record::{QueryOptions, Record};
 use fuel_streams_test::{
+    close_db,
     create_multiple_records,
     create_random_db_name,
     insert_records,
@@ -34,6 +35,7 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
         .await?;
     assert_eq!(records.len(), 2);
 
+    close_db(&store.db).await;
     Ok(())
 }
 
@@ -64,6 +66,7 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
     assert_eq!(records.len(), 1);
     assert_eq!(&Block::from_db_item(&records[0])?, block2);
 
+    close_db(&store.db).await;
     Ok(())
 }
 
@@ -102,5 +105,6 @@ async fn test_insert_with_transaction() -> anyhow::Result<()> {
         assert_eq!(&Block::from_db_item(record)?, block);
     }
 
+    close_db(&store.db).await;
     Ok(())
 }

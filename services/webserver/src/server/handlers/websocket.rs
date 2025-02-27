@@ -8,10 +8,7 @@ use actix_web::{
 use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
 use fuel_streams_core::{server::ServerRequest, FuelStreams};
 use fuel_web_utils::{
-    server::middlewares::api_key::{
-        rate_limiter::RateLimitsController,
-        ApiKey,
-    },
+    api_key::{rate_limiter::RateLimitsController, ApiKey},
     telemetry::Telemetry,
 };
 use futures::{
@@ -55,15 +52,14 @@ pub async fn get_websocket(
     let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
     let fuel_streams = state.fuel_streams.clone();
     let telemetry = state.telemetry.clone();
-    let rate_limiter_controller =
-        state.api_keys_manager.rate_limiter_controller.clone();
+    let rate_limiter = state.api_keys_manager.rate_limiter().clone();
     actix_web::rt::spawn(handler(
         session,
         msg_stream,
         telemetry,
         fuel_streams,
         api_key,
-        rate_limiter_controller,
+        rate_limiter,
     ));
     Ok(response)
 }
@@ -74,14 +70,10 @@ async fn handler(
     telemetry: Arc<Telemetry<Metrics>>,
     fuel_streams: Arc<FuelStreams>,
     api_key: ApiKey,
-    rate_limiter_controller: Option<Arc<RateLimitsController>>,
+    rate_limiter: Arc<RateLimitsController>,
 ) -> Result<(), WebsocketError> {
-    let mut ctx = WsSession::new(
-        &api_key,
-        telemetry,
-        fuel_streams,
-        rate_limiter_controller,
-    );
+    let mut ctx =
+        WsSession::new(&api_key, telemetry, fuel_streams, rate_limiter);
     tracing::info!(
         %api_key,
         event = "websocket_connection_opened",
