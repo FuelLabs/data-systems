@@ -338,7 +338,7 @@ mod tests {
                         let msg = msg_result?;
 
                         // Simulate random processing time
-                        let delay = rand::thread_rng().gen_range(100..500);
+                        let delay = rand::rng().random_range(100..500);
                         tokio::time::sleep(Duration::from_millis(delay)).await;
 
                         received.push(msg.payload().to_vec());

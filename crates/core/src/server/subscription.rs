@@ -1,5 +1,5 @@
 use fuel_streams_subject::subject::SubjectPayload;
-use fuel_web_utils::server::middlewares::api_key::ApiKey;
+use fuel_web_utils::api_key::ApiKey;
 use serde::{Deserialize, Serialize};
 
 use super::DeliverPolicy;
@@ -41,6 +41,7 @@ impl std::fmt::Display for Subscription {
 
 #[cfg(test)]
 mod tests {
+    use fuel_web_utils::api_key::MockApiKey;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -48,8 +49,7 @@ mod tests {
 
     #[test]
     fn test_subscription_serialization() {
-        let api_key =
-            ApiKey::new(2.into(), "test_user".into(), "test_api_key".into());
+        let api_key = MockApiKey::builder(2.into()).into_inner();
         let deliver_policy = DeliverPolicy::FromBlock {
             block_height: 123u64.into(),
         };
@@ -63,7 +63,7 @@ mod tests {
 
         // Test serialization
         let json = serde_json::to_string(&subscription).unwrap();
-        let expected = r#"{"id":"2-test_user-test_subject:{}","deliverPolicy":{"fromBlock":{"blockHeight":"123"}},"payload":{"subject":"test_subject","params":{}}}"#;
+        let expected = r#"{"id":"2-builder-test_subject:{}","deliverPolicy":{"fromBlock":{"blockHeight":"123"}},"payload":{"subject":"test_subject","params":{}}}"#;
         assert_eq!(json, expected);
 
         // Test deserialization
@@ -73,8 +73,7 @@ mod tests {
 
     #[test]
     fn test_subscription_with_new_policy() {
-        let api_key =
-            ApiKey::new(2.into(), "test_user".into(), "test_api_key".into());
+        let api_key = MockApiKey::builder(2.into()).into_inner();
         let deliver_policy = DeliverPolicy::New;
         let payload = SubjectPayload {
             subject: "test_subject".into(),
@@ -85,7 +84,7 @@ mod tests {
 
         // Test serialization
         let json = serde_json::to_string(&subscription).unwrap();
-        let expected = r#"{"id":"2-test_user-test_subject:{}","deliverPolicy":"new","payload":{"subject":"test_subject","params":{}}}"#;
+        let expected = r#"{"id":"2-builder-test_subject:{}","deliverPolicy":"new","payload":{"subject":"test_subject","params":{}}}"#;
         assert_eq!(json, expected);
 
         // Test deserialization

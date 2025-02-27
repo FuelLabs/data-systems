@@ -100,7 +100,7 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
 async fn test_utxo_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let db = setup_db().await?;
-    let mut store = Store::<Utxo>::new(&db.arc());
+    let mut store = Store::<Utxo>::new(&db);
     store.with_namespace(&prefix);
 
     let inputs = vec![

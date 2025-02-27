@@ -8,7 +8,12 @@ use fuel_streams_store::{
     record::{QueryOptions, Record, RecordPacket},
     store::Store,
 };
-use fuel_streams_test::{create_random_db_name, setup_db, setup_store};
+use fuel_streams_test::{
+    close_db,
+    create_random_db_name,
+    setup_db,
+    setup_store,
+};
 use fuel_streams_types::TxId;
 use pretty_assertions::assert_eq;
 
@@ -34,6 +39,7 @@ async fn insert_input(input: Input) -> anyhow::Result<()> {
     let db_record = store.insert_record(&db_item).await?;
     assert_eq!(db_record.subject, packet.subject_str());
 
+    close_db(&store.db).await;
     Ok(())
 }
 
@@ -102,6 +108,7 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
             .await?;
     }
 
+    close_db(&store.db).await;
     Ok(())
 }
 
@@ -109,7 +116,7 @@ async fn find_many_by_subject_with_sql_columns() -> anyhow::Result<()> {
 async fn test_input_subject_to_db_item_conversion() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
     let db = setup_db().await?;
-    let mut store = Store::<Input>::new(&db.arc());
+    let mut store = Store::<Input>::new(&db);
     store.with_namespace(&prefix);
 
     let inputs = vec![
@@ -179,5 +186,6 @@ async fn test_input_subject_to_db_item_conversion() -> anyhow::Result<()> {
         }
     }
 
+    close_db(&store.db).await;
     Ok(())
 }

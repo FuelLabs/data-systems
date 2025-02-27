@@ -8,30 +8,20 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
-    server::{
-        middlewares::{
-            api_key::{ApiKeysManager, KeyStorage},
-            password::PasswordManager,
-        },
-        state::StateProvider,
-    },
+    api_key::{ApiKeysManager, KeyStorage},
+    server::{middlewares::password::PasswordManager, state::StateProvider},
     telemetry::Telemetry,
 };
 
-use crate::{
-    config::Config,
-    metrics::Metrics,
-    API_KEY_MAX_CONN_LIMIT,
-    API_PASSWORD,
-};
+use crate::{config::Config, metrics::Metrics, API_PASSWORD};
 
 #[derive(Clone)]
 pub struct ServerState {
+    pub db: Arc<Db>,
     pub start_time: Instant,
     pub msg_broker: Arc<NatsMessageBroker>,
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry<Metrics>>,
-    pub db: Arc<Db>,
     pub api_keys_manager: Arc<ApiKeysManager>,
     pub password_manager: Arc<PasswordManager>,
 }
@@ -44,25 +34,24 @@ impl ServerState {
             connection_str: config.db.url.clone(),
             ..Default::default()
         })
-        .await?
-        .arc();
+        .await?;
 
         let fuel_streams = FuelStreams::new(&msg_broker, &db).await.arc();
         let metrics = Metrics::new(None)?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
 
-        let api_keys_manager =
-            Arc::new(ApiKeysManager::new(&db, *API_KEY_MAX_CONN_LIMIT));
-        let initial_keys = api_keys_manager.load_from_db().await?;
+        let api_keys_manager = Arc::new(ApiKeysManager::new());
+        let initial_keys = api_keys_manager.load_from_db(&db).await?;
         for key in initial_keys {
-            if let Err(e) = api_keys_manager.storage.insert(&key) {
+            if let Err(e) = api_keys_manager.storage().insert(&key) {
                 tracing::warn!(
                     error = %e,
                     "Failed to cache initial API key"
                 );
             }
         }
+
         let password_manager =
             Arc::new(PasswordManager::new(API_PASSWORD.clone()));
 

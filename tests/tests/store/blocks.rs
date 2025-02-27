@@ -5,7 +5,7 @@ use fuel_streams_domains::blocks::{
     BlockDbItem,
 };
 use fuel_streams_store::record::Record;
-use fuel_streams_test::{create_random_db_name, setup_store};
+use fuel_streams_test::{close_db, create_random_db_name, setup_store};
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
@@ -48,5 +48,6 @@ async fn store_can_record_blocks() -> anyhow::Result<()> {
     assert_eq!(db_record.subject, packet.subject_str());
     assert_eq!(Block::from_db_item(&db_record)?, block);
 
+    close_db(&store.db).await;
     Ok(())
 }

@@ -42,7 +42,6 @@ pub struct BlockExecutor {
     fuel_streams: Arc<FuelStreams>,
     fuel_stores: Arc<FuelStores>,
     semaphore: Arc<Semaphore>,
-    max_tasks: usize,
     telemetry: Arc<Telemetry<Metrics>>,
 }
 
@@ -53,9 +52,7 @@ impl BlockExecutor {
         fuel_streams: &Arc<FuelStreams>,
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
-        let pool_size = db.pool.size() as usize;
-        let max_tasks = pool_size.saturating_sub(5).min(MAX_CONCURRENT_TASKS);
-        let semaphore = Arc::new(Semaphore::new(max_tasks));
+        let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
         let fuel_stores = FuelStores::new(&db).arc();
         Self {
             db,
@@ -63,7 +60,6 @@ impl BlockExecutor {
             message_broker: message_broker.clone(),
             fuel_streams: fuel_streams.clone(),
             fuel_stores: fuel_stores.clone(),
-            max_tasks,
             telemetry,
         }
     }
@@ -75,7 +71,7 @@ impl BlockExecutor {
         let mut join_set = JoinSet::new();
         tracing::info!(
             "Starting consumer with max concurrent tasks: {}",
-            self.max_tasks
+            MAX_CONCURRENT_TASKS
         );
         let telemetry = self.telemetry.clone();
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
@@ -125,7 +121,6 @@ impl BlockExecutor {
             let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
-            let db = db.clone();
             let fuel_stores = fuel_stores.clone();
             async move {
                 let _permit = semaphore.acquire().await?;

@@ -4,10 +4,12 @@ use fuel_streams_store::record::{DataEncoder, EncoderError};
 use fuel_streams_types::{
     Address,
     FuelCoreAssetId,
+    FuelCoreBytes32,
     FuelCoreChainId,
     FuelCoreError,
     FuelCoreLike,
     FuelCoreSealedBlock,
+    FuelCoreTransaction,
     FuelCoreUniqueIdentifier,
     TxId,
 };
@@ -135,7 +137,7 @@ impl MsgPayload {
 
     pub async fn tx_from_fuel_core(
         fuel_core: &Arc<dyn FuelCoreLike>,
-        tx: &fuel_tx::Transaction,
+        tx: &FuelCoreTransaction,
     ) -> Result<Transaction, MsgPayloadError> {
         let chain_id = fuel_core.chain_id();
         let base_asset_id = fuel_core.base_asset_id();
@@ -153,7 +155,7 @@ impl MsgPayload {
 
     async fn retrieve_tx_status(
         fuel_core: &Arc<dyn FuelCoreLike>,
-        tx_id: &fuel_tx::Bytes32,
+        tx_id: &FuelCoreBytes32,
         attempts: u8,
     ) -> Result<TransactionStatus, MsgPayloadError> {
         if attempts > 5 {

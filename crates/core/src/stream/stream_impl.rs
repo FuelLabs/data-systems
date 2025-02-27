@@ -9,6 +9,7 @@ use fuel_streams_store::{
 };
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockHeight;
+use fuel_web_utils::api_key::{ApiKeyRole, ApiKeyRoleScope};
 use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,
@@ -76,35 +77,58 @@ impl<R: Record> Stream<R> {
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
+        api_key_role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let subject = Arc::new(subject);
-        self.subscribe_dynamic(subject, deliver_policy).await
+        self.subscribe_dynamic(subject, deliver_policy, api_key_role)
+            .await
     }
 
     pub async fn subscribe_dynamic(
         &self,
         subject: Arc<dyn IntoSubject>,
         deliver_policy: DeliverPolicy,
+        api_key_role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let broker = self.broker.clone();
         let subject = subject.clone();
         let store = self.clone();
+        let role = api_key_role.clone();
         let stream = async_stream::try_stream! {
-            if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None);
-                while let Some(result) = historical.next().await {
-                    yield result?;
-                    let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
-                    sleep(Duration::from_millis(throttle_time as u64)).await;
+            match role.has_scopes(&[ApiKeyRoleScope::HistoricalData,
+                ApiKeyRoleScope::Full]) {
+                Ok(_) => {
+                    if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
+                        let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None);
+                        while let Some(result) = historical.next().await {
+                            yield result?;
+                            let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
+                            sleep(Duration::from_millis(throttle_time as u64)).await;
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Error subscribing to stream: {}", e);
+                    Err(StreamError::from(e))?;
                 }
             }
-            let mut live = broker.subscribe(&subject.parse()).await?;
-            while let Some(msg) = live.next().await {
-                let msg = msg?;
-                let stream_response = StreamResponse::decode_json(&msg)?;
-                yield stream_response;
-                let throttle_time = *config::STREAM_THROTTLE_LIVE;
-                sleep(Duration::from_millis(throttle_time as u64)).await;
+
+            match role.has_scopes(&[ApiKeyRoleScope::LiveData,
+                ApiKeyRoleScope::Full]) {
+                Ok(_) => {
+                    let mut live = broker.subscribe(&subject.parse()).await?;
+                    while let Some(msg) = live.next().await {
+                        let msg = msg?;
+                        let stream_response = StreamResponse::decode_json(&msg)?;
+                        yield stream_response;
+                        let throttle_time = *config::STREAM_THROTTLE_LIVE;
+                        sleep(Duration::from_millis(throttle_time as u64)).await;
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Error subscribing to stream: {}", e);
+                    Err(StreamError::from(e))?;
+                }
             }
         };
         Box::pin(stream)

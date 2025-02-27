@@ -71,7 +71,7 @@ impl KeyStorage for InMemoryApiKeyStorage {
     fn find_by_key(&self, value: &str) -> Result<ApiKey, ApiKeyError> {
         self.map
             .iter()
-            .find(|r| r.value().key() == value)
+            .find(|r| r.value().key().as_ref() == value)
             .map(|r| r.value().clone())
             .ok_or(ApiKeyStorageError::KeyNotFound.into())
     }

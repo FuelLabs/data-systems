@@ -1,5 +1,5 @@
 use fuel_streams_subject::subject::SubjectPayload;
-use fuel_web_utils::server::middlewares::api_key::ApiKey;
+use fuel_web_utils::api_key::ApiKey;
 use serde::{Deserialize, Serialize};
 
 use crate::types::*;

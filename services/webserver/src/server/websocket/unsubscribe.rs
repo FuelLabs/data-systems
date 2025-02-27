@@ -12,7 +12,7 @@ pub async fn unsubscribe_mult(
     ctx: &mut WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
-    let subscriptions = server_request.subscriptions(&ctx.api_key());
+    let subscriptions = server_request.subscriptions(ctx.api_key());
     let handles: Vec<_> = subscriptions
         .into_iter()
         .map(|subscription| {
