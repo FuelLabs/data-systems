@@ -226,8 +226,10 @@ impl std::str::FromStr for InputType {
     }
 }
 
+#[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockInput;
+#[cfg(any(test, feature = "test-helpers"))]
 impl MockInput {
     pub fn contract() -> Input {
         Input::Contract(InputContract {

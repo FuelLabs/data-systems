@@ -1,5 +1,8 @@
 use fuel_streams_core::{subjects::*, types::Block};
-use fuel_streams_domains::blocks::{subjects::BlocksSubject, types::MockBlock};
+use fuel_streams_domains::{
+    blocks::{subjects::BlocksSubject, types::MockBlock},
+    MockMsgPayload,
+};
 use fuel_streams_store::record::{QueryOptions, Record};
 use fuel_streams_test::{
     close_db,
@@ -51,7 +54,9 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
     let block2 = &blocks.get(1).unwrap().1;
 
     // Test finding by subject1
-    let subject1 = BlocksSubject::build(None, Some(1.into())).dyn_arc();
+    let da_height1 = block1.header.da_height;
+    let subject1 =
+        BlocksSubject::build(None, Some(da_height1), Some(1.into())).dyn_arc();
     let records = store
         .find_many_by_subject(&subject1, QueryOptions::default())
         .await?;
@@ -59,7 +64,9 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
     assert_eq!(&Block::from_db_item(&records[0])?, block1);
 
     // Test finding by subject2
-    let subject2 = BlocksSubject::build(None, Some(2.into())).dyn_arc();
+    let da_height2 = block2.header.da_height;
+    let subject2 =
+        BlocksSubject::build(None, Some(da_height2), Some(2.into())).dyn_arc();
     let records = store
         .find_many_by_subject(&subject2, QueryOptions::default())
         .await?;
@@ -74,7 +81,8 @@ async fn test_find_many_by_subject() -> anyhow::Result<()> {
 async fn test_subject_matching() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
-    let packet = block.to_packet(&subject);
+    let msg_payload = MockMsgPayload::from(&block).into_inner();
+    let packet = block.to_packet(&subject, msg_payload.block_timestamp);
     let matched_subject: BlocksSubject = packet.subject_payload.try_into()?;
     assert_eq!(matched_subject.parse(), subject.parse());
     Ok(())

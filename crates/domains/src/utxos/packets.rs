@@ -25,14 +25,16 @@ impl PacketBuilder for Utxo {
             .par_iter()
             .enumerate()
             .map(|(input_index, input)| {
-                let packet: RecordPacket = DynUtxoSubject::from((
+                let subject = DynUtxoSubject::from((
                     input,
                     msg_payload.block_height(),
                     tx_id.clone(),
                     *tx_index as u32,
                     input_index as u32,
-                ))
-                .into();
+                ));
+                let packet = subject
+                    .utxo()
+                    .to_packet(subject.subject(), msg_payload.block_timestamp);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -128,13 +130,11 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
 }
 
 impl DynUtxoSubject {
-    pub fn packet(&self) -> RecordPacket {
-        self.0.to_packet(&self.1.clone())
+    pub fn utxo(&self) -> &Utxo {
+        &self.0
     }
-}
 
-impl From<DynUtxoSubject> for RecordPacket {
-    fn from(subject: DynUtxoSubject) -> Self {
-        subject.packet()
+    pub fn subject(&self) -> &Arc<dyn IntoSubject> {
+        &self.1
     }
 }

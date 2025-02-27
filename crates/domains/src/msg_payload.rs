@@ -3,6 +3,7 @@ use std::sync::Arc;
 use fuel_streams_store::record::{DataEncoder, EncoderError};
 use fuel_streams_types::{
     Address,
+    BlockTimestamp,
     FuelCoreAssetId,
     FuelCoreBytes32,
     FuelCoreChainId,
@@ -64,6 +65,7 @@ pub type TxItem = (usize, Transaction);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MsgPayload {
     pub block: Block,
+    pub block_timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub(crate) metadata: Metadata,
     pub namespace: Option<String>,
@@ -86,8 +88,10 @@ impl MsgPayload {
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
         let block = Block::new(&block, consensus.into(), txs_ids, producer);
+        let block_timestamp = BlockTimestamp::from(&block.header);
         Ok(Self {
             block,
+            block_timestamp,
             transactions: txs,
             metadata: metadata.to_owned(),
             namespace: None,
@@ -178,13 +182,14 @@ impl MsgPayload {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-pub struct MockMsgPayload;
+pub struct MockMsgPayload(MsgPayload);
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockMsgPayload {
-    pub fn build(height: u32) -> MsgPayload {
+    pub fn new(height: u32) -> Self {
         use crate::mocks::*;
         let block = MockBlock::build(height);
+        let block_timestamp = BlockTimestamp::from(&block.header);
         let chain_id = Arc::new(FuelCoreChainId::default());
         let base_asset_id = Arc::new(FuelCoreAssetId::default());
         let block_producer = Arc::new(Address::default());
@@ -199,62 +204,80 @@ impl MockMsgPayload {
             consensus,
         };
 
-        MsgPayload {
+        Self(MsgPayload {
             block,
+            block_timestamp,
             transactions,
             metadata,
             namespace: None,
-        }
+        })
     }
 
-    pub fn with_height(height: u32) -> MsgPayload {
+    pub fn into_inner(self) -> MsgPayload {
+        self.0
+    }
+
+    pub fn build(height: u32, namespace: &str) -> MsgPayload {
+        let mut payload = Self::new(height);
+        payload.0.namespace = Some(namespace.to_string());
+        payload.0
+    }
+
+    pub fn with_height(height: u32) -> Self {
         use crate::mocks::*;
-        let mut payload = Self::build(height);
-        payload.block = MockBlock::build(height);
-        payload.metadata.block_height = Arc::new(BlockHeight::from(height));
+        let mut payload = Self::new(height);
+        payload.0.block = MockBlock::build(height);
+        payload.0.metadata.block_height = Arc::new(BlockHeight::from(height));
         payload
     }
 
     pub fn with_transactions(
         height: u32,
         transactions: Vec<Transaction>,
-    ) -> MsgPayload {
-        let mut payload = Self::build(height);
-        payload.transactions = transactions;
+    ) -> Self {
+        let mut payload = Self::new(height);
+        payload.0.transactions = transactions;
         payload
     }
 
     pub fn single_transaction(
         height: u32,
-        tx_type: crate::transactions::TransactionKind,
-    ) -> MsgPayload {
-        use crate::{mocks::*, transactions::TransactionKind};
+        tx_type: crate::transactions::TransactionType,
+    ) -> Self {
+        use crate::{mocks::*, transactions::TransactionType};
         let inputs = MockInput::all();
         let outputs = MockOutput::all();
         let receipts = MockReceipt::all();
         let transaction = match tx_type {
-            TransactionKind::Script => {
+            TransactionType::Script => {
                 MockTransaction::script(inputs, outputs, receipts)
             }
-            TransactionKind::Create => {
+            TransactionType::Create => {
                 MockTransaction::create(inputs, outputs, receipts)
             }
-            TransactionKind::Mint => {
+            TransactionType::Mint => {
                 MockTransaction::mint(inputs, outputs, receipts)
             }
-            TransactionKind::Upgrade => {
+            TransactionType::Upgrade => {
                 MockTransaction::upgrade(inputs, outputs, receipts)
             }
-            TransactionKind::Upload => {
+            TransactionType::Upload => {
                 MockTransaction::upload(inputs, outputs, receipts)
             }
-            TransactionKind::Blob => {
+            TransactionType::Blob => {
                 MockTransaction::blob(inputs, outputs, receipts)
             }
         };
 
-        let mut payload = Self::build(height);
-        payload.transactions = vec![transaction];
+        let mut payload = Self::new(height);
+        payload.0.transactions = vec![transaction];
         payload
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl From<&Block> for MockMsgPayload {
+    fn from(block: &Block) -> Self {
+        MockMsgPayload::new(block.height.into())
     }
 }

@@ -3,6 +3,7 @@ use fuel_streams_store::{
     db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity},
 };
+use fuel_streams_types::BlockTimestamp;
 use sqlx::PgExecutor;
 
 use super::{Block, BlockDbItem};
@@ -26,24 +27,29 @@ impl Record for Block {
         'c: 'e,
         E: PgExecutor<'c>,
     {
+        let published_at: BlockTimestamp = chrono::Utc::now().into();
         let record = sqlx::query_as::<_, BlockDbItem>(
             "WITH upsert AS (
-                INSERT INTO blocks (subject, producer_address, block_height, value, timestamp)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO blocks (subject, producer_address, block_da_height, block_height, value, created_at, published_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (subject) DO UPDATE SET
                     producer_address = EXCLUDED.producer_address,
+                    block_da_height = EXCLUDED.block_da_height,
                     block_height = EXCLUDED.block_height,
                     value = EXCLUDED.value,
-                    timestamp = NOW()
+                    created_at = EXCLUDED.created_at,
+                    published_at = $7
                 RETURNING *
             )
             SELECT * FROM upsert"
         )
         .bind(db_item.subject)
         .bind(db_item.producer_address)
+        .bind(db_item.block_da_height)
         .bind(db_item.block_height)
         .bind(db_item.value)
-        .bind(db_item.timestamp)
+        .bind(db_item.created_at)
+        .bind(published_at)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

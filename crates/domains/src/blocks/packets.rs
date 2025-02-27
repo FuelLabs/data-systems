@@ -12,11 +12,12 @@ impl PacketBuilder for Block {
         let block_height = *msg_payload.metadata.block_height;
         let block_producer = (*msg_payload.metadata.block_producer).clone();
         let subject = BlocksSubject {
-            height: Some(block_height),
             producer: Some(block_producer),
+            da_height: Some(block.header.da_height.to_owned()),
+            height: Some(block_height),
         }
         .dyn_arc();
-        let packet = block.to_packet(&subject);
+        let packet = block.to_packet(&subject, msg_payload.block_timestamp);
         let packet = match msg_payload.namespace.clone() {
             Some(ns) => packet.with_namespace(&ns),
             _ => packet,

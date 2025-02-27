@@ -31,4 +31,8 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = []
+test-helpers = [
+  "fuel-data-parser/test-helpers",
+  "fuel-streams-store/test-helpers",
+  "fuel-web-utils/test-helpers",
+]

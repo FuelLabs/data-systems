@@ -51,10 +51,10 @@ fn main_packet(
         tx_index: Some(tx_index as u32),
         tx_id: Some(tx_id.to_owned()),
         tx_status: Some(tx_status),
-        kind: Some(tx.kind.to_owned()),
+        tx_type: Some(tx.tx_type.to_owned()),
     }
     .dyn_arc();
-    let packet = tx.to_packet(&subject);
+    let packet = tx.to_packet(&subject, msg_payload.block_timestamp);
     let packet = match msg_payload.namespace.clone() {
         Some(ns) => packet.with_namespace(&ns),
         _ => packet,
