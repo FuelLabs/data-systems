@@ -2,43 +2,39 @@
 
 ## [0.0.26](https://github.com/FuelLabs/data-systems/compare/v0.0.25...v0.0.26) - 2025-02-27
 
-
-
-
-
 ### ⭐ Features
 
-- *(repo)*: Add timestamps to all database entities (#422) ([fac3af6](https://github.com/FuelLabs/data-systems/commit/fac3af66f2a95da16be0a5865743cabffb88066a)  @pedronauck)
+- _(repo)_: Add timestamps to all database entities (#422) ([fac3af6](https://github.com/FuelLabs/data-systems/commit/fac3af66f2a95da16be0a5865743cabffb88066a) @pedronauck)
 
-- *(repo)*: Add more granularity within API key rules (#420) ([d94183d](https://github.com/FuelLabs/data-systems/commit/d94183d107b9b71cbcdd48dc90a61687980de7f0)  @pedronauck)
+- _(repo)_: Add more granularity within API key rules (#420) ([d94183d](https://github.com/FuelLabs/data-systems/commit/d94183d107b9b71cbcdd48dc90a61687980de7f0) @pedronauck)
 
-- *(repo)*: Add pointers inside the StreamResponse (#404) ([efd339c](https://github.com/FuelLabs/data-systems/commit/efd339cb89dbd82bb42689c62fadb8ab2f3c8f82)  @pedronauck)
+- _(repo)_: Add pointers inside the StreamResponse (#404) ([efd339c](https://github.com/FuelLabs/data-systems/commit/efd339cb89dbd82bb42689c62fadb8ab2f3c8f82) @pedronauck)
 
-- *(repo)*: Updated fuel-core version (#417) ([a524a41](https://github.com/FuelLabs/data-systems/commit/a524a41a40edc9705b39e4b9a25de52d21ef541d)  @0xterminator)
+- _(repo)_: Updated fuel-core version (#417) ([a524a41](https://github.com/FuelLabs/data-systems/commit/a524a41a40edc9705b39e4b9a25de52d21ef541d) @0xterminator)
 
-- *(repo)*: Added utxos related endpoints (#416) ([004dd32](https://github.com/FuelLabs/data-systems/commit/004dd325f57e9614a815ed5753b030ebb1624c14)  @0xterminator)
+- _(repo)_: Added utxos related endpoints (#416) ([004dd32](https://github.com/FuelLabs/data-systems/commit/004dd325f57e9614a815ed5753b030ebb1624c14) @0xterminator)
 
-- *(repo)*: Added block, transaction, inputs, outputs related endpoints (#415) ([bd76316](https://github.com/FuelLabs/data-systems/commit/bd76316f1cbab7dd6e5c8fadc70d04fded2717b4)  @0xterminator)
+- _(repo)_: Added block, transaction, inputs, outputs related endpoints (#415) ([bd76316](https://github.com/FuelLabs/data-systems/commit/bd76316f1cbab7dd6e5c8fadc70d04fded2717b4) @0xterminator)
 
-- *(repo)*: Added blocks rest endpoint (#410) ([32d087d](https://github.com/FuelLabs/data-systems/commit/32d087d6064caaf973e2ffa35c2efe1310b19e99)  @0xterminator)
+- _(repo)_: Added blocks rest endpoint (#410) ([32d087d](https://github.com/FuelLabs/data-systems/commit/32d087d6064caaf973e2ffa35c2efe1310b19e99) @0xterminator)
 
 ### 🐛 Bug Fixes
 
-- *(repo)*: Create wrapped int types to fix serialization (#407) ([a5ad221](https://github.com/FuelLabs/data-systems/commit/a5ad2210aeb9b4fc91902b2b7205863b71b2ded0)  @pedronauck)
+- _(repo)_: Create wrapped int types to fix serialization (#407) ([a5ad221](https://github.com/FuelLabs/data-systems/commit/a5ad2210aeb9b4fc91902b2b7205863b71b2ded0) @pedronauck)
 
-- *(repo)*: Add block_timestamp to Block (#412) ([229ce74](https://github.com/FuelLabs/data-systems/commit/229ce74c924046d0d092cbd1bd8aa089ac7c2b0a)  @pedronauck)
+- _(repo)_: Add block_timestamp to Block (#412) ([229ce74](https://github.com/FuelLabs/data-systems/commit/229ce74c924046d0d092cbd1bd8aa089ac7c2b0a) @pedronauck)
 
-- *(fuel-streams-subject)*: Add alias and validate payload conversion (#411) ([c0d56da](https://github.com/FuelLabs/data-systems/commit/c0d56da18c53710725d59fdd8f49d6c1d8c0decf)  @pedronauck)
+- _(fuel-streams-subject)_: Add alias and validate payload conversion (#411) ([c0d56da](https://github.com/FuelLabs/data-systems/commit/c0d56da18c53710725d59fdd8f49d6c1d8c0decf) @pedronauck)
 
 ### 💪🏼 Contributors
 
-* @pedronauck
-* @0xterminator
-
+- @pedronauck
+- @0xterminator
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ---
+
 ## [0.0.25](https://github.com/FuelLabs/data-systems/compare/v0.0.24...v0.0.25) - 2025-02-12
 
 ### ⭐ Features
