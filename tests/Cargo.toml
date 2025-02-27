@@ -19,7 +19,8 @@ path = "tests/lib.rs"
 test-helpers = []
 
 [dependencies]
-anyhow = { workspace = true }
+anyhow.workspace = true
+chrono.workspace = true
 fuel-core = { workspace = true, features = [
   "p2p",
   "relayer",

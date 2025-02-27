@@ -4,10 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::api_key::ApiKeyError;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Default)]
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    Eq,
+    PartialEq,
+    Default,
+    strum::EnumIter,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiKeyRoleScope {
-    Full,
+    ManageApiKeys,
     HistoricalData,
     #[default]
     LiveData,
@@ -17,15 +26,15 @@ pub enum ApiKeyRoleScope {
 impl ApiKeyRoleScope {
     pub fn as_str(&self) -> &str {
         match self {
-            ApiKeyRoleScope::Full => "FULL",
+            ApiKeyRoleScope::ManageApiKeys => "MANAGE_API_KEYS",
             ApiKeyRoleScope::HistoricalData => "HISTORICAL_DATA",
             ApiKeyRoleScope::LiveData => "LIVE_DATA",
             ApiKeyRoleScope::RestApi => "REST_API",
         }
     }
 
-    pub fn is_full(&self) -> bool {
-        matches!(self, ApiKeyRoleScope::Full)
+    pub fn is_manage_api_keys(&self) -> bool {
+        matches!(self, ApiKeyRoleScope::ManageApiKeys)
     }
 
     pub fn is_historical_data(&self) -> bool {
@@ -51,7 +60,7 @@ impl TryFrom<&str> for ApiKeyRoleScope {
     type Error = ApiKeyError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "FULL" => Ok(ApiKeyRoleScope::Full),
+            "MANAGE_API_KEYS" => Ok(ApiKeyRoleScope::ManageApiKeys),
             "HISTORICAL_DATA" => Ok(ApiKeyRoleScope::HistoricalData),
             "LIVE_DATA" => Ok(ApiKeyRoleScope::LiveData),
             "REST_API" => Ok(ApiKeyRoleScope::RestApi),

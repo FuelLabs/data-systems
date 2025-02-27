@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_streams_test::close_db;
+use fuel_streams_types::{BlockTimestamp, TimeUnit};
 use fuel_web_utils::api_key::*;
 use pretty_assertions::assert_eq;
 
@@ -20,6 +21,7 @@ async fn test_fetch_all_roles() {
 
     assert!(!roles.is_empty());
     assert!(roles.iter().any(|r| r.name().is_admin()));
+    assert!(roles.iter().any(|r| r.name().is_amm()));
     assert!(roles.iter().any(|r| r.name().is_builder()));
     assert!(roles.iter().any(|r| r.name().is_web_client()));
     close_db(&db).await;
@@ -34,7 +36,6 @@ async fn test_fetch_role_by_name() {
         .expect("Failed to fetch role");
 
     assert_eq!(role.name(), &ApiKeyRoleName::Admin);
-    assert!(role.scopes().iter().any(|s| s.is_full()));
     close_db(&db).await;
 }
 
@@ -69,21 +70,40 @@ async fn test_role_scopes() {
     let admin_role = ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Admin)
         .await
         .expect("Failed to fetch admin role");
-    assert!(admin_role.scopes().iter().any(|s| s.is_full()));
-    assert_eq!(admin_role.scopes().len(), 1);
+    assert!(admin_role.scopes().iter().any(|s| s.is_manage_api_keys()));
+    assert!(admin_role.scopes().iter().any(|s| s.is_historical_data()));
+    assert!(admin_role.scopes().iter().any(|s| s.is_live_data()));
+    assert!(admin_role.scopes().iter().any(|s| s.is_rest_api()));
+    assert_eq!(admin_role.scopes().len(), 4);
 
     let web_client_role =
         ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::WebClient)
             .await
             .expect("Failed to fetch web client role");
-    assert!(!web_client_role.scopes().iter().any(|s| s.is_full()));
-    assert!(web_client_role.scopes().iter().any(|s| s.is_live_data()));
-    assert!(web_client_role.scopes().iter().any(|s| s.is_rest_api()));
     assert!(!web_client_role
         .scopes()
         .iter()
-        .any(|s| s.is_historical_data()));
+        .any(|s| s.is_manage_api_keys()));
+    assert!(web_client_role.scopes().iter().any(|s| s.is_live_data()));
+    assert!(web_client_role.scopes().iter().any(|s| s.is_rest_api()));
     assert_eq!(web_client_role.scopes().len(), 2);
+
+    let amm_role = ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Amm)
+        .await
+        .expect("Failed to fetch amm role");
+    assert!(amm_role.scopes().iter().any(|s| s.is_historical_data()));
+    assert!(amm_role.scopes().iter().any(|s| s.is_live_data()));
+    assert!(amm_role.scopes().iter().any(|s| s.is_rest_api()));
+    assert_eq!(amm_role.scopes().len(), 3);
+
+    let builder_role =
+        ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Builder)
+            .await
+            .expect("Failed to fetch builder role");
+    assert!(builder_role.scopes().iter().any(|s| s.is_historical_data()));
+    assert!(builder_role.scopes().iter().any(|s| s.is_live_data()));
+    assert!(builder_role.scopes().iter().any(|s| s.is_rest_api()));
+    assert_eq!(builder_role.scopes().len(), 3);
     close_db(&db).await;
 }
 
@@ -91,18 +111,51 @@ async fn test_role_scopes() {
 async fn test_fetch_role_by_id() {
     let db = setup_test_db().await;
     let pool = db.pool_ref();
+    let admin_role = ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Admin)
+        .await
+        .expect("Failed to fetch admin role");
 
+    let role = ApiKeyRole::fetch_by_id(pool, *admin_role.id())
+        .await
+        .expect("Failed to fetch role by ID");
+    assert_eq!(role.name(), &ApiKeyRoleName::Admin);
+    close_db(&db).await;
+}
+
+#[tokio::test]
+async fn test_validate_historical_days_limit() -> anyhow::Result<()> {
+    let db = setup_test_db().await;
+    let pool = db.pool_ref();
+
+    // Get the builder role which has a 7-day historical limit
     let builder_role =
         ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Builder)
             .await
             .expect("Failed to fetch builder role");
 
-    let role = ApiKeyRole::fetch_by_id(pool, *builder_role.id())
-        .await
-        .expect("Failed to fetch role by ID");
+    // Current timestamp (now)
+    let now = BlockTimestamp::default();
 
-    assert_eq!(role.name(), &ApiKeyRoleName::Builder);
-    assert!(role.scopes().iter().any(|s| s.is_full()));
-    assert!(role.subscription_limit().is_some());
+    // Test with timestamp within limit (should pass)
+    let within_limit = now.subtract(5, TimeUnit::Days)?;
+    assert!(builder_role
+        .validate_historical_days_limit(within_limit)
+        .is_ok());
+
+    // Test with timestamp beyond limit (should fail)
+    let beyond_limit = now.subtract(8, TimeUnit::Days)?;
+    assert!(builder_role
+        .validate_historical_days_limit(beyond_limit)
+        .is_err());
+
+    // Test with role that has no historical limit (should always pass)
+    let admin_role = ApiKeyRole::fetch_by_name(pool, &ApiKeyRoleName::Admin)
+        .await
+        .expect("Failed to fetch admin role");
+
+    let very_old = now.subtract(365, TimeUnit::Days)?;
+    assert!(admin_role.validate_historical_days_limit(very_old).is_ok());
+
     close_db(&db).await;
+    Ok(())
 }

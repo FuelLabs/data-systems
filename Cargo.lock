@@ -3889,6 +3889,7 @@ name = "fuel-streams-test"
 version = "0.0.25"
 dependencies = [
  "anyhow",
+ "chrono",
  "fuel-core",
  "fuel-core-client",
  "fuel-core-types 0.41.7",
@@ -4166,6 +4167,7 @@ dependencies = [
  "serde_json",
  "serde_prometheus",
  "sqlx",
+ "strum 0.27.1",
  "sysinfo",
  "thiserror 2.0.11",
  "time",
@@ -4358,6 +4360,7 @@ dependencies = [
  "fuel-streams-store",
  "fuel-web-utils",
  "sqlx",
+ "strum 0.27.1",
  "thiserror 2.0.11",
  "tokio",
  "tracing",
