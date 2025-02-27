@@ -5,6 +5,7 @@ use fuel_streams_store::{
     record::{RecordEntityError, RecordPacketError},
     store::StoreError,
 };
+use fuel_web_utils::api_key::ApiKeyError;
 
 use crate::{server::DeliverPolicyError, types::StreamResponseError};
 
@@ -28,4 +29,6 @@ pub enum StreamError {
     StreamResponse(#[from] StreamResponseError),
     #[error(transparent)]
     RecordEntity(#[from] RecordEntityError),
+    #[error(transparent)]
+    ApiKey(#[from] ApiKeyError),
 }

@@ -11,9 +11,9 @@ use fuel_streams_domains::{
     receipts::ReceiptType,
 };
 use fuel_streams_store::db::DbItem;
-use fuel_web_utils::server::{
-    api::with_prefixed_route,
-    middlewares::api_key::middleware::ApiKeyAuth,
+use fuel_web_utils::{
+    api_key::middleware::ApiKeyAuth,
+    server::api::with_prefixed_route,
 };
 use serde::Serialize;
 
@@ -54,11 +54,13 @@ pub fn create_services(
     state: ServerState,
 ) -> impl Fn(&mut web::ServiceConfig) + Send + Sync + 'static {
     move |cfg: &mut web::ServiceConfig| {
+        let api_key_middleware =
+            ApiKeyAuth::new(&state.api_keys_manager, &state.db);
         cfg.app_data(web::Data::new(state.clone()));
         // blocks
         cfg.service(
         web::scope(&with_prefixed_route("blocks"))
-                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .wrap(api_key_middleware.clone())
                 .route("", web::get().to({
                     move |req, query, state: web::Data<ServerState>| {
                         handlers::blocks::get_blocks(req, query, state)
@@ -89,7 +91,7 @@ pub fn create_services(
         // transactions
         cfg.service(
             web::scope(&with_prefixed_route("transactions"))
-                    .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                    .wrap(api_key_middleware.clone())
                     .route("", web::get().to({
                         move |req, query, state: web::Data<ServerState>| {
                             handlers::transactions::get_transactions(req, query, state)
@@ -115,7 +117,7 @@ pub fn create_services(
         // inputs
         cfg.service(
             web::scope(&with_prefixed_route("inputs"))
-                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .wrap(api_key_middleware.clone())
                 .route(
                     "",
                     web::get().to({
@@ -170,7 +172,7 @@ pub fn create_services(
         // outputs
         cfg.service(
             web::scope(&with_prefixed_route("outputs"))
-                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .wrap(api_key_middleware.clone())
                 .route(
                     "",
                     web::get().to({
@@ -251,7 +253,7 @@ pub fn create_services(
         // utxos
         cfg.service(
             web::scope(&with_prefixed_route("utxos"))
-                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .wrap(api_key_middleware.clone())
                 .route(
                     "",
                     web::get().to({

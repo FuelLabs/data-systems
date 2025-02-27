@@ -21,17 +21,18 @@ use rand::Rng;
 // Setup
 // -----------------------------------------------------------------------------
 
-pub async fn setup_db() -> DbResult<Db> {
-    let opts = DbConnectionOpts {
-        pool_size: Some(10),
-        ..Default::default()
-    };
+pub async fn setup_db() -> DbResult<Arc<Db>> {
+    let opts = DbConnectionOpts::default();
     Db::new(opts).await
+}
+
+pub async fn close_db(db: &Arc<Db>) {
+    db.close().await;
 }
 
 pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
     let db = setup_db().await?;
-    let store = Store::new(&db.arc());
+    let store = Store::new(&db);
     Ok(store)
 }
 
@@ -41,7 +42,7 @@ pub async fn setup_stream(
 ) -> anyhow::Result<Stream<Block>> {
     let db = setup_db().await?;
     let broker = NatsMessageBroker::setup(nats_url, Some(prefix)).await?;
-    let stream = Stream::<Block>::get_or_init(&broker, &db.arc()).await;
+    let stream = Stream::<Block>::get_or_init(&broker, &db).await;
     Ok(stream)
 }
 
@@ -102,5 +103,5 @@ pub async fn insert_records_with_transaction(
 }
 
 pub fn create_random_db_name() -> String {
-    format!("test_{}", rand::thread_rng().gen_range(0..1000000))
+    format!("test_{}", rand::rng().random_range(0..1000000))
 }

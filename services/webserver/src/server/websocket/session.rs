@@ -10,10 +10,7 @@ use fuel_streams_core::{
     FuelStreams,
 };
 use fuel_web_utils::{
-    server::middlewares::api_key::{
-        rate_limiter::RateLimitsController,
-        ApiKey,
-    },
+    api_key::{rate_limiter::RateLimitsController, ApiKey},
     telemetry::Telemetry,
 };
 use tokio::sync::{broadcast, Mutex};
@@ -88,7 +85,7 @@ impl MetricsHandler {
             let subject = subscription.payload.subject.clone();
             metrics.update_user_subscription_count(
                 self.api_key.id(),
-                &self.api_key.user(),
+                self.api_key.user(),
                 &subject,
                 &change,
             );
@@ -107,7 +104,7 @@ impl MetricsHandler {
         if let Some(metrics) = self.telemetry.base_metrics() {
             metrics.track_connection_duration(
                 self.api_key.id(),
-                &self.api_key.user(),
+                self.api_key.user(),
                 duration,
             );
         }
@@ -117,7 +114,7 @@ impl MetricsHandler {
         if let Some(metrics) = self.telemetry.base_metrics() {
             metrics.track_duplicate_subscription(
                 self.api_key.id(),
-                &self.api_key.user(),
+                self.api_key.user(),
                 subscription,
             );
         }
@@ -132,7 +129,7 @@ pub struct ConnectionManager {
     tx: broadcast::Sender<ApiKey>,
     active_subscriptions: Arc<Mutex<HashSet<Subscription>>>,
     metrics_handler: MetricsHandler,
-    rate_limiter_controller: Option<Arc<RateLimitsController>>,
+    rate_limiter: Arc<RateLimitsController>,
 }
 
 impl ConnectionManager {
@@ -144,7 +141,7 @@ impl ConnectionManager {
     fn new(
         api_key: &ApiKey,
         metrics_handler: MetricsHandler,
-        rate_limiter_controller: Option<Arc<RateLimitsController>>,
+        rate_limiter: Arc<RateLimitsController>,
     ) -> Self {
         let (tx, _) = broadcast::channel(Self::CHANNEL_CAPACITY);
         Self {
@@ -153,7 +150,7 @@ impl ConnectionManager {
             tx,
             active_subscriptions: Arc::new(Mutex::new(HashSet::new())),
             metrics_handler,
-            rate_limiter_controller,
+            rate_limiter,
         }
     }
 
@@ -181,9 +178,7 @@ impl ConnectionManager {
             .await
             .insert(subscription.to_owned());
 
-        if let Some(user_rate_limiter) = self.rate_limiter_controller.as_ref() {
-            user_rate_limiter.add_active_key_sub(self.api_key.user_id().into());
-        }
+        self.rate_limiter.add_active_key_sub(self.api_key.id());
 
         self.metrics_handler
             .track_subscription(subscription, SubscriptionChange::Added);
@@ -197,10 +192,7 @@ impl ConnectionManager {
             self.metrics_handler
                 .track_subscription(subscription, SubscriptionChange::Removed);
         }
-        if let Some(user_rate_limiter) = self.rate_limiter_controller.as_ref() {
-            user_rate_limiter
-                .remove_active_key_sub(self.api_key.user_id().into());
-        }
+        self.rate_limiter.remove_active_key_sub(self.api_key.id());
     }
 
     pub async fn clear_subscriptions(&self) {
@@ -267,11 +259,10 @@ impl WsSession {
         api_key: &ApiKey,
         telemetry: Arc<Telemetry<Metrics>>,
         streams: Arc<FuelStreams>,
-        rate_limiter_controller: Option<Arc<RateLimitsController>>,
+        rate_limiter: Arc<RateLimitsController>,
     ) -> Self {
         let metrics = MetricsHandler::new(telemetry, api_key);
-        let connection =
-            ConnectionManager::new(api_key, metrics, rate_limiter_controller);
+        let connection = ConnectionManager::new(api_key, metrics, rate_limiter);
         let messaging = MessageHandler::new(api_key);
         Self {
             api_key: api_key.to_owned(),
@@ -285,8 +276,8 @@ impl WsSession {
         self.connection.subscribe()
     }
 
-    pub fn api_key(&self) -> ApiKey {
-        self.api_key.to_owned()
+    pub fn api_key(&self) -> &ApiKey {
+        &self.api_key
     }
 
     pub async fn send_message(
@@ -376,7 +367,7 @@ impl WsSession {
         last_heartbeat: Instant,
     ) -> Result<(), WebsocketError> {
         self.connection
-            .heartbeat(&self.api_key(), session, last_heartbeat)
+            .heartbeat(self.api_key(), session, last_heartbeat)
             .await
     }
 

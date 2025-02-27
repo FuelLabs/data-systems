@@ -52,7 +52,11 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = ["fuel-data-parser/test-helpers"]
+test-helpers = [
+  "fuel-data-parser/test-helpers",
+  "fuel-streams-store/test-helpers",
+  "fuel-web-utils/test-helpers",
+]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 openssl = { version = "0.10.68", features = ["vendored"] }

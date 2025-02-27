@@ -16,7 +16,7 @@ use fuel_streams_core::{
 };
 use fuel_streams_domains::{MockMsgPayload, MsgPayload};
 use fuel_streams_store::record::{DataEncoder, QueryOptions};
-use fuel_streams_test::{create_random_db_name, setup_db};
+use fuel_streams_test::{close_db, create_random_db_name, setup_db};
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
 use pretty_assertions::assert_eq;
 use sv_consumer::{BlockExecutor, FuelStores};
@@ -195,20 +195,15 @@ async fn verify_inputs_outputs_utxos(
 #[tokio::test]
 async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     let prefix = create_random_db_name();
-    let db = setup_db().await?.arc();
+    let db = setup_db().await?;
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
-
-    // Setup real NATS broker
     let message_broker =
         NatsMessageBroker::setup("nats://localhost:4222", Some(&prefix))
             .await?;
 
-    // Setup FuelStreams & FuelStores
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let fuel_stores = FuelStores::new(&db).with_namespace(&prefix).arc();
-
-    // Create and publish test message
     let msg_payload = MockMsgPayload::build(1).with_namespace(&prefix);
     let encoded_payload = msg_payload.encode().await?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());
@@ -216,9 +211,9 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     let subject = NatsSubject::BlockSubmitted(block_height);
     queue.publish(&subject, encoded_payload).await?;
 
-    // Process messages
-    tokio::spawn({
-        let db = Arc::clone(&db);
+    let handle = tokio::spawn({
+        let db = db.clone();
+        let shutdown = shutdown.clone();
         let message_broker = Arc::clone(&message_broker);
         let fuel_streams = Arc::clone(&fuel_streams);
         let telemetry = Telemetry::new(None).await?;
@@ -227,14 +222,15 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
         async move { block_executor.start(shutdown.token()).await }
     });
 
-    // Give some time for processing
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    shutdown.initiate_shutdown();
+    let _ = handle.await?;
 
-    // Verify all records were inserted correctly
     verify_blocks(&prefix, &fuel_stores, &msg_payload).await?;
     verify_transactions(&prefix, &fuel_stores, &msg_payload).await?;
     verify_receipts(&prefix, &fuel_stores, &msg_payload).await?;
     verify_inputs_outputs_utxos(&prefix, &fuel_stores, &msg_payload).await?;
 
+    close_db(&db).await;
     Ok(())
 }

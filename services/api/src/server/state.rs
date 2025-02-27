@@ -6,14 +6,12 @@ use std::{
 use async_trait::async_trait;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
-    server::{
-        middlewares::api_key::{ApiKeysManager, KeyStorage},
-        state::StateProvider,
-    },
+    api_key::{ApiKeysManager, KeyStorage},
+    server::state::StateProvider,
     telemetry::Telemetry,
 };
 
-use crate::{config::Config, metrics::Metrics, API_KEY_MAX_CONN_LIMIT};
+use crate::{config::Config, metrics::Metrics};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -29,8 +27,7 @@ impl ServerState {
             connection_str: config.db.url.clone(),
             ..Default::default()
         })
-        .await?
-        .arc();
+        .await?;
         tracing::info!("Connected to database at {}", config.db.url);
 
         let metrics = Metrics::new(None)?;
@@ -38,11 +35,10 @@ impl ServerState {
         telemetry.start().await?;
         tracing::info!("Initialized telemetry");
 
-        let api_keys_manager =
-            Arc::new(ApiKeysManager::new(&db, *API_KEY_MAX_CONN_LIMIT));
-        let initial_keys = api_keys_manager.load_from_db().await?;
+        let api_keys_manager = Arc::new(ApiKeysManager::new());
+        let initial_keys = api_keys_manager.load_from_db(&db).await?;
         for key in initial_keys {
-            if let Err(e) = api_keys_manager.storage.insert(&key) {
+            if let Err(e) = api_keys_manager.storage().insert(&key) {
                 tracing::warn!(
                     error = %e,
                     "Failed to cache initial API key"

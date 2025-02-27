@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use prometheus::Registry;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, Rng};
 
 #[async_trait]
 pub trait TelemetryMetrics: Send + Sync + 'static {
@@ -11,7 +11,7 @@ pub trait TelemetryMetrics: Send + Sync + 'static {
         Self: std::marker::Sized;
 
     fn generate_random_prefix() -> String {
-        rand::thread_rng()
+        rand::rng()
             .sample_iter(&Alphanumeric)
             .filter(|c| c.is_ascii_alphabetic())
             .take(6)

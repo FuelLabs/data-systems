@@ -1,5 +1,10 @@
 use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse, Result};
-use fuel_web_utils::server::middlewares::api_key::{ApiKey, DbUserApiKey};
+use fuel_web_utils::api_key::{
+    ApiKey,
+    ApiKeyError,
+    ApiKeyRoleName,
+    ApiKeyUserName,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use validator::Validate;
@@ -9,7 +14,7 @@ use crate::server::state::ServerState;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Database error {0}")]
-    Sqlx(#[from] sqlx::Error),
+    ApiKey(#[from] ApiKeyError),
     #[error("Validation error {0}")]
     Validation(#[from] validator::ValidationErrors),
 }
@@ -17,7 +22,7 @@ pub enum Error {
 impl From<Error> for actix_web::Error {
     fn from(err: Error) -> Self {
         match err {
-            Error::Sqlx(e) => actix_web::error::InternalError::new(
+            Error::ApiKey(e) => actix_web::error::InternalError::new(
                 e,
                 StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -33,42 +38,16 @@ impl From<Error> for actix_web::Error {
 #[derive(Debug, Serialize, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateApiKeyRequest {
-    #[validate(length(min = 6))]
-    pub username: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GenerateApiKeyResponse {
-    pub user_id: i64,
-    pub username: String,
-    pub api_key: String,
-}
-
-impl From<&DbUserApiKey> for GenerateApiKeyResponse {
-    fn from(api_key: &DbUserApiKey) -> Self {
-        Self {
-            user_id: api_key.user_id as i64,
-            username: api_key.user_name.clone(),
-            api_key: api_key.api_key.clone(),
-        }
-    }
+    pub username: ApiKeyUserName,
+    pub role: ApiKeyRoleName,
 }
 
 async fn insert_api_key(
     request: &GenerateApiKeyRequest,
     tx: &Pool<Postgres>,
-) -> Result<DbUserApiKey, sqlx::Error> {
-    let db_record = sqlx::query_as::<_, DbUserApiKey>(
-        "INSERT INTO api_keys (user_name, api_key)
-        VALUES ($1, $2)
-        RETURNING user_id, user_name, api_key",
-    )
-    .bind(&request.username)
-    .bind(ApiKey::generate_random_api_key())
-    .fetch_one(tx)
-    .await?;
-    Ok(db_record)
+) -> Result<ApiKey, ApiKeyError> {
+    let api_key = ApiKey::create(tx, &request.username, &request.role).await?;
+    Ok(api_key)
 }
 
 pub async fn generate_api_key(
@@ -78,8 +57,6 @@ pub async fn generate_api_key(
 ) -> actix_web::Result<HttpResponse> {
     let req = req_body.into_inner();
     req.validate().map_err(Error::Validation)?;
-    let db_record = insert_api_key(&req, &state.db.pool)
-        .await
-        .map_err(Error::Sqlx)?;
-    Ok(HttpResponse::Ok().json(GenerateApiKeyResponse::from(&db_record)))
+    let db_record = insert_api_key(&req, &state.db.pool).await?;
+    Ok(HttpResponse::Ok().json(db_record))
 }

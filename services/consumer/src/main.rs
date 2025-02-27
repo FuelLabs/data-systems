@@ -66,5 +66,5 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
         ..Default::default()
     })
     .await?;
-    Ok(db.arc())
+    Ok(db)
 }
