@@ -27,7 +27,7 @@ impl Record for Transaction {
         'c: 'e,
         E: PgExecutor<'c>,
     {
-        let published_at: BlockTimestamp = chrono::Utc::now().into();
+        let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, TransactionDbItem>(
             "WITH upsert AS (
                 INSERT INTO transactions (

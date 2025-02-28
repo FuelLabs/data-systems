@@ -27,7 +27,7 @@ impl Record for Utxo {
         'c: 'e,
         E: PgExecutor<'c>,
     {
-        let published_at: BlockTimestamp = chrono::Utc::now().into();
+        let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, UtxoDbItem>(
             "WITH upsert AS (
                 INSERT INTO utxos (

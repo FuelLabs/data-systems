@@ -68,8 +68,9 @@ fn create_packets(
                 input_index as u32,
             ));
             let msg_payload = MockMsgPayload::build(1, prefix);
+            let timestamps = msg_payload.timestamp();
             input
-                .to_packet(&subject.into(), msg_payload.block_timestamp)
+                .to_packet(&subject.into(), timestamps)
                 .with_namespace(prefix)
         })
         .collect::<Vec<_>>()

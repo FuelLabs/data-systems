@@ -10,7 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
-use fuel_streams_types::BlockTimestamp;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
@@ -69,6 +69,10 @@ impl DbItem for InputDbItem {
 
     fn published_at(&self) -> BlockTimestamp {
         self.published_at
+    }
+
+    fn block_height(&self) -> BlockHeight {
+        self.block_height.into()
     }
 }
 

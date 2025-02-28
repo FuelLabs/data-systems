@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::BlockTimestamp;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use sqlx::postgres::PgRow;
 
 use super::DbError;
@@ -27,4 +27,5 @@ pub trait DbItem:
     fn subject_id(&self) -> String;
     fn created_at(&self) -> BlockTimestamp;
     fn published_at(&self) -> BlockTimestamp;
+    fn block_height(&self) -> BlockHeight;
 }

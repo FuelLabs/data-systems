@@ -40,7 +40,7 @@ pub trait Record: RecordEncoder + 'static {
     fn to_packet(
         &self,
         subject: &Arc<dyn IntoSubject>,
-        timestamps: BlockTimestamp,
+        block_timestamp: BlockTimestamp,
     ) -> RecordPacket {
         let value = self
             .encode_json()
@@ -48,7 +48,7 @@ pub trait Record: RecordEncoder + 'static {
         RecordPacket::new(
             subject.parse(),
             subject.to_payload(),
-            timestamps,
+            block_timestamp,
             value,
         )
     }

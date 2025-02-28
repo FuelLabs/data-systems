@@ -39,6 +39,7 @@ pub struct RecordPacket {
     pub subject: String,
     pub subject_payload: SubjectPayload,
     pub block_timestamp: BlockTimestamp,
+    start_time_timestamp: BlockTimestamp,
     namespace: Option<String>,
 }
 
@@ -53,11 +54,13 @@ impl RecordPacket {
         block_timestamp: BlockTimestamp,
         value: Vec<u8>,
     ) -> Self {
+        let start_time = BlockTimestamp::now();
         Self {
             value,
             subject: subject.to_string(),
             subject_payload,
             block_timestamp,
+            start_time_timestamp: start_time,
             namespace: None,
         }
     }
@@ -68,6 +71,11 @@ impl RecordPacket {
 
     pub fn with_namespace(mut self, namespace: &str) -> Self {
         self.namespace = Some(namespace.to_string());
+        self
+    }
+
+    pub fn with_start_time(mut self, timestamp: BlockTimestamp) -> Self {
+        self.start_time_timestamp = timestamp;
         self
     }
 
@@ -89,5 +97,11 @@ impl RecordPacket {
 
     pub fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
+    }
+
+    pub fn calculate_propagation_ms(&self) -> u64 {
+        let end_time = BlockTimestamp::now();
+        let diff = end_time.diff_ms(&self.start_time_timestamp);
+        diff as u64
     }
 }

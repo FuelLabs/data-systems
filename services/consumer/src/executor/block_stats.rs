@@ -39,6 +39,12 @@ impl BlockStats {
         }
     }
 
+    pub fn calculate_block_propagation_ms(&self) -> u64 {
+        let current = std::time::Instant::now();
+        let diff = current.duration_since(self.start_time);
+        diff.as_millis() as u64
+    }
+
     pub fn finish(mut self, packet_count: usize) -> Self {
         self.end_time = std::time::Instant::now();
         self.packet_count = packet_count;

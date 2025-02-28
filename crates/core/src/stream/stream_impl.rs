@@ -26,6 +26,7 @@ pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 pub struct Stream<S: Record> {
     store: Arc<Store<S>>,
     broker: Arc<NatsMessageBroker>,
+    namespace: Option<String>,
     _marker: std::marker::PhantomData<S>,
 }
 
@@ -49,13 +50,34 @@ impl<R: Record> Stream<R> {
         Self {
             store,
             broker,
+            namespace: None,
             _marker: std::marker::PhantomData,
         }
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn store(&self) -> &Store<R> {
-        &self.store
+    pub fn with_namespace(
+        broker: &Arc<NatsMessageBroker>,
+        db: &Arc<Db>,
+        namespace: String,
+    ) -> Self {
+        let store = Arc::new(Store::new(db));
+        let broker = Arc::clone(broker);
+        Self {
+            store,
+            broker,
+            namespace: Some(namespace),
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    pub fn store(&self) -> Store<R> {
+        if let Some(namespace) = &self.namespace {
+            let mut store = (*self.store).clone();
+            store.with_namespace(&namespace.clone()).to_owned()
+        } else {
+            (*self.store).to_owned()
+        }
     }
 
     pub fn arc(&self) -> Arc<Self> {
@@ -92,14 +114,13 @@ impl<R: Record> Stream<R> {
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let broker = self.broker.clone();
         let subject = subject.clone();
-        let store = self.clone();
+        let stream = self.clone();
         let role = api_key_role.clone();
         let stream = async_stream::try_stream! {
-            match role.has_scopes(&[ApiKeyRoleScope::HistoricalData,
-                ApiKeyRoleScope::Full]) {
+            match role.has_scopes(&[ApiKeyRoleScope::HistoricalData]) {
                 Ok(_) => {
                     if let DeliverPolicy::FromBlock { block_height } = deliver_policy {
-                        let mut historical = store.historical_streaming(subject.to_owned(), Some(block_height), None);
+                        let mut historical = stream.historical_streaming(subject.to_owned(), Some(block_height), &role);
                         while let Some(result) = historical.next().await {
                             yield result?;
                             let throttle_time = *config::STREAM_THROTTLE_HISTORICAL;
@@ -113,8 +134,7 @@ impl<R: Record> Stream<R> {
                 }
             }
 
-            match role.has_scopes(&[ApiKeyRoleScope::LiveData,
-                ApiKeyRoleScope::Full]) {
+            match role.has_scopes(&[ApiKeyRoleScope::LiveData]) {
                 Ok(_) => {
                     let mut live = broker.subscribe(&subject.parse()).await?;
                     while let Some(msg) = live.next().await {
@@ -138,22 +158,31 @@ impl<R: Record> Stream<R> {
         &self,
         subject: Arc<dyn IntoSubject>,
         from_block: Option<BlockHeight>,
-        query_opts: Option<QueryOptions>,
+        role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
-        let store = self.store.clone();
-        let db = self.store.db.clone();
+        let store = self.store().clone();
+        let db = self.store().db.clone();
+        let role = role.clone();
+        let opts = if cfg!(any(test, feature = "test-helpers")) {
+            QueryOptions::default()
+        } else {
+            QueryOptions::default().with_namespace(self.namespace.clone())
+        };
+
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
-            let mut opts = query_opts.unwrap_or_default().with_from_block(Some(current_height));
+            let mut opts = opts.with_from_block(Some(current_height));
             let mut last_height = find_last_block_height(&db, opts.clone()).await?;
             while current_height <= last_height {
                 let items = store.find_many_by_subject(&subject, opts.clone()).await?;
                 for item in items {
                     let subject = item.subject_str();
                     let subject_id = item.subject_id();
+                    let block_height = item.block_height();
+                    role.validate_historical_limit(last_height, block_height)?;
                     let value = item.encoded_value().to_vec();
                     let pointer = item.into();
-                    let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned())?;
+                    let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned(), None)?;
                     yield response;
                     current_height = pointer.block_height;
                 }
