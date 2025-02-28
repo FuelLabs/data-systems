@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_streams_test::close_db;
-use fuel_streams_types::{BlockTimestamp, TimeUnit};
+use fuel_streams_types::BlockHeight;
 use fuel_web_utils::api_key::*;
 use pretty_assertions::assert_eq;
 
@@ -133,19 +133,15 @@ async fn test_validate_historical_days_limit() -> anyhow::Result<()> {
             .await
             .expect("Failed to fetch builder role");
 
-    // Current timestamp (now)
-    let now = BlockTimestamp::default();
-
-    // Test with timestamp within limit (should pass)
-    let within_limit = now.subtract(5, TimeUnit::Days)?;
+    let last_height = BlockHeight::from(700);
+    let within_limit = BlockHeight::from(650);
     assert!(builder_role
-        .validate_historical_days_limit(within_limit)
+        .validate_historical_limit(last_height, within_limit)
         .is_ok());
 
-    // Test with timestamp beyond limit (should fail)
-    let beyond_limit = now.subtract(8, TimeUnit::Days)?;
+    let beyond_limit = BlockHeight::from(99);
     assert!(builder_role
-        .validate_historical_days_limit(beyond_limit)
+        .validate_historical_limit(last_height, beyond_limit)
         .is_err());
 
     // Test with role that has no historical limit (should always pass)
@@ -153,8 +149,10 @@ async fn test_validate_historical_days_limit() -> anyhow::Result<()> {
         .await
         .expect("Failed to fetch admin role");
 
-    let very_old = now.subtract(365, TimeUnit::Days)?;
-    assert!(admin_role.validate_historical_days_limit(very_old).is_ok());
+    let very_old = BlockHeight::from(1);
+    assert!(admin_role
+        .validate_historical_limit(last_height, very_old)
+        .is_ok());
 
     close_db(&db).await;
     Ok(())

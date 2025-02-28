@@ -3889,7 +3889,6 @@ name = "fuel-streams-test"
 version = "0.0.25"
 dependencies = [
  "anyhow",
- "chrono",
  "fuel-core",
  "fuel-core-client",
  "fuel-core-types 0.41.7",

@@ -32,7 +32,6 @@ impl<R: Record + DataEncoder> Store<R> {
         Arc::new(self.to_owned())
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_namespace(&mut self, namespace: &str) -> &mut Self {
         self.namespace = Some(namespace.to_string());
         self

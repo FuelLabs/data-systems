@@ -1,4 +1,4 @@
-use fuel_streams_types::BlockTimestamp;
+use fuel_streams_types::BlockHeight;
 use serde::{Deserialize, Serialize};
 
 use crate::api_key::{
@@ -6,7 +6,7 @@ use crate::api_key::{
     ApiKeyRoleId,
     ApiKeyRoleName,
     ApiKeyRoleScope,
-    HistoricalDaysLimit,
+    HistoricalLimit,
     RateLimitPerMinute,
     SubscriptionCount,
 };
@@ -20,7 +20,7 @@ pub struct ApiKeyRole {
     scopes: Vec<ApiKeyRoleScope>,
     subscription_limit: Option<SubscriptionCount>,
     rate_limit_per_minute: Option<RateLimitPerMinute>,
-    historical_days_limit: Option<HistoricalDaysLimit>,
+    historical_limit: Option<HistoricalLimit>,
 }
 
 impl ApiKeyRole {
@@ -30,7 +30,7 @@ impl ApiKeyRole {
         scopes: Vec<ApiKeyRoleScope>,
         subscription_limit: Option<SubscriptionCount>,
         rate_limit_per_minute: Option<RateLimitPerMinute>,
-        historical_days_limit: Option<HistoricalDaysLimit>,
+        historical_limit: Option<HistoricalLimit>,
     ) -> Self {
         Self {
             id,
@@ -38,7 +38,7 @@ impl ApiKeyRole {
             scopes,
             subscription_limit,
             rate_limit_per_minute,
-            historical_days_limit,
+            historical_limit,
         }
     }
 
@@ -62,8 +62,8 @@ impl ApiKeyRole {
         self.rate_limit_per_minute
     }
 
-    pub fn historical_days_limit(&self) -> Option<HistoricalDaysLimit> {
-        self.historical_days_limit
+    pub fn historical_limit(&self) -> Option<HistoricalLimit> {
+        self.historical_limit
     }
 
     pub fn has_scopes(
@@ -91,7 +91,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_limit
              FROM api_key_roles
              ORDER BY name",
         )
@@ -108,7 +108,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_limit
              FROM api_key_roles
              WHERE name = $1::api_role",
         )
@@ -126,7 +126,7 @@ impl ApiKeyRole {
         E: sqlx::PgExecutor<'c>,
     {
         sqlx::query_as::<_, Self>(
-            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_days_limit
+            "SELECT id, name, scopes, subscription_limit, rate_limit_per_minute, historical_limit
              FROM api_key_roles
              WHERE id = $1",
         )
@@ -161,14 +161,15 @@ impl ApiKeyRole {
         Ok(current_count)
     }
 
-    pub fn validate_historical_days_limit(
+    pub fn validate_historical_limit(
         &self,
-        block_timestamp: BlockTimestamp,
+        last_height: BlockHeight,
+        current_height: BlockHeight,
     ) -> Result<(), ApiKeyError> {
-        if let Some(limit) = self.historical_days_limit() {
-            let is_within_limit = block_timestamp.is_within_days(limit.into());
-            if !is_within_limit {
-                return Err(ApiKeyError::HistoricalDaysLimitExceeded(
+        if let Some(limit) = self.historical_limit() {
+            let diff = last_height.into_inner() - current_height.into_inner();
+            if diff > limit.into_inner() as u64 {
+                return Err(ApiKeyError::HistoricalLimitExceeded(
                     limit.to_string(),
                 ));
             }
@@ -193,14 +194,14 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for ApiKeyRole {
             scopes,
             subscription_limit,
             rate_limit_per_minute,
-            historical_days_limit,
+            historical_limit,
         ) = <(
             ApiKeyRoleId,
             ApiKeyRoleName,
             Vec<ApiKeyRoleScope>,
             Option<SubscriptionCount>,
             Option<RateLimitPerMinute>,
-            Option<HistoricalDaysLimit>,
+            Option<HistoricalLimit>,
         )>::decode(value)?;
         Ok(Self {
             id,
@@ -208,7 +209,7 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for ApiKeyRole {
             scopes,
             subscription_limit,
             rate_limit_per_minute,
-            historical_days_limit,
+            historical_limit,
         })
     }
 }
@@ -267,7 +268,7 @@ impl MockApiKeyRole {
             ],
             Some(SubscriptionCount::from(50)),
             Some(RateLimitPerMinute::from(7)),
-            Some(HistoricalDaysLimit::from(7)),
+            Some(HistoricalLimit::from(600)),
         ))
     }
 

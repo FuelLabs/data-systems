@@ -41,7 +41,8 @@ pub async fn setup_stream(
 ) -> anyhow::Result<Stream<Block>> {
     let db = setup_db().await?;
     let broker = NatsMessageBroker::setup(nats_url, Some(prefix)).await?;
-    let stream = Stream::<Block>::get_or_init(&broker, &db).await;
+    let stream =
+        Stream::<Block>::with_namespace(&broker, &db, prefix.to_string());
     Ok(stream)
 }
 

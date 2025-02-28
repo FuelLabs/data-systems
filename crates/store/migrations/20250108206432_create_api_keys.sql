@@ -10,14 +10,15 @@ CREATE TABLE IF NOT EXISTS api_key_roles (
     subscription_limit INTEGER,
     scopes api_scope[] NOT NULL DEFAULT '{}',
     rate_limit_per_minute INTEGER,
-    historical_days_limit INTEGER
+    -- The number of blocks to include in the historical data stream
+    historical_limit INTEGER
 );
 
 -- Insert default roles
-INSERT INTO api_key_roles (name, subscription_limit, scopes, rate_limit_per_minute, historical_days_limit) VALUES
+INSERT INTO api_key_roles (name, subscription_limit, scopes, rate_limit_per_minute, historical_limit) VALUES
     ('ADMIN', NULL, ARRAY['HISTORICAL_DATA', 'LIVE_DATA', 'REST_API', 'MANAGE_API_KEYS']::api_scope[], NULL, NULL),
     ('AMM', NULL, ARRAY['HISTORICAL_DATA', 'LIVE_DATA', 'REST_API']::api_scope[], NULL, NULL),
-    ('BUILDER', 50, ARRAY['HISTORICAL_DATA', 'LIVE_DATA', 'REST_API']::api_scope[], NULL, 7),
+    ('BUILDER', 50, ARRAY['HISTORICAL_DATA', 'LIVE_DATA', 'REST_API']::api_scope[], NULL, 600),
     ('WEB_CLIENT', NULL, ARRAY['LIVE_DATA', 'REST_API']::api_scope[], 1000, NULL);
 
 -- Create api_keys table with all required fields
