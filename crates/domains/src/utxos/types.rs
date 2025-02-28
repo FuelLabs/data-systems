@@ -50,8 +50,10 @@ impl std::str::FromStr for UtxoType {
     }
 }
 
+#[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockUtxo;
+#[cfg(any(test, feature = "test-helpers"))]
 impl MockUtxo {
     pub fn coin(amount: u64, recipient: Address) -> Utxo {
         Utxo {

@@ -324,6 +324,7 @@ impl std::fmt::Display for ApiKey {
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub struct MockApiKey(pub ApiKey);
+#[cfg(any(test, feature = "test-helpers"))]
 impl MockApiKey {
     pub fn new(api_key: ApiKey) -> Self {
         Self(api_key)

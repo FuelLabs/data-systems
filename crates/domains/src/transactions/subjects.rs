@@ -9,7 +9,7 @@ use crate::transactions::types::*;
 #[subject(entity = "Transaction")]
 #[subject(query_all = "transactions.>")]
 #[subject(
-    format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{kind}"
+    format = "transactions.{block_height}.{tx_id}.{tx_index}.{tx_status}.{tx_type}"
 )]
 pub struct TransactionsSubject {
     #[subject(
@@ -27,8 +27,8 @@ pub struct TransactionsSubject {
     )]
     pub tx_status: Option<TransactionStatus>,
     #[subject(description = "The type of transaction (create, mint, script)")]
-    #[subject(alias = "type")]
-    pub kind: Option<TransactionKind>,
+    #[subject(sql_column = "type")]
+    pub tx_type: Option<TransactionType>,
 }
 
 impl From<&Transaction> for TransactionsSubject {
@@ -36,6 +36,6 @@ impl From<&Transaction> for TransactionsSubject {
         let subject = TransactionsSubject::new();
         subject
             .with_tx_id(Some(transaction.id.clone()))
-            .with_kind(Some(transaction.kind.clone()))
+            .with_tx_type(Some(transaction.tx_type.clone()))
     }
 }

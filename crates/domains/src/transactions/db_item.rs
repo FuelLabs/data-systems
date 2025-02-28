@@ -10,6 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
@@ -25,7 +26,10 @@ pub struct TransactionDbItem {
     pub tx_id: String,
     pub tx_index: i32,
     pub tx_status: String,
-    pub kind: String,
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub created_at: BlockTimestamp,
+    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for TransactionDbItem {
@@ -48,6 +52,14 @@ impl DbItem for TransactionDbItem {
     fn subject_id(&self) -> String {
         TransactionsSubject::ID.to_string()
     }
+
+    fn created_at(&self) -> BlockTimestamp {
+        self.created_at
+    }
+
+    fn published_at(&self) -> BlockTimestamp {
+        self.published_at
+    }
 }
 
 impl TryFrom<&RecordPacket> for TransactionDbItem {
@@ -67,7 +79,9 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 tx_status: subject.tx_status.unwrap().to_string(),
-                kind: subject.kind.unwrap().to_string(),
+                r#type: subject.tx_type.unwrap().to_string(),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

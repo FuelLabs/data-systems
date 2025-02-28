@@ -3,6 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_subject::subject::IntoSubject;
+use fuel_streams_types::BlockTimestamp;
 use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket, RecordPointer};
@@ -36,11 +37,20 @@ pub trait Record: RecordEncoder + 'static {
         Self::insert(&mut **tx, db_item.to_owned()).await
     }
 
-    fn to_packet(&self, subject: &Arc<dyn IntoSubject>) -> RecordPacket {
+    fn to_packet(
+        &self,
+        subject: &Arc<dyn IntoSubject>,
+        timestamps: BlockTimestamp,
+    ) -> RecordPacket {
         let value = self
             .encode_json()
             .unwrap_or_else(|_| panic!("Encode failed for {}", Self::ENTITY));
-        RecordPacket::new(subject.parse(), subject.to_payload(), value)
+        RecordPacket::new(
+            subject.parse(),
+            subject.to_payload(),
+            timestamps,
+            value,
+        )
     }
 
     fn from_db_item(record: &Self::DbItem) -> DbResult<Self> {

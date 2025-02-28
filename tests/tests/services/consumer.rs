@@ -204,7 +204,8 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
 
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let fuel_stores = FuelStores::new(&db).with_namespace(&prefix).arc();
-    let msg_payload = MockMsgPayload::build(1).with_namespace(&prefix);
+    let msg_payload =
+        MockMsgPayload::new(1).into_inner().with_namespace(&prefix);
     let encoded_payload = msg_payload.encode().await?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());
     let block_height = msg_payload.block_height().into();

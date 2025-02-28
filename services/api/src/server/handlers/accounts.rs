@@ -6,7 +6,7 @@ use fuel_streams_domains::{
     transactions::{queryable::TransactionsQuery, TransactionDbItem},
     utxos::{queryable::UtxosQuery, UtxoDbItem},
 };
-use fuel_web_utils::server::middlewares::api_key::ApiKey;
+use fuel_web_utils::api_key::ApiKey;
 
 use super::{Error, GetDbEntityResponse};
 use crate::server::state::ServerState;

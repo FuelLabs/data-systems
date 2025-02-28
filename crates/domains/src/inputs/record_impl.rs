@@ -3,6 +3,7 @@ use fuel_streams_store::{
     db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity},
 };
+use fuel_streams_types::BlockTimestamp;
 use sqlx::PgExecutor;
 
 use super::{Input, InputDbItem};
@@ -26,14 +27,16 @@ impl Record for Input {
         'c: 'e,
         E: PgExecutor<'c>,
     {
+        let published_at: BlockTimestamp = chrono::Utc::now().into();
         let record = sqlx::query_as::<_, InputDbItem>(
             "WITH upsert AS (
                 INSERT INTO inputs (
                     subject, value, block_height, tx_id, tx_index,
                     input_index, input_type, owner_id, asset_id,
-                    contract_id, sender_address, recipient_address
+                    contract_id, sender_address, recipient_address,
+                    created_at, published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT (subject) DO UPDATE SET
                     value = EXCLUDED.value,
                     block_height = EXCLUDED.block_height,
@@ -45,7 +48,9 @@ impl Record for Input {
                     asset_id = EXCLUDED.asset_id,
                     contract_id = EXCLUDED.contract_id,
                     sender_address = EXCLUDED.sender_address,
-                    recipient_address = EXCLUDED.recipient_address
+                    recipient_address = EXCLUDED.recipient_address,
+                    created_at = EXCLUDED.created_at,
+                    published_at = $14
                 RETURNING *
             )
             SELECT * FROM upsert",
@@ -62,6 +67,8 @@ impl Record for Input {
         .bind(db_item.contract_id)
         .bind(db_item.sender_address)
         .bind(db_item.recipient_address)
+        .bind(db_item.created_at)
+        .bind(published_at)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

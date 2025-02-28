@@ -263,7 +263,7 @@ pub fn create_services(
         // accounts
         cfg.service(
             web::scope(&with_prefixed_route("accounts"))
-                    .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                    .wrap(api_key_middleware.clone())
                     .route("/{address}/transactions", web::get().to({
                         move |req, path, query, state: web::Data<ServerState>| {
                             handlers::accounts::get_accounts_transactions(req, path, query, state)

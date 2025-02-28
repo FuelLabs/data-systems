@@ -1,6 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
-use fuel_streams_types::FuelCoreTai64Timestamp;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::FuelCoreTai64;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockTimestampError {
@@ -25,9 +26,7 @@ impl BlockTimestamp {
             .ok_or(BlockTimestampError::OutOfRange)
     }
 
-    pub fn from_tai64(
-        tai: FuelCoreTai64Timestamp,
-    ) -> Result<Self, BlockTimestampError> {
+    pub fn from_tai64(tai: FuelCoreTai64) -> Result<Self, BlockTimestampError> {
         let unix_timestamp = tai.to_unix();
         Self::from_unix_timestamp(unix_timestamp)
     }
@@ -63,6 +62,60 @@ impl BlockTimestamp {
     pub fn to_seconds(&self) -> i64 {
         self.0.timestamp()
     }
+
+    pub fn is_after(&self, other: &Self) -> bool {
+        self.0 > other.0
+    }
+
+    pub fn is_before(&self, other: &Self) -> bool {
+        self.0 < other.0
+    }
+
+    pub fn is_equal(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+
+    pub fn is_at_or_after(&self, other: &Self) -> bool {
+        self.0 >= other.0
+    }
+
+    pub fn is_at_or_before(&self, other: &Self) -> bool {
+        self.0 <= other.0
+    }
+
+    pub fn add_seconds(
+        &self,
+        seconds: i64,
+    ) -> Result<Self, BlockTimestampError> {
+        let new_timestamp = self
+            .unix_timestamp()
+            .checked_add(seconds)
+            .ok_or(BlockTimestampError::OutOfRange)?;
+        Self::from_unix_timestamp(new_timestamp)
+    }
+
+    pub fn subtract_seconds(
+        &self,
+        seconds: i64,
+    ) -> Result<Self, BlockTimestampError> {
+        let new_timestamp = self
+            .unix_timestamp()
+            .checked_sub(seconds)
+            .ok_or(BlockTimestampError::OutOfRange)?;
+        Self::from_unix_timestamp(new_timestamp)
+    }
+
+    pub fn difference_in_seconds(&self, other: &Self) -> i64 {
+        self.unix_timestamp() - other.unix_timestamp()
+    }
+
+    pub fn is_between(&self, start: &Self, end: &Self) -> bool {
+        self.is_at_or_after(start) && self.is_at_or_before(end)
+    }
+
+    pub fn is_strictly_between(&self, start: &Self, end: &Self) -> bool {
+        self.is_after(start) && self.is_before(end)
+    }
 }
 
 impl Default for BlockTimestamp {
@@ -71,9 +124,9 @@ impl Default for BlockTimestamp {
     }
 }
 
-impl From<&super::Block> for BlockTimestamp {
-    fn from(block: &super::Block) -> Self {
-        Self::from_tai64(block.header.time.clone())
+impl From<&super::BlockHeader> for BlockTimestamp {
+    fn from(header: &super::BlockHeader) -> Self {
+        Self::from_tai64(header.time.clone().into_inner())
             .unwrap_or_else(|_| Self(Utc::now()))
     }
 }
@@ -126,6 +179,38 @@ impl<'de> Deserialize<'de> for BlockTimestamp {
     }
 }
 
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for BlockTimestamp {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let dt =
+            <chrono::DateTime<Utc> as sqlx::Decode<sqlx::Postgres>>::decode(
+                value,
+            )?;
+        Ok(Self(dt))
+    }
+}
+
+impl sqlx::Type<sqlx::Postgres> for BlockTimestamp {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        <chrono::DateTime<Utc> as sqlx::Type<sqlx::Postgres>>::type_info()
+    }
+}
+
+impl sqlx::Encode<'_, sqlx::Postgres> for BlockTimestamp {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<
+        sqlx::encode::IsNull,
+        Box<dyn std::error::Error + Send + Sync + 'static>,
+    > {
+        <chrono::DateTime<Utc> as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
+            &self.0, buf,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -133,6 +218,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::{BlockHeader, BlockTime};
 
     #[test]
     fn test_from_unix_timestamp() {
@@ -171,7 +257,7 @@ mod tests {
     #[test]
     fn test_tai64_conversion() {
         // Assuming a valid TAI64 timestamp
-        let tai = FuelCoreTai64Timestamp::from_unix(1234567890);
+        let tai = FuelCoreTai64::from_unix(1234567890);
         let timestamp = BlockTimestamp::from_tai64(tai).unwrap();
         assert_eq!(timestamp.unix_timestamp(), 1234567890);
     }
@@ -257,14 +343,12 @@ mod tests {
 
     #[test]
     fn test_block_conversion() {
-        use crate::mocks::MockBlock;
-
         // Create a mock block with known timestamp
         let unix_time = 1234567890;
-        let block = MockBlock::build_with_timestamp(1, unix_time);
-
-        // Test conversion from block
-        let timestamp = BlockTimestamp::from(&block);
+        let mut block_header = BlockHeader::default();
+        let time = BlockTime::from(FuelCoreTai64::from_unix(unix_time));
+        block_header.time = time.clone();
+        let timestamp = BlockTimestamp::from(&block_header);
         assert_eq!(timestamp.unix_timestamp(), unix_time);
     }
 
@@ -286,5 +370,94 @@ mod tests {
             before_unix,
             after_unix
         );
+    }
+
+    #[test]
+    fn test_comparison_methods() {
+        // Create timestamps with different values
+        let earlier = BlockTimestamp::from_unix_timestamp(1000000000).unwrap();
+        let later = BlockTimestamp::from_unix_timestamp(1500000000).unwrap();
+
+        // Test is_greater
+        assert!(!earlier.is_after(&later));
+        assert!(later.is_after(&earlier));
+
+        // Test is_less
+        assert!(earlier.is_before(&later));
+        assert!(!later.is_before(&earlier));
+
+        // Test with equal timestamps
+        let same1 = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let same2 = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+
+        assert!(!same1.is_after(&same2));
+        assert!(!same1.is_before(&same2));
+    }
+
+    #[test]
+    fn test_equality_methods() {
+        let ts1 = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let ts2 = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let ts3 = BlockTimestamp::from_unix_timestamp(1234567891).unwrap();
+
+        assert!(ts1.is_equal(&ts2));
+        assert!(!ts1.is_equal(&ts3));
+
+        assert!(ts1.is_at_or_after(&ts2));
+        assert!(ts3.is_at_or_after(&ts1));
+        assert!(!ts1.is_at_or_after(&ts3));
+
+        assert!(ts1.is_at_or_before(&ts2));
+        assert!(ts1.is_at_or_before(&ts3));
+        assert!(!ts3.is_at_or_before(&ts1));
+    }
+
+    #[test]
+    fn test_time_arithmetic() {
+        let ts = BlockTimestamp::from_unix_timestamp(1000).unwrap();
+
+        // Test adding seconds
+        let ts_plus = ts.add_seconds(500).unwrap();
+        assert_eq!(ts_plus.unix_timestamp(), 1500);
+
+        // Test subtracting seconds
+        let ts_minus = ts.subtract_seconds(500).unwrap();
+        assert_eq!(ts_minus.unix_timestamp(), 500);
+
+        // Test overflow/underflow handling
+        assert!(ts.add_seconds(i64::MAX).is_err());
+        assert!(ts.subtract_seconds(i64::MAX).is_err());
+    }
+
+    #[test]
+    fn test_difference_calculation() {
+        let earlier = BlockTimestamp::from_unix_timestamp(1000).unwrap();
+        let later = BlockTimestamp::from_unix_timestamp(1500).unwrap();
+
+        assert_eq!(later.difference_in_seconds(&earlier), 500);
+        assert_eq!(earlier.difference_in_seconds(&later), -500);
+    }
+
+    #[test]
+    fn test_range_checking() {
+        let start = BlockTimestamp::from_unix_timestamp(1000).unwrap();
+        let middle = BlockTimestamp::from_unix_timestamp(1500).unwrap();
+        let end = BlockTimestamp::from_unix_timestamp(2000).unwrap();
+
+        // Test inclusive range
+        assert!(middle.is_between(&start, &end));
+        assert!(start.is_between(&start, &end));
+        assert!(end.is_between(&start, &end));
+        assert!(!BlockTimestamp::from_unix_timestamp(999)
+            .unwrap()
+            .is_between(&start, &end));
+        assert!(!BlockTimestamp::from_unix_timestamp(2001)
+            .unwrap()
+            .is_between(&start, &end));
+
+        // Test exclusive range
+        assert!(middle.is_strictly_between(&start, &end));
+        assert!(!start.is_strictly_between(&start, &end));
+        assert!(!end.is_strictly_between(&start, &end));
     }
 }

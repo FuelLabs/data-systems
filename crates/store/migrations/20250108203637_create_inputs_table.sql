@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS inputs (
-    _id SERIAL PRIMARY KEY,
-    subject TEXT NOT NULL,
+    id SERIAL PRIMARY KEY,
+    value BYTEA NOT NULL,
+    subject TEXT NOT NULL UNIQUE,
     block_height BIGINT NOT NULL,
     tx_id TEXT NOT NULL,
     tx_index INTEGER NOT NULL,
@@ -11,7 +12,8 @@ CREATE TABLE IF NOT EXISTS inputs (
     contract_id TEXT, -- for contract
     sender_address TEXT,      -- for message
     recipient_address TEXT,   -- for message
-    value BYTEA NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_inputs_subject ON inputs (subject);
@@ -25,6 +27,8 @@ CREATE INDEX IF NOT EXISTS idx_inputs_asset_id ON inputs (asset_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_contract_id ON inputs (contract_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_sender_address ON inputs (sender_address);
 CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address ON inputs (recipient_address);
+CREATE INDEX IF NOT EXISTS idx_inputs_created_at ON inputs (created_at);
+CREATE INDEX IF NOT EXISTS idx_inputs_published_at ON inputs (published_at);
 
 -- Composite indexes for filtering with "WHERE block_height >= <value>"
 CREATE INDEX IF NOT EXISTS idx_inputs_input_type_block_height ON inputs (input_type, block_height);

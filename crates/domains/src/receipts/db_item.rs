@@ -10,6 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
@@ -34,6 +35,8 @@ pub struct ReceiptDbItem {
     pub sub_id: Option<String>,      // for mint/burn
     pub sender_address: Option<String>, // for message_out
     pub recipient_address: Option<String>, // for message_out
+    pub created_at: BlockTimestamp,
+    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for ReceiptDbItem {
@@ -72,6 +75,14 @@ impl DbItem for ReceiptDbItem {
         }
         .to_string()
     }
+
+    fn created_at(&self) -> BlockTimestamp {
+        self.created_at
+    }
+
+    fn published_at(&self) -> BlockTimestamp {
+        self.published_at
+    }
 }
 
 impl TryFrom<&RecordPacket> for ReceiptDbItem {
@@ -100,6 +111,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsReturn(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -117,6 +130,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsReturnData(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -134,6 +149,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsPanic(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -151,6 +168,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsRevert(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -168,6 +187,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsLog(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -185,6 +206,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsLogData(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -202,6 +225,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsTransfer(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -219,6 +244,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sender_address: None,
                 recipient_address: None,
                 to_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsTransferOut(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -236,6 +263,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsScriptResult(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -253,6 +282,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsMessageOut(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -270,6 +301,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: None,
                 sender_address: Some(subject.sender.unwrap().to_string()),
                 recipient_address: Some(subject.recipient.unwrap().to_string()),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsMint(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -287,6 +320,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: Some(subject.sub_id.unwrap().to_string()),
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::ReceiptsBurn(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
@@ -304,6 +339,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 sub_id: Some(subject.sub_id.unwrap().to_string()),
                 sender_address: None,
                 recipient_address: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

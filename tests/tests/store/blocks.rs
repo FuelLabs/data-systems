@@ -1,8 +1,7 @@
 use fuel_streams_core::{subjects::*, types::Block};
-use fuel_streams_domains::blocks::{
-    subjects::BlocksSubject,
-    types::MockBlock,
-    BlockDbItem,
+use fuel_streams_domains::{
+    blocks::{subjects::BlocksSubject, types::MockBlock, BlockDbItem},
+    MockMsgPayload,
 };
 use fuel_streams_store::record::Record;
 use fuel_streams_test::{close_db, create_random_db_name, setup_store};
@@ -12,7 +11,8 @@ use pretty_assertions::assert_eq;
 async fn test_block_db_item_conversion() -> anyhow::Result<()> {
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
-    let packet = block.to_packet(&subject);
+    let msg_payload = MockMsgPayload::from(&block).into_inner();
+    let packet = block.to_packet(&subject, msg_payload.block_timestamp);
 
     // Test direct conversion
     let db_item = BlockDbItem::try_from(&packet)
@@ -32,21 +32,23 @@ async fn test_block_db_item_conversion() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn store_can_record_blocks() -> anyhow::Result<()> {
+    let prefix = create_random_db_name();
     let store = setup_store::<Block>().await?;
     let block = MockBlock::build(1);
     let subject = BlocksSubject::from(&block).dyn_arc();
-    let packet = block.to_packet(&subject);
-    let prefix = create_random_db_name();
+    let msg_payload = MockMsgPayload::build(1, &prefix);
+    let packet = block.to_packet(&subject, msg_payload.block_timestamp);
     let packet = packet.with_namespace(&prefix);
     let db_item = BlockDbItem::try_from(&packet)?;
-    let db_record: BlockDbItem = store.insert_record(&db_item).await?;
-    assert_eq!(db_record.block_height, db_item.block_height);
-    assert_eq!(db_record.producer_address, db_item.producer_address);
-    assert_eq!(db_record.subject, db_item.subject);
-    assert_eq!(db_record.value, db_item.value);
-    assert_eq!(db_record.timestamp, db_item.timestamp);
-    assert_eq!(db_record.subject, packet.subject_str());
-    assert_eq!(Block::from_db_item(&db_record)?, block);
+    let inserted = store.insert_record(&db_item).await?;
+    assert_eq!(inserted.block_height, db_item.block_height);
+    assert_eq!(inserted.producer_address, db_item.producer_address);
+    assert_eq!(inserted.subject, db_item.subject);
+    assert_eq!(inserted.value, db_item.value);
+    assert_eq!(inserted.created_at, db_item.created_at);
+    assert_eq!(inserted.subject, packet.subject_str());
+    assert!(inserted.published_at.is_after(&db_item.published_at));
+    assert_eq!(Block::from_db_item(&inserted)?, block);
 
     close_db(&store.db).await;
     Ok(())
