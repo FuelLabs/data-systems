@@ -5,10 +5,9 @@ use std::sync::Arc;
 pub use fuel_core_helpers::*;
 use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::{stream::*, subjects::IntoSubject, types::Block};
-use fuel_streams_domains::blocks::{
-    subjects::BlocksSubject,
-    types::MockBlock,
-    BlockDbItem,
+use fuel_streams_domains::{
+    blocks::{subjects::BlocksSubject, types::MockBlock, BlockDbItem},
+    MockMsgPayload,
 };
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts, DbResult},
@@ -57,7 +56,10 @@ pub fn create_record(
     let block = MockBlock::build(height);
     let subject = BlocksSubject::from(&block);
     let subject = subject.dyn_arc();
-    let packet = block.to_packet(&subject).with_namespace(prefix);
+    let msg_payload = MockMsgPayload::build(height, prefix);
+    let packet = block
+        .to_packet(&subject, msg_payload.block_timestamp)
+        .with_namespace(prefix);
     (subject, block, packet)
 }
 

@@ -10,6 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
@@ -29,6 +30,8 @@ pub struct OutputDbItem {
     pub to_address: Option<String>, // for coin, change, and variable outputs
     pub asset_id: Option<String>,   // for coin, change, and variable outputs
     pub contract_id: Option<String>, /* for contract and contract_created outputs */
+    pub created_at: BlockTimestamp,
+    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for OutputDbItem {
@@ -59,6 +62,14 @@ impl DbItem for OutputDbItem {
         }
         .to_string()
     }
+
+    fn created_at(&self) -> BlockTimestamp {
+        self.created_at
+    }
+
+    fn published_at(&self) -> BlockTimestamp {
+        self.published_at
+    }
 }
 
 impl TryFrom<&RecordPacket> for OutputDbItem {
@@ -82,6 +93,8 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 to_address: Some(subject.to.unwrap().to_string()),
                 asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::OutputsContract(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
@@ -94,6 +107,8 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 to_address: None,
                 asset_id: None,
                 contract_id: Some(subject.contract.unwrap().to_string()),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::OutputsChange(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
@@ -106,6 +121,8 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 to_address: Some(subject.to.unwrap().to_string()),
                 asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::OutputsVariable(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
@@ -118,6 +135,8 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 to_address: Some(subject.to.unwrap().to_string()),
                 asset_id: Some(subject.asset.unwrap().to_string()),
                 contract_id: None,
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             Subjects::OutputsContractCreated(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
@@ -130,6 +149,8 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 to_address: None,
                 asset_id: None,
                 contract_id: Some(subject.contract.unwrap().to_string()),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

@@ -3,6 +3,7 @@ use fuel_streams_store::{
     db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity},
 };
+use fuel_streams_types::BlockTimestamp;
 use sqlx::PgExecutor;
 
 use super::{Output, OutputDbItem};
@@ -26,13 +27,15 @@ impl Record for Output {
         'c: 'e,
         E: PgExecutor<'c>,
     {
+        let published_at: BlockTimestamp = chrono::Utc::now().into();
         let record = sqlx::query_as::<_, OutputDbItem>(
             "WITH upsert AS (
                 INSERT INTO outputs (
                     subject, value, block_height, tx_id, tx_index,
-                    output_index, output_type, to_address, asset_id, contract_id
+                    output_index, output_type, to_address, asset_id, contract_id,
+                    created_at, published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 ON CONFLICT (subject) DO UPDATE SET
                     value = EXCLUDED.value,
                     block_height = EXCLUDED.block_height,
@@ -42,7 +45,9 @@ impl Record for Output {
                     output_type = EXCLUDED.output_type,
                     to_address = EXCLUDED.to_address,
                     asset_id = EXCLUDED.asset_id,
-                    contract_id = EXCLUDED.contract_id
+                    contract_id = EXCLUDED.contract_id,
+                    created_at = EXCLUDED.created_at,
+                    published_at = $12
                 RETURNING *
             )
             SELECT * FROM upsert",
@@ -57,6 +62,8 @@ impl Record for Output {
         .bind(db_item.to_address)
         .bind(db_item.asset_id)
         .bind(db_item.contract_id)
+        .bind(db_item.created_at)
+        .bind(published_at)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

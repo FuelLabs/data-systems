@@ -3,6 +3,7 @@ use fuel_streams_store::{
     db::{DbError, DbResult},
     record::{DataEncoder, Record, RecordEntity},
 };
+use fuel_streams_types::BlockTimestamp;
 use sqlx::PgExecutor;
 
 use super::{Receipt, ReceiptDbItem};
@@ -26,14 +27,16 @@ impl Record for Receipt {
         'c: 'e,
         E: PgExecutor<'c>,
     {
+        let published_at: BlockTimestamp = chrono::Utc::now().into();
         let record = sqlx::query_as::<_, ReceiptDbItem>(
             "WITH upsert AS (
                 INSERT INTO receipts (
                     subject, value, block_height, tx_id, tx_index, receipt_index,
                     receipt_type, from_contract_id, to_contract_id, to_address,
-                    asset_id, contract_id, sub_id, sender_address, recipient_address
+                    asset_id, contract_id, sub_id, sender_address, recipient_address,
+                    created_at, published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
                 ON CONFLICT (subject) DO UPDATE SET
                     value = EXCLUDED.value,
                     block_height = EXCLUDED.block_height,
@@ -48,7 +51,9 @@ impl Record for Receipt {
                     contract_id = EXCLUDED.contract_id,
                     sub_id = EXCLUDED.sub_id,
                     sender_address = EXCLUDED.sender_address,
-                    recipient_address = EXCLUDED.recipient_address
+                    recipient_address = EXCLUDED.recipient_address,
+                    created_at = EXCLUDED.created_at,
+                    published_at = $17
                 RETURNING *
             )
             SELECT * FROM upsert"
@@ -68,6 +73,8 @@ impl Record for Receipt {
         .bind(db_item.sub_id)
         .bind(db_item.sender_address)
         .bind(db_item.recipient_address)
+        .bind(db_item.created_at)
+        .bind(published_at)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-use chrono::{DateTime, Utc};
 use fuel_streams_store::{
     db::{DbError, DbItem},
     record::{
@@ -11,9 +10,10 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
+use fuel_streams_types::BlockTimestamp;
 use serde::{Deserialize, Serialize};
 
-use super::{Block, BlockTimestamp, BlocksSubject};
+use super::BlocksSubject;
 use crate::Subjects;
 
 #[derive(
@@ -22,9 +22,11 @@ use crate::Subjects;
 pub struct BlockDbItem {
     pub subject: String,
     pub value: Vec<u8>,
+    pub block_da_height: i64,
     pub block_height: i64,
     pub producer_address: String,
-    pub timestamp: DateTime<Utc>,
+    pub created_at: BlockTimestamp,
+    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for BlockDbItem {
@@ -47,6 +49,14 @@ impl DbItem for BlockDbItem {
     fn subject_id(&self) -> String {
         BlocksSubject::ID.to_string()
     }
+
+    fn created_at(&self) -> BlockTimestamp {
+        self.created_at
+    }
+
+    fn published_at(&self) -> BlockTimestamp {
+        self.published_at
+    }
 }
 
 impl TryFrom<&RecordPacket> for BlockDbItem {
@@ -58,16 +68,15 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
-        let block =
-            Block::decode_json(&packet.value).expect("Failed to decode block");
-        let timestamp = BlockTimestamp::from(&block);
         match subject {
             Subjects::Block(subject) => Ok(BlockDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
+                block_da_height: subject.da_height.unwrap().into(),
                 block_height: subject.height.unwrap().into(),
                 producer_address: subject.producer.unwrap().to_string(),
-                timestamp: timestamp.into_inner(),
+                created_at: packet.block_timestamp,
+                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

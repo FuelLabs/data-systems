@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use fuel_data_parser::DataEncoder;
+use fuel_streams_types::BlockTimestamp;
 use sqlx::postgres::PgRow;
 
 use super::DbError;
@@ -24,4 +25,6 @@ pub trait DbItem:
     fn encoded_value(&self) -> &[u8];
     fn subject_str(&self) -> String;
     fn subject_id(&self) -> String;
+    fn created_at(&self) -> BlockTimestamp;
+    fn published_at(&self) -> BlockTimestamp;
 }

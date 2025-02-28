@@ -267,7 +267,7 @@ pub fn create_services(
         // receipts
         cfg.service(
             web::scope(&with_prefixed_route("receipts"))
-                .wrap(ApiKeyAuth::new(&state.api_keys_manager))
+                .wrap(api_key_middleware.clone())
                 .route(
                     "",
                     web::get().to({

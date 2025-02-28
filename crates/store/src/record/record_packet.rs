@@ -2,7 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_subject::subject::SubjectPayload;
-use fuel_streams_types::BlockHeight;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
@@ -38,6 +38,7 @@ pub struct RecordPacket {
     pub value: Vec<u8>,
     pub subject: String,
     pub subject_payload: SubjectPayload,
+    pub block_timestamp: BlockTimestamp,
     namespace: Option<String>,
 }
 
@@ -49,12 +50,14 @@ impl RecordPacket {
     pub fn new(
         subject: impl ToString,
         subject_payload: SubjectPayload,
+        block_timestamp: BlockTimestamp,
         value: Vec<u8>,
     ) -> Self {
         Self {
             value,
             subject: subject.to_string(),
             subject_payload,
+            block_timestamp,
             namespace: None,
         }
     }

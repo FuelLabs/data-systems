@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a subject for script transactions
     let subjects = vec![
         TransactionsSubject::new()
-            .with_kind(Some(TransactionKind::Script))
+            .with_tx_type(Some(TransactionType::Script))
             .into()
     ];
 
@@ -132,7 +132,7 @@ Available subject builders include:
 - `LogsSubject::new()`
 - `UtxosSubject::new()`
 
-Each subject builder provides specific filtering methods relevant to its data type. For example, `TransactionsSubject` allows filtering by transaction kind using the `with_kind()` method.
+Each subject builder provides specific filtering methods relevant to its data type. For example, `TransactionsSubject` allows filtering by transaction type using the `with_tx_type()` method.
 
 ### Multiple Subscriptions
 

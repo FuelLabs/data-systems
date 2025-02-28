@@ -9,9 +9,9 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Listening for transactions...");
 
-    // Create a subject for all transactions of a specific kind
+    // Create a subject for all transactions of a specific type
     let subject =
-        TransactionsSubject::new().with_kind(Some(TransactionKind::Script)); // Example: filter for script transactions
+        TransactionsSubject::new().with_tx_type(Some(TransactionType::Script)); // Example: filter for script transactions
     let filter_subjects = vec![subject.into()];
 
     // Subscribe to the transaction stream with the specified configuration

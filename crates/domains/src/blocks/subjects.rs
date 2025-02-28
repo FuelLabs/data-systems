@@ -10,13 +10,18 @@ use super::types::*;
 #[subject(id = "blocks")]
 #[subject(entity = "Block")]
 #[subject(query_all = "blocks.>")]
-#[subject(format = "blocks.{producer}.{height}")]
+#[subject(format = "blocks.{producer}.{da_height}.{height}")]
 pub struct BlocksSubject {
     #[subject(
         sql_column = "producer_address",
         description = "The address of the producer that created the block"
     )]
     pub producer: Option<Address>,
+    #[subject(
+        sql_column = "block_da_height",
+        description = "The height of the DA block as unsigned 64 bit integer"
+    )]
+    pub da_height: Option<DaBlockHeight>,
     #[subject(
         sql_column = "block_height",
         description = "The height of the block as unsigned 64 bit integer"
@@ -28,6 +33,7 @@ impl From<&Block> for BlocksSubject {
     fn from(block: &Block) -> Self {
         BlocksSubject {
             producer: Some(block.producer.to_owned()),
+            da_height: Some(block.header.da_height.to_owned()),
             height: Some(block.height.to_owned()),
         }
     }

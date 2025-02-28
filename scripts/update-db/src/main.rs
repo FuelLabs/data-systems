@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use fuel_streams_domains::blocks::{Block, BlockTimestamp};
+use fuel_streams_domains::blocks::Block;
 use fuel_streams_store::record::DataEncoder;
+use fuel_streams_types::BlockTimestamp;
 use rayon::prelude::*;
 use sqlx::PgPool;
 use tokio::{sync::Semaphore, task::JoinSet};
@@ -61,7 +62,7 @@ async fn update_block_range(
         .par_iter()
         .map(|block_record| {
             let block = Block::decode_json(&block_record.value)?;
-            let timestamp = BlockTimestamp::from(&block);
+            let timestamp = BlockTimestamp::from(&block.header);
             println!("Processed block height {}", block.height);
             Ok((block_record.subject.clone(), timestamp.to_seconds() as f64))
         })
