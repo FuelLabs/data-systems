@@ -49,9 +49,14 @@ pub struct TransactionsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    pub address: Option<String>,
 }
 
 impl TransactionsQuery {
+    pub fn set_address(&mut self, address: String) {
+        self.address = Some(address);
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
