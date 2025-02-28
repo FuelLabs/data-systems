@@ -52,9 +52,8 @@ fn create_packets(tx: &Transaction, prefix: &str) -> Vec<RecordPacket> {
         .with_tx_status(Some(tx.status.clone()))
         .with_tx_type(Some(tx.tx_type.clone()))
         .dyn_arc();
-    vec![tx
-        .to_packet(&subject, msg_payload.block_timestamp)
-        .with_namespace(prefix)]
+    let timestamps = msg_payload.timestamp();
+    vec![tx.to_packet(&subject, timestamps).with_namespace(prefix)]
 }
 
 #[tokio::test]

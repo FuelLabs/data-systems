@@ -11,7 +11,7 @@ use fuel_streams_core::{
         TransactionsSubject,
         UtxosSubject,
     },
-    types::{BlockHeight, Transaction},
+    types::Transaction,
     FuelStreams,
 };
 use fuel_streams_domains::{MockMsgPayload, MsgPayload};
@@ -38,7 +38,7 @@ async fn verify_blocks(
     assert!(!blocks.is_empty(), "Expected blocks to be inserted");
 
     let msg_payload_height = msg_payload.block_height();
-    let saved_height = BlockHeight::from(blocks[0].block_height as u32);
+    let saved_height = blocks[0].block_height;
     assert_eq!(saved_height, msg_payload_height);
 
     Ok(())

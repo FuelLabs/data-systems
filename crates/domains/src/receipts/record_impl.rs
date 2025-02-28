@@ -27,7 +27,7 @@ impl Record for Receipt {
         'c: 'e,
         E: PgExecutor<'c>,
     {
-        let published_at: BlockTimestamp = chrono::Utc::now().into();
+        let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, ReceiptDbItem>(
             "WITH upsert AS (
                 INSERT INTO receipts (

@@ -148,9 +148,8 @@ async fn insert_custom_block(
     let block = MockBlock::build(height.into());
     let subject = BlocksSubject::from(&block).dyn_arc();
     let msg_payload = MockMsgPayload::build(height.into(), prefix);
-    let packet = block
-        .to_packet(&subject, msg_payload.block_timestamp)
-        .with_namespace(prefix);
+    let timestamps = msg_payload.timestamp();
+    let packet = block.to_packet(&subject, timestamps).with_namespace(prefix);
     insert_records(&stream.store(), prefix, &[(subject, block, packet)])
         .await?;
     Ok(())

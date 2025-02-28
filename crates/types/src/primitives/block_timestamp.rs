@@ -43,6 +43,10 @@ impl BlockTimestamp {
         self.0.timestamp()
     }
 
+    pub fn now() -> Self {
+        Self::default()
+    }
+
     pub fn new(dt: DateTime<Utc>) -> Self {
         Self(dt)
     }
@@ -141,8 +145,12 @@ impl BlockTimestamp {
         Self::from_unix_timestamp(new_timestamp)
     }
 
-    pub fn difference_in_seconds(&self, other: &Self) -> i64 {
+    pub fn diff_secs(&self, other: &Self) -> i64 {
         self.unix_timestamp() - other.unix_timestamp()
+    }
+
+    pub fn diff_ms(&self, other: &Self) -> i64 {
+        self.0.timestamp_millis() - other.0.timestamp_millis()
     }
 
     pub fn is_between(&self, start: &Self, end: &Self) -> bool {
@@ -493,12 +501,21 @@ mod tests {
     }
 
     #[test]
-    fn test_difference_calculation() {
+    fn test_difference_calculation_secs() {
         let earlier = BlockTimestamp::from_unix_timestamp(1000).unwrap();
         let later = BlockTimestamp::from_unix_timestamp(1500).unwrap();
 
-        assert_eq!(later.difference_in_seconds(&earlier), 500);
-        assert_eq!(earlier.difference_in_seconds(&later), -500);
+        assert_eq!(later.diff_secs(&earlier), 500);
+        assert_eq!(earlier.diff_secs(&later), -500);
+    }
+
+    #[test]
+    fn test_difference_calculation_ms() {
+        let earlier = BlockTimestamp::from_unix_timestamp(1000).unwrap();
+        let later = BlockTimestamp::from_unix_timestamp(1500).unwrap();
+
+        assert_eq!(later.diff_ms(&earlier), 500000);
+        assert_eq!(earlier.diff_ms(&later), -500000);
     }
 
     #[test]

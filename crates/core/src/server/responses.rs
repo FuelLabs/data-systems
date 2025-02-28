@@ -141,6 +141,7 @@ pub struct StreamResponse {
     pub subject: String,
     pub pointer: RecordPointer,
     pub payload: MessagePayload,
+    pub propagation_time_ms: Option<u64>,
 }
 
 impl StreamResponse {
@@ -149,6 +150,7 @@ impl StreamResponse {
         subject_id: String,
         value: &[u8],
         pointer: RecordPointer,
+        propagation_ms: Option<u64>,
     ) -> Result<Self, StreamResponseError> {
         let payload = MessagePayload::new(&subject_id, value)?;
         Ok(Self {
@@ -157,7 +159,14 @@ impl StreamResponse {
             subject,
             payload,
             pointer,
+            propagation_time_ms: propagation_ms,
         })
+    }
+}
+
+impl StreamResponse {
+    pub fn set_propagation_ms(&mut self, propagation_ms: u64) {
+        self.propagation_time_ms = Some(propagation_ms);
     }
 }
 
@@ -183,6 +192,7 @@ impl<T: DbItem + Into<RecordPointer>> TryFrom<(String, T)> for StreamResponse {
             subject_id,
             item.encoded_value(),
             pointer,
+            None,
         )
     }
 }
@@ -192,30 +202,49 @@ impl TryFrom<&RecordPacket> for StreamResponse {
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject_id = packet.subject_id();
         let entity = RecordEntity::from_subject_id(&subject_id)?;
+        let propagation_ms = packet.calculate_propagation_ms();
         match entity {
             RecordEntity::Block => {
                 let db_item = BlockDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
             RecordEntity::Transaction => {
                 let db_item = TransactionDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
             RecordEntity::Input => {
                 let db_item = InputDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
             RecordEntity::Output => {
                 let db_item = OutputDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
             RecordEntity::Receipt => {
                 let db_item = ReceiptDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
             RecordEntity::Utxo => {
                 let db_item = UtxoDbItem::try_from(packet)?;
-                StreamResponse::try_from((subject_id, db_item))
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
             }
         }
     }

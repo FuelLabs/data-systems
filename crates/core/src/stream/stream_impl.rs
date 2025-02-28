@@ -168,6 +168,7 @@ impl<R: Record> Stream<R> {
         } else {
             QueryOptions::default().with_namespace(self.namespace.clone())
         };
+
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
             let mut opts = opts.with_from_block(Some(current_height));
@@ -181,7 +182,7 @@ impl<R: Record> Stream<R> {
                     role.validate_historical_limit(last_height, block_height)?;
                     let value = item.encoded_value().to_vec();
                     let pointer = item.into();
-                    let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned())?;
+                    let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned(), None)?;
                     yield response;
                     current_height = pointer.block_height;
                 }

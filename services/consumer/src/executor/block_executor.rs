@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use fuel_message_broker::{Message, NatsMessageBroker, NatsQueue};
 use fuel_streams_core::{
-    types::{Block, Transaction},
+    types::{Block, BlockTimestamp, Transaction},
     FuelStreams,
 };
 use fuel_streams_domains::MsgPayload;
 use fuel_streams_store::{
     db::Db,
     record::{DataEncoder, PacketBuilder, RecordPacket},
+    store::update_block_propagation_ms,
 };
 use fuel_web_utils::{
     shutdown::shutdown_broker_with_timeout,
@@ -207,6 +208,13 @@ async fn handle_stores(
             for packet in packets.iter() {
                 fuel_stores.insert_by_entity(&mut tx, packet).await?;
             }
+            let block_propagation_ms = stats.calculate_block_propagation_ms();
+            update_block_propagation_ms(
+                &mut tx,
+                block_height,
+                block_propagation_ms,
+            )
+            .await?;
             tx.commit().await?;
             Ok(packets.len())
         })
@@ -225,8 +233,10 @@ async fn handle_streams(
 ) -> Result<BlockStats, ConsumerError> {
     let block_height = msg_payload.block_height();
     let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
+    let now = BlockTimestamp::now();
     let publish_futures = packets.iter().map(|packet| {
         let packet = packet.to_owned();
+        let packet = packet.with_start_time(now);
         fuel_streams.publish_by_entity(packet.arc())
     });
 

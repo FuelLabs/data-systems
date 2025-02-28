@@ -58,9 +58,8 @@ pub fn create_record(
     let subject = BlocksSubject::from(&block);
     let subject = subject.dyn_arc();
     let msg_payload = MockMsgPayload::build(height, prefix);
-    let packet = block
-        .to_packet(&subject, msg_payload.block_timestamp)
-        .with_namespace(prefix);
+    let timestamp = msg_payload.timestamp();
+    let packet = block.to_packet(&subject, timestamp).with_namespace(prefix);
     (subject, block, packet)
 }
 

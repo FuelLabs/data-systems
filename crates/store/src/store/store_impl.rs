@@ -91,3 +91,19 @@ pub async fn find_last_block_height(
 
     Ok(record.map(|(height,)| height.into()).unwrap_or_default())
 }
+
+pub async fn update_block_propagation_ms(
+    tx: &mut DbTransaction,
+    block_height: BlockHeight,
+    propagation_ms: u64,
+) -> StoreResult<()> {
+    sqlx::query(
+        "UPDATE blocks SET block_propagation_ms = $1 WHERE block_height = $2",
+    )
+    .bind(propagation_ms as i64)
+    .bind(block_height)
+    .execute(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+    Ok(())
+}
