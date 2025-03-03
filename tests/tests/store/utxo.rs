@@ -52,9 +52,8 @@ fn create_packets(
     let subject =
         DynUtxoSubject::from((input, 1.into(), tx_id.clone(), 0, input_index));
     let msg_payload = MockMsgPayload::build(1, prefix);
-    let packet = subject
-        .utxo()
-        .to_packet(subject.subject(), msg_payload.block_timestamp);
+    let timestamps = msg_payload.timestamp();
+    let packet = subject.utxo().to_packet(subject.subject(), timestamps);
     vec![packet.with_namespace(prefix)]
 }
 

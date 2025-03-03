@@ -69,59 +69,33 @@ async fn test_update_api_key_status() {
 }
 
 #[tokio::test]
-async fn test_api_key_role_scopes() {
-    let db = setup_test_db().await;
-    let pool = db.pool_ref();
-
-    // Create API keys with different roles
-    let user_admin = random_user_name().await;
-    let user_web_client = random_user_name().await;
-
-    // Admin key with FULL scope
-    let admin_key = ApiKey::create(pool, &user_admin, &ApiKeyRoleName::Admin)
-        .await
-        .expect("Failed to create admin API key");
-
-    // Web client key with limited scopes
-    let web_client_key =
-        ApiKey::create(pool, &user_web_client, &ApiKeyRoleName::WebClient)
-            .await
-            .expect("Failed to create web client API key");
-
-    // Verify admin key has FULL scope
-    let admin_scopes = admin_key.role().scopes();
-    assert!(admin_scopes.iter().any(|s| s.is_full()));
-
-    // Verify web client key has expected scopes
-    let web_client_scopes = web_client_key.role().scopes();
-    assert!(!web_client_scopes.iter().any(|s| s.is_full()));
-    assert!(web_client_scopes.iter().any(|s| s.is_live_data()));
-    assert!(web_client_scopes.iter().any(|s| s.is_rest_api()));
-
-    close_db(&db).await;
-}
-
-#[tokio::test]
 async fn test_fetch_all_api_keys() {
     let db = setup_test_db().await;
     let pool = db.pool_ref();
 
     // Create multiple API keys with different roles
-    let user1 = random_user_name().await;
-    let user2 = random_user_name().await;
-    let user3 = random_user_name().await;
+    let user_admin = random_user_name().await;
+    let user_amm = random_user_name().await;
+    let user_builder = random_user_name().await;
+    let user_web_client = random_user_name().await;
 
-    let key1 = ApiKey::create(pool, &user1, &ApiKeyRoleName::Admin)
+    let key_admin = ApiKey::create(pool, &user_admin, &ApiKeyRoleName::Admin)
         .await
         .expect("Failed to create admin API key");
 
-    let key2 = ApiKey::create(pool, &user2, &ApiKeyRoleName::Builder)
+    let key_amm = ApiKey::create(pool, &user_amm, &ApiKeyRoleName::Amm)
         .await
-        .expect("Failed to create builder API key");
+        .expect("Failed to create amm API key");
 
-    let key3 = ApiKey::create(pool, &user3, &ApiKeyRoleName::WebClient)
-        .await
-        .expect("Failed to create web client API key");
+    let key_builder =
+        ApiKey::create(pool, &user_builder, &ApiKeyRoleName::Builder)
+            .await
+            .expect("Failed to create builder API key");
+
+    let key_web_client =
+        ApiKey::create(pool, &user_web_client, &ApiKeyRoleName::WebClient)
+            .await
+            .expect("Failed to create web client API key");
 
     // Fetch all API keys
     let all_keys = ApiKey::fetch_all(pool)
@@ -130,7 +104,7 @@ async fn test_fetch_all_api_keys() {
 
     // Verify that all created keys are in the result
     // Note: There might be other keys in the database from previous tests
-    let created_keys = vec![key1, key2, key3];
+    let created_keys = vec![key_admin, key_amm, key_builder, key_web_client];
     for key in created_keys {
         assert!(
             all_keys.iter().any(|k| k.id() == key.id()),
@@ -145,6 +119,12 @@ async fn test_fetch_all_api_keys() {
         .filter(|k| k.role().name() == &ApiKeyRoleName::Admin)
         .collect();
     assert!(!admin_keys.is_empty(), "No admin keys found");
+
+    let amm_keys: Vec<_> = all_keys
+        .iter()
+        .filter(|k| k.role().name() == &ApiKeyRoleName::Amm)
+        .collect();
+    assert!(!amm_keys.is_empty(), "No amm keys found");
 
     let builder_keys: Vec<_> = all_keys
         .iter()

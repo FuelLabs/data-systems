@@ -3,11 +3,12 @@ use std::{sync::Arc, time::Duration};
 use fuel_streams_core::{
     server::DeliverPolicy,
     subjects::*,
-    types::Block,
+    types::{Block, MockBlock},
     Stream,
     StreamError,
 };
-use fuel_streams_store::record::RecordPacket;
+use fuel_streams_domains::MockMsgPayload;
+use fuel_streams_store::record::{Record, RecordPacket};
 use fuel_streams_test::{
     close_db,
     create_multiple_records,
@@ -36,7 +37,7 @@ async fn setup_test_environment(
     let stream = setup_stream(NATS_URL, &prefix).await?;
     let data = create_multiple_records(block_count, start_height, &prefix);
     let store = stream.store();
-    insert_records(store, &prefix, &data).await?;
+    insert_records(&store, &prefix, &data).await?;
     sleep(STORAGE_WAIT_TIME).await;
     Ok((prefix, stream, data))
 }
@@ -133,6 +134,105 @@ async fn test_streaming_historical_data_without_proper_role(
     matches!(
         error.unwrap_err(),
         StreamError::ApiKey(ApiKeyError::ScopePermission(_))
+    );
+
+    close_db(&stream.store().db).await;
+    Ok(())
+}
+
+async fn insert_custom_block(
+    stream: &Stream<Block>,
+    prefix: &str,
+    height: BlockHeight,
+) -> anyhow::Result<()> {
+    let block = MockBlock::build(height.into());
+    let subject = BlocksSubject::from(&block).dyn_arc();
+    let msg_payload = MockMsgPayload::build(height.into(), prefix);
+    let timestamps = msg_payload.timestamp();
+    let packet = block.to_packet(&subject, timestamps).with_namespace(prefix);
+    insert_records(&stream.store(), prefix, &[(subject, block, packet)])
+        .await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_streaming_historical_outside_limit() -> anyhow::Result<()> {
+    // Create a random prefix for this test
+    let prefix = create_random_db_name();
+    let stream = setup_stream(NATS_URL, &prefix).await?;
+    let old_block_height = BlockHeight::from(1);
+    let new_block_height = BlockHeight::from(700);
+
+    // Insert the old block and 4 more recent blocks
+    insert_custom_block(&stream, &prefix, old_block_height).await?;
+    let new_block_height_u32 = new_block_height.into_inner() as u32;
+    let records = create_multiple_records(4, new_block_height_u32, &prefix);
+    insert_records(&stream.store(), &prefix, &records).await?;
+
+    // Use the builder role which has 600 historical block limit
+    let role = MockApiKeyRole::builder().into_inner();
+    let subject = BlocksSubject::new();
+
+    // Try to subscribe and access the historical data
+    let mut subscriber = stream
+        .subscribe(
+            subject,
+            DeliverPolicy::FromBlock {
+                block_height: old_block_height,
+            },
+            &role,
+        )
+        .await;
+
+    // We should get an error when trying to access the first block
+    let result = subscriber.next().await;
+    assert!(result.is_some(), "Expected an error response");
+    let error = result.unwrap();
+    assert!(error.is_err(), "Expected an error, got success");
+
+    // Check for the correct error type - should be HistoricalLimitExceeded
+    match error.unwrap_err() {
+        StreamError::ApiKey(ApiKeyError::HistoricalLimitExceeded(limit)) => {
+            assert_eq!(limit, "600", "Expected limit to be 600");
+        }
+        err => {
+            panic!("Expected HistoricalLimitExceeded error, got: {:?}", err)
+        }
+    }
+
+    close_db(&stream.store().db).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_streaming_historical_with_no_limit() -> anyhow::Result<()> {
+    // Create a random prefix for this test
+    let prefix = create_random_db_name();
+    let stream = setup_stream(NATS_URL, &prefix).await?;
+    let block_height = BlockHeight::from(1);
+    let new_block_height = BlockHeight::from(700);
+
+    // Insert the old block and 4 more recent blocks
+    insert_custom_block(&stream, &prefix, block_height).await?;
+    let new_block_height_u32 = new_block_height.into_inner() as u32;
+    let records = create_multiple_records(4, new_block_height_u32, &prefix);
+    insert_records(&stream.store(), &prefix, &records).await?;
+
+    // Use the admin role which has no historical limit
+    let role = MockApiKeyRole::admin().into_inner();
+    let subject = BlocksSubject::new();
+
+    // Try to subscribe and access the historical data
+    let mut subscriber = stream
+        .subscribe(subject, DeliverPolicy::FromBlock { block_height }, &role)
+        .await;
+    // We should be able to access the first block since we're using admin role
+    let result = subscriber.next().await;
+    assert!(result.is_some(), "Expected a block response");
+    let response = result.unwrap();
+    assert!(
+        response.is_ok(),
+        "Expected block to be retrieved successfully"
     );
 
     close_db(&stream.store().db).await;

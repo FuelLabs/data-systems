@@ -27,18 +27,19 @@ impl Record for Block {
         'c: 'e,
         E: PgExecutor<'c>,
     {
-        let published_at: BlockTimestamp = chrono::Utc::now().into();
+        let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, BlockDbItem>(
             "WITH upsert AS (
-                INSERT INTO blocks (subject, producer_address, block_da_height, block_height, value, created_at, published_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO blocks (subject, producer_address, block_da_height, block_height, value, created_at, published_at, block_propagation_ms)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (subject) DO UPDATE SET
                     producer_address = EXCLUDED.producer_address,
                     block_da_height = EXCLUDED.block_da_height,
                     block_height = EXCLUDED.block_height,
                     value = EXCLUDED.value,
                     created_at = EXCLUDED.created_at,
-                    published_at = $7
+                    published_at = $7,
+                    block_propagation_ms = $8
                 RETURNING *
             )
             SELECT * FROM upsert"
@@ -50,6 +51,7 @@ impl Record for Block {
         .bind(db_item.value)
         .bind(db_item.created_at)
         .bind(published_at)
+        .bind(db_item.block_propagation_ms)
         .fetch_one(executor)
         .await
         .map_err(DbError::Insert)?;

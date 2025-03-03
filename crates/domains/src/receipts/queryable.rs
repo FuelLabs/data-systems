@@ -123,6 +123,46 @@ impl ReceiptsQuery {
             );
         }
 
+        if let Some(from) = &self.from {
+            condition = condition
+                .add(Expr::col(Receipts::FromContractId).eq(from.to_string()));
+        }
+
+        if let Some(to) = &self.to {
+            condition = condition
+                .add(Expr::col(Receipts::ToContractId).eq(to.to_string()));
+        }
+
+        if let Some(contract) = &self.contract {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptContractId).eq(contract.to_string()),
+            );
+        }
+
+        if let Some(asset) = &self.asset {
+            condition = condition
+                .add(Expr::col(Receipts::ReceiptAssetId).eq(asset.to_string()));
+        }
+
+        if let Some(sub_id) = &self.sub_id {
+            condition = condition
+                .add(Expr::col(Receipts::ReceiptSubId).eq(sub_id.to_string()));
+        }
+
+        if let Some(sender) = &self.sender {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptSenderAddress)
+                    .eq(sender.to_string()),
+            );
+        }
+
+        if let Some(recipient) = &self.recipient {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptRecipientAddress)
+                    .eq(recipient.to_string()),
+            );
+        }
+
         condition
     }
 

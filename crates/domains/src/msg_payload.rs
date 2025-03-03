@@ -65,9 +65,8 @@ pub type TxItem = (usize, Transaction);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MsgPayload {
     pub block: Block,
-    pub block_timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
-    pub(crate) metadata: Metadata,
+    pub metadata: Metadata,
     pub namespace: Option<String>,
 }
 
@@ -88,10 +87,8 @@ impl MsgPayload {
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;
         let block = Block::new(&block, consensus.into(), txs_ids, producer);
-        let block_timestamp = BlockTimestamp::from(&block.header);
         Ok(Self {
             block,
-            block_timestamp,
             transactions: txs,
             metadata: metadata.to_owned(),
             namespace: None,
@@ -124,6 +121,10 @@ impl MsgPayload {
 
     pub fn arc(&self) -> Arc<Self> {
         Arc::new(self.clone())
+    }
+
+    pub fn timestamp(&self) -> BlockTimestamp {
+        BlockTimestamp::from(&self.block.header)
     }
 
     pub async fn txs_from_fuelcore(
@@ -189,7 +190,6 @@ impl MockMsgPayload {
     pub fn new(height: u32) -> Self {
         use crate::mocks::*;
         let block = MockBlock::build(height);
-        let block_timestamp = BlockTimestamp::from(&block.header);
         let chain_id = Arc::new(FuelCoreChainId::default());
         let base_asset_id = Arc::new(FuelCoreAssetId::default());
         let block_producer = Arc::new(Address::default());
@@ -206,7 +206,6 @@ impl MockMsgPayload {
 
         Self(MsgPayload {
             block,
-            block_timestamp,
             transactions,
             metadata,
             namespace: None,

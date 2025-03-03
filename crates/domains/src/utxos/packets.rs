@@ -32,9 +32,9 @@ impl PacketBuilder for Utxo {
                     *tx_index as u32,
                     input_index as u32,
                 ));
-                let packet = subject
-                    .utxo()
-                    .to_packet(subject.subject(), msg_payload.block_timestamp);
+                let timestamp = msg_payload.timestamp();
+                let packet =
+                    subject.utxo().to_packet(subject.subject(), timestamp);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
