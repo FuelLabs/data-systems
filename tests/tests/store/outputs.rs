@@ -68,8 +68,9 @@ fn create_packets(
                 tx,
             ));
             let msg_payload = MockMsgPayload::build(1, prefix);
+            let timestamps = msg_payload.timestamp();
             output
-                .to_packet(&subject.into(), msg_payload.block_timestamp)
+                .to_packet(&subject.into(), timestamps)
                 .with_namespace(prefix)
         })
         .collect()

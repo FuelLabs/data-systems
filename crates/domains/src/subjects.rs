@@ -157,7 +157,8 @@ mod tests {
             subject: BlocksSubject::ID.to_string(),
             params: json!({
                 "producer": "0x0101010101010101010101010101010101010101010101010101010101010101",
-                "height": 123
+                "height": 123,
+                "da_height": 123
             }),
         };
 

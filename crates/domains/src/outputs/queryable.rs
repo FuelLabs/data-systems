@@ -91,7 +91,10 @@ impl OutputsQuery {
                 | Some(OutputType::Variable)
                 | Some(OutputType::Change) => {
                     condition = condition.add(
-                        Expr::col(Outputs::OutputToAddress).eq(address.clone()),
+                        Expr::col(Outputs::OutputToAddress)
+                            .eq(address.clone())
+                            .or(Expr::col(Outputs::OutputAssetId)
+                                .eq(address.clone())),
                     );
                 }
                 Some(OutputType::Contract)
@@ -105,6 +108,8 @@ impl OutputsQuery {
                     condition = condition.add(
                         Expr::col(Outputs::OutputToAddress)
                             .eq(address.clone())
+                            .or(Expr::col(Outputs::OutputAssetId)
+                                .eq(address.clone()))
                             .or(Expr::col(Outputs::OutputContractId)
                                 .eq(address.clone())),
                     );

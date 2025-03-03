@@ -95,7 +95,10 @@ impl InputsQuery {
             match self.input_type {
                 Some(InputType::Coin) => {
                     condition = condition.add(
-                        Expr::col(Inputs::InputOwnerId).eq(address.clone()),
+                        Expr::col(Inputs::InputOwnerId)
+                            .eq(address.clone())
+                            .eq(Expr::col(Inputs::InputAssetId)
+                                .eq(address.clone())),
                     );
                 }
                 Some(InputType::Contract) => {
@@ -115,6 +118,8 @@ impl InputsQuery {
                     condition = condition.add(
                         Expr::col(Inputs::InputOwnerId)
                             .eq(address.clone())
+                            .or(Expr::col(Inputs::InputAssetId)
+                                .eq(address.clone()))
                             .or(Expr::col(Inputs::InputContractId)
                                 .eq(address.clone()))
                             .or(Expr::col(Inputs::InputSenderAddress)

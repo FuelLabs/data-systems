@@ -17,7 +17,8 @@ impl PacketBuilder for Block {
             height: Some(block_height),
         }
         .dyn_arc();
-        let packet = block.to_packet(&subject, msg_payload.block_timestamp);
+        let timestamps = msg_payload.timestamp();
+        let packet = block.to_packet(&subject, timestamps);
         let packet = match msg_payload.namespace.clone() {
             Some(ns) => packet.with_namespace(&ns),
             _ => packet,

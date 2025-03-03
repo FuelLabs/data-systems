@@ -128,18 +128,19 @@ impl MockBlock {
         block
             .header_mut()
             .set_block_height(FuelCoreBlockHeight::new(height));
-
         let txs = (0..50)
             .map(|_| FuelCoreTransaction::default_test_tx())
             .collect::<Vec<_>>();
         *block.transactions_mut() = txs;
 
-        Block::new(&block, Consensus::default(), Vec::new(), Address::default())
-    }
-
-    pub fn build_with_timestamp(height: u32, timestamp: i64) -> Block {
-        let mut block = Self::build(height);
-        block.header.time = BlockTime::from_unix(timestamp);
+        let mut block = Block::new(
+            &block,
+            Consensus::default(),
+            Vec::new(),
+            Address::default(),
+        );
+        let now = chrono::Utc::now();
+        block.header.time = BlockTime::from_unix(now.timestamp());
         block
     }
 }

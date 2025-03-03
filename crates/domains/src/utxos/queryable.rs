@@ -79,6 +79,7 @@ impl UtxosQuery {
         let mut condition = Condition::all();
 
         // handle address query
+        // TODO: extend db fields with separate sender, recipient as per utxo type Input::Message
         if let Some(address) = &self.address {
             match self.utxo_type {
                 Some(InputType::Coin) => {

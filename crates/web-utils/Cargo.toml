@@ -44,6 +44,7 @@ sqlx = { workspace = true, default-features = false, features = [
   "runtime-tokio",
   "tls-native-tls",
 ] }
+strum.workspace = true
 sysinfo = { version = "0.29" }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
