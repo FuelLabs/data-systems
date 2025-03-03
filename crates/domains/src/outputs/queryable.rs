@@ -50,9 +50,9 @@ pub struct OutputsQuery {
     pub output_index: Option<i32>,
     pub output_type: Option<OutputType>,
     pub block_height: Option<BlockHeight>,
-    pub to_address: Option<String>, // for coin, change, and variable outputs
-    pub asset_id: Option<String>,   // for coin, change, and variable outputs
-    pub contract_id: Option<String>, /* for contract and contract_created outputs */
+    pub to_address: Option<Address>, // for coin, change, and variable outputs
+    pub asset_id: Option<AssetId>,   // for coin, change, and variable outputs
+    pub contract_id: Option<ContractId>, /* for contract and contract_created outputs */
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
@@ -60,6 +60,10 @@ pub struct OutputsQuery {
 }
 
 impl OutputsQuery {
+    pub fn set_contract_id(&mut self, contract_id: &str) {
+        self.contract_id = Some(ContractId::from(contract_id));
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
@@ -109,18 +113,20 @@ impl OutputsQuery {
         // unique conditions
         if let Some(to_address) = &self.to_address {
             condition = condition.add(
-                Expr::col(Outputs::OutputToAddress).eq(to_address.clone()),
+                Expr::col(Outputs::OutputToAddress).eq(to_address.to_string()),
             );
         }
 
         if let Some(asset_id) = &self.asset_id {
-            condition = condition
-                .add(Expr::col(Outputs::OutputAssetId).eq(asset_id.clone()));
+            condition = condition.add(
+                Expr::col(Outputs::OutputAssetId).eq(asset_id.to_string()),
+            );
         }
 
         if let Some(contract_id) = &self.contract_id {
             condition = condition.add(
-                Expr::col(Outputs::OutputContractId).eq(contract_id.clone()),
+                Expr::col(Outputs::OutputContractId)
+                    .eq(contract_id.to_string()),
             );
         }
 

@@ -1,4 +1,5 @@
 pub mod blocks;
+pub mod contracts;
 pub mod inputs;
 pub mod outputs;
 pub mod receipts;
@@ -448,5 +449,31 @@ pub fn create_services(
                     }),
                 ),
         );
+
+        // contracts
+        cfg.service(
+        web::scope(&with_prefixed_route("contracts"))
+                .wrap(api_key_middleware.clone())
+                .route("/{contract_id}/transactions", web::get().to({
+                    move |req, path, query, state: web::Data<ServerState>| {
+                        handlers::contracts::get_contracts_transactions(req, path, query, state)
+                    }
+                }))
+                .route("/{contract_id}/inputs", web::get().to({
+                    move |req, path, query, state: web::Data<ServerState>| {
+                        handlers::contracts::get_contracts_inputs(req, path, query, state)
+                    }
+                }))
+                .route("/{contract_id}/outputs", web::get().to({
+                    move |req, path, query, state: web::Data<ServerState>| {
+                        handlers::contracts::get_contracts_outputs(req, path, query, state)
+                    }
+                }))
+                .route("/{contract_id}/utxos", web::get().to({
+                    move |req, path, query, state: web::Data<ServerState>| {
+                        handlers::contracts::get_contracts_utxos(req, path, query, state)
+                    }
+                }))
+            );
     }
 }

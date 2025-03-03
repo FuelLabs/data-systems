@@ -54,11 +54,11 @@ pub struct InputsQuery {
     pub input_index: Option<i32>,
     pub input_type: Option<InputType>,
     pub block_height: Option<BlockHeight>,
-    pub owner_id: Option<String>, // for coin inputs
-    pub asset_id: Option<String>, // for coin inputs
-    pub contract_id: Option<String>, // for contract inputs
-    pub sender_address: Option<String>, // for message inputs
-    pub recipient_address: Option<String>, // for message inputs
+    pub owner_id: Option<String>,  // for coin inputs
+    pub asset_id: Option<AssetId>, // for coin inputs
+    pub contract_id: Option<ContractId>, // for contract inputs
+    pub sender_address: Option<Address>, // for message inputs
+    pub recipient_address: Option<Address>, // for message inputs
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
@@ -66,6 +66,10 @@ pub struct InputsQuery {
 }
 
 impl InputsQuery {
+    pub fn set_contract_id(&mut self, contract_id: &str) {
+        self.contract_id = Some(ContractId::from(contract_id));
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
@@ -118,26 +122,26 @@ impl InputsQuery {
 
         if let Some(asset_id) = &self.asset_id {
             condition = condition
-                .add(Expr::col(Inputs::InputAssetId).eq(asset_id.clone()));
+                .add(Expr::col(Inputs::InputAssetId).eq(asset_id.to_string()));
         }
 
         if let Some(contract_id) = &self.contract_id {
             condition = condition.add(
-                Expr::col(Inputs::InputContractId).eq(contract_id.clone()),
+                Expr::col(Inputs::InputContractId).eq(contract_id.to_string()),
             );
         }
 
         if let Some(sender_address) = &self.sender_address {
             condition = condition.add(
                 Expr::col(Inputs::InputSenderAddress)
-                    .eq(sender_address.clone()),
+                    .eq(sender_address.to_string()),
             );
         }
 
         if let Some(recipient_address) = &self.recipient_address {
             condition = condition.add(
                 Expr::col(Inputs::InputRecipientAddress)
-                    .eq(recipient_address.clone()),
+                    .eq(recipient_address.to_string()),
             );
         }
 

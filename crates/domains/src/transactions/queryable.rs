@@ -49,9 +49,15 @@ pub struct TransactionsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    // TODO: double-check
+    pub contract_id: Option<ContractId>,
 }
 
 impl TransactionsQuery {
+    pub fn set_contract_id(&mut self, contract_id: &str) {
+        self.contract_id = Some(ContractId::from(contract_id));
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
