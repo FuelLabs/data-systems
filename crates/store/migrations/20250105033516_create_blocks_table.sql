@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS blocks (
     block_height BIGINT NOT NULL,
     producer_address TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    block_propagation_ms INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_blocks_subject ON blocks (subject);

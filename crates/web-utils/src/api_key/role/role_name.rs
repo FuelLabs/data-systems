@@ -4,10 +4,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::api_key::ApiKeyError;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Default)]
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    Eq,
+    PartialEq,
+    Default,
+    strum::EnumIter,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiKeyRoleName {
     Admin,
+    Amm,
     Builder,
     #[default]
     WebClient,
@@ -17,6 +27,7 @@ impl ApiKeyRoleName {
     pub fn as_str(&self) -> &str {
         match self {
             ApiKeyRoleName::Admin => "ADMIN",
+            ApiKeyRoleName::Amm => "AMM",
             ApiKeyRoleName::Builder => "BUILDER",
             ApiKeyRoleName::WebClient => "WEB_CLIENT",
         }
@@ -24,6 +35,10 @@ impl ApiKeyRoleName {
 
     pub fn is_admin(&self) -> bool {
         matches!(self, ApiKeyRoleName::Admin)
+    }
+
+    pub fn is_amm(&self) -> bool {
+        matches!(self, ApiKeyRoleName::Amm)
     }
 
     pub fn is_builder(&self) -> bool {
@@ -46,6 +61,7 @@ impl TryFrom<&str> for ApiKeyRoleName {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "ADMIN" => Ok(ApiKeyRoleName::Admin),
+            "AMM" => Ok(ApiKeyRoleName::Amm),
             "BUILDER" => Ok(ApiKeyRoleName::Builder),
             "WEB_CLIENT" => Ok(ApiKeyRoleName::WebClient),
             _ => Err(ApiKeyError::RolePermission(value.to_string())),

@@ -54,7 +54,8 @@ fn main_packet(
         tx_type: Some(tx.tx_type.to_owned()),
     }
     .dyn_arc();
-    let packet = tx.to_packet(&subject, msg_payload.block_timestamp);
+    let timestamps = msg_payload.timestamp();
+    let packet = tx.to_packet(&subject, timestamps);
     let packet = match msg_payload.namespace.clone() {
         Some(ns) => packet.with_namespace(&ns),
         _ => packet,

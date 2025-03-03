@@ -97,9 +97,8 @@ impl ReceiptsQuery {
         let mut condition = Condition::all();
 
         if let Some(block_height) = &self.block_height {
-            condition = condition.add(
-                Expr::col(Receipts::BlockHeight).eq(block_height.to_string()),
-            );
+            condition = condition
+                .add(Expr::col(Receipts::BlockHeight).eq(**block_height));
         }
 
         if let Some(tx_id) = &self.tx_id {
@@ -120,6 +119,46 @@ impl ReceiptsQuery {
         if let Some(receipt_type) = &self.receipt_type {
             condition = condition.add(
                 Expr::col(Receipts::ReceiptType).eq(receipt_type.to_string()),
+            );
+        }
+
+        if let Some(from) = &self.from {
+            condition = condition
+                .add(Expr::col(Receipts::FromContractId).eq(from.to_string()));
+        }
+
+        if let Some(to) = &self.to {
+            condition = condition
+                .add(Expr::col(Receipts::ToContractId).eq(to.to_string()));
+        }
+
+        if let Some(contract) = &self.contract {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptContractId).eq(contract.to_string()),
+            );
+        }
+
+        if let Some(asset) = &self.asset {
+            condition = condition
+                .add(Expr::col(Receipts::ReceiptAssetId).eq(asset.to_string()));
+        }
+
+        if let Some(sub_id) = &self.sub_id {
+            condition = condition
+                .add(Expr::col(Receipts::ReceiptSubId).eq(sub_id.to_string()));
+        }
+
+        if let Some(sender) = &self.sender {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptSenderAddress)
+                    .eq(sender.to_string()),
+            );
+        }
+
+        if let Some(recipient) = &self.recipient {
+            condition = condition.add(
+                Expr::col(Receipts::ReceiptRecipientAddress)
+                    .eq(recipient.to_string()),
             );
         }
 
@@ -181,5 +220,257 @@ impl Queryable for ReceiptsQuery {
         sqlx::query_as::<_, ReceiptDbItem>(&sql)
             .fetch_all(executor)
             .await
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use fuel_streams_types::{
+        Address,
+        AssetId,
+        BlockHeight,
+        Bytes32,
+        ContractId,
+        TxId,
+    };
+    use pretty_assertions::assert_eq;
+
+    use crate::{
+        queryable::Queryable,
+        receipts::queryable::{ReceiptType, ReceiptsQuery},
+    };
+
+    // Test constants
+    const AFTER_POINTER: i32 = 10000;
+    const BEFORE_POINTER: i32 = 20000;
+    const FIRST_POINTER: i32 = 300;
+    const LAST_POINTER: i32 = 400;
+    const TEST_BLOCK_HEIGHT: i32 = 55;
+    const TEST_TX_INDEX: u32 = 3;
+    const TEST_RECEIPT_INDEX: i32 = 7;
+    const TEST_TX_ID: &str =
+        "0x0101010101010101010101010101010101010101010101010101010101010101";
+    const TEST_CONTRACT_ID: &str =
+        "0x0202020202020202020202020202020202020202020202020202020202020202";
+    const TEST_ASSET_ID: &str =
+        "0x0303030303030303030303030303030303030303030303030303030303030303";
+    const TEST_ADDRESS: &str =
+        "0x0404040404040404040404040404040404040404040404040404040404040404";
+    const TEST_SUB_ID: &str =
+        "0x0505050505050505050505050505050505050505050505050505050505050505";
+
+    #[test]
+    fn test_sql_with_fixed_conds() {
+        // Test 1: basic query with tx_id, block_height and receipt_type
+        let query = ReceiptsQuery {
+            tx_id: Some(TxId::from(TEST_TX_ID)),
+            block_height: Some(BlockHeight::from(TEST_BLOCK_HEIGHT)),
+            receipt_type: Some(ReceiptType::Call),
+            tx_index: None,
+            receipt_index: None,
+            from: None,
+            to: None,
+            contract: None,
+            asset: None,
+            sender: None,
+            recipient: None,
+            sub_id: None,
+            after: None,
+            before: None,
+            first: None,
+            last: None,
+        };
+
+        assert_eq!(
+            query.query_to_string(),
+            format!("SELECT * FROM \"receipts\" WHERE \"block_height\" = {} AND \"tx_id\" = '{}' AND \"receipt_type\" = 'call'",
+                TEST_BLOCK_HEIGHT, TEST_TX_ID)
+        );
+
+        // Test 2: query with contract filters and first pagination
+        let contract_query = ReceiptsQuery {
+            tx_id: None,
+            block_height: None,
+            receipt_type: None,
+            tx_index: None,
+            receipt_index: None,
+            from: Some(ContractId::from(TEST_CONTRACT_ID)),
+            to: Some(ContractId::from(TEST_CONTRACT_ID)),
+            contract: None,
+            asset: None,
+            sender: None,
+            recipient: None,
+            sub_id: None,
+            after: None,
+            before: None,
+            first: Some(FIRST_POINTER),
+            last: None,
+        };
+
+        assert_eq!(
+            contract_query.query_to_string(),
+            format!("SELECT * FROM \"receipts\" WHERE \"from_contract_id\" = '{}' AND \"to_contract_id\" = '{}' ORDER BY \"block_height\" ASC LIMIT {}",
+                TEST_CONTRACT_ID, TEST_CONTRACT_ID, FIRST_POINTER)
+        );
+
+        // Test 3: query with asset and last pagination with range
+        let asset_query = ReceiptsQuery {
+            tx_id: None,
+            block_height: None,
+            receipt_type: None,
+            tx_index: None,
+            receipt_index: None,
+            from: None,
+            to: None,
+            contract: None,
+            asset: Some(AssetId::from(TEST_ASSET_ID)),
+            sender: None,
+            recipient: None,
+            sub_id: None,
+            after: Some(AFTER_POINTER),
+            before: None,
+            first: None,
+            last: Some(LAST_POINTER),
+        };
+
+        assert_eq!(
+            asset_query.query_to_string(),
+            format!("SELECT * FROM \"receipts\" WHERE \"asset_id\" = '{}' AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+                TEST_ASSET_ID, AFTER_POINTER, LAST_POINTER)
+        );
+
+        // Test 4: query with address filters and before condition
+        let address_query = ReceiptsQuery {
+            tx_id: None,
+            block_height: None,
+            receipt_type: None,
+            tx_index: None,
+            receipt_index: None,
+            from: None,
+            to: None,
+            contract: None,
+            asset: None,
+            sender: Some(Address::from([4u8; 32])),
+            recipient: Some(Address::from([4u8; 32])),
+            sub_id: None,
+            after: None,
+            before: Some(BEFORE_POINTER),
+            first: Some(FIRST_POINTER),
+            last: None,
+        };
+
+        assert_eq!(
+            address_query.query_to_string(),
+            format!("SELECT * FROM \"receipts\" WHERE \"sender_address\" = '{}' AND \"recipient_address\" = '{}' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+                TEST_ADDRESS, TEST_ADDRESS, BEFORE_POINTER, FIRST_POINTER)
+        );
+
+        // Test 5: query with detailed transaction indices
+        let tx_details_query = ReceiptsQuery {
+            tx_id: Some(TxId::from(TEST_TX_ID)),
+            block_height: None,
+            receipt_type: None,
+            tx_index: Some(TEST_TX_INDEX),
+            receipt_index: Some(TEST_RECEIPT_INDEX),
+            from: None,
+            to: None,
+            contract: None,
+            asset: None,
+            sender: None,
+            recipient: None,
+            sub_id: None,
+            after: None,
+            before: None,
+            first: None,
+            last: None,
+        };
+
+        assert_eq!(
+            tx_details_query.query_to_string(),
+            format!("SELECT * FROM \"receipts\" WHERE \"tx_id\" = '{}' AND \"tx_index\" = {} AND \"receipt_index\" = {}",
+                TEST_TX_ID, TEST_TX_INDEX, TEST_RECEIPT_INDEX)
+        );
+    }
+
+    #[test]
+    fn test_receipts_query_from_query_string() {
+        use serde_urlencoded;
+
+        let query_string = format!(
+            "txId={}&txIndex={}&receiptIndex={}&receiptType=Call&blockHeight={}&from={}&to={}&contract={}&asset={}&sender={}&recipient={}&subId={}&after={}&before={}&first={}&last={}",
+            TEST_TX_ID,
+            TEST_TX_INDEX,
+            TEST_RECEIPT_INDEX,
+            TEST_BLOCK_HEIGHT,
+            TEST_CONTRACT_ID,
+            TEST_CONTRACT_ID,
+            TEST_CONTRACT_ID,
+            TEST_ASSET_ID,
+            TEST_ADDRESS,
+            TEST_ADDRESS,
+            TEST_SUB_ID,
+            AFTER_POINTER,
+            BEFORE_POINTER,
+            FIRST_POINTER,
+            LAST_POINTER
+        );
+
+        let query: ReceiptsQuery =
+            serde_urlencoded::from_str(&query_string).unwrap();
+
+        assert_eq!(query.tx_id, Some(TxId::from(TEST_TX_ID)));
+        assert_eq!(query.tx_index, Some(TEST_TX_INDEX));
+        assert_eq!(query.receipt_index, Some(TEST_RECEIPT_INDEX));
+        assert_eq!(query.receipt_type, Some(ReceiptType::Call));
+        assert_eq!(
+            query.block_height,
+            Some(BlockHeight::from(TEST_BLOCK_HEIGHT))
+        );
+        assert_eq!(query.from, Some(ContractId::from(TEST_CONTRACT_ID)));
+        assert_eq!(query.to, Some(ContractId::from(TEST_CONTRACT_ID)));
+        assert_eq!(query.contract, Some(ContractId::from(TEST_CONTRACT_ID)));
+        assert_eq!(query.asset, Some(AssetId::from(TEST_ASSET_ID)));
+        assert_eq!(query.sender, Some(Address::from(TEST_ADDRESS)));
+        assert_eq!(query.recipient, Some(Address::from(TEST_ADDRESS)));
+        assert_eq!(query.sub_id, Some(Bytes32::from(TEST_SUB_ID)));
+        assert_eq!(query.after, Some(AFTER_POINTER));
+        assert_eq!(query.before, Some(BEFORE_POINTER));
+        assert_eq!(query.first, Some(FIRST_POINTER));
+        assert_eq!(query.last, Some(LAST_POINTER));
+    }
+
+    #[test]
+    fn test_receipts_query_from_query_string_partial() {
+        use serde_urlencoded;
+
+        let query_string = format!(
+            "txId={}&receiptType=Burn&contract={}&asset={}&subId={}&after={}&first={}",
+            TEST_TX_ID,
+            TEST_CONTRACT_ID,
+            TEST_ASSET_ID,
+            TEST_SUB_ID,
+            AFTER_POINTER,
+            FIRST_POINTER
+        );
+
+        let query: ReceiptsQuery =
+            serde_urlencoded::from_str(&query_string).unwrap();
+
+        assert_eq!(query.tx_id, Some(TxId::from(TEST_TX_ID)));
+        assert_eq!(query.tx_index, None);
+        assert_eq!(query.receipt_index, None);
+        assert_eq!(query.receipt_type, Some(ReceiptType::Burn));
+        assert_eq!(query.block_height, None);
+        assert_eq!(query.from, None);
+        assert_eq!(query.to, None);
+        assert_eq!(query.contract, Some(ContractId::from(TEST_CONTRACT_ID)));
+        assert_eq!(query.asset, Some(AssetId::from(TEST_ASSET_ID)));
+        assert_eq!(query.sender, None);
+        assert_eq!(query.recipient, None);
+        assert_eq!(query.sub_id, Some(Bytes32::from(TEST_SUB_ID)));
+        assert_eq!(query.after, Some(AFTER_POINTER));
+        assert_eq!(query.before, None);
+        assert_eq!(query.first, Some(FIRST_POINTER));
+        assert_eq!(query.last, None);
     }
 }

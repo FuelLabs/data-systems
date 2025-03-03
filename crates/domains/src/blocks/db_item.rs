@@ -10,7 +10,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
-use fuel_streams_types::BlockTimestamp;
+use fuel_streams_types::{BlockHeight, BlockTimestamp, DaBlockHeight};
 use serde::{Deserialize, Serialize};
 
 use super::BlocksSubject;
@@ -22,11 +22,12 @@ use crate::Subjects;
 pub struct BlockDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_da_height: i64,
-    pub block_height: i64,
+    pub block_da_height: DaBlockHeight,
+    pub block_height: BlockHeight,
     pub producer_address: String,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
+    pub block_propagation_ms: i32,
 }
 
 impl DataEncoder for BlockDbItem {
@@ -57,6 +58,10 @@ impl DbItem for BlockDbItem {
     fn published_at(&self) -> BlockTimestamp {
         self.published_at
     }
+
+    fn block_height(&self) -> BlockHeight {
+        self.block_height
+    }
 }
 
 impl TryFrom<&RecordPacket> for BlockDbItem {
@@ -67,16 +72,16 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
             .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
-
         match subject {
             Subjects::Block(subject) => Ok(BlockDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_da_height: subject.da_height.unwrap().into(),
-                block_height: subject.height.unwrap().into(),
+                block_da_height: subject.da_height.unwrap(),
+                block_height: subject.height.unwrap(),
                 producer_address: subject.producer.unwrap().to_string(),
                 created_at: packet.block_timestamp,
                 published_at: packet.block_timestamp,
+                block_propagation_ms: 0,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }
@@ -98,7 +103,7 @@ impl Ord for BlockDbItem {
 impl From<BlockDbItem> for RecordPointer {
     fn from(val: BlockDbItem) -> Self {
         RecordPointer {
-            block_height: val.block_height.into(),
+            block_height: val.block_height,
             tx_index: None,
             input_index: None,
             output_index: None,

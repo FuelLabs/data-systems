@@ -32,6 +32,8 @@ pub enum ApiKeyError {
     SubscriptionLimitExceeded(String),
     #[error("API key rate limit exceeded: {0}")]
     RateLimitExceeded(String),
+    #[error("Historical limit exceeded: {0}")]
+    HistoricalLimitExceeded(String),
 }
 
 impl From<ApiKeyError> for actix_web::Error {
@@ -44,7 +46,8 @@ impl From<ApiKeyError> for actix_web::Error {
             | ApiKeyError::RolePermission(_)
             | ApiKeyError::ScopePermission(_)
             | ApiKeyError::InvalidKeyFormat(_)
-            | ApiKeyError::InvalidStatus(_) => {
+            | ApiKeyError::InvalidStatus(_)
+            | ApiKeyError::HistoricalLimitExceeded(_) => {
                 actix_web::error::ErrorUnauthorized(err.to_string())
             }
 

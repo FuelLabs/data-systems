@@ -32,7 +32,6 @@ impl<R: Record + DataEncoder> Store<R> {
         Arc::new(self.to_owned())
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_namespace(&mut self, namespace: &str) -> &mut Self {
         self.namespace = Some(namespace.to_string());
         self
@@ -91,4 +90,20 @@ pub async fn find_last_block_height(
         .map_err(StoreError::FindLastBlockHeight)?;
 
     Ok(record.map(|(height,)| height.into()).unwrap_or_default())
+}
+
+pub async fn update_block_propagation_ms(
+    tx: &mut DbTransaction,
+    block_height: BlockHeight,
+    propagation_ms: u64,
+) -> StoreResult<()> {
+    sqlx::query(
+        "UPDATE blocks SET block_propagation_ms = $1 WHERE block_height = $2",
+    )
+    .bind(propagation_ms as i64)
+    .bind(block_height)
+    .execute(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+    Ok(())
 }
