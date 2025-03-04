@@ -49,9 +49,14 @@ pub struct TransactionsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    pub address: Option<String>,
 }
 
 impl TransactionsQuery {
+    pub fn set_address(&mut self, address: String) {
+        self.address = Some(address);
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
@@ -62,6 +67,19 @@ impl TransactionsQuery {
 
     fn build_condition(&self) -> Condition {
         let mut condition = Condition::all();
+
+        // TODO: handle address query
+        if let Some(_address) = &self.address {
+            match self.tx_type {
+                Some(TransactionType::Blob) => {}
+                Some(TransactionType::Create) => {}
+                Some(TransactionType::Mint) => {}
+                Some(TransactionType::Script) => {}
+                Some(TransactionType::Upgrade) => {}
+                Some(TransactionType::Upload) => {}
+                _ => {}
+            }
+        }
 
         if let Some(block_height) = &self.block_height {
             condition = condition.add(

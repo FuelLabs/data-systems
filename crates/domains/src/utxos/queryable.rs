@@ -51,9 +51,14 @@ pub struct UtxosQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    pub address: Option<String>,
 }
 
 impl UtxosQuery {
+    pub fn set_address(&mut self, address: String) {
+        self.address = Some(address);
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
@@ -72,6 +77,29 @@ impl UtxosQuery {
 
     fn build_condition(&self) -> Condition {
         let mut condition = Condition::all();
+
+        // handle address query
+        // TODO: extend db fields with separate sender, recipient as per utxo type Input::Message
+        if let Some(address) = &self.address {
+            match self.utxo_type {
+                Some(InputType::Coin) => {
+                    condition = condition
+                        .add(Expr::col(Utxos::UtxoId).eq(address.clone()));
+                }
+                Some(InputType::Contract) => {
+                    condition = condition
+                        .add(Expr::col(Utxos::UtxoId).eq(address.clone()));
+                }
+                Some(InputType::Message) => {
+                    condition = condition
+                        .add(Expr::col(Utxos::UtxoId).eq(address.clone()));
+                }
+                _ => {
+                    condition = condition
+                        .add(Expr::col(Utxos::UtxoId).eq(address.clone()));
+                }
+            }
+        }
 
         if let Some(block_height) = &self.block_height {
             condition = condition.add(

@@ -63,9 +63,14 @@ pub struct InputsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    pub address: Option<String>,
 }
 
 impl InputsQuery {
+    pub fn set_address(&mut self, address: String) {
+        self.address = Some(address);
+    }
+
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
@@ -84,6 +89,47 @@ impl InputsQuery {
 
     fn build_condition(&self) -> Condition {
         let mut condition = Condition::all();
+
+        // handle address query
+        if let Some(address) = &self.address {
+            match self.input_type {
+                Some(InputType::Coin) => {
+                    condition = condition.add(
+                        Expr::col(Inputs::InputOwnerId)
+                            .eq(address.clone())
+                            .eq(Expr::col(Inputs::InputAssetId)
+                                .eq(address.clone())),
+                    );
+                }
+                Some(InputType::Contract) => {
+                    condition = condition.add(
+                        Expr::col(Inputs::InputContractId).eq(address.clone()),
+                    );
+                }
+                Some(InputType::Message) => {
+                    condition = condition.add(
+                        Expr::col(Inputs::InputSenderAddress)
+                            .eq(address.clone())
+                            .or(Expr::col(Inputs::InputRecipientAddress)
+                                .eq(address.clone())),
+                    );
+                }
+                _ => {
+                    condition = condition.add(
+                        Expr::col(Inputs::InputOwnerId)
+                            .eq(address.clone())
+                            .or(Expr::col(Inputs::InputAssetId)
+                                .eq(address.clone()))
+                            .or(Expr::col(Inputs::InputContractId)
+                                .eq(address.clone()))
+                            .or(Expr::col(Inputs::InputSenderAddress)
+                                .eq(address.clone()))
+                            .or(Expr::col(Inputs::InputRecipientAddress)
+                                .eq(address.clone())),
+                    );
+                }
+            }
+        }
 
         if let Some(block_height) = &self.block_height {
             condition = condition.add(
