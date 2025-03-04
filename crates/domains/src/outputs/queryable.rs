@@ -57,12 +57,12 @@ pub struct OutputsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
-    pub address: Option<String>,
+    pub address: Option<Address>,
 }
 
 impl OutputsQuery {
-    pub fn set_address(&mut self, address: String) {
-        self.address = Some(address);
+    pub fn set_address(&mut self, address: &str) {
+        self.address = Some(Address::from(address));
     }
 
     pub fn set_block_height(&mut self, height: u64) {
@@ -92,26 +92,26 @@ impl OutputsQuery {
                 | Some(OutputType::Change) => {
                     condition = condition.add(
                         Expr::col(Outputs::OutputToAddress)
-                            .eq(address.clone())
+                            .eq(address.to_string())
                             .or(Expr::col(Outputs::OutputAssetId)
-                                .eq(address.clone())),
+                                .eq(address.to_string())),
                     );
                 }
                 Some(OutputType::Contract)
                 | Some(OutputType::ContractCreated) => {
                     condition = condition.add(
                         Expr::col(Outputs::OutputContractId)
-                            .eq(address.clone()),
+                            .eq(address.to_string()),
                     );
                 }
                 _ => {
                     condition = condition.add(
                         Expr::col(Outputs::OutputToAddress)
-                            .eq(address.clone())
+                            .eq(address.to_string())
                             .or(Expr::col(Outputs::OutputAssetId)
-                                .eq(address.clone()))
+                                .eq(address.to_string()))
                             .or(Expr::col(Outputs::OutputContractId)
-                                .eq(address.clone())),
+                                .eq(address.to_string())),
                     );
                 }
             }
@@ -267,6 +267,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -289,6 +290,7 @@ mod test {
             before: None,
             first: Some(FIRST_POINTER),
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -311,6 +313,7 @@ mod test {
             before: None,
             first: None,
             last: Some(LAST_POINTER),
+            address: None,
         };
 
         assert_eq!(
@@ -333,6 +336,7 @@ mod test {
             before: Some(BEFORE_POINTER),
             first: Some(FIRST_POINTER),
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -355,6 +359,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: None,
         };
 
         assert_eq!(

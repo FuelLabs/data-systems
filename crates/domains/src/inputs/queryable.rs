@@ -63,12 +63,12 @@ pub struct InputsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
-    pub address: Option<String>,
+    pub address: Option<Address>,
 }
 
 impl InputsQuery {
-    pub fn set_address(&mut self, address: String) {
-        self.address = Some(address);
+    pub fn set_address(&mut self, address: &str) {
+        self.address = Some(Address::from(address));
     }
 
     pub fn set_block_height(&mut self, height: u64) {
@@ -96,36 +96,37 @@ impl InputsQuery {
                 Some(InputType::Coin) => {
                     condition = condition.add(
                         Expr::col(Inputs::InputOwnerId)
-                            .eq(address.clone())
+                            .eq(address.to_string())
                             .eq(Expr::col(Inputs::InputAssetId)
-                                .eq(address.clone())),
+                                .eq(address.to_string())),
                     );
                 }
                 Some(InputType::Contract) => {
                     condition = condition.add(
-                        Expr::col(Inputs::InputContractId).eq(address.clone()),
+                        Expr::col(Inputs::InputContractId)
+                            .eq(address.to_string()),
                     );
                 }
                 Some(InputType::Message) => {
                     condition = condition.add(
                         Expr::col(Inputs::InputSenderAddress)
-                            .eq(address.clone())
+                            .eq(address.to_string())
                             .or(Expr::col(Inputs::InputRecipientAddress)
-                                .eq(address.clone())),
+                                .eq(address.to_string())),
                     );
                 }
                 _ => {
                     condition = condition.add(
                         Expr::col(Inputs::InputOwnerId)
-                            .eq(address.clone())
+                            .eq(address.to_string())
                             .or(Expr::col(Inputs::InputAssetId)
-                                .eq(address.clone()))
+                                .eq(address.to_string()))
                             .or(Expr::col(Inputs::InputContractId)
-                                .eq(address.clone()))
+                                .eq(address.to_string()))
                             .or(Expr::col(Inputs::InputSenderAddress)
-                                .eq(address.clone()))
+                                .eq(address.to_string()))
                             .or(Expr::col(Inputs::InputRecipientAddress)
-                                .eq(address.clone())),
+                                .eq(address.to_string())),
                     );
                 }
             }
@@ -274,6 +275,8 @@ mod test {
         "0x0404040404040404040404040404040404040404040404040404040404040404";
     const TEST_ADDRESS: &str =
         "0x0505050505050505050505050505050505050505050505050505050505050505";
+    const ASSET_ID: &str =
+        "0x0606060606060606060606060606060606060606060606060606060606060606";
 
     #[test]
     fn test_sql_with_fixed_conds() {
@@ -293,6 +296,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: Some(Address::from(ASSET_ID)),
         };
 
         assert_eq!(
@@ -317,6 +321,7 @@ mod test {
             before: None,
             first: Some(FIRST_POINTER),
             last: None,
+            address: Some(Address::from(ASSET_ID)),
         };
 
         assert_eq!(
@@ -341,6 +346,7 @@ mod test {
             before: None,
             first: None,
             last: Some(LAST_POINTER),
+            address: Some(Address::from(ASSET_ID)),
         };
 
         assert_eq!(
@@ -365,6 +371,7 @@ mod test {
             before: Some(BEFORE_POINTER),
             first: Some(FIRST_POINTER),
             last: None,
+            address: Some(Address::from(ASSET_ID)),
         };
 
         assert_eq!(
@@ -389,6 +396,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: Some(Address::from(ASSET_ID)),
         };
 
         assert_eq!(

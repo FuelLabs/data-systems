@@ -20,7 +20,7 @@ pub async fn get_accounts_transactions(
     let _api_key = ApiKey::from_req(&req)?;
     let mut query = req_query.into_inner();
     let address = address.into_inner();
-    query.set_address(address);
+    query.set_address(&address);
     let db_records =
         query.execute(&state.db.pool).await.map_err(Error::Sqlx)?;
     Ok(HttpResponse::Ok()
@@ -36,7 +36,7 @@ pub async fn get_accounts_inputs(
     let _api_key = ApiKey::from_req(&req)?;
     let mut query = req_query.into_inner();
     let address = address.into_inner();
-    query.set_address(address);
+    query.set_address(&address);
     let db_records =
         query.execute(&state.db.pool).await.map_err(Error::Sqlx)?;
     Ok(HttpResponse::Ok()
@@ -52,7 +52,7 @@ pub async fn get_accounts_outputs(
     let _api_key = ApiKey::from_req(&req)?;
     let mut query = req_query.into_inner();
     let address = address.into_inner();
-    query.set_address(address);
+    query.set_address(&address);
     let db_records =
         query.execute(&state.db.pool).await.map_err(Error::Sqlx)?;
     Ok(HttpResponse::Ok()
@@ -68,7 +68,7 @@ pub async fn get_accounts_utxos(
     let _api_key = ApiKey::from_req(&req)?;
     let mut query = req_query.into_inner();
     let address = address.into_inner();
-    query.set_address(address);
+    query.set_address(&address);
     let db_records =
         query.execute(&state.db.pool).await.map_err(Error::Sqlx)?;
     Ok(HttpResponse::Ok()
