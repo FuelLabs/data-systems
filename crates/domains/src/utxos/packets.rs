@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use fuel_core_types::fuel_types;
 use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
 use fuel_streams_subject::subject::IntoSubject;
-use fuel_streams_types::TxId;
+use fuel_streams_types::{ContractId, TxId};
 use rayon::prelude::*;
 
 use super::{subjects::*, types::*};
@@ -57,10 +58,18 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
         ),
     ) -> Self {
         match input {
-            Input::Contract(InputContract { utxo_id, .. }) => {
+            Input::Contract(InputContract {
+                utxo_id,
+                contract_id,
+                ..
+            }) => {
+                let bytes = contract_id.clone().into_inner();
+                let contract_id_wrapped =
+                    ContractId::new(fuel_types::ContractId::new(*bytes));
                 let utxo = Utxo {
                     utxo_id: utxo_id.to_owned(),
                     tx_id: tx_id.to_owned(),
+                    contract_id: Some(contract_id_wrapped.clone()),
                     ..Default::default()
                 };
                 let subject = UtxosSubject {
@@ -70,6 +79,7 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     input_index: Some(input_index),
                     utxo_type: Some(UtxoType::Contract),
                     utxo_id: Some(utxo_id.into()),
+                    contract_id: Some(contract_id_wrapped),
                 }
                 .arc();
                 DynUtxoSubject(utxo, subject)
@@ -90,6 +100,7 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     input_index: Some(input_index),
                     utxo_type: Some(UtxoType::Coin),
                     utxo_id: Some(utxo_id.into()),
+                    ..Default::default()
                 }
                 .arc();
                 DynUtxoSubject(utxo, subject)
@@ -113,6 +124,7 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     nonce: Some(nonce.to_owned()),
                     amount: Some(*amount),
                     data: Some(data.to_owned()),
+                    ..Default::default()
                 };
                 let subject = UtxosSubject {
                     block_height: Some(block_height),
@@ -121,6 +133,7 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     input_index: Some(input_index),
                     utxo_type: Some(UtxoType::Message),
                     utxo_id: Some(utxo_id.into()),
+                    ..Default::default()
                 }
                 .arc();
                 DynUtxoSubject(utxo, subject)

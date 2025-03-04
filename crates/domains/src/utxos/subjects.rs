@@ -9,7 +9,7 @@ use super::types::*;
 #[subject(entity = "Utxo")]
 #[subject(query_all = "utxos.>")]
 #[subject(
-    format = "utxos.{block_height}.{tx_id}.{tx_index}.{input_index}.{utxo_type}.{utxo_id}"
+    format = "utxos.{block_height}.{tx_id}.{tx_index}.{input_index}.{utxo_type}.{utxo_id}.{contract_id}"
 )]
 pub struct UtxosSubject {
     #[subject(description = "The height of the block containing this UTXO")]
@@ -28,4 +28,9 @@ pub struct UtxosSubject {
         description = "The unique identifier for this UTXO (32 byte string prefixed by 0x)"
     )]
     pub utxo_id: Option<HexData>,
+    #[subject(
+        sql_column = "contract_id",
+        description = "The ID of the contract that returned (32 byte string prefixed by 0x)"
+    )]
+    pub contract_id: Option<ContractId>,
 }
