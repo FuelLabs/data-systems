@@ -2,6 +2,7 @@ pub mod accounts;
 pub mod blocks;
 pub mod contracts;
 pub mod inputs;
+pub mod macros;
 pub mod outputs;
 pub mod receipts;
 pub mod transactions;
@@ -20,7 +21,13 @@ use fuel_web_utils::{
 use serde::Serialize;
 
 use super::handlers;
-use crate::server::state::ServerState;
+use crate::{
+    related_resource_endpoint,
+    resource_with_related_endpoints,
+    server::state::ServerState,
+    simple_resource_endpoint,
+    typed_resource_endpoint,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -59,448 +66,124 @@ pub fn create_services(
         let api_key_middleware =
             ApiKeyAuth::new(&state.api_keys_manager, &state.db);
         cfg.app_data(web::Data::new(state.clone()));
+
         // blocks
-        cfg.service(
-        web::scope(&with_prefixed_route("blocks"))
-                .wrap(api_key_middleware.clone())
-                .route("", web::get().to({
-                    move |req, query, state: web::Data<ServerState>| {
-                        handlers::blocks::get_blocks(req, query, state)
-                    }
-                }))
-                .route("/{height}/receipts", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::blocks::get_block_receipts(req, path, query, state)
-                    }
-                }))
-                .route("/{height}/transactions", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::blocks::get_block_transactions(req, path, query, state)
-                    }
-                }))
-                .route("/{height}/inputs", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::blocks::get_block_inputs(req, path, query, state)
-                    }
-                }))
-                .route("/{height}/outputs", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::blocks::get_block_outputs(req, path, query, state)
-                    }
-                }))
+        resource_with_related_endpoints!(
+            cfg,
+            api_key_middleware,
+            "blocks",
+            "height",
+            handlers::blocks::get_blocks,
+            [
+                ("receipts", handlers::blocks::get_block_receipts),
+                ("transactions", handlers::blocks::get_block_transactions),
+                ("inputs", handlers::blocks::get_block_inputs),
+                ("outputs", handlers::blocks::get_block_outputs)
+            ]
         );
 
         // transactions
-        cfg.service(
-            web::scope(&with_prefixed_route("transactions"))
-                    .wrap(api_key_middleware.clone())
-                    .route("", web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::transactions::get_transactions(req, query, state)
-                        }
-                    }))
-                    .route("/{tx_id}/receipts", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::transactions::get_transaction_receipts(req, path, query, state)
-                        }
-                    }))
-                    .route("/{tx_id}/inputs", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::transactions::get_transaction_inputs(req, path, query, state)
-                        }
-                    }))
-                    .route("/{tx_id}/outputs", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::transactions::get_transaction_outputs(req, path, query, state)
-                        }
-                    }))
+        resource_with_related_endpoints!(
+            cfg,
+            api_key_middleware,
+            "transactions",
+            "tx_id",
+            handlers::transactions::get_transactions,
+            [
+                ("receipts", handlers::transactions::get_transaction_receipts),
+                ("inputs", handlers::transactions::get_transaction_inputs),
+                ("outputs", handlers::transactions::get_transaction_outputs)
+            ]
         );
 
         // inputs
-        cfg.service(
-            web::scope(&with_prefixed_route("inputs"))
-                .wrap(api_key_middleware.clone())
-                .route(
-                    "",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::inputs::get_inputs(
-                                req, query, state, None,
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/message",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::inputs::get_inputs(
-                                req,
-                                query,
-                                state,
-                                Some(InputType::Message),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/contract",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::inputs::get_inputs(
-                                req,
-                                query,
-                                state,
-                                Some(InputType::Contract),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/coin",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::inputs::get_inputs(
-                                req,
-                                query,
-                                state,
-                                Some(InputType::Coin),
-                            )
-                        }
-                    }),
-                ),
+        typed_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "inputs",
+            handlers::inputs::get_inputs,
+            InputType,
+            ("/message", Message),
+            ("/contract", Contract),
+            ("/coin", Coin)
         );
 
         // outputs
-        cfg.service(
-            web::scope(&with_prefixed_route("outputs"))
-                .wrap(api_key_middleware.clone())
-                .route(
-                    "",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req, query, state, None,
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/change",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req,
-                                query,
-                                state,
-                                Some(OutputType::Change),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/coin",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req,
-                                query,
-                                state,
-                                Some(OutputType::Coin),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/contract",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req,
-                                query,
-                                state,
-                                Some(OutputType::Contract),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/contract-created",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req,
-                                query,
-                                state,
-                                Some(OutputType::ContractCreated),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/variable",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::outputs::get_outputs(
-                                req,
-                                query,
-                                state,
-                                Some(OutputType::Variable),
-                            )
-                        }
-                    }),
-                ),
+        typed_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "outputs",
+            handlers::outputs::get_outputs,
+            OutputType,
+            ("/change", Change),
+            ("/coin", Coin),
+            ("/contract", Contract),
+            ("/contract-created", ContractCreated),
+            ("/variable", Variable)
         );
 
         // utxos
-        cfg.service(
-            web::scope(&with_prefixed_route("utxos"))
-                .wrap(api_key_middleware.clone())
-                .route(
-                    "",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::utxos::get_utxos(req, query, state)
-                        }
-                    }),
-                ),
+        simple_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "utxos",
+            handlers::utxos::get_utxos
         );
 
         // receipts
-        cfg.service(
-            web::scope(&with_prefixed_route("receipts"))
-                .wrap(api_key_middleware.clone())
-                .route(
-                    "",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req, query, state, None,
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/burn",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Burn),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/mint",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Mint),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/message-out",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::MessageOut),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/script-result",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::ScriptResult),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/transfer-out",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::TransferOut),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/transfer",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Transfer),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/logdata",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::LogData),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/log",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Log),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/revert",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Revert),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/panic",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Panic),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/return-data",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::ReturnData),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/return",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Return),
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/call",
-                    web::get().to({
-                        move |req, query, state: web::Data<ServerState>| {
-                            handlers::receipts::get_receipts(
-                                req,
-                                query,
-                                state,
-                                Some(ReceiptType::Call),
-                            )
-                        }
-                    }),
-                ),
+        typed_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "receipts",
+            handlers::receipts::get_receipts,
+            ReceiptType,
+            ("/burn", Burn),
+            ("/mint", Mint),
+            ("/message-out", MessageOut),
+            ("/script-result", ScriptResult),
+            ("/transfer-out", TransferOut),
+            ("/transfer", Transfer),
+            ("/logdata", LogData),
+            ("/log", Log),
+            ("/revert", Revert),
+            ("/panic", Panic),
+            ("/return-data", ReturnData),
+            ("/return", Return),
+            ("/call", Call)
         );
 
         // contracts
-        cfg.service(
-        web::scope(&with_prefixed_route("contracts"))
-                .wrap(api_key_middleware.clone())
-                .route("/{contract_id}/transactions", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::contracts::get_contracts_transactions(req, path, query, state)
-                    }
-                }))
-                .route("/{contract_id}/inputs", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::contracts::get_contracts_inputs(req, path, query, state)
-                    }
-                }))
-                .route("/{contract_id}/outputs", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::contracts::get_contracts_outputs(req, path, query, state)
-                    }
-                }))
-                .route("/{contract_id}/utxos", web::get().to({
-                    move |req, path, query, state: web::Data<ServerState>| {
-                        handlers::contracts::get_contracts_utxos(req, path, query, state)
-                    }
-                }))
-            );
+        related_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "contracts",
+            "contract_id",
+            [
+                // ( // TODO: need to extend db with normalized values
+                //     "transactions",
+                //     handlers::contracts::get_contracts_transactions
+                // ),
+                ("inputs", handlers::contracts::get_contracts_inputs),
+                ("outputs", handlers::contracts::get_contracts_outputs),
+                ("utxos", handlers::contracts::get_contracts_utxos)
+            ]
+        );
 
         // accounts
-        cfg.service(
-            web::scope(&with_prefixed_route("accounts"))
-                    .wrap(api_key_middleware.clone())
-                    .route("/{address}/transactions", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::accounts::get_accounts_transactions(req, path, query, state)
-                        }
-                    }))
-                    .route("/{address}/inputs", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::accounts::get_accounts_inputs(req, path, query, state)
-                        }
-                    }))
-                    .route("/{address}/outputs", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::accounts::get_accounts_outputs(req, path, query, state)
-                        }
-                    }))
-                    .route("/{address}/utxos", web::get().to({
-                        move |req, path, query, state: web::Data<ServerState>| {
-                            handlers::accounts::get_accounts_utxos(req, path, query, state)
-                        }
-                    }))
-                );
+        related_resource_endpoint!(
+            cfg,
+            api_key_middleware,
+            "accounts",
+            "address",
+            [
+                // ( // TODO: need to extend db with normalized values
+                //     "transactions",
+                //     handlers::accounts::get_accounts_transactions
+                // ),
+                ("inputs", handlers::accounts::get_accounts_inputs),
+                ("outputs", handlers::accounts::get_accounts_outputs),
+                ("utxos", handlers::accounts::get_accounts_utxos)
+            ]
+        );
     }
 }
