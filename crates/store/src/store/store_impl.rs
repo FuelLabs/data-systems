@@ -92,6 +92,39 @@ pub async fn find_last_block_height(
     Ok(record.map(|(height,)| height.into()).unwrap_or_default())
 }
 
+pub async fn find_next_block_to_save(
+    db: &Db,
+    options: QueryOptions,
+) -> StoreResult<BlockHeight> {
+    let select = r#"
+        SELECT block_height + 1 as next_height
+        FROM blocks b1
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM blocks b2
+            WHERE b2.block_height = b1.block_height + 1
+        )
+    "#
+    .to_string();
+
+    let mut query_builder = sqlx::QueryBuilder::new(select);
+
+    if let Some(ns) = options.namespace {
+        query_builder
+            .push(" AND subject LIKE ")
+            .push_bind(format!("{}%", ns));
+    }
+
+    query_builder.push(" ORDER BY block_height LIMIT 1");
+    let query = query_builder.build_query_as::<(i64,)>();
+
+    let record: Option<(i64,)> = query
+        .fetch_optional(&db.pool)
+        .await
+        .map_err(StoreError::from)?;
+    Ok(record.map(|(height,)| height.into()).unwrap_or(1.into()))
+}
+
 pub async fn update_block_propagation_ms(
     tx: &mut DbTransaction,
     block_height: BlockHeight,
