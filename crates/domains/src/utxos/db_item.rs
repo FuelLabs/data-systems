@@ -28,6 +28,7 @@ pub struct UtxoDbItem {
     pub input_index: i32,
     pub utxo_type: String,
     pub utxo_id: String,
+    pub contract_id: Option<String>,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
 }
@@ -85,6 +86,7 @@ impl TryFrom<&RecordPacket> for UtxoDbItem {
                 input_index: subject.input_index.unwrap() as i32,
                 utxo_type: subject.utxo_type.unwrap().to_string(),
                 utxo_id: subject.utxo_id.unwrap().to_string(),
+                contract_id: subject.contract_id.map(|id| id.to_string()),
                 created_at: packet.block_timestamp,
                 published_at: packet.block_timestamp,
             }),

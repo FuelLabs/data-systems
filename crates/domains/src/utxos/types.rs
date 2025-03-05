@@ -11,6 +11,7 @@ pub struct Utxo {
     pub data: Option<HexData>,
     pub amount: Option<Amount>,
     pub tx_id: TxId,
+    pub contract_id: Option<ContractId>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -64,6 +65,7 @@ impl MockUtxo {
             data: None,
             amount: Some(amount.into()),
             tx_id: TxId::default(),
+            contract_id: None,
         }
     }
 
@@ -76,6 +78,7 @@ impl MockUtxo {
             data: None,
             amount: Some(amount.into()),
             tx_id: TxId::default(),
+            contract_id: None,
         }
     }
 
@@ -88,6 +91,7 @@ impl MockUtxo {
             data: Some(HexData::default()),
             amount: None,
             tx_id: TxId::default(),
+            contract_id: None,
         }
     }
 

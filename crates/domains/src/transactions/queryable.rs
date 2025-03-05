@@ -49,12 +49,17 @@ pub struct TransactionsQuery {
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
-    pub address: Option<Address>,
+    pub contract_id: Option<ContractId>, // TODO: for the contracts endpoint
+    pub address: Option<Address>,        // for the accounts endpoint
 }
 
 impl TransactionsQuery {
     pub fn set_address(&mut self, address: &str) {
         self.address = Some(Address::from(address));
+    }
+
+    pub fn set_contract_id(&mut self, contract_id: &str) {
+        self.contract_id = Some(ContractId::from(contract_id));
     }
 
     pub fn set_block_height(&mut self, height: u64) {
@@ -207,6 +212,7 @@ mod test {
             first: None,
             last: None,
             address: None,
+            contract_id: None,
         };
 
         assert_eq!(
@@ -227,6 +233,7 @@ mod test {
             first: Some(FIRST_POINTER),
             last: None,
             address: None,
+            contract_id: None,
         };
 
         assert_eq!(
@@ -247,6 +254,7 @@ mod test {
             first: None,
             last: Some(LAST_POINTER),
             address: None,
+            contract_id: None,
         };
 
         assert_eq!(
@@ -267,6 +275,7 @@ mod test {
             first: Some(FIRST_POINTER),
             last: None,
             address: None,
+            contract_id: None,
         };
 
         assert_eq!(
@@ -287,6 +296,7 @@ mod test {
             first: None,
             last: None,
             address: None,
+            contract_id: None,
         };
 
         assert_eq!(

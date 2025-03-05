@@ -61,7 +61,6 @@ pub struct ReceiptsQuery {
     pub receipt_index: Option<i32>,
     pub receipt_type: Option<ReceiptType>,
     pub block_height: Option<BlockHeight>,
-
     pub from: Option<ContractId>,
     pub to: Option<ContractId>,
     pub contract: Option<ContractId>,
@@ -69,14 +68,18 @@ pub struct ReceiptsQuery {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub sub_id: Option<Bytes32>,
-
     pub after: Option<i32>,
     pub before: Option<i32>,
     pub first: Option<i32>,
     pub last: Option<i32>,
+    pub address: Option<Address>, // for the accounts endpoint
 }
 
 impl ReceiptsQuery {
+    pub fn set_address(&mut self, address: &str) {
+        self.address = Some(Address::from(address));
+    }
+
     pub fn set_receipt_type(&mut self, receipt_type: Option<ReceiptType>) {
         self.receipt_type = receipt_type;
     }
@@ -95,6 +98,59 @@ impl ReceiptsQuery {
 
     fn build_condition(&self) -> Condition {
         let mut condition = Condition::all();
+
+        // handle address query
+        if let Some(address) = &self.address {
+            match self.receipt_type {
+                Some(ReceiptType::Call) => {
+                    condition = condition.add(
+                        Expr::col(Receipts::ToAddress)
+                            .eq(address.to_string())
+                            .or(Expr::col(Receipts::ReceiptAssetId)
+                                .eq(address.to_string())),
+                    );
+                }
+                Some(ReceiptType::Panic)
+                | Some(ReceiptType::Mint)
+                | Some(ReceiptType::Burn) => {
+                    condition = condition.add(
+                        Expr::col(Receipts::ReceiptContractId)
+                            .eq(address.to_string()),
+                    );
+                }
+                Some(ReceiptType::Transfer)
+                | Some(ReceiptType::TransferOut) => {
+                    condition = condition.add(
+                        Expr::col(Receipts::ReceiptAssetId)
+                            .eq(address.to_string())
+                            .or(Expr::col(Receipts::ToAddress)
+                                .eq(address.to_string())),
+                    );
+                }
+                Some(ReceiptType::MessageOut) => {
+                    condition = condition.add(
+                        Expr::col(Receipts::ReceiptSenderAddress)
+                            .eq(address.to_string())
+                            .or(Expr::col(Receipts::ReceiptRecipientAddress)
+                                .eq(address.to_string())),
+                    );
+                }
+                _ => {
+                    condition = condition.add(
+                        Expr::col(Receipts::ToAddress)
+                            .eq(address.to_string())
+                            .or(Expr::col(Receipts::ReceiptAssetId)
+                                .eq(address.to_string()))
+                            .or(Expr::col(Receipts::ReceiptContractId)
+                                .eq(address.to_string()))
+                            .or(Expr::col(Receipts::ReceiptSenderAddress)
+                                .eq(address.to_string()))
+                            .or(Expr::col(Receipts::ReceiptRecipientAddress)
+                                .eq(address.to_string())),
+                    );
+                }
+            }
+        }
 
         if let Some(block_height) = &self.block_height {
             condition = condition
@@ -279,6 +335,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -305,6 +362,7 @@ mod test {
             before: None,
             first: Some(FIRST_POINTER),
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -331,6 +389,7 @@ mod test {
             before: None,
             first: None,
             last: Some(LAST_POINTER),
+            address: None,
         };
 
         assert_eq!(
@@ -357,6 +416,7 @@ mod test {
             before: Some(BEFORE_POINTER),
             first: Some(FIRST_POINTER),
             last: None,
+            address: None,
         };
 
         assert_eq!(
@@ -383,6 +443,7 @@ mod test {
             before: None,
             first: None,
             last: None,
+            address: None,
         };
 
         assert_eq!(

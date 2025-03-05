@@ -32,9 +32,9 @@ impl Record for Utxo {
             "WITH upsert AS (
                 INSERT INTO utxos (
                     subject, value, block_height, tx_id, tx_index,
-                    input_index, utxo_type, utxo_id, created_at, published_at
+                    input_index, utxo_type, utxo_id, contract_id, created_at, published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (subject) DO UPDATE SET
                     value = EXCLUDED.value,
                     block_height = EXCLUDED.block_height,
@@ -43,8 +43,9 @@ impl Record for Utxo {
                     input_index = EXCLUDED.input_index,
                     utxo_type = EXCLUDED.utxo_type,
                     utxo_id = EXCLUDED.utxo_id,
+                    contract_id = EXCLUDED.contract_id,
                     created_at = EXCLUDED.created_at,
-                    published_at = $10
+                    published_at = $11
                 RETURNING *
             )
             SELECT * FROM upsert",
@@ -57,6 +58,7 @@ impl Record for Utxo {
         .bind(db_item.input_index)
         .bind(db_item.utxo_type)
         .bind(db_item.utxo_id)
+        .bind(db_item.contract_id)
         .bind(db_item.created_at)
         .bind(published_at)
         .fetch_one(executor)
