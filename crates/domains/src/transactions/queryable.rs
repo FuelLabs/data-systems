@@ -73,19 +73,6 @@ impl TransactionsQuery {
     fn build_condition(&self) -> Condition {
         let mut condition = Condition::all();
 
-        // TODO: handle address query
-        if let Some(_address) = &self.address {
-            match self.tx_type {
-                Some(TransactionType::Blob) => {}
-                Some(TransactionType::Create) => {}
-                Some(TransactionType::Mint) => {}
-                Some(TransactionType::Script) => {}
-                Some(TransactionType::Upgrade) => {}
-                Some(TransactionType::Upload) => {}
-                _ => {}
-            }
-        }
-
         if let Some(block_height) = &self.block_height {
             condition = condition
                 .add(Expr::col(Transactions::BlockHeight).eq(**block_height));
