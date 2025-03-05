@@ -120,7 +120,6 @@ fn get_historical_block_range(
         return None;
     };
 
-    let end_height = end_height.into();
     let start_height = start_height.into();
     if start_height > end_height {
         tracing::info!("No historical blocks to process");
