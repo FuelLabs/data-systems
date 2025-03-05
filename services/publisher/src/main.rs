@@ -5,7 +5,6 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::types::*;
 use fuel_streams_store::{
     db::{Db, DbConnectionOpts},
-    record::QueryOptions,
     store::find_next_block_to_save,
 };
 use fuel_web_utils::{
@@ -51,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Last block height: {}", last_block_height);
     tokio::select! {
         result = async {
-            let _ = process_historical_blocks(
+            let historical = process_historical_blocks(
                 cli.from_height.into(),
                 &message_broker,
                 &fuel_core,
@@ -59,16 +58,19 @@ async fn main() -> anyhow::Result<()> {
                 &next_block_to_process,
                 shutdown.token().clone(),
                 &telemetry,
-            ).await.map_err(|e| PublishError::Historical(e.to_string()))?;
+            );
 
-            process_live_blocks(
+            let live = process_live_blocks(
                 &message_broker,
                 &fuel_core,
                 shutdown.token().clone(),
                 &telemetry
-            ).await
+            );
+
+            tokio::join!(historical, live)
         } => {
-            result?;
+            result.0?;
+            result.1?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
@@ -96,8 +98,7 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, PublishError> {
 async fn find_next_block_to_process(
     db: &Db,
 ) -> Result<BlockHeight, PublishError> {
-    let opts = QueryOptions::default();
-    let height = find_next_block_to_save(db, opts).await?;
+    let height = find_next_block_to_save(db).await?;
     Ok(height)
 }
 
@@ -142,7 +143,7 @@ fn process_historical_blocks(
     next_block_to_process: &Arc<BlockHeight>,
     token: CancellationToken,
     telemetry: &Arc<Telemetry<Metrics>>,
-) -> tokio::task::JoinHandle<Result<(), PublishError>> {
+) -> tokio::task::JoinHandle<()> {
     let message_broker = message_broker.clone();
     let fuel_core = fuel_core.clone();
     tokio::spawn({
@@ -155,10 +156,9 @@ fn process_historical_blocks(
                 next_block_to_process,
                 last_block_height,
             ) else {
-                return Ok(());
+                return;
             };
 
-            let errors = Arc::new(std::sync::Mutex::new(Vec::new()));
             futures::stream::iter(heights)
                 .map(|height| {
                     let message_broker = message_broker.clone();
@@ -179,33 +179,17 @@ fn process_historical_blocks(
                 })
                 .buffered(100)
                 .take_until(token.cancelled())
-                .for_each(|result| {
-                    let errors = Arc::clone(&errors);
-                    async move {
-                        match result {
-                            Ok(_) => {
-                                tracing::debug!("Block processed successfully")
-                            }
-                            Err(e) => {
-                                tracing::error!(
-                                    "Error processing block: {:?}",
-                                    e
-                                );
-                                errors.lock().unwrap().push(e);
-                            }
+                .for_each(|result| async move {
+                    match result {
+                        Ok(_) => {
+                            tracing::debug!("Block processed successfully")
+                        }
+                        Err(e) => {
+                            tracing::error!("Error processing block: {:?}", e)
                         }
                     }
                 })
                 .await;
-
-            let errors = errors.lock().unwrap();
-            if !errors.is_empty() {
-                return Err(PublishError::Historical(format!(
-                    "Failed to process {} historical blocks",
-                    errors.len()
-                )));
-            }
-            Ok(())
         }
     })
 }
