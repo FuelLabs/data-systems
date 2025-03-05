@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Last block height: {}", last_block_height);
     tokio::select! {
         result = async {
-            let historical = process_historical_blocks(
+            let _ = process_historical_blocks(
                 cli.from_height.into(),
                 &message_broker,
                 &fuel_core,
@@ -58,19 +58,16 @@ async fn main() -> anyhow::Result<()> {
                 &last_published,
                 shutdown.token().clone(),
                 &telemetry,
-            );
+            ).await.map_err(|e| PublishError::Historical(e.to_string()))?;
 
-            let live = process_live_blocks(
+            process_live_blocks(
                 &message_broker,
                 &fuel_core,
                 shutdown.token().clone(),
                 &telemetry
-            );
-
-            tokio::join!(historical, live)
+            ).await
         } => {
-            result.0?;
-            result.1?;
+            result?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
@@ -143,7 +140,7 @@ fn process_historical_blocks(
     last_published_height: &Arc<BlockHeight>,
     token: CancellationToken,
     telemetry: &Arc<Telemetry<Metrics>>,
-) -> tokio::task::JoinHandle<()> {
+) -> tokio::task::JoinHandle<Result<(), PublishError>> {
     let message_broker = message_broker.clone();
     let fuel_core = fuel_core.clone();
     tokio::spawn({
@@ -156,8 +153,10 @@ fn process_historical_blocks(
                 last_published_height,
                 last_block_height,
             ) else {
-                return;
+                return Ok(());
             };
+
+            let errors = Arc::new(std::sync::Mutex::new(Vec::new()));
             futures::stream::iter(heights)
                 .map(|height| {
                     let message_broker = message_broker.clone();
@@ -178,17 +177,33 @@ fn process_historical_blocks(
                 })
                 .buffered(100)
                 .take_until(token.cancelled())
-                .for_each(|result| async move {
-                    match result {
-                        Ok(_) => {
-                            tracing::debug!("Block processed successfully")
-                        }
-                        Err(e) => {
-                            tracing::error!("Error processing block: {:?}", e)
+                .for_each(|result| {
+                    let errors = Arc::clone(&errors);
+                    async move {
+                        match result {
+                            Ok(_) => {
+                                tracing::debug!("Block processed successfully")
+                            }
+                            Err(e) => {
+                                tracing::error!(
+                                    "Error processing block: {:?}",
+                                    e
+                                );
+                                errors.lock().unwrap().push(e);
+                            }
                         }
                     }
                 })
                 .await;
+
+            let errors = errors.lock().unwrap();
+            if !errors.is_empty() {
+                return Err(PublishError::Historical(format!(
+                    "Failed to process {} historical blocks",
+                    errors.len()
+                )));
+            }
+            Ok(())
         }
     })
 }

@@ -29,4 +29,6 @@ pub enum PublishError {
     Sqlx(#[from] sqlx::Error),
     #[error("Failed to get block height from encoded utf8 string")]
     BlockHeightFromUtf8(#[from] Utf8Error),
+    #[error("Failed to process historical blocks")]
+    Historical(String),
 }
