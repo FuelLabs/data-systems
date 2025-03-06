@@ -9678,7 +9678,6 @@ dependencies = [
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",
- "futures",
  "openssl",
  "prometheus",
  "serde",

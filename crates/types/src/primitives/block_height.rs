@@ -1,4 +1,8 @@
-use crate::{declare_integer_wrapper, fuel_core::FuelCoreBlockHeight};
+use crate::{
+    declare_integer_wrapper,
+    fuel_core::FuelCoreBlockHeight,
+    impl_utoipa_for_integer_wrapper,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum BlockHeightError {
@@ -7,6 +11,13 @@ pub enum BlockHeightError {
 }
 
 declare_integer_wrapper!(BlockHeight, u64, BlockHeightError);
+
+impl_utoipa_for_integer_wrapper!(
+    BlockHeight,
+    "Block height in the blockchain",
+    0,
+    u64::MAX as usize
+);
 
 impl From<&FuelCoreBlockHeight> for BlockHeight {
     fn from(value: &FuelCoreBlockHeight) -> Self {
