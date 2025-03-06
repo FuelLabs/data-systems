@@ -26,5 +26,8 @@
     "prettier": "3.4.2",
     "prettier-plugin-sh": "0.15.0",
     "updates": "16.4.1"
+  },
+  "dependencies": {
+    "@types/k6": "^0.57.1"
   }
 }
