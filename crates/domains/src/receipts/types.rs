@@ -368,7 +368,7 @@ impl From<&FuelCoreReceipt> for Receipt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum ReceiptType {
     Call,
     Return,

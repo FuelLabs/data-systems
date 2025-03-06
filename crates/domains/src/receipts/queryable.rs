@@ -53,7 +53,9 @@ enum Receipts {
     Value,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct ReceiptsQuery {
     pub tx_id: Option<TxId>,

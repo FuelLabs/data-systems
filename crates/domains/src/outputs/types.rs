@@ -105,7 +105,7 @@ pub struct OutputContractCreated {
     pub state_root: Bytes32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum OutputType {
     Coin,
     Contract,

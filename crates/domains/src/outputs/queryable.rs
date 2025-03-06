@@ -42,7 +42,9 @@ enum Outputs {
     Value,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputsQuery {
     pub tx_id: Option<TxId>,

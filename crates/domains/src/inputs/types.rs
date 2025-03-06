@@ -197,7 +197,7 @@ impl InputMessage {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum InputType {
     Contract,
     Coin,
