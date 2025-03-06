@@ -118,10 +118,6 @@ impl Db {
         vec![
             ("statement_timeout".to_string(), statement_timeout),
             (
-                "max_connections".to_string(),
-                opts.pool_size.unwrap_or_default().to_string(),
-            ),
-            (
                 "idle_in_transaction_session_timeout".to_string(),
                 idle_timeout,
             ),
