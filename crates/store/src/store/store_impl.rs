@@ -92,29 +92,57 @@ pub async fn find_last_block_height(
     Ok(record.map(|(height,)| height.into()).unwrap_or_default())
 }
 
-pub async fn find_next_block_to_save(db: &Db) -> StoreResult<BlockHeight> {
+#[derive(Debug, Clone)]
+pub struct BlockHeightGap {
+    pub start: BlockHeight,
+    pub end: BlockHeight,
+}
+
+pub async fn find_next_block_to_save(
+    db: &Db,
+    fuel_core_height: BlockHeight,
+) -> StoreResult<Vec<BlockHeightGap>> {
     let select = r#"
-        SELECT COALESCE(
-            (
-                SELECT block_height + 1
-                FROM (
-                    SELECT block_height,
-                           LEAD(block_height) OVER (ORDER BY block_height) as next_saved
-                    FROM blocks
-                ) t
-                WHERE next_saved IS NULL OR next_saved > block_height + 1
-                ORDER BY block_height
-                LIMIT 1
-            ),
-            1
-        ) as next_height
+        WITH height_gaps AS (
+            SELECT
+                block_height,
+                LEAD(block_height) OVER (ORDER BY block_height) AS next_height
+            FROM
+                blocks
+        )
+        SELECT
+            block_height + 1 AS gap_start,
+            next_height - 1 AS gap_end
+        FROM
+            height_gaps
+        WHERE
+            next_height > block_height + 1
+        ORDER BY
+            gap_start
     "#;
 
-    let query = sqlx::query_as::<_, (i64,)>(select);
+    let gaps = sqlx::query_as::<_, (i64, i64)>(select)
+        .fetch_all(&db.pool)
+        .await
+        .map_err(StoreError::from)?
+        .into_iter()
+        .map(|(start, end)| BlockHeightGap {
+            start: start.into(),
+            end: end.into(),
+        })
+        .collect::<Vec<_>>();
 
-    let (height,) =
-        query.fetch_one(&db.pool).await.map_err(StoreError::from)?;
-    Ok(height.into())
+    if gaps.is_empty() {
+        // If no gaps found, get the last saved block height and create a gap from there
+        let last_height =
+            find_last_block_height(db, QueryOptions::default()).await?;
+        return Ok(vec![BlockHeightGap {
+            start: ((*last_height) + 1).into(),
+            end: fuel_core_height,
+        }]);
+    }
+
+    Ok(gaps)
 }
 
 pub async fn update_block_propagation_ms(
