@@ -44,6 +44,13 @@ pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
         .unwrap_or(100)
 });
 
+pub static DB_ACQUIRE_TIMEOUT: LazyLock<usize> = LazyLock::new(|| {
+    dotenvy::var("DB_ACQUIRE_TIMEOUT")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(10)
+});
+
 #[derive(Debug, Clone)]
 pub struct DbConnectionOpts {
     pub connection_str: String,
@@ -60,7 +67,9 @@ impl Default for DbConnectionOpts {
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
             statement_timeout: Some(Duration::from_secs(120)),
-            acquire_timeout: Some(Duration::from_secs(10)),
+            acquire_timeout: Some(Duration::from_secs(
+                *DB_ACQUIRE_TIMEOUT as u64,
+            )),
             idle_timeout: Some(Duration::from_secs(240)),
         }
     }
