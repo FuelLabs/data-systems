@@ -41,14 +41,14 @@ pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("DB_POOL_SIZE")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(100)
+        .unwrap_or(2000)
 });
 
 pub static DB_ACQUIRE_TIMEOUT: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("DB_ACQUIRE_TIMEOUT")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(10)
+        .unwrap_or(180)
 });
 
 #[derive(Debug, Clone)]
@@ -66,7 +66,7 @@ impl Default for DbConnectionOpts {
             pool_size: Some(*DB_POOL_SIZE as u32),
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
-            statement_timeout: Some(Duration::from_secs(120)),
+            statement_timeout: Some(Duration::from_secs(240)),
             acquire_timeout: Some(Duration::from_secs(
                 *DB_ACQUIRE_TIMEOUT as u64,
             )),
@@ -117,6 +117,10 @@ impl Db {
         let idle_timeout = format!("{}", idle_timeout);
         vec![
             ("statement_timeout".to_string(), statement_timeout),
+            (
+                "max_connections".to_string(),
+                opts.pool_size.unwrap_or_default().to_string(),
+            ),
             (
                 "idle_in_transaction_session_timeout".to_string(),
                 idle_timeout,
