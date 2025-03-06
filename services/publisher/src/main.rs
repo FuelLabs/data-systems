@@ -105,7 +105,7 @@ async fn process_live_blocks(
 ) -> Result<(), PublishError> {
     let mut subscription = fuel_core.blocks_subscription();
     let process_fut = async {
-        while let Some(data) = subscription.recv().await.ok() {
+        while let Ok(data) = subscription.recv().await {
             let sealed_block = Arc::new(data.sealed_block.to_owned());
             publish_block(message_broker, fuel_core, &sealed_block, telemetry)
                 .await?;
