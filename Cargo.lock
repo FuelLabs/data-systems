@@ -3822,6 +3822,7 @@ dependencies = [
 name = "fuel-streams-domains"
 version = "0.0.25"
 dependencies = [
+ "actix-web",
  "async-trait",
  "chrono",
  "fuel-core",
@@ -3831,12 +3832,14 @@ dependencies = [
  "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
+ "futures",
  "pretty_assertions",
  "rayon",
  "sea-query",
  "serde",
  "serde_json",
  "serde_urlencoded",
+ "serde_with",
  "sqlx",
  "test-case",
  "thiserror 2.0.11",
@@ -9541,6 +9544,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-data-parser",
+ "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-store",
  "fuel-tx 0.60.0",

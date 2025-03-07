@@ -1,27 +1,20 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
-use sea_query::{
-    Asterisk,
-    Condition,
-    Expr,
-    Iden,
-    Order,
-    PostgresQueryBuilder,
-    Query,
-    SelectStatement,
-};
+use sea_query::{Condition, Expr, Iden};
 use serde::{Deserialize, Serialize};
 
 use super::TransactionDbItem;
-use crate::queryable::Queryable;
+use crate::queryable::{HasPagination, QueryPagination, Queryable};
 
 #[allow(dead_code)]
 #[derive(Iden)]
-enum Transactions {
+pub enum Transactions {
     #[iden = "transactions"]
     Table,
     #[iden = "subject"]
     Subject,
+    #[iden = "value"]
+    Value,
     #[iden = "block_height"]
     BlockHeight,
     #[iden = "tx_id"]
@@ -32,8 +25,10 @@ enum Transactions {
     TxStatus,
     #[iden = "type"]
     Type,
-    #[iden = "value"]
-    Value,
+    #[iden = "created_at"]
+    CreatedAt,
+    #[iden = "published_at"]
+    PublishedAt,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -45,11 +40,9 @@ pub struct TransactionsQuery {
     #[serde(rename = "type")]
     pub tx_type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
-    pub after: Option<i32>,
-    pub before: Option<i32>,
-    pub first: Option<i32>,
-    pub last: Option<i32>,
-    pub contract_id: Option<ContractId>, // TODO: for the contracts endpoint
+    #[serde(flatten)]
+    pub pagination: QueryPagination,
+    pub contract_id: Option<ContractId>, // for the contracts endpoint
     pub address: Option<Address>,        // for the accounts endpoint
 }
 
@@ -65,9 +58,24 @@ impl TransactionsQuery {
     pub fn set_block_height(&mut self, height: u64) {
         self.block_height = Some(height.into());
     }
+}
 
-    pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
-        self.build_query().build(PostgresQueryBuilder)
+#[async_trait::async_trait]
+impl Queryable for TransactionsQuery {
+    type Record = TransactionDbItem;
+    type Table = Transactions;
+    type PaginationColumn = Transactions;
+
+    fn table() -> Self::Table {
+        Transactions::Table
+    }
+
+    fn pagination_column() -> Self::PaginationColumn {
+        Transactions::BlockHeight
+    }
+
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 
     fn build_condition(&self) -> Condition {
@@ -101,62 +109,11 @@ impl TransactionsQuery {
 
         condition
     }
-
-    pub fn build_query(&self) -> SelectStatement {
-        let mut condition = self.build_condition();
-
-        // Add after/before conditions
-        if let Some(after) = self.after {
-            condition =
-                condition.add(Expr::col(Transactions::BlockHeight).gt(after));
-        }
-
-        if let Some(before) = self.before {
-            condition =
-                condition.add(Expr::col(Transactions::BlockHeight).lt(before));
-        }
-
-        let mut query_builder = Query::select();
-        let mut query = query_builder
-            .column(Asterisk)
-            .from(Transactions::Table)
-            .cond_where(condition);
-
-        // Add first/last conditions
-        if let Some(first) = self.first {
-            query = query
-                .order_by(Transactions::BlockHeight, Order::Asc)
-                .limit(first as u64);
-        } else if let Some(last) = self.last {
-            query = query
-                .order_by(Transactions::BlockHeight, Order::Desc)
-                .limit(last as u64);
-        }
-
-        query.to_owned()
-    }
 }
 
-#[async_trait::async_trait]
-impl Queryable for TransactionsQuery {
-    type Record = TransactionDbItem;
-
-    fn query_to_string(&self) -> String {
-        self.build_query().to_string(PostgresQueryBuilder)
-    }
-
-    async fn execute<'c, E>(
-        &self,
-        executor: E,
-    ) -> Result<Vec<TransactionDbItem>, sqlx::Error>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Postgres>,
-    {
-        let sql = self.build_query().to_string(PostgresQueryBuilder);
-
-        sqlx::query_as::<_, TransactionDbItem>(&sql)
-            .fetch_all(executor)
-            .await
+impl HasPagination for TransactionsQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 }
 
@@ -178,8 +135,8 @@ mod test {
     // Test constants
     const AFTER_POINTER: i32 = 10000;
     const BEFORE_POINTER: i32 = 20000;
-    const FIRST_POINTER: i32 = 300;
-    const LAST_POINTER: i32 = 400;
+    const FIRST_POINTER: i32 = 100;
+    const LAST_POINTER: i32 = 100;
     const TEST_BLOCK_HEIGHT: i32 = 55;
     const TEST_TX_INDEX: u32 = 3;
     const TEST_TX_ID: &str =
@@ -194,10 +151,7 @@ mod test {
             tx_status: Some(TransactionStatus::Success),
             tx_type: None,
             tx_index: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
             address: None,
             contract_id: None,
         };
@@ -215,10 +169,7 @@ mod test {
             tx_status: None,
             tx_type: Some(TransactionType::Script),
             tx_index: Some(TEST_TX_INDEX),
-            after: None,
-            before: None,
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, None, Some(FIRST_POINTER), None).into(),
             address: None,
             contract_id: None,
         };
@@ -236,10 +187,8 @@ mod test {
             tx_status: None,
             tx_type: None,
             tx_index: None,
-            after: Some(AFTER_POINTER),
-            before: None,
-            first: None,
-            last: Some(LAST_POINTER),
+            pagination: (Some(AFTER_POINTER), None, None, Some(LAST_POINTER))
+                .into(),
             address: None,
             contract_id: None,
         };
@@ -257,10 +206,8 @@ mod test {
             tx_status: Some(TransactionStatus::Failed),
             tx_type: Some(TransactionType::Create),
             tx_index: None,
-            after: None,
-            before: Some(BEFORE_POINTER),
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, Some(BEFORE_POINTER), Some(FIRST_POINTER), None)
+                .into(),
             address: None,
             contract_id: None,
         };
@@ -278,10 +225,7 @@ mod test {
             tx_status: None,
             tx_type: None,
             tx_index: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
             address: None,
             contract_id: None,
         };
@@ -321,10 +265,10 @@ mod test {
             query.block_height,
             Some(BlockHeight::from(TEST_BLOCK_HEIGHT))
         );
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, Some(BEFORE_POINTER));
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, Some(LAST_POINTER));
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, Some(BEFORE_POINTER));
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, Some(LAST_POINTER));
     }
 
     #[test]
@@ -344,10 +288,10 @@ mod test {
         assert_eq!(query.tx_status, Some(TransactionStatus::Submitted));
         assert_eq!(query.tx_type, Some(TransactionType::Mint));
         assert_eq!(query.block_height, None);
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, None);
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, None);
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, None);
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, None);
     }
 
     #[test]

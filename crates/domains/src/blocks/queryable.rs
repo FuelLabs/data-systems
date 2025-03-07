@@ -6,20 +6,11 @@ use std::{
 use chrono::{DateTime, Duration, Utc};
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::{BlockTimestamp, *};
-use sea_query::{
-    Asterisk,
-    Condition,
-    Expr,
-    Iden,
-    Order,
-    PostgresQueryBuilder,
-    Query,
-    SelectStatement,
-};
+use sea_query::{Condition, Expr, Iden};
 use serde::{Deserialize, Serialize};
 
 use super::{types::*, BlockDbItem};
-use crate::queryable::Queryable;
+use crate::queryable::{HasPagination, QueryPagination, Queryable};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TimeRange {
@@ -109,17 +100,25 @@ impl TryFrom<&str> for TimeRange {
 
 #[allow(dead_code)]
 #[derive(Iden)]
-enum Blocks {
+pub enum Blocks {
     #[iden = "blocks"]
     Table,
-    #[iden = "producer_address"]
-    Producer,
-    #[iden = "block_height"]
-    Height,
-    #[iden = "timestamp"]
-    Timestamp,
+    #[iden = "subject"]
+    Subject,
     #[iden = "value"]
     Value,
+    #[iden = "block_da_height"]
+    DaHeight,
+    #[iden = "block_height"]
+    Height,
+    #[iden = "producer_address"]
+    Producer,
+    #[iden = "created_at"]
+    CreatedAt,
+    #[iden = "published_at"]
+    PublishedAt,
+    #[iden = "block_propagation_ms"]
+    BlockPropagationMs,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -129,10 +128,8 @@ pub struct BlocksQuery {
     pub height: Option<BlockHeight>,
     pub timestamp: Option<BlockTimestamp>,
     pub time_range: Option<TimeRange>,
-    pub after: Option<i32>,
-    pub before: Option<i32>,
-    pub first: Option<i32>,
-    pub last: Option<i32>,
+    #[serde(flatten)]
+    pub pagination: QueryPagination,
 }
 
 impl From<&Block> for BlocksQuery {
@@ -147,9 +144,22 @@ impl From<&Block> for BlocksQuery {
     }
 }
 
-impl BlocksQuery {
-    pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
-        self.build_query().build(PostgresQueryBuilder)
+#[async_trait::async_trait]
+impl Queryable for BlocksQuery {
+    type Record = BlockDbItem;
+    type Table = Blocks;
+    type PaginationColumn = Blocks;
+
+    fn table() -> Self::Table {
+        Blocks::Table
+    }
+
+    fn pagination_column() -> Self::PaginationColumn {
+        Blocks::Height
+    }
+
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 
     fn build_condition(&self) -> Condition {
@@ -167,7 +177,7 @@ impl BlocksQuery {
 
         if let Some(timestamp) = &self.timestamp {
             condition = condition.add(
-                Expr::col(Blocks::Timestamp).gte(timestamp.unix_timestamp()),
+                Expr::col(Blocks::CreatedAt).gte(timestamp.unix_timestamp()),
             );
         }
 
@@ -175,65 +185,16 @@ impl BlocksQuery {
         if let Some(time_range) = &self.time_range {
             let start_time = time_range.time_since_now();
             condition = condition
-                .add(Expr::col(Blocks::Timestamp).gte(start_time.timestamp()));
+                .add(Expr::col(Blocks::CreatedAt).gte(start_time.timestamp()));
         }
 
         condition
     }
-
-    pub fn build_query(&self) -> SelectStatement {
-        let mut condition = self.build_condition();
-
-        // Add after/before conditions
-        if let Some(after) = self.after {
-            condition = condition.add(Expr::col(Blocks::Height).gt(after));
-        }
-
-        if let Some(before) = self.before {
-            condition = condition.add(Expr::col(Blocks::Height).lt(before));
-        }
-
-        let mut query_builder = Query::select();
-        let mut query = query_builder
-            .column(Asterisk)
-            .from(Blocks::Table)
-            .cond_where(condition);
-
-        // Add first/last conditions
-        if let Some(first) = self.first {
-            query = query
-                .order_by(Blocks::Height, Order::Asc)
-                .limit(first as u64);
-        } else if let Some(last) = self.last {
-            query = query
-                .order_by(Blocks::Height, Order::Desc)
-                .limit(last as u64);
-        }
-
-        query.to_owned()
-    }
 }
 
-#[async_trait::async_trait]
-impl Queryable for BlocksQuery {
-    type Record = BlockDbItem;
-
-    fn query_to_string(&self) -> String {
-        self.build_query().to_string(PostgresQueryBuilder)
-    }
-
-    async fn execute<'c, E>(
-        &self,
-        executor: E,
-    ) -> Result<Vec<BlockDbItem>, sqlx::Error>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Postgres>,
-    {
-        let sql = self.build_query().to_string(PostgresQueryBuilder);
-
-        sqlx::query_as::<_, BlockDbItem>(&sql)
-            .fetch_all(executor)
-            .await
+impl HasPagination for BlocksQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 }
 
@@ -250,8 +211,8 @@ mod test {
 
     const AFTER_POINTER: i32 = 10000;
     const BEFORE_POINTER: i32 = 20000;
-    const FIRST_POINTER: i32 = 300;
-    const LAST_POINTER: i32 = 400;
+    const FIRST_POINTER: i32 = 100;
+    const LAST_POINTER: i32 = 100;
     const TEST_TIMESTAMP: i64 = 1739974057;
     const TEST_BLOCK_HEIGHT: i32 = 55;
     const TEST_PRODUCER_ADDRESS: &str =
@@ -265,10 +226,7 @@ mod test {
             height: Some(BlockHeight::from(TEST_BLOCK_HEIGHT)),
             timestamp: None,
             time_range: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
         };
 
         assert_eq!(
@@ -282,10 +240,13 @@ mod test {
             height: None,
             timestamp: None,
             time_range: None,
-            after: Some(TEST_BLOCK_HEIGHT),
-            before: None,
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (
+                Some(TEST_BLOCK_HEIGHT),
+                None,
+                Some(FIRST_POINTER),
+                None,
+            )
+                .into(),
         };
 
         assert_eq!(
@@ -299,14 +260,11 @@ mod test {
             height: None,
             timestamp: Some(BlockTimestamp::from_secs(TEST_TIMESTAMP)),
             time_range: None,
-            after: None,
-            before: None,
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, None, Some(FIRST_POINTER), None).into(),
         };
         assert_eq!(
             after_timestamp_query.query_to_string(),
-            format!("SELECT * FROM \"blocks\" WHERE \"timestamp\" >= {} ORDER BY \"block_height\" ASC LIMIT {}", TEST_TIMESTAMP, FIRST_POINTER)
+            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"block_height\" ASC LIMIT {}", TEST_TIMESTAMP, FIRST_POINTER)
         );
 
         // Test 4: all blocks before a given timestamp, last items only
@@ -315,14 +273,11 @@ mod test {
             height: None,
             timestamp: Some(BlockTimestamp::from_secs(TEST_TIMESTAMP)),
             time_range: None,
-            after: None,
-            before: None,
-            last: Some(LAST_POINTER),
-            first: None,
+            pagination: (None, None, None, Some(LAST_POINTER)).into(),
         };
         assert_eq!(
             before_timestamp_query.query_to_string(),
-            format!("SELECT * FROM \"blocks\" WHERE \"timestamp\" >= {} ORDER BY \"block_height\" DESC LIMIT {}", TEST_TIMESTAMP, LAST_POINTER)
+            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"block_height\" DESC LIMIT {}", TEST_TIMESTAMP, LAST_POINTER)
         );
 
         // Test 5: all blocks in the last 90 days
@@ -331,17 +286,14 @@ mod test {
             height: None,
             timestamp: None,
             time_range: Some(TimeRange::NinetyDays),
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
         };
         let now = Utc::now();
         let ninety_days_ago = now - chrono::Duration::days(90);
         assert_eq!(
             ninety_days_query.query_to_string(),
             format!(
-                "SELECT * FROM \"blocks\" WHERE \"timestamp\" >= {}",
+                "SELECT * FROM \"blocks\" WHERE \"created_at\" >= {}",
                 ninety_days_ago.timestamp()
             )
         );
@@ -360,6 +312,7 @@ mod test {
             FIRST_POINTER,
             LAST_POINTER
         );
+        println!("{}", query_string);
         let query: BlocksQuery =
             serde_urlencoded::from_str(&query_string).unwrap();
 
@@ -370,10 +323,10 @@ mod test {
             query.timestamp,
             Some(BlockTimestamp::from_secs(TEST_TIMESTAMP))
         );
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, Some(BEFORE_POINTER));
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, Some(LAST_POINTER));
+        assert_eq!(query.pagination.after(), Some(AFTER_POINTER));
+        assert_eq!(query.pagination.before(), Some(BEFORE_POINTER));
+        assert_eq!(query.pagination.first(), Some(FIRST_POINTER));
+        assert_eq!(query.pagination.last(), Some(LAST_POINTER));
     }
 
     #[test]
@@ -393,9 +346,9 @@ mod test {
         assert_eq!(query.producer, Some(Address::from([1u8; 32])));
         assert_eq!(query.time_range, Some(TimeRange::OneHour));
         assert_eq!(query.timestamp, None);
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, Some(BEFORE_POINTER));
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, None);
+        assert_eq!(query.pagination.after(), Some(AFTER_POINTER));
+        assert_eq!(query.pagination.before(), Some(BEFORE_POINTER));
+        assert_eq!(query.pagination.first(), Some(FIRST_POINTER));
+        assert_eq!(query.pagination.last(), None);
     }
 }
