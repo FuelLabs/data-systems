@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_ws::{CloseReason, Session};
+use actix_ws::{CloseCode, CloseReason, Session};
 use fuel_streams_core::{
     prelude::IntoSubject,
     server::{ServerResponse, Subscription},
@@ -11,7 +11,8 @@ use fuel_streams_core::{
 use fuel_streams_domains::Subjects;
 use fuel_streams_store::record::RecordEntity;
 use fuel_web_utils::api_key::ApiKeyRole;
-use futures::{future::try_join_all, StreamExt};
+use futures::StreamExt;
+use tokio::sync::Semaphore;
 
 use crate::server::{
     errors::WebsocketError,
@@ -23,82 +24,81 @@ pub async fn subscribe_mult(
     ctx: &mut WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
+    let semaphore = Arc::new(Semaphore::new(20));
     let subscriptions = server_request.subscriptions(ctx.api_key());
-    let handles: Vec<_> = subscriptions
-        .into_iter()
-        .map(|subscription| {
-            let mut ctx = ctx.clone();
-            let mut session = session.clone();
-            actix_web::rt::spawn(async move {
-                subscribe(&mut session, &mut ctx, &subscription).await
-            })
-        })
-        .collect();
-
     let api_key = ctx.api_key();
-    match try_join_all(handles).await {
-        Ok(results) => {
-            if let Some(err) = results.into_iter().find_map(|r| r.err()) {
-                tracing::error!(%api_key, "Subscription task failed: {}", err);
-                return Err(WebsocketError::Subscribe(format!(
-                    "Subscription task failed: {err}"
-                )));
+    let mut join_set = tokio::task::JoinSet::new();
+    for subscription in subscriptions {
+        let payload = &subscription.payload;
+        tracing::info!("Received subscribe message: {:?}", payload);
+        if ctx.check_duplicated_sub(session, &subscription).await? {
+            continue;
+        }
+
+        let api_key_role = ctx.api_key().role();
+        let sub = create_subscriber(api_key_role, &ctx.streams, &subscription)
+            .await?;
+        let subscribed_msg = ServerResponse::Subscribed(subscription.clone());
+        ctx.send_message(session, subscribed_msg).await?;
+        ctx.add_subscription(&subscription).await?;
+
+        let mut session_clone = session.clone();
+        let mut ctx_clone = ctx.clone();
+        let subscription_clone = subscription.clone();
+        join_set.spawn({
+            let semaphore = semaphore.clone();
+            async move {
+                let _permit = semaphore.acquire().await;
+                process_subscription(
+                    &mut session_clone,
+                    &mut ctx_clone,
+                    &subscription_clone,
+                    sub,
+                )
+                .await
             }
-            tracing::info!(%api_key, "Subscriptions running");
-            Ok(())
-        }
-        Err(err) => {
-            tracing::error!(%api_key, "Subscriptions failed: {}", err);
-            Err(WebsocketError::Subscribe(format!(
-                "Subscriptions failed: {err}"
-            )))
-        }
-    }
-}
-
-async fn subscribe(
-    session: &mut Session,
-    ctx: &mut WsSession,
-    subscription: &Subscription,
-) -> Result<(), WebsocketError> {
-    let payload = &subscription.payload;
-    tracing::info!("Received subscribe message: {:?}", payload);
-    if ctx
-        .check_duplicate_subscription(session, subscription)
-        .await?
-    {
-        return Ok(());
+        });
     }
 
-    // Subscribe to the subject
-    let api_key_role = ctx.api_key().role();
-    let sub =
-        create_subscriber(api_key_role, &ctx.streams, subscription).await?;
-    let subscribed_msg = ServerResponse::Subscribed(subscription.clone());
-    ctx.send_message(session, subscribed_msg).await?;
-    ctx.add_subscription(subscription).await?;
-
-    // Spawn a task to process messages
+    let mut shutdown_rx = ctx.receiver();
     actix_web::rt::spawn({
-        let mut session = session.to_owned();
-        let mut ctx = ctx.to_owned();
-        let subscription = subscription.clone();
-        let api_key = ctx.api_key().clone();
+        let session = session.clone();
+        let api_key = api_key.clone();
         async move {
-            let result = process_subscription(
-                &mut session,
-                &mut ctx,
-                &subscription,
-                sub,
-            )
-            .await;
-            if let Err(err) = result {
-                tracing::error!(%api_key, error = %err, "Subscription processing error");
-                let _ = session.close(Some(CloseReason::from(err))).await;
+            loop {
+                tokio::select! {
+                    Ok(shutdown_api_key) = shutdown_rx.recv() => {
+                        if shutdown_api_key == api_key {
+                            tracing::info!(%api_key, "Subscription gracefully shutdown");
+                            break;
+                        }
+                    }
+                    Some(result) = join_set.join_next() => {
+                        let session = session.clone();
+                        match result {
+                            Ok(task_result) => {
+                                if let Err(err) = task_result {
+                                    tracing::error!(%api_key, "Subscription processing error: {}", err);
+                                    let _ = session
+                                        .close(Some(CloseReason::from(err)))
+                                        .await;
+                                }
+                            }
+                            Err(err) => {
+                                tracing::error!(%api_key, "Subscription task failed: {}", err);
+                                let _ = session
+                                    .close(Some(CloseReason::from(CloseCode::Normal)))
+                                    .await;
+                            }
+                        }
+                    }
+                    else => break,
+                }
             }
         }
     });
 
+    tracing::info!(%api_key, "All subscription tasks completed");
     Ok(())
 }
 
