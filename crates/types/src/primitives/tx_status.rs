@@ -7,7 +7,9 @@ use crate::fuel_core::{
     FuelCoreTransactionStatus,
 };
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionStatus {
     Failed,

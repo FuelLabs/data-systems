@@ -179,6 +179,26 @@ impl Default for BlockTimestamp {
     }
 }
 
+impl utoipa::ToSchema for BlockTimestamp {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("BlockTimestamp")
+    }
+}
+
+impl utoipa::PartialSchema for BlockTimestamp {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::schema::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::Type::Integer)
+            .format(Some(utoipa::openapi::schema::SchemaFormat::Custom(
+                "unix-timestamp".to_string(),
+            )))
+            .description(Some("Block timestamp as Unix seconds since epoch"))
+            .examples([Some(serde_json::json!(Utc::now().timestamp()))])
+            .build()
+            .into()
+    }
+}
+
 impl From<&super::BlockHeader> for BlockTimestamp {
     fn from(header: &super::BlockHeader) -> Self {
         Self::from_tai64(header.time.clone().into_inner())
