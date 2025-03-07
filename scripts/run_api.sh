@@ -71,7 +71,7 @@ echo -e "==========================================\n"
 
 # Define common arguments
 COMMON_ARGS=(
-    "--port" "${PORT:-9003}"
+    "--port" "${PORT:-9004}"
 )
 
 # Execute based on mode

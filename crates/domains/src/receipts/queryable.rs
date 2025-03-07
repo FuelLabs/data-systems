@@ -1,27 +1,20 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
-use sea_query::{
-    Asterisk,
-    Condition,
-    Expr,
-    Iden,
-    Order,
-    PostgresQueryBuilder,
-    Query,
-    SelectStatement,
-};
+use sea_query::{Condition, Expr, Iden};
 use serde::{Deserialize, Serialize};
 
 use super::{ReceiptDbItem, ReceiptType};
-use crate::queryable::Queryable;
+use crate::queryable::{HasPagination, QueryPagination, Queryable};
 
 #[allow(dead_code)]
 #[derive(Iden)]
-enum Receipts {
+pub enum Receipts {
     #[iden = "receipts"]
     Table,
     #[iden = "subject"]
     Subject,
+    #[iden = "value"]
+    Value,
     #[iden = "block_height"]
     BlockHeight,
     #[iden = "tx_id"]
@@ -49,8 +42,10 @@ enum Receipts {
     ReceiptSenderAddress,
     #[iden = "recipient_address"] // Address for message_out
     ReceiptRecipientAddress,
-    #[iden = "value"]
-    Value,
+    #[iden = "created_at"]
+    CreatedAt,
+    #[iden = "published_at"]
+    PublishedAt,
 }
 
 #[derive(
@@ -70,10 +65,8 @@ pub struct ReceiptsQuery {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub sub_id: Option<Bytes32>,
-    pub after: Option<i32>,
-    pub before: Option<i32>,
-    pub first: Option<i32>,
-    pub last: Option<i32>,
+    #[serde(flatten)]
+    pub pagination: QueryPagination,
     pub address: Option<Address>, // for the accounts endpoint
 }
 
@@ -93,9 +86,24 @@ impl ReceiptsQuery {
     pub fn set_tx_id(&mut self, tx_id: &str) {
         self.tx_id = Some(tx_id.into());
     }
+}
 
-    pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
-        self.build_query().build(PostgresQueryBuilder)
+#[async_trait::async_trait]
+impl Queryable for ReceiptsQuery {
+    type Record = ReceiptDbItem;
+    type Table = Receipts;
+    type PaginationColumn = Receipts;
+
+    fn table() -> Self::Table {
+        Receipts::Table
+    }
+
+    fn pagination_column() -> Self::PaginationColumn {
+        Receipts::BlockHeight
+    }
+
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 
     fn build_condition(&self) -> Condition {
@@ -222,62 +230,11 @@ impl ReceiptsQuery {
 
         condition
     }
-
-    pub fn build_query(&self) -> SelectStatement {
-        let mut condition = self.build_condition();
-
-        // Add after/before conditions
-        if let Some(after) = self.after {
-            condition =
-                condition.add(Expr::col(Receipts::BlockHeight).gt(after));
-        }
-
-        if let Some(before) = self.before {
-            condition =
-                condition.add(Expr::col(Receipts::BlockHeight).lt(before));
-        }
-
-        let mut query_builder = Query::select();
-        let mut query = query_builder
-            .column(Asterisk)
-            .from(Receipts::Table)
-            .cond_where(condition);
-
-        // Add first/last conditions
-        if let Some(first) = self.first {
-            query = query
-                .order_by(Receipts::BlockHeight, Order::Asc)
-                .limit(first as u64);
-        } else if let Some(last) = self.last {
-            query = query
-                .order_by(Receipts::BlockHeight, Order::Desc)
-                .limit(last as u64);
-        }
-
-        query.to_owned()
-    }
 }
 
-#[async_trait::async_trait]
-impl Queryable for ReceiptsQuery {
-    type Record = ReceiptDbItem;
-
-    fn query_to_string(&self) -> String {
-        self.build_query().to_string(PostgresQueryBuilder)
-    }
-
-    async fn execute<'c, E>(
-        &self,
-        executor: E,
-    ) -> Result<Vec<ReceiptDbItem>, sqlx::Error>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Postgres>,
-    {
-        let sql = self.build_query().to_string(PostgresQueryBuilder);
-
-        sqlx::query_as::<_, ReceiptDbItem>(&sql)
-            .fetch_all(executor)
-            .await
+impl HasPagination for ReceiptsQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 }
 
@@ -301,8 +258,8 @@ mod test {
     // Test constants
     const AFTER_POINTER: i32 = 10000;
     const BEFORE_POINTER: i32 = 20000;
-    const FIRST_POINTER: i32 = 300;
-    const LAST_POINTER: i32 = 400;
+    const FIRST_POINTER: i32 = 100;
+    const LAST_POINTER: i32 = 100;
     const TEST_BLOCK_HEIGHT: i32 = 55;
     const TEST_TX_INDEX: u32 = 3;
     const TEST_RECEIPT_INDEX: i32 = 7;
@@ -333,10 +290,7 @@ mod test {
             sender: None,
             recipient: None,
             sub_id: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
             address: None,
         };
 
@@ -360,10 +314,7 @@ mod test {
             sender: None,
             recipient: None,
             sub_id: None,
-            after: None,
-            before: None,
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, None, Some(FIRST_POINTER), None).into(),
             address: None,
         };
 
@@ -387,10 +338,8 @@ mod test {
             sender: None,
             recipient: None,
             sub_id: None,
-            after: Some(AFTER_POINTER),
-            before: None,
-            first: None,
-            last: Some(LAST_POINTER),
+            pagination: (Some(AFTER_POINTER), None, None, Some(LAST_POINTER))
+                .into(),
             address: None,
         };
 
@@ -414,10 +363,8 @@ mod test {
             sender: Some(Address::from([4u8; 32])),
             recipient: Some(Address::from([4u8; 32])),
             sub_id: None,
-            after: None,
-            before: Some(BEFORE_POINTER),
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, Some(BEFORE_POINTER), Some(FIRST_POINTER), None)
+                .into(),
             address: None,
         };
 
@@ -441,10 +388,7 @@ mod test {
             sender: None,
             recipient: None,
             sub_id: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
             address: None,
         };
 
@@ -496,10 +440,10 @@ mod test {
         assert_eq!(query.sender, Some(Address::from(TEST_ADDRESS)));
         assert_eq!(query.recipient, Some(Address::from(TEST_ADDRESS)));
         assert_eq!(query.sub_id, Some(Bytes32::from(TEST_SUB_ID)));
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, Some(BEFORE_POINTER));
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, Some(LAST_POINTER));
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, Some(BEFORE_POINTER));
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, Some(LAST_POINTER));
     }
 
     #[test]
@@ -531,9 +475,9 @@ mod test {
         assert_eq!(query.sender, None);
         assert_eq!(query.recipient, None);
         assert_eq!(query.sub_id, Some(Bytes32::from(TEST_SUB_ID)));
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, None);
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, None);
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, None);
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, None);
     }
 }

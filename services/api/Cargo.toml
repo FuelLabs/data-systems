@@ -23,6 +23,7 @@ clap.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
+fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true
 fuel-streams-store.workspace = true
 fuel-tx.workspace = true
@@ -44,6 +45,9 @@ time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+utoipa = { version = "5.3.1", features = ["actix_extras"] }
+utoipa-actix-web = "0.1.2"
+utoipa-swagger-ui = { version = "9.0.0", features = ["actix-web"] }
 validator = { version = "0.19", features = ["derive"] }
 
 # in an individual package Cargo.toml

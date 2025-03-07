@@ -28,6 +28,15 @@ impl_utoipa_for_byte_type_detailed!(
     32,
     "A 32-byte Fuel address with 0x prefix"
 );
+
+impl_utoipa_for_byte_type_detailed!(
+    BlobId,
+    32,
+    "A 32-byte Fuel blob id with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(Salt, 32, "A 32-byte salt with 0x prefix");
+
 impl_utoipa_for_byte_type_detailed!(
     AssetId,
     32,
@@ -50,8 +59,26 @@ impl_utoipa_for_byte_type_detailed!(
 );
 
 impl_utoipa_for_byte_type_detailed!(
+    BlockId,
+    32,
+    "A 32-byte block identifier with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    Signature,
+    64,
+    "A 64-byte signature with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
     HexData,
     "Variable-length hexadecimal data with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    Nonce,
+    32,
+    "A 32-byte Fuel nonce with 0x prefix"
 );
 
 impl TxId {

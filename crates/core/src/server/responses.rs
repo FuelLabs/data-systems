@@ -46,6 +46,34 @@ pub enum MessagePayload {
     Utxo(Arc<Utxo>),
 }
 
+impl utoipa::ToSchema for MessagePayload {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("MessagePayload")
+    }
+}
+
+impl utoipa::PartialSchema for MessagePayload {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        // Create a oneOf schema
+        let mut one_of = utoipa::openapi::schema::OneOf::new();
+
+        // Add references to all possible payload types
+        // We can use the schema() method directly from each type
+        one_of.items.push(Block::schema());
+        one_of.items.push(Input::schema());
+        one_of.items.push(Output::schema());
+        one_of.items.push(Transaction::schema());
+        one_of.items.push(Receipt::schema());
+        one_of.items.push(Utxo::schema());
+
+        // Build the oneOf schema with a description
+        let schema = utoipa::openapi::schema::Schema::OneOf(one_of);
+
+        // Return the schema wrapped in RefOr::T
+        utoipa::openapi::RefOr::T(schema)
+    }
+}
+
 impl MessagePayload {
     pub fn new(
         subject_id: &str,
@@ -133,7 +161,7 @@ pub enum StreamResponseError {
     RecordPacket(#[from] RecordPacketError),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct StreamResponse {
     pub version: String,
     #[serde(rename = "type")]

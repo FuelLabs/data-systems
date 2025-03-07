@@ -3830,12 +3830,14 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "tracing",
+ "utoipa",
 ]
 
 [[package]]
 name = "fuel-streams-domains"
 version = "0.0.25"
 dependencies = [
+ "actix-web",
  "async-trait",
  "chrono",
  "fuel-core",
@@ -3845,12 +3847,14 @@ dependencies = [
  "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
+ "futures",
  "pretty_assertions",
  "rayon",
  "sea-query",
  "serde",
  "serde_json",
  "serde_urlencoded",
+ "serde_with",
  "sqlx",
  "test-case",
  "thiserror 2.0.11",
@@ -3883,6 +3887,7 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "tracing",
+ "utoipa",
 ]
 
 [[package]]
@@ -9614,6 +9619,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-data-parser",
+ "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-store",
  "fuel-tx 0.60.0",
@@ -9630,6 +9636,9 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "utoipa",
+ "utoipa-actix-web",
+ "utoipa-swagger-ui",
  "validator",
 ]
 
@@ -9721,8 +9730,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "utoipa",
- "utoipa-swagger-ui",
  "validator",
 ]
 
@@ -10898,6 +10905,17 @@ dependencies = [
  "serde",
  "serde_json",
  "utoipa-gen",
+]
+
+[[package]]
+name = "utoipa-actix-web"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7eda9c23c05af0fb812f6a177514047331dac4851a2c8e9c4b895d6d826967f"
+dependencies = [
+ "actix-service",
+ "actix-web",
+ "utoipa",
 ]
 
 [[package]]

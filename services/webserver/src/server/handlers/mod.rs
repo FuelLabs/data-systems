@@ -9,10 +9,8 @@ use fuel_web_utils::{
         middlewares::password::middleware::PasswordAuth,
     },
 };
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 
-use super::{handlers, open_api::ApiDoc};
+use super::handlers;
 use crate::server::state::ServerState;
 
 pub fn create_services(
@@ -43,10 +41,6 @@ pub fn create_services(
                     )
                 }
             })),
-        );
-        cfg.service(
-            SwaggerUi::new("/swagger-ui/{_:.*}")
-                .url("/api-docs/openapi.json", ApiDoc::openapi()),
         );
     }
 }

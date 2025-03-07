@@ -13,6 +13,7 @@ use crate::fuel_core::*;
     Hash,
     serde::Deserialize,
     serde::Serialize,
+    utoipa::ToSchema,
 )]
 pub struct TxPointer {
     block_height: BlockHeight,
