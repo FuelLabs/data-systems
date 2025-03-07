@@ -8,12 +8,13 @@ pub mod receipts;
 pub mod transactions;
 pub mod utxos;
 use actix_web::{http::StatusCode, web};
+use fuel_streams_core::types::{StreamResponse, StreamResponseError};
 use fuel_streams_domains::{
     inputs::InputType,
     outputs::OutputType,
     receipts::ReceiptType,
 };
-use fuel_streams_store::db::DbItem;
+use fuel_streams_store::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyAuth,
     server::api::with_prefixed_route,
@@ -35,6 +36,8 @@ pub enum Error {
     Sqlx(#[from] sqlx::Error),
     #[error("Validation error {0}")]
     Validation(#[from] validator::ValidationErrors),
+    #[error("Stream response error {0}")]
+    Stream(#[from] StreamResponseError),
 }
 
 impl From<Error> for actix_web::Error {
@@ -49,14 +52,38 @@ impl From<Error> for actix_web::Error {
                 actix_web::error::InternalError::new(e, StatusCode::BAD_REQUEST)
                     .into()
             }
+            Error::Stream(e) => actix_web::error::InternalError::new(
+                e,
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into(),
         }
     }
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetDbEntityResponse<T: DbItem> {
-    data: Vec<T>,
+pub struct GetDataResponse {
+    data: Vec<StreamResponse>,
+}
+
+impl<T> TryFrom<Vec<T>> for GetDataResponse
+where
+    T: DbItem + Into<RecordPointer>,
+{
+    type Error = Error;
+    fn try_from(items: Vec<T>) -> Result<Self, Self::Error> {
+        let data = items
+            .into_iter()
+            .map(|item| {
+                StreamResponse::try_from((item.subject_id(), item))
+                    .map_err(Error::Stream)
+            })
+            .collect::<Result<Vec<StreamResponse>, Error>>();
+        data.map(|collected_data| GetDataResponse {
+            data: collected_data,
+        })
+    }
 }
 
 pub fn create_services(

@@ -1,27 +1,23 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
-use sea_query::{
-    Asterisk,
-    Condition,
-    Expr,
-    Iden,
-    Order,
-    PostgresQueryBuilder,
-    Query,
-    SelectStatement,
-};
+use sea_query::{Condition, Expr, Iden};
 use serde::{Deserialize, Serialize};
 
 use super::UtxoDbItem;
-use crate::{inputs::InputType, queryable::Queryable};
+use crate::{
+    inputs::InputType,
+    queryable::{HasPagination, QueryPagination, Queryable},
+};
 
 #[allow(dead_code)]
 #[derive(Iden)]
-enum Utxos {
+pub enum Utxos {
     #[iden = "utxos"]
     Table,
     #[iden = "subject"]
     Subject,
+    #[iden = "value"]
+    Value,
     #[iden = "block_height"]
     BlockHeight,
     #[iden = "tx_id"]
@@ -36,8 +32,10 @@ enum Utxos {
     UtxoId,
     #[iden = "contract_id"]
     ContractId,
-    #[iden = "value"]
-    Value,
+    #[iden = "created_at"]
+    CreatedAt,
+    #[iden = "published_at"]
+    PublishedAt,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -49,10 +47,8 @@ pub struct UtxosQuery {
     pub utxo_type: Option<InputType>,
     pub block_height: Option<BlockHeight>,
     pub utxo_id: Option<HexData>,
-    pub after: Option<i32>,
-    pub before: Option<i32>,
-    pub first: Option<i32>,
-    pub last: Option<i32>,
+    #[serde(flatten)]
+    pub pagination: QueryPagination,
     pub contract_id: Option<ContractId>, // for the contracts endpoint
     pub address: Option<Address>,        // for the accounts endpoint
 }
@@ -77,9 +73,24 @@ impl UtxosQuery {
     pub fn set_utxo_type(&mut self, utxo_type: Option<InputType>) {
         self.utxo_type = utxo_type;
     }
+}
 
-    pub fn get_sql_and_values(&self) -> (String, sea_query::Values) {
-        self.build_query().build(PostgresQueryBuilder)
+#[async_trait::async_trait]
+impl Queryable for UtxosQuery {
+    type Record = UtxoDbItem;
+    type Table = Utxos;
+    type PaginationColumn = Utxos;
+
+    fn table() -> Self::Table {
+        Utxos::Table
+    }
+
+    fn pagination_column() -> Self::PaginationColumn {
+        Utxos::BlockHeight
+    }
+
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 
     fn build_condition(&self) -> Condition {
@@ -145,60 +156,11 @@ impl UtxosQuery {
 
         condition
     }
-
-    pub fn build_query(&self) -> SelectStatement {
-        let mut condition = self.build_condition();
-
-        // Add after/before conditions
-        if let Some(after) = self.after {
-            condition = condition.add(Expr::col(Utxos::BlockHeight).gt(after));
-        }
-
-        if let Some(before) = self.before {
-            condition = condition.add(Expr::col(Utxos::BlockHeight).lt(before));
-        }
-
-        let mut query_builder = Query::select();
-        let mut query = query_builder
-            .column(Asterisk)
-            .from(Utxos::Table)
-            .cond_where(condition);
-
-        // Add first/last conditions
-        if let Some(first) = self.first {
-            query = query
-                .order_by(Utxos::BlockHeight, Order::Asc)
-                .limit(first as u64);
-        } else if let Some(last) = self.last {
-            query = query
-                .order_by(Utxos::BlockHeight, Order::Desc)
-                .limit(last as u64);
-        }
-
-        query.to_owned()
-    }
 }
 
-#[async_trait::async_trait]
-impl Queryable for UtxosQuery {
-    type Record = UtxoDbItem;
-
-    fn query_to_string(&self) -> String {
-        self.build_query().to_string(PostgresQueryBuilder)
-    }
-
-    async fn execute<'c, E>(
-        &self,
-        executor: E,
-    ) -> Result<Vec<UtxoDbItem>, sqlx::Error>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Postgres>,
-    {
-        let sql = self.build_query().to_string(PostgresQueryBuilder);
-
-        sqlx::query_as::<_, UtxoDbItem>(&sql)
-            .fetch_all(executor)
-            .await
+impl HasPagination for UtxosQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
     }
 }
 
@@ -216,8 +178,8 @@ mod test {
     // Test constants
     const AFTER_POINTER: i32 = 10000;
     const BEFORE_POINTER: i32 = 20000;
-    const FIRST_POINTER: i32 = 300;
-    const LAST_POINTER: i32 = 400;
+    const FIRST_POINTER: i32 = 100;
+    const LAST_POINTER: i32 = 100;
     const TEST_BLOCK_HEIGHT: i32 = 55;
     const TEST_TX_INDEX: u32 = 3;
     const TEST_INPUT_INDEX: i32 = 7;
@@ -236,10 +198,7 @@ mod test {
             tx_index: None,
             input_index: None,
             utxo_id: None,
-            after: None,
-            before: None,
-            first: None,
-            last: None,
+            pagination: Default::default(),
             address: None,
             contract_id: None,
         };
@@ -258,10 +217,7 @@ mod test {
             tx_index: None,
             input_index: None,
             utxo_id: Some(HexData::from(TEST_UTXO_ID)),
-            after: None,
-            before: None,
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, None, Some(FIRST_POINTER), None).into(),
             address: None,
             contract_id: None,
         };
@@ -280,10 +236,8 @@ mod test {
             tx_index: Some(TEST_TX_INDEX),
             input_index: Some(TEST_INPUT_INDEX),
             utxo_id: None,
-            after: Some(AFTER_POINTER),
-            before: None,
-            first: None,
-            last: Some(LAST_POINTER),
+            pagination: (Some(AFTER_POINTER), None, None, Some(LAST_POINTER))
+                .into(),
             address: None,
             contract_id: None,
         };
@@ -302,10 +256,8 @@ mod test {
             tx_index: None,
             input_index: None,
             utxo_id: None,
-            after: None,
-            before: Some(BEFORE_POINTER),
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (None, Some(BEFORE_POINTER), Some(FIRST_POINTER), None)
+                .into(),
             address: None,
             contract_id: None,
         };
@@ -324,10 +276,13 @@ mod test {
             tx_index: Some(TEST_TX_INDEX),
             input_index: Some(TEST_INPUT_INDEX),
             utxo_id: Some(HexData::from(TEST_UTXO_ID)),
-            after: Some(AFTER_POINTER),
-            before: Some(BEFORE_POINTER),
-            first: Some(FIRST_POINTER),
-            last: None,
+            pagination: (
+                Some(AFTER_POINTER),
+                Some(BEFORE_POINTER),
+                Some(FIRST_POINTER),
+                None,
+            )
+                .into(),
             address: None,
             contract_id: None,
         };
@@ -368,10 +323,10 @@ mod test {
             Some(BlockHeight::from(TEST_BLOCK_HEIGHT))
         );
         assert_eq!(query.utxo_id, Some(HexData::from(TEST_UTXO_ID)));
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, Some(BEFORE_POINTER));
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, Some(LAST_POINTER));
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, Some(BEFORE_POINTER));
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, Some(LAST_POINTER));
     }
 
     #[test]
@@ -392,10 +347,10 @@ mod test {
         assert_eq!(query.utxo_type, Some(InputType::Contract));
         assert_eq!(query.block_height, None);
         assert_eq!(query.utxo_id, Some(HexData::from(TEST_UTXO_ID)));
-        assert_eq!(query.after, Some(AFTER_POINTER));
-        assert_eq!(query.before, None);
-        assert_eq!(query.first, Some(FIRST_POINTER));
-        assert_eq!(query.last, None);
+        assert_eq!(query.pagination().after, Some(AFTER_POINTER));
+        assert_eq!(query.pagination().before, None);
+        assert_eq!(query.pagination().first, Some(FIRST_POINTER));
+        assert_eq!(query.pagination().last, None);
     }
 
     #[test]
