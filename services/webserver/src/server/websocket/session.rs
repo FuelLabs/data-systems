@@ -312,7 +312,7 @@ impl WsSession {
         self.connection.remove_subscription(subscription).await;
     }
 
-    pub async fn check_duplicate_subscription(
+    pub async fn check_duplicated_sub(
         &self,
         session: &mut Session,
         subscription: &Subscription,

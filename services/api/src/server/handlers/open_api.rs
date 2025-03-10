@@ -7,8 +7,6 @@ use fuel_streams_core::types::{
     BurnReceipt,
     CallReceipt,
     Consensus,
-    FuelCorePolicies,
-    FuelCoreUpgradePurpose,
     FuelCoreUpgradePurposeWrapper,
     GasAmount,
     HexData,
@@ -36,7 +34,6 @@ use fuel_streams_core::types::{
     Salt,
     ScriptResultReceipt,
     StorageSlot,
-    Transaction,
     TransferOutReceipt,
     TransferReceipt,
     TxPointer,
@@ -52,7 +49,16 @@ use fuel_streams_domains::{
 };
 use utoipa::OpenApi;
 
-use super::blocks::*;
+use super::{
+    accounts::*,
+    blocks::*,
+    contracts::*,
+    inputs::*,
+    outputs::*,
+    receipts::*,
+    transactions::*,
+    utxos::*,
+};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -61,7 +67,23 @@ use super::blocks::*;
         get_block_transactions,
         get_block_receipts,
         get_block_inputs,
-        get_block_outputs
+        get_block_outputs,
+        get_accounts_transactions,
+        get_accounts_inputs,
+        get_accounts_outputs,
+        get_accounts_utxos,
+        get_contracts_transactions,
+        get_contracts_inputs,
+        get_contracts_outputs,
+        get_contracts_utxos,
+        get_inputs,
+        get_outputs,
+        get_receipts,
+        get_transactions,
+        get_transaction_receipts,
+        get_transaction_inputs,
+        get_transaction_outputs,
+        get_utxos,
     ),
     components(schemas(
         ValidatedQuery<BlocksQuery>,
@@ -110,7 +132,13 @@ use super::blocks::*;
         UtxoId,
     )),
     tags(
-        (name = "blocks", description = "Block retrieval endpoints")
+        (name = "Blocks", description = "Block retrieval endpoints"),
+        (name = "Accounts", description = "Accounts retrieval endpoints"),
+        (name = "Contracts", description = "Contracts retrieval endpoints"),
+        (name = "Inputs", description = "Inputs retrieval endpoints"),
+        (name = "Outputs", description = "Outputs retrieval endpoints"),
+        (name = "Receipts", description = "Receipts retrieval endpoints"),
+        (name = "Transactions", description = "Transactions retrieval endpoints"),
     ),
     security(
         ("api_key" = [])
