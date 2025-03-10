@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use wrapped_int::WrappedU32;
 
@@ -26,8 +27,34 @@ impl Default for BlockTime {
     }
 }
 
+impl utoipa::ToSchema for BlockTime {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("BlockTime")
+    }
+}
+
+impl utoipa::PartialSchema for BlockTime {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::schema::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::Type::Integer)
+            .format(Some(utoipa::openapi::schema::SchemaFormat::Custom(
+                "tai64-timestamp".to_string(),
+            )))
+            .description(Some(
+                "Block time as TAI64 format (convertible to/from Unix seconds)",
+            ))
+            .examples([Some(serde_json::json!(FuelCoreTai64::from_unix(
+                Utc::now().timestamp()
+            )))])
+            .build()
+            .into()
+    }
+}
+
 // Header type
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct BlockHeader {
     pub application_hash: Bytes32,
@@ -76,7 +103,9 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 }
 
 // BlockHeaderVersion enum
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockHeaderVersion {
     #[default]

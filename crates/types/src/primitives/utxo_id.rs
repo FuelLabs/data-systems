@@ -10,6 +10,7 @@ use crate::fuel_core::*;
     Hash,
     serde::Serialize,
     serde::Deserialize,
+    utoipa::ToSchema,
 )]
 pub struct UtxoId {
     pub tx_id: Bytes32,

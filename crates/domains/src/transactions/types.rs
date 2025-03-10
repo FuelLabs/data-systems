@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{inputs::types::*, outputs::types::*, receipts::types::*};
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 pub struct StorageSlot {
     pub key: HexData,
     pub value: HexData,
@@ -26,7 +28,104 @@ impl From<&FuelCoreStorageSlot> for StorageSlot {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash,
+)]
+pub struct PolicyWrapper(pub FuelCorePolicies);
+
+impl utoipa::ToSchema for PolicyWrapper {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("FuelCorePolicies")
+    }
+}
+
+impl utoipa::PartialSchema for PolicyWrapper {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::schema::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::Type::Array)
+            .title(Some("FuelCorePolicies"))
+            .description(Some("Array of u64 policy values used by the VM"))
+            .property(
+                "values",
+                utoipa::openapi::schema::ObjectBuilder::new()
+                    .schema_type(utoipa::openapi::schema::Type::Integer)
+                    .format(Some(
+                        utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                            utoipa::openapi::KnownFormat::Int64,
+                        ),
+                    ))
+                    .build(),
+            )
+            .examples([Some(serde_json::json!([0, 0, 0, 0, 0]))])
+            .build()
+            .into()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash)]
+pub struct FuelCoreUpgradePurposeWrapper(pub FuelCoreUpgradePurpose);
+
+impl From<FuelCoreUpgradePurpose> for FuelCoreUpgradePurposeWrapper {
+    fn from(purpose: FuelCoreUpgradePurpose) -> Self {
+        FuelCoreUpgradePurposeWrapper(purpose)
+    }
+}
+
+impl From<FuelCoreUpgradePurposeWrapper> for FuelCoreUpgradePurpose {
+    fn from(wrapper: FuelCoreUpgradePurposeWrapper) -> Self {
+        wrapper.0
+    }
+}
+
+impl utoipa::ToSchema for FuelCoreUpgradePurposeWrapper {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("FuelCoreUpgradePurpose")
+    }
+}
+
+impl utoipa::PartialSchema for FuelCoreUpgradePurposeWrapper {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        // Create Object builders first
+        let consensus_params_obj = utoipa::openapi::schema::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::Type::Object)
+            .title(Some("ConsensusParameters"))
+            // ... other properties
+            .build();
+
+        let state_transition_obj = utoipa::openapi::schema::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::Type::Object)
+            .title(Some("StateTransition"))
+            // ... other properties
+            .build();
+
+        // Convert Objects to Schemas
+        let consensus_params =
+            utoipa::openapi::schema::Schema::Object(consensus_params_obj);
+        let state_transition =
+            utoipa::openapi::schema::Schema::Object(state_transition_obj);
+
+        // Create a oneOf schema with both variants
+        let mut one_of = utoipa::openapi::schema::OneOf::new();
+
+        // Now we can add Schemas to the items
+        one_of
+            .items
+            .push(utoipa::openapi::RefOr::T(consensus_params));
+        one_of
+            .items
+            .push(utoipa::openapi::RefOr::T(state_transition));
+
+        // Create the oneOf schema and return it
+        let schema = utoipa::openapi::schema::Schema::OneOf(one_of);
+
+        // Return the Schema
+        utoipa::openapi::RefOr::T(schema)
+    }
+}
+
+#[derive(
+    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: TxId,
@@ -50,7 +149,7 @@ pub struct Transaction {
     pub mint_amount: Option<Amount>,
     pub mint_asset_id: Option<AssetId>,
     pub mint_gas_price: Option<Amount>,
-    pub policies: Option<FuelCorePolicies>,
+    pub policies: Option<PolicyWrapper>,
     pub proof_set: Vec<Bytes32>,
     pub raw_payload: HexData,
     pub receipts_root: Option<Bytes32>,
@@ -63,7 +162,7 @@ pub struct Transaction {
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
     pub tx_pointer: Option<TxPointer>,
-    pub upgrade_purpose: Option<FuelCoreUpgradePurpose>,
+    pub upgrade_purpose: Option<FuelCoreUpgradePurposeWrapper>,
     pub witnesses: Vec<HexData>,
     pub receipts: Vec<Receipt>,
 }
@@ -393,7 +492,7 @@ impl Transaction {
             mint_amount: mint_amount.map(|amount| amount.into()),
             mint_asset_id,
             mint_gas_price: mint_gas_price.map(|amount| amount.into()),
-            policies,
+            policies: policies.map(PolicyWrapper),
             proof_set,
             raw_payload,
             receipts_root,
@@ -406,7 +505,7 @@ impl Transaction {
             subsection_index,
             subsections_number,
             tx_pointer: Some(tx_pointer.into()),
-            upgrade_purpose,
+            upgrade_purpose: upgrade_purpose.map(FuelCoreUpgradePurposeWrapper),
             witnesses,
             receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
         }
@@ -472,7 +571,7 @@ impl MockTransaction {
             mint_amount: None,
             mint_asset_id: None,
             mint_gas_price: None,
-            policies: Some(FuelCorePolicies::default()),
+            policies: Some(PolicyWrapper::default()),
             proof_set: vec![],
             raw_payload: HexData::default(),
             receipts_root: None,
@@ -577,9 +676,12 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Upgrade);
-        tx.upgrade_purpose = Some(FuelCoreUpgradePurpose::StateTransition {
-            root: FuelCoreBytes32::default(),
-        });
+        tx.upgrade_purpose = Some(
+            FuelCoreUpgradePurpose::StateTransition {
+                root: FuelCoreBytes32::default(),
+            }
+            .into(),
+        );
         tx.inputs = inputs;
         tx.outputs = outputs;
         tx.receipts = receipts;

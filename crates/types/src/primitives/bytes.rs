@@ -7,6 +7,7 @@ use crate::{
     generate_byte_type_wrapper,
     impl_bytes32_to_type,
     impl_from_type_to_bytes32,
+    impl_utoipa_for_byte_type_detailed,
 };
 
 generate_byte_type_wrapper!(Address, fuel_types::Address, 32);
@@ -21,6 +22,64 @@ generate_byte_type_wrapper!(BlockId, fuel_types::Bytes32, 32);
 generate_byte_type_wrapper!(Signature, fuel_types::Bytes64, 64);
 generate_byte_type_wrapper!(TxId, fuel_types::TxId, 32);
 generate_byte_type_wrapper!(HexData, LongBytes);
+
+impl_utoipa_for_byte_type_detailed!(
+    Address,
+    32,
+    "A 32-byte Fuel address with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    BlobId,
+    32,
+    "A 32-byte Fuel blob id with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(Salt, 32, "A 32-byte salt with 0x prefix");
+
+impl_utoipa_for_byte_type_detailed!(
+    AssetId,
+    32,
+    "A 32-byte asset identifier with 0x prefix"
+);
+impl_utoipa_for_byte_type_detailed!(
+    Bytes32,
+    32,
+    "A 32-byte value with 0x prefix"
+);
+impl_utoipa_for_byte_type_detailed!(
+    ContractId,
+    32,
+    "A 32-byte contract identifier with 0x prefix"
+);
+impl_utoipa_for_byte_type_detailed!(
+    TxId,
+    32,
+    "A 32-byte transaction identifier with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    BlockId,
+    32,
+    "A 32-byte block identifier with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    Signature,
+    64,
+    "A 64-byte signature with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    HexData,
+    "Variable-length hexadecimal data with 0x prefix"
+);
+
+impl_utoipa_for_byte_type_detailed!(
+    Nonce,
+    32,
+    "A 32-byte Fuel nonce with 0x prefix"
+);
 
 impl TxId {
     pub fn random() -> Self {

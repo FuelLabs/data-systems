@@ -1,7 +1,7 @@
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
 pub enum Input {
     Contract(InputContract),
@@ -122,7 +122,9 @@ impl Default for Input {
 }
 
 // InputCoin type
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct InputCoin {
     pub amount: Amount,
@@ -137,7 +139,9 @@ pub struct InputCoin {
 }
 
 // InputContract type
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct InputContract {
     pub balance_root: Bytes32,
@@ -160,7 +164,9 @@ impl From<&FuelCoreInputContract> for InputContract {
 }
 
 // InputMessage type
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct InputMessage {
     pub amount: Amount,
@@ -197,7 +203,7 @@ impl InputMessage {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum InputType {
     Contract,
     Coin,

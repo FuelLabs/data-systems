@@ -7,6 +7,7 @@
     serde::Serialize,
     serde::Deserialize,
     Default,
+    utoipa::ToSchema,
 )]
 pub struct LongBytes(pub Vec<u8>);
 

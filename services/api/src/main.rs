@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
     let server_handle = server.handle();
     let server_task = spawn_web_server(server).await;
+    tracing::info!("Server started on port {}", config.api.port);
     let _ = tokio::join!(server_task);
 
     // Await the Actix server shutdown

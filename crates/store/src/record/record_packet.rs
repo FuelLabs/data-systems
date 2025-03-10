@@ -20,7 +20,7 @@ pub trait PacketBuilder: Send + Sync + 'static {
     fn build_packets(opts: &Self::Opts) -> Vec<RecordPacket>;
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RecordPointer {
     pub block_height: BlockHeight,
     #[serde(skip_serializing_if = "Option::is_none")]

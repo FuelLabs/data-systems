@@ -3,7 +3,7 @@ use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
 
 // Block type
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
     pub consensus: Consensus,
@@ -43,14 +43,23 @@ impl Block {
 }
 
 // Consensus enum
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
 pub enum Consensus {
     Genesis(Genesis),
     PoAConsensus(PoAConsensus),
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Genesis {
     pub chain_config_hash: Bytes32,
@@ -72,7 +81,9 @@ impl From<FuelCoreGenesis> for Genesis {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 pub struct PoAConsensus {
     pub signature: Signature,
 }
@@ -110,7 +121,7 @@ impl From<FuelCoreConsensus> for Consensus {
 }
 
 // BlockVersion enum
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockVersion {
     V1,

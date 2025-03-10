@@ -1,7 +1,16 @@
 use fuel_streams_types::primitives::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Utxo {
     pub utxo_id: UtxoId,

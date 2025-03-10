@@ -14,13 +14,16 @@ use sea_query::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
+use utoipa::ToSchema;
 
 pub const MAX_FIRST: i32 = 100;
 pub const MAX_LAST: i32 = 100;
 
 // NOTE: https://docs.rs/serde_qs/0.14.0/serde_qs/index.html#flatten-workaround
 #[serde_as]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryPagination {
     #[serde_as(as = "Option<DisplayFromStr>")]
@@ -157,7 +160,16 @@ pub trait Queryable: Sized + 'static {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    utoipa::ToSchema,
+)]
 pub struct ValidatedQuery<T>(pub T);
 
 impl<T> ValidatedQuery<T> {

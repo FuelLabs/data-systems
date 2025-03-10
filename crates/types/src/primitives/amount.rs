@@ -1,4 +1,4 @@
-use crate::declare_integer_wrapper;
+use crate::{declare_integer_wrapper, impl_utoipa_for_integer_wrapper};
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum AmountError {
@@ -7,3 +7,10 @@ pub enum AmountError {
 }
 
 declare_integer_wrapper!(Amount, u64, AmountError);
+
+impl_utoipa_for_integer_wrapper!(
+    Amount,
+    "Amount in the blockchain",
+    0,
+    u64::MAX as usize
+);
