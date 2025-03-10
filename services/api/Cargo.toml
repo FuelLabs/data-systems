@@ -46,7 +46,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 utoipa = { version = "5.3.1", features = ["actix_extras"] }
-utoipa-actix-web = "0.1.2"
 utoipa-swagger-ui = { version = "9.0.0", features = ["actix-web"] }
 validator = { version = "0.19", features = ["derive"] }
 

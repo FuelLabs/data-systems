@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)]
+
 use fuel_streams_core::types::{
     Amount,
     BlobId,
@@ -43,7 +45,6 @@ use fuel_streams_domains::{
     blocks::queryable::BlocksQuery,
     inputs::queryable::InputsQuery,
     outputs::queryable::OutputsQuery,
-    queryable::ValidatedQuery,
     receipts::queryable::ReceiptsQuery,
     transactions::queryable::TransactionsQuery,
 };
@@ -86,11 +87,11 @@ use super::{
         get_utxos,
     ),
     components(schemas(
-        ValidatedQuery<BlocksQuery>,
-        ValidatedQuery<TransactionsQuery>,
-        ValidatedQuery<ReceiptsQuery>,
-        ValidatedQuery<InputsQuery>,
-        ValidatedQuery<OutputsQuery>,
+        BlocksQuery,
+        TransactionsQuery,
+        ReceiptsQuery,
+        InputsQuery,
+        OutputsQuery,
         Consensus,
         BlockHeader,
         BlockId,
