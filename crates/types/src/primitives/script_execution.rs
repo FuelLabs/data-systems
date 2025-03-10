@@ -74,7 +74,7 @@ impl utoipa::PartialSchema for PanicInstruction {
                         "TooManySlots",
                         "ExpectedNestedCaller",
                         "MemoryGrowthOverlap",
-                        "UninitalizedMemoryAccess",
+                        "UninitializedMemoryAccess",
                         "OverridingConsensusParameters",
                         "UnknownStateTransactionBytecodeRoot",
                         "OverridingStateTransactionBytecode",

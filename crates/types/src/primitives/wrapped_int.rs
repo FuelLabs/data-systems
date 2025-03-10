@@ -285,14 +285,14 @@ declare_integer_wrapper!(WrappedU64, u64, WrappedIntError);
 
 impl_utoipa_for_integer_wrapper!(
     WrappedU32,
-    "warpped u32 in the blockchain",
+    "Wrapped u32 in the blockchain",
     0,
     u32::MAX as usize
 );
 
 impl_utoipa_for_integer_wrapper!(
     WrappedU64,
-    "warpped u64 in the blockchain",
+    "Wrapped u64 in the blockchain",
     0,
     u64::MAX as usize
 );

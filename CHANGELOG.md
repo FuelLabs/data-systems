@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.0.26](https://github.com/FuelLabs/data-systems/compare/v0.0.25...v0.0.26) - 2025-03-07
+
+### ⭐ Features
+
+- _(repo)_: Add timestamps to all database entities ([#422](https://github.com/FuelLabs/data-systems/pull/422)) ([fac3af6](https://github.com/FuelLabs/data-systems/commit/fac3af66f2a95da16be0a5865743cabffb88066a) @pedronauck)
+
+- _(repo)_: Add more granularity within API key rules ([#420](https://github.com/FuelLabs/data-systems/pull/420)) ([d94183d](https://github.com/FuelLabs/data-systems/commit/d94183d107b9b71cbcdd48dc90a61687980de7f0) @pedronauck)
+
+- _(repo)_: Add pointers inside the StreamResponse ([#404](https://github.com/FuelLabs/data-systems/pull/404)) ([efd339c](https://github.com/FuelLabs/data-systems/commit/efd339cb89dbd82bb42689c62fadb8ab2f3c8f82) @pedronauck)
+
+- _(repo)_: Add historical limit on API keys ([#423](https://github.com/FuelLabs/data-systems/pull/423)) ([2695bd4](https://github.com/FuelLabs/data-systems/commit/2695bd4ee90dbd134f910b32483ecbf7b1c3f7ac) @pedronauck)
+
+- _(repo)_: Updated fuel-core version ([#417](https://github.com/FuelLabs/data-systems/pull/417)) ([a524a41](https://github.com/FuelLabs/data-systems/commit/a524a41a40edc9705b39e4b9a25de52d21ef541d) @0xterminator)
+
+- _(repo)_: Added api optimizations and improvements ([#430](https://github.com/FuelLabs/data-systems/pull/430)) ([e722a05](https://github.com/FuelLabs/data-systems/commit/e722a052401c7e3e0aab9ff3ca2df1749bbaae14) @0xterminator)
+
+- _(repo)_: Added macros for simplifying the endpoints router ([#426](https://github.com/FuelLabs/data-systems/pull/426)) ([b023b41](https://github.com/FuelLabs/data-systems/commit/b023b4127c45377ef820d042ac7745adc154eaf6) @0xterminator)
+
+- _(repo)_: Added contracts rest endpoints ([#424](https://github.com/FuelLabs/data-systems/pull/424)) ([3176401](https://github.com/FuelLabs/data-systems/commit/317640118e6c3c3cf6adbca806b32f921d2d8c84) @0xterminator)
+
+- _(repo)_: Added receipts endpoint ([#421](https://github.com/FuelLabs/data-systems/pull/421)) ([31aec28](https://github.com/FuelLabs/data-systems/commit/31aec2886dc73fc4844c0755067845a077ca4176) @0xterminator)
+
+- _(repo)_: Added tests to all queryables and added types where needed ([#425](https://github.com/FuelLabs/data-systems/pull/425)) ([bf8d631](https://github.com/FuelLabs/data-systems/commit/bf8d63122034e2c8c8413fd47b3cc30ccd160aeb) @0xterminator)
+
+- _(repo)_: Added accounts rest endpoints ([#419](https://github.com/FuelLabs/data-systems/pull/419)) ([7fd5d52](https://github.com/FuelLabs/data-systems/commit/7fd5d52e9961c46a000b31bf4c1f22907fcc6c78) @0xterminator)
+
+- _(repo)_: Added utxos related endpoints ([#416](https://github.com/FuelLabs/data-systems/pull/416)) ([004dd32](https://github.com/FuelLabs/data-systems/commit/004dd325f57e9614a815ed5753b030ebb1624c14) @0xterminator)
+
+- _(repo)_: Added block, transaction, inputs, outputs related endpoints ([#415](https://github.com/FuelLabs/data-systems/pull/415)) ([bd76316](https://github.com/FuelLabs/data-systems/commit/bd76316f1cbab7dd6e5c8fadc70d04fded2717b4) @0xterminator)
+
+- _(repo)_: Added blocks rest endpoint ([#410](https://github.com/FuelLabs/data-systems/pull/410)) ([32d087d](https://github.com/FuelLabs/data-systems/commit/32d087d6064caaf973e2ffa35c2efe1310b19e99) @0xterminator)
+
+### 🐛 Bug Fixes
+
+- _(repo)_: Create wrapped int types to fix serialization ([#407](https://github.com/FuelLabs/data-systems/pull/407)) ([a5ad221](https://github.com/FuelLabs/data-systems/commit/a5ad2210aeb9b4fc91902b2b7205863b71b2ded0) @pedronauck)
+
+- _(repo)_: Add block_timestamp to Block ([#412](https://github.com/FuelLabs/data-systems/pull/412)) ([229ce74](https://github.com/FuelLabs/data-systems/commit/229ce74c924046d0d092cbd1bd8aa089ac7c2b0a) @pedronauck)
+
+- _(fuel-streams-subject)_: Add alias and validate payload conversion ([#411](https://github.com/FuelLabs/data-systems/pull/411)) ([c0d56da](https://github.com/FuelLabs/data-systems/commit/c0d56da18c53710725d59fdd8f49d6c1d8c0decf) @pedronauck)
+
+- _(sv-publisher)_: Adjust historical retrieve using gaps ([947b472](https://github.com/FuelLabs/data-systems/commit/947b472d37785100c21299b712023a1b9ea2d202) @pedronauck)
+
+- _(sv-publisher)_: Performance improvements for historical publish ([4b7da96](https://github.com/FuelLabs/data-systems/commit/4b7da96221c39654a6cdace19b16372a7f85f940) @pedronauck)
+
+- _(sv-publisher)_: Add find_next_block_to_save query ([d13a5ac](https://github.com/FuelLabs/data-systems/commit/d13a5ac0801dfd883a1f252fb766f920a94946b3) @pedronauck)
+
+### 🔄 Refactor
+
+- _(store)_: Increase max_connections for Aurora ([45a09b0](https://github.com/FuelLabs/data-systems/commit/45a09b07d2e225855a61496970a3099450cd6627) @pedronauck)
+
+### 🏗️ Build
+
+- _(repo)_: Remove max_connections from db_impl ([1c046d3](https://github.com/FuelLabs/data-systems/commit/1c046d38f49e942dc77c894e5f49c227403c6446) @pedronauck)
+
+### 💪🏼 Contributors
+
+- @pedronauck
+- @0xterminator
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
+
 ## [0.0.25](https://github.com/FuelLabs/data-systems/compare/v0.0.24...v0.0.25) - 2025-02-12
 
 ### ⭐ Features

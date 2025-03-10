@@ -326,11 +326,20 @@ webserver:
     startupProbe: {}
     podSecurityContext: {}
     containerSecurityContext: {}
-    resources: {}
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
 
   autoscaling:
     enabled: true
-
+    minReplicas: 3
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 # ------------------------------------------------------------------------------
 # Api configuration
