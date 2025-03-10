@@ -84,7 +84,6 @@ jobs:
           if [[ -n "$pr_number" ]]; then
             gh pr checkout $pr_number
             make fmt
-            git add .
-            git commit -m "ci(repo): Format files in the release PR"
-            git push
+            git diff --quiet || git commit -am "ci(repo): Format files in the release PR"
+            git push || echo "No changes to push"
           fi
