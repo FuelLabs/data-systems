@@ -1,34 +1,5 @@
 # Changelog
 
-## [0.0.26](https://github.com/FuelLabs/data-systems/compare/v0.0.25...v0.0.26) - 2025-03-11
-
-### ⭐ Features
-
-- _(repo)_: Add timestamps to all database entities ([#422](https://github.com/FuelLabs/data-systems/pull/422)) ([fac3af6](https://github.com/FuelLabs/data-systems/commit/fac3af66f2a95da16be0a5865743cabffb88066a) @pedronauck)
-
-- _(repo)_: Added open-api documentation ([#428](https://github.com/FuelLabs/data-systems/pull/428)) ([9883a75](https://github.com/FuelLabs/data-systems/commit/9883a755c51027b6faeb33d76b8d4dc683f25ae6) @0xterminator)
-
-- _(repo)_: Add historical limit on API keys ([#423](https://github.com/FuelLabs/data-systems/pull/423)) ([2695bd4](https://github.com/FuelLabs/data-systems/commit/2695bd4ee90dbd134f910b32483ecbf7b1c3f7ac) @pedronauck)
-
-- _(repo)_: Add more granularity within API key rules ([#420](https://github.com/FuelLabs/data-systems/pull/420)) ([d94183d](https://github.com/FuelLabs/data-systems/commit/d94183d107b9b71cbcdd48dc90a61687980de7f0) @pedronauck)
-
-- _(repo)_: Updated fuel-core version ([#417](https://github.com/FuelLabs/data-systems/pull/417)) ([a524a41](https://github.com/FuelLabs/data-systems/commit/a524a41a40edc9705b39e4b9a25de52d21ef541d) @0xterminator)
-
-- _(repo)_: Add pointers inside the StreamResponse ([#404](https://github.com/FuelLabs/data-systems/pull/404)) ([efd339c](https://github.com/FuelLabs/data-systems/commit/efd339cb89dbd82bb42689c62fadb8ab2f3c8f82) @pedronauck)
-
-### 🐛 Bug Fixes
-
-- _(repo)_: Create wrapped int types to fix serialization ([#407](https://github.com/FuelLabs/data-systems/pull/407)) ([a5ad221](https://github.com/FuelLabs/data-systems/commit/a5ad2210aeb9b4fc91902b2b7205863b71b2ded0) @pedronauck)
-
-### 💪🏼 Contributors
-
-- @pedronauck
-- @0xterminator
-
-Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
-
----
-
 ## [0.0.25](https://github.com/FuelLabs/data-systems/compare/v0.0.24...v0.0.25) - 2025-02-12
 
 ### ⭐ Features
