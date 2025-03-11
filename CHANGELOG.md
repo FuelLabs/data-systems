@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.0.27](https://github.com/FuelLabs/data-systems/compare/v0.0.26...v0.0.27) - 2025-03-11
+
+
+
+
+
+### ⭐ Features
+
+- *(repo)*: Added open-api documentation ([#428](https://github.com/FuelLabs/data-systems/pull/428)) ([c1e6646](https://github.com/FuelLabs/data-systems/commit/c1e6646f578c304f6aa29b47ff6cc27f1a1de6dc)  @0xterminator)
+
+### 💪🏼 Contributors
+
+* @0xterminator
+
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
 ## [0.0.26](https://github.com/FuelLabs/data-systems/compare/v0.0.25...v0.0.26) - 2025-03-07
 
 ### ⭐ Features
