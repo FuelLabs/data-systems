@@ -12,7 +12,16 @@ use serde::{Deserialize, Serialize};
 use super::{types::*, BlockDbItem};
 use crate::queryable::{HasPagination, QueryPagination, Queryable};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    utoipa::ToSchema,
+)]
 pub enum TimeRange {
     #[serde(rename = "1h")]
     OneHour,
@@ -121,7 +130,16 @@ pub enum Blocks {
     BlockPropagationMs,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct BlocksQuery {
     pub producer: Option<Address>,
