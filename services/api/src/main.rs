@@ -27,6 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let server = ApiServerBuilder::new(config.api.port, server_state.clone())
         .with_dynamic_routes(handlers::create_services(server_state))
         .build()?;
+
     server.await?;
     Ok(())
 }

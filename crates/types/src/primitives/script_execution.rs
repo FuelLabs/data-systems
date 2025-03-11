@@ -9,6 +9,109 @@ pub struct PanicInstruction {
     pub reason: PanicReason,
     pub instruction: RawInstruction,
 }
+
+impl utoipa::ToSchema for PanicInstruction {
+    fn name() -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed("PanicInstruction")
+    }
+}
+
+impl utoipa::PartialSchema for PanicInstruction {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::schema::ObjectBuilder::new()
+            .title(Some("PanicInstruction"))
+            .description(Some("Instruction that caused a panic in the VM"))
+            .property(
+                "reason",
+                utoipa::openapi::schema::ObjectBuilder::new()
+                    .schema_type(utoipa::openapi::schema::Type::String)
+                    .enum_values(Some([
+                        "UnknownPanicReason",
+                        "Revert",
+                        "OutOfGas",
+                        "TransactionValidity",
+                        "MemoryOverflow",
+                        "ArithmeticOverflow",
+                        "ContractNotFound",
+                        "MemoryOwnership",
+                        "NotEnoughBalance",
+                        "ExpectedInternalContext",
+                        "AssetIdNotFound",
+                        "InputNotFound",
+                        "OutputNotFound",
+                        "WitnessNotFound",
+                        "TransactionMaturity",
+                        "InvalidMetadataIdentifier",
+                        "MalformedCallStructure",
+                        "ReservedRegisterNotWritable",
+                        "InvalidFlags",
+                        "InvalidImmediateValue",
+                        "ExpectedCoinInput",
+                        "EcalError",
+                        "MemoryWriteOverlap",
+                        "ContractNotInInputs",
+                        "InternalBalanceOverflow",
+                        "ContractMaxSize",
+                        "ExpectedUnallocatedStack",
+                        "MaxStaticContractsReached",
+                        "TransferAmountCannotBeZero",
+                        "ExpectedOutputVariable",
+                        "ExpectedParentInternalContext",
+                        "PredicateReturnedNonOne",
+                        "ContractIdAlreadyDeployed",
+                        "ContractMismatch",
+                        "MessageDataTooLong",
+                        "ArithmeticError",
+                        "ContractInstructionNotAllowed",
+                        "TransferZeroCoins",
+                        "InvalidInstruction",
+                        "MemoryNotExecutable",
+                        "PolicyIsNotSet",
+                        "PolicyNotFound",
+                        "TooManyReceipts",
+                        "BalanceOverflow",
+                        "InvalidBlockHeight",
+                        "TooManySlots",
+                        "ExpectedNestedCaller",
+                        "MemoryGrowthOverlap",
+                        "UninitializedMemoryAccess",
+                        "OverridingConsensusParameters",
+                        "UnknownStateTransactionBytecodeRoot",
+                        "OverridingStateTransactionBytecode",
+                        "BytecodeAlreadyUploaded",
+                        "ThePartIsNotSequentiallyConnected",
+                        "BlobNotFound",
+                        "BlobIdAlreadyUploaded",
+                        "GasCostNotDefined",
+                        "UnsupportedCurveId",
+                        "UnsupportedOperationType",
+                        "InvalidEllipticCurvePoint",
+                        "InputContractDoesNotExist",
+                    ]))
+                    .description(Some("Reason for VM panic"))
+                    .build(),
+            )
+            .property(
+                "instruction",
+                utoipa::openapi::schema::ObjectBuilder::new()
+                    .schema_type(utoipa::openapi::schema::Type::Integer)
+                    .format(Some(
+                        utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                            utoipa::openapi::KnownFormat::Int32,
+                        ),
+                    ))
+                    .description(Some(
+                        "Raw instruction that caused the panic (u32)",
+                    ))
+                    .build(),
+            )
+            .required("reason")
+            .required("instruction")
+            .build()
+            .into()
+    }
+}
+
 impl From<FuelCorePanicInstruction> for PanicInstruction {
     fn from(value: FuelCorePanicInstruction) -> Self {
         Self {
@@ -28,6 +131,7 @@ impl From<FuelCorePanicInstruction> for PanicInstruction {
     Default,
     serde::Serialize,
     serde::Deserialize,
+    utoipa::ToSchema,
 )]
 #[repr(u64)]
 pub enum ScriptExecutionResult {

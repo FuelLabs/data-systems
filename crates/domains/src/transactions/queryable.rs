@@ -31,7 +31,9 @@ pub enum Transactions {
     PublishedAt,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionsQuery {
     pub tx_id: Option<TxId>,

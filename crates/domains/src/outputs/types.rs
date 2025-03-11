@@ -2,7 +2,7 @@ use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
 
 // Output enum
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
 pub enum Output {
     Coin(OutputCoin),
@@ -56,7 +56,9 @@ impl From<&FuelCoreOutput> for Output {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputCoin {
     pub amount: Amount,
@@ -64,7 +66,9 @@ pub struct OutputCoin {
     pub to: Address,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputChange {
     pub amount: Amount,
@@ -72,7 +76,9 @@ pub struct OutputChange {
     pub to: Address,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputVariable {
     pub amount: Amount,
@@ -80,7 +86,9 @@ pub struct OutputVariable {
     pub to: Address,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputContract {
     pub balance_root: Bytes32,
@@ -98,14 +106,16 @@ impl From<&FuelCoreOutputContract> for OutputContract {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputContractCreated {
     pub contract_id: ContractId,
     pub state_root: Bytes32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub enum OutputType {
     Coin,
     Contract,

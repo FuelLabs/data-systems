@@ -3,6 +3,7 @@ pub mod blocks;
 pub mod contracts;
 pub mod inputs;
 pub mod macros;
+pub mod open_api;
 pub mod outputs;
 pub mod receipts;
 pub mod transactions;
@@ -19,7 +20,10 @@ use fuel_web_utils::{
     api_key::middleware::ApiKeyAuth,
     server::api::with_prefixed_route,
 };
+use open_api::ApiDoc;
 use serde::Serialize;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use super::handlers;
 use crate::{
@@ -60,8 +64,7 @@ impl From<Error> for actix_web::Error {
         }
     }
 }
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDataResponse {
     data: Vec<StreamResponse>,
@@ -211,6 +214,12 @@ pub fn create_services(
                 ("outputs", handlers::accounts::get_accounts_outputs),
                 ("utxos", handlers::accounts::get_accounts_utxos)
             ]
+        );
+
+        // Serve the OpenAPI specification as JSON
+        cfg.service(
+            SwaggerUi::new("/swagger-ui/{_:.*}")
+                .url("/api-docs/openapi.json", ApiDoc::openapi()),
         );
     }
 }

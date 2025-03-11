@@ -38,7 +38,9 @@ pub enum Utxos {
     PublishedAt,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct UtxosQuery {
     pub tx_id: Option<TxId>,

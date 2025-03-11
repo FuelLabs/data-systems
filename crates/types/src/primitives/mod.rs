@@ -8,6 +8,7 @@ pub mod common;
 pub mod da_block_height;
 pub mod gas_amount;
 pub mod identifier;
+pub mod open_api;
 pub mod script_execution;
 pub mod tx_pointer;
 pub mod tx_status;
