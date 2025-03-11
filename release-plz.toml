@@ -39,6 +39,7 @@ changelog_include = [
   "fuel-streams-store",
   "fuel-streams-types",
   "fuel-web-utils",
+  "sv-api",
   "sv-consumer",
   "sv-publisher",
   "sv-webserver",
@@ -105,6 +106,11 @@ publish = false
 
 [[package]]
 name = "sv-consumer"
+release = false
+publish = false
+
+[[package]]
+name = "sv-api"
 release = false
 publish = false
 
