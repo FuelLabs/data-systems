@@ -1,4 +1,4 @@
-pub(super) mod config;
+pub(crate) mod config;
 mod error;
 mod fuel_streams;
 mod stream_impl;

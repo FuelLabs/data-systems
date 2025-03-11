@@ -3,7 +3,6 @@ use fuel_streams_core::{
     server::ServerResponse,
     types::{ServerRequest, Subscription},
 };
-use futures::future::try_join_all;
 
 use crate::server::{errors::WebsocketError, websocket::WsSession};
 
@@ -13,29 +12,12 @@ pub async fn unsubscribe_mult(
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
     let subscriptions = server_request.subscriptions(ctx.api_key());
-    let handles: Vec<_> = subscriptions
-        .into_iter()
-        .map(|subscription| {
-            let ctx = ctx.clone();
-            let mut session = session.clone();
-            actix_web::rt::spawn(async move {
-                unsubscribe(&mut session, &ctx, &subscription).await
-            })
-        })
-        .collect();
-
-    match try_join_all(handles).await {
-        Ok(_) => {
-            tracing::info!("Unsubscribed from all subscriptions");
-            Ok(())
-        }
-        Err(err) => {
-            tracing::error!("Unsubscribe task failed: {}", err);
-            Err(WebsocketError::Unsubscribe(format!(
-                "Unsubscription task failed: {err}"
-            )))
-        }
+    for subscription in subscriptions {
+        unsubscribe(session, ctx, &subscription).await?;
     }
+
+    tracing::info!("Unsubscribed from all subscriptions");
+    Ok(())
 }
 
 pub async fn unsubscribe(

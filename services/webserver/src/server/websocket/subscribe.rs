@@ -1,138 +1,132 @@
 use std::sync::Arc;
 
-use actix_ws::{CloseCode, CloseReason, Session};
+use actix_ws::Session;
 use fuel_streams_core::{
     prelude::IntoSubject,
     server::{ServerResponse, Subscription},
-    types::ServerRequest,
+    types::{ServerRequest, StreamResponse},
     BoxedStream,
     FuelStreams,
+    StreamError,
 };
 use fuel_streams_domains::Subjects;
 use fuel_streams_store::record::RecordEntity;
-use fuel_web_utils::api_key::ApiKeyRole;
-use futures::StreamExt;
-use tokio::sync::Semaphore;
+use fuel_web_utils::api_key::{ApiKey, ApiKeyRole};
+use futures::stream::{SelectAll, StreamExt};
+use smallvec::SmallVec;
 
-use crate::server::{
-    errors::WebsocketError,
-    websocket::{unsubscribe, WsSession},
-};
+use crate::server::{errors::WebsocketError, websocket::WsSession};
+
+type CombinedStream = SelectAll<
+    Box<
+        dyn futures::Stream<Item = Result<StreamResponse, StreamError>>
+            + Send
+            + Unpin,
+    >,
+>;
 
 pub async fn subscribe_mult(
     session: &mut Session,
     ctx: &mut WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
-    let semaphore = Arc::new(Semaphore::new(20));
-    let subscriptions = server_request.subscriptions(ctx.api_key());
     let api_key = ctx.api_key();
-    let mut join_set = tokio::task::JoinSet::new();
-    for subscription in subscriptions {
-        let payload = &subscription.payload;
-        tracing::info!("Received subscribe message: {:?}", payload);
-        if ctx.check_duplicated_sub(session, &subscription).await? {
-            continue;
-        }
+    let subscriptions = server_request.subscriptions(api_key);
+    let mut streams = SmallVec::<[BoxedStream; 20]>::new();
+    let mut subscribed_msgs: SmallVec<[ServerResponse; 20]> = SmallVec::new();
 
-        let api_key_role = ctx.api_key().role();
+    for subscription in subscriptions {
+        tracing::info!(
+            "Received subscribe message: {:?}",
+            &subscription.payload
+        );
+        let api_key_role = api_key.role();
         let sub = create_subscriber(api_key_role, &ctx.streams, &subscription)
             .await?;
-        let subscribed_msg = ServerResponse::Subscribed(subscription.clone());
-        ctx.send_message(session, subscribed_msg).await?;
+        subscribed_msgs
+            .push(ServerResponse::Subscribed(subscription.to_owned()));
         ctx.add_subscription(&subscription).await?;
-
-        let mut session_clone = session.clone();
-        let mut ctx_clone = ctx.clone();
-        let subscription_clone = subscription.clone();
-        join_set.spawn({
-            let semaphore = semaphore.clone();
-            async move {
-                let _permit = semaphore.acquire().await;
-                process_subscription(
-                    &mut session_clone,
-                    &mut ctx_clone,
-                    &subscription_clone,
-                    sub,
-                )
-                .await
-            }
-        });
+        streams.push(sub);
     }
 
-    let mut shutdown_rx = ctx.receiver();
+    let combined_stream = futures::stream::select_all(streams);
     actix_web::rt::spawn({
-        let session = session.clone();
-        let api_key = api_key.clone();
+        let ctx = ctx.to_owned();
+        let api_key = api_key.to_owned();
+        let mut session = session.to_owned();
         async move {
-            loop {
-                tokio::select! {
-                    Ok(shutdown_api_key) = shutdown_rx.recv() => {
-                        if shutdown_api_key == api_key {
-                            tracing::info!(%api_key, "Subscription gracefully shutdown");
-                            break;
-                        }
-                    }
-                    Some(result) = join_set.join_next() => {
-                        let session = session.clone();
-                        match result {
-                            Ok(task_result) => {
-                                if let Err(err) = task_result {
-                                    tracing::error!(%api_key, "Subscription processing error: {}", err);
-                                    let _ = session
-                                        .close(Some(CloseReason::from(err)))
-                                        .await;
-                                }
-                            }
-                            Err(err) => {
-                                tracing::error!(%api_key, "Subscription task failed: {}", err);
-                                let _ = session
-                                    .close(Some(CloseReason::from(CloseCode::Normal)))
-                                    .await;
-                            }
-                        }
-                    }
-                    else => break,
-                }
+            if !subscribed_msgs.is_empty() {
+                let msg_encoded = serde_json::to_vec(&subscribed_msgs)
+                    .map_err(WebsocketError::Serde)?;
+                session.binary(msg_encoded).await?;
+                process_subscription(
+                    &mut session,
+                    &ctx,
+                    &api_key,
+                    combined_stream,
+                )
+                .await;
             }
+            Ok::<(), WebsocketError>(())
         }
     });
 
-    tracing::info!(%api_key, "All subscription tasks completed");
+    tracing::info!(%api_key, "Subscription task started for all subscriptions");
     Ok(())
 }
 
 async fn process_subscription(
     session: &mut Session,
-    ctx: &mut WsSession,
-    subscription: &Subscription,
-    mut sub: BoxedStream,
-) -> Result<(), WebsocketError> {
-    let payload = subscription.payload.clone();
+    ctx: &WsSession,
+    api_key: &ApiKey,
+    mut stream: CombinedStream,
+) {
     let mut shutdown_rx = ctx.receiver();
-    let api_key = ctx.api_key().clone();
-    tracing::debug!(%api_key, ?payload, "Starting subscription process");
     loop {
         tokio::select! {
-            Some(result) = sub.next() => {
-                let result = result?;
-                tracing::debug!(?payload, ?result, "Received message from stream");
-                let payload = ServerResponse::Response(result);
-                tracing::debug!("Sending message to client: {:?}", payload);
-                ctx.send_message(session, payload).await?;
+            Some(stream_result) = stream.next() => {
+                match stream_result {
+                    Ok(result) => {
+                        tracing::debug!("Received message from stream: {:?}", result);
+                        let payload = ServerResponse::Response(result);
+                        if let Err(err) = ctx.send_message(session, payload).await {
+                            match err {
+                                WebsocketError::Closed(_) => {
+                                    tracing::info!(%api_key, "Session closed, exiting subscription task");
+                                    break;
+                                }
+                                err => {
+                                    tracing::error!(%api_key, "Failed to send message: {}", err);
+                                    ctx.shutdown().await;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        tracing::error!(%api_key, "Stream error: {}", err);
+                        ctx.shutdown().await;
+                        break;
+                    }
+                }
             }
-            Ok(shutdown_api_key) = shutdown_rx.recv() => {
-                if shutdown_api_key == api_key {
-                    tracing::info!(%api_key, "Subscription gracefully shutdown");
-                    return Ok(());
+            _ = shutdown_rx.changed() => {
+                if !*shutdown_rx.borrow() {
+                    tracing::info!(%api_key, "Received shutdown signal, exiting subscription task");
+                    ctx.shutdown().await;
+                    break;
                 }
             }
             else => {
-                tracing::debug!(?payload, "Stream ended, removing subscription");
-                return unsubscribe(session, ctx, subscription).await;
+                tracing::info!(%api_key, "All streams ended, cleaning up subscriptions");
+                ctx.shutdown().await;
+                break;
             }
         }
     }
+
+    tracing::info!(%api_key, "All streams ended or shutdown, cleaning up subscriptions");
+    ctx.shutdown().await;
 }
 
 async fn create_subscriber(

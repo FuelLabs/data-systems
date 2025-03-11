@@ -31,4 +31,6 @@ pub enum StreamError {
     RecordEntity(#[from] RecordEntityError),
     #[error(transparent)]
     ApiKey(#[from] ApiKeyError),
+    #[error(transparent)]
+    JoinError(#[from] tokio::task::JoinError),
 }

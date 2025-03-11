@@ -13,7 +13,12 @@ use fuel_web_utils::{
     telemetry::Telemetry,
 };
 
-use crate::{config::Config, metrics::Metrics, API_PASSWORD};
+use crate::{
+    config::Config,
+    metrics::Metrics,
+    server::websocket::ConnectionChecker,
+    API_PASSWORD,
+};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -24,6 +29,7 @@ pub struct ServerState {
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub api_keys_manager: Arc<ApiKeysManager>,
     pub password_manager: Arc<PasswordManager>,
+    pub connection_checker: Arc<ConnectionChecker>,
 }
 
 impl ServerState {
@@ -54,6 +60,8 @@ impl ServerState {
 
         let password_manager =
             Arc::new(PasswordManager::new(API_PASSWORD.clone()));
+        let connection_checker = Arc::new(ConnectionChecker::default());
+        connection_checker.start().await;
 
         Ok(Self {
             db,
@@ -63,6 +71,7 @@ impl ServerState {
             telemetry,
             api_keys_manager,
             password_manager,
+            connection_checker,
         })
     }
 
