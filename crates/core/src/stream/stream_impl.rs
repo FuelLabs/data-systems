@@ -91,7 +91,7 @@ impl<R: Record> Stream<R> {
     ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
         let response = response.clone();
-        let payload = spawn_blocking(move || response.encode_json()).await??;
+        let payload = response.encode_json()?;
         broker.publish(subject, payload.into()).await?;
         Ok(())
     }

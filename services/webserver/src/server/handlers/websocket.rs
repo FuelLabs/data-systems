@@ -5,13 +5,7 @@ use actix_web::{
     HttpRequest,
     Responder,
 };
-use actix_ws::{
-    AggregatedMessage,
-    CloseCode,
-    CloseReason,
-    MessageStream,
-    Session,
-};
+use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
 use fuel_streams_core::server::ServerRequest;
 use fuel_web_utils::api_key::ApiKey;
 use futures::StreamExt;
@@ -114,17 +108,14 @@ async fn handle_messages(
     mut signal_rx: mpsc::Receiver<ConnectionSignal>,
 ) -> Option<CloseAction> {
     let api_key_id = ctx.api_key().id().to_string();
-    let mut msg_stream = msg_stream
-        .max_frame_size(ctx.max_frame_size())
-        .aggregate_continuations()
-        .max_continuation_size(2_usize.pow(20));
+    let mut msg_stream = msg_stream.max_frame_size(ctx.max_frame_size());
 
     let mut shutdown_rx = ctx.receiver();
     loop {
         tokio::select! {
             Some(msg_result) = msg_stream.next() => {
                 match msg_result {
-                    Ok(AggregatedMessage::Text(text)) => {
+                    Ok(Message::Text(text)) => {
                         if text.trim().eq_ignore_ascii_case("disconnect") {
                             let api_key = ctx.api_key();
                             tracing::info!(%api_key, "Client requested disconnect");
@@ -142,7 +133,7 @@ async fn handle_messages(
                             }
                         }
                     }
-                    Ok(AggregatedMessage::Binary(bin)) => {
+                    Ok(Message::Binary(bin)) => {
                         match handle_websocket_request(session, ctx, bin).await {
                             Err(err) => return Some(CloseAction::Error(err)),
                             Ok(Some(close_action)) => return Some(close_action),
@@ -153,7 +144,7 @@ async fn handle_messages(
                             }
                         }
                     }
-                    Ok(AggregatedMessage::Close(reason)) => {
+                    Ok(Message::Close(reason)) => {
                         let api_key = ctx.api_key();
                         tracing::info!(%api_key, "Client sent close frame");
                         let close_action = match reason {
@@ -163,12 +154,20 @@ async fn handle_messages(
                         ctx.shutdown().await;
                         return Some(close_action);
                     }
-                    Ok(AggregatedMessage::Ping(data)) => {
+                    Ok(Message::Ping(data)) => {
                         tracing::debug!(api_key = %ctx.api_key(), "Received client ping: {:?}", data);
                         connection_checker.update_heartbeat(&api_key_id).await;
                     }
-                    Ok(AggregatedMessage::Pong(data)) => {
+                    Ok(Message::Pong(data)) => {
                         tracing::debug!(api_key = %ctx.api_key(), "Received client pong: {:?}", data);
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Ok(Message::Continuation(_)) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client continuation");
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Ok(Message::Nop) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client nop");
                         connection_checker.update_heartbeat(&api_key_id).await;
                     }
                     Err(err) => {
