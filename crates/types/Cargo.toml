@@ -31,7 +31,7 @@ sqlx.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-utoipa = { version = "5.3.1", features = ["actix_extras"] }
+utoipa.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true

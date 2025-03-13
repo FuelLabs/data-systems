@@ -23,7 +23,7 @@ clap.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
-fuel-streams-core.workspace = true
+fuel-streams-core = { workspace = true, features = ["openapi"] }
 fuel-streams-domains.workspace = true
 fuel-streams-store.workspace = true
 fuel-tx.workspace = true
@@ -33,21 +33,15 @@ num_cpus.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
 serde.workspace = true
 serde_json.workspace = true
-sqlx = { workspace = true, default-features = false, features = [
-  "any",
-  "macros",
-  "postgres",
-  "runtime-tokio",
-  "tls-native-tls",
-] }
-thiserror = "2.0"
-time = { version = "0.3", features = ["serde"] }
+sqlx.workspace = true
+thiserror.workspace = true
+time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-utoipa = { version = "5.3.1", features = ["actix_extras"] }
+tracing-subscriber.workspace = true
+utoipa.workspace = true
 utoipa-swagger-ui = { version = "9.0.0", features = ["actix-web"] }
-validator = { version = "0.19", features = ["derive"] }
+validator = { version = "0.20.0", features = ["derive"] }
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
