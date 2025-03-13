@@ -2155,7 +2155,7 @@ dependencies = [
 
 [[package]]
 name = "data-parser"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "criterion",
  "fuel-data-parser",
@@ -3662,7 +3662,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "async-compression",
  "async-trait",
@@ -3772,7 +3772,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-message-broker"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -3820,7 +3820,7 @@ checksum = "8425dc32f86e2d6082126ee34998a9556306c6a79d95b85a62a05b439ff9bb19"
 
 [[package]]
 name = "fuel-streams"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "fuel-streams-core",
@@ -3837,7 +3837,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-core"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -3864,7 +3864,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-domains"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -3893,7 +3893,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-examples"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "fuel-streams",
@@ -3903,7 +3903,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-store"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "async-trait",
  "dotenvy",
@@ -3921,7 +3921,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-subject"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "downcast-rs",
  "indexmap 2.8.0",
@@ -3935,7 +3935,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-test"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "fuel-core",
@@ -3959,7 +3959,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-types"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4185,7 +4185,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-web-utils"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "actix-cors",
  "actix-server",
@@ -4398,7 +4398,7 @@ dependencies = [
 
 [[package]]
 name = "generate-api-keys"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "clap",
@@ -6225,7 +6225,7 @@ checksum = "b4ce301924b7887e9d637144fdade93f9dfff9b60981d4ac161db09720d39aa5"
 
 [[package]]
 name = "load-tester"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "chrono",
@@ -9634,7 +9634,7 @@ dependencies = [
 
 [[package]]
 name = "subject-derive"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -9644,7 +9644,7 @@ dependencies = [
 
 [[package]]
 name = "subjects-schema"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "fuel-streams-domains",
  "fuel-streams-subject",
@@ -9688,7 +9688,7 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "sv-api"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -9721,7 +9721,7 @@ dependencies = [
 
 [[package]]
 name = "sv-consumer"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9749,7 +9749,7 @@ dependencies = [
 
 [[package]]
 name = "sv-publisher"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9777,7 +9777,7 @@ dependencies = [
 
 [[package]]
 name = "sv-webserver"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "actix-web",
  "actix-ws",
@@ -10813,7 +10813,7 @@ checksum = "2896d95c02a80c6d6a5d6e953d479f5ddf2dfdb6a244441010e373ac0fb88971"
 
 [[package]]
 name = "udpate-db"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "dotenvy",
