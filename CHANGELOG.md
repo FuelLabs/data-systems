@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.0.27](https://github.com/FuelLabs/data-systems/compare/v0.0.26...v0.0.27) - 2025-03-13
+
+
+
+
+
+### ⭐ Features
+
+- *(repo)*: Added open-api documentation ([#428](https://github.com/FuelLabs/data-systems/pull/428)) ([9883a75](https://github.com/FuelLabs/data-systems/commit/9883a755c51027b6faeb33d76b8d4dc683f25ae6)  @0xterminator)
+
+### 🔄 Refactor
+
+- *(fuel-streams-store)*: Improve historical data query performance ([bd81409](https://github.com/FuelLabs/data-systems/commit/bd814098c6c02ef9cb8c42bcc871b5b22cfcc9ab)  @pedronauck)
+
+- *(sv-webserver)*: Improve performance on subscribing ([#435](https://github.com/FuelLabs/data-systems/pull/435)) ([2a35a17](https://github.com/FuelLabs/data-systems/commit/2a35a17eb55660efd1f80a59311edda3e150274d)  @pedronauck)
+
+### 🏗️ Build
+
+- *(repo)*: Update rust to v1.85.0 ([90e5425](https://github.com/FuelLabs/data-systems/commit/90e5425d851460b25a92b8fb9b3cee0ab41c20c4)  @pedronauck)
+
+- *(repo)*: Adjust Cargo.toml dependencies ([54b7c86](https://github.com/FuelLabs/data-systems/commit/54b7c863d1bb5dd4c48c04603e5ef795b86eabcd)  @pedronauck)
+
+### 💪🏼 Contributors
+
+* @pedronauck
+* @0xterminator
+
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
 ## [0.0.26](https://github.com/FuelLabs/data-systems/compare/v0.0.25...v0.0.26) - 2025-03-11
 
 ### ⭐ Features
