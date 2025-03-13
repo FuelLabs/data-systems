@@ -129,9 +129,17 @@ fn handle_binary_message(
     bin: tokio_tungstenite::tungstenite::Bytes,
 ) -> Result<Option<StreamResponse>, ClientError> {
     match serde_json::from_slice::<ServerResponse>(&bin) {
+        Ok(ServerResponse::Subscribed(res)) => {
+            dbg!(&res);
+            Ok(None)
+        }
+        Ok(ServerResponse::Unsubscribed(_)) => Ok(None),
         Ok(ServerResponse::Response(response)) => Ok(Some(response)),
         Ok(ServerResponse::Error(e)) => Err(ClientError::Server(e)),
-        Ok(_) => Ok(None),
-        Err(e) => Err(ClientError::Server(e.to_string())),
+        // when we receive an sequence we just ignore it
+        Err(e) => match serde_json::from_slice::<Vec<ServerResponse>>(&bin) {
+            Ok(_) => Ok(None),
+            Err(_) => Err(ClientError::Server(e.to_string())),
+        },
     }
 }
