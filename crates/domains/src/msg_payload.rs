@@ -164,7 +164,7 @@ impl MsgPayload {
         attempts: u8,
     ) -> Result<TransactionStatus, MsgPayloadError> {
         if attempts > 5 {
-            return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()))
+            return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()));
         }
         let tx_status = fuel_core.get_tx_status(tx_id)?;
         match tx_status {

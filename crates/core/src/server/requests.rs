@@ -45,7 +45,7 @@ impl ServerRequest {
         let subjects = payload.clone();
         if subjects.is_empty() {
             tracing::debug!("No subscriptions requested");
-            return vec![]
+            return vec![];
         }
 
         subjects

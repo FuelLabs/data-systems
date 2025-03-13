@@ -14,7 +14,7 @@ pub enum ConsumerError {
     #[error("Processing timed out")]
     Timeout,
     #[error(transparent)]
-    Deserialization(#[from] bincode::Error),
+    Deserialization(#[from] bincode::error::DecodeError),
     #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
     #[error(transparent)]
