@@ -103,22 +103,17 @@ pub async fn find_next_block_to_save(
     fuel_core_height: BlockHeight,
 ) -> StoreResult<Vec<BlockHeightGap>> {
     let select = r#"
-        WITH height_gaps AS (
-            SELECT
-                block_height,
-                LEAD(block_height) OVER (ORDER BY block_height) AS next_height
-            FROM
-                blocks
-        )
+    WITH block_sequence AS (
         SELECT
-            block_height + 1 AS gap_start,
-            next_height - 1 AS gap_end
-        FROM
-            height_gaps
-        WHERE
-            next_height > block_height + 1
-        ORDER BY
-            gap_start
+            block_height,
+            LAG(block_height) OVER (ORDER BY block_height) AS prev_block
+        FROM blocks
+    )
+    SELECT
+        prev_block + 1 AS gap_start,
+        block_height - 1 AS gap_end
+    FROM block_sequence
+    WHERE block_height > prev_block + 1;
     "#;
 
     let gaps = sqlx::query_as::<_, (i64, i64)>(select)
