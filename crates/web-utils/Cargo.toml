@@ -29,7 +29,6 @@ fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-num_cpus.workspace = true
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand.workspace = true

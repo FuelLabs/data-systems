@@ -14,7 +14,7 @@ use futures::{
     stream::{BoxStream, Stream as FStream},
     StreamExt,
 };
-use tokio::{sync::OnceCell, time::sleep};
+use tokio::{sync::OnceCell, task::spawn_blocking, time::sleep};
 
 use super::{config, StreamError};
 use crate::{server::DeliverPolicy, types::StreamResponse};
@@ -90,6 +90,7 @@ impl<R: Record> Stream<R> {
         response: &StreamResponse,
     ) -> Result<(), StreamError> {
         let broker = self.broker.clone();
+        let response = response.clone();
         let payload = response.encode_json()?;
         broker.publish(subject, payload.into()).await?;
         Ok(())
@@ -139,7 +140,7 @@ impl<R: Record> Stream<R> {
                     let mut live = broker.subscribe(&subject.parse()).await?;
                     while let Some(msg) = live.next().await {
                         let msg = msg?;
-                        let stream_response = StreamResponse::decode_json(&msg)?;
+                        let stream_response = spawn_blocking(move || StreamResponse::decode_json(&msg)).await??;
                         yield stream_response;
                         let throttle_time = *config::STREAM_THROTTLE_LIVE;
                         sleep(Duration::from_millis(throttle_time as u64)).await;

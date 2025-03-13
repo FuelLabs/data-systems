@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use fuel_streams_core::{
     server::DeliverPolicy,
     subjects::*,
@@ -49,7 +51,7 @@ async fn test_streaming_live_data() -> anyhow::Result<()> {
         let packet = record.2.to_owned().with_namespace(&prefix);
         let subject = packet.subject_str();
         let response = StreamResponse::try_from(&packet)?;
-        stream.publish(&subject, &response).await?;
+        stream.publish(&subject, &Arc::new(response)).await?;
     }
 
     close_db(&stream.store().db).await;

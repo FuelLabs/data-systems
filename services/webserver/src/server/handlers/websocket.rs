@@ -1,4 +1,4 @@
-use std::{pin::pin, sync::Arc, time::Instant};
+use std::sync::Arc;
 
 use actix_web::{
     web::{self, Bytes},
@@ -6,22 +6,20 @@ use actix_web::{
     Responder,
 };
 use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
-use fuel_streams_core::{server::ServerRequest, FuelStreams};
-use fuel_web_utils::{
-    api_key::{rate_limiter::RateLimitsController, ApiKey},
-    telemetry::Telemetry,
-};
-use futures::{
-    future::{self, Either},
-    StreamExt as _,
-};
+use fuel_streams_core::server::ServerRequest;
+use fuel_web_utils::api_key::ApiKey;
+use futures::StreamExt;
+use tokio::sync::mpsc;
 
-use crate::{
-    metrics::Metrics,
-    server::{
-        errors::WebsocketError,
-        state::ServerState,
-        websocket::{subscribe_mult, unsubscribe_mult, WsSession},
+use crate::server::{
+    errors::WebsocketError,
+    state::ServerState,
+    websocket::{
+        subscribe_mult,
+        unsubscribe_mult,
+        ConnectionChecker,
+        ConnectionSignal,
+        WsSession,
     },
 };
 
@@ -32,6 +30,7 @@ pub enum CloseAction {
     Disconnect,
     Timeout,
 }
+
 impl From<&CloseAction> for CloseReason {
     fn from(action: &CloseAction) -> Self {
         match action {
@@ -50,48 +49,54 @@ pub async fn get_websocket(
 ) -> actix_web::Result<impl Responder> {
     let api_key = ApiKey::from_req(&req)?;
     let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
-    let fuel_streams = state.fuel_streams.clone();
-    let telemetry = state.telemetry.clone();
-    let rate_limiter = state.api_keys_manager.rate_limiter().clone();
-    actix_web::rt::spawn(handler(
-        session,
-        msg_stream,
-        telemetry,
-        fuel_streams,
-        api_key,
-        rate_limiter,
-    ));
+    actix_web::rt::spawn(handler(session, msg_stream, api_key, state));
     Ok(response)
 }
 
 async fn handler(
-    mut session: actix_ws::Session,
-    msg_stream: actix_ws::MessageStream,
-    telemetry: Arc<Telemetry<Metrics>>,
-    fuel_streams: Arc<FuelStreams>,
+    mut session: Session,
+    msg_stream: MessageStream,
     api_key: ApiKey,
-    rate_limiter: Arc<RateLimitsController>,
+    state: web::Data<ServerState>,
 ) -> Result<(), WebsocketError> {
-    let mut ctx =
-        WsSession::new(&api_key, telemetry, fuel_streams, rate_limiter);
+    let streams = state.fuel_streams.to_owned();
+    let telemetry = state.telemetry.to_owned();
+    let rate_limiter = state.api_keys_manager.rate_limiter().to_owned();
+    let connection_checker = state.connection_checker.to_owned();
+    let mut ctx = WsSession::new(&api_key, telemetry, streams, rate_limiter);
+    let (tx, signal_rx) = mpsc::channel::<ConnectionSignal>(2);
+    connection_checker.register(ctx.to_owned(), tx).await;
     tracing::info!(
         %api_key,
         event = "websocket_connection_opened",
         "WebSocket connection opened"
     );
 
-    let action = handle_messages(&mut ctx, &mut session, msg_stream).await;
-    if let Some(action) = &action {
+    let action = handle_messages(
+        &mut ctx,
+        &mut session,
+        msg_stream,
+        &connection_checker,
+        signal_rx,
+    )
+    .await;
+
+    if let Some(ref action) = action {
         match action {
             CloseAction::Error(err) => {
                 ctx.send_error_msg(&mut session, err).await?;
-                ctx.close_session(session, action).await;
+                ctx.clone().close_session(session, action).await;
             }
             _ => {
-                ctx.close_session(session, action).await;
+                ctx.clone().close_session(session, action).await;
             }
         }
-    };
+    }
+
+    connection_checker
+        .unregister(&api_key.id().to_string())
+        .await;
+
     Ok(())
 }
 
@@ -99,74 +104,114 @@ async fn handle_messages(
     ctx: &mut WsSession,
     session: &mut Session,
     msg_stream: MessageStream,
+    connection_checker: &Arc<ConnectionChecker>,
+    mut signal_rx: mpsc::Receiver<ConnectionSignal>,
 ) -> Option<CloseAction> {
-    let mut last_heartbeat = Instant::now();
-    let mut interval = tokio::time::interval(ctx.heartbeat_interval());
+    let api_key_id = ctx.api_key().id().to_string();
     let mut msg_stream = msg_stream.max_frame_size(ctx.max_frame_size());
-    let mut msg_stream = pin!(msg_stream);
 
+    let mut shutdown_rx = ctx.receiver();
     loop {
-        let tick = pin!(interval.tick());
-        match future::select(msg_stream.next(), tick).await {
-            Either::Left((Some(Ok(msg)), _)) => match msg {
-                Message::Text(msg) => {
-                    let msg = Bytes::from(msg.as_bytes().to_vec());
-                    match handle_websocket_request(session, ctx, msg).await {
-                        Err(err) => break Some(CloseAction::Error(err)),
-                        Ok(Some(close_action)) => break Some(close_action),
-                        Ok(None) => {}
-                    }
-                }
-                Message::Binary(msg) => {
-                    match handle_websocket_request(session, ctx, msg).await {
-                        Err(err) => break Some(CloseAction::Error(err)),
-                        Ok(Some(close_action)) => break Some(close_action),
-                        Ok(None) => {}
-                    }
-                }
-                Message::Ping(bytes) => {
-                    last_heartbeat = Instant::now();
-                    if let Err(err) = session.pong(&bytes).await {
-                        let err = WebsocketError::from(err);
-                        break Some(CloseAction::Error(err));
-                    }
-                }
-                Message::Pong(_) => {
-                    last_heartbeat = Instant::now();
-                }
-                Message::Close(reason) => {
-                    break match reason {
-                        Some(reason) => Some(CloseAction::Closed(reason)),
-                        None => Some(CloseAction::Disconnect),
-                    }
-                }
-                Message::Continuation(_) => {
-                    let api_key = ctx.api_key();
-                    tracing::warn!(%api_key, "Continuation frames not supported");
-                    let err = WebsocketError::UnsupportedMessageType;
-                    break Some(CloseAction::Error(err));
-                }
-                Message::Nop => {}
-            },
-            Either::Left((Some(Err(err)), _)) => {
-                let api_key = ctx.api_key();
-                tracing::error!(%api_key, error = %err, "WebSocket protocol error");
-                break Some(CloseAction::Error(WebsocketError::from(err)));
-            }
-            Either::Left((None, _)) => {
-                let api_key = ctx.api_key();
-                tracing::info!(%api_key, "Client disconnected");
-                break Some(CloseAction::Disconnect);
-            }
-            Either::Right((_inst, _)) => {
-                if let Err(err) = ctx.heartbeat(session, last_heartbeat).await {
-                    match err {
-                        WebsocketError::Timeout => {
-                            break Some(CloseAction::Timeout)
+        tokio::select! {
+            Some(msg_result) = msg_stream.next() => {
+                match msg_result {
+                    Ok(Message::Text(text)) => {
+                        if text.trim().eq_ignore_ascii_case("disconnect") {
+                            let api_key = ctx.api_key();
+                            tracing::info!(%api_key, "Client requested disconnect");
+                            ctx.shutdown().await;
+                            return Some(CloseAction::Disconnect);
                         }
-                        _ => break Some(CloseAction::Error(err)),
+                        let msg = Bytes::from(text.as_bytes().to_vec());
+                        match handle_websocket_request(session, ctx, msg).await {
+                            Err(err) => return Some(CloseAction::Error(err)),
+                            Ok(Some(close_action)) => return Some(close_action),
+                            Ok(None) => {
+                                connection_checker
+                                    .update_heartbeat(&api_key_id)
+                                    .await;
+                            }
+                        }
+                    }
+                    Ok(Message::Binary(bin)) => {
+                        match handle_websocket_request(session, ctx, bin).await {
+                            Err(err) => return Some(CloseAction::Error(err)),
+                            Ok(Some(close_action)) => return Some(close_action),
+                            Ok(None) => {
+                                connection_checker
+                                    .update_heartbeat(&api_key_id)
+                                    .await;
+                            }
+                        }
+                    }
+                    Ok(Message::Close(reason)) => {
+                        let api_key = ctx.api_key();
+                        tracing::info!(%api_key, "Client sent close frame");
+                        let close_action = match reason {
+                            Some(reason) => CloseAction::Closed(reason),
+                            None => CloseAction::Disconnect,
+                        };
+                        ctx.shutdown().await;
+                        return Some(close_action);
+                    }
+                    Ok(Message::Ping(data)) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client ping: {:?}", data);
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Ok(Message::Pong(data)) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client pong: {:?}", data);
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Ok(Message::Continuation(_)) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client continuation");
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Ok(Message::Nop) => {
+                        tracing::debug!(api_key = %ctx.api_key(), "Received client nop");
+                        connection_checker.update_heartbeat(&api_key_id).await;
+                    }
+                    Err(err) => {
+                        let api_key = ctx.api_key();
+                        tracing::error!(%api_key, error = %err, "WebSocket protocol error");
+                        ctx.shutdown().await;
+                        return Some(CloseAction::Error(WebsocketError::from(err)));
                     }
                 }
+            }
+            Some(signal) = signal_rx.recv() => {
+                let api_key = ctx.api_key();
+                match signal {
+                    ConnectionSignal::Ping => {
+                        if let Err(err) = session.ping(b"").await {
+                            tracing::error!(%api_key, "Failed to send ping: {}", err);
+                            ctx.shutdown().await;
+                            return Some(CloseAction::Error(
+                                WebsocketError::SendError,
+                            ));
+                        }
+                    }
+                    ConnectionSignal::Timeout => {
+                        tracing::info!(%api_key, "Heartbeat timeout detected");
+                        ctx.shutdown().await;
+                        return Some(CloseAction::Timeout);
+                    }
+                }
+            }
+            // Watch for shutdown signal
+            _ = shutdown_rx.changed() => {
+                if !*shutdown_rx.borrow() {
+                    // Shutdown signal (false)
+                    let api_key = ctx.api_key();
+                    tracing::info!(%api_key, "Subscription task requested closure");
+                    return Some(CloseAction::Error(WebsocketError::SendError));
+                }
+            }
+            else => {
+                // All streams have ended
+                let api_key = ctx.api_key();
+                tracing::info!(%api_key, "All streams closed, client disconnected");
+                ctx.shutdown().await;
+                return Some(CloseAction::Disconnect);
             }
         }
     }

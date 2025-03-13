@@ -5,13 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait StateProvider: Send + Sync {
-    /// Returns if the server is healthy
     async fn is_healthy(&self) -> bool;
-
-    /// Returns the health information
     async fn get_health(&self) -> serde_json::Value;
-
-    /// Returns the metrics in a string format
     async fn get_metrics(&self) -> String;
 }
 

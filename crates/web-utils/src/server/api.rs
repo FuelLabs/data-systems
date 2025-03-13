@@ -19,7 +19,6 @@ use super::{
     http::handlers::{get_health, get_metrics},
     state::StateProvider,
 };
-use crate::MAX_WORKERS;
 
 pub const API_VERSION: &str = "v1";
 
@@ -45,7 +44,6 @@ impl<T: StateProvider> ApiServerBuilder<T> {
         }
     }
 
-    /// Add dynamic routes to the server
     pub fn with_dynamic_routes<F>(mut self, configure: F) -> Self
     where
         F: Fn(&mut ServiceConfig) + Send + Sync + 'static,
@@ -54,19 +52,16 @@ impl<T: StateProvider> ApiServerBuilder<T> {
         self
     }
 
-    /// Build and run the server
     pub fn build(self) -> anyhow::Result<actix_web::dev::Server> {
         let server_addr = std::net::SocketAddr::V4(SocketAddrV4::new(
             Ipv4Addr::UNSPECIFIED,
             self.port,
         ));
+
         let state = self.state.clone();
         let configure_routes = self.configure_routes.clone();
-
         let server = HttpServer::new(move || {
             let state = web::Data::new(state.clone());
-
-            // Create CORS middleware
             let cors = Cors::default()
                 .allow_any_origin()
                 .allowed_methods(vec![
@@ -91,14 +86,14 @@ impl<T: StateProvider> ApiServerBuilder<T> {
                 .wrap(Compress::default())
                 .wrap(cors)
                 .app_data(web::Data::clone(&state))
-                // Mandatory routes
                 .service(
-                    web::resource(with_prefixed_route("health")).route(web::get().to(get_health::<T>)),
+                    web::resource(with_prefixed_route("health"))
+                        .route(web::get().to(get_health::<T>)),
                 )
                 .service(
-                    web::resource(with_prefixed_route("metrics")).route(web::get().to(get_metrics::<T>)),
+                    web::resource(with_prefixed_route("metrics"))
+                        .route(web::get().to(get_metrics::<T>)),
                 )
-                // Optional custom routes
                 .configure(|cfg| {
                     if let Some(configure_routes) = configure_routes.as_ref() {
                         configure_routes(cfg);
@@ -106,10 +101,8 @@ impl<T: StateProvider> ApiServerBuilder<T> {
                 })
         })
         .bind(server_addr)?
-        .workers(*MAX_WORKERS) // or any configurable value
         .shutdown_timeout(20)
         .run();
-
         Ok(server)
     }
 }

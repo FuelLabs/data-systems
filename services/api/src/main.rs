@@ -1,4 +1,4 @@
-use fuel_web_utils::server::api::{spawn_web_server, ApiServerBuilder};
+use fuel_web_utils::server::api::ApiServerBuilder;
 use sv_api::{
     config::Config,
     server::{handlers, state::ServerState},
@@ -6,7 +6,7 @@ use sv_api::{
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     // init tracing
     tracing_subscriber::fmt()
@@ -27,15 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let server = ApiServerBuilder::new(config.api.port, server_state.clone())
         .with_dynamic_routes(handlers::create_services(server_state))
         .build()?;
-    let server_handle = server.handle();
-    let server_task = spawn_web_server(server).await;
-    tracing::info!("Server started on port {}", config.api.port);
-    let _ = tokio::join!(server_task);
 
-    // Await the Actix server shutdown
-    tracing::info!("Stopping actix server ...");
-    server_handle.stop(true).await;
-    tracing::info!("Actix server stopped. Goodbye!");
-
+    server.await?;
     Ok(())
 }

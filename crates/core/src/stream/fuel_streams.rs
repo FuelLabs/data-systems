@@ -51,6 +51,7 @@ impl FuelStreams {
         let subject_id = (*packet).subject_id();
         let entity = RecordEntity::from_subject_id(&subject_id)?;
         let response = StreamResponse::try_from(&*packet)?;
+        let response = Arc::new(response);
         match entity {
             RecordEntity::Block => {
                 self.blocks.publish(&subject, &response).await
