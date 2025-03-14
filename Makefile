@@ -260,8 +260,9 @@ run-webserver: MODE="dev"
 run-webserver: PORT="9003"
 run-webserver: NATS_URL="nats://localhost:4222"
 run-webserver: EXTRA_ARGS=""
+run-webserver: RUST_LOG="info"
 run-webserver: check-network
-	@./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
+	@RUST_LOG="$(RUST_LOG)" ./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
 
 run-webserver-mainnet-dev:
 	$(MAKE) run-webserver NETWORK=mainnet MODE=dev

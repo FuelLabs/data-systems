@@ -51,35 +51,41 @@ where
 pub fn create_routes(state: &ServerState) -> Router {
     let app = Router::new();
 
-    let (blocks_path, blocks_router) = RouterBuilder::new("blocks")
+    let (blocks_path, blocks_router) = RouterBuilder::new("/blocks")
         .root(get(blocks::get_blocks))
-        .related(":height/receipts", get(blocks::get_block_receipts))
-        .related(":height/transactions", get(blocks::get_block_transactions))
-        .related(":height/inputs", get(blocks::get_block_inputs))
-        .related(":height/outputs", get(blocks::get_block_outputs))
+        .related("/{height}/receipts", get(blocks::get_block_receipts))
+        .related(
+            "/{height}/transactions",
+            get(blocks::get_block_transactions),
+        )
+        .related("/{height}/inputs", get(blocks::get_block_inputs))
+        .related("/{height}/outputs", get(blocks::get_block_outputs))
         .build();
 
-    let (accounts_path, accounts_router) = RouterBuilder::new("accounts")
+    let (accounts_path, accounts_router) = RouterBuilder::new("/accounts")
         .related(
-            ":address/transactions",
+            "/{address}/transactions",
             get(accounts::get_accounts_transactions),
         )
-        .related(":address/inputs", get(accounts::get_accounts_inputs))
-        .related(":address/outputs", get(accounts::get_accounts_outputs))
-        .related(":address/utxos", get(accounts::get_accounts_utxos))
+        .related("/{address}/inputs", get(accounts::get_accounts_inputs))
+        .related("/{address}/outputs", get(accounts::get_accounts_outputs))
+        .related("/{address}/utxos", get(accounts::get_accounts_utxos))
         .build();
 
-    let (contracts_path, contracts_router) = RouterBuilder::new("contracts")
+    let (contracts_path, contracts_router) = RouterBuilder::new("/contracts")
         .related(
-            ":contractId/transactions",
+            "/{contractId}/transactions",
             get(contracts::get_contracts_transactions),
         )
-        .related(":contractId/inputs", get(contracts::get_contracts_inputs))
-        .related(":contractId/outputs", get(contracts::get_contracts_outputs))
-        .related(":contractId/utxos", get(contracts::get_contracts_utxos))
+        .related("/{contractId}/inputs", get(contracts::get_contracts_inputs))
+        .related(
+            "/{contractId}/outputs",
+            get(contracts::get_contracts_outputs),
+        )
+        .related("/{contractId}/utxos", get(contracts::get_contracts_utxos))
         .build();
 
-    let (inputs_path, inputs_router) = RouterBuilder::new("inputs")
+    let (inputs_path, inputs_router) = RouterBuilder::new("/inputs")
         .root(get(inputs::get_inputs))
         .typed_routes(
             &[
@@ -91,7 +97,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         )
         .build();
 
-    let (outputs_path, outputs_router) = RouterBuilder::new("outputs")
+    let (outputs_path, outputs_router) = RouterBuilder::new("/outputs")
         .root(get(outputs::get_outputs))
         .typed_routes(
             &[
@@ -105,7 +111,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         )
         .build();
 
-    let (receipts_path, receipts_router) = RouterBuilder::new("receipts")
+    let (receipts_path, receipts_router) = RouterBuilder::new("/receipts")
         .root(get(receipts::get_receipts))
         .typed_routes(
             &[
@@ -128,20 +134,23 @@ pub fn create_routes(state: &ServerState) -> Router {
         .build();
 
     let (transactions_path, transactions_router) =
-        RouterBuilder::new("transactions")
+        RouterBuilder::new("/transactions")
             .root(get(transactions::get_transactions))
             .related(
-                ":txId/receipts",
+                "/{txId}/receipts",
                 get(transactions::get_transaction_receipts),
             )
-            .related(":txId/inputs", get(transactions::get_transaction_inputs))
             .related(
-                ":txId/outputs",
+                "/{txId}/inputs",
+                get(transactions::get_transaction_inputs),
+            )
+            .related(
+                "/{txId}/outputs",
                 get(transactions::get_transaction_outputs),
             )
             .build();
 
-    let (utxos_path, utxos_router) = RouterBuilder::new("utxos")
+    let (utxos_path, utxos_router) = RouterBuilder::new("/utxos")
         .root(get(utxos::get_utxos))
         .build();
 

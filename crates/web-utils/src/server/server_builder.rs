@@ -3,13 +3,18 @@ use std::{
     time::Duration,
 };
 
-use axum::{extract::Extension, routing::get, Router};
+use axum::{
+    extract::{Extension, MatchedPath, Request},
+    routing::get,
+    Router,
+};
 use tower_http::{
     compression::CompressionLayer,
     cors::{Any, CorsLayer},
     decompression::RequestDecompressionLayer,
     trace::TraceLayer,
 };
+use tracing::info_span;
 
 use super::{
     http::handlers::{get_health, get_metrics},
@@ -19,7 +24,11 @@ use super::{
 pub const API_VERSION: &str = "v1";
 
 pub fn with_prefixed_route(route: &str) -> String {
-    format!("/api/{}/{}", API_VERSION, route)
+    if route.starts_with('/') {
+        format!("/api/{}/{}", API_VERSION, route.trim_start_matches('/'))
+    } else {
+        format!("/api/{}/{}", API_VERSION, route)
+    }
 }
 
 pub struct Server {
@@ -40,6 +49,7 @@ impl Server {
         ));
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
+        tracing::debug!("listening on {}", listener.local_addr().unwrap());
         axum::serve(listener, self.app)
             .with_graceful_shutdown(shutdown_signal())
             .await?;
@@ -58,7 +68,20 @@ impl ServerBuilder {
             .route(&with_prefixed_route("health"), get(get_health::<S>))
             .route(&with_prefixed_route("metrics"), get(get_metrics::<S>))
             .layer(Extension(state.to_owned()))
-            .layer(TraceLayer::new_for_http())
+            .layer(TraceLayer::new_for_http().make_span_with(
+                |request: &Request<_>| {
+                    let matched_path = request
+                        .extensions()
+                        .get::<MatchedPath>()
+                        .map(MatchedPath::as_str);
+                    info_span!(
+                        "http_request",
+                        method = ?request.method(),
+                        matched_path,
+                        some_other_field = tracing::field::Empty,
+                    )
+                },
+            ))
             .layer(RequestDecompressionLayer::new())
             .layer(CompressionLayer::new())
             .layer(

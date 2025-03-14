@@ -15,7 +15,6 @@ use fuel_streams_domains::{
     outputs::{queryable::OutputsQuery, OutputType},
     queryable::{Queryable, ValidatedQuery},
 };
-use fuel_web_utils::api_key::ApiKey;
 
 use crate::server::{
     errors::ApiError,

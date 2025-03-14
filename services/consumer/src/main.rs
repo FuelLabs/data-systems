@@ -8,6 +8,7 @@ use fuel_web_utils::{
     server::server_builder::ServerBuilder,
     shutdown::ShutdownController,
     telemetry::Telemetry,
+    tracing::init_tracing,
 };
 use sv_consumer::{
     cli::Cli,
@@ -19,7 +20,8 @@ use sv_consumer::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    fuel_web_utils::tracing::init_tracing();
+    init_tracing()?;
+
     if let Err(err) = dotenvy::dotenv() {
         tracing::warn!("File .env not found: {:?}", err);
     }

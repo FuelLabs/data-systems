@@ -23,7 +23,6 @@ use fuel_streams_domains::{
     transactions::queryable::TransactionsQuery,
     utxos::queryable::UtxosQuery,
 };
-use fuel_web_utils::api_key::ApiKey;
 
 use crate::server::{
     errors::ApiError,
