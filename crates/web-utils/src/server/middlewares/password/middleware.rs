@@ -107,10 +107,3 @@ where
         })
     }
 }
-
-pub fn add_password_auth_layer(
-    router: axum::Router,
-    manager: Arc<PasswordManager>,
-) -> axum::Router {
-    router.layer(PasswordAuthLayer::new(manager))
-}

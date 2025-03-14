@@ -67,11 +67,8 @@ pub async fn get_contracts_transactions(
             .await?
             .into_inner();
     query.set_contract_id(&contract_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -115,11 +112,8 @@ pub async fn get_contracts_inputs(
         .await?
         .into_inner();
     query.set_contract_id(&contract_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -161,11 +155,8 @@ pub async fn get_contracts_outputs(
         .await?
         .into_inner();
     query.set_contract_id(&contract_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -206,10 +197,7 @@ pub async fn get_contracts_utxos(
         .await?
         .into_inner();
     query.set_contract_id(&contract_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

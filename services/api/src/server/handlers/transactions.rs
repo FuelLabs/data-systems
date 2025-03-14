@@ -66,11 +66,8 @@ pub async fn get_transactions(
     let query = ValidatedQuery::<TransactionsQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -117,11 +114,8 @@ pub async fn get_transaction_receipts(
         .await?
         .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -166,11 +160,8 @@ pub async fn get_transaction_inputs(
         .await?
         .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -213,10 +204,7 @@ pub async fn get_transaction_outputs(
         .await?
         .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

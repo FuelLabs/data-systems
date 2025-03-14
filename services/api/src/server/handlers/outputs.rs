@@ -88,10 +88,7 @@ pub async fn get_outputs(
         .await?
         .into_inner();
     query.set_output_type(variant.0);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

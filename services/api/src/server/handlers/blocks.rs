@@ -65,11 +65,8 @@ pub async fn get_blocks(
     let query = ValidatedQuery::<BlocksQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -110,11 +107,8 @@ pub async fn get_block_transactions(
             .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -162,11 +156,8 @@ pub async fn get_block_receipts(
         .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -211,11 +202,8 @@ pub async fn get_block_inputs(
         .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -259,10 +247,7 @@ pub async fn get_block_outputs(
         .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

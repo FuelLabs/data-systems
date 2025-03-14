@@ -86,10 +86,7 @@ pub async fn get_inputs(
         .await?
         .into_inner();
     query.set_input_type(variant.0); // Use the extracted variant
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

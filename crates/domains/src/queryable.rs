@@ -146,7 +146,7 @@ pub trait Queryable: Sized + 'static {
     async fn execute<'c, E>(
         &self,
         executor: E,
-    ) -> Result<Vec<Self::Record>, sqlx::Error>
+    ) -> Result<Vec<Self::Record>, QueryableError>
     where
         E: sqlx::Executor<'c, Database = sqlx::Postgres>,
     {
@@ -155,6 +155,7 @@ pub trait Queryable: Sized + 'static {
         sqlx::query_as::<_, Self::Record>(&sql)
             .fetch_all(executor)
             .await
+            .map_err(QueryableError::from)
     }
 }
 
@@ -176,57 +177,85 @@ impl<T> ValidatedQuery<T> {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum QueryableError {
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
+    #[error("Cannot specify both 'first' and 'last' pagination parameters")]
+    BothFirstAndLastSpecified,
+
+    #[error("'first' cannot exceed {0}")]
+    FirstExceedsMaximum(i32),
+
+    #[error("'last' cannot exceed {0}")]
+    LastExceedsMaximum(i32),
+
+    #[error("Either 'first' or 'last' pagination parameter must be specified")]
+    NeitherFirstNorLastSpecified,
+
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+}
+
+impl axum::response::IntoResponse for QueryableError {
+    fn into_response(self) -> axum::response::Response {
+        let status = match self {
+            QueryableError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            QueryableError::BothFirstAndLastSpecified => {
+                StatusCode::BAD_REQUEST
+            }
+            QueryableError::FirstExceedsMaximum(_) => StatusCode::BAD_REQUEST,
+            QueryableError::LastExceedsMaximum(_) => StatusCode::BAD_REQUEST,
+            QueryableError::NeitherFirstNorLastSpecified => {
+                StatusCode::BAD_REQUEST
+            }
+            QueryableError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        let body = self.to_string();
+        (status, body).into_response()
+    }
+}
+
 impl<S, T> FromRequestParts<S> for ValidatedQuery<T>
 where
     S: Send + Sync,
     T: serde::de::DeserializeOwned + HasPagination + Send + 'static,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = QueryableError;
 
     async fn from_request_parts(
         parts: &mut Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let query = AxumQuery::<T>::from_request_parts(parts, state).await;
-        match query {
-            Ok(AxumQuery(q)) => {
-                let pagination = q.pagination();
+        let query = AxumQuery::<T>::from_request_parts(parts, state)
+            .await
+            .map_err(|e| QueryableError::BadRequest(e.to_string()))?;
 
-                match (pagination.first, pagination.last) {
-                    (Some(_first), Some(_last)) => {
-                        return Err((
-                            StatusCode::BAD_REQUEST,
-                            "Cannot specify both 'first' and 'last' pagination parameters".to_string(),
-                        ));
-                    }
-                    (Some(first), None) => {
-                        if first > MAX_FIRST {
-                            return Err((
-                                StatusCode::BAD_REQUEST,
-                                format!("'first' cannot exceed {}", MAX_FIRST),
-                            ));
-                        }
-                    }
-                    (None, Some(last)) => {
-                        if last > MAX_LAST {
-                            return Err((
-                                StatusCode::BAD_REQUEST,
-                                format!("'last' cannot exceed {}", MAX_LAST),
-                            ));
-                        }
-                    }
-                    _ => {
-                        return Err((
-                            StatusCode::BAD_REQUEST,
-                            "Either 'first' or 'last' pagination parameter must be specified".to_string(),
-                        ));
-                    }
-                }
+        let q = query.0;
+        let pagination = q.pagination();
 
-                Ok(ValidatedQuery(q))
+        match (pagination.first, pagination.last) {
+            (Some(_first), Some(_last)) => {
+                return Err(QueryableError::BothFirstAndLastSpecified);
             }
-            Err(e) => Err((StatusCode::BAD_REQUEST, e.to_string())),
+            (Some(first), None) => {
+                if first > MAX_FIRST {
+                    return Err(QueryableError::FirstExceedsMaximum(MAX_FIRST));
+                }
+            }
+            (None, Some(last)) => {
+                if last > MAX_LAST {
+                    return Err(QueryableError::LastExceedsMaximum(MAX_LAST));
+                }
+            }
+            _ => {
+                return Err(QueryableError::NeitherFirstNorLastSpecified);
+            }
         }
+
+        Ok(ValidatedQuery(q))
     }
 }
 

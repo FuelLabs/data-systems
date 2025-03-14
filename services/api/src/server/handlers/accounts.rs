@@ -68,11 +68,8 @@ pub async fn get_accounts_transactions(
             .await?
             .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -117,11 +114,8 @@ pub async fn get_accounts_inputs(
         .await?
         .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -164,11 +158,8 @@ pub async fn get_accounts_outputs(
         .await?
         .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -210,10 +201,7 @@ pub async fn get_accounts_utxos(
         .await?
         .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

@@ -59,10 +59,7 @@ pub async fn get_utxos(
     let query = ValidatedQuery::<UtxosQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(ApiError::Sqlx)?
-        .try_into()?;
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))
 }

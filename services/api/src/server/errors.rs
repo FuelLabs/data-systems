@@ -1,8 +1,6 @@
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::response::{IntoResponse, Response};
 use fuel_streams_core::types::StreamResponseError;
+use fuel_streams_domains::queryable::QueryableError;
 use fuel_streams_store::db::DbError;
 use fuel_web_utils::api_key::ApiKeyError;
 use tokio::task::JoinError;
@@ -23,8 +21,8 @@ pub enum ApiError {
     Stream(#[from] StreamResponseError),
     #[error(transparent)]
     ApiKey(#[from] ApiKeyError),
-    #[error("{1}")]
-    HttpError(StatusCode, String),
+    #[error(transparent)]
+    Queryable(#[from] QueryableError),
 }
 
 // Implement IntoResponse for custom error handling
@@ -74,15 +72,11 @@ impl IntoResponse for ApiError {
                 .into_response(),
 
             // Handle the new HttpError variant
-            ApiError::HttpError(status, message) => {
-                (status, message).into_response()
-            }
+            ApiError::Queryable(e) => (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("Queryable error: {}", e),
+            )
+                .into_response(),
         }
-    }
-}
-
-impl From<(StatusCode, String)> for ApiError {
-    fn from(error: (StatusCode, String)) -> Self {
-        ApiError::HttpError(error.0, error.1)
     }
 }

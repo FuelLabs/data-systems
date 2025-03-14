@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use axum::{
+    body,
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{self, Message, WebSocket, WebSocketUpgrade},
         State,
     },
+    http,
     response::IntoResponse,
 };
 use fuel_streams_core::server::ServerRequest;
@@ -27,25 +29,25 @@ use crate::server::{
 #[derive(Debug)]
 pub enum CloseAction {
     Error(WebsocketError),
-    Closed(axum::extract::ws::CloseFrame),
+    Closed(ws::CloseFrame),
     Disconnect,
     Timeout,
 }
 
-impl From<&CloseAction> for Option<axum::extract::ws::CloseFrame> {
+impl From<&CloseAction> for Option<ws::CloseFrame> {
     fn from(action: &CloseAction) -> Self {
         match action {
             CloseAction::Closed(frame) => Some(frame.clone()),
-            CloseAction::Disconnect => Some(axum::extract::ws::CloseFrame {
-                code: axum::extract::ws::close_code::NORMAL,
+            CloseAction::Disconnect => Some(ws::CloseFrame {
+                code: ws::close_code::NORMAL,
                 reason: String::new().into(),
             }),
-            CloseAction::Error(_) => Some(axum::extract::ws::CloseFrame {
-                code: axum::extract::ws::close_code::AWAY,
+            CloseAction::Error(_) => Some(ws::CloseFrame {
+                code: ws::close_code::AWAY,
                 reason: String::new().into(),
             }),
-            CloseAction::Timeout => Some(axum::extract::ws::CloseFrame {
-                code: axum::extract::ws::close_code::AWAY,
+            CloseAction::Timeout => Some(ws::CloseFrame {
+                code: ws::close_code::AWAY,
                 reason: String::new().into(),
             }),
         }
@@ -55,7 +57,7 @@ impl From<&CloseAction> for Option<axum::extract::ws::CloseFrame> {
 pub async fn get_websocket(
     State(state): State<ServerState>,
     ws: WebSocketUpgrade,
-    req: axum::http::Request<axum::body::Body>,
+    req: http::Request<body::Body>,
 ) -> impl IntoResponse {
     match ApiKey::from_req(&req) {
         Ok(api_key) => ws.on_upgrade(move |socket| async move {
@@ -65,9 +67,9 @@ pub async fn get_websocket(
         }),
         Err(e) => {
             tracing::error!("API key error: {:?}", e);
-            axum::http::Response::builder()
-                .status(axum::http::StatusCode::UNAUTHORIZED)
-                .body(axum::body::Body::empty())
+            http::Response::builder()
+                .status(http::StatusCode::UNAUTHORIZED)
+                .body(body::Body::empty())
                 .unwrap()
         }
     }
@@ -170,7 +172,7 @@ async fn handle_messages(
             Some(signal) = signal_rx.recv() => {
                 match signal {
                     ConnectionSignal::Ping => {
-                        let message = Message::Ping(axum::body::Bytes::new());
+                        let message = Message::Ping(body::Bytes::new());
                         if let Err(err) = ctx.send_socket_message(message).await {
                             match err {
                                 WebsocketError::ClosedWithReason { .. } => {
@@ -205,7 +207,7 @@ async fn handle_messages(
 
 async fn handle_websocket_request(
     ctx: &WsSession,
-    msg: axum::body::Bytes,
+    msg: body::Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
     tracing::info!("Received message: {:?}", msg);
     let server_request: ServerRequest = msg.as_ref().try_into()?;
