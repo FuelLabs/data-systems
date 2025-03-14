@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.28](https://github.com/FuelLabs/data-systems/compare/v0.0.27...v0.0.28) - 2025-03-13
+
+### 🐛 Bug Fixes
+
+- _(fuel-streams)_: Handle bynari message receiving when sequence ([6a27bcd](https://github.com/FuelLabs/data-systems/commit/6a27bcd7b538129fe2e93fa18bb2da9e4edec00a) @pedronauck)
+
+### 💪🏼 Contributors
+
+- @pedronauck
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
+
 ## [0.0.27](https://github.com/FuelLabs/data-systems/compare/v0.0.26...v0.0.27) - 2025-03-13
 
 ### ⭐ Features
