@@ -83,7 +83,6 @@ pub async fn get_outputs(
     variant: OutputTypeVariant,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<OutputsQuery>::from_request(req, &state)
         .await?
         .into_inner();

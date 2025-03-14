@@ -1,4 +1,8 @@
-use axum::{middleware::from_fn_with_state, routing::get, Router};
+use axum::{
+    middleware::{from_fn, from_fn_with_state},
+    routing::get,
+    Router,
+};
 use fuel_streams_core::types::{
     InputType,
     OutputType,
@@ -7,12 +11,17 @@ use fuel_streams_core::types::{
 };
 use fuel_streams_store::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
-    api_key::middleware::ApiKeyAuth,
+    api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
 };
 use serde::Serialize;
 
-use super::{errors::ApiError, handlers::*, state::ServerState};
+use super::{
+    errors::ApiError,
+    handlers::*,
+    middleware::validate_scope_middleware,
+    state::ServerState,
+};
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -41,8 +50,6 @@ where
 
 pub fn create_routes(state: &ServerState) -> Router {
     let app = Router::new();
-    let api_key_middleware =
-        ApiKeyAuth::new(&state.api_keys_manager, &state.db);
 
     let (blocks_path, blocks_router) = RouterBuilder::new("blocks")
         .root(get(blocks::get_blocks))
@@ -138,6 +145,9 @@ pub fn create_routes(state: &ServerState) -> Router {
         .root(get(utxos::get_utxos))
         .build();
 
+    let manager = state.api_keys_manager.clone();
+    let db = state.db.clone();
+
     app.nest(&blocks_path, blocks_router)
         .nest(&accounts_path, accounts_router)
         .nest(&contracts_path, contracts_router)
@@ -146,9 +156,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .layer(from_fn_with_state(
-            api_key_middleware.clone(),
-            ApiKeyAuth::middleware,
-        ))
+        .layer(from_fn_with_state((manager, db), ApiKeyMiddleware::handler))
+        .layer(from_fn(validate_scope_middleware))
         .with_state(state.clone())
 }

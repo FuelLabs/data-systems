@@ -61,7 +61,6 @@ pub async fn get_blocks(
     State(state): State<ServerState>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let query = ValidatedQuery::<BlocksQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -100,7 +99,6 @@ pub async fn get_block_transactions(
     Path(height): Path<u64>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query =
         ValidatedQuery::<TransactionsQuery>::from_request(req, &state)
             .await?
@@ -150,7 +148,6 @@ pub async fn get_block_receipts(
     Path(height): Path<u64>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -196,7 +193,6 @@ pub async fn get_block_inputs(
     Path(height): Path<u64>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<InputsQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -241,7 +237,6 @@ pub async fn get_block_outputs(
     Path(height): Path<u64>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<OutputsQuery>::from_request(req, &state)
         .await?
         .into_inner();

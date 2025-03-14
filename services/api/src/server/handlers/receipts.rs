@@ -96,7 +96,6 @@ pub async fn get_receipts(
     variant: ReceiptTypeVariant,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
         .await?
         .into_inner();

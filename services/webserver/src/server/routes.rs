@@ -4,7 +4,7 @@ use axum::{
     Router,
 };
 use fuel_web_utils::{
-    api_key::middleware::ApiKeyAuth,
+    api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
     server::{
         middlewares::password::middleware::PasswordAuthLayer,
@@ -17,13 +17,15 @@ use crate::server::state::ServerState;
 
 pub fn create_routes(state: &ServerState) -> Router {
     let app = Router::new();
-    let api_key_auth = ApiKeyAuth::new(&state.api_keys_manager, &state.db);
+
+    let manager = state.api_keys_manager.clone();
+    let db = state.db.clone();
 
     let (ws_path, ws_router) = RouterBuilder::new("ws")
         .root(get(handlers::websocket::get_websocket))
         .with_layer(from_fn_with_state(
-            api_key_auth.clone(),
-            ApiKeyAuth::middleware,
+            (manager, db),
+            ApiKeyMiddleware::handler,
         ))
         .build();
 

@@ -62,7 +62,6 @@ pub async fn get_transactions(
     State(state): State<ServerState>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let query = ValidatedQuery::<TransactionsQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -109,7 +108,6 @@ pub async fn get_transaction_receipts(
     Path(tx_id): Path<String>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -155,7 +153,6 @@ pub async fn get_transaction_inputs(
     Path(tx_id): Path<String>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<InputsQuery>::from_request(req, &state)
         .await?
         .into_inner();
@@ -199,7 +196,6 @@ pub async fn get_transaction_outputs(
     Path(tx_id): Path<String>,
     req: Request<axum::body::Body>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _api_key = ApiKey::from_req(&req)?;
     let mut query = ValidatedQuery::<OutputsQuery>::from_request(req, &state)
         .await?
         .into_inner();
