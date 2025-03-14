@@ -1,6 +1,6 @@
 use std::fmt;
 
-use actix_web::{HttpMessage, HttpRequest};
+use axum::http::Request;
 use rand::{distr::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,7 @@ pub struct DbApiKey {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow, Hash,
 )]
 pub struct ApiKey {
     id: ApiKeyId,
@@ -59,7 +59,7 @@ impl ApiKey {
         Self { role, ..self }
     }
 
-    pub fn from_req(req: &HttpRequest) -> Result<ApiKey, ApiKeyError> {
+    pub fn from_req<B>(req: &Request<B>) -> Result<ApiKey, ApiKeyError> {
         match req.extensions().get::<ApiKey>() {
             Some(api_key) => {
                 tracing::info!(
@@ -124,13 +124,11 @@ impl ApiKey {
     ) -> Result<Self, ApiKeyError> {
         let api_key_value = ApiKeyValue::new(Self::generate_random_api_key());
 
-        // Start a transaction
         let mut tx = pool
             .begin()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Fetch the role using the existing method
         let role = ApiKeyRole::fetch_by_name(&mut *tx, role_name)
             .await
             .map_err(|e| match e {
@@ -140,7 +138,6 @@ impl ApiKey {
                 _ => ApiKeyError::DatabaseError(e.to_string()),
             })?;
 
-        // Insert the API key using query_as instead of query!
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "INSERT INTO api_keys (user_name, api_key, status, role_id)
              VALUES ($1, $2, 'ACTIVE', $3)
@@ -153,7 +150,6 @@ impl ApiKey {
         .await
         .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Commit the transaction
         tx.commit()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
@@ -166,13 +162,11 @@ impl ApiKey {
         key: &ApiKeyValue,
         status: ApiKeyStatus,
     ) -> Result<Self, ApiKeyError> {
-        // Start a transaction
         let mut tx = pool
             .begin()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Update the API key status
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "UPDATE api_keys
              SET status = $1
@@ -188,12 +182,10 @@ impl ApiKey {
             _ => ApiKeyError::DatabaseError(e.to_string()),
         })?;
 
-        // Fetch the role for the updated API key
         let role = ApiKeyRole::fetch_by_id(&mut *tx, db_record.role_id)
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Commit the transaction
         tx.commit()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
@@ -205,13 +197,11 @@ impl ApiKey {
         pool: &sqlx::PgPool,
         key: &ApiKeyValue,
     ) -> Result<Self, ApiKeyError> {
-        // Start a transaction
         let mut tx = pool
             .begin()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // First fetch the DbApiKey record
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "SELECT id, user_name, api_key, role_id, status
              FROM api_keys
@@ -225,12 +215,10 @@ impl ApiKey {
             _ => ApiKeyError::DatabaseError(e.to_string()),
         })?;
 
-        // Then fetch the role for this API key
         let role = ApiKeyRole::fetch_by_id(&mut *tx, db_record.role_id)
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Commit the transaction
         tx.commit()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
@@ -241,13 +229,11 @@ impl ApiKey {
     pub async fn fetch_all(
         pool: &sqlx::PgPool,
     ) -> Result<Vec<Self>, ApiKeyError> {
-        // Start a transaction
         let mut tx = pool
             .begin()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // First fetch all DbApiKey records
         let db_records = sqlx::query_as::<_, DbApiKey>(
             "SELECT id, user_name, api_key, role_id, status
              FROM api_keys
@@ -257,17 +243,14 @@ impl ApiKey {
         .await
         .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
-        // Then convert each DbApiKey to ApiKey by fetching its role
         let mut api_keys = Vec::with_capacity(db_records.len());
         for db_record in db_records {
             let role = ApiKeyRole::fetch_by_id(&mut *tx, db_record.role_id)
                 .await
                 .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
-
             api_keys.push(ApiKey::from((db_record, role)));
         }
 
-        // Commit the transaction
         tx.commit()
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
@@ -324,6 +307,7 @@ impl std::fmt::Display for ApiKey {
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub struct MockApiKey(pub ApiKey);
+
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockApiKey {
     pub fn new(api_key: ApiKey) -> Self {

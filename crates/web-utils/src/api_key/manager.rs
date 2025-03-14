@@ -1,27 +1,24 @@
 use std::{collections::HashMap, sync::Arc};
 
-use actix_web::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use axum::{
+    body::Body,
+    extract::{FromRequestParts, Query, Request, State},
+    http::{header::AUTHORIZATION, request::Parts},
+    middleware::Next,
+    response::Response,
+};
 use fuel_streams_store::db::Db;
 
 use super::{
     rate_limiter::RateLimitsController,
+    ApiKey,
     ApiKeyError,
     ApiKeyId,
     ApiKeyRole,
-    ApiKeyStorageError,
     ApiKeyValue,
+    InMemoryApiKeyStorage,
+    KeyStorage,
 };
-use crate::api_key::{ApiKey, InMemoryApiKeyStorage, KeyStorage};
-
-#[derive(Debug, thiserror::Error)]
-pub enum ApiKeyManagerError {
-    #[error("Database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-    #[error("Invalid API key")]
-    InvalidApiKey,
-}
-
-const BEARER: &str = "Bearer";
 
 #[derive(Debug, Clone)]
 pub struct ApiKeysManager {
@@ -31,19 +28,15 @@ pub struct ApiKeysManager {
 
 impl Default for ApiKeysManager {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ApiKeysManager {
-    pub fn new() -> Self {
         let storage = Arc::new(InMemoryApiKeyStorage::new());
         Self {
             storage,
             rate_limiter_controller: RateLimitsController::default().arc(),
         }
     }
+}
 
+impl ApiKeysManager {
     pub fn storage(&self) -> &Arc<InMemoryApiKeyStorage> {
         &self.storage
     }
@@ -58,12 +51,11 @@ impl ApiKeysManager {
     ) -> Result<Vec<ApiKey>, ApiKeyError> {
         let pool = db.pool_ref();
         let db_keys = ApiKey::fetch_all(pool).await?;
-        let api_keys = db_keys.into_iter().collect();
-        Ok(api_keys)
+        Ok(db_keys)
     }
 
     pub async fn get_api_key_from_db(
-        self,
+        &self,
         key: &ApiKeyValue,
         db: &Arc<Db>,
     ) -> Result<ApiKey, ApiKeyError> {
@@ -77,15 +69,14 @@ impl ApiKeysManager {
         key: &ApiKeyValue,
         db: &Arc<Db>,
     ) -> Result<ApiKey, ApiKeyError> {
-        // First try in-memory cache
         match self.storage.find_by_key(key) {
             Ok(key) => {
                 tracing::debug!("Cache hit for API key");
                 Ok(key)
             }
-            Err(ApiKeyError::Storage(ApiKeyStorageError::KeyNotFound)) => {
+            Err(ApiKeyError::NotFound) => {
                 tracing::debug!("Cache miss for API key");
-                self.clone().get_api_key_from_db(key, db).await
+                self.get_api_key_from_db(key, db).await
             }
             Err(e) => Err(e),
         }
@@ -117,44 +108,47 @@ impl ApiKeysManager {
         Ok(())
     }
 
-    pub fn key_from_headers(
-        &self,
-        (headers, query_map): (HeaderMap, HashMap<String, String>),
+    pub async fn extract_api_key(
+        parts: &mut Parts,
     ) -> Result<ApiKeyValue, ApiKeyError> {
-        // Add API key from query params to headers if present
-        let mut headers = headers;
-        for (key, value) in query_map.iter() {
-            if key.eq_ignore_ascii_case("api_key") {
-                let token = format!("Bearer {}", value);
-                headers.insert(
-                    AUTHORIZATION,
-                    HeaderValue::from_str(&token)
-                        .map_err(ApiKeyError::InvalidHeader)?,
-                );
+        if let Some(auth_header) = parts.headers.get(AUTHORIZATION) {
+            let token = auth_header.to_str().map_err(|_| {
+                ApiKeyError::InvalidHeader("Invalid header".to_string())
+            })?;
+            if token.starts_with("Bearer ") {
+                return Ok(ApiKeyValue::new(
+                    token.trim_start_matches("Bearer ").to_string(),
+                ));
             }
         }
 
-        match Self::from_query_string(&headers) {
-            Ok(key) => Ok(key),
-            Err(_) => Err(ApiKeyError::NotFound),
+        let query =
+            Query::<HashMap<String, String>>::from_request_parts(parts, &())
+                .await
+                .map_err(|_| ApiKeyError::Invalid)?;
+        if let Some(key) = query.get("api_key") {
+            return Ok(ApiKeyValue::new(key.clone()));
         }
+
+        Err(ApiKeyError::NotFound)
     }
 
-    fn from_query_string(
-        headers: &HeaderMap,
-    ) -> Result<ApiKeyValue, ApiKeyError> {
-        let token = headers.get(AUTHORIZATION).ok_or(ApiKeyError::NotFound)?;
-        let token = match token.to_str() {
-            Ok(token) => token,
-            Err(_) => return Err(ApiKeyError::Invalid),
-        };
-
-        if !token.starts_with(BEARER) {
-            return Err(ApiKeyError::Invalid);
-        }
-        urlencoding::decode(token.trim_start_matches(BEARER))
-            .map_err(|_| ApiKeyError::Invalid)
-            .map(|decoded| decoded.trim().to_string().into())
+    pub async fn middleware(
+        State(manager): State<Arc<Self>>,
+        State(db): State<Arc<Db>>,
+        req: Request,
+        next: Next,
+    ) -> Result<Response, ApiKeyError> {
+        let mut parts = req.into_parts().0;
+        let api_key_str = Self::extract_api_key(&mut parts).await?;
+        let api_key = manager.validate_api_key(&api_key_str, &db).await?;
+        manager.check_subscriptions(api_key.id(), api_key.role())?;
+        manager.check_rate_limit(api_key.id(), api_key.role())?;
+        api_key.validate_status()?;
+        let mut req = Request::from_parts(parts, Body::default());
+        req.extensions_mut().insert(api_key.clone());
+        let response = next.run(req).await;
+        Ok(response)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
@@ -170,91 +164,53 @@ impl ApiKeysManager {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use actix_web::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+    use axum::http::{HeaderMap, HeaderValue};
     use pretty_assertions::assert_eq;
 
     use super::*;
 
-    #[test]
-    fn test_key_from_headers_with_authorization_header() {
-        let manager = ApiKeysManager::new_for_testing();
-
-        // Create headers with Authorization
+    #[tokio::test]
+    async fn test_key_extraction_from_header() {
         let mut headers = HeaderMap::new();
         headers.insert(
             AUTHORIZATION,
             HeaderValue::from_str("Bearer test_api_key").unwrap(),
         );
+        let req = axum::http::Request::builder()
+            .uri("/test")
+            .header(AUTHORIZATION, "Bearer test_api_key")
+            .body(())
+            .unwrap();
 
-        // Empty query params
-        let query_map = HashMap::new();
-
-        // Test extraction
-        let result = manager.key_from_headers((headers, query_map));
-        assert!(
-            result.is_ok(),
-            "Should extract API key from Authorization header"
-        );
+        let mut parts = req.into_parts().0;
+        let result = ApiKeysManager::extract_api_key(&mut parts).await;
+        assert!(result.is_ok());
         assert_eq!(result.unwrap().to_string(), "test_api_key");
     }
 
-    #[test]
-    fn test_key_from_headers_with_query_param() {
-        let manager = ApiKeysManager::new_for_testing();
+    #[tokio::test]
+    async fn test_key_extraction_from_query() {
+        let req = axum::http::Request::builder()
+            .uri("/test?api_key=test_api_key")
+            .body(())
+            .unwrap();
 
-        // Empty headers
-        let headers = HeaderMap::new();
-
-        // Query params with api_key
-        let mut query_map = HashMap::new();
-        query_map.insert("api_key".to_string(), "test_api_key".to_string());
-
-        // Test extraction
-        let result = manager.key_from_headers((headers, query_map));
-        assert!(
-            result.is_ok(),
-            "Should extract API key from query parameters"
-        );
+        let mut parts = req.into_parts().0;
+        let result = ApiKeysManager::extract_api_key(&mut parts).await;
+        assert!(result.is_ok());
         assert_eq!(result.unwrap().to_string(), "test_api_key");
     }
 
-    #[test]
-    fn test_key_from_headers_missing_key() {
-        let manager = ApiKeysManager::new_for_testing();
+    #[tokio::test]
+    async fn test_key_extraction_missing() {
+        let req = axum::http::Request::builder()
+            .uri("/test")
+            .body(())
+            .unwrap();
 
-        // Empty headers
-        let headers = HeaderMap::new();
-
-        // Empty query params
-        let query_map = HashMap::new();
-
-        // Test extraction
-        let result = manager.key_from_headers((headers, query_map));
-        assert!(result.is_err(), "Should fail when no API key is provided");
+        let mut parts = req.into_parts().0;
+        let result = ApiKeysManager::extract_api_key(&mut parts).await;
+        assert!(result.is_err());
         assert!(matches!(result, Err(ApiKeyError::NotFound)));
-    }
-
-    #[test]
-    fn test_key_from_headers_invalid_format() {
-        let manager = ApiKeysManager::new_for_testing();
-
-        // Create headers with invalid Authorization format
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str("Basic test_api_key").unwrap(),
-        );
-
-        // Empty query params
-        let query_map = HashMap::new();
-
-        // Test extraction
-        let result = manager.key_from_headers((headers, query_map));
-        assert!(
-            result.is_err(),
-            "Should fail with invalid Authorization format"
-        );
     }
 }

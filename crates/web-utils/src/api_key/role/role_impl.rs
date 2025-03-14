@@ -12,7 +12,15 @@ use crate::api_key::{
 };
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow, Default,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    sqlx::FromRow,
+    Default,
+    Hash,
 )]
 pub struct ApiKeyRole {
     id: ApiKeyRoleId,

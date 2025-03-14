@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
-use actix_web::{
-    web::{self, Bytes},
-    HttpRequest,
-    Responder,
+use axum::{
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        State,
+    },
+    response::IntoResponse,
 };
-use actix_ws::{CloseCode, CloseReason, Message, MessageStream, Session};
 use fuel_streams_core::server::ServerRequest;
 use fuel_web_utils::api_key::ApiKey;
 use futures::StreamExt;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
 
 use crate::server::{
     errors::WebsocketError,
@@ -26,211 +27,195 @@ use crate::server::{
 #[derive(Debug)]
 pub enum CloseAction {
     Error(WebsocketError),
-    Closed(CloseReason),
+    Closed(axum::extract::ws::CloseFrame),
     Disconnect,
     Timeout,
 }
 
-impl From<&CloseAction> for CloseReason {
+impl From<&CloseAction> for Option<axum::extract::ws::CloseFrame> {
     fn from(action: &CloseAction) -> Self {
         match action {
-            CloseAction::Closed(reason) => reason.clone(),
-            CloseAction::Disconnect => CloseCode::Normal.into(),
-            CloseAction::Error(_) => CloseCode::Away.into(),
-            CloseAction::Timeout => CloseCode::Away.into(),
+            CloseAction::Closed(frame) => Some(frame.clone()),
+            CloseAction::Disconnect => Some(axum::extract::ws::CloseFrame {
+                code: axum::extract::ws::close_code::NORMAL,
+                reason: String::new().into(),
+            }),
+            CloseAction::Error(_) => Some(axum::extract::ws::CloseFrame {
+                code: axum::extract::ws::close_code::AWAY,
+                reason: String::new().into(),
+            }),
+            CloseAction::Timeout => Some(axum::extract::ws::CloseFrame {
+                code: axum::extract::ws::close_code::AWAY,
+                reason: String::new().into(),
+            }),
         }
     }
 }
 
 pub async fn get_websocket(
-    req: HttpRequest,
-    body: web::Payload,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<impl Responder> {
-    let api_key = ApiKey::from_req(&req)?;
-    let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
-    actix_web::rt::spawn(handler(session, msg_stream, api_key, state));
-    Ok(response)
+    State(state): State<ServerState>,
+    ws: WebSocketUpgrade,
+    req: axum::http::Request<axum::body::Body>,
+) -> impl IntoResponse {
+    match ApiKey::from_req(&req) {
+        Ok(api_key) => ws.on_upgrade(move |socket| async move {
+            if let Err(e) = handler(socket, api_key, state).await {
+                tracing::error!("WebSocket handler error: {:?}", e);
+            }
+        }),
+        Err(e) => {
+            tracing::error!("API key error: {:?}", e);
+            axum::http::Response::builder()
+                .status(axum::http::StatusCode::UNAUTHORIZED)
+                .body(axum::body::Body::empty())
+                .unwrap()
+        }
+    }
 }
 
 async fn handler(
-    mut session: Session,
-    msg_stream: MessageStream,
+    socket: WebSocket,
     api_key: ApiKey,
-    state: web::Data<ServerState>,
+    state: ServerState,
 ) -> Result<(), WebsocketError> {
     let streams = state.fuel_streams.to_owned();
     let telemetry = state.telemetry.to_owned();
     let rate_limiter = state.api_keys_manager.rate_limiter().to_owned();
     let connection_checker = state.connection_checker.to_owned();
-    let mut ctx = WsSession::new(&api_key, telemetry, streams, rate_limiter);
-    let (tx, signal_rx) = mpsc::channel::<ConnectionSignal>(2);
-    connection_checker.register(ctx.to_owned(), tx).await;
+    let (tx, rx) = tokio::sync::mpsc::channel::<ConnectionSignal>(2);
+    connection_checker.register(&api_key, tx).await;
+
+    let ctx =
+        WsSession::new(&api_key, telemetry, streams, rate_limiter, socket);
+
     tracing::info!(
         %api_key,
         event = "websocket_connection_opened",
         "WebSocket connection opened"
     );
 
-    let action = handle_messages(
-        &mut ctx,
-        &mut session,
-        msg_stream,
-        &connection_checker,
-        signal_rx,
-    )
-    .await;
-
-    if let Some(ref action) = action {
-        match action {
-            CloseAction::Error(err) => {
-                ctx.send_error_msg(&mut session, err).await?;
-                ctx.clone().close_session(session, action).await;
-            }
-            _ => {
-                ctx.clone().close_session(session, action).await;
-            }
-        }
+    let action = handle_messages(&ctx, &connection_checker, rx).await?;
+    if let Some(action) = action {
+        ctx.close_session(&action).await
+    } else {
+        Ok(())
     }
-
-    connection_checker
-        .unregister(&api_key.id().to_string())
-        .await;
-
-    Ok(())
 }
 
 async fn handle_messages(
-    ctx: &mut WsSession,
-    session: &mut Session,
-    msg_stream: MessageStream,
+    ctx: &WsSession,
     connection_checker: &Arc<ConnectionChecker>,
-    mut signal_rx: mpsc::Receiver<ConnectionSignal>,
-) -> Option<CloseAction> {
-    let api_key_id = ctx.api_key().id().to_string();
-    let mut msg_stream = msg_stream.max_frame_size(ctx.max_frame_size());
-
-    let mut shutdown_rx = ctx.receiver();
+    mut signal_rx: Receiver<ConnectionSignal>,
+) -> Result<Option<CloseAction>, WebsocketError> {
+    let api_key_id = ctx.api_key();
+    let mut receiver = ctx.socket_receiver.lock().await;
     loop {
         tokio::select! {
-            Some(msg_result) = msg_stream.next() => {
-                match msg_result {
+            Some(msg) = receiver.next() => {
+                match msg {
                     Ok(Message::Text(text)) => {
-                        if text.trim().eq_ignore_ascii_case("disconnect") {
-                            let api_key = ctx.api_key();
-                            tracing::info!(%api_key, "Client requested disconnect");
-                            ctx.shutdown().await;
-                            return Some(CloseAction::Disconnect);
-                        }
-                        let msg = Bytes::from(text.as_bytes().to_vec());
-                        match handle_websocket_request(session, ctx, msg).await {
-                            Err(err) => return Some(CloseAction::Error(err)),
-                            Ok(Some(close_action)) => return Some(close_action),
+                        let encoded = text.as_bytes().to_vec().into();
+                        match handle_websocket_request(ctx, encoded).await {
+                            Err(err) => {
+                                let action = CloseAction::Error(err);
+                                return Ok(Some(action));
+                            }
+                            Ok(Some(close_action)) => {
+                                return Ok(Some(close_action));
+                            }
                             Ok(None) => {
-                                connection_checker
-                                    .update_heartbeat(&api_key_id)
-                                    .await;
+                                connection_checker.update_heartbeat(api_key_id).await;
+                                continue;
                             }
                         }
                     }
                     Ok(Message::Binary(bin)) => {
-                        match handle_websocket_request(session, ctx, bin).await {
-                            Err(err) => return Some(CloseAction::Error(err)),
-                            Ok(Some(close_action)) => return Some(close_action),
+                        match handle_websocket_request(ctx, bin).await {
+                            Err(err) => {
+                                let action = CloseAction::Error(err);
+                                return Ok(Some(action));
+                            }
+                            Ok(Some(close_action)) => {
+                                return Ok(Some(close_action));
+                            }
                             Ok(None) => {
-                                connection_checker
-                                    .update_heartbeat(&api_key_id)
-                                    .await;
+                                connection_checker.update_heartbeat(api_key_id).await;
+                                continue;
                             }
                         }
                     }
                     Ok(Message::Close(reason)) => {
-                        let api_key = ctx.api_key();
-                        tracing::info!(%api_key, "Client sent close frame");
-                        let close_action = match reason {
-                            Some(reason) => CloseAction::Closed(reason),
+                        tracing::info!(api_key = %ctx.api_key(), close_frame = ?reason, "Client sent close frame");
+                        let action = match reason {
+                            Some(frame) => CloseAction::Closed(frame),
                             None => CloseAction::Disconnect,
                         };
-                        ctx.shutdown().await;
-                        return Some(close_action);
+                        return Ok(Some(action));
                     }
                     Ok(Message::Ping(data)) => {
                         tracing::debug!(api_key = %ctx.api_key(), "Received client ping: {:?}", data);
-                        connection_checker.update_heartbeat(&api_key_id).await;
+                        connection_checker.update_heartbeat(api_key_id).await;
                     }
                     Ok(Message::Pong(data)) => {
                         tracing::debug!(api_key = %ctx.api_key(), "Received client pong: {:?}", data);
-                        connection_checker.update_heartbeat(&api_key_id).await;
-                    }
-                    Ok(Message::Continuation(_)) => {
-                        tracing::debug!(api_key = %ctx.api_key(), "Received client continuation");
-                        connection_checker.update_heartbeat(&api_key_id).await;
-                    }
-                    Ok(Message::Nop) => {
-                        tracing::debug!(api_key = %ctx.api_key(), "Received client nop");
-                        connection_checker.update_heartbeat(&api_key_id).await;
+                        connection_checker.update_heartbeat(api_key_id).await;
                     }
                     Err(err) => {
-                        let api_key = ctx.api_key();
-                        tracing::error!(%api_key, error = %err, "WebSocket protocol error");
-                        ctx.shutdown().await;
-                        return Some(CloseAction::Error(WebsocketError::from(err)));
+                        tracing::error!(api_key = %ctx.api_key(), error = %err, "WebSocket protocol error");
+                        let action = CloseAction::Error(WebsocketError::from(err));
+                        return Ok(Some(action));
                     }
                 }
             }
             Some(signal) = signal_rx.recv() => {
-                let api_key = ctx.api_key();
                 match signal {
                     ConnectionSignal::Ping => {
-                        if let Err(err) = session.ping(b"").await {
-                            tracing::error!(%api_key, "Failed to send ping: {}", err);
-                            ctx.shutdown().await;
-                            return Some(CloseAction::Error(
-                                WebsocketError::SendError,
-                            ));
+                        let message = Message::Ping(axum::body::Bytes::new());
+                        if let Err(err) = ctx.send_socket_message(message).await {
+                            match err {
+                                WebsocketError::ClosedWithReason { .. } => {
+                                    return Ok(None);
+                                }
+                                WebsocketError::Closed(_) => {
+                                    return Ok(None);
+                                }
+                                _ => {
+                                    tracing::error!(api_key = %ctx.api_key(), "Failed to send ping: {}", err);
+                                    let action = CloseAction::Timeout;
+                                    return Ok(Some(action));
+                                }
+                            }
                         }
                     }
                     ConnectionSignal::Timeout => {
-                        tracing::info!(%api_key, "Heartbeat timeout detected");
-                        ctx.shutdown().await;
-                        return Some(CloseAction::Timeout);
+                        tracing::info!(api_key = %ctx.api_key(), "Heartbeat timeout detected");
+                        let action = CloseAction::Timeout;
+                        return Ok(Some(action));
                     }
                 }
             }
-            // Watch for shutdown signal
-            _ = shutdown_rx.changed() => {
-                if !*shutdown_rx.borrow() {
-                    // Shutdown signal (false)
-                    let api_key = ctx.api_key();
-                    tracing::info!(%api_key, "Subscription task requested closure");
-                    return Some(CloseAction::Error(WebsocketError::SendError));
-                }
-            }
             else => {
-                // All streams have ended
-                let api_key = ctx.api_key();
-                tracing::info!(%api_key, "All streams closed, client disconnected");
-                ctx.shutdown().await;
-                return Some(CloseAction::Disconnect);
+                tracing::info!(api_key = %ctx.api_key(), "All streams closed, client disconnected");
+                let action = CloseAction::Disconnect;
+                return Ok(Some(action));
             }
         }
     }
 }
 
 async fn handle_websocket_request(
-    session: &mut Session,
-    ctx: &mut WsSession,
-    msg: Bytes,
+    ctx: &WsSession,
+    msg: axum::body::Bytes,
 ) -> Result<Option<CloseAction>, WebsocketError> {
-    tracing::info!("Received binary {:?}", msg);
+    tracing::info!("Received message: {:?}", msg);
     let server_request: ServerRequest = msg.as_ref().try_into()?;
     match server_request {
         ServerRequest::Subscribe(_) => {
-            subscribe_mult(session, ctx, &server_request).await?;
+            subscribe_mult(ctx, &server_request).await?;
             Ok(None)
         }
         ServerRequest::Unsubscribe(_) => {
-            unsubscribe_mult(session, ctx, &server_request).await?;
+            unsubscribe_mult(ctx, &server_request).await?;
             Ok(None)
         }
     }

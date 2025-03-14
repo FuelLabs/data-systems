@@ -1,4 +1,8 @@
-use actix_web::{http::StatusCode, web, HttpRequest, HttpResponse, Result};
+use axum::{
+    extract::{Json, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use fuel_web_utils::api_key::{
     ApiKey,
     ApiKeyError,
@@ -9,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use validator::Validate;
 
+// Assuming this is your server state struct
 use crate::server::state::ServerState;
 
 #[derive(Debug, thiserror::Error)]
@@ -19,17 +24,16 @@ pub enum Error {
     Validation(#[from] validator::ValidationErrors),
 }
 
-impl From<Error> for actix_web::Error {
-    fn from(err: Error) -> Self {
-        match err {
-            Error::ApiKey(e) => actix_web::error::InternalError::new(
-                e,
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into(),
+// Implement IntoResponse for custom error handling
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        match self {
+            Error::ApiKey(e) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                    .into_response()
+            }
             Error::Validation(e) => {
-                actix_web::error::InternalError::new(e, StatusCode::BAD_REQUEST)
-                    .into()
+                (StatusCode::BAD_REQUEST, e.to_string()).into_response()
             }
         }
     }
@@ -44,19 +48,19 @@ pub struct GenerateApiKeyRequest {
 
 async fn insert_api_key(
     request: &GenerateApiKeyRequest,
-    tx: &Pool<Postgres>,
+    pool: &Pool<Postgres>,
 ) -> Result<ApiKey, ApiKeyError> {
-    let api_key = ApiKey::create(tx, &request.username, &request.role).await?;
+    let api_key =
+        ApiKey::create(pool, &request.username, &request.role).await?;
     Ok(api_key)
 }
 
+// Handler function for Axum
 pub async fn generate_api_key(
-    _req: HttpRequest,
-    req_body: web::Json<GenerateApiKeyRequest>,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<HttpResponse> {
-    let req = req_body.into_inner();
+    State(state): State<ServerState>,
+    Json(req): Json<GenerateApiKeyRequest>,
+) -> Result<Json<ApiKey>, Error> {
     req.validate().map_err(Error::Validation)?;
     let db_record = insert_api_key(&req, &state.db.pool).await?;
-    Ok(HttpResponse::Ok().json(db_record))
+    Ok(Json(db_record))
 }

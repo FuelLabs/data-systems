@@ -1,4 +1,9 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use axum::{
+    extract::{FromRequest, FromRequestParts, State},
+    http::{request::Parts, Request},
+    response::IntoResponse,
+    Json,
+};
 use fuel_streams_core::types::{
     Address,
     AssetId,
@@ -13,15 +18,52 @@ use fuel_streams_domains::{
 };
 use fuel_web_utils::api_key::ApiKey;
 
-use super::{Error, GetDataResponse};
-use crate::server::state::ServerState;
+use crate::server::{
+    errors::ApiError,
+    routes::GetDataResponse,
+    state::ServerState,
+};
+
+pub struct ReceiptTypeVariant(Option<ReceiptType>);
+
+impl<S> FromRequestParts<S> for ReceiptTypeVariant
+where
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let path = parts.uri.path();
+        let variant = match path {
+            p if p.ends_with("/call") => Some(ReceiptType::Call),
+            p if p.ends_with("/return") => Some(ReceiptType::Return),
+            p if p.ends_with("/return_data") => Some(ReceiptType::ReturnData),
+            p if p.ends_with("/panic") => Some(ReceiptType::Panic),
+            p if p.ends_with("/revert") => Some(ReceiptType::Revert),
+            p if p.ends_with("/log") => Some(ReceiptType::Log),
+            p if p.ends_with("/log_data") => Some(ReceiptType::LogData),
+            p if p.ends_with("/transfer") => Some(ReceiptType::Transfer),
+            p if p.ends_with("/transfer_out") => Some(ReceiptType::TransferOut),
+            p if p.ends_with("/script_result") => {
+                Some(ReceiptType::ScriptResult)
+            }
+            p if p.ends_with("/message_out") => Some(ReceiptType::MessageOut),
+            p if p.ends_with("/mint") => Some(ReceiptType::Mint),
+            p if p.ends_with("/burn") => Some(ReceiptType::Burn),
+            _ => None,
+        };
+        Ok(ReceiptTypeVariant(variant))
+    }
+}
 
 #[utoipa::path(
     get,
     path = "/receipts",
     tag = "receipts",
     params(
-        // ReceiptsQuery fields
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
         ("receiptIndex" = Option<i32>, Query, description = "Filter by receipt index"),
@@ -35,7 +77,6 @@ use crate::server::state::ServerState;
         ("recipient" = Option<Address>, Query, description = "Filter by recipient address"),
         ("subId" = Option<Bytes32>, Query, description = "Filter by sub ID"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
-        // Flattened QueryPagination fields
         ("after" = Option<i32>, Query, description = "Return receipts after this height"),
         ("before" = Option<i32>, Query, description = "Return receipts before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
@@ -51,18 +92,19 @@ use crate::server::state::ServerState;
     )
 )]
 pub async fn get_receipts(
-    req: HttpRequest,
-    req_query: ValidatedQuery<ReceiptsQuery>,
-    state: web::Data<ServerState>,
-    queried_receipt_type: Option<ReceiptType>,
-) -> actix_web::Result<HttpResponse> {
+    State(state): State<ServerState>,
+    variant: ReceiptTypeVariant,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
     let _api_key = ApiKey::from_req(&req)?;
-    let mut query = req_query.into_inner();
-    query.set_receipt_type(queried_receipt_type);
+    let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
+    query.set_receipt_type(variant.0); // Use the extracted variant
     let response: GetDataResponse = query
         .execute(&state.db.pool)
         .await
-        .map_err(Error::Sqlx)?
+        .map_err(ApiError::Sqlx)?
         .try_into()?;
-    Ok(HttpResponse::Ok().json(response))
+    Ok(Json(response))
 }

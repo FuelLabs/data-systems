@@ -16,11 +16,9 @@ name = "sv-webserver"
 path = "src/main.rs"
 
 [dependencies]
-actix-web.workspace = true
-actix-ws = "0.3.0"
 anyhow.workspace = true
 async-trait.workspace = true
-bytes.workspace = true
+axum.workspace = true
 clap.workspace = true
 dashmap.workspace = true
 displaydoc.workspace = true

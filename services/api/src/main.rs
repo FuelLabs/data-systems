@@ -1,12 +1,12 @@
-use fuel_web_utils::server::api::ApiServerBuilder;
+use fuel_web_utils::server::server_builder::ServerBuilder;
 use sv_api::{
     config::Config,
-    server::{handlers, state::ServerState},
+    server::{routes::create_routes, state::ServerState},
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // init tracing
     tracing_subscriber::fmt()
@@ -23,11 +23,12 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let config = Config::load()?;
-    let server_state = ServerState::new(&config).await?;
-    let server = ApiServerBuilder::new(config.api.port, server_state.clone())
-        .with_dynamic_routes(handlers::create_services(server_state))
-        .build()?;
+    let state = ServerState::new(&config).await?;
+    let router = create_routes(&state);
+    ServerBuilder::build(&state, config.api.port)
+        .with_router(router)
+        .run()
+        .await?;
 
-    server.await?;
     Ok(())
 }

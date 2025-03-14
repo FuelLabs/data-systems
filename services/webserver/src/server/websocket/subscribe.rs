@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_ws::Session;
+use axum::extract::ws::Message;
 use fuel_streams_core::{
     prelude::IntoSubject,
     server::{ServerResponse, Subscription},
@@ -12,10 +12,17 @@ use fuel_streams_core::{
 use fuel_streams_domains::Subjects;
 use fuel_streams_store::record::RecordEntity;
 use fuel_web_utils::api_key::{ApiKey, ApiKeyRole};
-use futures::stream::{SelectAll, StreamExt};
+use futures::{
+    stream::{SelectAll, StreamExt},
+    SinkExt,
+};
 use smallvec::SmallVec;
 
-use crate::server::{errors::WebsocketError, websocket::WsSession};
+use crate::server::{
+    errors::WebsocketError,
+    handlers::websocket::CloseAction,
+    websocket::WsSession,
+};
 
 type CombinedStream = SelectAll<
     Box<
@@ -26,12 +33,11 @@ type CombinedStream = SelectAll<
 >;
 
 pub async fn subscribe_mult(
-    session: &mut Session,
-    ctx: &mut WsSession,
+    ctx: &WsSession,
     server_request: &ServerRequest,
 ) -> Result<(), WebsocketError> {
-    let api_key = ctx.api_key();
-    let subscriptions = server_request.subscriptions(api_key);
+    let api_key = ctx.api_key().clone();
+    let subscriptions = server_request.subscriptions(&api_key);
     let mut streams = SmallVec::<[BoxedStream; 20]>::new();
     let mut subscribed_msgs: SmallVec<[ServerResponse; 20]> = SmallVec::new();
 
@@ -49,84 +55,86 @@ pub async fn subscribe_mult(
         streams.push(sub);
     }
 
-    let combined_stream = futures::stream::select_all(streams);
-    actix_web::rt::spawn({
-        let ctx = ctx.to_owned();
-        let api_key = api_key.to_owned();
-        let mut session = session.to_owned();
-        async move {
-            if !subscribed_msgs.is_empty() {
-                let msg_encoded = serde_json::to_vec(&subscribed_msgs)
-                    .map_err(WebsocketError::Serde)?;
-                session.binary(msg_encoded).await?;
-                process_subscription(
-                    &mut session,
-                    &ctx,
-                    &api_key,
-                    combined_stream,
-                )
-                .await;
+    if !subscribed_msgs.is_empty() {
+        let combined_stream = futures::stream::select_all(streams);
+        send_subscribed_msgs(ctx, &subscribed_msgs).await?;
+        tokio::spawn({
+            let api_key = api_key.clone();
+            let ctx = ctx.clone();
+            async move {
+                process_subscription(&ctx, &api_key, combined_stream).await
             }
-            Ok::<(), WebsocketError>(())
-        }
-    });
+        });
+    }
 
-    tracing::info!(%api_key, "Subscription task started for all subscriptions");
+    tracing::info!(%api_key, "Subscription processing completed");
+    Ok(())
+}
+
+async fn send_subscribed_msgs(
+    ctx: &WsSession,
+    subscribed_msgs: &[ServerResponse],
+) -> Result<(), WebsocketError> {
+    let msg_encoded =
+        serde_json::to_vec(&subscribed_msgs).map_err(WebsocketError::Serde)?;
+    let msg_encoded = axum::body::Bytes::from(msg_encoded);
+    {
+        let mut sender = ctx.socket_sender.lock().await;
+        sender.send(Message::Binary(msg_encoded)).await?;
+    }
     Ok(())
 }
 
 async fn process_subscription(
-    session: &mut Session,
     ctx: &WsSession,
     api_key: &ApiKey,
     mut stream: CombinedStream,
-) {
+) -> Result<(), WebsocketError> {
     let mut shutdown_rx = ctx.receiver();
+    tracing::debug!(%api_key, "Starting subscription task, initial shutdown_rx: {}", *shutdown_rx.borrow());
+
     loop {
         tokio::select! {
-            Some(stream_result) = stream.next() => {
-                match stream_result {
-                    Ok(result) => {
+            result = stream.next() => {
+                match result {
+                    Some(Ok(result)) => {
                         tracing::debug!("Received message from stream: {:?}", result);
                         let payload = ServerResponse::Response(result);
-                        if let Err(err) = ctx.send_message(session, payload).await {
+                        if let Err(err) = ctx.send_message(payload).await {
                             match err {
-                                WebsocketError::Closed(_) => {
-                                    tracing::info!(%api_key, "Session closed, exiting subscription task");
-                                    break;
+                                WebsocketError::ClosedWithReason { .. } => {
+                                    return Ok(());
                                 }
-                                err => {
-                                    tracing::error!(%api_key, "Failed to send message: {}", err);
-                                    ctx.shutdown().await;
-                                    break;
+                                WebsocketError::Closed(_) => {
+                                    return Ok(());
+                                }
+                                _ => {
+                                    tracing::error!(api_key = %ctx.api_key(), "Failed to send message: {}", err);
+                                    ctx.close_session(&CloseAction::Error(err)).await?;
+                                    return Ok(());
                                 }
                             }
                         }
                     }
-                    Err(err) => {
+                    Some(Err(err)) => {
                         tracing::error!(%api_key, "Stream error: {}", err);
-                        ctx.shutdown().await;
-                        break;
+                        ctx.close_session(&CloseAction::Error(err.into())).await?;
+                        return Ok(());
+                    }
+                    None => {
+                        tracing::info!(%api_key, "All streams ended, cleaning up subscriptions");
+                        return Ok(());
                     }
                 }
             }
             _ = shutdown_rx.changed() => {
                 if !*shutdown_rx.borrow() {
                     tracing::info!(%api_key, "Received shutdown signal, exiting subscription task");
-                    ctx.shutdown().await;
-                    break;
+                    return Ok(());
                 }
-            }
-            else => {
-                tracing::info!(%api_key, "All streams ended, cleaning up subscriptions");
-                ctx.shutdown().await;
-                break;
             }
         }
     }
-
-    tracing::info!(%api_key, "All streams ended or shutdown, cleaning up subscriptions");
-    ctx.shutdown().await;
 }
 
 async fn create_subscriber(

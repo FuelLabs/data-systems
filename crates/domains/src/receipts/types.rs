@@ -411,23 +411,29 @@ pub enum ReceiptType {
     Burn,
 }
 
+impl ReceiptType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ReceiptType::Call => "call",
+            ReceiptType::Return => "return",
+            ReceiptType::ReturnData => "return_data",
+            ReceiptType::Panic => "panic",
+            ReceiptType::Revert => "revert",
+            ReceiptType::Log => "log",
+            ReceiptType::LogData => "log_data",
+            ReceiptType::Transfer => "transfer",
+            ReceiptType::TransferOut => "transfer_out",
+            ReceiptType::ScriptResult => "script_result",
+            ReceiptType::MessageOut => "message_out",
+            ReceiptType::Mint => "mint",
+            ReceiptType::Burn => "burn",
+        }
+    }
+}
+
 impl std::fmt::Display for ReceiptType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ReceiptType::Call => write!(f, "call"),
-            ReceiptType::Return => write!(f, "return"),
-            ReceiptType::ReturnData => write!(f, "return_data"),
-            ReceiptType::Panic => write!(f, "panic"),
-            ReceiptType::Revert => write!(f, "revert"),
-            ReceiptType::Log => write!(f, "log"),
-            ReceiptType::LogData => write!(f, "log_data"),
-            ReceiptType::Transfer => write!(f, "transfer"),
-            ReceiptType::TransferOut => write!(f, "transfer_out"),
-            ReceiptType::ScriptResult => write!(f, "script_result"),
-            ReceiptType::MessageOut => write!(f, "message_out"),
-            ReceiptType::Mint => write!(f, "mint"),
-            ReceiptType::Burn => write!(f, "burn"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
