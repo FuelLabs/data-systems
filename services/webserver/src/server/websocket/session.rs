@@ -118,11 +118,11 @@ impl MetricsHandler {
 }
 
 #[derive(Clone)]
-struct SubscriptionManager {
+pub struct SubscriptionManager {
     api_key: ApiKey,
     start_time: Instant,
     sender: watch::Sender<bool>,
-    active_subscriptions: Arc<DashMap<Subscription, ()>>,
+    pub active_subscriptions: Arc<DashMap<Subscription, ()>>,
     metrics_handler: MetricsHandler,
     rate_limiter: Arc<RateLimitsController>,
 }
@@ -162,10 +162,17 @@ impl SubscriptionManager {
         &self,
         subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
+        let api_key = self.api_key.clone();
         self.active_subscriptions.insert(subscription.clone(), ());
-        self.rate_limiter.add_active_key_sub(self.api_key.id());
+        self.rate_limiter.add_active_key_sub(api_key.id());
         self.metrics_handler
             .track_subscription(subscription, SubscriptionChange::Added);
+
+        let api_key_id = api_key.id();
+        let api_key_role = api_key.role();
+        self.rate_limiter
+            .check_subscriptions(api_key_id, api_key_role)?;
+
         Ok(())
     }
 
@@ -197,7 +204,7 @@ impl SubscriptionManager {
 pub struct WsSession {
     api_key: ApiKey,
     messaging: MessageHandler,
-    subscription_manager: SubscriptionManager,
+    pub subscription_manager: SubscriptionManager,
     pub streams: Arc<FuelStreams>,
     pub socket_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
     pub socket_receiver: Arc<Mutex<SplitStream<WebSocket>>>,

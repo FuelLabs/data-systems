@@ -47,7 +47,6 @@ thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 validator = { version = "0.19", features = ["derive"] }
 
 # in an individual package Cargo.toml

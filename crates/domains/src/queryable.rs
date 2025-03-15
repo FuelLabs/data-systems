@@ -181,19 +181,14 @@ impl<T> ValidatedQuery<T> {
 pub enum QueryableError {
     #[error("Bad request: {0}")]
     BadRequest(String),
-
     #[error("Cannot specify both 'first' and 'last' pagination parameters")]
     BothFirstAndLastSpecified,
-
     #[error("'first' cannot exceed {0}")]
     FirstExceedsMaximum(i32),
-
     #[error("'last' cannot exceed {0}")]
     LastExceedsMaximum(i32),
-
     #[error("Either 'first' or 'last' pagination parameter must be specified")]
     NeitherFirstNorLastSpecified,
-
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 }

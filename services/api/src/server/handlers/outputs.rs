@@ -85,7 +85,9 @@ pub async fn get_outputs(
     let mut query = ValidatedQuery::<OutputsQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    query.set_output_type(variant.0);
+    if let Some(output_type) = variant.0 {
+        query.set_output_type(Some(output_type));
+    }
     let response: GetDataResponse =
         query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))

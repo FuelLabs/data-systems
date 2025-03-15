@@ -165,7 +165,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .layer(from_fn_with_state((manager, db), ApiKeyMiddleware::handler))
         .layer(from_fn(validate_scope_middleware))
+        .layer(from_fn_with_state((manager, db), ApiKeyMiddleware::handler))
         .with_state(state.clone())
 }

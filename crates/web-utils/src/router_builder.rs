@@ -43,7 +43,8 @@ impl<S: Send + Sync + Clone + 'static> RouterBuilder<S> {
         handler: MethodRouter<S>,
     ) -> Self {
         for route in routes {
-            self.router = self.router.route(route, handler.clone())
+            let route = format!("/{}", route);
+            self.router = self.router.route(&route, handler.clone())
         }
         self
     }

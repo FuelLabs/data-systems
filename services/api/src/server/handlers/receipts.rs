@@ -98,7 +98,9 @@ pub async fn get_receipts(
     let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    query.set_receipt_type(variant.0); // Use the extracted variant
+    if let Some(receipt_type) = variant.0 {
+        query.set_receipt_type(Some(receipt_type));
+    }
     let response: GetDataResponse =
         query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))

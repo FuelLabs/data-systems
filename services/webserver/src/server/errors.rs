@@ -1,4 +1,4 @@
-use axum::extract::ws::{CloseFrame, WebSocket};
+use axum::extract::ws;
 use fuel_streams_core::{
     prelude::SubjectPayloadError,
     stream::StreamError,
@@ -10,8 +10,10 @@ use fuel_streams_store::{
     record::{EncoderError, RecordEntityError},
     store::StoreError,
 };
+use fuel_web_utils::api_key::ApiKeyError;
 use futures::stream::ReuniteError;
 use tokio::task::JoinError;
+use ws::{CloseFrame, WebSocket};
 
 /// Ws Subscription-related errors
 #[derive(Debug, thiserror::Error)]
@@ -56,7 +58,9 @@ pub enum WebsocketError {
     #[error(transparent)]
     RecordEntity(#[from] RecordEntityError),
     #[error(transparent)]
-    ReuniteError(#[from] ReuniteError<WebSocket, axum::extract::ws::Message>),
+    ReuniteError(#[from] ReuniteError<WebSocket, ws::Message>),
+    #[error(transparent)]
+    ApiKey(#[from] ApiKeyError),
 }
 
 impl From<WebsocketError> for Option<CloseFrame> {
@@ -71,7 +75,7 @@ impl From<WebsocketError> for Option<CloseFrame> {
             | WebsocketError::Store(_)
             | WebsocketError::SendError
             | WebsocketError::ReuniteError(_) => Some(CloseFrame {
-                code: axum::extract::ws::close_code::UNSUPPORTED,
+                code: ws::close_code::UNSUPPORTED,
                 reason: error.to_string().into(),
             }),
 
@@ -79,7 +83,7 @@ impl From<WebsocketError> for Option<CloseFrame> {
             WebsocketError::Encoder(_)
             | WebsocketError::SubjectPayload(_)
             | WebsocketError::MessagePayload(_) => Some(CloseFrame {
-                code: axum::extract::ws::close_code::INVALID,
+                code: ws::close_code::INVALID,
                 reason: error.to_string().into(),
             }),
 
@@ -87,14 +91,14 @@ impl From<WebsocketError> for Option<CloseFrame> {
             WebsocketError::Serde(_)
             | WebsocketError::ServerRequest(_)
             | WebsocketError::UnsupportedMessageType => Some(CloseFrame {
-                code: axum::extract::ws::close_code::UNSUPPORTED,
+                code: ws::close_code::UNSUPPORTED,
                 reason: error.to_string().into(),
             }),
 
             // Away type (1001)
             WebsocketError::Closed(_) | WebsocketError::Timeout => {
                 Some(CloseFrame {
-                    code: axum::extract::ws::close_code::AWAY,
+                    code: ws::close_code::AWAY,
                     reason: error.to_string().into(),
                 })
             }
@@ -107,16 +111,21 @@ impl From<WebsocketError> for Option<CloseFrame> {
                 })
             }
             WebsocketError::Axum(_) => Some(CloseFrame {
-                code: axum::extract::ws::close_code::UNSUPPORTED,
+                code: ws::close_code::UNSUPPORTED,
                 reason: error.to_string().into(),
             }),
             WebsocketError::Subjects(_) => Some(CloseFrame {
-                code: axum::extract::ws::close_code::UNSUPPORTED,
+                code: ws::close_code::UNSUPPORTED,
                 reason: error.to_string().into(),
             }),
             WebsocketError::RecordEntity(_) => Some(CloseFrame {
-                code: axum::extract::ws::close_code::UNSUPPORTED,
+                code: ws::close_code::UNSUPPORTED,
                 reason: error.to_string().into(),
+            }),
+
+            WebsocketError::ApiKey(_) => Some(CloseFrame {
+                code: ws::close_code::UNSUPPORTED,
+                reason: "API KEY error when trying to subscribe".into(),
             }),
         }
     }

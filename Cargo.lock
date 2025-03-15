@@ -9456,7 +9456,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "utoipa",
  "validator 0.20.0",
 ]
@@ -9547,7 +9546,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "validator 0.19.0",
 ]
 

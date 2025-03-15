@@ -83,7 +83,9 @@ pub async fn get_inputs(
     let mut query = ValidatedQuery::<InputsQuery>::from_request(req, &state)
         .await?
         .into_inner();
-    query.set_input_type(variant.0); // Use the extracted variant
+    if let Some(input_type) = variant.0 {
+        query.set_input_type(Some(input_type));
+    }
     let response: GetDataResponse =
         query.execute(&state.db.pool).await?.try_into()?;
     Ok(Json(response))

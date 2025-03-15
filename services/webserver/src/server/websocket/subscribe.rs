@@ -92,7 +92,6 @@ async fn process_subscription(
 ) -> Result<(), WebsocketError> {
     let mut shutdown_rx = ctx.receiver();
     tracing::debug!(%api_key, "Starting subscription task, initial shutdown_rx: {}", *shutdown_rx.borrow());
-
     loop {
         tokio::select! {
             result = stream.next() => {
