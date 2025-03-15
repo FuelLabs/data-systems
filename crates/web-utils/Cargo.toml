@@ -11,15 +11,12 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-actix-cors.workspace = true
-actix-server.workspace = true
-actix-service = "2.0.2"
-actix-web.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
+axum.workspace = true
 chrono.workspace = true
 dashmap = "6.1.0"
-derive_more = { version = "1.0", features = ["full"] }
+derive_more = { version = "2.0.1", features = ["full"] }
 displaydoc.workspace = true
 dotenvy.workspace = true
 elasticsearch = "8.15.0-alpha.1"
@@ -29,6 +26,7 @@ fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+hyper = "1.6.0"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand.workspace = true
@@ -36,21 +34,16 @@ rust_decimal = { version = "1.13" }
 serde.workspace = true
 serde_json.workspace = true
 serde_prometheus = { version = "0.2" }
-sqlx = { workspace = true, default-features = false, features = [
-  "any",
-  "macros",
-  "postgres",
-  "runtime-tokio",
-  "tls-native-tls",
-] }
+sqlx.workspace = true
 strum.workspace = true
 sysinfo = { version = "0.29" }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tokio-util = "0.7.13"
+tower.workspace = true
+tower-http.workspace = true
 tracing.workspace = true
-tracing-actix-web.workspace = true
 tracing-subscriber.workspace = true
 url = "2.5"
 urlencoding = "2.1"

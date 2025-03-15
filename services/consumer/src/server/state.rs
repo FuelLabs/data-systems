@@ -9,6 +9,7 @@ use fuel_web_utils::{server::state::StateProvider, telemetry::Telemetry};
 
 use crate::metrics::Metrics;
 
+#[derive(Clone)]
 pub struct ServerState {
     pub start_time: Instant,
     pub msg_broker: Arc<NatsMessageBroker>,

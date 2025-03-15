@@ -1,7 +1,9 @@
-use actix_web::{dev::Payload, web, Error, FromRequest, HttpRequest};
 use async_trait::async_trait;
+use axum::{
+    extract::{FromRequestParts, Query as AxumQuery},
+    http::{request::Parts, StatusCode},
+};
 use fuel_streams_store::{db::DbItem, record::RecordPointer};
-use futures::future::{ready, Ready};
 use sea_query::{
     Asterisk,
     Condition,
@@ -19,7 +21,6 @@ use utoipa::ToSchema;
 pub const MAX_FIRST: i32 = 100;
 pub const MAX_LAST: i32 = 100;
 
-// NOTE: https://docs.rs/serde_qs/0.14.0/serde_qs/index.html#flatten-workaround
 #[serde_as]
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, ToSchema,
@@ -99,10 +100,8 @@ pub trait Queryable: Sized + 'static {
 
     fn build_query(&self) -> SelectStatement {
         let mut condition = self.build_condition();
-
         let pagination = self.pagination();
 
-        // Add after/before conditions
         if let Some(after) = pagination.after() {
             condition =
                 condition.add(Expr::col(Self::pagination_column()).gt(after));
@@ -113,24 +112,23 @@ pub trait Queryable: Sized + 'static {
                 condition.add(Expr::col(Self::pagination_column()).lt(before));
         }
 
-        let mut query_builder = Query::select();
-        let mut query = query_builder
+        let mut query = Query::select();
+        query
             .column(Asterisk)
             .from(Self::table())
             .cond_where(condition);
 
-        // Add first/last conditions
         if let Some(first) = pagination.first() {
-            query = query
+            query
                 .order_by(Self::pagination_column(), Order::Asc)
                 .limit(first as u64);
         } else if let Some(last) = pagination.last() {
-            query = query
+            query
                 .order_by(Self::pagination_column(), Order::Desc)
                 .limit(last as u64);
         }
 
-        query.to_owned()
+        query
     }
 
     fn build_condition(&self) -> Condition;
@@ -148,7 +146,7 @@ pub trait Queryable: Sized + 'static {
     async fn execute<'c, E>(
         &self,
         executor: E,
-    ) -> Result<Vec<Self::Record>, sqlx::Error>
+    ) -> Result<Vec<Self::Record>, QueryableError>
     where
         E: sqlx::Executor<'c, Database = sqlx::Postgres>,
     {
@@ -157,6 +155,7 @@ pub trait Queryable: Sized + 'static {
         sqlx::query_as::<_, Self::Record>(&sql)
             .fetch_all(executor)
             .await
+            .map_err(QueryableError::from)
     }
 }
 
@@ -178,62 +177,83 @@ impl<T> ValidatedQuery<T> {
     }
 }
 
-impl<T> FromRequest for ValidatedQuery<T>
-where
-    T: serde::de::DeserializeOwned + HasPagination,
-{
-    type Error = Error;
-    type Future = Ready<Result<Self, Self::Error>>;
+#[derive(Debug, thiserror::Error)]
+pub enum QueryableError {
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+    #[error("Cannot specify both 'first' and 'last' pagination parameters")]
+    BothFirstAndLastSpecified,
+    #[error("'first' cannot exceed {0}")]
+    FirstExceedsMaximum(i32),
+    #[error("'last' cannot exceed {0}")]
+    LastExceedsMaximum(i32),
+    #[error("Either 'first' or 'last' pagination parameter must be specified")]
+    NeitherFirstNorLastSpecified,
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+}
 
-    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        let query = web::Query::<T>::from_query(req.query_string());
-
-        match query {
-            Ok(q) => {
-                // Get pagination and validate
-                let pagination = q.pagination();
-
-                match (pagination.first, pagination.last) {
-                    (Some(_first), Some(_last)) => {
-                        return ready(Err(actix_web::error::ErrorBadRequest(
-                            "Cannot specify both 'first' and 'last' pagination parameters"
-                        )));
-                    }
-                    (Some(first), None) => {
-                        if first > MAX_FIRST {
-                            return ready(Err(
-                                actix_web::error::ErrorBadRequest(format!(
-                                    "'first' cannot exceed {}",
-                                    MAX_FIRST
-                                )),
-                            ));
-                        }
-                    }
-                    (None, Some(last)) => {
-                        if last > MAX_LAST {
-                            return ready(Err(
-                                actix_web::error::ErrorBadRequest(format!(
-                                    "'last' cannot exceed {}",
-                                    MAX_LAST
-                                )),
-                            ));
-                        }
-                    }
-                    _ => {
-                        return ready(Err(actix_web::error::ErrorBadRequest(
-                            "Either 'first' or 'last' pagination parameter must be specified"
-                        )));
-                    }
-                }
-
-                ready(Ok(ValidatedQuery(q.into_inner())))
+impl axum::response::IntoResponse for QueryableError {
+    fn into_response(self) -> axum::response::Response {
+        let status = match self {
+            QueryableError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            QueryableError::BothFirstAndLastSpecified => {
+                StatusCode::BAD_REQUEST
             }
-            Err(e) => ready(Err(actix_web::error::ErrorBadRequest(e))),
-        }
+            QueryableError::FirstExceedsMaximum(_) => StatusCode::BAD_REQUEST,
+            QueryableError::LastExceedsMaximum(_) => StatusCode::BAD_REQUEST,
+            QueryableError::NeitherFirstNorLastSpecified => {
+                StatusCode::BAD_REQUEST
+            }
+            QueryableError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        let body = self.to_string();
+        (status, body).into_response()
     }
 }
 
-/// A trait to extract pagination from queries
+impl<S, T> FromRequestParts<S> for ValidatedQuery<T>
+where
+    S: Send + Sync,
+    T: serde::de::DeserializeOwned + HasPagination + Send + 'static,
+{
+    type Rejection = QueryableError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let query = AxumQuery::<T>::from_request_parts(parts, state)
+            .await
+            .map_err(|e| QueryableError::BadRequest(e.to_string()))?;
+
+        let q = query.0;
+        let pagination = q.pagination();
+
+        match (pagination.first, pagination.last) {
+            (Some(_first), Some(_last)) => {
+                return Err(QueryableError::BothFirstAndLastSpecified);
+            }
+            (Some(first), None) => {
+                if first > MAX_FIRST {
+                    return Err(QueryableError::FirstExceedsMaximum(MAX_FIRST));
+                }
+            }
+            (None, Some(last)) => {
+                if last > MAX_LAST {
+                    return Err(QueryableError::LastExceedsMaximum(MAX_LAST));
+                }
+            }
+            _ => {
+                return Err(QueryableError::NeitherFirstNorLastSpecified);
+            }
+        }
+
+        Ok(ValidatedQuery(q))
+    }
+}
+
 pub trait HasPagination {
     fn pagination(&self) -> &QueryPagination;
 }

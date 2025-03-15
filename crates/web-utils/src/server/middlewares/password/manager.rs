@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use actix_web::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use axum::http::{
+    header::{HeaderMap, AUTHORIZATION},
+    HeaderValue,
+};
+use urlencoding::decode;
 
 use super::PasswordVerificationError;
 
@@ -32,9 +36,9 @@ impl PasswordManager {
 
     pub fn password_from_headers(
         &self,
-        (headers, query_map): (HeaderMap, HashMap<String, String>),
+        headers: HeaderMap,
+        query_map: HashMap<String, String>,
     ) -> Result<String, PasswordVerificationError> {
-        // Add password from query params to headers if present
         let mut headers = headers;
         for (key, value) in query_map.iter() {
             if key.eq_ignore_ascii_case("password") {
@@ -59,15 +63,14 @@ impl PasswordManager {
         let token = headers
             .get(AUTHORIZATION)
             .ok_or(PasswordVerificationError::NotFound)?;
-        let token = match token.to_str() {
-            Ok(token) => token,
-            Err(_) => return Err(PasswordVerificationError::Invalid),
-        };
+        let token = token
+            .to_str()
+            .map_err(|_| PasswordVerificationError::Invalid)?;
 
         if !token.starts_with(BEARER) {
             return Err(PasswordVerificationError::Invalid);
         }
-        urlencoding::decode(token.trim_start_matches(BEARER))
+        decode(token.trim_start_matches(BEARER))
             .map_err(|_| PasswordVerificationError::Invalid)
             .map(|decoded| decoded.trim().to_string())
     }

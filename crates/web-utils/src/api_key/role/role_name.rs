@@ -13,6 +13,7 @@ use crate::api_key::ApiKeyError;
     PartialEq,
     Default,
     strum::EnumIter,
+    Hash,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiKeyRoleName {

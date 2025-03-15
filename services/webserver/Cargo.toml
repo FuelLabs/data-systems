@@ -16,11 +16,9 @@ name = "sv-webserver"
 path = "src/main.rs"
 
 [dependencies]
-actix-web.workspace = true
-actix-ws = "0.3.0"
 anyhow.workspace = true
 async-trait.workspace = true
-bytes.workspace = true
+axum.workspace = true
 clap.workspace = true
 dashmap.workspace = true
 displaydoc.workspace = true
@@ -49,7 +47,6 @@ thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 validator = { version = "0.19", features = ["derive"] }
 
 # in an individual package Cargo.toml

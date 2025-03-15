@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     convert::TryFrom,
     hash::Hash,
+    ops::Deref,
     path::PathBuf,
     time::Duration,
 };

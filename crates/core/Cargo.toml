@@ -38,7 +38,7 @@ serde_json.workspace = true
 
 [features]
 default = []
-openapi = ["utoipa/actix_extras"]
+openapi = ["utoipa/axum_extras"]
 test-helpers = [
   "fuel-core/test-helpers",
   "fuel-message-broker/test-helpers",

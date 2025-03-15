@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
-pub trait StateProvider: Send + Sync {
+pub trait StateProvider: Send + Sync + Clone + 'static {
     async fn is_healthy(&self) -> bool;
     async fn get_health(&self) -> serde_json::Value;
     async fn get_metrics(&self) -> String;

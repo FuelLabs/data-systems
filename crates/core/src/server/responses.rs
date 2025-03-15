@@ -20,7 +20,7 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
-use fuel_web_utils::server::api::API_VERSION;
+use fuel_web_utils::server::server_builder::API_VERSION;
 use serde::{Deserialize, Serialize};
 
 use crate::types::*;

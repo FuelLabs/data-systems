@@ -8,7 +8,7 @@ use fuel_streams_store::{
     store::{find_next_block_to_save, BlockHeightGap},
 };
 use fuel_web_utils::{
-    server::api::build_and_spawn_web_server,
+    server::server_builder::ServerBuilder,
     shutdown::{shutdown_broker_with_timeout, ShutdownController},
     telemetry::Telemetry,
 };
@@ -49,12 +49,11 @@ async fn main() -> anyhow::Result<()> {
 
     let server_state =
         ServerState::new(message_broker.clone(), Arc::clone(&telemetry));
-    let server_handle =
-        build_and_spawn_web_server(cli.telemetry_port, server_state).await?;
+    let server = ServerBuilder::build(&server_state, cli.telemetry_port);
 
     tokio::select! {
         result = async {
-            tokio::try_join!(
+            tokio::join!(
                 process_historical_blocks(
                     cli.from_height.into(),
                     &message_broker,
@@ -69,17 +68,17 @@ async fn main() -> anyhow::Result<()> {
                     &fuel_core,
                     shutdown.token().clone(),
                     &telemetry
-                )
+                ),
+                server.run()
             )
         } => {
-            result?;
+            result.0?;
+            result.1?;
+            result.2?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
             fuel_core.stop().await;
-            tracing::info!("Stopping actix server ...");
-            server_handle.stop(true).await;
-            tracing::info!("Actix server stopped. Goodbye!");
             shutdown_broker_with_timeout(&message_broker).await;
         }
     }

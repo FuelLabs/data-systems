@@ -1,4 +1,9 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use axum::{
+    extract::{FromRequest, Path, State},
+    http::Request,
+    response::IntoResponse,
+    Json,
+};
 use fuel_streams_core::types::{
     Address,
     AssetId,
@@ -19,17 +24,18 @@ use fuel_streams_domains::{
     receipts::queryable::ReceiptsQuery,
     transactions::queryable::TransactionsQuery,
 };
-use fuel_web_utils::api_key::ApiKey;
 
-use super::{Error, GetDataResponse};
-use crate::server::state::ServerState;
+use crate::server::{
+    errors::ApiError,
+    routes::GetDataResponse,
+    state::ServerState,
+};
 
 #[utoipa::path(
     get,
     path = "/transactions",
     tag = "transactions",
     params(
-        // TransactionsQuery fields
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
         ("txStatus" = Option<TransactionStatus>, Query, description = "Filter by transaction status"),
@@ -37,7 +43,6 @@ use crate::server::state::ServerState;
         ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
         ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
-        // Flattened QueryPagination fields
         ("after" = Option<i32>, Query, description = "Return transactions after this height"),
         ("before" = Option<i32>, Query, description = "Return transactions before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
@@ -53,18 +58,15 @@ use crate::server::state::ServerState;
     )
 )]
 pub async fn get_transactions(
-    req: HttpRequest,
-    req_query: ValidatedQuery<TransactionsQuery>,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<HttpResponse> {
-    let _api_key = ApiKey::from_req(&req)?;
-    let query = req_query.into_inner();
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(Error::Sqlx)?
-        .try_into()?;
-    Ok(HttpResponse::Ok().json(response))
+    State(state): State<ServerState>,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
+    let query = ValidatedQuery::<TransactionsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(
@@ -72,9 +74,7 @@ pub async fn get_transactions(
     path = "/transactions/{txId}/receipts",
     tag = "transactions",
     params(
-        // Path parameter
         ("txId" = String, Path, description = "Transaction ID"),
-        // ReceiptsQuery fields (excluding tx_id since it's in the path)
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
         ("receiptIndex" = Option<i32>, Query, description = "Filter by receipt index"),
         ("receiptType" = Option<ReceiptType>, Query, description = "Filter by receipt type"),
@@ -87,7 +87,6 @@ pub async fn get_transactions(
         ("recipient" = Option<Address>, Query, description = "Filter by recipient address"),
         ("subId" = Option<Bytes32>, Query, description = "Filter by sub ID"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
-        // Flattened QueryPagination fields
         ("after" = Option<i32>, Query, description = "Return receipts after this height"),
         ("before" = Option<i32>, Query, description = "Return receipts before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
@@ -104,21 +103,17 @@ pub async fn get_transactions(
     )
 )]
 pub async fn get_transaction_receipts(
-    req: HttpRequest,
-    tx_id: web::Path<String>,
-    req_query: ValidatedQuery<ReceiptsQuery>,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<HttpResponse> {
-    let _api_key = ApiKey::from_req(&req)?;
-    let mut query = req_query.into_inner();
-    let tx_id = tx_id.into_inner();
+    State(state): State<ServerState>,
+    Path(tx_id): Path<String>,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(Error::Sqlx)?
-        .try_into()?;
-    Ok(HttpResponse::Ok().json(response))
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(
@@ -126,9 +121,7 @@ pub async fn get_transaction_receipts(
     path = "/transactions/{txId}/inputs",
     tag = "transactions",
     params(
-        // Path parameter
         ("txId" = String, Path, description = "Transaction ID"),
-        // InputsQuery fields (excluding tx_id since it's in the path)
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
         ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
         ("inputType" = Option<InputType>, Query, description = "Filter by input type"),
@@ -139,7 +132,6 @@ pub async fn get_transaction_receipts(
         ("senderAddress" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
         ("recipientAddress" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
-        // Flattened QueryPagination fields
         ("after" = Option<i32>, Query, description = "Return inputs after this height"),
         ("before" = Option<i32>, Query, description = "Return inputs before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
@@ -156,21 +148,17 @@ pub async fn get_transaction_receipts(
     )
 )]
 pub async fn get_transaction_inputs(
-    req: HttpRequest,
-    tx_id: web::Path<String>,
-    req_query: ValidatedQuery<InputsQuery>,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<HttpResponse> {
-    let _api_key = ApiKey::from_req(&req)?;
-    let mut query = req_query.into_inner();
-    let tx_id = tx_id.into_inner();
+    State(state): State<ServerState>,
+    Path(tx_id): Path<String>,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut query = ValidatedQuery::<InputsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(Error::Sqlx)?
-        .try_into()?;
-    Ok(HttpResponse::Ok().json(response))
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(
@@ -178,9 +166,7 @@ pub async fn get_transaction_inputs(
     path = "/transactions/{txId}/outputs",
     tag = "transactions",
     params(
-        // Path parameter
         ("txId" = String, Path, description = "Transaction ID"),
-        // OutputsQuery fields (excluding tx_id since it's in the path)
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
         ("outputIndex" = Option<i32>, Query, description = "Filter by output index"),
         ("outputType" = Option<OutputType>, Query, description = "Filter by output type"),
@@ -189,7 +175,6 @@ pub async fn get_transaction_inputs(
         ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
         ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
-        // Flattened QueryPagination fields
         ("after" = Option<i32>, Query, description = "Return outputs after this height"),
         ("before" = Option<i32>, Query, description = "Return outputs before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
@@ -206,19 +191,15 @@ pub async fn get_transaction_inputs(
     )
 )]
 pub async fn get_transaction_outputs(
-    req: HttpRequest,
-    tx_id: web::Path<String>,
-    req_query: ValidatedQuery<OutputsQuery>,
-    state: web::Data<ServerState>,
-) -> actix_web::Result<HttpResponse> {
-    let _api_key = ApiKey::from_req(&req)?;
-    let mut query = req_query.into_inner();
-    let tx_id = tx_id.into_inner();
+    State(state): State<ServerState>,
+    Path(tx_id): Path<String>,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut query = ValidatedQuery::<OutputsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse = query
-        .execute(&state.db.pool)
-        .await
-        .map_err(Error::Sqlx)?
-        .try_into()?;
-    Ok(HttpResponse::Ok().json(response))
+    let response: GetDataResponse =
+        query.execute(&state.db.pool).await?.try_into()?;
+    Ok(Json(response))
 }

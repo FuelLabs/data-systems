@@ -1,18 +1,26 @@
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::fmt::time;
+use tracing::Level;
+use tracing_subscriber::{
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter,
+};
 
-pub fn init_tracing() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with_timer(time::LocalTime::rfc_3339())
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(true)
-        .with_line_number(true)
-        .with_level(true)
+pub fn init_tracing() -> anyhow::Result<()> {
+    let mut env_filter = EnvFilter::from_default_env()
+        .add_directive("fuel_web_utils::server=trace".parse()?);
+
+    match std::env::var("RUST_LOG") {
+        Ok(log) => {
+            env_filter = env_filter.add_directive(log.parse()?);
+        }
+        Err(_) => {
+            env_filter = env_filter.add_directive(Level::INFO.into());
+        }
+    }
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer())
         .init();
+    Ok(())
 }

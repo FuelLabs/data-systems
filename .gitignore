@@ -25,3 +25,5 @@ values-publisher-env.yaml
 .vscode
 .sqlx
 .aider*
+file_contents.txt
+**/file_contents.txt

@@ -4,18 +4,24 @@ use clap::Parser;
 use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
-use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
+use fuel_web_utils::{
+    server::server_builder::ServerBuilder,
+    shutdown::ShutdownController,
+    telemetry::Telemetry,
+    tracing::init_tracing,
+};
 use sv_consumer::{
     cli::Cli,
     errors::ConsumerError,
     metrics::Metrics,
+    server::ServerState,
     BlockExecutor,
-    Server,
 };
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    fuel_web_utils::tracing::init_tracing();
+    init_tracing()?;
+
     if let Err(err) = dotenvy::dotenv() {
         tracing::warn!("File .env not found: {:?}", err);
     }
@@ -37,14 +43,16 @@ async fn main() -> anyhow::Result<()> {
         &fuel_streams,
         Arc::clone(&telemetry),
     );
-    let server = Server::new(cli.port, message_broker, Arc::clone(&telemetry));
+
+    let server_state = ServerState::new(message_broker, Arc::clone(&telemetry));
+    let server = ServerBuilder::build(&server_state, cli.port);
 
     tracing::info!("Consumer started. Waiting for messages...");
     tokio::select! {
         result = async {
             tokio::join!(
                 block_executor.start(shutdown.token()),
-                server.start()
+                server.run()
             )
         } => {
             result.0?;

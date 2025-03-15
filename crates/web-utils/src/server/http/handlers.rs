@@ -1,26 +1,40 @@
 use std::sync::Arc;
 
-use actix_web::{web, HttpResponse, Result};
+use axum::{
+    extract::Extension,
+    http::{header, StatusCode},
+    response::{IntoResponse, Json, Response},
+};
 
 use crate::server::state::StateProvider;
 
 pub async fn get_metrics<T: StateProvider>(
-    state: web::Data<Arc<T>>,
-) -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok()
-        .content_type(
+    Extension(state): Extension<Arc<T>>,
+) -> impl IntoResponse {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(
+            header::CONTENT_TYPE,
             "application/openmetrics-text; version=1.0.0; charset=utf-8",
         )
-        .body(state.get_metrics().await))
+        .body(axum::body::Body::from(state.get_metrics().await))
+        .unwrap_or_else(|e| {
+            // Fallback in case of response building error (unlikely)
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to build response: {}", e),
+            )
+                .into_response()
+        })
 }
 
 pub async fn get_health<T: StateProvider>(
-    state: web::Data<Arc<T>>,
-) -> Result<HttpResponse> {
+    Extension(state): Extension<Arc<T>>,
+) -> impl IntoResponse {
     if !state.is_healthy().await {
-        return Ok(
-            HttpResponse::ServiceUnavailable().body("Service Unavailable")
-        );
+        return (StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable")
+            .into_response();
     }
-    Ok(HttpResponse::Ok().json(state.get_health().await))
+    let response = state.get_health().await;
+    Json(response).into_response()
 }

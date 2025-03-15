@@ -35,7 +35,7 @@ impl ServerState {
         telemetry.start().await?;
         tracing::info!("Initialized telemetry");
 
-        let api_keys_manager = Arc::new(ApiKeysManager::new());
+        let api_keys_manager = Arc::new(ApiKeysManager::default());
         let initial_keys = api_keys_manager.load_from_db(&db).await?;
         for key in initial_keys {
             if let Err(e) = api_keys_manager.storage().insert(&key) {
