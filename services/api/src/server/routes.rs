@@ -1,6 +1,6 @@
 use axum::{
     middleware::{from_fn, from_fn_with_state},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use fuel_streams_core::types::{
@@ -14,7 +14,10 @@ use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
 };
+use open_api::ApiDoc;
 use serde::Serialize;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use super::{
     errors::ApiError,
@@ -49,7 +52,14 @@ where
 }
 
 pub fn create_routes(state: &ServerState) -> Router {
-    let app = Router::new();
+    let app = Router::new().merge(
+        SwaggerUi::new("/swagger-ui")
+            .url("/api-docs/openapi.json", ApiDoc::openapi()),
+    );
+
+    let manager = state.api_keys_manager.clone();
+    let db = state.db.clone();
+    let auth_params = (manager.clone(), db.clone());
 
     let (blocks_path, blocks_router) = RouterBuilder::new("/blocks")
         .root(get(blocks::get_blocks))
@@ -60,6 +70,11 @@ pub fn create_routes(state: &ServerState) -> Router {
         )
         .related("/{height}/inputs", get(blocks::get_block_inputs))
         .related("/{height}/outputs", get(blocks::get_block_outputs))
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (accounts_path, accounts_router) = RouterBuilder::new("/accounts")
@@ -70,6 +85,11 @@ pub fn create_routes(state: &ServerState) -> Router {
         .related("/{address}/inputs", get(accounts::get_accounts_inputs))
         .related("/{address}/outputs", get(accounts::get_accounts_outputs))
         .related("/{address}/utxos", get(accounts::get_accounts_utxos))
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (contracts_path, contracts_router) = RouterBuilder::new("/contracts")
@@ -83,6 +103,11 @@ pub fn create_routes(state: &ServerState) -> Router {
             get(contracts::get_contracts_outputs),
         )
         .related("/{contractId}/utxos", get(contracts::get_contracts_utxos))
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (inputs_path, inputs_router) = RouterBuilder::new("/inputs")
@@ -95,6 +120,11 @@ pub fn create_routes(state: &ServerState) -> Router {
             ],
             get(inputs::get_inputs),
         )
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (outputs_path, outputs_router) = RouterBuilder::new("/outputs")
@@ -109,6 +139,11 @@ pub fn create_routes(state: &ServerState) -> Router {
             ],
             get(outputs::get_outputs),
         )
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (receipts_path, receipts_router) = RouterBuilder::new("/receipts")
@@ -131,6 +166,11 @@ pub fn create_routes(state: &ServerState) -> Router {
             ],
             get(receipts::get_receipts),
         )
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
     let (transactions_path, transactions_router) =
@@ -148,14 +188,30 @@ pub fn create_routes(state: &ServerState) -> Router {
                 "/{txId}/outputs",
                 get(transactions::get_transaction_outputs),
             )
+            .with_layer(from_fn(validate_scope_middleware))
+            .with_layer(from_fn_with_state(
+                auth_params.clone(),
+                ApiKeyMiddleware::handler,
+            ))
             .build();
 
     let (utxos_path, utxos_router) = RouterBuilder::new("/utxos")
         .root(get(utxos::get_utxos))
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
         .build();
 
-    let manager = state.api_keys_manager.clone();
-    let db = state.db.clone();
+    let (key_path, key_router) = RouterBuilder::new("/key")
+        .related("/generate", post(api_key::generate_api_key))
+        .with_layer(from_fn(api_key::validate_manage_api_keys_scope))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
+        .build();
 
     app.nest(&blocks_path, blocks_router)
         .nest(&accounts_path, accounts_router)
@@ -165,7 +221,6 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .layer(from_fn(validate_scope_middleware))
-        .layer(from_fn_with_state((manager, db), ApiKeyMiddleware::handler))
+        .nest(&key_path, key_router)
         .with_state(state.clone())
 }

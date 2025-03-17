@@ -25,6 +25,7 @@ use fuel_streams_domains::{
     transactions::queryable::TransactionsQuery,
 };
 
+use super::open_api::TAG_TRANSACTIONS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -34,7 +35,7 @@ use crate::server::{
 #[utoipa::path(
     get,
     path = "/transactions",
-    tag = "transactions",
+    tag = TAG_TRANSACTIONS,
     params(
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
@@ -72,7 +73,7 @@ pub async fn get_transactions(
 #[utoipa::path(
     get,
     path = "/transactions/{txId}/receipts",
-    tag = "transactions",
+    tag = TAG_TRANSACTIONS,
     params(
         ("txId" = String, Path, description = "Transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
@@ -119,7 +120,7 @@ pub async fn get_transaction_receipts(
 #[utoipa::path(
     get,
     path = "/transactions/{txId}/inputs",
-    tag = "transactions",
+    tag = TAG_TRANSACTIONS,
     params(
         ("txId" = String, Path, description = "Transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
@@ -164,7 +165,7 @@ pub async fn get_transaction_inputs(
 #[utoipa::path(
     get,
     path = "/transactions/{txId}/outputs",
-    tag = "transactions",
+    tag = TAG_TRANSACTIONS,
     params(
         ("txId" = String, Path, description = "Transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),

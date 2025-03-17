@@ -17,6 +17,7 @@ use fuel_streams_domains::{
     receipts::{queryable::ReceiptsQuery, ReceiptType},
 };
 
+use super::open_api::TAG_RECEIPTS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -61,7 +62,7 @@ where
 #[utoipa::path(
     get,
     path = "/receipts",
-    tag = "receipts",
+    tag = TAG_RECEIPTS,
     params(
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),

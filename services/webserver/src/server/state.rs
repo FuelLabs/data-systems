@@ -9,7 +9,7 @@ use fuel_streams_core::FuelStreams;
 use fuel_streams_store::db::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     api_key::{ApiKeysManager, KeyStorage},
-    server::{middlewares::password::PasswordManager, state::StateProvider},
+    server::state::StateProvider,
     telemetry::Telemetry,
 };
 
@@ -17,7 +17,6 @@ use crate::{
     config::Config,
     metrics::Metrics,
     server::websocket::ConnectionChecker,
-    API_PASSWORD,
 };
 
 #[derive(Clone)]
@@ -28,7 +27,6 @@ pub struct ServerState {
     pub fuel_streams: Arc<FuelStreams>,
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub api_keys_manager: Arc<ApiKeysManager>,
-    pub password_manager: Arc<PasswordManager>,
     pub connection_checker: Arc<ConnectionChecker>,
 }
 
@@ -58,8 +56,6 @@ impl ServerState {
             }
         }
 
-        let password_manager =
-            Arc::new(PasswordManager::new(API_PASSWORD.clone()));
         let connection_checker = Arc::new(ConnectionChecker::default());
         connection_checker.start().await;
 
@@ -70,7 +66,6 @@ impl ServerState {
             fuel_streams,
             telemetry,
             api_keys_manager,
-            password_manager,
             connection_checker,
         })
     }

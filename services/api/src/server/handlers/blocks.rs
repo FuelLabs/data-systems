@@ -27,6 +27,7 @@ use fuel_streams_domains::{
     transactions::queryable::TransactionsQuery,
 };
 
+use super::open_api::TAG_BLOCKS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -36,7 +37,7 @@ use crate::server::{
 #[utoipa::path(
     get,
     path = "/blocks",
-    tag = "blocks",
+    tag = TAG_BLOCKS,
     params(
         ("producer" = Option<Address>, Query, description = "Filter by block producer address"),
         ("height" = Option<BlockHeight>, Query, description = "Filter by block height"),
@@ -71,7 +72,7 @@ pub async fn get_blocks(
 #[utoipa::path(
     get,
     path = "/blocks/{height}/transactions",
-    tag = "blocks",
+    tag = TAG_BLOCKS,
     params(
         ("height" = BlockHeight, Path, description = "Block height"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -112,7 +113,7 @@ pub async fn get_block_transactions(
 #[utoipa::path(
     get,
     path = "/blocks/{height}/receipts",
-    tag = "blocks",
+    tag = TAG_BLOCKS,
     params(
         ("height" = BlockHeight, Path, description = "Block height"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -160,7 +161,7 @@ pub async fn get_block_receipts(
 #[utoipa::path(
     get,
     path = "/blocks/{height}/inputs",
-    tag = "blocks",
+    tag = TAG_BLOCKS,
     params(
         ("height" = BlockHeight, Path, description = "Block height"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -205,7 +206,7 @@ pub async fn get_block_inputs(
 #[utoipa::path(
     get,
     path = "/blocks/{height}/outputs",
-    tag = "blocks",
+    tag = TAG_BLOCKS,
     params(
         ("height" = BlockHeight, Path, description = "Block height"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),

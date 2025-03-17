@@ -280,7 +280,6 @@ run-webserver-testnet-profiling:
 #  Api Run Commands
 # ------------------------------------------------------------
 
-run-api: NETWORK="testnet"
 run-api: MODE="dev"
 run-api: PORT="9004"
 run-api: EXTRA_ARGS=""
