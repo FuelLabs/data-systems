@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::Extension,
+    extract::State,
     http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
 };
@@ -9,7 +7,7 @@ use axum::{
 use crate::server::state::StateProvider;
 
 pub async fn get_metrics<T: StateProvider>(
-    Extension(state): Extension<Arc<T>>,
+    State(state): State<T>,
 ) -> impl IntoResponse {
     Response::builder()
         .status(StatusCode::OK)
@@ -29,7 +27,7 @@ pub async fn get_metrics<T: StateProvider>(
 }
 
 pub async fn get_health<T: StateProvider>(
-    Extension(state): Extension<Arc<T>>,
+    State(state): State<T>,
 ) -> impl IntoResponse {
     if !state.is_healthy().await {
         return (StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable")

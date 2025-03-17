@@ -4,7 +4,7 @@ use std::{
 };
 
 use axum::{
-    extract::{Extension, MatchedPath, Request},
+    extract::{MatchedPath, Request},
     routing::get,
     Router,
 };
@@ -67,7 +67,6 @@ impl ServerBuilder {
         let app = Router::new()
             .route(&with_prefixed_route("health"), get(get_health::<S>))
             .route(&with_prefixed_route("metrics"), get(get_metrics::<S>))
-            .layer(Extension(state.to_owned()))
             .layer(TraceLayer::new_for_http().make_span_with(
                 |request: &Request<_>| {
                     let matched_path = request
@@ -104,7 +103,6 @@ impl ServerBuilder {
                     .max_age(Duration::from_secs(3600)),
             )
             .with_state(state.to_owned());
-
         Server { app, port }
     }
 }
