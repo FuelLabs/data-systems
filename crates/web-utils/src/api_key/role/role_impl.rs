@@ -12,7 +12,15 @@ use crate::api_key::{
 };
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow, Default,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    sqlx::FromRow,
+    Default,
+    Hash,
 )]
 pub struct ApiKeyRole {
     id: ApiKeyRoleId,
@@ -139,6 +147,15 @@ impl ApiKeyRole {
         &self,
         current_count: SubscriptionCount,
     ) -> Result<SubscriptionCount, ApiKeyError> {
+        let has_data_scopes = self
+            .scopes
+            .iter()
+            .any(|s| s.is_historical_data() || s.is_live_data());
+
+        if !has_data_scopes {
+            return Ok(current_count)
+        }
+
         if let Some(limit) = self.subscription_limit() {
             if current_count > limit {
                 return Err(ApiKeyError::SubscriptionLimitExceeded(

@@ -11,8 +11,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-actix-web.workspace = true
 async-trait.workspace = true
+axum.workspace = true
 chrono.workspace = true
 fuel-core.workspace = true
 fuel-core-types.workspace = true
@@ -21,7 +21,6 @@ fuel-streams-subject.workspace = true
 fuel-streams-types.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
-futures.workspace = true
 rayon.workspace = true
 sea-query = "0.32.2"
 serde.workspace = true

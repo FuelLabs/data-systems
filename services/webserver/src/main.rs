@@ -1,33 +1,27 @@
-use fuel_web_utils::server::api::ApiServerBuilder;
+use fuel_web_utils::{
+    server::server_builder::ServerBuilder,
+    tracing::init_tracing,
+};
 use sv_webserver::{
     config::Config,
-    server::{handlers, state::ServerState},
+    server::{routes::create_routes, state::ServerState},
 };
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // init tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
+    init_tracing()?;
 
+    tracing::debug!("Starting webserver");
     if let Err(err) = dotenvy::dotenv() {
         tracing::warn!("File .env not found: {:?}", err);
     }
 
     let config = Config::load()?;
-    let server_state = ServerState::new(&config).await?;
-    let server = ApiServerBuilder::new(config.api.port, server_state.clone())
-        .with_dynamic_routes(handlers::create_services(server_state))
-        .build()?;
-
-    server.await?;
+    let state = ServerState::new(&config).await?;
+    let router = create_routes(&state);
+    ServerBuilder::build(&state, config.api.port)
+        .with_router(router)
+        .run()
+        .await?;
     Ok(())
 }

@@ -16,6 +16,7 @@ pub struct HealthResponse {
     pub is_healthy: bool,
 }
 
+#[derive(Clone)]
 pub struct ServerState {
     pub start_time: Instant,
     pub msg_broker: Arc<NatsMessageBroker>,

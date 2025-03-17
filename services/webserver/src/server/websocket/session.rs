@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use actix_ws::{CloseCode, CloseReason, Session};
+use axum::extract::ws::{Message, WebSocket};
 use dashmap::DashMap;
 use fuel_streams_core::{
     server::{ServerResponse, Subscription},
@@ -13,7 +13,12 @@ use fuel_web_utils::{
     api_key::{rate_limiter::RateLimitsController, ApiKey},
     telemetry::Telemetry,
 };
-use tokio::sync::watch;
+use futures::{
+    stream::{SplitSink, SplitStream},
+    SinkExt,
+    StreamExt,
+};
+use tokio::sync::{watch, Mutex};
 
 use crate::{
     metrics::{Metrics, SubscriptionChange},
@@ -34,23 +39,24 @@ impl MessageHandler {
 
     async fn send_message(
         &self,
-        session: &mut Session,
+        sender: &mut SplitSink<WebSocket, Message>,
         message: ServerResponse,
     ) -> Result<(), WebsocketError> {
         let msg_encoded =
             serde_json::to_vec(&message).map_err(WebsocketError::Serde)?;
-        session.binary(msg_encoded).await?;
+        let msg_encoded = axum::body::Bytes::from(msg_encoded);
+        sender.send(Message::Binary(msg_encoded)).await?;
         Ok(())
     }
 
     async fn send_error(
         &self,
-        session: &mut Session,
+        sender: &mut SplitSink<WebSocket, Message>,
         error: &WebsocketError,
     ) -> Result<(), WebsocketError> {
         let api_key = self.api_key.to_owned();
         let error_msg = ServerResponse::Error(error.to_string());
-        if let Err(send_err) = self.send_message(session, error_msg).await {
+        if let Err(send_err) = self.send_message(sender, error_msg).await {
             tracing::error!(
                 %api_key,
                 error = %send_err,
@@ -112,16 +118,16 @@ impl MetricsHandler {
 }
 
 #[derive(Clone)]
-struct ConnectionManager {
+pub struct SubscriptionManager {
     api_key: ApiKey,
     start_time: Instant,
     sender: watch::Sender<bool>,
-    active_subscriptions: Arc<DashMap<Subscription, ()>>,
+    pub active_subscriptions: Arc<DashMap<Subscription, ()>>,
     metrics_handler: MetricsHandler,
     rate_limiter: Arc<RateLimitsController>,
 }
 
-impl ConnectionManager {
+impl SubscriptionManager {
     pub const MAX_FRAME_SIZE: usize = 8 * 1024 * 1024; // 8MB
 
     fn new(
@@ -156,10 +162,17 @@ impl ConnectionManager {
         &self,
         subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
+        let api_key = self.api_key.clone();
         self.active_subscriptions.insert(subscription.clone(), ());
-        self.rate_limiter.add_active_key_sub(self.api_key.id());
+        self.rate_limiter.add_active_key_sub(api_key.id());
         self.metrics_handler
             .track_subscription(subscription, SubscriptionChange::Added);
+
+        let api_key_id = api_key.id();
+        let api_key_role = api_key.role();
+        self.rate_limiter
+            .check_subscriptions(api_key_id, api_key_role)?;
+
         Ok(())
     }
 
@@ -191,8 +204,10 @@ impl ConnectionManager {
 pub struct WsSession {
     api_key: ApiKey,
     messaging: MessageHandler,
-    connection: ConnectionManager,
+    pub subscription_manager: SubscriptionManager,
     pub streams: Arc<FuelStreams>,
+    pub socket_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
+    pub socket_receiver: Arc<Mutex<SplitStream<WebSocket>>>,
 }
 
 impl WsSession {
@@ -201,24 +216,29 @@ impl WsSession {
         telemetry: Arc<Telemetry<Metrics>>,
         streams: Arc<FuelStreams>,
         rate_limiter: Arc<RateLimitsController>,
+        socket: WebSocket,
     ) -> Self {
         let metrics = MetricsHandler::new(telemetry, api_key);
-        let connection = ConnectionManager::new(api_key, metrics, rate_limiter);
+        let connection =
+            SubscriptionManager::new(api_key, metrics, rate_limiter);
         let messaging = MessageHandler::new(api_key);
+        let (sender, receiver) = socket.split();
         Self {
             api_key: api_key.to_owned(),
             messaging,
-            connection,
+            subscription_manager: connection,
             streams,
+            socket_sender: Arc::new(Mutex::new(sender)),
+            socket_receiver: Arc::new(Mutex::new(receiver)),
         }
     }
 
     pub fn receiver(&self) -> watch::Receiver<bool> {
-        self.connection.subscribe()
+        self.subscription_manager.subscribe()
     }
 
     pub async fn shutdown(&self) {
-        self.connection.shutdown().await;
+        self.subscription_manager.shutdown().await;
     }
 
     pub fn api_key(&self) -> &ApiKey {
@@ -227,50 +247,81 @@ impl WsSession {
 
     pub async fn send_message(
         &self,
-        session: &mut Session,
         message: ServerResponse,
     ) -> Result<(), WebsocketError> {
-        self.messaging.send_message(session, message).await
+        {
+            let mut sender = self.socket_sender.lock().await;
+            self.messaging.send_message(&mut sender, message).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn send_socket_message(
+        &self,
+        message: Message,
+    ) -> Result<(), WebsocketError> {
+        {
+            let mut sender = self.socket_sender.lock().await;
+            sender.send(message).await?;
+        }
+        Ok(())
     }
 
     pub async fn send_error_msg(
         &self,
-        session: &mut Session,
         error: &WebsocketError,
     ) -> Result<(), WebsocketError> {
-        self.messaging.send_error(session, error).await
+        {
+            let mut sender = self.socket_sender.lock().await;
+            self.messaging.send_error(&mut sender, error).await?;
+        }
+        Ok(())
     }
 
     pub async fn is_subscribed(&self, subscription: &Subscription) -> bool {
-        self.connection.is_subscribed(subscription).await
+        self.subscription_manager.is_subscribed(subscription).await
     }
 
     pub async fn add_subscription(
         &self,
         subscription: &Subscription,
     ) -> Result<(), WebsocketError> {
-        self.connection.add_subscription(subscription).await
+        self.subscription_manager
+            .add_subscription(subscription)
+            .await
     }
 
     pub async fn remove_subscription(&self, subscription: &Subscription) {
-        self.connection.remove_subscription(subscription).await;
+        self.subscription_manager
+            .remove_subscription(subscription)
+            .await;
     }
 
-    pub async fn close_session(self, session: Session, action: &CloseAction) {
-        let _ = session.close(Some(action.into())).await;
-        self.connection.clear_subscriptions().await;
-        let duration = self.connection.connection_duration();
-        self.connection
+    pub async fn close_session(
+        &self,
+        action: &CloseAction,
+    ) -> Result<(), WebsocketError> {
+        self.shutdown().await;
+        if let CloseAction::Error(err) = action {
+            self.send_error_msg(err).await?;
+        }
+        self.subscription_manager.clear_subscriptions().await;
+        let duration = self.subscription_manager.connection_duration();
+        self.subscription_manager
             .metrics_handler
             .track_connection_duration(duration);
         self.log_connection_close(duration, action);
+        Ok(())
     }
 
     fn log_connection_close(&self, duration: Duration, action: &CloseAction) {
         let api_key = self.api_key();
-        let close_reason: CloseReason = action.into();
-        let description = close_reason.description.as_deref();
-        if close_reason.code == CloseCode::Normal {
+        let close_frame: Option<axum::extract::ws::CloseFrame> = action.into();
+        let (code, description) = match close_frame {
+            Some(frame) => (frame.code, Some(frame.reason.to_string())),
+            None => (axum::extract::ws::close_code::NORMAL, None),
+        };
+        if code == axum::extract::ws::close_code::NORMAL {
             tracing::info!(
                 target: "websocket",
                 %api_key,
@@ -292,6 +343,6 @@ impl WsSession {
     }
 
     pub fn max_frame_size(&self) -> usize {
-        ConnectionManager::MAX_FRAME_SIZE
+        SubscriptionManager::MAX_FRAME_SIZE
     }
 }

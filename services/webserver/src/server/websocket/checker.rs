@@ -4,9 +4,8 @@ use std::{
 };
 
 use dashmap::DashMap;
+use fuel_web_utils::api_key::{ApiKey, ApiKeyId};
 use tokio::sync::mpsc::Sender;
-
-use crate::server::websocket::WsSession;
 
 #[derive(Debug)]
 pub enum ConnectionSignal {
@@ -14,12 +13,29 @@ pub enum ConnectionSignal {
     Timeout,
 }
 
-type ConnectionsMap =
-    DashMap<String, (WsSession, Instant, Sender<ConnectionSignal>)>;
+pub struct Connection {
+    pub tx: Sender<ConnectionSignal>,
+    pub last_heartbeat: Instant,
+}
+
+impl Connection {
+    pub fn new(tx: Sender<ConnectionSignal>) -> Self {
+        Self {
+            tx,
+            last_heartbeat: Instant::now(),
+        }
+    }
+
+    pub fn update_time(&mut self) {
+        self.last_heartbeat = Instant::now();
+    }
+}
+
+type ConnectionsMap = DashMap<ApiKeyId, Connection>;
 
 #[derive(Clone)]
 pub struct ConnectionChecker {
-    connections: Arc<ConnectionsMap>,
+    pub connections: Arc<ConnectionsMap>,
     ping_interval: Duration,
     heartbeat_timeout: Duration,
 }
@@ -58,22 +74,21 @@ impl ConnectionChecker {
 
     pub async fn register(
         &self,
-        session: WsSession,
-        timeout_tx: Sender<ConnectionSignal>,
+        api_key: &ApiKey,
+        tx: Sender<ConnectionSignal>,
     ) {
-        let api_key = session.api_key().id().to_string();
         self.connections
-            .insert(api_key, (session, Instant::now(), timeout_tx));
+            .insert(api_key.id().to_owned(), Connection::new(tx.clone()));
     }
 
-    pub async fn unregister(&self, api_key: &str) {
-        self.connections.remove(api_key);
+    pub async fn unregister(&self, api_key: &ApiKey) {
+        self.connections.remove(api_key.id());
     }
 
-    pub async fn update_heartbeat(&self, api_key: &str) {
-        if let Some(mut entry) = self.connections.get_mut(api_key) {
-            let (session, _, timeout_tx) = entry.value_mut();
-            *entry = (session.clone(), Instant::now(), timeout_tx.clone());
+    pub async fn update_heartbeat(&self, api_key: &ApiKey) {
+        if let Some(mut entry) = self.connections.get_mut(api_key.id()) {
+            let entry = entry.value_mut();
+            entry.update_time()
         }
     }
 
@@ -90,27 +105,28 @@ impl ConnectionChecker {
 
                 for entry in connections.iter() {
                     let api_key = entry.key();
-                    let (_, last_heartbeat, timeout_tx) = entry.value();
+                    let conn = entry.value();
 
                     // Send ping request via timeout_tx (handler will handle actual ping)
-                    if timeout_tx.send(ConnectionSignal::Ping).await.is_err() {
-                        tracing::error!(%api_key, "Failed to send ping request, channel closed");
-                        to_remove.push(api_key.clone());
+                    if conn.tx.send(ConnectionSignal::Ping).await.is_err() {
+                        tracing::warn!(%api_key, "Failed to send ping request, channel closed");
+                        to_remove.push(*api_key);
                         continue;
                     }
 
                     // Check heartbeat timeout
-                    let duration = now.duration_since(*last_heartbeat);
+                    let duration = now.duration_since(conn.last_heartbeat);
                     if duration > heartbeat_timeout {
                         tracing::warn!(%api_key, timeout = ?heartbeat_timeout, "Client timeout; notifying handler");
-                        if timeout_tx
+                        if conn
+                            .tx
                             .send(ConnectionSignal::Timeout)
                             .await
                             .is_err()
                         {
-                            tracing::error!(%api_key, "Failed to notify handler, channel closed");
+                            tracing::warn!(%api_key, "Failed to notify handler, channel closed");
                         }
-                        to_remove.push(api_key.clone());
+                        to_remove.push(*api_key);
                     }
                 }
 

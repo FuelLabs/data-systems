@@ -1,4 +1,8 @@
-use actix_web::http::header::InvalidHeaderValue;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use hyper::header::InvalidHeaderValue;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PasswordVerificationError {
@@ -12,20 +16,21 @@ pub enum PasswordVerificationError {
     InvalidHeader(#[from] InvalidHeaderValue),
 }
 
-impl From<PasswordVerificationError> for actix_web::Error {
-    fn from(err: PasswordVerificationError) -> Self {
-        match err {
+impl IntoResponse for PasswordVerificationError {
+    fn into_response(self) -> Response {
+        match self {
             PasswordVerificationError::NotFound => {
-                actix_web::error::ErrorUnauthorized("Password not found")
+                (StatusCode::UNAUTHORIZED, "Password not found").into_response()
             }
             PasswordVerificationError::Empty => {
-                actix_web::error::ErrorUnauthorized("Password is empty")
+                (StatusCode::UNAUTHORIZED, "Password is empty").into_response()
             }
             PasswordVerificationError::Invalid => {
-                actix_web::error::ErrorUnauthorized("Password is invalid")
+                (StatusCode::UNAUTHORIZED, "Password is invalid")
+                    .into_response()
             }
             PasswordVerificationError::InvalidHeader(e) => {
-                actix_web::error::ErrorUnauthorized(e.to_string())
+                (StatusCode::UNAUTHORIZED, e.to_string()).into_response()
             }
         }
     }

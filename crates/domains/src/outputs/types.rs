@@ -124,15 +124,21 @@ pub enum OutputType {
     ContractCreated,
 }
 
+impl OutputType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            OutputType::Coin => "coin",
+            OutputType::Contract => "contract",
+            OutputType::Change => "change",
+            OutputType::Variable => "variable",
+            OutputType::ContractCreated => "contract_created",
+        }
+    }
+}
+
 impl std::fmt::Display for OutputType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OutputType::Coin => write!(f, "coin"),
-            OutputType::Contract => write!(f, "contract"),
-            OutputType::Change => write!(f, "change"),
-            OutputType::Variable => write!(f, "variable"),
-            OutputType::ContractCreated => write!(f, "contract_created"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
