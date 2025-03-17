@@ -20,11 +20,21 @@
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{api_key}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"username\": \"petko\"\n}",
+          "raw": "{\n    \"username\": \"petko\", \"role\": \"BUILDER\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -32,16 +42,10 @@
           }
         },
         "url": {
-          "raw": "http://{{base_url}}/key/generate?password={{fuel_password}}",
+          "raw": "http://{{base_url}}/keys/generate",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["key", "generate"],
-          "query": [
-            {
-              "key": "password",
-              "value": "{{fuel_password}}"
-            }
-          ]
+          "path": ["key", "generate"]
         },
         "description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
       },

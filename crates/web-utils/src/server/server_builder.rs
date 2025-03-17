@@ -22,14 +22,7 @@ use super::{
 };
 
 pub const API_VERSION: &str = "v1";
-
-pub fn with_prefixed_route(route: &str) -> String {
-    if route.starts_with('/') {
-        format!("/api/{}/{}", API_VERSION, route.trim_start_matches('/'))
-    } else {
-        format!("/api/{}/{}", API_VERSION, route)
-    }
-}
+pub const API_BASE_PATH: &str = "/api/v1";
 
 pub struct Server {
     app: Router,
@@ -65,8 +58,8 @@ impl ServerBuilder {
         port: u16,
     ) -> Server {
         let app = Router::new()
-            .route(&with_prefixed_route("health"), get(get_health::<S>))
-            .route(&with_prefixed_route("metrics"), get(get_metrics::<S>))
+            .route("/health", get(get_health::<S>))
+            .route("/metrics", get(get_metrics::<S>))
             .layer(TraceLayer::new_for_http().make_span_with(
                 |request: &Request<_>| {
                     let matched_path = request

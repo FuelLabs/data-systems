@@ -48,8 +48,12 @@ use fuel_streams_domains::{
     receipts::queryable::ReceiptsQuery,
     transactions::queryable::TransactionsQuery,
 };
+use fuel_web_utils::server::server_builder::API_BASE_PATH;
 use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+    openapi::{
+        security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+        Server,
+    },
     Modify,
     OpenApi,
 };
@@ -67,11 +71,20 @@ struct SecurityAddon;
 
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        let components = openapi.components.as_mut().unwrap(); // we can unwrap safely since there already is components registered.
-        components.add_security_scheme(
+        openapi.components.as_mut().unwrap().add_security_scheme(
             "api_key",
-            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("api_key"))),
-        )
+            SecurityScheme::Http(
+                HttpBuilder::new().scheme(HttpAuthScheme::Bearer).build(),
+            ),
+        );
+    }
+}
+
+struct ServerAddon;
+
+impl Modify for ServerAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        openapi.servers = Some(vec![Server::new(API_BASE_PATH)])
     }
 }
 
@@ -166,6 +179,6 @@ use super::{
         (name = "Receipts", description = "Receipts retrieval endpoints"),
         (name = "Transactions", description = "Transactions retrieval endpoints"),
     ),
-    modifiers(&SecurityAddon)
+    modifiers(&SecurityAddon, &ServerAddon)
 )]
 pub struct ApiDoc;

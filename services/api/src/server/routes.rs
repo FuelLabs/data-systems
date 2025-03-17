@@ -13,6 +13,7 @@ use fuel_streams_store::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
+    server::server_builder::API_BASE_PATH,
 };
 use open_api::ApiDoc;
 use serde::Serialize;
@@ -204,7 +205,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         ))
         .build();
 
-    let (key_path, key_router) = RouterBuilder::new("/key")
+    let (key_path, key_router) = RouterBuilder::new("/keys")
         .related("/generate", post(api_key::generate_api_key))
         .with_layer(from_fn(api_key::validate_manage_api_keys_scope))
         .with_layer(from_fn_with_state(
@@ -213,7 +214,8 @@ pub fn create_routes(state: &ServerState) -> Router {
         ))
         .build();
 
-    app.nest(&blocks_path, blocks_router)
+    let routes = Router::new()
+        .nest(&blocks_path, blocks_router)
         .nest(&accounts_path, accounts_router)
         .nest(&contracts_path, contracts_router)
         .nest(&inputs_path, inputs_router)
@@ -221,6 +223,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .nest(&key_path, key_router)
-        .with_state(state.clone())
+        .nest(&key_path, key_router);
+
+    app.nest(API_BASE_PATH, routes).with_state(state.clone())
 }

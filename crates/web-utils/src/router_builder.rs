@@ -8,18 +8,18 @@ use axum::{
 };
 use tower::{Layer, Service};
 
-use super::server::server_builder::with_prefixed_route;
-
 pub struct RouterBuilder<S: Send + Sync + Clone + 'static> {
     router: Router<S>,
     base_path: String,
+    prefix: Option<String>,
 }
 
 impl<S: Send + Sync + Clone + 'static> RouterBuilder<S> {
     pub fn new(base_path: &str) -> Self {
         Self {
             router: Router::new(),
-            base_path: with_prefixed_route(base_path),
+            base_path: Self::safe_path(base_path),
+            prefix: None,
         }
     }
 
@@ -61,8 +61,32 @@ impl<S: Send + Sync + Clone + 'static> RouterBuilder<S> {
         self
     }
 
+    pub fn with_prefix(mut self, prefix: &str) -> Self {
+        self.prefix = Some(prefix.to_string());
+        self
+    }
+
     pub fn build(self) -> (String, Router<S>) {
-        let path = self.path();
+        let path = match self.prefix {
+            Some(prefix) => Self::prefixed_route(&prefix, &self.base_path),
+            None => self.base_path,
+        };
         (path, self.router)
+    }
+
+    fn safe_path(path: &str) -> String {
+        if path.starts_with("/") {
+            path.to_string()
+        } else {
+            format!("/{}", path)
+        }
+    }
+
+    fn prefixed_route(prefix: &str, route: &str) -> String {
+        if route.starts_with('/') {
+            format!("{prefix}/{}", route.trim_start_matches('/'))
+        } else {
+            format!("{prefix}/{route}")
+        }
     }
 }

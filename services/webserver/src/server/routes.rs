@@ -2,6 +2,7 @@ use axum::{middleware::from_fn_with_state, routing::get, Router};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
+    server::server_builder::API_BASE_PATH,
 };
 
 use super::handlers;
@@ -15,11 +16,15 @@ pub fn create_routes(state: &ServerState) -> Router {
 
     let (ws_path, ws_router) = RouterBuilder::new("/ws")
         .root(get(handlers::websocket::get_websocket))
-        .with_layer(from_fn_with_state(
-            auth_params.clone(),
-            ApiKeyMiddleware::handler,
-        ))
         .build();
 
-    app.nest(&ws_path, ws_router).with_state(state.to_owned())
+    let routes =
+        Router::new()
+            .nest(&ws_path, ws_router)
+            .layer(from_fn_with_state(
+                auth_params.clone(),
+                ApiKeyMiddleware::handler,
+            ));
+
+    app.nest(API_BASE_PATH, routes).with_state(state.clone())
 }
