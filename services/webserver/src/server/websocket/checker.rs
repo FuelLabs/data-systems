@@ -136,7 +136,7 @@ impl ConnectionChecker {
                 }
 
                 if connections.is_empty() {
-                    tracing::info!(
+                    tracing::debug!(
                         "No active connections, connection checker pausing"
                     );
                 }

@@ -1,6 +1,8 @@
 use axum::{
+    body::Body,
     extract::{Json, State},
-    http::StatusCode,
+    http::{Request, StatusCode},
+    middleware::Next,
     response::{IntoResponse, Response},
 };
 use fuel_web_utils::api_key::{
@@ -10,7 +12,6 @@ use fuel_web_utils::api_key::{
     ApiKeyUserName,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
 use validator::Validate;
 
 // Assuming this is your server state struct
@@ -46,21 +47,33 @@ pub struct GenerateApiKeyRequest {
     pub role: ApiKeyRoleName,
 }
 
-async fn insert_api_key(
-    request: &GenerateApiKeyRequest,
-    pool: &Pool<Postgres>,
-) -> Result<ApiKey, ApiKeyError> {
-    let api_key =
-        ApiKey::create(pool, &request.username, &request.role).await?;
-    Ok(api_key)
-}
-
-// Handler function for Axum
 pub async fn generate_api_key(
     State(state): State<ServerState>,
     Json(req): Json<GenerateApiKeyRequest>,
 ) -> Result<Json<ApiKey>, Error> {
     req.validate().map_err(Error::Validation)?;
-    let db_record = insert_api_key(&req, &state.db.pool).await?;
-    Ok(Json(db_record))
+    let api_key =
+        ApiKey::create(&state.db.pool, &req.username, &req.role).await?;
+    Ok(Json(api_key))
+}
+
+pub async fn validate_manage_api_keys_scope(
+    req: Request<Body>,
+    next: Next,
+) -> Result<Response, ApiKeyError> {
+    let api_key = ApiKey::from_req(&req)?;
+    if !api_key
+        .scopes()
+        .iter()
+        .any(|scope| scope.is_manage_api_keys())
+    {
+        tracing::warn!(
+            id = %api_key.id(),
+            user = %api_key.user(),
+            "API key missing MANAGE_API_KEYS scope"
+        );
+        return Err(ApiKeyError::ScopePermission("MANAGE_API_KEYS".to_string()));
+    }
+
+    Ok(next.run(req).await)
 }

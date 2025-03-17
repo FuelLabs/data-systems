@@ -17,6 +17,7 @@ use fuel_streams_domains::{
     utxos::queryable::UtxosQuery,
 };
 
+use super::open_api::TAG_UTXOS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -26,7 +27,7 @@ use crate::server::{
 #[utoipa::path(
     get,
     path = "/utxos",
-    tag = "utxos",
+    tag = TAG_UTXOS,
     params(
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),

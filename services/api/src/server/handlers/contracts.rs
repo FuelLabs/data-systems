@@ -23,6 +23,7 @@ use fuel_streams_domains::{
     utxos::queryable::UtxosQuery,
 };
 
+use super::open_api::TAG_CONTRACTS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -32,7 +33,7 @@ use crate::server::{
 #[utoipa::path(
     get,
     path = "/contracts/{contractId}/transactions",
-    tag = "contracts",
+    tag = TAG_CONTRACTS,
     params(
         ("contractId" = String, Path, description = "Contract ID"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -73,7 +74,7 @@ pub async fn get_contracts_transactions(
 #[utoipa::path(
     get,
     path = "/contracts/{contractId}/inputs",
-    tag = "contracts",
+    tag = TAG_CONTRACTS,
     params(
         ("contractId" = String, Path, description = "Contract ID"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -117,7 +118,7 @@ pub async fn get_contracts_inputs(
 #[utoipa::path(
     get,
     path = "/contracts/{contractId}/outputs",
-    tag = "contracts",
+    tag = TAG_CONTRACTS,
     params(
         ("contractId" = String, Path, description = "Contract ID"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -159,7 +160,7 @@ pub async fn get_contracts_outputs(
 #[utoipa::path(
     get,
     path = "/contracts/{contractId}/utxos",
-    tag = "contracts",
+    tag = TAG_CONTRACTS,
     params(
         ("contractId" = String, Path, description = "Contract ID"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),

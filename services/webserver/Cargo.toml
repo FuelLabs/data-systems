@@ -33,21 +33,12 @@ fuel-vm.workspace = true
 fuel-web-utils.workspace = true
 futures.workspace = true
 prometheus = { version = "0.13", features = ["process"] }
-serde.workspace = true
 serde_json.workspace = true
 smallvec = "1.14.0"
-sqlx = { workspace = true, default-features = false, features = [
-  "any",
-  "macros",
-  "postgres",
-  "runtime-tokio",
-  "tls-native-tls",
-] }
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde"] }
 tokio.workspace = true
 tracing.workspace = true
-validator = { version = "0.19", features = ["derive"] }
 
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]

@@ -16,6 +16,7 @@ use fuel_streams_domains::{
     queryable::{Queryable, ValidatedQuery},
 };
 
+use super::open_api::TAG_INPUTS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -48,7 +49,7 @@ where
 #[utoipa::path(
     get,
     path = "/inputs",
-    tag = "inputs",
+    tag = TAG_INPUTS,
     params(
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
         ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),

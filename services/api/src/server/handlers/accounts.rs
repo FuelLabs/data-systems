@@ -24,6 +24,7 @@ use fuel_streams_domains::{
     utxos::queryable::UtxosQuery,
 };
 
+use super::open_api::TAG_ACCOUNTS;
 use crate::server::{
     errors::ApiError,
     routes::GetDataResponse,
@@ -33,7 +34,7 @@ use crate::server::{
 #[utoipa::path(
     get,
     path = "/accounts/{address}/transactions",
-    tag = "accounts",
+    tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -74,7 +75,7 @@ pub async fn get_accounts_transactions(
 #[utoipa::path(
     get,
     path = "/accounts/{address}/inputs",
-    tag = "accounts",
+    tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -119,7 +120,7 @@ pub async fn get_accounts_inputs(
 #[utoipa::path(
     get,
     path = "/accounts/{address}/outputs",
-    tag = "accounts",
+    tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
@@ -162,7 +163,7 @@ pub async fn get_accounts_outputs(
 #[utoipa::path(
     get,
     path = "/accounts/{address}/utxos",
-    tag = "accounts",
+    tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
         ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),

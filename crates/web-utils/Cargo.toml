@@ -25,8 +25,6 @@ fuel-message-broker.workspace = true
 fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
 futures.workspace = true
-futures-util.workspace = true
-hyper = "1.6.0"
 parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand.workspace = true
@@ -46,7 +44,6 @@ tower-http.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 url = "2.5"
-urlencoding = "2.1"
 
 [dev-dependencies]
 mockall = "0.13.1"

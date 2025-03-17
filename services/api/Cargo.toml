@@ -39,6 +39,7 @@ time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 utoipa.workspace = true
+utoipa-swagger-ui = { version = "9.0.0", features = ["axum"] }
 validator = { version = "0.20.0", features = ["derive"] }
 
 # in an individual package Cargo.toml
