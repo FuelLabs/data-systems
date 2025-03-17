@@ -30,6 +30,7 @@ $install_cmd cargo-nextest --secure
 cargo install cargo-audit --locked --features=fix --force
 cargo install release-plz --locked
 cargo install taplo-cli --locked
+cargo instal bacon --locked
 
 # Check Helm and install helm-unittest plugin
 if ! command -v helm &> /dev/null; then
