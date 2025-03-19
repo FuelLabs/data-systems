@@ -25,7 +25,6 @@ fuel-message-broker.workspace = true
 fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
 futures.workspace = true
-parking_lot = { version = "0.12", features = ["serde"] }
 prometheus = { version = "0.13", features = ["process"] }
 rand.workspace = true
 rust_decimal = { version = "1.13" }
