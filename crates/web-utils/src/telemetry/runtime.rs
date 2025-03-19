@@ -5,7 +5,6 @@ use std::{
 };
 
 use futures::Future;
-use tokio::time::{self, Duration};
 
 // Task type: Each task is represented by a Boxed, pinned Future
 type Task = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
@@ -14,15 +13,13 @@ type Task = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 pub struct Runtime {
     task_queue: Arc<Mutex<VecDeque<Task>>>,
     max_capacity: usize,
-    interval: Duration,
 }
 
 impl Runtime {
-    pub fn new(capacity: usize, interval: Duration) -> Self {
+    pub fn new(capacity: usize) -> Self {
         Self {
             task_queue: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
             max_capacity: capacity,
-            interval,
         }
     }
 
@@ -38,35 +35,5 @@ impl Runtime {
         }
 
         queue.push_back(Box::pin(task));
-    }
-
-    pub fn start<F>(&self, blocking_task_executor: F)
-    where
-        F: FnOnce() + Send + 'static + Clone,
-    {
-        let interval = self.interval;
-        let task_queue = Arc::clone(&self.task_queue);
-
-        tokio::spawn(async move {
-            let mut ticker = time::interval(interval);
-
-            loop {
-                // Wait for the interval
-                ticker.tick().await;
-
-                tokio::task::spawn_blocking(blocking_task_executor.clone());
-
-                // Lock the queue, drain tasks, and run them sequentially
-                let tasks: Vec<_> = {
-                    let mut queue = task_queue.lock().unwrap();
-                    queue.drain(..).collect()
-                };
-
-                // Run each task sequentially
-                for task in tasks {
-                    task.await;
-                }
-            }
-        });
     }
 }

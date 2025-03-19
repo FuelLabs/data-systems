@@ -43,6 +43,7 @@ pub enum Error {
     ProcessNotFound(Pid),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deref)]
 pub struct System {
     /// System information from the `sysinfo` crate.
@@ -56,6 +57,7 @@ pub struct System {
     pid: Pid,
 }
 
+#[allow(dead_code)]
 impl System {
     pub async fn new() -> Self {
         let specifics = RefreshKind::new().with_disks_list().with_memory();
