@@ -123,20 +123,15 @@ impl ApiKey {
         role_name: &ApiKeyRoleName,
     ) -> Result<Self, ApiKeyError> {
         let api_key_value = ApiKeyValue::new(Self::generate_random_api_key());
-
-        let mut tx = pool
-            .begin()
-            .await
-            .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
-
-        let role = ApiKeyRole::fetch_by_name(&mut *tx, role_name)
-            .await
-            .map_err(|e| match e {
-                sqlx::Error::RowNotFound => {
-                    ApiKeyError::RolePermission(role_name.to_string())
-                }
-                _ => ApiKeyError::DatabaseError(e.to_string()),
-            })?;
+        let role =
+            ApiKeyRole::fetch_by_name(pool, role_name)
+                .await
+                .map_err(|e| match e {
+                    sqlx::Error::RowNotFound => {
+                        ApiKeyError::RolePermission(role_name.to_string())
+                    }
+                    _ => ApiKeyError::DatabaseError(e.to_string()),
+                })?;
 
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "INSERT INTO api_keys (user_name, api_key, status, role_id)
@@ -146,13 +141,9 @@ impl ApiKey {
         .bind(user_name)
         .bind(&api_key_value)
         .bind(role.id())
-        .fetch_one(&mut *tx)
+        .fetch_one(pool)
         .await
         .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
-
-        tx.commit()
-            .await
-            .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
         Ok(ApiKey::from((db_record, role)))
     }
@@ -162,11 +153,6 @@ impl ApiKey {
         key: &ApiKeyValue,
         status: ApiKeyStatus,
     ) -> Result<Self, ApiKeyError> {
-        let mut tx = pool
-            .begin()
-            .await
-            .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
-
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "UPDATE api_keys
              SET status = $1
@@ -175,18 +161,14 @@ impl ApiKey {
         )
         .bind(&status)
         .bind(key)
-        .fetch_one(&mut *tx)
+        .fetch_one(pool)
         .await
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => ApiKeyError::NotFound,
             _ => ApiKeyError::DatabaseError(e.to_string()),
         })?;
 
-        let role = ApiKeyRole::fetch_by_id(&mut *tx, db_record.role_id)
-            .await
-            .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
-
-        tx.commit()
+        let role = ApiKeyRole::fetch_by_id(pool, db_record.role_id)
             .await
             .map_err(|e| ApiKeyError::DatabaseError(e.to_string()))?;
 
