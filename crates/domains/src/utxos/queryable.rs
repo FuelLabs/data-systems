@@ -14,6 +14,8 @@ use crate::{
 pub enum Utxos {
     #[iden = "utxos"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -88,7 +90,7 @@ impl Queryable for UtxosQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Utxos::BlockHeight
+        Utxos::Id
     }
 
     fn pagination(&self) -> &QueryPagination {

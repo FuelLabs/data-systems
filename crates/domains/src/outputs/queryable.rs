@@ -11,6 +11,8 @@ use crate::queryable::{HasPagination, QueryPagination, Queryable};
 pub enum Outputs {
     #[iden = "outputs"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -88,7 +90,7 @@ impl Queryable for OutputsQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Outputs::BlockHeight
+        Outputs::Id
     }
 
     fn pagination(&self) -> &QueryPagination {

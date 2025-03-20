@@ -112,6 +112,8 @@ impl TryFrom<&str> for TimeRange {
 pub enum Blocks {
     #[iden = "blocks"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -173,7 +175,7 @@ impl Queryable for BlocksQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Blocks::Height
+        Blocks::Id
     }
 
     fn pagination(&self) -> &QueryPagination {
