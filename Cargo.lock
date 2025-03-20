@@ -9505,6 +9505,7 @@ dependencies = [
  "fuel-web-utils",
  "num_cpus",
  "openssl",
+ "paste",
  "prometheus",
  "serde",
  "serde_json",

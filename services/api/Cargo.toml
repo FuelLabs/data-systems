@@ -30,6 +30,7 @@ fuel-tx.workspace = true
 fuel-vm.workspace = true
 fuel-web-utils.workspace = true
 num_cpus.workspace = true
+paste = "1.0.15"
 prometheus = { version = "0.13", features = ["process"] }
 serde.workspace = true
 serde_json.workspace = true
