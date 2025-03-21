@@ -20,21 +20,11 @@
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{api_key}}",
-              "type": "string"
-            }
-          ]
-        },
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"username\": \"petko\", \"role\": \"BUILDER\"\n}",
+          "raw": "{\n    \"username\": \"petko\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -42,10 +32,16 @@
           }
         },
         "url": {
-          "raw": "http://{{base_url}}/keys/generate",
+          "raw": "http://{{base_url}}/key/generate?password={{fuel_password}}",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["key", "generate"]
+          "path": ["key", "generate"],
+          "query": [
+            {
+              "key": "password",
+              "value": "{{fuel_password}}"
+            }
+          ]
         },
         "description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
       },
@@ -115,13 +111,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -205,20 +201,20 @@
             },
             {
               "key": "asset",
-              "value": null,
+              "value": "",
               "description": "Fuel Input Asset Address",
               "disabled": true
             },
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -303,13 +299,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -393,20 +389,20 @@
             },
             {
               "key": "asset",
-              "value": null,
+              "value": "",
               "description": "Fuel Asset Id",
               "disabled": true
             },
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -490,20 +486,20 @@
             },
             {
               "key": "asset",
-              "value": null,
+              "value": "",
               "description": "Fuel Asset Id",
               "disabled": true
             },
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -588,13 +584,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -666,7 +662,7 @@
             },
             {
               "key": "inputIndex",
-              "value": null,
+              "value": "",
               "description": "Fuel Transaction Input Index",
               "disabled": true
             },
@@ -679,13 +675,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -776,13 +772,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -854,7 +850,7 @@
             },
             {
               "key": "inputIndex",
-              "value": null,
+              "value": "",
               "description": "Fuel Transaction Input Index",
               "disabled": true
             },
@@ -867,13 +863,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -951,26 +947,26 @@
             },
             {
               "key": "sender",
-              "value": null,
+              "value": "",
               "description": "Fuel Transaction Sender Address",
               "disabled": true
             },
             {
               "key": "recipient",
-              "value": null,
+              "value": "",
               "description": "Fuel Transaction Recipient Address",
               "disabled": true
             },
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1049,13 +1045,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1134,13 +1130,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1219,13 +1215,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1304,13 +1300,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1389,13 +1385,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1442,7 +1438,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/call?from",
+          "raw": "http://{{base_url}}/receipts/call",
           "protocol": "http",
           "host": ["{{base_url}}"],
           "path": ["receipts", "call"],
@@ -1472,6 +1468,12 @@
               "disabled": true
             },
             {
+              "key": "from",
+              "value": null,
+              "description": "Fuel Receipt Sender Address",
+              "disabled": true
+            },
+            {
               "key": "to",
               "value": "",
               "description": "Fuel Receipt Receiver Address",
@@ -1486,13 +1488,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1506,11 +1508,6 @@
               "value": "",
               "description": "Limit on the returned entries - fetch from bottom",
               "disabled": true
-            },
-            {
-              "key": "from",
-              "value": null,
-              "description": "Fuel Receipt Sender Address"
             }
           ]
         },
@@ -1582,13 +1579,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1605,7 +1602,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -1679,13 +1676,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1702,7 +1699,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -1774,15 +1771,21 @@
               "disabled": true
             },
             {
+              "key": "from",
+              "value": "",
+              "description": "Fuel Receipt Sender Address",
+              "disabled": true
+            },
+            {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1795,12 +1798,6 @@
               "key": "last",
               "value": "",
               "description": "Limit on the returned entries - fetch from bottom",
-              "disabled": true
-            },
-            {
-              "key": "from",
-              "value": null,
-              "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
           ]
@@ -1873,13 +1870,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1896,7 +1893,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -1970,13 +1967,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -1993,7 +1990,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -2067,13 +2064,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2090,7 +2087,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -2170,13 +2167,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2193,7 +2190,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -2260,7 +2257,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             },
@@ -2279,13 +2276,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2364,13 +2361,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2461,13 +2458,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2484,7 +2481,7 @@
             },
             {
               "key": "from",
-              "value": null,
+              "value": "",
               "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
@@ -2564,13 +2561,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2667,13 +2664,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2764,13 +2761,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2855,13 +2852,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -2946,13 +2943,13 @@
             {
               "key": "after",
               "value": "",
-              "description": "Cursor to point after a given block height",
+              "description": "Cursor to point after a given id",
               "disabled": true
             },
             {
               "key": "before",
               "value": "",
-              "description": "Cursor to point before a given block height",
+              "description": "Cursor to point before a given id",
               "disabled": true
             },
             {
@@ -3009,6 +3006,97 @@
           "protocol": "http",
           "host": ["{{base_url}}"],
           "path": ["transactions", "{{tx_id}}", "outputs"],
+          "query": [
+            {
+              "key": "blockHeight",
+              "value": "",
+              "description": "Fuel Block Height",
+              "disabled": true
+            },
+            {
+              "key": "txId",
+              "value": "",
+              "description": "Fuel Transaction Id",
+              "disabled": true
+            },
+            {
+              "key": "outputIndex",
+              "value": "",
+              "description": "Fuel Output Index",
+              "disabled": true
+            },
+            {
+              "key": "outputType",
+              "value": "",
+              "description": "Fuel Receipt Type (one of: coin, contract, change, variable, contract_created )",
+              "disabled": true
+            },
+            {
+              "key": "after",
+              "value": "",
+              "description": "Cursor to point after a given id",
+              "disabled": true
+            },
+            {
+              "key": "before",
+              "value": "",
+              "description": "Cursor to point before a given id",
+              "disabled": true
+            },
+            {
+              "key": "first",
+              "value": "",
+              "description": "Limit on the returned entries - fetch from top",
+              "disabled": true
+            },
+            {
+              "key": "last",
+              "value": "",
+              "description": "Limit on the returned entries - fetch from bottom",
+              "disabled": true
+            },
+            {
+              "key": "from",
+              "value": "",
+              "description": "Fuel Receipt Sender Address",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Get all outputs-related transactions based on a filter"
+      },
+      "response": []
+    },
+    {
+      "name": "swagger-ui",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [""],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{api_key}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://{{base_url}}/swagger-ui//api-docs/openapi.json",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["swagger-ui", "", "api-docs", "openapi.json"],
           "query": [
             {
               "key": "blockHeight",
