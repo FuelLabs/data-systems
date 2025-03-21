@@ -112,6 +112,8 @@ impl TryFrom<&str> for TimeRange {
 pub enum Blocks {
     #[iden = "blocks"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -173,7 +175,7 @@ impl Queryable for BlocksQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Blocks::Height
+        Blocks::Id
     }
 
     fn pagination(&self) -> &QueryPagination {
@@ -252,7 +254,7 @@ mod test {
             format!("SELECT * FROM \"blocks\" WHERE \"producer_address\" = '{}' AND \"block_height\" = {}", TEST_PRODUCER_ADDRESS, TEST_BLOCK_HEIGHT)
         );
 
-        // Test 2: all blocks after a given block_height, first items only
+        // Test 2: all blocks after a given cursor, first items only
         let after_height_query = BlocksQuery {
             producer: None,
             height: None,
@@ -269,7 +271,7 @@ mod test {
 
         assert_eq!(
             after_height_query.query_to_string(),
-            format!("SELECT * FROM \"blocks\" WHERE \"block_height\" > {} ORDER BY \"block_height\" ASC LIMIT {}", TEST_BLOCK_HEIGHT, FIRST_POINTER)
+            format!("SELECT * FROM \"blocks\" WHERE \"id\" > {} ORDER BY \"id\" ASC LIMIT {}", TEST_BLOCK_HEIGHT, FIRST_POINTER)
         );
 
         // Test 3: all blocks after a given timestamp, first items only
@@ -282,7 +284,7 @@ mod test {
         };
         assert_eq!(
             after_timestamp_query.query_to_string(),
-            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"block_height\" ASC LIMIT {}", TEST_TIMESTAMP, FIRST_POINTER)
+            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"id\" ASC LIMIT {}", TEST_TIMESTAMP, FIRST_POINTER)
         );
 
         // Test 4: all blocks before a given timestamp, last items only
@@ -295,7 +297,7 @@ mod test {
         };
         assert_eq!(
             before_timestamp_query.query_to_string(),
-            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"block_height\" DESC LIMIT {}", TEST_TIMESTAMP, LAST_POINTER)
+            format!("SELECT * FROM \"blocks\" WHERE \"created_at\" >= {} ORDER BY \"id\" DESC LIMIT {}", TEST_TIMESTAMP, LAST_POINTER)
         );
 
         // Test 5: all blocks in the last 90 days

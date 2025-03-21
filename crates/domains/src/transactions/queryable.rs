@@ -11,6 +11,8 @@ use crate::queryable::{HasPagination, QueryPagination, Queryable};
 pub enum Transactions {
     #[iden = "transactions"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -73,7 +75,7 @@ impl Queryable for TransactionsQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Transactions::BlockHeight
+        Transactions::Id
     }
 
     fn pagination(&self) -> &QueryPagination {
@@ -178,7 +180,7 @@ mod test {
 
         assert_eq!(
             type_query.query_to_string(),
-            format!("SELECT * FROM \"transactions\" WHERE \"tx_index\" = {} AND \"type\" = 'script' ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"transactions\" WHERE \"tx_index\" = {} AND \"type\" = 'script' ORDER BY \"id\" ASC LIMIT {}",
                 TEST_TX_INDEX, FIRST_POINTER)
         );
 
@@ -197,7 +199,7 @@ mod test {
 
         assert_eq!(
             range_query.query_to_string(),
-            format!("SELECT * FROM \"transactions\" WHERE \"block_height\" = {} AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+            format!("SELECT * FROM \"transactions\" WHERE \"block_height\" = {} AND \"id\" > {} ORDER BY \"id\" DESC LIMIT {}",
                 TEST_BLOCK_HEIGHT, AFTER_POINTER, LAST_POINTER)
         );
 
@@ -216,7 +218,7 @@ mod test {
 
         assert_eq!(
             status_type_query.query_to_string(),
-            format!("SELECT * FROM \"transactions\" WHERE \"type\" = 'create' AND \"tx_status\" = 'failed' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"transactions\" WHERE \"type\" = 'create' AND \"tx_status\" = 'failed' AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 BEFORE_POINTER, FIRST_POINTER)
         );
 
