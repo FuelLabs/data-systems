@@ -10,24 +10,47 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
-use fuel_streams_types::{BlockHeight, BlockTimestamp, DaBlockHeight};
+use fuel_streams_types::{
+    wrapped_int::WrappedU32,
+    BlockHeight,
+    BlockTimestamp,
+    DaBlockHeight,
+};
 use serde::{Deserialize, Serialize};
 
 use super::BlocksSubject;
 use crate::Subjects;
-
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
 )]
 pub struct BlockDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_da_height: DaBlockHeight,
     pub block_height: BlockHeight,
     pub producer_address: String,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
     pub block_propagation_ms: i32,
+
+    pub header_application_hash: String,
+    pub header_consensus_parameters_version: WrappedU32,
+    pub header_da_height: DaBlockHeight,
+    pub header_event_inbox_root: String,
+    pub header_message_outbox_root: String,
+    pub header_message_receipt_count: WrappedU32,
+    pub header_prev_root: String,
+    pub header_state_transition_bytecode_version: WrappedU32,
+    pub header_time: BlockTimestamp,
+    pub header_transactions_count: i32,
+    pub header_transactions_root: String,
+    pub header_version: i32,
+
+    pub chain_config_hash: String,
+    pub coins_root: String,
+    pub contracts_root: String,
+    pub messages_root: String,
+    pub transactions_root: String,
+    pub signature: String,
 }
 
 impl DataEncoder for BlockDbItem {

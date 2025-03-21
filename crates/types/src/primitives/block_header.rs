@@ -4,7 +4,7 @@ use wrapped_int::WrappedU32;
 
 use crate::*;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockTime(pub FuelCoreTai64);
 impl BlockTime {
     pub fn into_inner(self) -> FuelCoreTai64 {
@@ -104,7 +104,14 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 
 // BlockHeaderVersion enum
 #[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Default,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockHeaderVersion {
