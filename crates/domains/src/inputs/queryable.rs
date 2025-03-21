@@ -286,7 +286,7 @@ mod test {
 
         assert_eq!(
             coin_query.query_to_string(),
-            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'coin' AND \"owner_id\" = '{}' AND \"asset_id\" = '{}' ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'coin' AND \"owner_id\" = '{}' AND \"asset_id\" = '{}' ORDER BY \"id\" ASC LIMIT {}",
                 TEST_OWNER_ID, TEST_ASSET_ID, FIRST_POINTER)
         );
 
@@ -309,7 +309,7 @@ mod test {
 
         assert_eq!(
             contract_query.query_to_string(),
-            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'contract' AND \"contract_id\" = '{}' AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'contract' AND \"contract_id\" = '{}' AND \"id\" > {} ORDER BY \"id\" DESC LIMIT {}",
                 TEST_CONTRACT_ID, AFTER_POINTER, LAST_POINTER)
         );
 
@@ -332,7 +332,7 @@ mod test {
 
         assert_eq!(
             message_query.query_to_string(),
-            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'message' AND \"sender_address\" = '{}' AND \"recipient_address\" = '{}' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"inputs\" WHERE \"input_type\" = 'message' AND \"sender_address\" = '{}' AND \"recipient_address\" = '{}' AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 TEST_ADDRESS, TEST_ADDRESS, BEFORE_POINTER, FIRST_POINTER)
         );
 

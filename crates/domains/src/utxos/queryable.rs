@@ -219,6 +219,7 @@ mod test {
             block_height: None,
             utxo_type: None,
             tx_index: None,
+
             input_index: None,
             utxo_id: Some(HexData::from(TEST_UTXO_ID)),
             pagination: (None, None, Some(FIRST_POINTER), None).into(),
@@ -228,7 +229,7 @@ mod test {
 
         assert_eq!(
             utxo_id_query.query_to_string(),
-            format!("SELECT * FROM \"utxos\" WHERE \"utxo_id\" = '{}' ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"utxos\" WHERE \"utxo_id\" = '{}' ORDER BY \"id\" ASC LIMIT {}",
                 TEST_UTXO_ID, FIRST_POINTER)
         );
 
@@ -248,7 +249,7 @@ mod test {
 
         assert_eq!(
             indices_query.query_to_string(),
-            format!("SELECT * FROM \"utxos\" WHERE \"tx_id\" = '{}' AND \"tx_index\" = {} AND \"input_index\" = {} AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+            format!("SELECT * FROM \"utxos\" WHERE \"tx_id\" = '{}' AND \"tx_index\" = {} AND \"input_index\" = {} AND \"id\" > {} ORDER BY \"id\" DESC LIMIT {}",
                 TEST_TX_ID, TEST_TX_INDEX, TEST_INPUT_INDEX, AFTER_POINTER, LAST_POINTER)
         );
 
@@ -268,7 +269,7 @@ mod test {
 
         assert_eq!(
             type_query.query_to_string(),
-            format!("SELECT * FROM \"utxos\" WHERE \"utxo_type\" = 'message' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"utxos\" WHERE \"utxo_type\" = 'message' AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 BEFORE_POINTER, FIRST_POINTER)
         );
 
@@ -293,7 +294,7 @@ mod test {
 
         assert_eq!(
             complex_query.query_to_string(),
-            format!("SELECT * FROM \"utxos\" WHERE \"block_height\" = {} AND \"tx_id\" = '{}' AND \"tx_index\" = {} AND \"input_index\" = {} AND \"utxo_type\" = 'contract' AND \"utxo_id\" = '{}' AND \"block_height\" > {} AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"utxos\" WHERE \"block_height\" = {} AND \"tx_id\" = '{}' AND \"tx_index\" = {} AND \"input_index\" = {} AND \"utxo_type\" = 'contract' AND \"utxo_id\" = '{}' AND \"id\" > {} AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 TEST_BLOCK_HEIGHT, TEST_TX_ID, TEST_TX_INDEX, TEST_INPUT_INDEX, TEST_UTXO_ID, AFTER_POINTER, BEFORE_POINTER, FIRST_POINTER)
         );
     }

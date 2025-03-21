@@ -254,7 +254,7 @@ mod test {
 
         assert_eq!(
             coin_query.query_to_string(),
-            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'coin' AND \"to_address\" = '{}' AND \"asset_id\" = '{}' ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'coin' AND \"to_address\" = '{}' AND \"asset_id\" = '{}' ORDER BY \"id\" ASC LIMIT {}",
                 TEST_ADDRESS, TEST_ASSET_ID, FIRST_POINTER)
         );
 
@@ -275,7 +275,7 @@ mod test {
 
         assert_eq!(
             contract_query.query_to_string(),
-            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'contract' AND \"contract_id\" = '{}' AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'contract' AND \"contract_id\" = '{}' AND \"id\" > {} ORDER BY \"id\" DESC LIMIT {}",
                 TEST_CONTRACT_ID, AFTER_POINTER, LAST_POINTER)
         );
 
@@ -296,7 +296,7 @@ mod test {
 
         assert_eq!(
             change_query.query_to_string(),
-            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'change' AND \"to_address\" = '{}' AND \"asset_id\" = '{}' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"outputs\" WHERE \"output_type\" = 'change' AND \"to_address\" = '{}' AND \"asset_id\" = '{}' AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 TEST_ADDRESS, TEST_ASSET_ID, BEFORE_POINTER, FIRST_POINTER)
         );
 
