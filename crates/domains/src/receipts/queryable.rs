@@ -11,6 +11,8 @@ use crate::queryable::{HasPagination, QueryPagination, Queryable};
 pub enum Receipts {
     #[iden = "receipts"]
     Table,
+    #[iden = "id"]
+    Id,
     #[iden = "subject"]
     Subject,
     #[iden = "value"]
@@ -99,7 +101,7 @@ impl Queryable for ReceiptsQuery {
     }
 
     fn pagination_column() -> Self::PaginationColumn {
-        Receipts::BlockHeight
+        Receipts::Id
     }
 
     fn pagination(&self) -> &QueryPagination {
@@ -320,7 +322,7 @@ mod test {
 
         assert_eq!(
             contract_query.query_to_string(),
-            format!("SELECT * FROM \"receipts\" WHERE \"from_contract_id\" = '{}' AND \"to_contract_id\" = '{}' ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"receipts\" WHERE \"from_contract_id\" = '{}' AND \"to_contract_id\" = '{}' ORDER BY \"id\" ASC LIMIT {}",
                 TEST_CONTRACT_ID, TEST_CONTRACT_ID, FIRST_POINTER)
         );
 
@@ -345,7 +347,7 @@ mod test {
 
         assert_eq!(
             asset_query.query_to_string(),
-            format!("SELECT * FROM \"receipts\" WHERE \"asset_id\" = '{}' AND \"block_height\" > {} ORDER BY \"block_height\" DESC LIMIT {}",
+            format!("SELECT * FROM \"receipts\" WHERE \"asset_id\" = '{}' AND \"id\" > {} ORDER BY \"id\" DESC LIMIT {}",
                 TEST_ASSET_ID, AFTER_POINTER, LAST_POINTER)
         );
 
@@ -370,7 +372,7 @@ mod test {
 
         assert_eq!(
             address_query.query_to_string(),
-            format!("SELECT * FROM \"receipts\" WHERE \"sender_address\" = '{}' AND \"recipient_address\" = '{}' AND \"block_height\" < {} ORDER BY \"block_height\" ASC LIMIT {}",
+            format!("SELECT * FROM \"receipts\" WHERE \"sender_address\" = '{}' AND \"recipient_address\" = '{}' AND \"id\" < {} ORDER BY \"id\" ASC LIMIT {}",
                 TEST_ADDRESS, TEST_ADDRESS, BEFORE_POINTER, FIRST_POINTER)
         );
 

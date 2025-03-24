@@ -3,12 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use fuel_streams_core::types::{
-    InputType,
-    OutputType,
-    ReceiptType,
-    StreamResponse,
-};
+use fuel_streams_core::types::StreamResponse;
 use fuel_streams_store::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
@@ -113,14 +108,9 @@ pub fn create_routes(state: &ServerState) -> Router {
 
     let (inputs_path, inputs_router) = RouterBuilder::new("/inputs")
         .root(get(inputs::get_inputs))
-        .typed_routes(
-            &[
-                InputType::Message.as_str(),
-                InputType::Coin.as_str(),
-                InputType::Contract.as_str(),
-            ],
-            get(inputs::get_inputs),
-        )
+        .related("/message", get(inputs::get_inputs_message))
+        .related("/contract", get(inputs::get_inputs_contract))
+        .related("/coin", get(inputs::get_inputs_coin))
         .with_layer(from_fn(validate_scope_middleware))
         .with_layer(from_fn_with_state(
             auth_params.clone(),
@@ -130,15 +120,13 @@ pub fn create_routes(state: &ServerState) -> Router {
 
     let (outputs_path, outputs_router) = RouterBuilder::new("/outputs")
         .root(get(outputs::get_outputs))
-        .typed_routes(
-            &[
-                OutputType::Coin.as_str(),
-                OutputType::Contract.as_str(),
-                OutputType::Change.as_str(),
-                OutputType::Variable.as_str(),
-                OutputType::ContractCreated.as_str(),
-            ],
-            get(outputs::get_outputs),
+        .related("/coin", get(outputs::get_outputs_coin))
+        .related("/contract", get(outputs::get_outputs_contract))
+        .related("/change", get(outputs::get_outputs_change))
+        .related("/variable", get(outputs::get_outputs_variable))
+        .related(
+            "/contract_created",
+            get(outputs::get_outputs_contract_created),
         )
         .with_layer(from_fn(validate_scope_middleware))
         .with_layer(from_fn_with_state(
@@ -149,24 +137,19 @@ pub fn create_routes(state: &ServerState) -> Router {
 
     let (receipts_path, receipts_router) = RouterBuilder::new("/receipts")
         .root(get(receipts::get_receipts))
-        .typed_routes(
-            &[
-                ReceiptType::Call.as_str(),
-                ReceiptType::Return.as_str(),
-                ReceiptType::ReturnData.as_str(),
-                ReceiptType::Panic.as_str(),
-                ReceiptType::Revert.as_str(),
-                ReceiptType::Log.as_str(),
-                ReceiptType::LogData.as_str(),
-                ReceiptType::Transfer.as_str(),
-                ReceiptType::TransferOut.as_str(),
-                ReceiptType::ScriptResult.as_str(),
-                ReceiptType::MessageOut.as_str(),
-                ReceiptType::Mint.as_str(),
-                ReceiptType::Burn.as_str(),
-            ],
-            get(receipts::get_receipts),
-        )
+        .related("/call", get(receipts::get_receipts_call))
+        .related("/return", get(receipts::get_receipts_return))
+        .related("/return_data", get(receipts::get_receipts_return_data))
+        .related("/panic", get(receipts::get_receipts_panic))
+        .related("/revert", get(receipts::get_receipts_revert))
+        .related("/log", get(receipts::get_receipts_log))
+        .related("/log_data", get(receipts::get_receipts_log_data))
+        .related("/transfer", get(receipts::get_receipts_transfer))
+        .related("/transfer_out", get(receipts::get_receipts_transfer_out))
+        .related("/script_result", get(receipts::get_receipts_script_result))
+        .related("/message_out", get(receipts::get_receipts_message_out))
+        .related("/mint", get(receipts::get_receipts_mint))
+        .related("/burn", get(receipts::get_receipts_burn))
         .with_layer(from_fn(validate_scope_middleware))
         .with_layer(from_fn_with_state(
             auth_params.clone(),
