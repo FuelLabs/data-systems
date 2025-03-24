@@ -12,9 +12,10 @@ impl PacketBuilder for Block {
         let block_height = *msg_payload.metadata.block_height;
         let block_producer = (*msg_payload.metadata.block_producer).clone();
         let subject = BlocksSubject {
-            producer: Some(block_producer),
-            da_height: Some(block.header.da_height.to_owned()),
             height: Some(block_height),
+            da_height: Some(block.header.da_height.to_owned()),
+            producer: Some(block_producer),
+            version: Some(block.version.to_owned()),
         }
         .dyn_arc();
         let timestamps = msg_payload.timestamp();

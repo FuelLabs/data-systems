@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant)]
+
 use std::sync::Arc;
 
 use fuel_streams_subject::subject::{

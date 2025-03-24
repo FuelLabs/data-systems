@@ -1,3 +1,5 @@
+use std::{fmt, str::FromStr};
+
 pub use fuel_streams_types::BlockHeight;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
@@ -50,6 +52,50 @@ pub enum Consensus {
     PoAConsensus(PoAConsensus),
 }
 
+impl From<&Consensus> for DbConsensusType {
+    fn from(consensus: &Consensus) -> Self {
+        match consensus {
+            Consensus::Genesis(_) => DbConsensusType::Genesis,
+            Consensus::PoAConsensus(_) => DbConsensusType::PoaConsensus,
+        }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+impl Consensus {
+    pub fn normalize_all(
+        &self,
+    ) -> (
+        Option<DbConsensusType>,
+        Option<Bytes32>,
+        Option<Bytes32>,
+        Option<Bytes32>,
+        Option<Bytes32>,
+        Option<Bytes32>,
+        Option<Signature>,
+    ) {
+        match self {
+            Consensus::Genesis(genesis) => (
+                Some(self.into()),
+                Some(genesis.chain_config_hash.to_owned()),
+                Some(genesis.coins_root.to_owned()),
+                Some(genesis.contracts_root.to_owned()),
+                Some(genesis.messages_root.to_owned()),
+                Some(genesis.transactions_root.to_owned()),
+                None,
+            ),
+            Consensus::PoAConsensus(poa) => (
+                Some(self.into()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(poa.signature.to_owned()),
+            ),
+        }
+    }
+}
 #[derive(
     Clone,
     Debug,
@@ -121,10 +167,32 @@ impl From<FuelCoreConsensus> for Consensus {
 }
 
 // BlockVersion enum
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockVersion {
     V1,
+}
+
+impl FromStr for BlockVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "V1" => Ok(BlockVersion::V1),
+            _ => Err(format!("Unknown BlockVersion: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for BlockVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            BlockVersion::V1 => "V1",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 #[derive(Debug, Clone)]

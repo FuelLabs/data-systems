@@ -1,3 +1,8 @@
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use wrapped_int::WrappedU32;
@@ -30,6 +35,21 @@ impl Default for BlockTime {
 impl utoipa::ToSchema for BlockTime {
     fn name() -> std::borrow::Cow<'static, str> {
         std::borrow::Cow::Borrowed("BlockTime")
+    }
+}
+
+impl FromStr for BlockTime {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let unix_seconds = s.parse::<i64>()?;
+        Ok(Self::from_unix(unix_seconds))
+    }
+}
+
+impl Display for BlockTime {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_unix())
     }
 }
 
@@ -117,4 +137,23 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 pub enum BlockHeaderVersion {
     #[default]
     V1,
+}
+
+impl FromStr for BlockHeaderVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "V1" => Ok(BlockHeaderVersion::V1),
+            _ => Err(format!("Unknown BlockHeaderVersion: {}", s)),
+        }
+    }
+}
+
+impl Display for BlockHeaderVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            BlockHeaderVersion::V1 => write!(f, "V1"),
+        }
+    }
 }
