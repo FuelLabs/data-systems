@@ -14,6 +14,7 @@ use crate::api_key::ApiKeyError;
     Default,
     strum::EnumIter,
     Hash,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiKeyRoleScope {

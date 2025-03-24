@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! declare_string_wrapper {
     ($name:ident) => {
-        #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+        #[derive(Debug, Clone, Eq, PartialEq, Hash, utoipa::ToSchema)]
         pub struct $name(std::borrow::Cow<'static, str>);
 
         impl $name {

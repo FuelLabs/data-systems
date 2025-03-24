@@ -20,11 +20,21 @@
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{api_key}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"username\": \"petko\"\n}",
+          "raw": "{\n    \"username\": \"john\",\n    \"role\": \"AMM\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -32,16 +42,10 @@
           }
         },
         "url": {
-          "raw": "http://{{base_url}}/key/generate?password={{fuel_password}}",
+          "raw": "http://{{base_url}}/api/v1/keys/generate",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["key", "generate"],
-          "query": [
-            {
-              "key": "password",
-              "value": "{{fuel_password}}"
-            }
-          ]
+          "path": ["api", "v1", "keys", "generate"]
         },
         "description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
       },
@@ -73,10 +77,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs",
+          "raw": "http://{{base_url}}/api/v1/outputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs"],
+          "path": ["api", "v1", "outputs"],
           "query": [
             {
               "key": "blockHeight",
@@ -164,10 +168,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs/coin",
+          "raw": "http://{{base_url}}/api/v1/outputs/coin",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs", "coin"],
+          "path": ["api", "v1", "outputs", "coin"],
           "query": [
             {
               "key": "blockHeight",
@@ -261,10 +265,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs/contract",
+          "raw": "http://{{base_url}}/api/v1/outputs/contract",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs", "contract"],
+          "path": ["api", "v1", "outputs", "contract"],
           "query": [
             {
               "key": "blockHeight",
@@ -352,10 +356,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs/change",
+          "raw": "http://{{base_url}}/api/v1/outputs/change",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs", "change"],
+          "path": ["api", "v1", "outputs", "change"],
           "query": [
             {
               "key": "blockHeight",
@@ -449,10 +453,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs/variable",
+          "raw": "http://{{base_url}}/api/v1/outputs/variable",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs", "variable"],
+          "path": ["api", "v1", "outputs", "variable"],
           "query": [
             {
               "key": "blockHeight",
@@ -546,10 +550,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/outputs/contract-related",
+          "raw": "http://{{base_url}}/api/v1/outputs/contract-related",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["outputs", "contract-related"],
+          "path": ["api", "v1", "outputs", "contract-related"],
           "query": [
             {
               "key": "blockHeight",
@@ -637,10 +641,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/inputs",
+          "raw": "http://{{base_url}}/api/v1/inputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["inputs"],
+          "path": ["api", "v1", "inputs"],
           "query": [
             {
               "key": "blockHeight",
@@ -728,10 +732,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/inputs/coin",
+          "raw": "http://{{base_url}}/api/v1/inputs/coin",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["inputs", "coin"],
+          "path": ["api", "v1", "inputs", "coin"],
           "query": [
             {
               "key": "blockHeight",
@@ -825,10 +829,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/inputs/contract",
+          "raw": "http://{{base_url}}/api/v1/inputs/contract",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["inputs", "contract"],
+          "path": ["api", "v1", "inputs", "contract"],
           "query": [
             {
               "key": "blockHeight",
@@ -916,10 +920,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/inputs/message",
+          "raw": "http://{{base_url}}/api/v1/inputs/message",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["inputs", "message"],
+          "path": ["api", "v1", "inputs", "message"],
           "query": [
             {
               "key": "blockHeight",
@@ -1013,10 +1017,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/blocks",
+          "raw": "http://{{base_url}}/api/v1/blocks",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["blocks"],
+          "path": ["api", "v1", "blocks"],
           "query": [
             {
               "key": "producer",
@@ -1098,10 +1102,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/blocks/{{height}}/inputs",
+          "raw": "http://{{base_url}}/api/v1/blocks/{{height}}/inputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["blocks", "{{height}}", "inputs"],
+          "path": ["api", "v1", "blocks", "{{height}}", "inputs"],
           "query": [
             {
               "key": "txId",
@@ -1183,10 +1187,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/blocks/{{height}}/outputs",
+          "raw": "http://{{base_url}}/api/v1/blocks/{{height}}/outputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["blocks", "{{height}}", "outputs"],
+          "path": ["api", "v1", "blocks", "{{height}}", "outputs"],
           "query": [
             {
               "key": "txId",
@@ -1268,10 +1272,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/blocks/{{height}}/transactions",
+          "raw": "http://{{base_url}}/api/v1/blocks/{{height}}/transactions",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["blocks", "{{height}}", "transactions"],
+          "path": ["api", "v1", "blocks", "{{height}}", "transactions"],
           "query": [
             {
               "key": "txId",
@@ -1353,10 +1357,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/blocks/{{height}}/receipts",
+          "raw": "http://{{base_url}}/api/v1/blocks/{{height}}/receipts",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["blocks", "{{height}}", "receipts"],
+          "path": ["api", "v1", "blocks", "{{height}}", "receipts"],
           "query": [
             {
               "key": "txId",
@@ -1438,10 +1442,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/call",
+          "raw": "http://{{base_url}}/api/v1/receipts/call",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "call"],
+          "path": ["api", "v1", "receipts", "call"],
           "query": [
             {
               "key": "blockHeight",
@@ -1541,10 +1545,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/return",
+          "raw": "http://{{base_url}}/api/v1/receipts/return",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "return"],
+          "path": ["api", "v1", "receipts", "return"],
           "query": [
             {
               "key": "blockHeight",
@@ -1638,10 +1642,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/return-data",
+          "raw": "http://{{base_url}}/api/v1/receipts/return-data",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "return-data"],
+          "path": ["api", "v1", "receipts", "return-data"],
           "query": [
             {
               "key": "blockHeight",
@@ -1674,6 +1678,12 @@
               "disabled": true
             },
             {
+              "key": "from",
+              "value": "",
+              "description": "Fuel Receipt Sender Address",
+              "disabled": true
+            },
+            {
               "key": "after",
               "value": "",
               "description": "Cursor to point after a given id",
@@ -1695,12 +1705,6 @@
               "key": "last",
               "value": "",
               "description": "Limit on the returned entries - fetch from bottom",
-              "disabled": true
-            },
-            {
-              "key": "from",
-              "value": "",
-              "description": "Fuel Receipt Sender Address",
               "disabled": true
             }
           ]
@@ -1735,10 +1739,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/panic",
+          "raw": "http://{{base_url}}/api/v1/receipts/panic",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "panic"],
+          "path": ["api", "v1", "receipts", "panic"],
           "query": [
             {
               "key": "blockHeight",
@@ -1832,10 +1836,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/revert",
+          "raw": "http://{{base_url}}/api/v1/receipts/revert",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "revert"],
+          "path": ["api", "v1", "receipts", "revert"],
           "query": [
             {
               "key": "blockHeight",
@@ -1929,10 +1933,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/log",
+          "raw": "http://{{base_url}}/api/v1/receipts/log",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "log"],
+          "path": ["api", "v1", "receipts", "log"],
           "query": [
             {
               "key": "blockHeight",
@@ -2026,10 +2030,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/log-data",
+          "raw": "http://{{base_url}}/api/v1/receipts/log-data",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "log-data"],
+          "path": ["api", "v1", "receipts", "log-data"],
           "query": [
             {
               "key": "blockHeight",
@@ -2123,10 +2127,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/transfer",
+          "raw": "http://{{base_url}}/api/v1/receipts/transfer",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "transfer"],
+          "path": ["api", "v1", "receipts", "transfer"],
           "query": [
             {
               "key": "blockHeight",
@@ -2226,10 +2230,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/transfer-out",
+          "raw": "http://{{base_url}}/api/v1/receipts/transfer-out",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "transfer-out"],
+          "path": ["api", "v1", "receipts", "transfer-out"],
           "query": [
             {
               "key": "blockHeight",
@@ -2329,10 +2333,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/script-result",
+          "raw": "http://{{base_url}}/api/v1/receipts/script-result",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "script-result"],
+          "path": ["api", "v1", "receipts", "script-result"],
           "query": [
             {
               "key": "blockHeight",
@@ -2414,10 +2418,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/message-out",
+          "raw": "http://{{base_url}}/api/v1/receipts/message-out",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "message-out"],
+          "path": ["api", "v1", "receipts", "message-out"],
           "query": [
             {
               "key": "blockHeight",
@@ -2517,10 +2521,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/mint",
+          "raw": "http://{{base_url}}/api/v1/receipts/mint",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "mint"],
+          "path": ["api", "v1", "receipts", "mint"],
           "query": [
             {
               "key": "blockHeight",
@@ -2620,10 +2624,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/receipts/burn",
+          "raw": "http://{{base_url}}/api/v1/receipts/burn",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["receipts", "burn"],
+          "path": ["api", "v1", "receipts", "burn"],
           "query": [
             {
               "key": "blockHeight",
@@ -2723,10 +2727,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/transactions",
+          "raw": "http://{{base_url}}/api/v1/transactions",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["transactions"],
+          "path": ["api", "v1", "transactions"],
           "query": [
             {
               "key": "blockHeight",
@@ -2820,10 +2824,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/transactions/{{tx_id}}/receipts",
+          "raw": "http://{{base_url}}/api/v1/transactions/{{tx_id}}/receipts",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["transactions", "{{tx_id}}", "receipts"],
+          "path": ["api", "v1", "transactions", "{{tx_id}}", "receipts"],
           "query": [
             {
               "key": "blockHeight",
@@ -2911,10 +2915,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/transactions/{{tx_id}}/inputs",
+          "raw": "http://{{base_url}}/api/v1/transactions/{{tx_id}}/inputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["transactions", "{{tx_id}}", "inputs"],
+          "path": ["api", "v1", "transactions", "{{tx_id}}", "inputs"],
           "query": [
             {
               "key": "blockHeight",
@@ -3002,10 +3006,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/transactions/{{tx_id}}/outputs",
+          "raw": "http://{{base_url}}/api/v1/transactions/{{tx_id}}/outputs",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["transactions", "{{tx_id}}", "outputs"],
+          "path": ["api", "v1", "transactions", "{{tx_id}}", "outputs"],
           "query": [
             {
               "key": "blockHeight",
@@ -3081,78 +3085,15 @@
       ],
       "request": {
         "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{api_key}}",
-              "type": "string"
-            }
-          ]
+          "type": "noauth"
         },
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://{{base_url}}/swagger-ui//api-docs/openapi.json",
+          "raw": "http://{{base_url}}/swagger-ui/",
           "protocol": "http",
           "host": ["{{base_url}}"],
-          "path": ["swagger-ui", "", "api-docs", "openapi.json"],
-          "query": [
-            {
-              "key": "blockHeight",
-              "value": "",
-              "description": "Fuel Block Height",
-              "disabled": true
-            },
-            {
-              "key": "txId",
-              "value": "",
-              "description": "Fuel Transaction Id",
-              "disabled": true
-            },
-            {
-              "key": "outputIndex",
-              "value": "",
-              "description": "Fuel Output Index",
-              "disabled": true
-            },
-            {
-              "key": "outputType",
-              "value": "",
-              "description": "Fuel Receipt Type (one of: coin, contract, change, variable, contract_created )",
-              "disabled": true
-            },
-            {
-              "key": "after",
-              "value": "",
-              "description": "Cursor to point after a given block height",
-              "disabled": true
-            },
-            {
-              "key": "before",
-              "value": "",
-              "description": "Cursor to point before a given block height",
-              "disabled": true
-            },
-            {
-              "key": "first",
-              "value": "",
-              "description": "Limit on the returned entries - fetch from top",
-              "disabled": true
-            },
-            {
-              "key": "last",
-              "value": "",
-              "description": "Limit on the returned entries - fetch from bottom",
-              "disabled": true
-            },
-            {
-              "key": "from",
-              "value": "",
-              "description": "Fuel Receipt Sender Address",
-              "disabled": true
-            }
-          ]
+          "path": ["swagger-ui", ""]
         },
         "description": "Get all outputs-related transactions based on a filter"
       },
@@ -3177,13 +3118,8 @@
   ],
   "variable": [
     {
-      "key": "fuel_password",
-      "value": "FUEL_PASSWORD",
-      "type": "string"
-    },
-    {
       "key": "api_key",
-      "value": "API_KEY",
+      "value": "fuel-zYaQhGvPdpIGePvqnaGsiXOtuioTeFrI",
       "type": "string"
     },
     {

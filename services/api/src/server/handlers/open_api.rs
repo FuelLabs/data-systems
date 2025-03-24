@@ -48,7 +48,7 @@ use fuel_streams_domains::{
     receipts::queryable::ReceiptsQuery,
     transactions::queryable::TransactionsQuery,
 };
-use fuel_web_utils::server::server_builder::API_BASE_PATH;
+use fuel_web_utils::{api_key::ApiKey, server::server_builder::API_BASE_PATH};
 use utoipa::{
     openapi::{
         security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -66,6 +66,7 @@ pub const TAG_OUTPUTS: &str = "Outputs";
 pub const TAG_RECEIPTS: &str = "Receipts";
 pub const TAG_TRANSACTIONS: &str = "Transactions";
 pub const TAG_UTXOS: &str = "Utxos";
+pub const TAG_API_KEYS: &str = "ApiKeys";
 
 struct SecurityAddon;
 
@@ -90,6 +91,7 @@ impl Modify for ServerAddon {
 
 use super::{
     accounts::*,
+    api_key::*,
     blocks::*,
     contracts::*,
     inputs::*,
@@ -98,6 +100,7 @@ use super::{
     transactions::*,
     utxos::*,
 };
+use crate::server::handlers::api_key::GenerateApiKeyRequest;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -143,6 +146,7 @@ use super::{
         get_transaction_inputs,
         get_transaction_outputs,
         get_utxos,
+        generate_api_key,
     ),
     components(schemas(
         BlocksQuery,
@@ -189,6 +193,8 @@ use super::{
         BurnReceipt,
         Nonce,
         UtxoId,
+        GenerateApiKeyRequest,
+        ApiKey,
     )),
     tags(
         (name = "Blocks", description = "Block retrieval endpoints"),
@@ -198,6 +204,7 @@ use super::{
         (name = "Outputs", description = "Outputs retrieval endpoints"),
         (name = "Receipts", description = "Receipts retrieval endpoints"),
         (name = "Transactions", description = "Transactions retrieval endpoints"),
+        (name = "ApiKeys", description = "Api Key generation"),
     ),
     modifiers(&SecurityAddon, &ServerAddon)
 )]
