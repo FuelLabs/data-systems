@@ -10,6 +10,7 @@ use crate::{
     blocks::*,
     inputs::*,
     outputs::*,
+    predicates::*,
     receipts::*,
     transactions::*,
     utxos::*,
@@ -36,6 +37,7 @@ pub enum Subjects {
     OutputsChange(OutputsChangeSubject),
     OutputsVariable(OutputsVariableSubject),
     OutputsContractCreated(OutputsContractCreatedSubject),
+    Predicates(PredicatesSubject),
     Receipts(ReceiptsSubject),
     ReceiptsCall(ReceiptsCallSubject),
     ReceiptsReturn(ReceiptsReturnSubject),
@@ -68,6 +70,7 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
             Subjects::OutputsChange(s) => s.dyn_arc(),
             Subjects::OutputsVariable(s) => s.dyn_arc(),
             Subjects::OutputsContractCreated(s) => s.dyn_arc(),
+            Subjects::Predicates(s) => s.dyn_arc(),
             Subjects::Receipts(s) => s.dyn_arc(),
             Subjects::ReceiptsCall(s) => s.dyn_arc(),
             Subjects::ReceiptsReturn(s) => s.dyn_arc(),
@@ -139,6 +142,8 @@ impl_try_from_subjects!(
     (TransactionsSubject, Transactions),
     // Utxo subjects
     (UtxosSubject, Utxos),
+    // Predicate transactions subject
+    (PredicatesSubject, Predicates),
 );
 
 #[allow(clippy::disallowed_macros)]

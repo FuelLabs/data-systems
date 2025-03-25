@@ -22,7 +22,7 @@ use crate::Subjects;
 pub struct UtxoDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_height: i64,
+    pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub input_index: i32,

@@ -6,6 +6,7 @@ use super::{subjects::*, Transaction};
 use crate::{
     inputs::Input,
     outputs::Output,
+    predicates::Predicate,
     receipts::Receipt,
     utxos::Utxo,
     MsgPayload,
@@ -28,12 +29,15 @@ impl PacketBuilder for Transaction {
                 let output_packets = Output::build_packets(&sub_items_params);
                 let receipt_packets = Receipt::build_packets(&sub_items_params);
                 let utxos_packets = Utxo::build_packets(&sub_items_params);
+                let predicate_packets =
+                    Predicate::build_packets(&sub_items_params);
                 tx_packet
                     .into_iter()
                     .chain(input_packets)
                     .chain(output_packets)
                     .chain(receipt_packets)
                     .chain(utxos_packets)
+                    .chain(predicate_packets)
             })
             .collect()
     }

@@ -78,6 +78,15 @@ macro_rules! generate_byte_type_wrapper {
     ($wrapper_type:ident, $inner_type:ty, $byte_size:expr) => {
         $crate::common_wrapper_type!($wrapper_type, $inner_type);
 
+        impl $wrapper_type {
+            pub fn random() -> Self {
+                use rand::prelude::*;
+                let mut rng = rand::rng();
+                let bytes: [u8; $byte_size] = rng.random();
+                Self(<$inner_type>::from(bytes))
+            }
+        }
+
         // Custom serialization
         impl serde::Serialize for $wrapper_type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -134,11 +143,55 @@ macro_rules! generate_byte_type_wrapper {
                 Ok($wrapper_type(<$inner_type>::from(array)))
             }
         }
+
+        impl sqlx::Type<sqlx::Postgres> for $wrapper_type {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                <String as sqlx::Type<sqlx::Postgres>>::type_info()
+            }
+
+            fn compatible(ty: &sqlx::postgres::PgTypeInfo) -> bool {
+                *ty == sqlx::postgres::PgTypeInfo::with_name("TEXT")
+            }
+        }
+
+        impl<'r> sqlx::Decode<'r, sqlx::Postgres> for $wrapper_type {
+            fn decode(
+                value: sqlx::postgres::PgValueRef<'r>,
+            ) -> Result<Self, sqlx::error::BoxDynError> {
+                let hex_str =
+                    <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                let s =
+                    hex_str.strip_prefix("0x").ok_or("Missing 0x prefix")?;
+                let bytes = hex::decode(s)?;
+                let array: [u8; $byte_size] =
+                    bytes.try_into().map_err(|_| "Invalid byte length")?;
+                Ok($wrapper_type(<$inner_type>::from(array)))
+            }
+        }
+
+        impl sqlx::Encode<'_, sqlx::Postgres> for $wrapper_type {
+            fn encode_by_ref(
+                &self,
+                buf: &mut sqlx::postgres::PgArgumentBuffer,
+            ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                let hex_str = format!("0x{}", hex::encode(self.0.as_ref()));
+                sqlx::Encode::<sqlx::Postgres>::encode(&hex_str, buf)
+            }
+        }
     };
 
     // Pattern without byte_size
     ($wrapper_type:ident, $inner_type:ty) => {
         $crate::common_wrapper_type!($wrapper_type, $inner_type);
+
+        impl $wrapper_type {
+            pub fn random() -> Self {
+                use rand::prelude::*;
+                let mut rng = rand::rng();
+                let bytes: [u8; 64] = rng.random();
+                Self(<$inner_type>::from(bytes.to_vec()))
+            }
+        }
 
         impl serde::Serialize for $wrapper_type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

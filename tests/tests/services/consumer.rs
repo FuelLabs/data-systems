@@ -14,7 +14,11 @@ use fuel_streams_core::{
     types::Transaction,
     FuelStreams,
 };
-use fuel_streams_domains::{MockMsgPayload, MsgPayload};
+use fuel_streams_domains::{
+    predicates::PredicatesSubject,
+    MockMsgPayload,
+    MsgPayload,
+};
 use fuel_streams_store::record::{DataEncoder, QueryOptions};
 use fuel_streams_test::{close_db, create_random_db_name, setup_db};
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
@@ -128,7 +132,7 @@ async fn verify_receipts(
     Ok(())
 }
 
-async fn verify_inputs_outputs_utxos(
+async fn verify_inputs(
     prefix: &str,
     fuel_stores: &Arc<FuelStores>,
     msg_payload: &MsgPayload,
@@ -138,14 +142,7 @@ async fn verify_inputs_outputs_utxos(
         .iter()
         .map(|tx| tx.inputs.len())
         .sum();
-    let expected_outputs_count: usize = msg_payload
-        .transactions
-        .iter()
-        .map(|tx| tx.outputs.len())
-        .sum();
-    let expected_utxos_count = expected_inputs_count;
 
-    // Verify inputs
     let inputs_subject = InputsSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
@@ -153,7 +150,7 @@ async fn verify_inputs_outputs_utxos(
         QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let inputs = fuel_stores
         .inputs
-        .find_many_by_subject(&inputs_subject, options.clone())
+        .find_many_by_subject(&inputs_subject, options)
         .await?;
     assert_eq!(
         inputs.len(),
@@ -161,13 +158,28 @@ async fn verify_inputs_outputs_utxos(
         "Expected exact number of inputs to be inserted"
     );
 
-    // Verify outputs
+    Ok(())
+}
+
+async fn verify_outputs(
+    prefix: &str,
+    fuel_stores: &Arc<FuelStores>,
+    msg_payload: &MsgPayload,
+) -> anyhow::Result<()> {
+    let expected_outputs_count: usize = msg_payload
+        .transactions
+        .iter()
+        .map(|tx| tx.outputs.len())
+        .sum();
+
     let outputs_subject = OutputsSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let outputs = fuel_stores
         .outputs
-        .find_many_by_subject(&outputs_subject, options.clone())
+        .find_many_by_subject(&outputs_subject, options)
         .await?;
     assert_eq!(
         outputs.len(),
@@ -175,10 +187,25 @@ async fn verify_inputs_outputs_utxos(
         "Expected exact number of outputs to be inserted"
     );
 
-    // Verify UTXOs
+    Ok(())
+}
+
+async fn verify_utxos(
+    prefix: &str,
+    fuel_stores: &Arc<FuelStores>,
+    msg_payload: &MsgPayload,
+) -> anyhow::Result<()> {
+    let expected_utxos_count: usize = msg_payload
+        .transactions
+        .iter()
+        .map(|tx| tx.inputs.len())
+        .sum();
+
     let utxos_subject = UtxosSubject::new()
         .with_block_height(Some(msg_payload.block_height()))
         .dyn_arc();
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
     let utxos = fuel_stores
         .utxos
         .find_many_by_subject(&utxos_subject, options)
@@ -187,6 +214,35 @@ async fn verify_inputs_outputs_utxos(
         utxos.len(),
         expected_utxos_count,
         "Expected exact number of UTXOs to be inserted"
+    );
+
+    Ok(())
+}
+
+async fn verify_predicates(
+    prefix: &str,
+    fuel_stores: &Arc<FuelStores>,
+    msg_payload: &MsgPayload,
+) -> anyhow::Result<()> {
+    let expected_predicates_count: usize = msg_payload
+        .transactions
+        .iter()
+        .map(|tx| tx.inputs.iter().filter(|i| i.is_coin()).count())
+        .sum();
+
+    let predicates_subject = PredicatesSubject::new()
+        .with_block_height(Some(msg_payload.block_height()))
+        .dyn_arc();
+    let options =
+        QueryOptions::default().with_namespace(Some(prefix.to_string()));
+    let predicates = fuel_stores
+        .predicates
+        .find_many_by_subject(&predicates_subject, options)
+        .await?;
+    assert_eq!(
+        predicates.len(),
+        expected_predicates_count,
+        "Expected exact number of inputs to be inserted"
     );
 
     Ok(())
@@ -230,7 +286,10 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     verify_blocks(&prefix, &fuel_stores, &msg_payload).await?;
     verify_transactions(&prefix, &fuel_stores, &msg_payload).await?;
     verify_receipts(&prefix, &fuel_stores, &msg_payload).await?;
-    verify_inputs_outputs_utxos(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_inputs(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_outputs(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_utxos(&prefix, &fuel_stores, &msg_payload).await?;
+    verify_predicates(&prefix, &fuel_stores, &msg_payload).await?;
 
     close_db(&db).await;
     Ok(())

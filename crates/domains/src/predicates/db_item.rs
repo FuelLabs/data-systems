@@ -19,30 +19,31 @@ use crate::Subjects;
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
 )]
-pub struct TransactionDbItem {
+pub struct PredicateDbItem {
     pub subject: String,
-    pub value: Vec<u8>,
     pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
-    pub tx_status: String,
-    #[serde(rename = "type")]
-    pub r#type: String,
+    pub input_index: i32,
+    // predicate types properties
+    pub blob_id: Option<String>,
+    pub predicate_bytecode: Vec<u8>,
+    pub predicate_address: String,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
 }
 
-impl DataEncoder for TransactionDbItem {
+impl DataEncoder for PredicateDbItem {
     type Err = DbError;
 }
 
-impl DbItem for TransactionDbItem {
+impl DbItem for PredicateDbItem {
     fn entity(&self) -> &RecordEntity {
-        &RecordEntity::Transaction
+        &RecordEntity::Predicate
     }
 
     fn encoded_value(&self) -> &[u8] {
-        &self.value
+        &self.predicate_bytecode
     }
 
     fn subject_str(&self) -> String {
@@ -50,7 +51,7 @@ impl DbItem for TransactionDbItem {
     }
 
     fn subject_id(&self) -> String {
-        TransactionsSubject::ID.to_string()
+        PredicatesSubject::ID.to_string()
     }
 
     fn created_at(&self) -> BlockTimestamp {
@@ -66,7 +67,7 @@ impl DbItem for TransactionDbItem {
     }
 }
 
-impl TryFrom<&RecordPacket> for TransactionDbItem {
+impl TryFrom<&RecordPacket> for PredicateDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let subject: Subjects = packet
@@ -76,14 +77,18 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::Transactions(subject) => Ok(TransactionDbItem {
+            Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
-                value: packet.value.to_owned(),
+                predicate_bytecode: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
-                tx_status: subject.tx_status.unwrap().to_string(),
-                r#type: subject.tx_type.unwrap().to_string(),
+                input_index: subject.input_index.unwrap() as i32,
+                blob_id: subject.blob_id.map(|b| b.to_string()),
+                predicate_address: subject
+                    .predicate_address
+                    .unwrap()
+                    .to_string(),
                 created_at: packet.block_timestamp,
                 published_at: packet.block_timestamp,
             }),
@@ -92,28 +97,30 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
     }
 }
 
-impl PartialOrd for TransactionDbItem {
+impl PartialOrd for PredicateDbItem {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for TransactionDbItem {
+impl Ord for PredicateDbItem {
     fn cmp(&self, other: &Self) -> Ordering {
         // Order by block height first
         self.block_height
             .cmp(&other.block_height)
             // Then by transaction index within the block
             .then(self.tx_index.cmp(&other.tx_index))
+            // Finally by input index within the transaction
+            .then(self.input_index.cmp(&other.input_index))
     }
 }
 
-impl From<TransactionDbItem> for RecordPointer {
-    fn from(val: TransactionDbItem) -> Self {
+impl From<PredicateDbItem> for RecordPointer {
+    fn from(val: PredicateDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height.into(),
             tx_index: Some(val.tx_index as u32),
-            input_index: None,
+            input_index: Some(val.input_index as u32),
             output_index: None,
             receipt_index: None,
         }

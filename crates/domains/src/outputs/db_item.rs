@@ -22,7 +22,7 @@ use crate::Subjects;
 pub struct OutputDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_height: i64,
+    pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub output_index: i32,

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 pub use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockTimestamp;
-use sqlx::{PgConnection, PgExecutor, Postgres, QueryBuilder};
+use sqlx::{Acquire, PgConnection, PgExecutor, Postgres, QueryBuilder};
 
 use super::{QueryOptions, RecordEntity, RecordPacket, RecordPointer};
 use crate::db::{DbError, DbItem, DbResult};
@@ -28,7 +28,7 @@ pub trait Record: RecordEncoder + 'static {
     ) -> DbResult<Self::DbItem>
     where
         'c: 'e,
-        E: PgExecutor<'c>;
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>;
 
     async fn insert_with_transaction(
         tx: &mut DbTransaction,

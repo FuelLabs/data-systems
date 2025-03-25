@@ -4,6 +4,7 @@ use fuel_streams_domains::{
     blocks::BlockDbItem,
     inputs::InputDbItem,
     outputs::OutputDbItem,
+    predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
     transactions::TransactionDbItem,
     utxos::UtxoDbItem,
@@ -44,6 +45,7 @@ pub enum MessagePayload {
     Transaction(Arc<Transaction>),
     Receipt(Arc<Receipt>),
     Utxo(Arc<Utxo>),
+    Predicate(Arc<Predicate>),
 }
 
 impl utoipa::ToSchema for MessagePayload {
@@ -65,6 +67,7 @@ impl utoipa::PartialSchema for MessagePayload {
         one_of.items.push(Transaction::schema());
         one_of.items.push(Receipt::schema());
         one_of.items.push(Utxo::schema());
+        one_of.items.push(Predicate::schema());
 
         // Build the oneOf schema with a description
         let schema = utoipa::openapi::schema::Schema::OneOf(one_of);
@@ -99,6 +102,9 @@ impl MessagePayload {
             RecordEntity::Utxo => {
                 Ok(MessagePayload::Utxo(Arc::new(Utxo::decode_json(value)?)))
             }
+            RecordEntity::Predicate => Ok(MessagePayload::Predicate(Arc::new(
+                Predicate::decode_json(value)?,
+            ))),
         }
     }
 
@@ -145,6 +151,13 @@ impl MessagePayload {
         match self {
             MessagePayload::Utxo(utxo) => Ok(utxo.clone()),
             _ => Err(MessagePayloadError::InvalidData("utxo".to_string())),
+        }
+    }
+
+    pub fn as_predicate(&self) -> Result<Arc<Predicate>, MessagePayloadError> {
+        match self {
+            MessagePayload::Predicate(predicate) => Ok(predicate.clone()),
+            _ => Err(MessagePayloadError::InvalidData("predicate".to_string())),
         }
     }
 }
@@ -269,6 +282,13 @@ impl TryFrom<&RecordPacket> for StreamResponse {
             }
             RecordEntity::Utxo => {
                 let db_item = UtxoDbItem::try_from(packet)?;
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
+            }
+            RecordEntity::Predicate => {
+                let db_item = PredicateDbItem::try_from(packet)?;
                 let mut response =
                     StreamResponse::try_from((subject_id, db_item))?;
                 response.set_propagation_ms(propagation_ms);

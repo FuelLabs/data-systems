@@ -66,6 +66,7 @@ pub const TAG_OUTPUTS: &str = "Outputs";
 pub const TAG_RECEIPTS: &str = "Receipts";
 pub const TAG_TRANSACTIONS: &str = "Transactions";
 pub const TAG_UTXOS: &str = "Utxos";
+pub const TAG_PREDICATES: &str = "Predicates";
 
 struct SecurityAddon;
 
@@ -94,6 +95,7 @@ use super::{
     contracts::*,
     inputs::*,
     outputs::*,
+    predicates::*,
     receipts::*,
     transactions::*,
     utxos::*,
@@ -123,6 +125,7 @@ use super::{
         get_transaction_inputs,
         get_transaction_outputs,
         get_utxos,
+        get_predicates,
     ),
     components(schemas(
         BlocksQuery,
@@ -178,6 +181,7 @@ use super::{
         (name = "Outputs", description = "Outputs retrieval endpoints"),
         (name = "Receipts", description = "Receipts retrieval endpoints"),
         (name = "Transactions", description = "Transactions retrieval endpoints"),
+        (name = "Predicates", description = "Predicates retrieval endpoints"),
     ),
     modifiers(&SecurityAddon, &ServerAddon)
 )]
