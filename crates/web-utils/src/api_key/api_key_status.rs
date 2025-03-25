@@ -5,7 +5,15 @@ use serde::{Deserialize, Serialize};
 use super::ApiKeyError;
 
 #[derive(
-    Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Default, Hash,
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    Eq,
+    PartialEq,
+    Default,
+    Hash,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiKeyStatus {

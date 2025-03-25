@@ -43,6 +43,7 @@ tower-http.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 url = "2.5"
+utoipa.workspace = true
 
 [dev-dependencies]
 mockall = "0.13.1"
