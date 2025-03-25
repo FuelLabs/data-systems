@@ -4068,6 +4068,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "utoipa",
 ]
 
 [[package]]
@@ -9586,6 +9587,7 @@ dependencies = [
  "fuel-web-utils",
  "num_cpus",
  "openssl",
+ "paste",
  "prometheus",
  "serde",
  "serde_json",
