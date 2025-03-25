@@ -63,7 +63,7 @@ impl DbItem for PredicateDbItem {
     }
 
     fn block_height(&self) -> BlockHeight {
-        self.block_height.into()
+        self.block_height
     }
 }
 
@@ -80,7 +80,7 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
             Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
                 predicate_bytecode: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 input_index: subject.input_index.unwrap() as i32,
@@ -118,7 +118,7 @@ impl Ord for PredicateDbItem {
 impl From<PredicateDbItem> for RecordPointer {
     fn from(val: PredicateDbItem) -> Self {
         RecordPointer {
-            block_height: val.block_height.into(),
+            block_height: val.block_height,
             tx_index: Some(val.tx_index as u32),
             input_index: Some(val.input_index as u32),
             output_index: None,

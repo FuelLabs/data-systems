@@ -41,7 +41,7 @@ fn create_packets(
             let subject = DynPredicateSubject::new(
                 &input,
                 &1.into(),
-                &tx_id,
+                tx_id,
                 0,
                 input_index as u32,
             );

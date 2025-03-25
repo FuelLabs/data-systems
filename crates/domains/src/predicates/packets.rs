@@ -92,7 +92,7 @@ impl From<DynPredicateSubject> for Arc<dyn IntoSubject> {
 pub(crate) fn blob_id_from_bytecode(bytecode: HexData) -> Option<HexData> {
     let bytes = bytecode.into_inner();
     let bytes = bytes.as_ref();
-    let value = super::utils::extract_blob_id_and_section_offset(&bytes)
+    let value = super::utils::extract_blob_id_and_section_offset(bytes)
         .expect("Failed to parse predicate bytecode");
     value.map(|(b, _)| HexData::from(b.to_vec()))
 }
