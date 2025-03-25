@@ -145,6 +145,7 @@ pub struct Transaction {
     pub is_script: bool,
     pub is_upgrade: bool,
     pub is_upload: bool,
+    pub is_blob: bool,
     pub maturity: Option<u32>,
     pub mint_amount: Option<Amount>,
     pub mint_asset_id: Option<AssetId>,
@@ -196,9 +197,12 @@ impl Transaction {
         };
 
         let blob_id = {
-            use fuel_core_types::fuel_tx::field::ChargeableBody;
             match transaction {
-                FuelCoreTransaction::Blob(blob) => Some(blob.body().id.into()),
+                FuelCoreTransaction::Blob(blob) => {
+                    use fuel_core_types::fuel_tx::field::BlobId;
+                    let blob_id = blob.blob_id();
+                    Some(blob_id.into())
+                }
                 _ => None,
             }
         };
@@ -488,6 +492,7 @@ impl Transaction {
             is_script: transaction.is_script(),
             is_upgrade: transaction.is_upgrade(),
             is_upload: transaction.is_upload(),
+            is_blob: transaction.is_blob(),
             maturity,
             mint_amount: mint_amount.map(|amount| amount.into()),
             mint_asset_id,
@@ -567,6 +572,7 @@ impl MockTransaction {
             is_script: tx_type == TransactionType::Script,
             is_upgrade: tx_type == TransactionType::Upgrade,
             is_upload: tx_type == TransactionType::Upload,
+            is_blob: tx_type == TransactionType::Blob,
             maturity: Some(0),
             mint_amount: None,
             mint_asset_id: None,

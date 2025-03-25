@@ -21,13 +21,13 @@ use crate::Subjects;
 )]
 pub struct PredicateDbItem {
     pub subject: String,
+    pub value: Vec<u8>,
     pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub input_index: i32,
     // predicate types properties
     pub blob_id: Option<String>,
-    pub predicate_bytecode: Vec<u8>,
     pub predicate_address: String,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
@@ -43,7 +43,7 @@ impl DbItem for PredicateDbItem {
     }
 
     fn encoded_value(&self) -> &[u8] {
-        &self.predicate_bytecode
+        &self.value
     }
 
     fn subject_str(&self) -> String {
@@ -79,7 +79,7 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
         match subject {
             Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
-                predicate_bytecode: packet.value.to_owned(),
+                value: packet.value.clone(),
                 block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,

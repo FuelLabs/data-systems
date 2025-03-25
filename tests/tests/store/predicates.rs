@@ -150,7 +150,7 @@ async fn test_predicate_subject_to_db_item_conversion() -> anyhow::Result<()> {
         assert_eq!(db_item.tx_index, inserted.tx_index);
         assert_eq!(db_item.input_index, inserted.input_index);
         assert_eq!(db_item.subject, inserted.subject);
-        assert_eq!(db_item.predicate_bytecode, inserted.predicate_bytecode);
+        assert_eq!(db_item.value, inserted.value);
         assert_eq!(db_item.created_at, inserted.created_at);
         assert!(inserted.published_at.is_after(&db_item.published_at));
         assert_eq!(db_item.blob_id, inserted.blob_id);

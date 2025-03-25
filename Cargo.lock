@@ -9643,6 +9643,7 @@ dependencies = [
  "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-store",
+ "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",

@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS predicates (
     id SERIAL PRIMARY KEY,
     blob_id TEXT,
     predicate_address TEXT UNIQUE NOT NULL,
-    predicate_bytecode BYTEA NOT NULL,
+    value BYTEA NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

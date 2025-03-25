@@ -76,13 +76,13 @@ impl DataEncoder for MsgPayload {
 
 impl MsgPayload {
     pub async fn new(
-        fuel_core: Arc<dyn FuelCoreLike>,
+        fuel_core: &Arc<dyn FuelCoreLike>,
         sealed_block: &FuelCoreSealedBlock,
         metadata: &Metadata,
     ) -> Result<Self, MsgPayloadError> {
         let (block, producer) =
             fuel_core.get_block_and_producer(sealed_block)?;
-        let txs = Self::txs_from_fuelcore(&fuel_core, sealed_block).await?;
+        let txs = Self::txs_from_fuelcore(fuel_core, sealed_block).await?;
         let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
         let block_height = block.header().height();
         let consensus = fuel_core.get_consensus(block_height)?;

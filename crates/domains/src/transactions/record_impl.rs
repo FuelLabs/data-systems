@@ -32,18 +32,19 @@ impl Record for Transaction {
             "WITH upsert AS (
                 INSERT INTO transactions (
                     subject, value, block_height, tx_id, tx_index,
-                    tx_status, type, created_at, published_at
+                    tx_status, type, blob_id, created_at, published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT (subject) DO UPDATE SET
+                    tx_id = EXCLUDED.tx_id,
                     value = EXCLUDED.value,
                     block_height = EXCLUDED.block_height,
-                    tx_id = EXCLUDED.tx_id,
                     tx_index = EXCLUDED.tx_index,
                     tx_status = EXCLUDED.tx_status,
                     type = EXCLUDED.type,
+                    blob_id = EXCLUDED.blob_id,
                     created_at = EXCLUDED.created_at,
-                    published_at = $9
+                    published_at = $10
                 RETURNING *
             )
             SELECT * FROM upsert",
@@ -55,6 +56,7 @@ impl Record for Transaction {
         .bind(db_item.tx_index)
         .bind(db_item.tx_status)
         .bind(db_item.r#type)
+        .bind(db_item.blob_id)
         .bind(db_item.created_at)
         .bind(published_at)
         .fetch_one(executor)

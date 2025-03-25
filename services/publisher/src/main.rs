@@ -17,6 +17,7 @@ use sv_publisher::{
     error::PublishError,
     metrics::Metrics,
     publish::publish_block,
+    recover::recover_blob_transactions,
     state::ServerState,
 };
 use tokio::{sync::Semaphore, task::JoinSet};
@@ -54,6 +55,12 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             tokio::join!(
+                recover_blob_transactions(
+                    &db,
+                    &fuel_core,
+                    cli.from_height as u32,
+                    &last_block_height
+                ),
                 process_historical_blocks(
                     cli.from_height.into(),
                     &message_broker,

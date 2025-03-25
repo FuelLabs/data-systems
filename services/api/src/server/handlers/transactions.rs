@@ -42,6 +42,7 @@ use crate::server::{
         ("txStatus" = Option<TransactionStatus>, Query, description = "Filter by transaction status"),
         ("type" = Option<TransactionType>, Query, description = "Filter by transaction type"),
         ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("blobId" = Option<String>, Query, description = "Filter by blob ID"),
         ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID"),
         ("address" = Option<Address>, Query, description = "Filter by address"),
         ("after" = Option<i32>, Query, description = "Return transactions after this height"),

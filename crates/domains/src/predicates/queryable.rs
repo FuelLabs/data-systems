@@ -17,8 +17,8 @@ pub enum Predicates {
     BlobId,
     #[iden = "predicate_address"]
     PredicateAddress,
-    #[iden = "predicate_bytecode"]
-    PredicateBytecode,
+    #[iden = "value"]
+    Value,
     #[iden = "created_at"]
     CreatedAt,
     #[iden = "published_at"]
@@ -123,7 +123,7 @@ impl Queryable for PredicatesQuery {
             ))
             .column((Predicates::Table, Predicates::BlobId))
             .column((Predicates::Table, Predicates::PredicateAddress))
-            .column((Predicates::Table, Predicates::PredicateBytecode))
+            .column((Predicates::Table, Predicates::Value))
             .column((Predicates::Table, Predicates::CreatedAt))
             .column((Predicates::Table, Predicates::PublishedAt))
             .from(Predicates::Table)
@@ -302,7 +302,7 @@ mod test {
                     \"predicate_transactions\".\"input_index\", \
                     \"predicates\".\"blob_id\", \
                     \"predicates\".\"predicate_address\", \
-                    \"predicates\".\"predicate_bytecode\", \
+                    \"predicates\".\"value\", \
                     \"predicates\".\"created_at\", \
                     \"predicates\".\"published_at\" \
                 FROM \"predicates\" \
@@ -337,7 +337,7 @@ mod test {
                     \"predicate_transactions\".\"input_index\", \
                     \"predicates\".\"blob_id\", \
                     \"predicates\".\"predicate_address\", \
-                    \"predicates\".\"predicate_bytecode\", \
+                    \"predicates\".\"value\", \
                     \"predicates\".\"created_at\", \
                     \"predicates\".\"published_at\" \
                 FROM \"predicates\" \
@@ -375,7 +375,7 @@ mod test {
                     \"predicate_transactions\".\"input_index\", \
                     \"predicates\".\"blob_id\", \
                     \"predicates\".\"predicate_address\", \
-                    \"predicates\".\"predicate_bytecode\", \
+                    \"predicates\".\"value\", \
                     \"predicates\".\"created_at\", \
                     \"predicates\".\"published_at\" \
                 FROM \"predicates\" \
@@ -415,7 +415,7 @@ mod test {
                     \"predicate_transactions\".\"input_index\", \
                     \"predicates\".\"blob_id\", \
                     \"predicates\".\"predicate_address\", \
-                    \"predicates\".\"predicate_bytecode\", \
+                    \"predicates\".\"value\", \
                     \"predicates\".\"created_at\", \
                     \"predicates\".\"published_at\" \
                 FROM \"predicates\" \

@@ -10,10 +10,10 @@ use fuel_streams_store::{
         RecordPointer,
     },
 };
-use fuel_streams_types::{BlockHeight, BlockTimestamp};
+use fuel_streams_types::{BlobId, BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
-use super::subjects::*;
+use super::{subjects::*, Transaction};
 use crate::Subjects;
 
 #[derive(
@@ -28,6 +28,7 @@ pub struct TransactionDbItem {
     pub tx_status: String,
     #[serde(rename = "type")]
     pub r#type: String,
+    pub blob_id: Option<BlobId>,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
 }
@@ -75,6 +76,10 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
+        let tx = Transaction::decode_json(&packet.value).map_err(|_| {
+            RecordPacketError::DecodeFailed(packet.subject_str())
+        })?;
+
         match subject {
             Subjects::Transactions(subject) => Ok(TransactionDbItem {
                 subject: packet.subject_str(),
@@ -84,6 +89,7 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 tx_index: subject.tx_index.unwrap() as i32,
                 tx_status: subject.tx_status.unwrap().to_string(),
                 r#type: subject.tx_type.unwrap().to_string(),
+                blob_id: tx.blob_id,
                 created_at: packet.block_timestamp,
                 published_at: packet.block_timestamp,
             }),

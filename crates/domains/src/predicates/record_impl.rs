@@ -31,22 +31,22 @@ impl Record for Predicate {
 
         let predicate_id = sqlx::query_scalar::<_, i32>(
             "INSERT INTO predicates (
+                value,
                 blob_id,
                 predicate_address,
-                predicate_bytecode,
                 created_at,
                 published_at
             )
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (predicate_address) DO UPDATE
             SET blob_id = EXCLUDED.blob_id,
-                predicate_bytecode = EXCLUDED.predicate_bytecode,
+                value = EXCLUDED.value,
                 published_at = EXCLUDED.published_at
             RETURNING id",
         )
+        .bind(db_item.value.clone())
         .bind(db_item.blob_id.clone())
         .bind(db_item.predicate_address.clone())
-        .bind(db_item.predicate_bytecode.clone())
         .bind(db_item.created_at)
         .bind(published_at)
         .fetch_one(&mut *tx)

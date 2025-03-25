@@ -73,7 +73,7 @@ fn loader_instructions_no_configurables() -> [Instruction; 8] {
     // There are 2 main steps:
     // 1. Load the blob content into memory
     // 2. Jump to the beginning of the memory where the blob was loaded
-    let instructions = [
+    [
         // 1. Load the blob content into memory
         // Find the start of the hardcoded blob ID, which is located after the loader code ends.
         op::move_(REG_ADDRESS_OF_DATA_AFTER_CODE, RegId::PC),
@@ -102,11 +102,7 @@ fn loader_instructions_no_configurables() -> [Instruction; 8] {
         op::divi(REG_START_OF_LOADED_CODE, REG_START_OF_LOADED_CODE, 4),
         // Jump to the start of the contract we loaded.
         op::jmp(REG_START_OF_LOADED_CODE),
-    ];
-
-    debug_assert_eq!(instructions.len(), NUM_OF_INSTRUCTIONS as usize);
-
-    instructions
+    ]
 }
 
 pub fn loader_instructions_w_configurables() -> [Instruction; 12] {
@@ -122,7 +118,7 @@ pub fn loader_instructions_w_configurables() -> [Instruction; 12] {
     // 1. Load the blob content into memory
     // 2. Load the data section right after the blob
     // 3. Jump to the beginning of the memory where the blob was loaded
-    let instructions = [
+    [
         // 1. Load the blob content into memory
         // Find the start of the hardcoded blob ID, which is located after the loader code ends.
         op::move_(REG_ADDRESS_OF_DATA_AFTER_CODE, RegId::PC),
@@ -168,9 +164,5 @@ pub fn loader_instructions_w_configurables() -> [Instruction; 12] {
         op::divi(REG_START_OF_LOADED_CODE, REG_START_OF_LOADED_CODE, 4),
         // Jump to the start of the contract we loaded.
         op::jmp(REG_START_OF_LOADED_CODE),
-    ];
-
-    debug_assert_eq!(instructions.len(), NUM_OF_INSTRUCTIONS as usize);
-
-    instructions
+    ]
 }

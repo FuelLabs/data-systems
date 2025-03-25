@@ -31,6 +31,8 @@ pub enum Transactions {
     CreatedAt,
     #[iden = "published_at"]
     PublishedAt,
+    #[iden = "blob_id"]
+    BlobId,
 }
 
 #[derive(
@@ -44,6 +46,7 @@ pub struct TransactionsQuery {
     #[serde(rename = "type")]
     pub tx_type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
+    pub blob_id: Option<String>,
     #[serde(flatten)]
     pub pagination: QueryPagination,
     pub contract_id: Option<ContractId>, // for the contracts endpoint
@@ -111,6 +114,11 @@ impl Queryable for TransactionsQuery {
             );
         }
 
+        if let Some(blob_id) = &self.blob_id {
+            condition =
+                condition.add(Expr::col(Transactions::BlobId).eq(blob_id));
+        }
+
         condition
     }
 }
@@ -158,6 +166,7 @@ mod test {
             pagination: Default::default(),
             address: None,
             contract_id: None,
+            blob_id: None,
         };
 
         assert_eq!(
@@ -176,6 +185,7 @@ mod test {
             pagination: (None, None, Some(FIRST_POINTER), None).into(),
             address: None,
             contract_id: None,
+            blob_id: None,
         };
 
         assert_eq!(
@@ -195,6 +205,7 @@ mod test {
                 .into(),
             address: None,
             contract_id: None,
+            blob_id: None,
         };
 
         assert_eq!(
@@ -214,6 +225,7 @@ mod test {
                 .into(),
             address: None,
             contract_id: None,
+            blob_id: None,
         };
 
         assert_eq!(
@@ -232,6 +244,7 @@ mod test {
             pagination: Default::default(),
             address: None,
             contract_id: None,
+            blob_id: None,
         };
 
         assert_eq!(

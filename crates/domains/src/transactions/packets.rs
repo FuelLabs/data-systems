@@ -24,7 +24,7 @@ impl PacketBuilder for Transaction {
             .flat_map_iter(|(tx_index, tx)| {
                 let sub_items_params =
                     (msg_payload.clone(), tx_index, tx.to_owned());
-                let tx_packet = main_packet(msg_payload, tx, tx_index);
+                let tx_packet = main_tx_packet(msg_payload, tx, tx_index);
                 let input_packets = Input::build_packets(&sub_items_params);
                 let output_packets = Output::build_packets(&sub_items_params);
                 let receipt_packets = Receipt::build_packets(&sub_items_params);
@@ -43,7 +43,7 @@ impl PacketBuilder for Transaction {
     }
 }
 
-fn main_packet(
+pub fn main_tx_packet(
     msg_payload: &MsgPayload,
     tx: &Transaction,
     tx_index: usize,
