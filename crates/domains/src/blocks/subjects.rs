@@ -16,10 +16,10 @@ use super::types::*;
 #[subject(format = "blocks.{producer}.{da_height}.{height}")]
 pub struct BlocksSubject {
     #[subject(
-        sql_column = "block_height",
-        description = "The height of the block as unsigned 64 bit integer"
+        sql_column = "producer_address",
+        description = "The address of the producer that created the block"
     )]
-    pub height: Option<BlockHeight>,
+    pub producer: Option<Address>,
 
     #[subject(
         sql_column = "block_da_height",
@@ -27,14 +27,11 @@ pub struct BlocksSubject {
     )]
     pub da_height: Option<DaBlockHeight>,
 
-    #[subject(sql_column = "version", description = "The block version")]
-    pub version: Option<BlockVersion>,
-
     #[subject(
-        sql_column = "producer_address",
-        description = "The address of the producer that created the block"
+        sql_column = "block_height",
+        description = "The height of the block as unsigned 64 bit integer"
     )]
-    pub producer: Option<Address>,
+    pub height: Option<BlockHeight>,
 }
 
 impl From<&Block> for BlocksSubject {
@@ -53,7 +50,6 @@ impl From<&Block> for BlocksSubject {
             height: Some(block.height.to_owned()),
             da_height: Some(block.header.da_height.to_owned()),
             producer: Some(block.producer.to_owned()),
-            version: Some(block.version.to_owned()),
         }
     }
 }

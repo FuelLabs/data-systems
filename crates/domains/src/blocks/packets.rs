@@ -15,7 +15,6 @@ impl PacketBuilder for Block {
             height: Some(block_height),
             da_height: Some(block.header.da_height.to_owned()),
             producer: Some(block_producer),
-            version: Some(block.version.to_owned()),
         }
         .dyn_arc();
         let timestamps = msg_payload.timestamp();

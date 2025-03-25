@@ -28,7 +28,15 @@ pub struct DbApiKey {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow, Hash,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    sqlx::FromRow,
+    Hash,
+    utoipa::ToSchema,
 )]
 pub struct ApiKey {
     id: ApiKeyId,

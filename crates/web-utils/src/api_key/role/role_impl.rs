@@ -21,6 +21,7 @@ use crate::api_key::{
     sqlx::FromRow,
     Default,
     Hash,
+    utoipa::ToSchema,
 )]
 pub struct ApiKeyRole {
     id: ApiKeyRoleId,

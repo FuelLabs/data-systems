@@ -14,6 +14,7 @@ use fuel_web_utils::api_key::{
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+use super::open_api::TAG_API_KEYS;
 // Assuming this is your server state struct
 use crate::server::state::ServerState;
 
@@ -40,13 +41,26 @@ impl IntoResponse for Error {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
+#[derive(Debug, Serialize, Deserialize, Validate, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateApiKeyRequest {
     pub username: ApiKeyUserName,
     pub role: ApiKeyRoleName,
 }
 
+#[utoipa::path(
+    post,
+    path = "/keys/generate",
+    tag = TAG_API_KEYS,
+    responses(
+        (status = 200, description = "Successfully generated api key", body = GenerateApiKeyRequest),
+        (status = 400, description = "Invalid body", body = String),
+        (status = 500, description = "Internal server error", body = String)
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn generate_api_key(
     State(state): State<ServerState>,
     Json(req): Json<GenerateApiKeyRequest>,

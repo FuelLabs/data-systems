@@ -42,40 +42,40 @@ async fn test_multiple_inserts() -> anyhow::Result<()> {
     Ok(())
 }
 
-// #[tokio::test]
-// async fn test_find_many_by_subject() -> anyhow::Result<()> {
-//     let prefix = create_random_db_name();
-//     let mut store = setup_store::<Block>().await?;
-//     store.with_namespace(&prefix);
+#[tokio::test]
+async fn test_find_many_by_subject() -> anyhow::Result<()> {
+    let prefix = create_random_db_name();
+    let mut store = setup_store::<Block>().await?;
+    store.with_namespace(&prefix);
 
-//     let blocks = create_multiple_records(2, 1, &prefix);
-//     let _ = insert_records(&store, &prefix, &blocks).await?;
-//     let block1 = &blocks.first().unwrap().1;
-//     let block2 = &blocks.get(1).unwrap().1;
+    let blocks = create_multiple_records(2, 1, &prefix);
+    let _ = insert_records(&store, &prefix, &blocks).await?;
+    let block1 = &blocks.first().unwrap().1;
+    let block2 = &blocks.get(1).unwrap().1;
 
-//     // Test finding by subject1
-//     let da_height1 = block1.header.da_height;
-//     let subject1 =
-//         BlocksSubject::build(None, Some(da_height1), Some(1.into())).dyn_arc();
-//     let records = store
-//         .find_many_by_subject(&subject1, QueryOptions::default())
-//         .await?;
-//     assert_eq!(records.len(), 1);
-//     assert_eq!(&Block::from_db_item(&records[0])?, block1);
+    // Test finding by subject1
+    let da_height1 = block1.header.da_height;
+    let subject1 =
+        BlocksSubject::build(None, Some(da_height1), Some(1.into())).dyn_arc();
+    let records = store
+        .find_many_by_subject(&subject1, QueryOptions::default())
+        .await?;
+    assert_eq!(records.len(), 1);
+    assert_eq!(&Block::from_db_item(&records[0])?, block1);
 
-//     // Test finding by subject2
-//     let da_height2 = block2.header.da_height;
-//     let subject2 =
-//         BlocksSubject::build(None, Some(da_height2), Some(2.into())).dyn_arc();
-//     let records = store
-//         .find_many_by_subject(&subject2, QueryOptions::default())
-//         .await?;
-//     assert_eq!(records.len(), 1);
-//     assert_eq!(&Block::from_db_item(&records[0])?, block2);
+    // Test finding by subject2
+    let da_height2 = block2.header.da_height;
+    let subject2 =
+        BlocksSubject::build(None, Some(da_height2), Some(2.into())).dyn_arc();
+    let records = store
+        .find_many_by_subject(&subject2, QueryOptions::default())
+        .await?;
+    assert_eq!(records.len(), 1);
+    assert_eq!(&Block::from_db_item(&records[0])?, block2);
 
-//     close_db(&store.db).await;
-//     Ok(())
-// }
+    close_db(&store.db).await;
+    Ok(())
+}
 
 #[tokio::test]
 async fn test_subject_matching() -> anyhow::Result<()> {
