@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::DbTransactionType;
 use crate::fuel_core::FuelCoreTransaction;
 
 #[derive(
@@ -59,6 +60,19 @@ impl From<&FuelCoreTransaction> for TransactionType {
             FuelCoreTransaction::Upgrade(_) => TransactionType::Upgrade,
             FuelCoreTransaction::Upload(_) => TransactionType::Upload,
             FuelCoreTransaction::Blob(_) => TransactionType::Blob,
+        }
+    }
+}
+
+impl From<&TransactionType> for DbTransactionType {
+    fn from(tx: &TransactionType) -> Self {
+        match tx {
+            TransactionType::Blob => DbTransactionType::Blob,
+            TransactionType::Create => DbTransactionType::Create,
+            TransactionType::Mint => DbTransactionType::Mint,
+            TransactionType::Script => DbTransactionType::Script,
+            TransactionType::Upgrade => DbTransactionType::Upgrade,
+            TransactionType::Upload => DbTransactionType::Upload,
         }
     }
 }
