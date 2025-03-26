@@ -69,7 +69,10 @@ pub use fuel_core_types::{
             ImportResult as FuelCoreImportResult,
             SharedImportResult as FuelCoreSharedImportResult,
         },
-        txpool::TransactionStatus as FuelCoreTransactionStatus,
+        txpool::{
+            TransactionExecutionStatus as FuelCoreTransactionExecutionStatus,
+            TransactionStatus as FuelCoreTransactionStatus,
+        },
     },
     tai64::Tai64 as FuelCoreTai64,
 };
@@ -137,7 +140,7 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_tx_status(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>>;
+    ) -> FuelCoreResult<Option<FuelCoreTransactionExecutionStatus>>;
 
     fn get_receipts(
         &self,
@@ -308,7 +311,7 @@ impl FuelCoreLike for FuelCore {
     fn get_tx_status(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>> {
+    ) -> FuelCoreResult<Option<FuelCoreTransactionExecutionStatus>> {
         let offchain_database = self
             .database()
             .off_chain()
@@ -326,10 +329,13 @@ impl FuelCoreLike for FuelCore {
         let receipts = self
             .get_tx_status(tx_id)?
             .map(|status| match &status {
-                FuelCoreTransactionStatus::Success { receipts, .. }
-                | FuelCoreTransactionStatus::Failed { receipts, .. } => {
-                    Some(receipts.clone())
+                FuelCoreTransactionExecutionStatus::Success {
+                    receipts,
+                    ..
                 }
+                | FuelCoreTransactionExecutionStatus::Failed {
+                    receipts, ..
+                } => Some(receipts.clone()),
                 _ => None,
             })
             .unwrap_or_default();

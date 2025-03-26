@@ -82,21 +82,21 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
         Self {
             application_hash: (*header.application_hash()).into(),
             consensus_parameters_version: header
-                .consensus_parameters_version
+                .consensus_parameters_version()
                 .into(),
-            da_height: header.da_height.into(),
-            event_inbox_root: header.event_inbox_root.into(),
+            da_height: header.da_height().into(),
+            event_inbox_root: header.event_inbox_root().into(),
             id: header.id().into(),
             height: (*header.height()).into(),
-            message_outbox_root: header.message_outbox_root.into(),
-            message_receipt_count: header.message_receipt_count.into(),
+            message_outbox_root: header.message_outbox_root().into(),
+            message_receipt_count: header.message_receipt_count().into(),
             prev_root: (*header.prev_root()).into(),
             state_transition_bytecode_version: header
-                .state_transition_bytecode_version
+                .state_transition_bytecode_version()
                 .into(),
             time: header.time().into(),
-            transactions_count: header.transactions_count,
-            transactions_root: header.transactions_root.into(),
+            transactions_count: header.transactions_count(),
+            transactions_root: header.transactions_root().into(),
             version,
         }
     }

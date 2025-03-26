@@ -25,7 +25,7 @@ version = "0.0.28"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
-async-nats = "0.39.0"
+async-nats = "0.40.0"
 async-stream = "0.3.6"
 async-trait = "0.1.87"
 axum = { version = "0.8.1", features = ["json", "ws", "query"] }
@@ -85,25 +85,25 @@ tracing-subscriber = { version = "0.3.19", features = [
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
 # Fuel Core dependencies
-fuel-core = { version = "0.41.9", default-features = false, features = [
+fuel-core = { version = "0.42", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "0.41.9", default-features = false, features = [
+fuel-core-bin = { version = "0.42", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "0.41.9", default-features = false, features = [
+fuel-core-client = { version = "0.42", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "0.41.9" }
-fuel-core-poa = { version = "0.41.9", default-features = false }
-fuel-core-services = { version = "0.41.9", default-features = false }
-fuel-core-storage = { version = "0.41.9" }
-fuel-core-txpool = { version = "0.41.9" }
-fuel-core-types = { version = "0.41.9", default-features = false, features = [
+fuel-core-importer = { version = "0.42" }
+fuel-core-poa = { version = "0.42", default-features = false }
+fuel-core-services = { version = "0.42", default-features = false }
+fuel-core-storage = { version = "0.42" }
+fuel-core-txpool = { version = "0.42" }
+fuel-core-types = { version = "0.42", default-features = false, features = [
   "serde",
   "std",
 ] }

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::fuel_core::{
     FuelCoreClientTransactionStatus,
+    FuelCoreTransactionExecutionStatus,
     FuelCoreTransactionStatus,
 };
 
@@ -55,18 +56,15 @@ impl FromStr for TransactionStatus {
 impl From<&FuelCoreTransactionStatus> for TransactionStatus {
     fn from(value: &FuelCoreTransactionStatus) -> Self {
         match value {
-            FuelCoreTransactionStatus::Failed { .. } => {
-                TransactionStatus::Failed
-            }
-            FuelCoreTransactionStatus::Submitted { .. } => {
+            FuelCoreTransactionStatus::Failure(_) => TransactionStatus::Failed,
+            FuelCoreTransactionStatus::Submitted(_) => {
                 TransactionStatus::Submitted
             }
-            FuelCoreTransactionStatus::SqueezedOut { .. } => {
+            FuelCoreTransactionStatus::SqueezedOut(_) => {
                 TransactionStatus::SqueezedOut
             }
-            FuelCoreTransactionStatus::Success { .. } => {
-                TransactionStatus::Success
-            }
+            FuelCoreTransactionStatus::Success(_) => TransactionStatus::Success,
+            _ => TransactionStatus::None,
         }
     }
 }
@@ -84,6 +82,31 @@ impl From<&FuelCoreClientTransactionStatus> for TransactionStatus {
                 TransactionStatus::SqueezedOut
             }
             FuelCoreClientTransactionStatus::Success { .. } => {
+                TransactionStatus::Success
+            }
+            FuelCoreClientTransactionStatus::PreconfirmationSuccess {
+                ..
+            }
+            | FuelCoreClientTransactionStatus::PreconfirmationFailure {
+                ..
+            } => TransactionStatus::None,
+        }
+    }
+}
+
+impl From<&FuelCoreTransactionExecutionStatus> for TransactionStatus {
+    fn from(value: &FuelCoreTransactionExecutionStatus) -> Self {
+        match value {
+            FuelCoreTransactionExecutionStatus::Failed { .. } => {
+                TransactionStatus::Failed
+            }
+            FuelCoreTransactionExecutionStatus::Submitted { .. } => {
+                TransactionStatus::Submitted
+            }
+            FuelCoreTransactionExecutionStatus::SqueezedOut { .. } => {
+                TransactionStatus::SqueezedOut
+            }
+            FuelCoreTransactionExecutionStatus::Success { .. } => {
                 TransactionStatus::Success
             }
         }
