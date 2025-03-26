@@ -2,43 +2,39 @@
 
 ## [0.0.29](https://github.com/FuelLabs/data-systems/compare/v0.0.28...v0.0.29) - 2025-03-26
 
-
-
-
-
 ### ⭐ Features
 
-- *(repo)*: Add predicates  ([#451](https://github.com/FuelLabs/data-systems/pull/451)) ([4ad513d](https://github.com/FuelLabs/data-systems/commit/4ad513d6eb30e649187d750e9c56ff2fd72303e4)  @pedronauck)
+- _(repo)_: Add predicates ([#451](https://github.com/FuelLabs/data-systems/pull/451)) ([4ad513d](https://github.com/FuelLabs/data-systems/commit/4ad513d6eb30e649187d750e9c56ff2fd72303e4) @pedronauck)
 
-- *(sv-api)*: Updated postman and swagger-ui frontend ([#450](https://github.com/FuelLabs/data-systems/pull/450)) ([e566d7b](https://github.com/FuelLabs/data-systems/commit/e566d7b2da8ecf971a124ca277d3a9c04067aead)  @0xterminator)
+- _(sv-api)_: Updated postman and swagger-ui frontend ([#450](https://github.com/FuelLabs/data-systems/pull/450)) ([e566d7b](https://github.com/FuelLabs/data-systems/commit/e566d7b2da8ecf971a124ca277d3a9c04067aead) @0xterminator)
 
 ### 🐛 Bug Fixes
 
-- *(sv-api)*: Fixed pagination cursor ([#448](https://github.com/FuelLabs/data-systems/pull/448)) ([3a2168e](https://github.com/FuelLabs/data-systems/commit/3a2168eadd9cc3e2960b4ca62718e896964fbd0e)  @0xterminator)
+- _(sv-api)_: Fixed pagination cursor ([#448](https://github.com/FuelLabs/data-systems/pull/448)) ([3a2168e](https://github.com/FuelLabs/data-systems/commit/3a2168eadd9cc3e2960b4ca62718e896964fbd0e) @0xterminator)
 
-- *(web-utils)*: Remove db tx when creating or updating keys ([4830ae5](https://github.com/FuelLabs/data-systems/commit/4830ae59995fd3f3d2a7b6ff64684bff13579c7c)  @pedronauck)
+- _(web-utils)_: Remove db tx when creating or updating keys ([4830ae5](https://github.com/FuelLabs/data-systems/commit/4830ae59995fd3f3d2a7b6ff64684bff13579c7c) @pedronauck)
 
-- *(sv-api)*: Removed system-based metrics from metrics endpoint ([#446](https://github.com/FuelLabs/data-systems/pull/446)) ([36674e3](https://github.com/FuelLabs/data-systems/commit/36674e3bf3f4c078a64a77a62130456ffd7bab33)  @0xterminator)
+- _(sv-api)_: Removed system-based metrics from metrics endpoint ([#446](https://github.com/FuelLabs/data-systems/pull/446)) ([36674e3](https://github.com/FuelLabs/data-systems/commit/36674e3bf3f4c078a64a77a62130456ffd7bab33) @0xterminator)
 
-- *(repo)*: Adjust SwaggerUI to work with custom servers ([cb08080](https://github.com/FuelLabs/data-systems/commit/cb0808032882cd3d49de0d1ab4459cbeff6297e4)  @pedronauck)
+- _(repo)_: Adjust SwaggerUI to work with custom servers ([cb08080](https://github.com/FuelLabs/data-systems/commit/cb0808032882cd3d49de0d1ab4459cbeff6297e4) @pedronauck)
 
-- *(web-utils)*: Metrics standard endpoint using state instead of extension ([2430656](https://github.com/FuelLabs/data-systems/commit/2430656db10b471c67a1ca76787cc25558982921)  @pedronauck)
+- _(web-utils)_: Metrics standard endpoint using state instead of extension ([2430656](https://github.com/FuelLabs/data-systems/commit/2430656db10b471c67a1ca76787cc25558982921) @pedronauck)
 
-- *(sv-api)*: Rest API minor fixes ([#445](https://github.com/FuelLabs/data-systems/pull/445)) ([9da695a](https://github.com/FuelLabs/data-systems/commit/9da695ada96d9c0f689b5d63bc7c14b4c09fa07b)  @pedronauck)
+- _(sv-api)_: Rest API minor fixes ([#445](https://github.com/FuelLabs/data-systems/pull/445)) ([9da695a](https://github.com/FuelLabs/data-systems/commit/9da695ada96d9c0f689b5d63bc7c14b4c09fa07b) @pedronauck)
 
 ### 🔄 Refactor
 
-- *(repo)*: Change from actix to axum ([#443](https://github.com/FuelLabs/data-systems/pull/443)) ([2a45d2f](https://github.com/FuelLabs/data-systems/commit/2a45d2ff2be1d5469cab1204eecc0ab816704c4c)  @pedronauck)
+- _(repo)_: Change from actix to axum ([#443](https://github.com/FuelLabs/data-systems/pull/443)) ([2a45d2f](https://github.com/FuelLabs/data-systems/commit/2a45d2ff2be1d5469cab1204eecc0ab816704c4c) @pedronauck)
 
 ### 💪🏼 Contributors
 
-* @pedronauck
-* @0xterminator
-
+- @pedronauck
+- @0xterminator
 
 Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ---
+
 ## [0.0.28](https://github.com/FuelLabs/data-systems/compare/v0.0.27...v0.0.28) - 2025-03-13
 
 ### 🐛 Bug Fixes
