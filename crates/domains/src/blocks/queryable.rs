@@ -124,6 +124,46 @@ pub enum Blocks {
     Height,
     #[iden = "producer_address"]
     Producer,
+    #[iden = "version"]
+    Version,
+    #[iden = "header_application_hash"]
+    HeaderApplicationHash,
+    #[iden = "header_consensus_parameters_version"]
+    HeaderConsensusParametersVersion,
+    #[iden = "header_da_height"]
+    HeaderDaHeight,
+    #[iden = "header_event_inbox_root"]
+    HeaderEventInboxRoot,
+    #[iden = "header_message_outbox_root"]
+    HeaderMessageOutboxRoot,
+    #[iden = "header_message_receipt_count"]
+    HeaderMessageReceiptCount,
+    #[iden = "header_prev_root"]
+    HeaderPrevRoot,
+    #[iden = "header_state_transition_bytecode_version"]
+    HeaderStateTransitionBytecodeVersion,
+    #[iden = "header_time"]
+    HeaderTime,
+    #[iden = "header_transactions_count"]
+    HeaderTransactionsCount,
+    #[iden = "header_transactions_root"]
+    HeaderTransactionsRoot,
+    #[iden = "header_version"]
+    HeaderVersion,
+    #[iden = "consensus_chain_config_hash"]
+    ConsensusChainConfigHash,
+    #[iden = "consensus_coins_root"]
+    ConsensusCoinsRoot,
+    #[iden = "consensus_type"]
+    ConsensusType,
+    #[iden = "consensus_contracts_root"]
+    ConsensusContractsRoot,
+    #[iden = "consensus_messages_root"]
+    ConsensusMessagesRoot,
+    #[iden = "consensus_signature"]
+    ConsensusSignature,
+    #[iden = "consensus_transactions_root"]
+    ConsensusTransactionsRoot,
     #[iden = "created_at"]
     CreatedAt,
     #[iden = "published_at"]

@@ -2,6 +2,7 @@ use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
+use super::DbTransactionStatus;
 use crate::fuel_core::{
     FuelCoreClientTransactionStatus,
     FuelCoreTransactionStatus,
@@ -93,6 +94,18 @@ impl From<&FuelCoreClientTransactionStatus> for TransactionStatus {
 impl From<FuelCoreClientTransactionStatus> for TransactionStatus {
     fn from(value: FuelCoreClientTransactionStatus) -> Self {
         (&value).into()
+    }
+}
+
+impl From<&TransactionStatus> for DbTransactionStatus {
+    fn from(value: &TransactionStatus) -> Self {
+        match value {
+            TransactionStatus::Failed => DbTransactionStatus::Failed,
+            TransactionStatus::Submitted => DbTransactionStatus::Submitted,
+            TransactionStatus::SqueezedOut => DbTransactionStatus::SqueezedOut,
+            TransactionStatus::Success => DbTransactionStatus::Success,
+            TransactionStatus::None => DbTransactionStatus::None,
+        }
     }
 }
 

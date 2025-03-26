@@ -510,6 +510,30 @@ impl Transaction {
             receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
         }
     }
+
+    pub fn is_mint(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Mint)
+    }
+
+    pub fn is_create(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Create)
+    }
+
+    pub fn is_script(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Script)
+    }
+
+    pub fn is_blob(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Blob)
+    }
+
+    pub fn is_upgrade(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Upgrade)
+    }
+
+    pub fn is_upload(&self) -> bool {
+        matches!(self.tx_type, TransactionType::Upload)
+    }
 }
 
 pub trait FuelCoreTransactionExt {
