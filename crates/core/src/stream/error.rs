@@ -1,5 +1,6 @@
 use async_nats::SubscribeError;
 use fuel_message_broker::MessageBrokerError;
+use fuel_streams_domains::SubjectsError;
 use fuel_streams_store::{
     db::{DbError, SqlxError},
     record::{RecordEntityError, RecordPacketError},
@@ -33,4 +34,6 @@ pub enum StreamError {
     ApiKey(#[from] ApiKeyError),
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    Subjects(#[from] SubjectsError),
 }

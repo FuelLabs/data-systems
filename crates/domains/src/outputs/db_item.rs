@@ -22,7 +22,7 @@ use crate::Subjects;
 pub struct OutputDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_height: i64,
+    pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub output_index: i32,
@@ -72,7 +72,7 @@ impl DbItem for OutputDbItem {
     }
 
     fn block_height(&self) -> BlockHeight {
-        self.block_height.into()
+        self.block_height
     }
 }
 
@@ -89,7 +89,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             Subjects::OutputsCoin(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap() as i32,
@@ -103,7 +103,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             Subjects::OutputsContract(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap() as i32,
@@ -117,7 +117,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             Subjects::OutputsChange(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap() as i32,
@@ -131,7 +131,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             Subjects::OutputsVariable(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap() as i32,
@@ -145,7 +145,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             Subjects::OutputsContractCreated(subject) => Ok(OutputDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap() as i32,
@@ -182,7 +182,7 @@ impl Ord for OutputDbItem {
 impl From<OutputDbItem> for RecordPointer {
     fn from(val: OutputDbItem) -> Self {
         RecordPointer {
-            block_height: val.block_height.into(),
+            block_height: val.block_height,
             tx_index: Some(val.tx_index as u32),
             input_index: None,
             output_index: Some(val.output_index as u32),

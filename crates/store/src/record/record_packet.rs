@@ -13,6 +13,8 @@ pub enum RecordPacketError {
     SubjectMismatch,
     #[error(transparent)]
     EncodeError(#[from] EncoderError),
+    #[error("Failed to decode: {0}")]
+    DecodeFailed(String),
 }
 
 pub trait PacketBuilder: Send + Sync + 'static {

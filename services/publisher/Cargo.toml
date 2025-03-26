@@ -20,16 +20,13 @@ anyhow.workspace = true
 async-trait.workspace = true
 clap.workspace = true
 fuel-core.workspace = true
-fuel-core-bin = { workspace = true, default-features = false, features = [
-  "p2p",
-  "relayer",
-  "rocksdb",
-] }
+fuel-core-bin.workspace = true
 fuel-core-types.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true
 fuel-streams-store.workspace = true
+fuel-streams-types.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 fuel-web-utils.workspace = true

@@ -1,17 +1,11 @@
-use std::sync::Arc;
-
 use axum::extract::ws::Message;
 use fuel_streams_core::{
-    prelude::IntoSubject,
-    server::{ServerResponse, Subscription},
+    server::ServerResponse,
     types::{ServerRequest, StreamResponse},
     BoxedStream,
-    FuelStreams,
     StreamError,
 };
-use fuel_streams_domains::Subjects;
-use fuel_streams_store::record::RecordEntity;
-use fuel_web_utils::api_key::{ApiKey, ApiKeyRole};
+use fuel_web_utils::api_key::ApiKey;
 use futures::{
     stream::{SelectAll, StreamExt},
     SinkExt,
@@ -47,7 +41,9 @@ pub async fn subscribe_mult(
             &subscription.payload
         );
         let api_key_role = api_key.role();
-        let sub = create_subscriber(api_key_role, &ctx.streams, &subscription)
+        let sub = ctx
+            .streams
+            .subscribe_by_entity(api_key_role, &subscription)
             .await?;
         subscribed_msgs
             .push(ServerResponse::Subscribed(subscription.to_owned()));
@@ -134,56 +130,4 @@ async fn process_subscription(
             }
         }
     }
-}
-
-async fn create_subscriber(
-    api_key_role: &ApiKeyRole,
-    streams: &Arc<FuelStreams>,
-    subscription: &Subscription,
-) -> Result<BoxedStream, WebsocketError> {
-    let subject_payload = subscription.payload.clone();
-    let deliver_policy = subscription.deliver_policy;
-    let subject: Subjects = subject_payload.clone().try_into()?;
-    let subject: Arc<dyn IntoSubject> = subject.into();
-    let subject_id = subject_payload.subject.as_str();
-    let record_entity = RecordEntity::try_from(subject_id)?;
-    let stream = match record_entity {
-        RecordEntity::Block => {
-            streams
-                .blocks
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-        RecordEntity::Transaction => {
-            streams
-                .transactions
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-        RecordEntity::Input => {
-            streams
-                .inputs
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-        RecordEntity::Output => {
-            streams
-                .outputs
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-        RecordEntity::Receipt => {
-            streams
-                .receipts
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-        RecordEntity::Utxo => {
-            streams
-                .utxos
-                .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                .await
-        }
-    };
-    Ok(Box::new(stream))
 }

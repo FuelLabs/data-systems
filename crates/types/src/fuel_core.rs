@@ -218,9 +218,7 @@ impl FuelCore {
     ) -> anyhow::Result<Arc<Self>> {
         let fuel_service =
             fuel_core_bin::cli::run::get_service(command).await?;
-
         let fuel_core: Self = fuel_service.into();
-
         Ok(fuel_core.arc())
     }
     pub fn arc(self) -> Arc<Self> {

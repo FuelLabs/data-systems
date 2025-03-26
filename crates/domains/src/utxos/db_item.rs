@@ -22,7 +22,7 @@ use crate::Subjects;
 pub struct UtxoDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_height: i64,
+    pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub input_index: i32,
@@ -63,7 +63,7 @@ impl DbItem for UtxoDbItem {
     }
 
     fn block_height(&self) -> BlockHeight {
-        self.block_height.into()
+        self.block_height
     }
 }
 
@@ -80,7 +80,7 @@ impl TryFrom<&RecordPacket> for UtxoDbItem {
             Subjects::Utxos(subject) => Ok(UtxoDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 input_index: subject.input_index.unwrap() as i32,
@@ -116,7 +116,7 @@ impl Ord for UtxoDbItem {
 impl From<UtxoDbItem> for RecordPointer {
     fn from(val: UtxoDbItem) -> Self {
         RecordPointer {
-            block_height: val.block_height.into(),
+            block_height: val.block_height,
             tx_index: Some(val.tx_index as u32),
             input_index: Some(val.input_index as u32),
             output_index: None,

@@ -1,5 +1,4 @@
 use fuel_core_types::fuel_types;
-use rand::prelude::*;
 
 use super::{LongBytes, UtxoId};
 use crate::{
@@ -80,14 +79,6 @@ impl_utoipa_for_byte_type_detailed!(
     32,
     "A 32-byte Fuel nonce with 0x prefix"
 );
-
-impl TxId {
-    pub fn random() -> Self {
-        let mut rng = rand::rng();
-        let bytes: [u8; 32] = rng.random();
-        Self(fuel_types::TxId::from(bytes))
-    }
-}
 
 impl From<&UtxoId> for HexData {
     fn from(value: &UtxoId) -> Self {

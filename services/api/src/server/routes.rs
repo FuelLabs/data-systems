@@ -57,6 +57,15 @@ pub fn create_routes(state: &ServerState) -> Router {
     let db = state.db.clone();
     let auth_params = (manager.clone(), db.clone());
 
+    let (key_path, key_router) = RouterBuilder::new("/keys")
+        .related("/generate", post(api_key::generate_api_key))
+        .with_layer(from_fn(api_key::validate_manage_api_keys_scope))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
+        .build();
+
     let (blocks_path, blocks_router) = RouterBuilder::new("/blocks")
         .root(get(blocks::get_blocks))
         .related("/{height}/receipts", get(blocks::get_block_receipts))
@@ -188,16 +197,18 @@ pub fn create_routes(state: &ServerState) -> Router {
         ))
         .build();
 
-    let (key_path, key_router) = RouterBuilder::new("/keys")
-        .related("/generate", post(api_key::generate_api_key))
-        .with_layer(from_fn(api_key::validate_manage_api_keys_scope))
-        .with_layer(from_fn_with_state(
-            auth_params.clone(),
-            ApiKeyMiddleware::handler,
-        ))
-        .build();
+    let (predicates_path, predicates_router) =
+        RouterBuilder::new("/predicates")
+            .root(get(predicates::get_predicates))
+            .with_layer(from_fn(validate_scope_middleware))
+            .with_layer(from_fn_with_state(
+                auth_params.clone(),
+                ApiKeyMiddleware::handler,
+            ))
+            .build();
 
     let routes = Router::new()
+        .nest(&key_path, key_router)
         .nest(&blocks_path, blocks_router)
         .nest(&accounts_path, accounts_router)
         .nest(&contracts_path, contracts_router)
@@ -206,7 +217,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .nest(&key_path, key_router);
+        .nest(&predicates_path, predicates_router);
 
     app.nest(API_BASE_PATH, routes).with_state(state.clone())
 }

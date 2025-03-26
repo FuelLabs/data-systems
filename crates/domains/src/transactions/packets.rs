@@ -6,6 +6,7 @@ use super::{subjects::*, Transaction};
 use crate::{
     inputs::Input,
     outputs::Output,
+    predicates::Predicate,
     receipts::Receipt,
     utxos::Utxo,
     MsgPayload,
@@ -23,23 +24,26 @@ impl PacketBuilder for Transaction {
             .flat_map_iter(|(tx_index, tx)| {
                 let sub_items_params =
                     (msg_payload.clone(), tx_index, tx.to_owned());
-                let tx_packet = main_packet(msg_payload, tx, tx_index);
+                let tx_packet = main_tx_packet(msg_payload, tx, tx_index);
                 let input_packets = Input::build_packets(&sub_items_params);
                 let output_packets = Output::build_packets(&sub_items_params);
                 let receipt_packets = Receipt::build_packets(&sub_items_params);
                 let utxos_packets = Utxo::build_packets(&sub_items_params);
+                let predicate_packets =
+                    Predicate::build_packets(&sub_items_params);
                 tx_packet
                     .into_iter()
                     .chain(input_packets)
                     .chain(output_packets)
                     .chain(receipt_packets)
                     .chain(utxos_packets)
+                    .chain(predicate_packets)
             })
             .collect()
     }
 }
 
-fn main_packet(
+pub fn main_tx_packet(
     msg_payload: &MsgPayload,
     tx: &Transaction,
     tx_index: usize,

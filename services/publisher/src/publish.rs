@@ -16,7 +16,6 @@ pub async fn publish_block(
     telemetry: &Arc<Telemetry<Metrics>>,
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
-    let fuel_core = Arc::clone(fuel_core);
     let payload = MsgPayload::new(fuel_core, sealed_block, &metadata).await?;
     let encoded = payload.encode().await?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());

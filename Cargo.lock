@@ -2858,6 +2858,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 
 [[package]]
+name = "fuel-abi-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "026deca571c0d3304a4392a0d99c7477d58cade18b2861232c151eb0816dde0a"
+dependencies = [
+ "itertools 0.10.5",
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde",
+ "serde_json",
+ "syn 2.0.100",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "fuel-asm"
 version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3691,9 +3708,12 @@ dependencies = [
 name = "fuel-streams-domains"
 version = "0.0.28"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum 0.8.1",
  "chrono",
+ "derive_more 2.0.1",
+ "fuel-asm 0.60.0",
  "fuel-core",
  "fuel-core-types 0.41.9",
  "fuel-streams-store",
@@ -3701,6 +3721,8 @@ dependencies = [
  "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
+ "fuels-core",
+ "hex",
  "pretty_assertions",
  "rayon",
  "sea-query",
@@ -3712,6 +3734,7 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
  "utoipa",
 ]
 
@@ -4046,6 +4069,66 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "utoipa",
+]
+
+[[package]]
+name = "fuels-code-gen"
+version = "0.71.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6066e7b16b7fdad682b0b40d36050d2d9c22e8542fb5314d7377f82933893a5"
+dependencies = [
+ "Inflector",
+ "fuel-abi-types",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde_json",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "fuels-core"
+version = "0.71.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3df160d6e944601ecf4d491a6a50f9e3bf577a3b1b663973237004a29006ca0a"
+dependencies = [
+ "async-trait",
+ "auto_impl",
+ "bech32",
+ "chrono",
+ "fuel-abi-types",
+ "fuel-asm 0.59.2",
+ "fuel-core-chain-config",
+ "fuel-core-client",
+ "fuel-core-types 0.41.9",
+ "fuel-crypto 0.59.2",
+ "fuel-tx 0.59.2",
+ "fuel-types 0.59.2",
+ "fuel-vm 0.59.2",
+ "fuels-macros",
+ "hex",
+ "itertools 0.12.1",
+ "postcard",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror 1.0.69",
+ "uint",
+]
+
+[[package]]
+name = "fuels-macros"
+version = "0.71.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e73afb530bb6af53d74f5eda8a7833d9d91914bfc7906fa14d47a6b7931dd50c"
+dependencies = [
+ "fuels-code-gen",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -9560,6 +9643,7 @@ dependencies = [
  "fuel-streams-core",
  "fuel-streams-domains",
  "fuel-streams-store",
+ "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",

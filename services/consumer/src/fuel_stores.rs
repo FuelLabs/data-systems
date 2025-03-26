@@ -12,6 +12,7 @@ use fuel_streams_domains::{
     blocks::BlockDbItem,
     inputs::InputDbItem,
     outputs::OutputDbItem,
+    predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
     transactions::TransactionDbItem,
     utxos::UtxoDbItem,
@@ -32,6 +33,7 @@ pub struct FuelStores {
     pub outputs: Store<Output>,
     pub receipts: Store<Receipt>,
     pub utxos: Store<Utxo>,
+    pub predicates: Store<Predicate>,
 }
 
 impl FuelStores {
@@ -43,6 +45,7 @@ impl FuelStores {
             outputs: Store::new(db),
             receipts: Store::new(db),
             utxos: Store::new(db),
+            predicates: Store::new(db),
         }
     }
 
@@ -55,6 +58,7 @@ impl FuelStores {
         self.outputs.with_namespace(namespace);
         self.receipts.with_namespace(namespace);
         self.utxos.with_namespace(namespace);
+        self.predicates.with_namespace(namespace);
         self
     }
 
@@ -103,6 +107,12 @@ impl FuelStores {
             RecordEntity::Utxo => {
                 let db_item: UtxoDbItem = packet.try_into()?;
                 self.utxos
+                    .insert_record_with_transaction(db_tx, &db_item)
+                    .await?;
+            }
+            RecordEntity::Predicate => {
+                let db_item: PredicateDbItem = packet.try_into()?;
+                self.predicates
                     .insert_record_with_transaction(db_tx, &db_item)
                     .await?;
             }

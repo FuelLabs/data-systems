@@ -22,7 +22,7 @@ use crate::Subjects;
 pub struct ReceiptDbItem {
     pub subject: String,
     pub value: Vec<u8>,
-    pub block_height: i64,
+    pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
     pub receipt_index: i32,
@@ -85,7 +85,7 @@ impl DbItem for ReceiptDbItem {
     }
 
     fn block_height(&self) -> BlockHeight {
-        self.block_height.into()
+        self.block_height
     }
 }
 
@@ -102,7 +102,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsCall(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -121,7 +121,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsReturn(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -140,7 +140,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsReturnData(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -159,7 +159,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsPanic(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -178,7 +178,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsRevert(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -197,7 +197,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsLog(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -216,7 +216,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsLogData(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -235,7 +235,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsTransfer(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -254,7 +254,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsTransferOut(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -273,7 +273,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsScriptResult(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -292,7 +292,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsMessageOut(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -311,7 +311,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsMint(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -330,7 +330,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             Subjects::ReceiptsBurn(subject) => Ok(ReceiptDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap().into(),
+                block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
                 receipt_index: subject.receipt_index.unwrap() as i32,
@@ -372,7 +372,7 @@ impl Ord for ReceiptDbItem {
 impl From<ReceiptDbItem> for RecordPointer {
     fn from(val: ReceiptDbItem) -> Self {
         RecordPointer {
-            block_height: val.block_height.into(),
+            block_height: val.block_height,
             tx_index: Some(val.tx_index as u32),
             input_index: None,
             output_index: None,

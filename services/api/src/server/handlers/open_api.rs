@@ -66,6 +66,7 @@ pub const TAG_OUTPUTS: &str = "Outputs";
 pub const TAG_RECEIPTS: &str = "Receipts";
 pub const TAG_TRANSACTIONS: &str = "Transactions";
 pub const TAG_UTXOS: &str = "Utxos";
+pub const TAG_PREDICATES: &str = "Predicates";
 pub const TAG_API_KEYS: &str = "ApiKeys";
 
 struct SecurityAddon;
@@ -96,6 +97,7 @@ use super::{
     contracts::*,
     inputs::*,
     outputs::*,
+    predicates::*,
     receipts::*,
     transactions::*,
     utxos::*,
@@ -146,6 +148,7 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         get_transaction_inputs,
         get_transaction_outputs,
         get_utxos,
+        get_predicates,
         generate_api_key,
     ),
     components(schemas(
@@ -204,6 +207,7 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         (name = "Outputs", description = "Outputs retrieval endpoints"),
         (name = "Receipts", description = "Receipts retrieval endpoints"),
         (name = "Transactions", description = "Transactions retrieval endpoints"),
+        (name = "Predicates", description = "Predicates retrieval endpoints"),
         (name = "ApiKeys", description = "Api Key generation"),
     ),
     modifiers(&SecurityAddon, &ServerAddon)
