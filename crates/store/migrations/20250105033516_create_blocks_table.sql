@@ -1,14 +1,42 @@
+CREATE TYPE consensus_type AS ENUM ('GENESIS', 'POA_CONSENSUS');
+
 -- Create records table
 CREATE TABLE IF NOT EXISTS blocks (
-    id SERIAL PRIMARY KEY,
-    subject TEXT NOT NULL UNIQUE,
+    -- uniques
+    "id" SERIAL PRIMARY KEY,
+    "subject" TEXT NOT NULL UNIQUE,
+    "block_height" BIGINT NOT NULL,
+    "block_da_height" BIGINT NOT NULL,
+    -- messaging only
     value BYTEA NOT NULL,
-    block_da_height BIGINT NOT NULL,
-    block_height BIGINT NOT NULL,
-    producer_address TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    block_propagation_ms INTEGER NOT NULL
+    -- other props
+    "version" VARCHAR(10) NOT NULL,
+    "producer_address" TEXT NOT NULL,
+    -- timestamps
+    "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "published_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    "block_propagation_ms" INTEGER NOT NULL,
+    -- block header
+    "header_application_hash" TEXT NOT NULL,
+    "header_consensus_parameters_version" INTEGER NOT NULL,
+    "header_da_height" BIGINT NOT NULL,
+    "header_event_inbox_root" TEXT NOT NULL,
+    "header_message_outbox_root" TEXT NOT NULL,
+    "header_message_receipt_count" INTEGER NOT NULL,
+    "header_prev_root" TEXT NOT NULL,
+    "header_state_transition_bytecode_version" INTEGER NOT NULL,
+    "header_time" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "header_transactions_count" SMALLINT NOT NULL,
+    "header_transactions_root" TEXT NOT NULL,
+    "header_version" TEXT NOT NULL,
+    -- block consensus
+    "consensus_chain_config_hash" TEXT,
+    "consensus_coins_root" TEXT,
+    "consensus_type" consensus_type NOT NULL,
+    "consensus_contracts_root" TEXT,
+    "consensus_messages_root" TEXT,
+    "consensus_signature" TEXT,
+    "consensus_transactions_root" TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_blocks_subject ON blocks (subject);
