@@ -1,8 +1,10 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
+use sqlx::{Postgres, QueryBuilder};
 
 use super::ReceiptType;
+use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_call")]
@@ -455,4 +457,160 @@ pub struct ReceiptsSubject {
         description = "The index of this receipt within the transaction"
     )]
     pub receipt_index: Option<u32>,
+}
+
+fn build_receipts_query(
+    where_clause: Option<String>,
+    options: Option<&QueryOptions>,
+) -> QueryBuilder<'static, Postgres> {
+    let mut conditions = Vec::new();
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+    query_builder.push("SELECT * FROM receipts");
+
+    if let Some(clause) = where_clause {
+        conditions.push(clause);
+    }
+    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
+        conditions.push(format!("block_height >= {}", block));
+    }
+
+    if !conditions.is_empty() {
+        query_builder.push(" WHERE ");
+        query_builder.push(conditions.join(" AND "));
+    }
+
+    query_builder
+        .push(" ORDER BY block_height ASC, tx_index ASC, receipt_index ASC");
+    if let Some(opts) = options {
+        opts.apply_limit_offset(&mut query_builder);
+    }
+
+    query_builder
+}
+
+// Implement for all receipt subject types
+impl SubjectQueryBuilder for ReceiptsCallSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsReturnSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsReturnDataSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsPanicSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsRevertSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsLogSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsLogDataSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsTransferSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsTransferOutSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsScriptResultSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsMessageOutSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsMintSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsBurnSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for ReceiptsSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_receipts_query(self.to_sql_where(), options)
+    }
 }

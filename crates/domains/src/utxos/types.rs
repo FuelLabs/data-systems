@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::primitives::*;
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(
     Debug,
@@ -22,6 +25,9 @@ pub struct Utxo {
     pub tx_id: TxId,
     pub contract_id: Option<ContractId>,
 }
+
+impl DataEncoder for Utxo {}
+impl ToPacket for Utxo {}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

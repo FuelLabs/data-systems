@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use fuel_streams_core::types::{FuelCoreLike, Transaction};
 use fuel_streams_domains::{
+    infra::{db::Db, record::PacketBuilder, repository::Repository},
     predicates::{Predicate, PredicateDbItem},
     transactions::{main_tx_packet, TransactionDbItem},
     Metadata,
     MsgPayload,
 };
-use fuel_streams_store::{db::Db, record::PacketBuilder, store::Store};
 use fuel_streams_types::BlockHeight;
 use tokio::{sync::Semaphore, task::JoinSet};
 
@@ -57,12 +57,7 @@ pub async fn recover_blob_transactions(
                         let packet = packets.first();
                         if let Some(packet) = packet {
                             let db_item = TransactionDbItem::try_from(packet)?;
-                            let store = Store::<Transaction>::new(&db);
-                            store
-                                .insert_record_with_transaction(
-                                    &mut db_tx, &db_item,
-                                )
-                                .await?;
+                            Transaction::insert(&mut *db_tx, &db_item).await?;
                         }
                     }
                     db_tx.commit().await?;
@@ -95,12 +90,7 @@ pub async fn recover_blob_transactions(
 
                         for packet in packets {
                             let db_item = PredicateDbItem::try_from(&packet)?;
-                            let store = Store::<Predicate>::new(&db);
-                            store
-                                .insert_record_with_transaction(
-                                    &mut db_tx, &db_item,
-                                )
-                                .await?;
+                            Predicate::insert(&mut *db_tx, &db_item).await?;
                             tracing::info!(
                                 "Inserted predicate {} at tx {}",
                                 db_item.predicate_address,

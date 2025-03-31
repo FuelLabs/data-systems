@@ -1,25 +1,24 @@
 use std::sync::Arc;
 
+use fuel_data_parser::{DataEncoder, DataParserError};
 use fuel_streams_domains::{
     blocks::BlockDbItem,
+    infra::{
+        db::DbItem,
+        record::{
+            RecordEntity,
+            RecordEntityError,
+            RecordPacket,
+            RecordPacketError,
+            RecordPointer,
+        },
+    },
     inputs::InputDbItem,
     outputs::OutputDbItem,
     predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
     transactions::TransactionDbItem,
     utxos::UtxoDbItem,
-};
-use fuel_streams_store::{
-    db::{DbError, DbItem},
-    record::{
-        DataEncoder,
-        EncoderError,
-        RecordEntity,
-        RecordEntityError,
-        RecordPacket,
-        RecordPacketError,
-        RecordPointer,
-    },
 };
 use fuel_web_utils::server::server_builder::API_VERSION;
 use serde::{Deserialize, Serialize};
@@ -33,7 +32,7 @@ pub enum MessagePayloadError {
     #[error(transparent)]
     RecordEntity(#[from] RecordEntityError),
     #[error(transparent)]
-    Decode(#[from] DbError),
+    Decode(#[from] DataParserError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -165,7 +164,7 @@ impl MessagePayload {
 #[derive(thiserror::Error, Debug)]
 pub enum StreamResponseError {
     #[error(transparent)]
-    Encoder(#[from] EncoderError),
+    Encoder(#[from] DataParserError),
     #[error(transparent)]
     MessagePayload(#[from] MessagePayloadError),
     #[error(transparent)]
@@ -211,9 +210,7 @@ impl StreamResponse {
     }
 }
 
-impl DataEncoder for StreamResponse {
-    type Err = StreamResponseError;
-}
+impl DataEncoder for StreamResponse {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -4,25 +4,13 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    Bytes32,
-    ContractId,
-    InputType,
-    OutputType,
-    ReceiptType,
-    TransactionStatus,
-    TransactionType,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    inputs::queryable::InputsQuery,
-    outputs::queryable::OutputsQuery,
-    queryable::{Queryable, ValidatedQuery},
-    receipts::queryable::ReceiptsQuery,
-    transactions::queryable::TransactionsQuery,
+    infra::repository::{Repository, ValidatedQuery},
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    receipts::{ReceiptType, ReceiptsQuery},
+    transactions::TransactionsQuery,
 };
 
 use super::open_api::TAG_TRANSACTIONS;
@@ -67,7 +55,9 @@ pub async fn get_transactions(
         .await?
         .into_inner();
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Transaction::find_many(&state.db.pool, &query)
+            .await?
+            .try_into()?;
     Ok(Json(response))
 }
 
@@ -113,8 +103,9 @@ pub async fn get_transaction_receipts(
         .await?
         .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Receipt::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }
 
@@ -159,7 +150,7 @@ pub async fn get_transaction_inputs(
         .into_inner();
     query.set_tx_id(&tx_id);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Input::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -201,7 +192,8 @@ pub async fn get_transaction_outputs(
         .await?
         .into_inner();
     query.set_tx_id(&tx_id);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Output::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }

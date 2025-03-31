@@ -15,10 +15,11 @@ async-trait.workspace = true
 axum.workspace = true
 chrono.workspace = true
 derive_more.workspace = true
+dotenvy.workspace = true
 fuel-asm = "0.60.0"
 fuel-core.workspace = true
 fuel-core-types.workspace = true
-fuel-streams-store.workspace = true
+fuel-data-parser.workspace = true
 fuel-streams-subject.workspace = true
 fuel-streams-types.workspace = true
 fuel-tx.workspace = true
@@ -26,14 +27,12 @@ fuel-vm.workspace = true
 fuels-core = "0.71.0"
 hex.workspace = true
 rayon.workspace = true
-sea-query = "0.32.2"
 serde.workspace = true
 serde_json.workspace = true
 serde_with = "3.12.0"
 sqlx.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tracing.workspace = true
 utoipa.workspace = true
 
 [dev-dependencies]
@@ -47,6 +46,5 @@ default = []
 test-helpers = [
   "fuel-core-types/test-helpers",
   "fuel-core/test-helpers",
-  "fuel-streams-store/test-helpers",
   "fuel-streams-types/test-helpers",
 ]

@@ -1,8 +1,10 @@
 use async_trait::async_trait;
-use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
 
 use super::{Block, BlocksSubject};
-use crate::MsgPayload;
+use crate::{
+    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    MsgPayload,
+};
 
 #[async_trait]
 impl PacketBuilder for Block {

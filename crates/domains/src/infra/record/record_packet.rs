@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
-use fuel_streams_subject::subject::SubjectPayload;
+use fuel_streams_subject::subject::{IntoSubject, SubjectPayload};
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +20,24 @@ pub enum RecordPacketError {
 pub trait PacketBuilder: Send + Sync + 'static {
     type Opts;
     fn build_packets(opts: &Self::Opts) -> Vec<RecordPacket>;
+}
+
+pub trait ToPacket: DataEncoder {
+    fn to_packet(
+        &self,
+        subject: &Arc<dyn IntoSubject>,
+        block_timestamp: BlockTimestamp,
+    ) -> RecordPacket {
+        let value = self.encode_json().unwrap_or_else(|_| {
+            panic!("Encode failed for {}", std::any::type_name::<Self>())
+        });
+        RecordPacket::new(
+            subject.parse(),
+            subject.to_payload(),
+            block_timestamp,
+            value,
+        )
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -45,9 +63,7 @@ pub struct RecordPacket {
     namespace: Option<String>,
 }
 
-impl DataEncoder for RecordPacket {
-    type Err = RecordPacketError;
-}
+impl DataEncoder for RecordPacket {}
 
 impl RecordPacket {
     pub fn new(

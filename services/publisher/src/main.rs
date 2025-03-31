@@ -3,10 +3,7 @@ use std::sync::Arc;
 use clap::Parser;
 use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::types::*;
-use fuel_streams_store::{
-    db::{Db, DbConnectionOpts},
-    store::{find_next_block_to_save, BlockHeightGap},
-};
+use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     server::server_builder::ServerBuilder,
     shutdown::{shutdown_broker_with_timeout, ShutdownController},
@@ -15,6 +12,7 @@ use fuel_web_utils::{
 use sv_publisher::{
     cli::Cli,
     error::PublishError,
+    gaps::{find_next_block_to_save, BlockHeightGap},
     metrics::Metrics,
     publish::publish_block,
     recover::recover_blob_transactions,

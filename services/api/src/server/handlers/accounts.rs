@@ -4,24 +4,13 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    ContractId,
-    HexData,
-    InputType,
-    OutputType,
-    TransactionStatus,
-    TransactionType,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    inputs::queryable::InputsQuery,
-    outputs::queryable::OutputsQuery,
-    queryable::{Queryable, ValidatedQuery},
-    transactions::queryable::TransactionsQuery,
-    utxos::queryable::UtxosQuery,
+    infra::repository::{Repository, ValidatedQuery},
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    transactions::TransactionsQuery,
+    utxos::UtxosQuery,
 };
 
 use super::open_api::TAG_ACCOUNTS;
@@ -68,7 +57,9 @@ pub async fn get_accounts_transactions(
             .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Transaction::find_many(&state.db.pool, &query)
+            .await?
+            .try_into()?;
     Ok(Json(response))
 }
 
@@ -113,7 +104,7 @@ pub async fn get_accounts_inputs(
         .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Input::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -155,8 +146,9 @@ pub async fn get_accounts_outputs(
         .await?
         .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Output::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }
 
@@ -198,6 +190,6 @@ pub async fn get_accounts_utxos(
         .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Utxo::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }

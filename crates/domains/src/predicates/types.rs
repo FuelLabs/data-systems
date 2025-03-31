@@ -1,6 +1,8 @@
-use fuel_streams_store::{db::DbError, record::DataEncoder};
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::primitives::*;
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(
     Debug,
@@ -20,6 +22,9 @@ pub struct Predicate {
     pub predicate_bytecode: HexData,
 }
 
+impl DataEncoder for Predicate {}
+impl ToPacket for Predicate {}
+
 impl Predicate {
     pub fn new(
         tx_id: &TxId,
@@ -34,8 +39,4 @@ impl Predicate {
             predicate_bytecode: predicate_bytecode.clone(),
         }
     }
-}
-
-impl DataEncoder for Predicate {
-    type Err = DbError;
 }

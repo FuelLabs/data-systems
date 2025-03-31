@@ -1,31 +1,22 @@
 use async_trait::async_trait;
-use fuel_streams_store::{
-    db::{DbError, DbResult},
-    record::{DataEncoder, Record, RecordEntity},
-};
 use fuel_streams_types::BlockTimestamp;
-use sqlx::PgExecutor;
+use sqlx::{Acquire, PgExecutor, Postgres};
 
-use super::{Utxo, UtxoDbItem};
-
-impl DataEncoder for Utxo {
-    type Err = DbError;
-}
+use super::{Utxo, UtxoDbItem, UtxosQuery};
+use crate::infra::repository::{Repository, RepositoryError, RepositoryResult};
 
 #[async_trait]
-impl Record for Utxo {
-    type DbItem = UtxoDbItem;
-
-    const ENTITY: RecordEntity = RecordEntity::Utxo;
-    const ORDER_PROPS: &'static [&'static str] = &["tx_index", "input_index"];
+impl Repository for Utxo {
+    type Item = UtxoDbItem;
+    type QueryParams = UtxosQuery;
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,
-        db_item: Self::DbItem,
-    ) -> DbResult<Self::DbItem>
+        db_item: &Self::Item,
+    ) -> RepositoryResult<Self::Item>
     where
         'c: 'e,
-        E: PgExecutor<'c>,
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
         let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, UtxoDbItem>(
@@ -50,20 +41,20 @@ impl Record for Utxo {
             )
             SELECT * FROM upsert",
         )
-        .bind(db_item.subject)
-        .bind(db_item.value)
+        .bind(db_item.subject.clone())
+        .bind(db_item.value.to_owned())
         .bind(db_item.block_height)
-        .bind(db_item.tx_id)
+        .bind(db_item.tx_id.to_owned())
         .bind(db_item.tx_index)
         .bind(db_item.input_index)
-        .bind(db_item.utxo_type)
-        .bind(db_item.utxo_id)
-        .bind(db_item.contract_id)
+        .bind(db_item.utxo_type.to_owned())
+        .bind(db_item.utxo_id.to_owned())
+        .bind(db_item.contract_id.to_owned())
         .bind(db_item.created_at)
         .bind(published_at)
         .fetch_one(executor)
         .await
-        .map_err(DbError::Insert)?;
+        .map_err(RepositoryError::Insert)?;
 
         Ok(record)
     }

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::{ContractId, TxId};
 use rayon::prelude::*;
@@ -9,6 +8,7 @@ use rayon::prelude::*;
 use super::{subjects::*, types::*};
 use crate::{
     blocks::BlockHeight,
+    infra::record::{PacketBuilder, RecordPacket, ToPacket},
     inputs::Input,
     transactions::Transaction,
     MsgPayload,

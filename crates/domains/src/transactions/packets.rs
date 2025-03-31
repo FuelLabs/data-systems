@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
 use rayon::prelude::*;
 
 use super::{subjects::*, Transaction};
 use crate::{
+    infra::record::{PacketBuilder, RecordPacket, ToPacket},
     inputs::Input,
     outputs::Output,
     predicates::Predicate,

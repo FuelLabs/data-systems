@@ -4,7 +4,7 @@ use axum::{
     Router,
 };
 use fuel_streams_core::types::StreamResponse;
-use fuel_streams_store::{db::DbItem, record::RecordPointer};
+use fuel_streams_domains::infra::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,

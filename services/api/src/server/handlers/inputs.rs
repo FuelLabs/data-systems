@@ -4,16 +4,10 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    ContractId,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    inputs::{queryable::InputsQuery, InputType},
-    queryable::{Queryable, ValidatedQuery},
+    infra::repository::{Repository, ValidatedQuery},
+    inputs::InputsQuery,
 };
 use paste::paste;
 
@@ -74,7 +68,7 @@ macro_rules! generate_input_endpoints {
                         .into_inner();
                     query.set_input_type(Some(InputType::$variant));
                     let response: GetDataResponse =
-                        query.execute(&state.db.pool).await?.try_into()?;
+                        Input::find_many(&state.db.pool, &query).await?.try_into()?;
                     Ok(Json(response))
                 }
             )*
@@ -119,7 +113,7 @@ macro_rules! generate_input_endpoints {
                     .into_inner();
                 query.set_input_type(None);
                 let response: GetDataResponse =
-                    query.execute(&state.db.pool).await?.try_into()?;
+                    Input::find_many(&state.db.pool, &query).await?.try_into()?;
                 Ok(Json(response))
             }
         }

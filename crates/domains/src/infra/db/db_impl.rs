@@ -4,9 +4,10 @@ use std::{
     time::Duration,
 };
 
+use fuel_data_parser::DataParserError;
 use sqlx::{Pool, Postgres};
 
-use crate::record::{EncoderError, RecordPacketError};
+use crate::infra::RecordPacketError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
@@ -19,7 +20,7 @@ pub enum DbError {
     #[error("Failed to find many records by pattern")]
     FindManyByPattern(#[source] sqlx::Error),
     #[error("Failed to encode/decode data")]
-    EncodeDecode(#[from] EncoderError),
+    DataParser(#[from] DataParserError),
     #[error("Other error: {0}")]
     Other(String),
     #[error(transparent)]
@@ -34,6 +35,7 @@ pub enum DbError {
     CommitTransaction(#[source] sqlx::Error),
 }
 
+pub type DbTransaction = sqlx::Transaction<'static, sqlx::Postgres>;
 pub type DbResult<T> = Result<T, DbError>;
 pub type SqlxError = sqlx::Error;
 

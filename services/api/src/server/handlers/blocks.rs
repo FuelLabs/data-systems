@@ -4,27 +4,14 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    BlockTimestamp,
-    Bytes32,
-    ContractId,
-    InputType,
-    OutputType,
-    ReceiptType,
-    TransactionStatus,
-    TransactionType,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    blocks::queryable::{BlocksQuery, TimeRange},
-    inputs::queryable::InputsQuery,
-    outputs::queryable::OutputsQuery,
-    queryable::{Queryable, ValidatedQuery},
-    receipts::queryable::ReceiptsQuery,
-    transactions::queryable::TransactionsQuery,
+    blocks::{BlocksQuery, TimeRange},
+    infra::repository::{Repository, ValidatedQuery},
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    receipts::ReceiptsQuery,
+    transactions::TransactionsQuery,
 };
 
 use super::open_api::TAG_BLOCKS;
@@ -65,7 +52,7 @@ pub async fn get_blocks(
         .await?
         .into_inner();
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Block::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -106,7 +93,9 @@ pub async fn get_block_transactions(
     let block_height = height;
     query.set_block_height(block_height);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Transaction::find_many(&state.db.pool, &query)
+            .await?
+            .try_into()?;
     Ok(Json(response))
 }
 
@@ -153,8 +142,9 @@ pub async fn get_block_receipts(
         .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Receipt::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }
 
@@ -199,7 +189,7 @@ pub async fn get_block_inputs(
     let block_height = height;
     query.set_block_height(block_height);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Input::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -242,7 +232,8 @@ pub async fn get_block_outputs(
         .into_inner();
     let block_height = height;
     query.set_block_height(block_height);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Output::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }

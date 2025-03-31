@@ -3,7 +3,7 @@ use std::sync::Arc;
 use clap::Parser;
 use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
-use fuel_streams_store::db::{Db, DbConnectionOpts};
+use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     server::server_builder::ServerBuilder,
     shutdown::ShutdownController,

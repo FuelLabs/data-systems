@@ -1,20 +1,22 @@
 use std::cmp::Ordering;
 
-use fuel_streams_store::{
-    db::{DbError, DbItem},
-    record::{
-        DataEncoder,
-        RecordEntity,
-        RecordPacket,
-        RecordPacketError,
-        RecordPointer,
-    },
-};
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
 use super::subjects::*;
-use crate::Subjects;
+use crate::{
+    infra::{
+        db::DbItem,
+        record::{
+            RecordEntity,
+            RecordPacket,
+            RecordPacketError,
+            RecordPointer,
+        },
+    },
+    Subjects,
+};
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
@@ -33,9 +35,7 @@ pub struct PredicateDbItem {
     pub published_at: BlockTimestamp,
 }
 
-impl DataEncoder for PredicateDbItem {
-    type Err = DbError;
-}
+impl DataEncoder for PredicateDbItem {}
 
 impl DbItem for PredicateDbItem {
     fn entity(&self) -> &RecordEntity {

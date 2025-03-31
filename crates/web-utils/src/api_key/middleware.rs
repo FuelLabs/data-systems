@@ -7,7 +7,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use fuel_streams_store::db::Db;
+use fuel_streams_domains::infra::Db;
 
 use super::{ApiKeyError, ApiKeysManager};
 

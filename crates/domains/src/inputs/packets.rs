@@ -1,13 +1,17 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::TxId;
 use rayon::prelude::*;
 
 use super::{subjects::*, Input};
-use crate::{blocks::BlockHeight, transactions::Transaction, MsgPayload};
+use crate::{
+    blocks::BlockHeight,
+    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    transactions::Transaction,
+    MsgPayload,
+};
 
 #[async_trait]
 impl PacketBuilder for Input {

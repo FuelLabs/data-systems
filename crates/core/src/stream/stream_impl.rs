@@ -1,11 +1,15 @@
 use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
+use fuel_data_parser::DataEncoder;
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_store::{
-    db::{Db, DbItem},
-    record::{DataEncoder, QueryOptions, Record},
-    store::{find_last_block_height, Store},
+use fuel_streams_domains::{
+    blocks::Block,
+    infra::{
+        db::{Db, DbItem},
+        record::QueryOptions,
+        repository::{Repository, SubjectQueryBuilder},
+    },
 };
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockHeight;
@@ -23,14 +27,14 @@ pub type BoxedStoreItem = Result<StreamResponse, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
-pub struct Stream<S: Record> {
-    store: Arc<Store<S>>,
+pub struct Stream<S: Repository> {
+    db: Arc<Db>,
     broker: Arc<NatsMessageBroker>,
     namespace: Option<String>,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<R: Record> Stream<R> {
+impl<R: Repository> Stream<R> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
@@ -45,10 +49,9 @@ impl<R: Record> Stream<R> {
     }
 
     pub async fn new(broker: &Arc<NatsMessageBroker>, db: &Arc<Db>) -> Self {
-        let store = Arc::new(Store::new(db));
         let broker = Arc::clone(broker);
         Self {
-            store,
+            db: db.clone(),
             broker,
             namespace: None,
             _marker: std::marker::PhantomData,
@@ -61,22 +64,12 @@ impl<R: Record> Stream<R> {
         db: &Arc<Db>,
         namespace: String,
     ) -> Self {
-        let store = Arc::new(Store::new(db));
         let broker = Arc::clone(broker);
         Self {
-            store,
+            db: db.clone(),
             broker,
             namespace: Some(namespace),
             _marker: std::marker::PhantomData,
-        }
-    }
-
-    pub fn store(&self) -> Store<R> {
-        if let Some(namespace) = &self.namespace {
-            let mut store = (*self.store).clone();
-            store.with_namespace(&namespace.clone()).to_owned()
-        } else {
-            (*self.store).to_owned()
         }
     }
 
@@ -96,7 +89,7 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe<S: IntoSubject>(
+    pub async fn subscribe<S: IntoSubject + SubjectQueryBuilder>(
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
@@ -107,9 +100,9 @@ impl<R: Record> Stream<R> {
             .await
     }
 
-    pub async fn subscribe_dynamic(
+    pub async fn subscribe_dynamic<S: IntoSubject + SubjectQueryBuilder>(
         &self,
-        subject: Arc<dyn IntoSubject>,
+        subject: Arc<S>,
         deliver_policy: DeliverPolicy,
         api_key_role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
@@ -155,14 +148,13 @@ impl<R: Record> Stream<R> {
         Box::pin(stream)
     }
 
-    pub fn historical_streaming(
+    pub fn historical_streaming<S: IntoSubject + SubjectQueryBuilder>(
         &self,
-        subject: Arc<dyn IntoSubject>,
+        subject: Arc<S>,
         from_block: Option<BlockHeight>,
         role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
-        let store = self.store().clone();
-        let db = self.store().db.clone();
+        let db = self.db.clone();
         let role = role.clone();
         let opts = if cfg!(any(test, feature = "test-helpers")) {
             QueryOptions::default()
@@ -173,9 +165,9 @@ impl<R: Record> Stream<R> {
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
             let mut opts = opts.with_from_block(Some(current_height));
-            let mut last_height = find_last_block_height(&db, opts.clone()).await?;
-            while current_height <= last_height {
-                let items = store.find_many_by_subject(&subject, opts.clone()).await?;
+            let mut last_height = Block::find_last_block_height(&db, &opts).await?;
+                while current_height <= last_height {
+                    let items = R::find_many_by_subject(&db, &*subject, &opts).await?;
                 for item in items {
                     let subject = item.subject_str();
                     let subject_id = item.subject_id();
@@ -191,7 +183,7 @@ impl<R: Record> Stream<R> {
                 // When we reach the last known height, we need to check if any new blocks
                 // were produced while we were processing the previous ones
                 if current_height == last_height {
-                    let new_last_height = find_last_block_height(&db, opts.clone()).await?;
+                    let new_last_height = Block::find_last_block_height(&db, &opts).await?;
                     if new_last_height > last_height {
                         // Reset current_height back to process the blocks we haven't seen yet
                         current_height = last_height;

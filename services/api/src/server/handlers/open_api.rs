@@ -42,11 +42,11 @@ use fuel_streams_core::types::{
     UtxoId,
 };
 use fuel_streams_domains::{
-    blocks::queryable::BlocksQuery,
-    inputs::queryable::InputsQuery,
-    outputs::queryable::OutputsQuery,
-    receipts::queryable::ReceiptsQuery,
-    transactions::queryable::TransactionsQuery,
+    blocks::BlocksQuery,
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    receipts::ReceiptsQuery,
+    transactions::TransactionsQuery,
 };
 use fuel_web_utils::{api_key::ApiKey, server::server_builder::API_BASE_PATH};
 use utoipa::{

@@ -43,7 +43,7 @@ pub async fn subscribe_mult(
         let api_key_role = api_key.role();
         let sub = ctx
             .streams
-            .subscribe_by_entity(api_key_role, &subscription)
+            .subscribe_by_subject(api_key_role, &subscription)
             .await?;
         subscribed_msgs
             .push(ServerResponse::Subscribed(subscription.to_owned()));

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use fuel_data_parser::DataEncoder;
 use fuel_streams_domains::blocks::Block;
-use fuel_streams_store::record::DataEncoder;
 use fuel_streams_types::BlockTimestamp;
 use rayon::prelude::*;
 use sqlx::PgPool;

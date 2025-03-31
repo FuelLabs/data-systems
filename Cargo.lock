@@ -3666,7 +3666,7 @@ version = "0.0.28"
 dependencies = [
  "anyhow",
  "fuel-streams-core",
- "fuel-streams-store",
+ "fuel-streams-domains",
  "futures",
  "reqwest 0.12.12",
  "serde",
@@ -3686,9 +3686,9 @@ dependencies = [
  "async-stream",
  "dotenvy",
  "fuel-core",
+ "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-tx 0.60.0",
@@ -3713,10 +3713,11 @@ dependencies = [
  "axum 0.8.1",
  "chrono",
  "derive_more 2.0.1",
+ "dotenvy",
  "fuel-asm 0.60.0",
  "fuel-core",
  "fuel-core-types 0.41.9",
- "fuel-streams-store",
+ "fuel-data-parser",
  "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-tx 0.60.0",
@@ -3725,7 +3726,6 @@ dependencies = [
  "hex",
  "pretty_assertions",
  "rayon",
- "sea-query",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -3734,7 +3734,6 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "tokio",
- "tracing",
  "utoipa",
 ]
 
@@ -3746,24 +3745,6 @@ dependencies = [
  "fuel-streams",
  "futures",
  "tokio",
-]
-
-[[package]]
-name = "fuel-streams-store"
-version = "0.0.28"
-dependencies = [
- "async-trait",
- "dotenvy",
- "fuel-data-parser",
- "fuel-streams-subject",
- "fuel-streams-types",
- "serde",
- "sqlx",
- "test-case",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "utoipa",
 ]
 
 [[package]]
@@ -3788,18 +3769,16 @@ dependencies = [
  "fuel-core",
  "fuel-core-client",
  "fuel-core-types 0.41.9",
+ "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-streams-subject",
  "fuel-streams-types",
  "fuel-web-utils",
- "futures",
  "mockall 0.13.1",
  "pretty_assertions",
  "rand 0.9.0",
- "serde_json",
  "sv-consumer",
  "tokio",
 ]
@@ -4045,7 +4024,7 @@ dependencies = [
  "elasticsearch",
  "fuel-data-parser",
  "fuel-message-broker",
- "fuel-streams-store",
+ "fuel-streams-domains",
  "fuel-streams-types",
  "futures",
  "mockall 0.13.1",
@@ -4308,7 +4287,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "fuel-data-parser",
- "fuel-streams-store",
+ "fuel-streams-domains",
  "fuel-web-utils",
  "sqlx",
  "strum 0.27.1",
@@ -5284,17 +5263,6 @@ dependencies = [
  "portable-atomic",
  "unicode-width",
  "web-time",
-]
-
-[[package]]
-name = "inherent"
-version = "1.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c38228f24186d9cc68c729accb4d413be9eaed6ad07ff79e0270d9e56f3de13"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.100",
 ]
 
 [[package]]
@@ -8676,30 +8644,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sea-query"
-version = "0.32.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b731192738ebf56d20580fc8ba2d23940333befe900b04dd08a26a77cd056f02"
-dependencies = [
- "inherent",
- "sea-query-derive",
-]
-
-[[package]]
-name = "sea-query-derive"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9834af2c4bd8c5162f00c89f1701fb6886119a88062cf76fe842ea9e232b9839"
-dependencies = [
- "darling",
- "heck 0.4.1",
- "proc-macro2",
- "quote",
- "syn 2.0.100",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9581,7 +9525,6 @@ dependencies = [
  "fuel-data-parser",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",
@@ -9611,10 +9554,10 @@ dependencies = [
  "clap",
  "dotenvy",
  "fuel-core",
+ "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",
@@ -9639,10 +9582,10 @@ dependencies = [
  "fuel-core",
  "fuel-core-bin",
  "fuel-core-types 0.41.9",
+ "fuel-data-parser",
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-streams-types",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
@@ -9673,7 +9616,6 @@ dependencies = [
  "fuel-message-broker",
  "fuel-streams-core",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-tx 0.60.0",
  "fuel-vm 0.60.0",
  "fuel-web-utils",
@@ -10709,8 +10651,8 @@ version = "0.0.28"
 dependencies = [
  "anyhow",
  "dotenvy",
+ "fuel-data-parser",
  "fuel-streams-domains",
- "fuel-streams-store",
  "fuel-streams-types",
  "rayon",
  "sqlx",

@@ -25,7 +25,6 @@ dotenvy.workspace = true
 fuel-data-parser.workspace = true
 fuel-streams-core = { workspace = true, features = ["openapi"] }
 fuel-streams-domains.workspace = true
-fuel-streams-store.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 fuel-web-utils.workspace = true
@@ -49,11 +48,7 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = [
-  "fuel-data-parser/test-helpers",
-  "fuel-streams-store/test-helpers",
-  "fuel-web-utils/test-helpers",
-]
+test-helpers = ["fuel-data-parser/test-helpers", "fuel-web-utils/test-helpers"]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 openssl = { version = "0.10.68", features = ["vendored"] }

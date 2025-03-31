@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
@@ -18,6 +21,9 @@ pub enum Receipt {
     Mint(MintReceipt),
     Burn(BurnReceipt),
 }
+
+impl DataEncoder for Receipt {}
+impl ToPacket for Receipt {}
 
 impl Receipt {
     #[cfg(any(test, feature = "test-helpers"))]

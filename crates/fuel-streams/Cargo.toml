@@ -12,7 +12,7 @@ version.workspace = true
 
 [dependencies]
 fuel-streams-core.workspace = true
-fuel-streams-store.workspace = true
+fuel-streams-domains.workspace = true
 futures.workspace = true
 reqwest = "0.12.9"
 serde.workspace = true
@@ -28,10 +28,7 @@ tokio.workspace = true
 
 [features]
 default = []
-test-helpers = [
-  "fuel-streams-core/test-helpers",
-  "fuel-streams-store/test-helpers",
-]
+test-helpers = ["fuel-streams-core/test-helpers"]
 
 [package.metadata.docs.rs]
 all-features = true

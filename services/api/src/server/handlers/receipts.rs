@@ -4,17 +4,10 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    Bytes32,
-    ContractId,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    queryable::{Queryable, ValidatedQuery},
-    receipts::{queryable::ReceiptsQuery, ReceiptType},
+    infra::repository::{Repository, ValidatedQuery},
+    receipts::{ReceiptType, ReceiptsQuery},
 };
 use paste::paste;
 
@@ -77,7 +70,7 @@ macro_rules! generate_receipt_endpoints {
                         .into_inner();
                     query.set_receipt_type(Some(ReceiptType::$variant));
                     let response: GetDataResponse =
-                        query.execute(&state.db.pool).await?.try_into()?;
+                        Receipt::find_many(&state.db.pool, &query).await?.try_into()?;
                     Ok(Json(response))
                 }
             )*
@@ -123,7 +116,7 @@ macro_rules! generate_receipt_endpoints {
                     .await?
                     .into_inner();
                 let response: GetDataResponse =
-                    query.execute(&state.db.pool).await?.try_into()?;
+                    Receipt::find_many(&state.db.pool, &query).await?.try_into()?;
                 Ok(Json(response))
             }
         }

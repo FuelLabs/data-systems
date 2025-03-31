@@ -117,7 +117,6 @@ fuel-message-broker = { version = "0.0.28", path = "crates/message-broker" }
 fuel-streams = { version = "0.0.28", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.28", path = "crates/core" }
 fuel-streams-domains = { version = "0.0.28", path = "crates/domains" }
-fuel-streams-store = { version = "0.0.28", path = "crates/store" }
 fuel-streams-subject = { version = "0.0.28", path = "crates/subject" }
 fuel-streams-test = { version = "0.0.22", path = "crates/test" }
 fuel-streams-types = { version = "0.0.28", path = "crates/types" }

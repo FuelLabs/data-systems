@@ -13,8 +13,8 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 dotenvy.workspace = true
+fuel-data-parser.workspace = true
 fuel-streams-domains.workspace = true
-fuel-streams-store.workspace = true
 fuel-streams-types.workspace = true
 rayon.workspace = true
 sqlx.workspace = true

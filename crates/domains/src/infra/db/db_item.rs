@@ -3,12 +3,11 @@ use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use sqlx::postgres::PgRow;
 
-use super::DbError;
-use crate::record::RecordEntity;
+use crate::infra::RecordEntity;
 
 #[async_trait]
 pub trait DbItem:
-    DataEncoder<Err = DbError>
+    DataEncoder
     + Unpin
     + std::fmt::Debug
     + PartialEq

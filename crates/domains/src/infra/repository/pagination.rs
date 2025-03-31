@@ -1,21 +1,10 @@
-use async_trait::async_trait;
 use axum::{
     extract::{FromRequestParts, Query as AxumQuery},
     http::{request::Parts, StatusCode},
 };
-use fuel_streams_store::{db::DbItem, record::RecordPointer};
-use sea_query::{
-    Asterisk,
-    Condition,
-    Expr,
-    Iden,
-    Order,
-    PostgresQueryBuilder,
-    Query,
-    SelectStatement,
-};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
+use sqlx::{Postgres, QueryBuilder};
 use utoipa::ToSchema;
 
 pub const MAX_FIRST: i32 = 100;
@@ -73,6 +62,61 @@ impl QueryPagination {
     pub fn before(&self) -> Option<i32> {
         self.before
     }
+
+    pub fn apply_pagination(
+        &self,
+        query_builder: &mut QueryBuilder<Postgres>,
+        cursor_field: &str,
+    ) {
+        let mut conditions = Vec::new();
+
+        if let Some(after) = self.after {
+            conditions.push(format!("{} > ", cursor_field));
+            query_builder.push_bind(after);
+            query_builder.push(" ");
+        }
+
+        if let Some(before) = self.before {
+            conditions.push(format!("{} < ", cursor_field));
+            query_builder.push_bind(before);
+            query_builder.push(" ");
+        }
+
+        if !conditions.is_empty() {
+            let existing_where = query_builder.sql().contains("WHERE");
+            if !existing_where {
+                query_builder.push(" WHERE ");
+            } else {
+                query_builder.push(" AND ");
+            }
+            query_builder.push(conditions.join(" AND "));
+        }
+
+        match (self.first, self.last) {
+            (Some(first), None) => {
+                let limit = first.min(MAX_FIRST);
+                query_builder.push(format!(" ORDER BY {} ASC", cursor_field));
+                query_builder.push(" LIMIT ");
+                query_builder.push_bind(limit);
+            }
+            (None, Some(last)) => {
+                let limit = last.min(MAX_LAST);
+                query_builder.push(format!(" ORDER BY {} DESC", cursor_field));
+                query_builder.push(" LIMIT ");
+                query_builder.push_bind(limit);
+            }
+            (Some(_), Some(_)) => {
+                query_builder.push(format!(" ORDER BY {} ASC", cursor_field));
+                query_builder.push(" LIMIT ");
+                query_builder.push_bind(MAX_FIRST);
+            }
+            (None, None) => {
+                query_builder.push(format!(" ORDER BY {} ASC", cursor_field));
+                query_builder.push(" LIMIT ");
+                query_builder.push_bind(MAX_FIRST);
+            }
+        }
+    }
 }
 
 impl From<(Option<i32>, Option<i32>, Option<i32>, Option<i32>)>
@@ -85,77 +129,6 @@ impl From<(Option<i32>, Option<i32>, Option<i32>, Option<i32>)>
             first: val.2,
             last: val.3,
         }
-    }
-}
-
-#[async_trait]
-pub trait Queryable: Sized + 'static {
-    type Record: DbItem + Into<RecordPointer>;
-    type Table: Iden;
-    type PaginationColumn: Iden;
-
-    fn table() -> Self::Table;
-
-    fn pagination_column() -> Self::PaginationColumn;
-
-    fn build_query(&self) -> SelectStatement {
-        let mut condition = self.build_condition();
-        let pagination = self.pagination();
-
-        if let Some(after) = pagination.after() {
-            condition =
-                condition.add(Expr::col(Self::pagination_column()).gt(after));
-        }
-
-        if let Some(before) = pagination.before() {
-            condition =
-                condition.add(Expr::col(Self::pagination_column()).lt(before));
-        }
-
-        let mut query = Query::select();
-        query
-            .column(Asterisk)
-            .from(Self::table())
-            .cond_where(condition);
-
-        if let Some(first) = pagination.first() {
-            query
-                .order_by(Self::pagination_column(), Order::Asc)
-                .limit(first as u64);
-        } else if let Some(last) = pagination.last() {
-            query
-                .order_by(Self::pagination_column(), Order::Desc)
-                .limit(last as u64);
-        }
-
-        query
-    }
-
-    fn build_condition(&self) -> Condition;
-
-    fn pagination(&self) -> &QueryPagination;
-
-    fn query_to_string(&self) -> String {
-        self.build_query().to_string(PostgresQueryBuilder)
-    }
-
-    fn get_sql_and_values(&self) -> (String, sea_query::Values) {
-        self.build_query().build(PostgresQueryBuilder)
-    }
-
-    async fn execute<'c, E>(
-        &self,
-        executor: E,
-    ) -> Result<Vec<Self::Record>, QueryableError>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Postgres>,
-    {
-        let sql = self.build_query().to_string(PostgresQueryBuilder);
-
-        sqlx::query_as::<_, Self::Record>(&sql)
-            .fetch_all(executor)
-            .await
-            .map_err(QueryableError::from)
     }
 }
 
@@ -178,7 +151,7 @@ impl<T> ValidatedQuery<T> {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum QueryableError {
+pub enum ValidatedQueryError {
     #[error("Bad request: {0}")]
     BadRequest(String),
     #[error("Cannot specify both 'first' and 'last' pagination parameters")]
@@ -189,23 +162,24 @@ pub enum QueryableError {
     LastExceedsMaximum(i32),
     #[error("Either 'first' or 'last' pagination parameter must be specified")]
     NeitherFirstNorLastSpecified,
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
 }
 
-impl axum::response::IntoResponse for QueryableError {
+impl axum::response::IntoResponse for ValidatedQueryError {
     fn into_response(self) -> axum::response::Response {
         let status = match self {
-            QueryableError::BadRequest(_) => StatusCode::BAD_REQUEST,
-            QueryableError::BothFirstAndLastSpecified => {
+            ValidatedQueryError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ValidatedQueryError::BothFirstAndLastSpecified => {
                 StatusCode::BAD_REQUEST
             }
-            QueryableError::FirstExceedsMaximum(_) => StatusCode::BAD_REQUEST,
-            QueryableError::LastExceedsMaximum(_) => StatusCode::BAD_REQUEST,
-            QueryableError::NeitherFirstNorLastSpecified => {
+            ValidatedQueryError::FirstExceedsMaximum(_) => {
                 StatusCode::BAD_REQUEST
             }
-            QueryableError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ValidatedQueryError::LastExceedsMaximum(_) => {
+                StatusCode::BAD_REQUEST
+            }
+            ValidatedQueryError::NeitherFirstNorLastSpecified => {
+                StatusCode::BAD_REQUEST
+            }
         };
 
         let body = self.to_string();
@@ -218,7 +192,7 @@ where
     S: Send + Sync,
     T: serde::de::DeserializeOwned + HasPagination + Send + 'static,
 {
-    type Rejection = QueryableError;
+    type Rejection = ValidatedQueryError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -226,27 +200,31 @@ where
     ) -> Result<Self, Self::Rejection> {
         let query = AxumQuery::<T>::from_request_parts(parts, state)
             .await
-            .map_err(|e| QueryableError::BadRequest(e.to_string()))?;
+            .map_err(|e| ValidatedQueryError::BadRequest(e.to_string()))?;
 
         let q = query.0;
         let pagination = q.pagination();
 
         match (pagination.first, pagination.last) {
             (Some(_first), Some(_last)) => {
-                return Err(QueryableError::BothFirstAndLastSpecified);
+                return Err(ValidatedQueryError::BothFirstAndLastSpecified);
             }
             (Some(first), None) => {
                 if first > MAX_FIRST {
-                    return Err(QueryableError::FirstExceedsMaximum(MAX_FIRST));
+                    return Err(ValidatedQueryError::FirstExceedsMaximum(
+                        MAX_FIRST,
+                    ));
                 }
             }
             (None, Some(last)) => {
                 if last > MAX_LAST {
-                    return Err(QueryableError::LastExceedsMaximum(MAX_LAST));
+                    return Err(ValidatedQueryError::LastExceedsMaximum(
+                        MAX_LAST,
+                    ));
                 }
             }
             _ => {
-                return Err(QueryableError::NeitherFirstNorLastSpecified);
+                return Err(ValidatedQueryError::NeitherFirstNorLastSpecified);
             }
         }
 

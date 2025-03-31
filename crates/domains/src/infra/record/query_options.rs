@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use fuel_streams_types::BlockHeight;
+use sqlx::{Postgres, QueryBuilder};
 
 pub static STORE_PAGINATION_LIMIT: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("STORE_PAGINATION_LIMIT")
@@ -15,7 +16,6 @@ pub struct QueryOptions {
     pub limit: i64,
     pub from_block: Option<BlockHeight>,
     pub namespace: Option<String>,
-    pub distinct: bool,
 }
 impl Default for QueryOptions {
     fn default() -> Self {
@@ -24,7 +24,6 @@ impl Default for QueryOptions {
             limit: *STORE_PAGINATION_LIMIT as i64,
             from_block: None,
             namespace: None,
-            distinct: false,
         }
     }
 }
@@ -46,11 +45,17 @@ impl QueryOptions {
         self.namespace = namespace;
         self
     }
-    pub fn with_distinct(mut self, distinct: bool) -> Self {
-        self.distinct = distinct;
-        self
-    }
     pub fn increment_offset(&mut self) {
         self.offset += self.limit;
+    }
+
+    pub fn apply_limit_offset(
+        &self,
+        query_builder: &mut QueryBuilder<Postgres>,
+    ) {
+        query_builder.push(" LIMIT ");
+        query_builder.push_bind(self.limit);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(self.offset);
     }
 }

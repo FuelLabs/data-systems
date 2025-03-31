@@ -1,8 +1,10 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
+use sqlx::{Postgres, QueryBuilder};
 
 use super::InputType;
+use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_coin")]
@@ -119,4 +121,69 @@ pub struct InputsSubject {
     pub tx_index: Option<u32>,
     #[subject(description = "The index of this input within the transaction")]
     pub input_index: Option<u32>,
+}
+
+fn build_inputs_query(
+    where_clause: Option<String>,
+    options: Option<&QueryOptions>,
+) -> QueryBuilder<'static, Postgres> {
+    let mut conditions = Vec::new();
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+    query_builder.push("SELECT * FROM inputs");
+
+    if let Some(clause) = where_clause {
+        conditions.push(clause);
+    }
+    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
+        conditions.push(format!("block_height >= {}", block));
+    }
+
+    if !conditions.is_empty() {
+        query_builder.push(" WHERE ");
+        query_builder.push(conditions.join(" AND "));
+    }
+
+    query_builder
+        .push(" ORDER BY block_height ASC, tx_index ASC, input_index ASC");
+    if let Some(opts) = options {
+        opts.apply_limit_offset(&mut query_builder);
+    }
+
+    query_builder
+}
+
+impl SubjectQueryBuilder for InputsCoinSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_inputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for InputsContractSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_inputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for InputsMessageSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_inputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for InputsSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_inputs_query(self.to_sql_where(), options)
+    }
 }

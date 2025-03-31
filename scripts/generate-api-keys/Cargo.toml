@@ -17,7 +17,7 @@ clap.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
 fuel-data-parser.workspace = true
-fuel-streams-store.workspace = true
+fuel-streams-domains.workspace = true
 fuel-web-utils.workspace = true
 sqlx.workspace = true
 strum.workspace = true
@@ -32,8 +32,4 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = [
-  "fuel-data-parser/test-helpers",
-  "fuel-streams-store/test-helpers",
-  "fuel-web-utils/test-helpers",
-]
+test-helpers = ["fuel-data-parser/test-helpers", "fuel-web-utils/test-helpers"]

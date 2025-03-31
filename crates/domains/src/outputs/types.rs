@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 // Output enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -11,6 +14,9 @@ pub enum Output {
     Variable(OutputVariable),
     ContractCreated(OutputContractCreated),
 }
+
+impl DataEncoder for Output {}
+impl ToPacket for Output {}
 
 impl From<&FuelCoreOutput> for Output {
     fn from(output: &FuelCoreOutput) -> Self {

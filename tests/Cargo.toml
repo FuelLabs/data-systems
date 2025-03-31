@@ -36,16 +36,14 @@ fuel-core-types = { workspace = true, features = [
   "std",
   "test-helpers",
 ] }
+fuel-data-parser = { workspace = true, features = ["test-helpers"] }
 fuel-message-broker = { workspace = true, features = ["test-helpers"] }
 fuel-streams-core = { workspace = true, features = ["test-helpers"] }
 fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
-fuel-streams-store = { workspace = true, features = ["test-helpers"] }
 fuel-streams-subject = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
-futures.workspace = true
 rand.workspace = true
-serde_json.workspace = true
 sv-consumer = { path = "../services/consumer", features = ["test-helpers"] }
 tokio = { workspace = true, features = [
   "macros",

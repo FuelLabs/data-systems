@@ -16,9 +16,9 @@ async-nats.workspace = true
 async-stream.workspace = true
 dotenvy.workspace = true
 fuel-core.workspace = true
+fuel-data-parser.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-domains.workspace = true
-fuel-streams-store.workspace = true
 fuel-streams-subject.workspace = true
 fuel-streams-types.workspace = true
 fuel-tx.workspace = true
@@ -44,7 +44,6 @@ test-helpers = [
   "fuel-message-broker/test-helpers",
   "fuel-streams-domains/test-helpers",
   "fuel-streams-subject/test-helpers",
-  "fuel-streams-store/test-helpers",
   "fuel-streams-types/test-helpers",
   "fuel-web-utils/test-helpers",
 ]

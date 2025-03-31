@@ -7,12 +7,12 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::{stream::*, subjects::IntoSubject, types::Block};
 use fuel_streams_domains::{
     blocks::{subjects::BlocksSubject, types::MockBlock, BlockDbItem},
+    infra::{
+        db::{Db, DbConnectionOpts, DbResult, DbTransaction},
+        record::{RecordPacket, ToPacket},
+        repository::Repository,
+    },
     MockMsgPayload,
-};
-use fuel_streams_store::{
-    db::{Db, DbConnectionOpts, DbResult},
-    record::{DbTransaction, Record, RecordPacket},
-    store::Store,
 };
 use rand::Rng;
 
@@ -27,12 +27,6 @@ pub async fn setup_db() -> DbResult<Arc<Db>> {
 
 pub async fn close_db(db: &Arc<Db>) {
     db.close().await;
-}
-
-pub async fn setup_store<R: Record>() -> DbResult<Store<R>> {
-    let db = setup_db().await?;
-    let store = Store::new(&db);
-    Ok(store)
 }
 
 pub async fn setup_stream(
@@ -74,7 +68,7 @@ pub fn create_multiple_records(
 }
 
 pub async fn insert_records(
-    store: &Store<Block>,
+    db: &Arc<Db>,
     prefix: &str,
     records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
 ) -> anyhow::Result<Vec<BlockDbItem>> {
@@ -82,14 +76,13 @@ pub async fn insert_records(
     for record in records {
         let packet = record.2.to_owned().with_namespace(prefix);
         let db_item: BlockDbItem = (&packet).try_into()?;
-        let record = store.insert_record(&db_item).await?;
+        let record = Block::insert(db.pool_ref(), &db_item).await?;
         final_records.push(record);
     }
     Ok(final_records)
 }
 
 pub async fn insert_records_with_transaction(
-    store: &Store<Block>,
     tx: &mut DbTransaction,
     prefix: &str,
     records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
@@ -98,7 +91,7 @@ pub async fn insert_records_with_transaction(
     for record in records {
         let packet = record.2.to_owned().with_namespace(prefix);
         let db_item: BlockDbItem = (&packet).try_into()?;
-        let record = store.insert_record_with_transaction(tx, &db_item).await?;
+        let record = Block::insert_with_transaction(tx, &db_item).await?;
         final_records.push(record);
     }
     Ok(())

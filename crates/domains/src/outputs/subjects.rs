@@ -1,8 +1,10 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
+use sqlx::{Postgres, QueryBuilder};
 
 use super::OutputType;
+use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_coin")]
@@ -182,4 +184,87 @@ pub struct OutputsSubject {
     pub tx_index: Option<u32>,
     #[subject(description = "The index of this output within the transaction")]
     pub output_index: Option<u32>,
+}
+
+fn build_outputs_query(
+    where_clause: Option<String>,
+    options: Option<&QueryOptions>,
+) -> QueryBuilder<'static, Postgres> {
+    let mut conditions = Vec::new();
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+    query_builder.push("SELECT * FROM outputs");
+
+    if let Some(clause) = where_clause {
+        conditions.push(clause);
+    }
+    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
+        conditions.push(format!("block_height >= {}", block));
+    }
+
+    if !conditions.is_empty() {
+        query_builder.push(" WHERE ");
+        query_builder.push(conditions.join(" AND "));
+    }
+
+    query_builder
+        .push(" ORDER BY block_height ASC, tx_index ASC, output_index ASC");
+    if let Some(opts) = options {
+        opts.apply_limit_offset(&mut query_builder);
+    }
+
+    query_builder
+}
+
+impl SubjectQueryBuilder for OutputsCoinSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for OutputsContractSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for OutputsChangeSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for OutputsVariableSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for OutputsContractCreatedSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
+}
+
+impl SubjectQueryBuilder for OutputsSubject {
+    fn query_builder(
+        &self,
+        options: Option<&QueryOptions>,
+    ) -> QueryBuilder<'static, Postgres> {
+        build_outputs_query(self.to_sql_where(), options)
+    }
 }

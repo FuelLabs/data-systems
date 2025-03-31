@@ -1,6 +1,9 @@
+use fuel_data_parser::DataEncoder;
 pub use fuel_streams_types::BlockHeight;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -14,6 +17,9 @@ pub struct Block {
     pub version: BlockVersion,
     pub producer: Address,
 }
+
+impl DataEncoder for Block {}
+impl ToPacket for Block {}
 
 impl Block {
     pub fn new(

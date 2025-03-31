@@ -149,11 +149,11 @@ impl_try_from_subjects!(
 #[allow(clippy::disallowed_macros)]
 #[cfg(test)]
 mod tests {
-    use fuel_streams_store::record::{RecordEntity, RecordEntityError};
     use serde_json::json;
     use test_case::test_case;
 
     use super::*;
+    use crate::infra::{RecordEntity, RecordEntityError};
 
     #[test]
     fn test_subject_json_conversion() {

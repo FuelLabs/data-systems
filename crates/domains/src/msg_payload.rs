@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_streams_store::record::{DataEncoder, EncoderError};
+use fuel_data_parser::{DataEncoder, DataParserError};
 use fuel_streams_types::{
     Address,
     BlockTimestamp,
@@ -26,7 +26,7 @@ pub enum MsgPayloadError {
     #[error("Failed to fetch transaction status: {0}")]
     TransactionStatus(String),
     #[error(transparent)]
-    Serialization(#[from] EncoderError),
+    Serialization(#[from] DataParserError),
     #[error(transparent)]
     FuelCore(#[from] FuelCoreError),
 }
@@ -70,9 +70,7 @@ pub struct MsgPayload {
     pub namespace: Option<String>,
 }
 
-impl DataEncoder for MsgPayload {
-    type Err = MsgPayloadError;
-}
+impl DataEncoder for MsgPayload {}
 
 impl MsgPayload {
     pub async fn new(

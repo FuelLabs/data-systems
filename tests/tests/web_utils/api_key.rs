@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_streams_store::db::{Db, DbConnectionOpts};
+use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_streams_test::close_db;
 use fuel_web_utils::api_key::*;
 use pretty_assertions::assert_eq;

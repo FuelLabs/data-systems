@@ -45,7 +45,6 @@ jobs:
             fuel-streams-core
             fuel-streams-domains
             fuel-streams-subject
-            fuel-streams-store
             fuel-streams-types
             fuel-streams-test
             fuel-web-utils
@@ -219,7 +218,6 @@ jobs:
           - fuel-streams-domains
           - fuel-streams
           - fuel-message-broker
-          - fuel-streams-store
           - fuel-streams-subject
           - fuel-streams-types
           - fuel-streams-test

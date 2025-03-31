@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(
     Debug,
@@ -16,6 +19,9 @@ pub enum Input {
     Coin(InputCoin),
     Message(InputMessage),
 }
+
+impl DataEncoder for Input {}
+impl ToPacket for Input {}
 
 impl From<&FuelCoreInput> for Input {
     fn from(input: &FuelCoreInput) -> Self {

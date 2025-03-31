@@ -1,15 +1,34 @@
 use std::sync::Arc;
 
+use fuel_data_parser::DataEncoder;
 use fuel_message_broker::{Message, NatsMessageBroker, NatsQueue};
 use fuel_streams_core::{
-    types::{Block, BlockTimestamp, Transaction},
+    types::{
+        Block,
+        BlockHeight,
+        BlockTimestamp,
+        Input,
+        Output,
+        Receipt,
+        Transaction,
+        Utxo,
+    },
     FuelStreams,
 };
-use fuel_streams_domains::MsgPayload;
-use fuel_streams_store::{
-    db::Db,
-    record::{DataEncoder, PacketBuilder, RecordPacket},
-    store::update_block_propagation_ms,
+use fuel_streams_domains::{
+    blocks::BlockDbItem,
+    infra::{
+        db::{Db, DbTransaction},
+        record::{PacketBuilder, RecordEntity, RecordPacket},
+        repository::Repository,
+    },
+    inputs::InputDbItem,
+    outputs::OutputDbItem,
+    predicates::{Predicate, PredicateDbItem},
+    receipts::ReceiptDbItem,
+    transactions::TransactionDbItem,
+    utxos::UtxoDbItem,
+    MsgPayload,
 };
 use fuel_web_utils::{
     shutdown::shutdown_broker_with_timeout,
@@ -26,7 +45,7 @@ use super::{
     block_stats::{ActionType, BlockStats},
     retry::RetryService,
 };
-use crate::{errors::ConsumerError, metrics::Metrics, FuelStores};
+use crate::{errors::ConsumerError, metrics::Metrics};
 
 const MAX_CONCURRENT_TASKS: usize = 32;
 const BATCH_SIZE: usize = 100;
@@ -41,7 +60,6 @@ pub struct BlockExecutor {
     db: Arc<Db>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
-    fuel_stores: Arc<FuelStores>,
     semaphore: Arc<Semaphore>,
     telemetry: Arc<Telemetry<Metrics>>,
 }
@@ -54,13 +72,11 @@ impl BlockExecutor {
         telemetry: Arc<Telemetry<Metrics>>,
     ) -> Self {
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
-        let fuel_stores = FuelStores::new(&db).arc();
         Self {
             db,
             semaphore,
             message_broker: message_broker.clone(),
             fuel_streams: fuel_streams.clone(),
-            fuel_stores: fuel_stores.clone(),
             telemetry,
         }
     }
@@ -114,7 +130,6 @@ impl BlockExecutor {
         let db = self.db.clone();
         let semaphore = self.semaphore.clone();
         let fuel_streams = self.fuel_streams.clone();
-        let fuel_stores = self.fuel_stores.clone();
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode(&payload).await?.arc();
         let packets = Self::build_packets(&msg_payload);
@@ -122,12 +137,9 @@ impl BlockExecutor {
             let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
-            let fuel_stores = fuel_stores.clone();
             async move {
                 let _permit = semaphore.acquire().await?;
-                let result =
-                    handle_stores(&db, &fuel_stores, &packets, &msg_payload)
-                        .await;
+                let result = handle_stores(&db, &packets, &msg_payload).await;
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -195,7 +207,6 @@ impl BlockExecutor {
 
 async fn handle_stores(
     db: &Arc<Db>,
-    fuel_stores: &Arc<FuelStores>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
 ) -> Result<BlockStats, ConsumerError> {
@@ -206,7 +217,38 @@ async fn handle_stores(
         .with_retry("store_insertions", || async {
             let mut tx = db.pool.begin().await?;
             for packet in packets.iter() {
-                fuel_stores.insert_by_entity(&mut tx, packet).await?;
+                let subject_id = packet.subject_id();
+                let entity = RecordEntity::from_subject_id(&subject_id)?;
+                match entity {
+                    RecordEntity::Block => {
+                        let db_item = BlockDbItem::try_from(packet)?;
+                        Block::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Transaction => {
+                        let db_item = TransactionDbItem::try_from(packet)?;
+                        Transaction::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Input => {
+                        let db_item = InputDbItem::try_from(packet)?;
+                        Input::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Output => {
+                        let db_item = OutputDbItem::try_from(packet)?;
+                        Output::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Predicate => {
+                        let db_item = PredicateDbItem::try_from(packet)?;
+                        Predicate::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Receipt => {
+                        let db_item = ReceiptDbItem::try_from(packet)?;
+                        Receipt::insert(&mut *tx, &db_item).await?;
+                    }
+                    RecordEntity::Utxo => {
+                        let db_item = UtxoDbItem::try_from(packet)?;
+                        Utxo::insert(&mut *tx, &db_item).await?;
+                    }
+                }
             }
             let block_propagation_ms = stats.calculate_block_propagation_ms();
             update_block_propagation_ms(
@@ -244,4 +286,19 @@ async fn handle_streams(
         Ok(_) => Ok(stats.finish(packets.len())),
         Err(e) => Ok(stats.finish_with_error(ConsumerError::from(e))),
     }
+}
+
+pub async fn update_block_propagation_ms(
+    tx: &mut DbTransaction,
+    block_height: BlockHeight,
+    propagation_ms: u64,
+) -> Result<(), ConsumerError> {
+    sqlx::query(
+        "UPDATE blocks SET block_propagation_ms = $1 WHERE block_height = $2",
+    )
+    .bind(propagation_ms as i64)
+    .bind(block_height)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
 }

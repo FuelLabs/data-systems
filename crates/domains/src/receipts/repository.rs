@@ -1,31 +1,22 @@
 use async_trait::async_trait;
-use fuel_streams_store::{
-    db::{DbError, DbResult},
-    record::{DataEncoder, Record, RecordEntity},
-};
 use fuel_streams_types::BlockTimestamp;
-use sqlx::PgExecutor;
+use sqlx::{Acquire, PgExecutor, Postgres};
 
-use super::{Receipt, ReceiptDbItem};
-
-impl DataEncoder for Receipt {
-    type Err = DbError;
-}
+use super::{Receipt, ReceiptDbItem, ReceiptsQuery};
+use crate::infra::repository::{Repository, RepositoryError, RepositoryResult};
 
 #[async_trait]
-impl Record for Receipt {
-    type DbItem = ReceiptDbItem;
-
-    const ENTITY: RecordEntity = RecordEntity::Receipt;
-    const ORDER_PROPS: &'static [&'static str] = &["tx_index", "receipt_index"];
+impl Repository for Receipt {
+    type Item = ReceiptDbItem;
+    type QueryParams = ReceiptsQuery;
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,
-        db_item: Self::DbItem,
-    ) -> DbResult<Self::DbItem>
+        db_item: &Self::Item,
+    ) -> RepositoryResult<Self::Item>
     where
         'c: 'e,
-        E: PgExecutor<'c>,
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
         let published_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, ReceiptDbItem>(
@@ -58,26 +49,26 @@ impl Record for Receipt {
             )
             SELECT * FROM upsert"
         )
-        .bind(db_item.subject)
-        .bind(db_item.value)
+        .bind(db_item.subject.clone())
+        .bind(db_item.value.to_owned())
         .bind(db_item.block_height)
-        .bind(db_item.tx_id)
+        .bind(db_item.tx_id.to_owned())
         .bind(db_item.tx_index)
         .bind(db_item.receipt_index)
-        .bind(db_item.receipt_type)
-        .bind(db_item.from_contract_id)
-        .bind(db_item.to_contract_id)
-        .bind(db_item.to_address)
-        .bind(db_item.asset_id)
-        .bind(db_item.contract_id)
-        .bind(db_item.sub_id)
-        .bind(db_item.sender_address)
-        .bind(db_item.recipient_address)
+        .bind(db_item.receipt_type.to_owned())
+        .bind(db_item.from_contract_id.to_owned())
+        .bind(db_item.to_contract_id.to_owned())
+        .bind(db_item.to_address.to_owned())
+        .bind(db_item.asset_id.to_owned())
+        .bind(db_item.contract_id.to_owned())
+        .bind(db_item.sub_id.to_owned())
+        .bind(db_item.sender_address.to_owned())
+        .bind(db_item.recipient_address.to_owned())
         .bind(db_item.created_at)
         .bind(published_at)
         .fetch_one(executor)
         .await
-        .map_err(DbError::Insert)?;
+        .map_err(RepositoryError::Insert)?;
 
         Ok(record)
     }

@@ -4,17 +4,10 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    BlockHeight,
-    ContractId,
-    HexData,
-    InputType,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    queryable::{Queryable, ValidatedQuery},
-    utxos::queryable::UtxosQuery,
+    infra::repository::{Repository, ValidatedQuery},
+    utxos::UtxosQuery,
 };
 
 use super::open_api::TAG_UTXOS;
@@ -59,6 +52,6 @@ pub async fn get_utxos(
         .await?
         .into_inner();
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Utxo::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }

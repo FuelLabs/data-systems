@@ -1,7 +1,9 @@
 use axum::response::{IntoResponse, Response};
 use fuel_streams_core::types::StreamResponseError;
-use fuel_streams_domains::queryable::QueryableError;
-use fuel_streams_store::db::DbError;
+use fuel_streams_domains::infra::{
+    repository::{RepositoryError, ValidatedQueryError},
+    DbError,
+};
 use fuel_web_utils::api_key::ApiKeyError;
 use tokio::task::JoinError;
 
@@ -22,7 +24,9 @@ pub enum ApiError {
     #[error(transparent)]
     ApiKey(#[from] ApiKeyError),
     #[error(transparent)]
-    Queryable(#[from] QueryableError),
+    Repository(#[from] RepositoryError),
+    #[error(transparent)]
+    ValidatedQuery(#[from] ValidatedQueryError),
 }
 
 // Implement IntoResponse for custom error handling
@@ -31,6 +35,10 @@ impl IntoResponse for ApiError {
         match self {
             // Client errors - Bad Request
             ApiError::Validation(e) => {
+                (axum::http::StatusCode::BAD_REQUEST, e.to_string())
+                    .into_response()
+            }
+            ApiError::ValidatedQuery(e) => {
                 (axum::http::StatusCode::BAD_REQUEST, e.to_string())
                     .into_response()
             }
@@ -72,9 +80,9 @@ impl IntoResponse for ApiError {
                 .into_response(),
 
             // Handle the new HttpError variant
-            ApiError::Queryable(e) => (
+            ApiError::Repository(e) => (
                 axum::http::StatusCode::BAD_REQUEST,
-                format!("Queryable error: {}", e),
+                format!("Repository error: {}", e),
             )
                 .into_response(),
         }

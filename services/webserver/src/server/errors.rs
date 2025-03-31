@@ -1,14 +1,13 @@
 use axum::extract::ws;
+use fuel_data_parser::DataParserError;
 use fuel_streams_core::{
     prelude::SubjectPayloadError,
     stream::StreamError,
     types::{MessagePayloadError, ServerRequestError},
 };
-use fuel_streams_domains::SubjectsError;
-use fuel_streams_store::{
-    db::DbError,
-    record::{EncoderError, RecordEntityError},
-    store::StoreError,
+use fuel_streams_domains::{
+    infra::{db::DbError, record::RecordEntityError},
+    SubjectsError,
 };
 use fuel_web_utils::api_key::ApiKeyError;
 use futures::stream::ReuniteError;
@@ -44,11 +43,9 @@ pub enum WebsocketError {
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
-    Encoder(#[from] EncoderError),
+    Encoder(#[from] DataParserError),
     #[error(transparent)]
     Database(#[from] DbError),
-    #[error(transparent)]
-    Store(#[from] StoreError),
     #[error(transparent)]
     SubjectPayload(#[from] SubjectPayloadError),
     #[error(transparent)]
@@ -72,7 +69,6 @@ impl From<WebsocketError> for Option<CloseFrame> {
             | WebsocketError::Subscribe(_)
             | WebsocketError::Unsubscribe(_)
             | WebsocketError::Database(_)
-            | WebsocketError::Store(_)
             | WebsocketError::SendError
             | WebsocketError::ReuniteError(_) => Some(CloseFrame {
                 code: ws::close_code::UNSUPPORTED,

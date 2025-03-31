@@ -4,10 +4,10 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{Address, BlockHeight, TxId};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    predicates::queryable::PredicatesQuery,
-    queryable::{Queryable, ValidatedQuery},
+    infra::repository::{Repository, ValidatedQuery},
+    predicates::PredicatesQuery,
 };
 
 use super::open_api::TAG_PREDICATES;
@@ -50,6 +50,8 @@ pub async fn get_predicates(
         .await?
         .into_inner();
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Predicate::find_many(&state.db.pool, &query)
+            .await?
+            .try_into()?;
     Ok(Json(response))
 }
