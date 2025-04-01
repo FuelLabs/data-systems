@@ -5,6 +5,7 @@ use std::{
 };
 
 use fuel_data_parser::DataParserError;
+use hex::FromHexError;
 use sqlx::{Pool, Postgres};
 
 use crate::infra::RecordPacketError;
@@ -23,8 +24,6 @@ pub enum DbError {
     DataParser(#[from] DataParserError),
     #[error("Other error: {0}")]
     Other(String),
-    #[error(transparent)]
-    DbItemFromPacket(#[from] RecordPacketError),
     #[error("Failed to truncate table")]
     TruncateTable(#[source] sqlx::Error),
     #[error("Failed to execute query")]
@@ -33,6 +32,10 @@ pub enum DbError {
     BeginTransaction(#[source] sqlx::Error),
     #[error("Failed to commit transaction: {0}")]
     CommitTransaction(#[source] sqlx::Error),
+    #[error(transparent)]
+    DbItemFromPacket(#[from] RecordPacketError),
+    #[error(transparent)]
+    Hex(#[from] FromHexError),
 }
 
 pub type DbTransaction = sqlx::Transaction<'static, sqlx::Postgres>;

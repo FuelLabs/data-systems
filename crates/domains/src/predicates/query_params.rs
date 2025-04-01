@@ -1,4 +1,4 @@
-use fuel_streams_types::{Address, BlockHeight, TxId};
+use fuel_streams_types::{Address, AssetId, BlockHeight, TxId};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
@@ -19,6 +19,7 @@ pub struct PredicatesQuery {
     pub block_height: Option<BlockHeight>,
     pub blob_id: Option<String>,
     pub predicate_address: Option<Address>,
+    pub asset: Option<AssetId>,
     #[serde(flatten)]
     pub pagination: QueryPagination,
 }
@@ -27,41 +28,54 @@ impl QueryParamsBuilder for PredicatesQuery {
     fn query_builder(&self) -> QueryBuilder<'static, Postgres> {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-        query_builder.push("SELECT * FROM predicates");
+
+        query_builder.push(
+            "SELECT p.id, p.blob_id, p.predicate_address, p.created_at, p.published_at,
+                    pt.subject, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index,
+                    pt.asset_id, pt.bytecode
+             FROM predicates p
+             JOIN predicate_transactions pt ON p.id = pt.predicate_id"
+        );
 
         if let Some(tx_id) = &self.tx_id {
-            conditions.push("tx_id = ");
+            conditions.push("pt.tx_id = ");
             query_builder.push_bind(tx_id.to_string());
             query_builder.push(" ");
         }
 
         if let Some(tx_index) = &self.tx_index {
-            conditions.push("tx_index = ");
+            conditions.push("pt.tx_index = ");
             query_builder.push_bind(*tx_index as i32);
             query_builder.push(" ");
         }
 
         if let Some(input_index) = &self.input_index {
-            conditions.push("input_index = ");
+            conditions.push("pt.input_index = ");
             query_builder.push_bind(*input_index);
             query_builder.push(" ");
         }
 
         if let Some(block_height) = &self.block_height {
-            conditions.push("block_height = ");
+            conditions.push("pt.block_height = ");
             query_builder.push_bind(*block_height);
             query_builder.push(" ");
         }
 
         if let Some(blob_id) = &self.blob_id {
-            conditions.push("blob_id = ");
+            conditions.push("p.blob_id = ");
             query_builder.push_bind(blob_id.clone());
             query_builder.push(" ");
         }
 
         if let Some(predicate_address) = &self.predicate_address {
-            conditions.push("predicate_address = ");
+            conditions.push("p.predicate_address = ");
             query_builder.push_bind(predicate_address.to_string());
+            query_builder.push(" ");
+        }
+
+        if let Some(asset) = &self.asset {
+            conditions.push("pt.asset_id = ");
+            query_builder.push_bind(asset.to_string());
             query_builder.push(" ");
         }
 
@@ -70,9 +84,9 @@ impl QueryParamsBuilder for PredicatesQuery {
             query_builder.push(conditions.join(" AND "));
         }
 
-        // Apply pagination using block_height as cursor
+        // Apply pagination using block_height from predicate_transactions as cursor
         self.pagination
-            .apply_pagination(&mut query_builder, "block_height");
+            .apply_pagination(&mut query_builder, "pt.block_height");
 
         query_builder
     }

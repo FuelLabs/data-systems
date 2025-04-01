@@ -21,20 +21,22 @@ impl PacketBuilder for Predicate {
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
+        let block_height = msg_payload.block_height();
+        let timestamps = msg_payload.timestamp();
+
         tx.inputs
             .par_iter()
             .enumerate()
             .filter_map(move |(input_index, input)| {
                 let subject = DynPredicateSubject::new(
                     input,
-                    &msg_payload.block_height(),
+                    &block_height,
                     &tx_id,
                     *tx_index as u32,
                     input_index as u32,
                 );
                 subject.map(|dyn_subject| {
                     let predicate = dyn_subject.predicate().to_owned();
-                    let timestamps = msg_payload.timestamp();
                     let packet =
                         predicate.to_packet(&dyn_subject.into(), timestamps);
                     match msg_payload.namespace.clone() {
@@ -66,12 +68,16 @@ impl DynPredicateSubject {
                     input_index: Some(input_index),
                     blob_id: blob_id.to_owned(),
                     predicate_address: Some(coin.owner.to_owned()),
+                    asset: Some(coin.asset_id.to_owned()),
                 };
                 let predicate = Predicate::new(
                     tx_id,
-                    blob_id.as_ref(),
+                    tx_index,
+                    input_index,
+                    blob_id,
                     &coin.owner,
                     &coin.predicate,
+                    &coin.asset_id,
                 );
                 Some(Self(subject.arc(), predicate))
             }

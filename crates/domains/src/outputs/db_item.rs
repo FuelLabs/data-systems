@@ -14,6 +14,7 @@ use crate::{
             RecordPacketError,
             RecordPointer,
         },
+        DbError,
     },
     Subjects,
 };
@@ -43,8 +44,8 @@ impl DbItem for OutputDbItem {
         &RecordEntity::Output
     }
 
-    fn encoded_value(&self) -> &[u8] {
-        &self.value
+    fn encoded_value(&self) -> Result<Vec<u8>, DbError> {
+        Ok(self.value.clone())
     }
 
     fn subject_str(&self) -> String {

@@ -3,6 +3,7 @@ use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use sqlx::postgres::PgRow;
 
+use super::DbError;
 use crate::infra::RecordEntity;
 
 #[async_trait]
@@ -21,7 +22,7 @@ pub trait DbItem:
     + 'static
 {
     fn entity(&self) -> &RecordEntity;
-    fn encoded_value(&self) -> &[u8];
+    fn encoded_value(&self) -> Result<Vec<u8>, DbError>;
     fn subject_str(&self) -> String;
     fn subject_id(&self) -> String;
     fn created_at(&self) -> BlockTimestamp;

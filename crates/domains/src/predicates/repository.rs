@@ -19,61 +19,79 @@ impl Repository for Predicate {
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
         let published_at = BlockTimestamp::now();
-        let mut tx = sqlx::Acquire::begin(executor)
-            .await
-            .map_err(RepositoryError::Insert)?;
-
-        let predicate_id = sqlx::query_scalar::<_, i32>(
-            "INSERT INTO predicates (
-                value,
-                blob_id,
-                predicate_address,
-                created_at,
-                published_at
+        let record = sqlx::query_as::<_, PredicateDbItem>(
+            r#"
+            WITH inserted_predicate AS (
+                INSERT INTO predicates (
+                    blob_id,
+                    predicate_address,
+                    created_at,
+                    published_at
+                )
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (predicate_address) DO UPDATE
+                SET blob_id = EXCLUDED.blob_id,
+                    created_at = EXCLUDED.created_at,
+                    published_at = EXCLUDED.published_at
+                RETURNING id, blob_id, predicate_address, created_at, published_at
+            ),
+            inserted_transaction AS (
+                INSERT INTO predicate_transactions (
+                    predicate_id,
+                    subject,
+                    block_height,
+                    tx_id,
+                    tx_index,
+                    input_index,
+                    asset_id,
+                    bytecode
+                )
+                SELECT
+                    id,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    $9,
+                    $10,
+                    $11
+                FROM inserted_predicate
+                RETURNING predicate_id
             )
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (predicate_address) DO UPDATE
-            SET blob_id = EXCLUDED.blob_id,
-                value = EXCLUDED.value,
-                published_at = EXCLUDED.published_at
-            RETURNING id",
+            SELECT
+                p.id,
+                p.blob_id,
+                p.predicate_address,
+                p.created_at,
+                p.published_at,
+                $5 AS subject,
+                $6 AS block_height,
+                $7 AS tx_id,
+                $8 AS tx_index,
+                $9 AS input_index,
+                $10 AS asset_id,
+                $11 AS bytecode
+            FROM inserted_predicate p
+            "#,
         )
-        .bind(db_item.value.to_owned())
-        .bind(db_item.blob_id.to_owned())
-        .bind(db_item.predicate_address.to_owned())
+        .bind(&db_item.blob_id)
+        .bind(&db_item.predicate_address)
         .bind(db_item.created_at)
         .bind(published_at)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(RepositoryError::Insert)?;
-
-        // Insert the transaction relationship
-        sqlx::query(
-            "INSERT INTO predicate_transactions (
-                predicate_id,
-                subject,
-                block_height,
-                tx_id,
-                tx_index,
-                input_index
-            )
-            VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(predicate_id)
-        .bind(db_item.subject.to_owned())
+        .bind(&db_item.subject)
         .bind(db_item.block_height)
-        .bind(db_item.tx_id.to_owned())
+        .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.input_index)
-        .execute(&mut *tx)
+        .bind(&db_item.asset_id)
+        .bind(&db_item.bytecode)
+        .fetch_one(executor)
         .await
-        .map_err(RepositoryError::Insert)?;
+        .map_err(|e| {
+            eprintln!("SQL error inserting predicate: {:?}", e);
+            RepositoryError::Insert(e)
+        })?;
 
-        tx.commit().await.map_err(RepositoryError::Insert)?;
-
-        Ok(PredicateDbItem {
-            published_at,
-            ..db_item.to_owned()
-        })
+        Ok(record)
     }
 }

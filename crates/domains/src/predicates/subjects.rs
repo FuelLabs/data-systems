@@ -10,10 +10,12 @@ use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
 #[subject(entity = "Predicate")]
 #[subject(query_all = "predicates.>")]
 #[subject(
-    format = "predicates.{block_height}.{tx_id}.{tx_index}.{input_index}.{blob_id}.{predicate_address}"
+    format = "predicates.{block_height}.{tx_id}.{tx_index}.{input_index}.{blob_id}.{predicate_address}.{asset}"
 )]
 pub struct PredicatesSubject {
-    #[subject(description = "The height of the block containing this UTXO")]
+    #[subject(
+        description = "The height of the block containing this predicate"
+    )]
     pub block_height: Option<BlockHeight>,
     #[subject(
         description = "The ID of the transaction containing this predicate (32 byte string prefixed by 0x)"
@@ -33,6 +35,46 @@ pub struct PredicatesSubject {
         description = "The address of the predicate (32 byte string prefixed by 0x)"
     )]
     pub predicate_address: Option<Address>,
+    #[subject(
+        sql_column = "asset_id",
+        description = "The asset ID of the coin (32 byte string prefixed by 0x)"
+    )]
+    pub asset: Option<AssetId>,
+}
+
+impl PredicatesSubject {
+    pub fn to_sql_where(&self) -> Option<String> {
+        let mut conditions = Vec::new();
+
+        if let Some(block_height) = self.block_height {
+            conditions.push(format!("pt.block_height = '{}'", block_height));
+        }
+        if let Some(tx_id) = &self.tx_id {
+            conditions.push(format!("pt.tx_id = '{}'", tx_id));
+        }
+        if let Some(tx_index) = self.tx_index {
+            conditions.push(format!("pt.tx_index = '{}'", tx_index));
+        }
+        if let Some(input_index) = self.input_index {
+            conditions.push(format!("pt.input_index = '{}'", input_index));
+        }
+        if let Some(blob_id) = &self.blob_id {
+            conditions.push(format!("p.blob_id = '{}'", blob_id));
+        }
+        if let Some(predicate_address) = &self.predicate_address {
+            conditions
+                .push(format!("p.predicate_address = '{}'", predicate_address));
+        }
+        if let Some(asset) = &self.asset {
+            conditions.push(format!("pt.asset_id = '{}'", asset));
+        }
+
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(conditions.join(" AND "))
+        }
+    }
 }
 
 impl SubjectQueryBuilder for PredicatesSubject {
@@ -43,9 +85,10 @@ impl SubjectQueryBuilder for PredicatesSubject {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
 
-        // Join predicates with predicate_transactions to get all fields
         query_builder.push(
-            "SELECT p.*, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index, pt.subject
+            "SELECT p.id, p.blob_id, p.predicate_address, p.created_at, p.published_at,
+                    pt.subject, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index,
+                    pt.asset_id, pt.bytecode
              FROM predicates p
              JOIN predicate_transactions pt ON p.id = pt.predicate_id"
         );
@@ -68,5 +111,28 @@ impl SubjectQueryBuilder for PredicatesSubject {
         }
 
         query_builder
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_predicates_subject_sql_where() {
+        let tx_id = TxId::random();
+        let predicate_address = Address::random();
+        let subject = PredicatesSubject {
+            block_height: Some(123.into()),
+            tx_id: Some(tx_id.clone()),
+            predicate_address: Some(predicate_address.clone()),
+            ..Default::default()
+        };
+
+        let expected = Some(format!(
+            "pt.block_height = '123' AND pt.tx_id = '{}' AND p.predicate_address = '{}'",
+            tx_id, predicate_address
+        ));
+        assert_eq!(subject.to_sql_where(), expected);
     }
 }

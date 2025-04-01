@@ -173,7 +173,7 @@ impl<R: Repository> Stream<R> {
                     let subject_id = item.subject_id();
                     let block_height = item.block_height();
                     role.validate_historical_limit(last_height, block_height)?;
-                    let value = item.encoded_value().to_vec();
+                    let value = item.encoded_value()?;
                     let pointer = item.into();
                     let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned(), None)?;
                     yield response;

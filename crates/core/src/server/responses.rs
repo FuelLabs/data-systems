@@ -12,6 +12,7 @@ use fuel_streams_domains::{
             RecordPacketError,
             RecordPointer,
         },
+        DbError,
     },
     inputs::InputDbItem,
     outputs::OutputDbItem,
@@ -171,6 +172,8 @@ pub enum StreamResponseError {
     RecordEntity(#[from] RecordEntityError),
     #[error(transparent)]
     RecordPacket(#[from] RecordPacketError),
+    #[error(transparent)]
+    DbError(#[from] DbError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -228,7 +231,7 @@ impl<T: DbItem + Into<RecordPointer>> TryFrom<(String, T)> for StreamResponse {
         StreamResponse::new(
             item.subject_str(),
             subject_id,
-            item.encoded_value(),
+            &item.encoded_value()?,
             pointer,
             None,
         )

@@ -4,7 +4,7 @@ use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
 
-use super::subjects::*;
+use super::{subjects::*, Predicate};
 use crate::{
     infra::{
         db::DbItem,
@@ -14,6 +14,7 @@ use crate::{
             RecordPacketError,
             RecordPointer,
         },
+        DbError,
     },
     Subjects,
 };
@@ -23,7 +24,6 @@ use crate::{
 )]
 pub struct PredicateDbItem {
     pub subject: String,
-    pub value: Vec<u8>,
     pub block_height: BlockHeight,
     pub tx_id: String,
     pub tx_index: i32,
@@ -31,6 +31,8 @@ pub struct PredicateDbItem {
     // predicate types properties
     pub blob_id: Option<String>,
     pub predicate_address: String,
+    pub asset_id: String,
+    pub bytecode: String,
     pub created_at: BlockTimestamp,
     pub published_at: BlockTimestamp,
 }
@@ -42,8 +44,8 @@ impl DbItem for PredicateDbItem {
         &RecordEntity::Predicate
     }
 
-    fn encoded_value(&self) -> &[u8] {
-        &self.value
+    fn encoded_value(&self) -> Result<Vec<u8>, DbError> {
+        Ok(Predicate::try_from(self)?.encode_json()?)
     }
 
     fn subject_str(&self) -> String {
@@ -76,10 +78,14 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
+        let predicate =
+            Predicate::decode_json(&packet.value).map_err(|_| {
+                RecordPacketError::DecodeFailed(packet.subject_str())
+            })?;
+
         match subject {
             Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
-                value: packet.value.clone(),
                 block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap() as i32,
@@ -89,6 +95,8 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
                     .predicate_address
                     .unwrap()
                     .to_string(),
+                bytecode: predicate.predicate_bytecode.to_string(),
+                asset_id: subject.asset.unwrap_or_default().to_string(),
                 created_at: packet.block_timestamp,
                 published_at: packet.block_timestamp,
             }),

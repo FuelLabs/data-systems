@@ -28,6 +28,7 @@ use crate::server::{
         ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
         ("blobId" = Option<String>, Query, description = "Filter by blob ID"),
         ("predicateAddress" = Option<Address>, Query, description = "Filter by predicate address"),
+        ("asset" = Option<AssetId>, Query, description = "Filter by asset ID"),
         ("after" = Option<i32>, Query, description = "Return predicates after this height"),
         ("before" = Option<i32>, Query, description = "Return predicates before this height"),
         ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
