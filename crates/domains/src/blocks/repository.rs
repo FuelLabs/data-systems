@@ -5,8 +5,8 @@ use sqlx::{Acquire, PgExecutor, Postgres};
 use super::{Block, BlockDbItem, BlocksQuery};
 use crate::infra::{
     db::Db,
-    record::QueryOptions,
     repository::{Repository, RepositoryError, RepositoryResult},
+    QueryOptions,
 };
 
 #[async_trait]

@@ -1,12 +1,9 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use crate::{
-    infra::{record::QueryOptions, repository::SubjectQueryBuilder},
-    transactions::types::*,
-};
+use super::TransactionsQuery;
+use crate::transactions::types::*;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "transactions")]
@@ -44,32 +41,15 @@ impl From<&Transaction> for TransactionsSubject {
     }
 }
 
-impl SubjectQueryBuilder for TransactionsSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        let mut conditions = Vec::new();
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-        query_builder.push("SELECT * FROM transactions");
-
-        if let Some(where_clause) = self.to_sql_where() {
-            conditions.push(where_clause);
+impl From<TransactionsSubject> for TransactionsQuery {
+    fn from(subject: TransactionsSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            tx_status: subject.tx_status.clone(),
+            tx_type: subject.tx_type.clone(),
+            ..Default::default()
         }
-        if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-            conditions.push(format!("block_height >= {}", block));
-        }
-
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        query_builder.push(" ORDER BY block_height ASC, tx_index ASC");
-        if let Some(opts) = options {
-            opts.apply_limit_offset(&mut query_builder);
-        }
-
-        query_builder
     }
 }

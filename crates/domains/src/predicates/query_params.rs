@@ -1,41 +1,68 @@
-use fuel_streams_types::{Address, AssetId, BlockHeight, TxId};
+use fuel_streams_types::{Address, AssetId, BlockHeight, HexData, TxId};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
-use crate::infra::repository::{
-    HasPagination,
-    QueryPagination,
-    QueryParamsBuilder,
+use crate::infra::{
+    repository::{HasPagination, QueryPagination, QueryParamsBuilder},
+    QueryOptions,
 };
 
-#[derive(
-    Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PredicatesQuery {
+    pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<u32>,
     pub input_index: Option<i32>,
-    pub block_height: Option<BlockHeight>,
-    pub blob_id: Option<String>,
+    pub blob_id: Option<HexData>,
     pub predicate_address: Option<Address>,
     pub asset: Option<AssetId>,
     #[serde(flatten)]
     pub pagination: QueryPagination,
+    #[serde(flatten)]
+    pub options: QueryOptions,
 }
 
 impl QueryParamsBuilder for PredicatesQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
+    }
+
+    fn pagination_mut(&mut self) -> &mut QueryPagination {
+        &mut self.pagination
+    }
+
+    fn with_pagination(&mut self, pagination: &QueryPagination) {
+        self.pagination = pagination.clone();
+    }
+
+    fn options(&self) -> &QueryOptions {
+        &self.options
+    }
+
+    fn options_mut(&mut self) -> &mut QueryOptions {
+        &mut self.options
+    }
+
+    fn with_options(&mut self, options: &QueryOptions) {
+        self.options = options.clone();
+    }
+
     fn query_builder(&self) -> QueryBuilder<'static, Postgres> {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
 
         query_builder.push(
-            "SELECT p.id, p.blob_id, p.predicate_address, p.created_at, p.published_at,
-                    pt.subject, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index,
-                    pt.asset_id, pt.bytecode
+            "SELECT p.*, pt.subject, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index, pt.asset_id, pt.bytecode
              FROM predicates p
-             JOIN predicate_transactions pt ON p.id = pt.predicate_id"
+             JOIN predicate_transactions pt ON p.id = pt.predicate_id",
         );
+
+        if let Some(block_height) = &self.block_height {
+            conditions.push("pt.block_height = ");
+            query_builder.push_bind(*block_height);
+            query_builder.push(" ");
+        }
 
         if let Some(tx_id) = &self.tx_id {
             conditions.push("pt.tx_id = ");
@@ -55,15 +82,9 @@ impl QueryParamsBuilder for PredicatesQuery {
             query_builder.push(" ");
         }
 
-        if let Some(block_height) = &self.block_height {
-            conditions.push("pt.block_height = ");
-            query_builder.push_bind(*block_height);
-            query_builder.push(" ");
-        }
-
         if let Some(blob_id) = &self.blob_id {
             conditions.push("p.blob_id = ");
-            query_builder.push_bind(blob_id.clone());
+            query_builder.push_bind(blob_id.to_string());
             query_builder.push(" ");
         }
 
@@ -79,14 +100,26 @@ impl QueryParamsBuilder for PredicatesQuery {
             query_builder.push(" ");
         }
 
+        let options = &self.options;
+        if let Some(from_block) = options.from_block {
+            conditions.push("pt.block_height >= ");
+            query_builder.push_bind(from_block);
+            query_builder.push(" ");
+        }
+        #[cfg(any(test, feature = "test-helpers"))]
+        if let Some(ns) = &options.namespace {
+            conditions.push("pt.subject LIKE ");
+            query_builder.push_bind(format!("{}%", ns));
+            query_builder.push(" ");
+        }
+
         if !conditions.is_empty() {
             query_builder.push(" WHERE ");
             query_builder.push(conditions.join(" AND "));
         }
 
-        // Apply pagination using block_height from predicate_transactions as cursor
         self.pagination
-            .apply_pagination(&mut query_builder, "pt.block_height");
+            .apply_on_query(&mut query_builder, "pt.block_height");
 
         query_builder
     }

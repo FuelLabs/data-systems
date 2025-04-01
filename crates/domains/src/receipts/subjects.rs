@@ -1,10 +1,8 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use super::ReceiptType;
-use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
+use super::{ReceiptType, ReceiptsQuery};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_call")]
@@ -459,158 +457,205 @@ pub struct ReceiptsSubject {
     pub receipt_index: Option<u32>,
 }
 
-fn build_receipts_query(
-    where_clause: Option<String>,
-    options: Option<&QueryOptions>,
-) -> QueryBuilder<'static, Postgres> {
-    let mut conditions = Vec::new();
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-    query_builder.push("SELECT * FROM receipts");
-
-    if let Some(clause) = where_clause {
-        conditions.push(clause);
-    }
-    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-        conditions.push(format!("block_height >= {}", block));
-    }
-
-    if !conditions.is_empty() {
-        query_builder.push(" WHERE ");
-        query_builder.push(conditions.join(" AND "));
-    }
-
-    query_builder
-        .push(" ORDER BY block_height ASC, tx_index ASC, receipt_index ASC");
-    if let Some(opts) = options {
-        opts.apply_limit_offset(&mut query_builder);
-    }
-
-    query_builder
-}
-
-// Implement for all receipt subject types
-impl SubjectQueryBuilder for ReceiptsCallSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsCallSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsCallSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Call),
+            from: subject.from.clone(),
+            to: subject.to.clone(),
+            asset: subject.asset.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsReturnSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsReturnSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsReturnSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Return),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsReturnDataSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsReturnDataSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsReturnDataSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::ReturnData),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsPanicSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsPanicSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsPanicSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Panic),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsRevertSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsRevertSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsRevertSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Revert),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsLogSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsLogSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsLogSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Log),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsLogDataSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsLogDataSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsLogDataSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::LogData),
+            contract: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsTransferSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsTransferSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsTransferSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Transfer),
+            from: subject.from.clone(),
+            to: subject.to.clone(),
+            asset: subject.asset.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsTransferOutSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsTransferOutSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsTransferOutSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::TransferOut),
+            from: subject.from.clone(),
+            recipient: subject.to_address.clone(), /* Map to_address to recipient */
+            asset: subject.asset.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsScriptResultSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsScriptResultSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsScriptResultSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::ScriptResult),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsMessageOutSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsMessageOutSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsMessageOutSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::MessageOut),
+            sender: subject.sender.clone(),
+            recipient: subject.recipient.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsMintSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsMintSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsMintSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Mint),
+            contract: subject.contract.clone(),
+            sub_id: subject.sub_id.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsBurnSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsBurnSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsBurnSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: Some(ReceiptType::Burn),
+            contract: subject.contract.clone(),
+            sub_id: subject.sub_id.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for ReceiptsSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_receipts_query(self.to_sql_where(), options)
+impl From<ReceiptsSubject> for ReceiptsQuery {
+    fn from(subject: ReceiptsSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index.map(|i| i as i32),
+            receipt_type: subject.receipt_type.clone(),
+            ..Default::default()
+        }
     }
 }

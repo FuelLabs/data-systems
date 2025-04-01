@@ -1,10 +1,8 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use super::InputType;
-use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
+use super::{InputType, InputsQuery};
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_coin")]
@@ -123,67 +121,59 @@ pub struct InputsSubject {
     pub input_index: Option<u32>,
 }
 
-fn build_inputs_query(
-    where_clause: Option<String>,
-    options: Option<&QueryOptions>,
-) -> QueryBuilder<'static, Postgres> {
-    let mut conditions = Vec::new();
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-    query_builder.push("SELECT * FROM inputs");
-
-    if let Some(clause) = where_clause {
-        conditions.push(clause);
-    }
-    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-        conditions.push(format!("block_height >= {}", block));
-    }
-
-    if !conditions.is_empty() {
-        query_builder.push(" WHERE ");
-        query_builder.push(conditions.join(" AND "));
-    }
-
-    query_builder
-        .push(" ORDER BY block_height ASC, tx_index ASC, input_index ASC");
-    if let Some(opts) = options {
-        opts.apply_limit_offset(&mut query_builder);
-    }
-
-    query_builder
-}
-
-impl SubjectQueryBuilder for InputsCoinSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_inputs_query(self.to_sql_where(), options)
+impl From<InputsCoinSubject> for InputsQuery {
+    fn from(subject: InputsCoinSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            input_type: Some(InputType::Coin),
+            owner_id: subject.owner.clone(),
+            asset_id: subject.asset.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for InputsContractSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_inputs_query(self.to_sql_where(), options)
+impl From<InputsContractSubject> for InputsQuery {
+    fn from(subject: InputsContractSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            input_type: Some(InputType::Contract),
+            contract_id: subject.contract.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for InputsMessageSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_inputs_query(self.to_sql_where(), options)
+impl From<InputsMessageSubject> for InputsQuery {
+    fn from(subject: InputsMessageSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            input_type: Some(InputType::Message),
+            sender_address: subject.sender.clone(),
+            recipient_address: subject.recipient.clone(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for InputsSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_inputs_query(self.to_sql_where(), options)
+impl From<InputsSubject> for InputsQuery {
+    fn from(subject: InputsSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            input_type: subject.input_type.clone(),
+            ..Default::default()
+        }
     }
 }

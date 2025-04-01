@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
 use super::types::*;
-use crate::infra::repository::{
-    HasPagination,
-    QueryPagination,
-    QueryParamsBuilder,
+use crate::infra::{
+    repository::{HasPagination, QueryPagination, QueryParamsBuilder},
+    QueryOptions,
 };
 
 #[derive(
@@ -27,6 +26,8 @@ pub struct InputsQuery {
     pub address: Option<Address>,  // for the accounts endpoint
     #[serde(flatten)]
     pub pagination: QueryPagination,
+    #[serde(flatten)]
+    pub options: QueryOptions,
 }
 
 impl InputsQuery {
@@ -52,6 +53,30 @@ impl InputsQuery {
 }
 
 impl QueryParamsBuilder for InputsQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
+    }
+
+    fn pagination_mut(&mut self) -> &mut QueryPagination {
+        &mut self.pagination
+    }
+
+    fn with_pagination(&mut self, pagination: &QueryPagination) {
+        self.pagination = pagination.clone();
+    }
+
+    fn options(&self) -> &QueryOptions {
+        &self.options
+    }
+
+    fn options_mut(&mut self) -> &mut QueryOptions {
+        &mut self.options
+    }
+
+    fn with_options(&mut self, options: &QueryOptions) {
+        self.options = options.clone();
+    }
+
     fn query_builder(&self) -> QueryBuilder<'static, Postgres> {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
@@ -77,7 +102,7 @@ impl QueryParamsBuilder for InputsQuery {
 
         if let Some(input_type) = &self.input_type {
             conditions.push("input_type = ");
-            query_builder.push_bind(input_type.clone() as i32);
+            query_builder.push_bind(input_type.to_string()); // Use string representation
             query_builder.push(" ");
         }
 
@@ -127,14 +152,26 @@ impl QueryParamsBuilder for InputsQuery {
             query_builder.push(") ");
         }
 
+        let options = &self.options;
+        if let Some(from_block) = options.from_block {
+            conditions.push("block_height >= ");
+            query_builder.push_bind(from_block);
+            query_builder.push(" ");
+        }
+        #[cfg(any(test, feature = "test-helpers"))]
+        if let Some(ns) = &options.namespace {
+            conditions.push("subject LIKE ");
+            query_builder.push_bind(format!("{}%", ns));
+            query_builder.push(" ");
+        }
+
         if !conditions.is_empty() {
             query_builder.push(" WHERE ");
             query_builder.push(conditions.join(" AND "));
         }
 
-        // Apply pagination using block_height as cursor
         self.pagination
-            .apply_pagination(&mut query_builder, "block_height");
+            .apply_on_query(&mut query_builder, "block_height");
 
         query_builder
     }

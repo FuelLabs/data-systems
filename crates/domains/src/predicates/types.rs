@@ -62,7 +62,7 @@ impl TryFrom<&PredicateDbItem> for Predicate {
         let blob_id = item
             .blob_id
             .as_ref()
-            .and_then(|b| HexData::from_str(&b).ok());
+            .and_then(|b| HexData::from_str(b).ok());
         let predicate_address = Address::from_str(&item.predicate_address)
             .map_err(|e| DbError::Other(e.to_string()))?;
         let predicate_bytecode = HexData::from_str(&item.bytecode)

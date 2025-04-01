@@ -1,22 +1,15 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use fuel_streams_subject::subject::IntoSubject;
 use sqlx::{Acquire, PgConnection, PgExecutor, Postgres};
 
-use super::{QueryParamsBuilder, RepositoryResult, SubjectQueryBuilder};
-use crate::infra::{
-    db::{Db, DbItem},
-    record::{QueryOptions, RecordPointer},
-    DbTransaction,
-};
+use super::{QueryParamsBuilder, RepositoryResult};
+use crate::infra::{db::DbItem, record::RecordPointer, DbTransaction};
 
 pub type DbConnection = PgConnection;
 
 #[async_trait]
 pub trait Repository: Clone + Sized + Send + Sync + 'static {
     type Item: DbItem + Into<RecordPointer>;
-    type QueryParams: QueryParamsBuilder + Send + Sync;
+    type QueryParams: QueryParamsBuilder + Send + Sync + 'static + Clone;
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,
@@ -77,18 +70,5 @@ pub trait Repository: Clone + Sized + Send + Sync + 'static {
         params: &Self::QueryParams,
     ) -> RepositoryResult<Vec<Self::Item>> {
         Self::find_many(&mut **tx, params).await
-    }
-
-    async fn find_many_by_subject<S: IntoSubject + SubjectQueryBuilder>(
-        db: &Arc<Db>,
-        subject: &S,
-        options: &QueryOptions,
-    ) -> RepositoryResult<Vec<Self::Item>> {
-        let mut query = subject.query_builder(Some(options));
-        let result = query
-            .build_query_as::<Self::Item>()
-            .fetch_all(db.pool_ref())
-            .await?;
-        Ok(result)
     }
 }

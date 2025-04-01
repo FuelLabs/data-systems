@@ -16,8 +16,14 @@ use fuel_streams_core::{
     FuelStreams,
 };
 use fuel_streams_domains::{
-    infra::{db::Db, record::QueryOptions, repository::Repository},
-    predicates::PredicatesSubject,
+    blocks::BlocksQuery,
+    infra::{db::Db, QueryParamsBuilder, Repository},
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    predicates::{PredicatesQuery, PredicatesSubject},
+    receipts::ReceiptsQuery,
+    transactions::TransactionsQuery,
+    utxos::UtxosQuery,
     MockMsgPayload,
     MsgPayload,
 };
@@ -33,10 +39,9 @@ async fn verify_blocks(
 ) -> anyhow::Result<()> {
     let block_subject =
         BlocksSubject::new().with_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let blocks =
-        Block::find_many_by_subject(db, &block_subject, &options).await?;
+    let mut params = BlocksQuery::from(block_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let blocks = Block::find_many(db.pool_ref(), &params).await?;
     assert!(!blocks.is_empty(), "Expected blocks to be inserted");
 
     let msg_payload_height = msg_payload.block_height();
@@ -53,10 +58,9 @@ async fn verify_transactions(
 ) -> anyhow::Result<()> {
     let tx_subject = TransactionsSubject::new()
         .with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let transactions =
-        Transaction::find_many_by_subject(db, &tx_subject, &options).await?;
+    let mut params = TransactionsQuery::from(tx_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let transactions = Transaction::find_many(db.pool_ref(), &params).await?;
     assert!(
         !transactions.is_empty(),
         "Expected transactions to be inserted"
@@ -104,10 +108,9 @@ async fn verify_receipts(
 ) -> anyhow::Result<()> {
     let receipts_subject = ReceiptsSubject::new()
         .with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let receipts =
-        Receipt::find_many_by_subject(db, &receipts_subject, &options).await?;
+    let mut params = ReceiptsQuery::from(receipts_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let receipts = Receipt::find_many(db.pool_ref(), &params).await?;
 
     let expected_receipts_count: usize = msg_payload
         .transactions
@@ -137,10 +140,9 @@ async fn verify_inputs(
 
     let inputs_subject = InputsSubject::new()
         .with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let inputs =
-        Input::find_many_by_subject(db, &inputs_subject, &options).await?;
+    let mut params = InputsQuery::from(inputs_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let inputs = Input::find_many(db.pool_ref(), &params).await?;
     assert_eq!(
         inputs.len(),
         expected_inputs_count,
@@ -163,10 +165,9 @@ async fn verify_outputs(
 
     let outputs_subject = OutputsSubject::new()
         .with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let outputs =
-        Output::find_many_by_subject(db, &outputs_subject, &options).await?;
+    let mut params = OutputsQuery::from(outputs_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let outputs = Output::find_many(db.pool_ref(), &params).await?;
     assert_eq!(
         outputs.len(),
         expected_outputs_count,
@@ -189,10 +190,9 @@ async fn verify_utxos(
 
     let utxos_subject =
         UtxosSubject::new().with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let utxos =
-        Utxo::find_many_by_subject(db, &utxos_subject, &options).await?;
+    let mut params = UtxosQuery::from(utxos_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let utxos = Utxo::find_many(db.pool_ref(), &params).await?;
     assert_eq!(
         utxos.len(),
         expected_utxos_count,
@@ -215,11 +215,9 @@ async fn verify_predicates(
 
     let predicates_subject = PredicatesSubject::new()
         .with_block_height(Some(msg_payload.block_height()));
-    let options =
-        QueryOptions::default().with_namespace(Some(prefix.to_string()));
-    let predicates =
-        Predicate::find_many_by_subject(db, &predicates_subject, &options)
-            .await?;
+    let mut params = PredicatesQuery::from(predicates_subject);
+    params.with_namespace(Some(prefix.to_string()));
+    let predicates = Predicate::find_many(db.pool_ref(), &params).await?;
     assert_eq!(
         predicates.len(),
         expected_predicates_count,

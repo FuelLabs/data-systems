@@ -1,5 +1,5 @@
 use fuel_streams_core::types::Block;
-use fuel_streams_domains::infra::{db::Db, record::QueryOptions};
+use fuel_streams_domains::infra::{db::Db, QueryOptions};
 use fuel_streams_types::BlockHeight;
 
 use crate::error::PublishError;

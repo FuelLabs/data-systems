@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
 use super::OutputType;
-use crate::infra::repository::{
-    HasPagination,
-    QueryPagination,
-    QueryParamsBuilder,
+use crate::infra::{
+    repository::{HasPagination, QueryPagination, QueryParamsBuilder},
+    QueryOptions,
 };
 
 #[derive(
@@ -25,6 +24,8 @@ pub struct OutputsQuery {
     pub address: Option<Address>,        // for the accounts endpoint
     #[serde(flatten)]
     pub pagination: QueryPagination,
+    #[serde(flatten)]
+    pub options: QueryOptions,
 }
 
 impl OutputsQuery {
@@ -50,6 +51,30 @@ impl OutputsQuery {
 }
 
 impl QueryParamsBuilder for OutputsQuery {
+    fn pagination(&self) -> &QueryPagination {
+        &self.pagination
+    }
+
+    fn pagination_mut(&mut self) -> &mut QueryPagination {
+        &mut self.pagination
+    }
+
+    fn with_pagination(&mut self, pagination: &QueryPagination) {
+        self.pagination = pagination.clone();
+    }
+
+    fn options(&self) -> &QueryOptions {
+        &self.options
+    }
+
+    fn options_mut(&mut self) -> &mut QueryOptions {
+        &mut self.options
+    }
+
+    fn with_options(&mut self, options: &QueryOptions) {
+        self.options = options.clone();
+    }
+
     fn query_builder(&self) -> QueryBuilder<'static, Postgres> {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
@@ -75,7 +100,7 @@ impl QueryParamsBuilder for OutputsQuery {
 
         if let Some(output_type) = &self.output_type {
             conditions.push("output_type = ");
-            query_builder.push_bind(output_type.clone() as i32);
+            query_builder.push_bind(output_type.to_string());
             query_builder.push(" ");
         }
 
@@ -109,6 +134,20 @@ impl QueryParamsBuilder for OutputsQuery {
             query_builder.push(" ");
         }
 
+        // Apply QueryOptions filters
+        let options = &self.options;
+        if let Some(from_block) = options.from_block {
+            conditions.push("block_height >= ");
+            query_builder.push_bind(from_block);
+            query_builder.push(" ");
+        }
+        #[cfg(any(test, feature = "test-helpers"))]
+        if let Some(ns) = &options.namespace {
+            conditions.push("subject LIKE ");
+            query_builder.push_bind(format!("{}%", ns));
+            query_builder.push(" ");
+        }
+
         if !conditions.is_empty() {
             query_builder.push(" WHERE ");
             query_builder.push(conditions.join(" AND "));
@@ -116,7 +155,7 @@ impl QueryParamsBuilder for OutputsQuery {
 
         // Apply pagination using block_height as cursor
         self.pagination
-            .apply_pagination(&mut query_builder, "block_height");
+            .apply_on_query(&mut query_builder, "block_height");
 
         query_builder
     }

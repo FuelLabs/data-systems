@@ -1,10 +1,9 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use super::types::*;
-use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
+use super::{types::*, UtxosQuery};
+use crate::inputs::InputType;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "utxos")]
@@ -36,33 +35,22 @@ pub struct UtxosSubject {
     )]
     pub contract_id: Option<ContractId>,
 }
-impl SubjectQueryBuilder for UtxosSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        let mut conditions = Vec::new();
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-        query_builder.push("SELECT * FROM utxos");
 
-        if let Some(where_clause) = self.to_sql_where() {
-            conditions.push(where_clause);
+impl From<UtxosSubject> for UtxosQuery {
+    fn from(subject: UtxosSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            utxo_type: subject.utxo_type.as_ref().map(|t| match t {
+                UtxoType::Coin => InputType::Coin,
+                UtxoType::Contract => InputType::Contract,
+                UtxoType::Message => InputType::Message,
+            }),
+            utxo_id: subject.utxo_id.clone(),
+            contract_id: subject.contract_id.clone(),
+            ..Default::default()
         }
-        if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-            conditions.push(format!("block_height >= {}", block));
-        }
-
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        query_builder
-            .push(" ORDER BY block_height ASC, tx_index ASC, input_index ASC");
-        if let Some(opts) = options {
-            opts.apply_limit_offset(&mut query_builder);
-        }
-
-        query_builder
     }
 }

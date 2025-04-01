@@ -1,9 +1,8 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
+use super::PredicatesQuery;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "predicates")]
@@ -77,62 +76,17 @@ impl PredicatesSubject {
     }
 }
 
-impl SubjectQueryBuilder for PredicatesSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        let mut conditions = Vec::new();
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-
-        query_builder.push(
-            "SELECT p.id, p.blob_id, p.predicate_address, p.created_at, p.published_at,
-                    pt.subject, pt.block_height, pt.tx_id, pt.tx_index, pt.input_index,
-                    pt.asset_id, pt.bytecode
-             FROM predicates p
-             JOIN predicate_transactions pt ON p.id = pt.predicate_id"
-        );
-
-        if let Some(where_clause) = self.to_sql_where() {
-            conditions.push(where_clause);
-        }
-        if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-            conditions.push(format!("pt.block_height >= {}", block));
-        }
-
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        query_builder.push(" ORDER BY pt.block_height ASC, pt.tx_index ASC, pt.input_index ASC");
-        if let Some(opts) = options {
-            opts.apply_limit_offset(&mut query_builder);
-        }
-
-        query_builder
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_predicates_subject_sql_where() {
-        let tx_id = TxId::random();
-        let predicate_address = Address::random();
-        let subject = PredicatesSubject {
-            block_height: Some(123.into()),
-            tx_id: Some(tx_id.clone()),
-            predicate_address: Some(predicate_address.clone()),
+impl From<PredicatesSubject> for PredicatesQuery {
+    fn from(subject: PredicatesSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index.map(|i| i as i32),
+            blob_id: subject.blob_id.clone(),
+            predicate_address: subject.predicate_address.clone(),
+            asset: subject.asset.clone(),
             ..Default::default()
-        };
-
-        let expected = Some(format!(
-            "pt.block_height = '123' AND pt.tx_id = '{}' AND p.predicate_address = '{}'",
-            tx_id, predicate_address
-        ));
-        assert_eq!(subject.to_sql_where(), expected);
+        }
     }
 }

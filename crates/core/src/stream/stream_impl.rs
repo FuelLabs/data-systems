@@ -7,8 +7,8 @@ use fuel_streams_domains::{
     blocks::Block,
     infra::{
         db::{Db, DbItem},
-        record::QueryOptions,
-        repository::{Repository, SubjectQueryBuilder},
+        repository::Repository,
+        QueryParamsBuilder,
     },
 };
 use fuel_streams_subject::subject::IntoSubject;
@@ -89,7 +89,7 @@ impl<R: Repository> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe<S: IntoSubject + SubjectQueryBuilder>(
+    pub async fn subscribe<S: IntoSubject + Into<R::QueryParams> + Clone>(
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
@@ -100,7 +100,9 @@ impl<R: Repository> Stream<R> {
             .await
     }
 
-    pub async fn subscribe_dynamic<S: IntoSubject + SubjectQueryBuilder>(
+    pub async fn subscribe_dynamic<
+        S: IntoSubject + Into<R::QueryParams> + Clone,
+    >(
         &self,
         subject: Arc<S>,
         deliver_policy: DeliverPolicy,
@@ -148,7 +150,9 @@ impl<R: Repository> Stream<R> {
         Box::pin(stream)
     }
 
-    pub fn historical_streaming<S: IntoSubject + SubjectQueryBuilder>(
+    pub fn historical_streaming<
+        S: IntoSubject + Into<R::QueryParams> + Clone,
+    >(
         &self,
         subject: Arc<S>,
         from_block: Option<BlockHeight>,
@@ -156,18 +160,18 @@ impl<R: Repository> Stream<R> {
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
         let db = self.db.clone();
         let role = role.clone();
-        let opts = if cfg!(any(test, feature = "test-helpers")) {
-            QueryOptions::default()
-        } else {
-            QueryOptions::default().with_namespace(self.namespace.clone())
-        };
+        let mut params: R::QueryParams = (*subject).clone().into();
+        if cfg!(any(test, feature = "test-helpers")) {
+            params.with_namespace(self.namespace.clone());
+        }
 
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
-            let mut opts = opts.with_from_block(Some(current_height));
-            let mut last_height = Block::find_last_block_height(&db, &opts).await?;
+            params.with_from_block(Some(current_height));
+
+            let mut last_height = Block::find_last_block_height(&db, params.options()).await?;
                 while current_height <= last_height {
-                    let items = R::find_many_by_subject(&db, &*subject, &opts).await?;
+                    let items = R::find_many(db.pool_ref(), &params).await?;
                 for item in items {
                     let subject = item.subject_str();
                     let subject_id = item.subject_id();
@@ -179,11 +183,11 @@ impl<R: Repository> Stream<R> {
                     yield response;
                     current_height = pointer.block_height;
                 }
-                opts.increment_offset();
+                params.increment_offset();
                 // When we reach the last known height, we need to check if any new blocks
                 // were produced while we were processing the previous ones
                 if current_height == last_height {
-                    let new_last_height = Block::find_last_block_height(&db, &opts).await?;
+                    let new_last_height = Block::find_last_block_height(&db, params.options()).await?;
                     if new_last_height > last_height {
                         // Reset current_height back to process the blocks we haven't seen yet
                         current_height = last_height;

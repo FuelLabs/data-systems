@@ -1,10 +1,9 @@
 use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, QueryBuilder};
 
-use super::OutputType;
-use crate::infra::{record::QueryOptions, repository::SubjectQueryBuilder};
+use super::{OutputType, OutputsQuery};
+use crate::infra::QueryPagination;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_coin")]
@@ -186,85 +185,93 @@ pub struct OutputsSubject {
     pub output_index: Option<u32>,
 }
 
-fn build_outputs_query(
-    where_clause: Option<String>,
-    options: Option<&QueryOptions>,
-) -> QueryBuilder<'static, Postgres> {
-    let mut conditions = Vec::new();
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
-    query_builder.push("SELECT * FROM outputs");
-
-    if let Some(clause) = where_clause {
-        conditions.push(clause);
-    }
-    if let Some(block) = options.map(|o| o.from_block.unwrap_or_default()) {
-        conditions.push(format!("block_height >= {}", block));
-    }
-
-    if !conditions.is_empty() {
-        query_builder.push(" WHERE ");
-        query_builder.push(conditions.join(" AND "));
-    }
-
-    query_builder
-        .push(" ORDER BY block_height ASC, tx_index ASC, output_index ASC");
-    if let Some(opts) = options {
-        opts.apply_limit_offset(&mut query_builder);
-    }
-
-    query_builder
-}
-
-impl SubjectQueryBuilder for OutputsCoinSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsCoinSubject> for OutputsQuery {
+    fn from(subject: OutputsCoinSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: Some(OutputType::Coin),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for OutputsContractSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsContractSubject> for OutputsQuery {
+    fn from(subject: OutputsContractSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: Some(OutputType::Contract),
+            contract_id: subject.contract.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for OutputsChangeSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsChangeSubject> for OutputsQuery {
+    fn from(subject: OutputsChangeSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: Some(OutputType::Change),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for OutputsVariableSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsVariableSubject> for OutputsQuery {
+    fn from(subject: OutputsVariableSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: Some(OutputType::Variable),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for OutputsContractCreatedSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsContractCreatedSubject> for OutputsQuery {
+    fn from(subject: OutputsContractCreatedSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: Some(OutputType::ContractCreated),
+            contract_id: subject.contract.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
     }
 }
 
-impl SubjectQueryBuilder for OutputsSubject {
-    fn query_builder(
-        &self,
-        options: Option<&QueryOptions>,
-    ) -> QueryBuilder<'static, Postgres> {
-        build_outputs_query(self.to_sql_where(), options)
+impl From<OutputsSubject> for OutputsQuery {
+    fn from(subject: OutputsSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index.map(|i| i as i32),
+            output_type: subject.output_type.clone(),
+            ..Default::default()
+        }
     }
 }
