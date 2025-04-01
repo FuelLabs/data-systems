@@ -7,7 +7,7 @@ VERSION := $(shell cargo metadata --format-version=1 | jq -r '.packages[] | sele
 
 # Constants
 RUST_NIGHTLY_VERSION := nightly-2025-01-24
-RUST_VERSION := 1.85.0
+RUST_VERSION := 1.85.1
 
 # ------------------------------------------------------------
 #  Phony Targets

@@ -20,7 +20,7 @@ homepage = "https://fuel.network/"
 keywords = ["blockchain", "cryptocurrencies", "data-stream"]
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.85.0"
+rust-version = "1.85.1"
 version = "0.0.28"
 
 [workspace.dependencies]

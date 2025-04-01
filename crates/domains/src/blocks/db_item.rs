@@ -4,7 +4,7 @@ use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp, DaBlockHeight};
 use serde::{Deserialize, Serialize};
 
-use super::BlocksSubject;
+use super::{Block, BlocksSubject};
 use crate::{
     infra::{
         db::DbItem,
@@ -20,7 +20,7 @@ use crate::{
 };
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow, Default,
 )]
 pub struct BlockDbItem {
     pub subject: String,
@@ -110,5 +110,21 @@ impl From<BlockDbItem> for RecordPointer {
             output_index: None,
             receipt_index: None,
         }
+    }
+}
+
+impl TryFrom<&Block> for BlockDbItem {
+    type Error = DbError;
+    fn try_from(value: &Block) -> Result<Self, Self::Error> {
+        let subject = BlocksSubject::from(value);
+        let encoded = value.encode_json()?;
+        Ok(Self {
+            subject: subject.to_string(),
+            value: encoded,
+            block_da_height: subject.da_height.unwrap(),
+            block_height: subject.height.unwrap(),
+            producer_address: subject.producer.unwrap().to_string(),
+            ..Default::default()
+        })
     }
 }

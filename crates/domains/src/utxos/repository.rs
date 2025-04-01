@@ -59,3 +59,73 @@ impl Repository for Utxo {
         Ok(record)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fuel_streams_types::primitives::*;
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::{
+        infra::{Db, DbConnectionOpts, QueryOptions, ToPacket},
+        inputs::Input,
+        mocks::{MockInput, MockTransaction},
+        utxos::DynUtxoSubject,
+    };
+
+    async fn test_utxo(input: &Input) -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let tx =
+            MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
+        let namespace = QueryOptions::random_namespace();
+
+        let subject =
+            DynUtxoSubject::from((input, 1.into(), tx.id.clone(), 0, 0));
+
+        let timestamps = BlockTimestamp::default();
+        let packet = subject
+            .utxo()
+            .to_packet(subject.subject(), timestamps)
+            .with_namespace(&namespace);
+
+        let db_item = UtxoDbItem::try_from(&packet)?;
+        let result = Utxo::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.value, db_item.value);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.tx_id, db_item.tx_id);
+        assert_eq!(result.tx_index, db_item.tx_index);
+        assert_eq!(result.input_index, db_item.input_index);
+        assert_eq!(result.utxo_type, db_item.utxo_type);
+        assert_eq!(result.utxo_id, db_item.utxo_id);
+        assert_eq!(result.contract_id, db_item.contract_id);
+        assert_eq!(result.created_at, db_item.created_at);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_coin_utxo() -> anyhow::Result<()> {
+        let input = MockInput::coin_predicate();
+        test_utxo(&input).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_contract_utxo() -> anyhow::Result<()> {
+        let input = MockInput::contract();
+        test_utxo(&input).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_message_utxo() -> anyhow::Result<()> {
+        let input = MockInput::message_coin_signed();
+        test_utxo(&input).await?;
+        Ok(())
+    }
+}

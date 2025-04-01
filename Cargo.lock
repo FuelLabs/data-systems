@@ -3725,6 +3725,7 @@ dependencies = [
  "fuels-core",
  "hex",
  "pretty_assertions",
+ "rand 0.9.0",
  "rayon",
  "serde",
  "serde_json",

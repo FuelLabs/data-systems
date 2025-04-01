@@ -95,3 +95,68 @@ impl Repository for Predicate {
         Ok(record)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fuel_streams_types::primitives::*;
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::{
+        infra::{Db, DbConnectionOpts, QueryOptions, ToPacket},
+        inputs::Input,
+        mocks::{MockInput, MockTransaction},
+        predicates::DynPredicateSubject,
+    };
+
+    async fn test_predicate(input: &Input) -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let tx =
+            MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
+        let namespace = QueryOptions::random_namespace();
+
+        // Create predicate subject
+        let dyn_subject =
+            DynPredicateSubject::new(input, &1.into(), &tx.id, 0, 0)
+                .expect("Failed to create predicate subject");
+
+        let predicate = dyn_subject.predicate().to_owned();
+        let timestamps = BlockTimestamp::default();
+        let packet = predicate
+            .to_packet(&dyn_subject.into(), timestamps)
+            .with_namespace(&namespace);
+
+        let db_item = PredicateDbItem::try_from(&packet)?;
+        let result = Predicate::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.tx_id, db_item.tx_id);
+        assert_eq!(result.tx_index, db_item.tx_index);
+        assert_eq!(result.input_index, db_item.input_index);
+        assert_eq!(result.blob_id, db_item.blob_id);
+        assert_eq!(result.predicate_address, db_item.predicate_address);
+        assert_eq!(result.asset_id, db_item.asset_id);
+        assert_eq!(result.bytecode, db_item.bytecode);
+        assert_eq!(result.created_at, db_item.created_at);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_predicate_with_blob_id() -> anyhow::Result<()> {
+        let input = MockInput::coin_predicate();
+        test_predicate(&input).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_predicate_without_blob_id() -> anyhow::Result<()> {
+        let input = MockInput::coin_signed();
+        test_predicate(&input).await?;
+        Ok(())
+    }
+}

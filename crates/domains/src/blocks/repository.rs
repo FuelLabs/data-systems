@@ -73,3 +73,39 @@ impl Block {
         Ok(record.map(|(height,)| height.into()).unwrap_or_default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::{
+        blocks::BlocksSubject,
+        infra::{DbConnectionOpts, ToPacket},
+        mocks::MockBlock,
+    };
+
+    #[tokio::test]
+    async fn test_insert_block() -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let block = MockBlock::build(1);
+        let subject = BlocksSubject::from(&block);
+        let timestamp = BlockTimestamp::default();
+        let namespace = QueryOptions::random_namespace();
+        let packet = block
+            .to_packet(&subject.dyn_arc(), timestamp)
+            .with_namespace(&namespace);
+        let db_item = BlockDbItem::try_from(&packet)?;
+        let result = Block::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.value, db_item.value);
+        assert_eq!(result.block_da_height, db_item.block_da_height);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.producer_address, db_item.producer_address);
+        Ok(())
+    }
+}

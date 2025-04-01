@@ -73,3 +73,131 @@ impl Repository for Receipt {
         Ok(record)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::{
+        infra::{Db, DbConnectionOpts, QueryOptions, ToPacket},
+        mocks::{MockReceipt, MockTransaction},
+        receipts::DynReceiptSubject,
+    };
+
+    async fn test_receipt(receipt: &Receipt) -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let tx =
+            MockTransaction::script(vec![], vec![], vec![receipt.to_owned()]);
+        let namespace = QueryOptions::random_namespace();
+        let subject =
+            DynReceiptSubject::from((receipt, 1.into(), tx.id.clone(), 0, 0));
+        let timestamps = BlockTimestamp::default();
+        let packet = receipt
+            .to_packet(&subject.into(), timestamps)
+            .with_namespace(&namespace);
+
+        let db_item = ReceiptDbItem::try_from(&packet)?;
+        let result = Receipt::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.value, db_item.value);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.tx_id, db_item.tx_id);
+        assert_eq!(result.tx_index, db_item.tx_index);
+        assert_eq!(result.receipt_index, db_item.receipt_index);
+        assert_eq!(result.receipt_type, db_item.receipt_type);
+        assert_eq!(result.from_contract_id, db_item.from_contract_id);
+        assert_eq!(result.to_contract_id, db_item.to_contract_id);
+        assert_eq!(result.to_address, db_item.to_address);
+        assert_eq!(result.asset_id, db_item.asset_id);
+        assert_eq!(result.contract_id, db_item.contract_id);
+        assert_eq!(result.sub_id, db_item.sub_id);
+        assert_eq!(result.sender_address, db_item.sender_address);
+        assert_eq!(result.recipient_address, db_item.recipient_address);
+        assert_eq!(result.created_at, db_item.created_at);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_call() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::call()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_return() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::return_receipt()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_return_data() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::return_data()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_panic() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::panic()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_revert() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::revert()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_log() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::log()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_log_data() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::log_data()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_transfer() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::transfer()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_transfer_out() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::transfer_out()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_script_result() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::script_result()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_message_out() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::message_out()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_mint() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::mint()).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_burn() -> anyhow::Result<()> {
+        test_receipt(&MockReceipt::burn()).await?;
+        Ok(())
+    }
+}

@@ -57,3 +57,102 @@ impl Repository for Transaction {
         Ok(record)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::{
+        infra::{Db, DbConnectionOpts, QueryOptions, ToPacket},
+        mocks::MockTransaction,
+        transactions::subjects::TransactionsSubject,
+    };
+
+    async fn test_transaction(tx: &Transaction) -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let namespace = QueryOptions::random_namespace();
+
+        let subject = TransactionsSubject {
+            block_height: Some(1.into()),
+            tx_id: Some(tx.id.clone()),
+            tx_index: Some(0),
+            tx_status: Some(tx.status.clone()),
+            tx_type: Some(tx.tx_type.clone()),
+        }
+        .dyn_arc();
+
+        let timestamps = BlockTimestamp::default();
+        let packet = tx
+            .to_packet(&subject, timestamps)
+            .with_namespace(&namespace);
+
+        let db_item = TransactionDbItem::try_from(&packet)?;
+        let result = Transaction::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.value, db_item.value);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.tx_id, db_item.tx_id);
+        assert_eq!(result.tx_index, db_item.tx_index);
+        assert_eq!(result.tx_status, db_item.tx_status);
+        assert_eq!(result.r#type, db_item.r#type);
+        assert_eq!(result.blob_id, db_item.blob_id);
+        assert_eq!(result.created_at, db_item.created_at);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_script_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::script(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_create_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::create(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_mint_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::mint(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_upgrade_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::upgrade(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_upload_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::upload(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_blob_transaction() -> anyhow::Result<()> {
+        let tx = MockTransaction::blob(vec![], vec![], vec![]);
+        test_transaction(&tx).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_all_transaction_types() -> anyhow::Result<()> {
+        for tx in MockTransaction::all() {
+            test_transaction(&tx).await?;
+        }
+        Ok(())
+    }
+}

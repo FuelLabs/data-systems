@@ -9,7 +9,7 @@ inputs:
   toolchain:
     description: Rust toolchain version to install
     required: true
-    default: 1.85.0
+    default: 1.85.1
   cache:
     description: Use sscache
     required: false

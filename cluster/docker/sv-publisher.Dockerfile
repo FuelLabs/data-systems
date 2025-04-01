@@ -1,6 +1,6 @@
 # Stage 1: Build
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
-FROM --platform=$BUILDPLATFORM rust:1.85.0 AS chef
+FROM --platform=$BUILDPLATFORM rust:1.85.1 AS chef
 
 ARG TARGETPLATFORM
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
@@ -11,9 +11,9 @@ COPY --from=xx / /
 # hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    lld \
-    clang \
-    libclang-dev \
+        lld \
+        clang \
+        libclang-dev \
     && xx-apt-get update \
     && xx-apt-get install -y libc6-dev g++ binutils \
     && apt-get clean \
