@@ -2,7 +2,7 @@ use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use super::{OutputType, OutputsQuery};
+use super::OutputsQuery;
 use crate::infra::QueryPagination;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
@@ -270,7 +270,7 @@ impl From<OutputsSubject> for OutputsQuery {
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
             output_index: subject.output_index,
-            output_type: subject.output_type.clone(),
+            output_type: subject.output_type,
             ..Default::default()
         }
     }

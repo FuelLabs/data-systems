@@ -7,7 +7,7 @@ use axum::{
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
     infra::repository::{Repository, ValidatedQuery},
-    outputs::{OutputType, OutputsQuery},
+    outputs::OutputsQuery,
 };
 use paste::paste;
 

@@ -121,47 +121,6 @@ pub struct OutputContractCreated {
     pub state_root: Bytes32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum OutputType {
-    Coin,
-    Contract,
-    Change,
-    Variable,
-    ContractCreated,
-}
-
-impl OutputType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            OutputType::Coin => "coin",
-            OutputType::Contract => "contract",
-            OutputType::Change => "change",
-            OutputType::Variable => "variable",
-            OutputType::ContractCreated => "contract_created",
-        }
-    }
-}
-
-impl std::fmt::Display for OutputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for OutputType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "coin" => Ok(OutputType::Coin),
-            "contract" => Ok(OutputType::Contract),
-            "change" => Ok(OutputType::Change),
-            "variable" => Ok(OutputType::Variable),
-            "contract_created" => Ok(OutputType::ContractCreated),
-            _ => Err(format!("Invalid output type: {}", s)),
-        }
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockOutput;

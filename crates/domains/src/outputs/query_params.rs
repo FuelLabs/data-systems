@@ -1,8 +1,7 @@
-use fuel_streams_types::{Address, AssetId, BlockHeight, ContractId, TxId};
+use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
-use super::OutputType;
 use crate::infra::{
     repository::{HasPagination, QueryPagination, QueryParamsBuilder},
     QueryOptions,
@@ -93,7 +92,7 @@ impl QueryParamsBuilder for OutputsQuery {
         }
 
         if let Some(output_type) = &self.output_type {
-            conditions.push(format!("output_type = '{}'", output_type));
+            conditions.push(format!("type = '{}'", output_type));
         }
 
         if let Some(block_height) = &self.block_height {

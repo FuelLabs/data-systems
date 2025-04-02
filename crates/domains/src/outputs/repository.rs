@@ -21,45 +21,69 @@ impl Repository for Output {
         'c: 'e,
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
-        let published_at = BlockTimestamp::now();
+        let created_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, OutputDbItem>(
-            "WITH upsert AS (
-                INSERT INTO outputs (
-                    subject, value, cursor, block_height, tx_id, tx_index,
-                    output_index, output_type, to_address, asset_id, contract_id,
-                    created_at, published_at
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                ON CONFLICT (subject) DO UPDATE SET
-                    value = EXCLUDED.value,
-                    cursor = EXCLUDED.cursor,
-                    block_height = EXCLUDED.block_height,
-                    tx_id = EXCLUDED.tx_id,
-                    tx_index = EXCLUDED.tx_index,
-                    output_index = EXCLUDED.output_index,
-                    output_type = EXCLUDED.output_type,
-                    to_address = EXCLUDED.to_address,
-                    asset_id = EXCLUDED.asset_id,
-                    contract_id = EXCLUDED.contract_id,
-                    created_at = EXCLUDED.created_at,
-                    published_at = $13
-                RETURNING *
+            r#"
+            INSERT INTO outputs (
+                subject,
+                value,
+                block_height,
+                tx_id,
+                tx_index,
+                output_index,
+                cursor,
+                type,
+                amount,
+                asset_id,
+                to_address,
+                state_root,
+                balance_root,
+                input_index,
+                contract_id,
+                block_time,
+                created_at
             )
-            SELECT * FROM upsert",
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8::output_type, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17
+            )
+            ON CONFLICT (subject) DO UPDATE SET
+                value = EXCLUDED.value,
+                block_height = EXCLUDED.block_height,
+                tx_id = EXCLUDED.tx_id,
+                tx_index = EXCLUDED.tx_index,
+                output_index = EXCLUDED.output_index,
+                cursor = EXCLUDED.cursor,
+                type = EXCLUDED.type,
+                amount = EXCLUDED.amount,
+                asset_id = EXCLUDED.asset_id,
+                to_address = EXCLUDED.to_address,
+                state_root = EXCLUDED.state_root,
+                balance_root = EXCLUDED.balance_root,
+                input_index = EXCLUDED.input_index,
+                contract_id = EXCLUDED.contract_id,
+                block_time = EXCLUDED.block_time,
+                created_at = EXCLUDED.created_at
+            RETURNING *
+            "#,
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.cursor().to_string())
         .bind(db_item.block_height)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.output_index)
-        .bind(&db_item.output_type)
-        .bind(&db_item.to_address)
+        .bind(db_item.cursor().to_string())
+        .bind(db_item.r#type)
+        .bind(db_item.amount)
         .bind(&db_item.asset_id)
+        .bind(&db_item.to_address)
+        .bind(&db_item.state_root)
+        .bind(&db_item.balance_root)
+        .bind(db_item.input_index)
         .bind(&db_item.contract_id)
-        .bind(db_item.created_at)
-        .bind(published_at)
+        .bind(db_item.block_time)
+        .bind(created_at)
         .fetch_one(executor)
         .await
         .map_err(RepositoryError::Insert)?;
@@ -73,20 +97,32 @@ mod tests {
     use std::sync::Arc;
 
     use anyhow::Result;
+    use fuel_streams_types::BlockHeight;
     use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::{
+        blocks::{
+            packets::DynBlockSubject,
+            repository::tests::insert_block,
+            Block,
+            BlockDbItem,
+        },
         infra::{
             Db,
             DbConnectionOpts,
-            DbItem,
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
         },
         mocks::{MockOutput, MockTransaction},
         outputs::DynOutputSubject,
+        transactions::{
+            repository::tests::insert_transaction,
+            DynTransactionSubject,
+            Transaction,
+            TransactionDbItem,
+        },
     };
 
     async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
@@ -104,41 +140,63 @@ mod tests {
         assert_eq!(result.tx_id, expected.tx_id);
         assert_eq!(result.tx_index, expected.tx_index);
         assert_eq!(result.output_index, expected.output_index);
-        assert_eq!(result.output_type, expected.output_type);
-        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.r#type, expected.r#type);
+        assert_eq!(result.amount, expected.amount);
         assert_eq!(result.asset_id, expected.asset_id);
+        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.state_root, expected.state_root);
+        assert_eq!(result.balance_root, expected.balance_root);
+        assert_eq!(result.input_index, expected.input_index);
         assert_eq!(result.contract_id, expected.contract_id);
-        assert_eq!(result.created_at, expected.created_at);
+        assert_eq!(result.block_time, expected.block_time);
+    }
+
+    async fn insert_random_block(
+        db: &Arc<Db>,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
+        let (db_item, block, subject) =
+            insert_block(db, height, namespace).await?;
+        Ok((db_item, block, subject))
+    }
+
+    async fn insert_tx(
+        db: &Arc<Db>,
+        tx: &Transaction,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
+        let _ = insert_random_block(db, height, namespace).await?;
+        insert_transaction(db, Some(tx.clone()), height, namespace).await
     }
 
     async fn insert_output(
         db: &Arc<Db>,
-        output: Option<Output>,
+        tx: &Transaction,
+        output: &Output,
         height: u32,
         namespace: &str,
+        (tx_index, output_index): (i32, i32),
     ) -> Result<(OutputDbItem, Output, DynOutputSubject)> {
-        let output = output.unwrap_or_else(|| MockOutput::coin(100));
-        let tx =
-            MockTransaction::script(vec![], vec![output.to_owned()], vec![]);
-
         let subject = DynOutputSubject::new(
-            &output,
+            output,
             height.into(),
-            tx.id.clone(),
-            0,
-            0,
-            &tx,
+            tx.id.to_owned(),
+            tx_index,
+            output_index,
+            tx,
         );
         let timestamps = BlockTimestamp::default();
         let packet = subject
-            .build_packet(&output, timestamps)
+            .build_packet(output, timestamps)
             .with_namespace(namespace);
 
         let db_item = OutputDbItem::try_from(&packet)?;
         let result = Output::insert(db.pool_ref(), &db_item).await?;
         assert_result(&result, &db_item);
 
-        Ok((db_item, output, subject))
+        Ok((db_item, output.clone(), subject))
     }
 
     async fn create_outputs(
@@ -147,39 +205,82 @@ mod tests {
         count: u32,
     ) -> Result<Vec<OutputDbItem>> {
         let mut outputs = Vec::with_capacity(count as usize);
-        for height in 1..=count {
-            let (db_item, _, _) =
-                insert_output(db, None, height, namespace).await?;
-            outputs.push(db_item);
+        for _ in 0..count {
+            outputs.push(MockOutput::coin(100))
         }
-        Ok(outputs)
+
+        let height = BlockHeight::random();
+        let tx = MockTransaction::script(vec![], outputs.clone(), vec![]);
+        insert_tx(db, &tx, height.into(), namespace).await?;
+
+        let mut db_items = Vec::with_capacity(count as usize);
+        for (index, output) in outputs.iter().enumerate() {
+            let (db_item, _, _) = insert_output(
+                db,
+                &tx,
+                output,
+                height.into(),
+                namespace,
+                (0, index as i32),
+            )
+            .await?;
+            db_items.push(db_item);
+        }
+        db_items.sort_by_key(|i| i.cursor());
+        Ok(db_items)
     }
 
     #[tokio::test]
     async fn test_inserting_output_coin() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_output(&db, Some(MockOutput::coin(100)), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let output1 = MockOutput::coin(100);
+        let output2 = MockOutput::coin(200);
+        let tx = MockTransaction::script(
+            vec![],
+            vec![output1.clone(), output2.clone()],
+            vec![],
+        );
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_output(&db, &tx, &output1, height.into(), &namespace, (0, 0))
+            .await?;
+        insert_output(&db, &tx, &output2, height.into(), &namespace, (0, 1))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_output_contract() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_output(&db, Some(MockOutput::contract()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let output = MockOutput::contract();
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_output(&db, &tx, &output, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_output_change() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_output(&db, Some(MockOutput::change(50)), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let output = MockOutput::change(50);
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_output(&db, &tx, &output, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_output_variable() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_output(&db, Some(MockOutput::variable(75)), 1, &namespace)
+        let height = BlockHeight::random();
+        let output = MockOutput::variable(75);
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_output(&db, &tx, &output, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -187,7 +288,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_output_contract_created() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_output(&db, Some(MockOutput::contract_created()), 1, &namespace)
+        let height = BlockHeight::random();
+        let output = MockOutput::contract_created();
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_output(&db, &tx, &output, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -195,9 +300,14 @@ mod tests {
     #[tokio::test]
     async fn test_find_one_output() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let (db_item, _, subject) =
-            insert_output(&db, None, 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let output = MockOutput::coin(100);
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
 
+        let (db_item, _, subject) =
+            insert_output(&db, &tx, &output, height.into(), &namespace, (0, 0))
+                .await?;
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 
