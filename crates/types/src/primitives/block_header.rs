@@ -104,10 +104,18 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 
 // BlockHeaderVersion enum
 #[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Default,
+    utoipa::ToSchema,
+    derive_more::Display,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockHeaderVersion {
     #[default]
+    #[display("V1")]
     V1,
 }
