@@ -752,7 +752,7 @@ mod tests {
             // Verify type field is correctly serialized as lowercase
             let json_value: serde_json::Value =
                 serde_json::from_str(&serialized).unwrap();
-            assert_eq!(json_value["type"], json!(tx.r#type.as_str()));
+            assert_eq!(json_value["type"], json!(tx.r#type.to_string()));
         }
     }
 }

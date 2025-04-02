@@ -1,70 +1,103 @@
-use std::{fmt::Display, str::FromStr};
+use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::impl_enum_string_serialization;
 
 #[derive(
-    Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    derive_more::Display,
+    derive_more::IsVariant,
+    utoipa::ToSchema,
 )]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DbConsensusType {
+#[serde(rename_all = "lowercase")]
+pub enum ConsensusType {
     #[default]
+    #[display("genesis")]
     Genesis,
+    #[display("poa_consensus")]
     PoaConsensus,
 }
 
-impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DbConsensusType {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'r>,
-    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-        match value.as_str() {
-            "GENESIS" => Ok(DbConsensusType::Genesis),
-            "POA_CONSENSUS" => Ok(DbConsensusType::PoaConsensus),
-            _ => Err(format!("Unknown ConsensusType: {}", value).into()),
+impl TryFrom<&str> for ConsensusType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "genesis" => Ok(ConsensusType::Genesis),
+            "poa_consensus" => Ok(ConsensusType::PoaConsensus),
+            _ => Err(format!("Unknown ConsensusType: {}", s)),
         }
     }
 }
 
-impl sqlx::Type<sqlx::Postgres> for DbConsensusType {
-    fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("consensus_type")
+impl_enum_string_serialization!(ConsensusType, "consensus_type");
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_deserialize_string_lowercase() {
+        let json = json!("genesis");
+        let value: ConsensusType = serde_json::from_value(json).unwrap();
+        assert_eq!(value, ConsensusType::Genesis);
     }
-}
 
-impl sqlx::Encode<'_, sqlx::Postgres> for DbConsensusType {
-    fn encode_by_ref(
-        &self,
-        buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
-        let s = match self {
-            DbConsensusType::Genesis => "GENESIS",
-            DbConsensusType::PoaConsensus => "POA_CONSENSUS",
-        };
-        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    #[test]
+    fn test_deserialize_mixed_case() {
+        let json = json!("Genesis");
+        let result: Result<ConsensusType, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConsensusType::Genesis);
+
+        let json = json!("GENESIS");
+        let result: Result<ConsensusType, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConsensusType::Genesis);
     }
-}
 
-impl FromStr for DbConsensusType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().as_str() {
-            "GENESIS" => Ok(DbConsensusType::Genesis),
-            "POA_CONSENSUS" => Ok(DbConsensusType::PoaConsensus),
-            _ => Err(format!("Unknown DbConsensusType: {}", s)),
-        }
+    #[test]
+    fn test_deserialize_invalid() {
+        let json = json!("invalid");
+        let result: Result<ConsensusType, _> = serde_json::from_value(json);
+        assert!(result.is_err());
     }
-}
 
-impl Display for DbConsensusType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            DbConsensusType::Genesis => "GENESIS",
-            DbConsensusType::PoaConsensus => "POA_CONSENSUS",
-        };
-        write!(f, "{}", s)
+    #[test]
+    fn test_serialize() {
+        let value = ConsensusType::Genesis;
+        let serialized = serde_json::to_value(value).unwrap();
+        assert_eq!(serialized, json!("genesis"));
+    }
+
+    #[test]
+    fn test_case_insensitive_from_str() {
+        assert_eq!(
+            ConsensusType::from_str("GENESIS").unwrap(),
+            ConsensusType::Genesis
+        );
+        assert_eq!(
+            ConsensusType::from_str("genesis").unwrap(),
+            ConsensusType::Genesis
+        );
+        assert_eq!(
+            ConsensusType::from_str("Genesis").unwrap(),
+            ConsensusType::Genesis
+        );
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(ConsensusType::Genesis.to_string(), "genesis");
+        assert_eq!(ConsensusType::PoaConsensus.to_string(), "poa_consensus");
     }
 }

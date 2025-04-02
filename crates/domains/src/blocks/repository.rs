@@ -22,7 +22,7 @@ impl Repository for Block {
         'c: 'e,
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
-        let published_at = BlockTimestamp::now();
+        let created_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, BlockDbItem>(
             "WITH upsert AS (
                 INSERT INTO blocks (
@@ -32,9 +32,6 @@ impl Repository for Block {
                     block_height,
                     value,
                     version,
-                    created_at,
-                    published_at,
-                    block_propagation_ms,
                     header_application_hash,
                     header_consensus_parameters_version,
                     header_da_height,
@@ -54,6 +51,9 @@ impl Repository for Block {
                     consensus_messages_root,
                     consensus_signature,
                     consensus_transactions_root
+                    block_time,
+                    created_at,
+                    block_propagation_ms,
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
@@ -66,9 +66,6 @@ impl Repository for Block {
                     block_height = EXCLUDED.block_height,
                     value = EXCLUDED.value,
                     version = EXCLUDED.version,
-                    created_at = EXCLUDED.created_at,
-                    published_at = $8,
-                    block_propagation_ms = EXCLUDED.block_propagation_ms,
                     header_application_hash = EXCLUDED.header_application_hash,
                     header_consensus_parameters_version = EXCLUDED.header_consensus_parameters_version,
                     header_da_height = EXCLUDED.header_da_height,
@@ -87,7 +84,10 @@ impl Repository for Block {
                     consensus_contracts_root = EXCLUDED.consensus_contracts_root,
                     consensus_messages_root = EXCLUDED.consensus_messages_root,
                     consensus_signature = EXCLUDED.consensus_signature,
-                    consensus_transactions_root = EXCLUDED.consensus_transactions_root
+                    consensus_transactions_root = EXCLUDED.consensus_transactions_root,
+                    block_time = EXCLUDED.block_time,
+                    created_at = $8,
+                    block_propagation_ms = EXCLUDED.block_propagation_ms
                 RETURNING *
             )
             SELECT * FROM upsert"
@@ -98,9 +98,6 @@ impl Repository for Block {
         .bind(db_item.block_height)
         .bind(db_item.value.to_owned())
         .bind(db_item.version.to_owned())
-        .bind(db_item.created_at)
-        .bind(published_at)
-        .bind(db_item.block_propagation_ms)
         .bind(db_item.header_application_hash.to_owned())
         .bind(db_item.header_consensus_parameters_version)
         .bind(db_item.header_da_height)
@@ -120,6 +117,9 @@ impl Repository for Block {
         .bind(db_item.consensus_messages_root.as_ref())
         .bind(db_item.consensus_signature.as_ref())
         .bind(db_item.consensus_transactions_root.as_ref())
+        .bind(db_item.block_time)
+        .bind(created_at)
+        .bind(db_item.block_propagation_ms)
         .fetch_one(executor)
         .await
         .map_err(RepositoryError::Insert)?;
@@ -247,7 +247,7 @@ mod tests {
             result.consensus_transactions_root,
             db_item.consensus_transactions_root
         );
-        assert_eq!(result.created_at, db_item.created_at);
+        assert_eq!(result.block_time, db_item.block_time);
 
         Ok(())
     }

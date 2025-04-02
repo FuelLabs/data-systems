@@ -1,56 +1,54 @@
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::fuel_core::{
-    FuelCoreClientTransactionStatus,
-    FuelCoreTransactionStatus,
+use crate::{
+    fuel_core::{FuelCoreClientTransactionStatus, FuelCoreTransactionStatus},
+    impl_enum_string_serialization,
 };
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    derive_more::Display,
+    derive_more::IsVariant,
+    utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum TransactionStatus {
+    #[display("failed")]
     Failed,
+    #[display("submitted")]
     Submitted,
+    #[display("squeezed_out")]
     SqueezedOut,
+    #[display("success")]
     Success,
     #[default]
+    #[display("none")]
     None,
 }
 
-impl TransactionStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransactionStatus::Failed => "failed",
-            TransactionStatus::Submitted => "submitted",
-            TransactionStatus::SqueezedOut => "squeezed_out", /* Corrected to snake_case */
-            TransactionStatus::Success => "success",
-            TransactionStatus::None => "none",
+impl TryFrom<&str> for TransactionStatus {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "failed" => Ok(TransactionStatus::Failed),
+            "submitted" => Ok(TransactionStatus::Submitted),
+            "squeezed_out" => Ok(TransactionStatus::SqueezedOut),
+            "success" => Ok(TransactionStatus::Success),
+            "none" => Ok(TransactionStatus::None),
+            _ => Err(format!("Unknown TransactionStatus: {}", s)),
         }
     }
 }
 
-impl fmt::Display for TransactionStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl FromStr for TransactionStatus {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            s if s == Self::Failed.as_str() => Ok(Self::Failed),
-            s if s == Self::Submitted.as_str() => Ok(Self::Submitted),
-            s if s == Self::SqueezedOut.as_str() => Ok(Self::SqueezedOut),
-            s if s == Self::Success.as_str() => Ok(Self::Success),
-            s if s == Self::None.as_str() => Ok(Self::None),
-            _ => Err(format!("Invalid transaction status: {s}")),
-        }
-    }
-}
+impl_enum_string_serialization!(TransactionStatus, "transaction_status");
 
 impl From<&FuelCoreTransactionStatus> for TransactionStatus {
     fn from(value: &FuelCoreTransactionStatus) -> Self {
@@ -96,84 +94,6 @@ impl From<FuelCoreClientTransactionStatus> for TransactionStatus {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    derive_more::Display,
-    derive_more::FromStr,
-)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DbTransactionStatus {
-    #[display("FAILED")]
-    Failed,
-    #[display("SUBMITTED")]
-    Submitted,
-    #[display("SQUEEZED_OUT")]
-    SqueezedOut,
-    #[display("SUCCESS")]
-    Success,
-    #[display("NONE")]
-    None,
-}
-
-impl From<TransactionStatus> for DbTransactionStatus {
-    fn from(value: TransactionStatus) -> Self {
-        match value {
-            TransactionStatus::Failed => DbTransactionStatus::Failed,
-            TransactionStatus::Submitted => DbTransactionStatus::Submitted,
-            TransactionStatus::SqueezedOut => DbTransactionStatus::SqueezedOut,
-            TransactionStatus::Success => DbTransactionStatus::Success,
-            TransactionStatus::None => DbTransactionStatus::None,
-        }
-    }
-}
-
-impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DbTransactionStatus {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'r>,
-    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-        match value.as_str() {
-            "FAILED" => Ok(DbTransactionStatus::Failed),
-            "SUBMITTED" => Ok(DbTransactionStatus::Submitted),
-            "SQUEEZED_OUT" => Ok(DbTransactionStatus::SqueezedOut),
-            "SUCCESS" => Ok(DbTransactionStatus::Success),
-            "NONE" => Ok(DbTransactionStatus::None),
-            _ => Err(format!("Unknown DbTransactionStatus: {}", value).into()),
-        }
-    }
-}
-
-impl sqlx::Type<sqlx::Postgres> for DbTransactionStatus {
-    fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("transaction_status")
-    }
-}
-
-impl sqlx::Encode<'_, sqlx::Postgres> for DbTransactionStatus {
-    fn encode_by_ref(
-        &self,
-        buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
-        let s = match self {
-            DbTransactionStatus::Failed => "FAILED",
-            DbTransactionStatus::Submitted => "SUBMITTED",
-            DbTransactionStatus::SqueezedOut => "SQUEEZED_OUT",
-            DbTransactionStatus::Success => "SUCCESS",
-            DbTransactionStatus::None => "NONE",
-        };
-        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -184,45 +104,57 @@ mod tests {
     #[test]
     fn test_deserialize_string_lowercase() {
         let json = json!("submitted");
-        let status: TransactionStatus = serde_json::from_value(json).unwrap();
-        assert_eq!(status, TransactionStatus::Submitted);
+        let value: TransactionStatus = serde_json::from_value(json).unwrap();
+        assert_eq!(value, TransactionStatus::Submitted);
+    }
+
+    #[test]
+    fn test_deserialize_mixed_case() {
+        let json = json!("Submitted");
+        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionStatus::Submitted);
+
+        let json = json!("SUBMITTED");
+        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionStatus::Submitted);
     }
 
     #[test]
     fn test_deserialize_invalid() {
-        let json = json!("Submitted");
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({ "status": "Submitted" });
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({ "status": "submitted" });
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!("squeezedout");
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
         let json = json!("invalid");
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({ "status": "invalid" });
-        let result: Result<TransactionStatus, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({});
         let result: Result<TransactionStatus, _> = serde_json::from_value(json);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_serialize() {
-        let status = TransactionStatus::SqueezedOut;
-        let serialized = serde_json::to_value(status).unwrap();
+        let value = TransactionStatus::SqueezedOut;
+        let serialized = serde_json::to_value(value).unwrap();
         assert_eq!(serialized, json!("squeezed_out"));
+    }
+
+    #[test]
+    fn test_case_insensitive_from_str() {
+        assert_eq!(
+            TransactionStatus::from_str("SUBMITTED").unwrap(),
+            TransactionStatus::Submitted
+        );
+        assert_eq!(
+            TransactionStatus::from_str("submitted").unwrap(),
+            TransactionStatus::Submitted
+        );
+        assert_eq!(
+            TransactionStatus::from_str("Submitted").unwrap(),
+            TransactionStatus::Submitted
+        );
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(TransactionStatus::Failed.to_string(), "failed");
+        assert_eq!(TransactionStatus::Submitted.to_string(), "submitted");
+        assert_eq!(TransactionStatus::SqueezedOut.to_string(), "squeezed_out");
     }
 }

@@ -1,4 +1,8 @@
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+use serde::Serialize;
+
+use crate::impl_enum_string_serialization;
 
 #[derive(
     Debug,
@@ -7,57 +11,89 @@ use serde::{Deserialize, Serialize};
     PartialEq,
     Eq,
     Serialize,
-    Deserialize,
-    derive_more::FromStr,
     derive_more::Display,
+    derive_more::IsVariant,
+    utoipa::ToSchema,
 )]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "lowercase")]
 pub enum DbPolicyType {
-    #[display("TIP")]
+    #[display("tip")]
     Tip,
-    #[display("WITNESS_LIMIT")]
+    #[display("witness_limit")]
     WitnessLimit,
-    #[display("MATURITY")]
+    #[display("maturity")]
     Maturity,
-    #[display("MAX_FEE")]
+    #[display("max_fee")]
     MaxFee,
 }
 
-impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DbPolicyType {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'r>,
-    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-        match value.as_str() {
-            "TIP" => Ok(DbPolicyType::Tip),
-            "WITNESS_LIMIT" => Ok(DbPolicyType::WitnessLimit),
-            "MATURITY" => Ok(DbPolicyType::Maturity),
-            "MAX_FEE" => Ok(DbPolicyType::MaxFee),
-            _ => Err(format!("Unknown DbPolicyType: {}", value).into()),
+impl TryFrom<&str> for DbPolicyType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "tip" => Ok(DbPolicyType::Tip),
+            "witness_limit" => Ok(DbPolicyType::WitnessLimit),
+            "maturity" => Ok(DbPolicyType::Maturity),
+            "max_fee" => Ok(DbPolicyType::MaxFee),
+            _ => Err(format!("Unknown DbPolicyType: {}", s)),
         }
     }
 }
 
-impl sqlx::Type<sqlx::Postgres> for DbPolicyType {
-    fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("policy_type")
-    }
-}
+impl_enum_string_serialization!(DbPolicyType, "policy_type");
 
-impl sqlx::Encode<'_, sqlx::Postgres> for DbPolicyType {
-    fn encode_by_ref(
-        &self,
-        buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
-        let s = match self {
-            DbPolicyType::Tip => "TIP",
-            DbPolicyType::WitnessLimit => "WITNESS_LIMIT",
-            DbPolicyType::Maturity => "MATURITY",
-            DbPolicyType::MaxFee => "MAX_FEE",
-        };
-        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_deserialize_string_lowercase() {
+        let json = json!("tip");
+        let value: DbPolicyType = serde_json::from_value(json).unwrap();
+        assert_eq!(value, DbPolicyType::Tip);
+    }
+
+    #[test]
+    fn test_deserialize_mixed_case() {
+        let json = json!("Tip");
+        let result: Result<DbPolicyType, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), DbPolicyType::Tip);
+
+        let json = json!("TIP");
+        let result: Result<DbPolicyType, _> = serde_json::from_value(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), DbPolicyType::Tip);
+    }
+
+    #[test]
+    fn test_deserialize_invalid() {
+        let json = json!("invalid");
+        let result: Result<DbPolicyType, _> = serde_json::from_value(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_serialize() {
+        let value = DbPolicyType::Tip;
+        let serialized = serde_json::to_value(value).unwrap();
+        assert_eq!(serialized, json!("tip"));
+    }
+
+    #[test]
+    fn test_case_insensitive_from_str() {
+        assert_eq!(DbPolicyType::from_str("TIP").unwrap(), DbPolicyType::Tip);
+        assert_eq!(DbPolicyType::from_str("tip").unwrap(), DbPolicyType::Tip);
+        assert_eq!(DbPolicyType::from_str("Tip").unwrap(), DbPolicyType::Tip);
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(DbPolicyType::Tip.to_string(), "tip");
+        assert_eq!(DbPolicyType::WitnessLimit.to_string(), "witness_limit");
+        assert_eq!(DbPolicyType::Maturity.to_string(), "maturity");
     }
 }

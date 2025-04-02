@@ -1,8 +1,14 @@
-use fuel_streams_types::{Address, AssetId, BlockHeight, ContractId, TxId};
+use fuel_streams_types::{
+    Address,
+    AssetId,
+    BlockHeight,
+    ContractId,
+    InputType,
+    TxId,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
-use super::types::*;
 use crate::infra::{
     repository::{HasPagination, QueryPagination, QueryParamsBuilder},
     QueryOptions,

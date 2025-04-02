@@ -5,9 +5,9 @@ use fuel_streams_types::{
     Amount,
     BlockHeight,
     BlockTimestamp,
-    DbTransactionStatus,
-    DbTransactionType,
     GasAmount,
+    TransactionStatus,
+    TransactionType,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgHasArrayType, PgTypeInfo};
@@ -109,13 +109,13 @@ pub struct TransactionDbItem {
     pub tx_id: String,
     pub tx_index: i32,
     // fuel-core fields
-    pub r#type: DbTransactionType,
+    pub r#type: TransactionType,
     pub script_gas_limit: Option<GasAmount>,
     pub mint_amount: Option<Amount>,
     pub mint_asset_id: Option<String>,
     pub mint_gas_price: Option<Amount>,
     pub receipts_root: Option<String>,
-    pub tx_status: DbTransactionStatus,
+    pub tx_status: TransactionStatus,
     pub script: Option<String>,
     pub script_data: Option<String>,
     pub salt: Option<String>,
@@ -168,7 +168,7 @@ impl DbItem for TransactionDbItem {
         self.created_at
     }
 
-    fn published_at(&self) -> BlockTimestamp {
+    fn block_time(&self) -> BlockTimestamp {
         self.published_at
     }
 
@@ -190,10 +190,6 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
         let transaction = Transaction::decode_json(&packet.value)
             .map_err(|e| RecordPacketError::DecodeFailed(e.to_string()))?;
 
-        let r#type = DbTransactionType::from(transaction.r#type.to_owned());
-        let tx_status =
-            DbTransactionStatus::from(transaction.status.to_owned());
-
         let policies: Option<String> = transaction
             .policies
             .as_ref()
@@ -208,8 +204,8 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 block_height: subject.block_height.unwrap().into(),
                 tx_id: subject.tx_id.unwrap().to_string(),
                 tx_index: subject.tx_index.unwrap(),
-                r#type,
-                tx_status,
+                r#type: transaction.r#type,
+                tx_status: transaction.status,
                 script_gas_limit: transaction.script_gas_limit,
                 mint_amount: transaction.mint_amount,
                 mint_asset_id: transaction

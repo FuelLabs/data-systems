@@ -2,7 +2,7 @@ use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use super::{InputType, InputsQuery};
+use super::InputsQuery;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "inputs_coin")]

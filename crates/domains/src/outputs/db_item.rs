@@ -73,7 +73,7 @@ impl DbItem for OutputDbItem {
         self.created_at
     }
 
-    fn published_at(&self) -> BlockTimestamp {
+    fn block_time(&self) -> BlockTimestamp {
         self.published_at
     }
 

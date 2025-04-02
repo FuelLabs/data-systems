@@ -80,7 +80,7 @@ pub trait QueryParamsBuilder {
         join_prefix: Option<&str>,
     ) {
         if let Some(timestamp) = &options.timestamp {
-            let field = Self::prefix_field("created_at", join_prefix);
+            let field = Self::prefix_field("block_time", join_prefix);
             conditions.push(format!(
                 "{field} >= to_timestamp({})",
                 timestamp.unix_timestamp()
@@ -89,7 +89,7 @@ pub trait QueryParamsBuilder {
 
         if let Some(time_range) = &options.time_range {
             let start_time = time_range.time_since_now();
-            let field = Self::prefix_field("created_at", join_prefix);
+            let field = Self::prefix_field("block_time", join_prefix);
             conditions.push(format!(
                 "{field} >= to_timestamp({})",
                 start_time.timestamp()

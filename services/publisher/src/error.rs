@@ -24,8 +24,6 @@ pub enum PublishError {
     MessageBrokerClient(#[from] MessageBrokerError),
     #[error(transparent)]
     Repository(#[from] RepositoryError),
-    #[error(transparent)]
-    BlockHeight(#[from] BlockHeightError),
     #[error("Failed to get sealed block from block height")]
     BlockNotFound,
     #[error(transparent)]

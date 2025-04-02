@@ -5,8 +5,8 @@ use fuel_streams_types::{
     wrapped_int::WrappedU32,
     BlockHeight,
     BlockTimestamp,
+    ConsensusType,
     DaBlockHeight,
-    DbConsensusType,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,10 +36,6 @@ pub struct BlockDbItem {
     pub value: Vec<u8>,
     pub version: String,
     pub producer_address: String,
-    // timestamps
-    pub created_at: BlockTimestamp,
-    pub published_at: BlockTimestamp,
-    pub block_propagation_ms: i32,
     // header
     pub header_application_hash: String,
     pub header_consensus_parameters_version: WrappedU32,
@@ -56,11 +52,15 @@ pub struct BlockDbItem {
     // consensus
     pub consensus_chain_config_hash: Option<String>,
     pub consensus_coins_root: Option<String>,
-    pub consensus_type: DbConsensusType,
+    pub consensus_type: ConsensusType,
     pub consensus_contracts_root: Option<String>,
     pub consensus_messages_root: Option<String>,
     pub consensus_signature: Option<String>,
     pub consensus_transactions_root: Option<String>,
+    // timestamps
+    pub block_time: BlockTimestamp,
+    pub created_at: BlockTimestamp,
+    pub block_propagation_ms: i32,
 }
 
 impl DataEncoder for BlockDbItem {}
@@ -90,8 +90,8 @@ impl DbItem for BlockDbItem {
         self.created_at
     }
 
-    fn published_at(&self) -> BlockTimestamp {
-        self.published_at
+    fn block_time(&self) -> BlockTimestamp {
+        self.block_time
     }
 
     fn block_height(&self) -> BlockHeight {
@@ -128,10 +128,6 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
                 value: packet.value.to_owned(),
                 version: block.header.version.to_string(),
                 producer_address: subject.producer.unwrap().to_string(),
-                // timestamps
-                created_at: packet.block_timestamp,
-                published_at: packet.block_timestamp,
-                block_propagation_ms: 0,
                 // header
                 header_application_hash: block
                     .header
@@ -181,6 +177,10 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
                     .map(|val| val.to_string()),
                 consensus_signature: consensus_signature
                     .map(|val| val.to_string()),
+                // timestamps
+                block_time: packet.block_timestamp,
+                created_at: packet.block_timestamp,
+                block_propagation_ms: 0,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

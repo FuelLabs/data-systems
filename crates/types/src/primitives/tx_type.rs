@@ -1,52 +1,97 @@
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::fuel_core::FuelCoreTransaction;
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    derive_more::Display,
+    derive_more::IsVariant,
+    utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum TransactionType {
     #[default]
+    #[display("create")]
     Create,
+    #[display("mint")]
     Mint,
+    #[display("script")]
     Script,
+    #[display("upgrade")]
     Upgrade,
+    #[display("upload")]
     Upload,
+    #[display("blob")]
     Blob,
 }
 
-impl TransactionType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Create => "create",
-            Self::Mint => "mint",
-            Self::Script => "script",
-            Self::Upgrade => "upgrade",
-            Self::Upload => "upload",
-            Self::Blob => "blob",
+impl<'de> Deserialize<'de> for TransactionType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        TransactionType::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for TransactionType {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        TransactionType::try_from(value.as_str()).map_err(|e| e.into())
+    }
+}
+
+impl sqlx::Type<sqlx::Postgres> for TransactionType {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("transaction_type")
+    }
+}
+
+impl sqlx::Encode<'_, sqlx::Postgres> for TransactionType {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<
+        sqlx::encode::IsNull,
+        Box<dyn std::error::Error + Send + Sync + 'static>,
+    > {
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
+            &self.to_string().as_str(),
+            buf,
+        )
+    }
+}
+
+impl TryFrom<&str> for TransactionType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "create" => Ok(TransactionType::Create),
+            "mint" => Ok(TransactionType::Mint),
+            "script" => Ok(TransactionType::Script),
+            "upgrade" => Ok(TransactionType::Upgrade),
+            "upload" => Ok(TransactionType::Upload),
+            "blob" => Ok(TransactionType::Blob),
+            _ => Err(format!("Unknown TransactionType: {}", s)),
         }
     }
 }
 
-impl std::fmt::Display for TransactionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for TransactionType {
+impl FromStr for TransactionType {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            s if s == Self::Create.as_str() => Ok(Self::Create),
-            s if s == Self::Mint.as_str() => Ok(Self::Mint),
-            s if s == Self::Script.as_str() => Ok(Self::Script),
-            s if s == Self::Upgrade.as_str() => Ok(Self::Upgrade),
-            s if s == Self::Upload.as_str() => Ok(Self::Upload),
-            s if s == Self::Blob.as_str() => Ok(Self::Blob),
-            _ => Err(format!("Invalid transaction type: {s}")),
-        }
+        TransactionType::try_from(s)
     }
 }
 
@@ -60,89 +105,6 @@ impl From<&FuelCoreTransaction> for TransactionType {
             FuelCoreTransaction::Upload(_) => TransactionType::Upload,
             FuelCoreTransaction::Blob(_) => TransactionType::Blob,
         }
-    }
-}
-
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    derive_more::Display,
-    derive_more::FromStr,
-)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DbTransactionType {
-    #[display("SCRIPT")]
-    Script,
-    #[display("CREATE")]
-    Create,
-    #[display("MINT")]
-    Mint,
-    #[display("UPGRADE")]
-    Upgrade,
-    #[display("UPLOAD")]
-    Upload,
-    #[display("BLOB")]
-    Blob,
-}
-
-impl From<TransactionType> for DbTransactionType {
-    fn from(value: TransactionType) -> Self {
-        match value {
-            TransactionType::Script => DbTransactionType::Script,
-            TransactionType::Create => DbTransactionType::Create,
-            TransactionType::Mint => DbTransactionType::Mint,
-            TransactionType::Upgrade => DbTransactionType::Upgrade,
-            TransactionType::Upload => DbTransactionType::Upload,
-            TransactionType::Blob => DbTransactionType::Blob,
-        }
-    }
-}
-
-impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DbTransactionType {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'r>,
-    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-        match value.as_str() {
-            "SCRIPT" => Ok(DbTransactionType::Script),
-            "CREATE" => Ok(DbTransactionType::Create),
-            "MINT" => Ok(DbTransactionType::Mint),
-            "UPGRADE" => Ok(DbTransactionType::Upgrade),
-            "UPLOAD" => Ok(DbTransactionType::Upload),
-            "BLOB" => Ok(DbTransactionType::Blob),
-            _ => Err(format!("Unknown DbTransactionType: {}", value).into()),
-        }
-    }
-}
-
-impl sqlx::Type<sqlx::Postgres> for DbTransactionType {
-    fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("transaction_type")
-    }
-}
-
-impl sqlx::Encode<'_, sqlx::Postgres> for DbTransactionType {
-    fn encode_by_ref(
-        &self,
-        buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
-        let s = match self {
-            DbTransactionType::Script => "SCRIPT",
-            DbTransactionType::Create => "CREATE",
-            DbTransactionType::Mint => "MINT",
-            DbTransactionType::Upgrade => "UPGRADE",
-            DbTransactionType::Upload => "UPLOAD",
-            DbTransactionType::Blob => "BLOB",
-        };
-        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
     }
 }
 
@@ -161,28 +123,21 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_invalid() {
+    fn test_deserialize_mixed_case() {
         let json = json!("Mint");
         let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionType::Mint);
 
-        let json = json!({ "type": "Mint" });
+        let json = json!("MINT");
         let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionType::Mint);
+    }
 
-        let json = json!({ "type": "mint" });
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
+    #[test]
+    fn test_deserialize_invalid() {
         let json = json!("invalid");
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({ "type": "invalid" });
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({});
         let result: Result<TransactionType, _> = serde_json::from_value(json);
         assert!(result.is_err());
     }
@@ -192,5 +147,28 @@ mod tests {
         let value = TransactionType::Mint;
         let serialized = serde_json::to_value(value).unwrap();
         assert_eq!(serialized, json!("mint"));
+    }
+
+    #[test]
+    fn test_case_insensitive_from_str() {
+        assert_eq!(
+            TransactionType::from_str("MINT").unwrap(),
+            TransactionType::Mint
+        );
+        assert_eq!(
+            TransactionType::from_str("mint").unwrap(),
+            TransactionType::Mint
+        );
+        assert_eq!(
+            TransactionType::from_str("Mint").unwrap(),
+            TransactionType::Mint
+        );
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(TransactionType::Mint.to_string(), "mint");
+        assert_eq!(TransactionType::Create.to_string(), "create");
+        assert_eq!(TransactionType::Script.to_string(), "script");
     }
 }

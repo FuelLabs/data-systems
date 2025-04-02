@@ -4,13 +4,7 @@ use crate::{
     impl_utoipa_for_integer_wrapper,
 };
 
-#[derive(thiserror::Error, Debug)]
-pub enum BlockHeightError {
-    #[error("Failed to parse to block_height: {0}")]
-    InvalidFormat(String),
-}
-
-declare_integer_wrapper!(BlockHeight, u64, BlockHeightError);
+declare_integer_wrapper!(BlockHeight, u64);
 
 impl_utoipa_for_integer_wrapper!(
     BlockHeight,

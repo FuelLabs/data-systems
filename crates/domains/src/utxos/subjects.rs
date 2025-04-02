@@ -3,7 +3,6 @@ use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
 use super::{types::*, UtxosQuery};
-use crate::inputs::InputType;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "utxos")]

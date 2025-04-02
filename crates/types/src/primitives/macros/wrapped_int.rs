@@ -1,5 +1,11 @@
 use crate::impl_utoipa_for_integer_wrapper;
 
+#[derive(thiserror::Error, Debug)]
+pub enum WrappedIntError {
+    #[error("Invalid format: {0}")]
+    InvalidFormat(String),
+}
+
 #[macro_export]
 macro_rules! impl_conversions {
     ($name:ident, $inner_type:ty, $($t:ty),*) => {
@@ -36,7 +42,7 @@ macro_rules! impl_conversions {
 
 #[macro_export]
 macro_rules! declare_integer_wrapper {
-    ($name:ident, $inner_type:ty, $error:ty) => {
+    ($name:ident, $inner_type:ty) => {
         #[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
         pub struct $name($inner_type);
 
@@ -88,24 +94,24 @@ macro_rules! declare_integer_wrapper {
         }
 
         impl TryFrom<&str> for $name {
-            type Error = $error;
+            type Error = $crate::WrappedIntError;
             fn try_from(s: &str) -> Result<Self, Self::Error> {
-                let value = s
-                    .parse::<$inner_type>()
-                    .map_err(|_| <$error>::InvalidFormat(s.to_string()))?;
+                let value = s.parse::<$inner_type>().map_err(|_| {
+                    $crate::WrappedIntError::InvalidFormat(s.to_string())
+                })?;
                 Ok($name(value))
             }
         }
 
         impl TryFrom<String> for $name {
-            type Error = $error;
+            type Error = $crate::WrappedIntError;
             fn try_from(s: String) -> Result<Self, Self::Error> {
                 s.as_str().try_into()
             }
         }
 
         impl std::str::FromStr for $name {
-            type Err = $error;
+            type Err = $crate::WrappedIntError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 s.try_into()
             }
@@ -274,14 +280,8 @@ macro_rules! declare_integer_wrapper {
     };
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum WrappedIntError {
-    #[error("Invalid format: {0}")]
-    InvalidFormat(String),
-}
-
-declare_integer_wrapper!(WrappedU32, u32, WrappedIntError);
-declare_integer_wrapper!(WrappedU64, u64, WrappedIntError);
+declare_integer_wrapper!(WrappedU32, u32);
+declare_integer_wrapper!(WrappedU64, u64);
 
 impl_utoipa_for_integer_wrapper!(
     WrappedU32,

@@ -58,11 +58,11 @@ pub enum Consensus {
     PoAConsensus(PoAConsensus),
 }
 
-impl From<&Consensus> for DbConsensusType {
+impl From<&Consensus> for ConsensusType {
     fn from(consensus: &Consensus) -> Self {
         match consensus {
-            Consensus::Genesis(_) => DbConsensusType::Genesis,
-            Consensus::PoAConsensus(_) => DbConsensusType::PoaConsensus,
+            Consensus::Genesis(_) => ConsensusType::Genesis,
+            Consensus::PoAConsensus(_) => ConsensusType::PoaConsensus,
         }
     }
 }
@@ -72,7 +72,7 @@ impl Consensus {
     pub fn normalize_all(
         &self,
     ) -> (
-        Option<DbConsensusType>,
+        Option<ConsensusType>,
         Option<Bytes32>,
         Option<Bytes32>,
         Option<Bytes32>,

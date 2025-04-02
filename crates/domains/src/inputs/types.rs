@@ -217,41 +217,6 @@ impl InputMessage {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum InputType {
-    Contract,
-    Coin,
-    Message,
-}
-
-impl InputType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            InputType::Contract => "contract",
-            InputType::Coin => "coin",
-            InputType::Message => "message",
-        }
-    }
-}
-
-impl std::fmt::Display for InputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for InputType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "contract" => Ok(InputType::Contract),
-            "coin" => Ok(InputType::Coin),
-            "message" => Ok(InputType::Message),
-            _ => Err(format!("Invalid input type: {}", s)),
-        }
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockInput;

@@ -27,6 +27,6 @@ pub trait DbItem:
     fn subject_str(&self) -> String;
     fn subject_id(&self) -> String;
     fn created_at(&self) -> BlockTimestamp;
-    fn published_at(&self) -> BlockTimestamp;
+    fn block_time(&self) -> BlockTimestamp;
     fn block_height(&self) -> BlockHeight;
 }
