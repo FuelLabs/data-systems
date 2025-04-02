@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use fuel_core_types::fuel_types;
-use fuel_streams_subject::subject::IntoSubject;
-use fuel_streams_types::{ContractId, TxId};
+use fuel_streams_types::{BlockTimestamp, ContractId, TxId};
 use rayon::prelude::*;
 
-use super::{subjects::*, types::*};
+use super::{subjects::*, types::*, UtxosQuery};
 use crate::{
     blocks::BlockHeight,
     infra::record::{PacketBuilder, RecordPacket, ToPacket},
@@ -26,16 +25,15 @@ impl PacketBuilder for Utxo {
             .par_iter()
             .enumerate()
             .map(|(input_index, input)| {
-                let subject = DynUtxoSubject::from((
+                let subject = DynUtxoSubject::new(
                     input,
                     msg_payload.block_height(),
                     tx_id.clone(),
-                    *tx_index as u32,
-                    input_index as u32,
-                ));
+                    *tx_index as i32,
+                    input_index as i32,
+                );
                 let timestamp = msg_payload.timestamp();
-                let packet =
-                    subject.utxo().to_packet(subject.subject(), timestamp);
+                let packet = subject.build_packet(timestamp);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -45,17 +43,19 @@ impl PacketBuilder for Utxo {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct DynUtxoSubject(Utxo, Arc<dyn IntoSubject>);
-impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
-    fn from(
-        (input, block_height, tx_id, tx_index, input_index): (
-            &Input,
-            BlockHeight,
-            TxId,
-            u32,
-            u32,
-        ),
+pub enum DynUtxoSubject {
+    Contract(Utxo, UtxosSubject),
+    Coin(Utxo, UtxosSubject),
+    Message(Utxo, UtxosSubject),
+}
+
+impl DynUtxoSubject {
+    pub fn new(
+        input: &Input,
+        block_height: BlockHeight,
+        tx_id: TxId,
+        tx_index: i32,
+        input_index: i32,
     ) -> Self {
         match input {
             Input::Contract(InputContract {
@@ -80,9 +80,8 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     utxo_type: Some(UtxoType::Contract),
                     utxo_id: Some(utxo_id.into()),
                     contract_id: Some(contract_id_wrapped),
-                }
-                .arc();
-                DynUtxoSubject(utxo, subject)
+                };
+                Self::Contract(utxo, subject)
             }
             Input::Coin(InputCoin {
                 utxo_id, amount, ..
@@ -101,9 +100,8 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     utxo_type: Some(UtxoType::Coin),
                     utxo_id: Some(utxo_id.into()),
                     ..Default::default()
-                }
-                .arc();
-                DynUtxoSubject(utxo, subject)
+                };
+                Self::Coin(utxo, subject)
             }
             Input::Message(
                 input @ InputMessage {
@@ -134,20 +132,34 @@ impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynUtxoSubject {
                     utxo_type: Some(UtxoType::Message),
                     utxo_id: Some(utxo_id.into()),
                     ..Default::default()
-                }
-                .arc();
-                DynUtxoSubject(utxo, subject)
+                };
+                Self::Message(utxo, subject)
             }
         }
     }
-}
 
-impl DynUtxoSubject {
-    pub fn utxo(&self) -> &Utxo {
-        &self.0
+    pub fn build_packet(
+        &self,
+        block_timestamp: BlockTimestamp,
+    ) -> RecordPacket {
+        match self {
+            Self::Contract(utxo, subject) => {
+                utxo.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+            Self::Coin(utxo, subject) => {
+                utxo.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+            Self::Message(utxo, subject) => {
+                utxo.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+        }
     }
 
-    pub fn subject(&self) -> &Arc<dyn IntoSubject> {
-        &self.1
+    pub fn to_query_params(&self) -> UtxosQuery {
+        match self {
+            Self::Contract(_, subject) => UtxosQuery::from(subject.clone()),
+            Self::Coin(_, subject) => UtxosQuery::from(subject.clone()),
+            Self::Message(_, subject) => UtxosQuery::from(subject.clone()),
+        }
     }
 }

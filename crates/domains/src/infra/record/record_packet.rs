@@ -23,9 +23,9 @@ pub trait PacketBuilder: Send + Sync + 'static {
 }
 
 pub trait ToPacket: DataEncoder {
-    fn to_packet(
+    fn to_packet<S: IntoSubject + 'static>(
         &self,
-        subject: &Arc<dyn IntoSubject>,
+        subject: &Arc<S>,
         block_timestamp: BlockTimestamp,
     ) -> RecordPacket {
         let value = self.encode_json().unwrap_or_else(|_| {

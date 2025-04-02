@@ -11,6 +11,7 @@ CREATE INDEX IF NOT EXISTS idx_predicates_created_at ON predicates (created_at);
 CREATE INDEX IF NOT EXISTS idx_predicates_published_at ON predicates (published_at);
 
 CREATE TABLE IF NOT EXISTS predicate_transactions (
+    cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}
     subject TEXT UNIQUE NOT NULL,
     predicate_id INTEGER REFERENCES predicates(id),
     block_height BIGINT NOT NULL,
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS predicate_transactions (
     PRIMARY KEY (predicate_id, tx_id, input_index)
 );
 
+CREATE INDEX IF NOT EXISTS idx_predicate_transactions_cursor ON predicate_transactions (cursor);
 CREATE INDEX IF NOT EXISTS idx_predicate_transactions_predicate_id ON predicate_transactions (predicate_id);
 CREATE INDEX IF NOT EXISTS idx_predicate_transactions_block_height ON predicate_transactions (block_height);
 CREATE INDEX IF NOT EXISTS idx_predicate_transactions_tx_id ON predicate_transactions (tx_id);

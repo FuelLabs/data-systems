@@ -12,7 +12,7 @@ use crate::infra::{
 pub struct PredicatesQuery {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     pub input_index: Option<i32>,
     pub blob_id: Option<HexData>,
     pub predicate_address: Option<Address>,
@@ -59,67 +59,49 @@ impl QueryParamsBuilder for PredicatesQuery {
         );
 
         if let Some(block_height) = &self.block_height {
-            conditions.push("pt.block_height = ");
-            query_builder.push_bind(*block_height);
-            query_builder.push(" ");
+            conditions.push(format!("pt.block_height = {}", block_height));
         }
 
         if let Some(tx_id) = &self.tx_id {
-            conditions.push("pt.tx_id = ");
-            query_builder.push_bind(tx_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("pt.tx_id = '{}'", tx_id));
         }
 
         if let Some(tx_index) = &self.tx_index {
-            conditions.push("pt.tx_index = ");
-            query_builder.push_bind(*tx_index as i32);
-            query_builder.push(" ");
+            conditions.push(format!("pt.tx_index = {}", tx_index));
         }
 
         if let Some(input_index) = &self.input_index {
-            conditions.push("pt.input_index = ");
-            query_builder.push_bind(*input_index);
-            query_builder.push(" ");
+            conditions.push(format!("pt.input_index = {}", input_index));
         }
 
         if let Some(blob_id) = &self.blob_id {
-            conditions.push("p.blob_id = ");
-            query_builder.push_bind(blob_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("p.blob_id = '{}'", blob_id));
         }
 
         if let Some(predicate_address) = &self.predicate_address {
-            conditions.push("p.predicate_address = ");
-            query_builder.push_bind(predicate_address.to_string());
-            query_builder.push(" ");
+            conditions
+                .push(format!("p.predicate_address = '{}'", predicate_address));
         }
 
         if let Some(asset) = &self.asset {
-            conditions.push("pt.asset_id = ");
-            query_builder.push_bind(asset.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("pt.asset_id = '{}'", asset));
         }
 
-        let options = &self.options;
-        if let Some(from_block) = options.from_block {
-            conditions.push("pt.block_height >= ");
-            query_builder.push_bind(from_block);
-            query_builder.push(" ");
-        }
-        #[cfg(any(test, feature = "test-helpers"))]
-        if let Some(ns) = &options.namespace {
-            conditions.push("pt.subject LIKE ");
-            query_builder.push_bind(format!("{}%", ns));
-            query_builder.push(" ");
-        }
+        Self::apply_conditions(
+            &mut query_builder,
+            &mut conditions,
+            &self.options,
+            &self.pagination,
+            "cursor",
+            Some("pt."),
+        );
 
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        self.pagination
-            .apply_on_query(&mut query_builder, "pt.block_height");
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            "cursor",
+            Some("pt."),
+        );
 
         query_builder
     }

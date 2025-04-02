@@ -44,8 +44,6 @@ impl From<BlocksSubject> for BlocksQuery {
         Self {
             producer: subject.producer.clone(),
             height: subject.height,
-            timestamp: None,
-            time_range: None,
             ..Default::default()
         }
     }

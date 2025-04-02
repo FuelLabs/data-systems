@@ -53,7 +53,7 @@ pub async fn recover_blob_transactions(
 
                     for (tx_index, tx) in blob_txs.clone().enumerate() {
                         let packets =
-                            main_tx_packet(&msg_payload, tx, tx_index);
+                            main_tx_packet(&msg_payload, tx, tx_index as i32);
                         let packet = packets.first();
                         if let Some(packet) = packet {
                             let db_item = TransactionDbItem::try_from(packet)?;

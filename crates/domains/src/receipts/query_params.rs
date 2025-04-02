@@ -21,7 +21,7 @@ use crate::infra::{
 #[serde(rename_all = "camelCase")]
 pub struct ReceiptsQuery {
     pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     pub receipt_index: Option<i32>,
     pub receipt_type: Option<ReceiptType>,
     pub block_height: Option<BlockHeight>,
@@ -88,105 +88,76 @@ impl QueryParamsBuilder for ReceiptsQuery {
         query_builder.push("SELECT * FROM receipts");
 
         if let Some(tx_id) = &self.tx_id {
-            conditions.push("tx_id = ");
-            query_builder.push_bind(tx_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("tx_id = '{}'", tx_id));
         }
 
         if let Some(tx_index) = &self.tx_index {
-            conditions.push("tx_index = ");
-            query_builder.push_bind(*tx_index as i32);
-            query_builder.push(" ");
+            conditions.push(format!("tx_index = {}", tx_index));
         }
 
         if let Some(receipt_index) = &self.receipt_index {
-            conditions.push("receipt_index = ");
-            query_builder.push_bind(*receipt_index);
-            query_builder.push(" ");
+            conditions.push(format!("receipt_index = {}", receipt_index));
         }
 
         if let Some(receipt_type) = &self.receipt_type {
-            conditions.push("receipt_type = ");
-            query_builder.push_bind(receipt_type.to_string()); // Use string representation
-            query_builder.push(" ");
+            conditions.push(format!("receipt_type = '{}'", receipt_type));
         }
 
         if let Some(block_height) = &self.block_height {
-            conditions.push("block_height = ");
-            query_builder.push_bind(*block_height);
-            query_builder.push(" ");
+            conditions.push(format!("block_height = {}", block_height));
         }
 
         if let Some(from) = &self.from {
-            conditions.push("from_contract_id = ");
-            query_builder.push_bind(from.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("from_contract_id = '{}'", from));
         }
 
         if let Some(to) = &self.to {
-            conditions.push("to_contract_id = ");
-            query_builder.push_bind(to.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("to_contract_id = '{}'", to));
         }
 
         if let Some(contract) = &self.contract {
-            conditions.push("contract_id = ");
-            query_builder.push_bind(contract.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("contract_id = '{}'", contract));
         }
 
         if let Some(asset) = &self.asset {
-            conditions.push("asset_id = ");
-            query_builder.push_bind(asset.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("asset_id = '{}'", asset));
         }
 
         if let Some(sender) = &self.sender {
-            conditions.push("sender_address = ");
-            query_builder.push_bind(sender.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("sender_address = '{}'", sender));
         }
 
         if let Some(recipient) = &self.recipient {
-            conditions.push("recipient_address = ");
-            query_builder.push_bind(recipient.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("recipient_address = '{}'", recipient));
         }
 
         if let Some(sub_id) = &self.sub_id {
-            conditions.push("sub_id = ");
-            query_builder.push_bind(sub_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("sub_id = '{}'", sub_id));
         }
 
         if let Some(address) = &self.address {
-            conditions.push("(sender_address = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(" OR recipient_address = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(") ");
+            let addr_str = address.to_string();
+            conditions.push(format!(
+                "(sender_address = '{}' OR recipient_address = '{}')",
+                addr_str, addr_str
+            ));
         }
 
-        let options = &self.options;
-        if let Some(from_block) = options.from_block {
-            conditions.push("block_height >= ");
-            query_builder.push_bind(from_block);
-            query_builder.push(" ");
-        }
-        #[cfg(any(test, feature = "test-helpers"))]
-        if let Some(ns) = &options.namespace {
-            conditions.push("subject LIKE ");
-            query_builder.push_bind(format!("{}%", ns));
-            query_builder.push(" ");
-        }
+        Self::apply_conditions(
+            &mut query_builder,
+            &mut conditions,
+            &self.options,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        self.pagination
-            .apply_on_query(&mut query_builder, "block_height");
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
         query_builder
     }

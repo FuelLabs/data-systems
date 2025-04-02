@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_subject::subject::IntoSubject;
-use fuel_streams_types::TxId;
+use fuel_streams_types::{BlockTimestamp, TxId};
 use rayon::prelude::*;
 
-use super::{subjects::*, Input};
+use super::{subjects::*, Input, InputsQuery};
 use crate::{
     blocks::BlockHeight,
     infra::record::{PacketBuilder, RecordPacket, ToPacket},
@@ -20,20 +19,20 @@ impl PacketBuilder for Input {
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
+        let block_height = msg_payload.block_height();
+        let timestamps = msg_payload.timestamp();
         tx.inputs
             .par_iter()
             .enumerate()
             .map(move |(input_index, input)| {
-                let subject = DynInputSubject::from((
+                let subject = DynInputSubject::new(
                     input,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.clone(),
-                    *tx_index as u32,
-                    input_index as u32,
-                ));
-
-                let timestamps = msg_payload.timestamp();
-                let packet = input.to_packet(&subject.into(), timestamps);
+                    *tx_index as i32,
+                    input_index as i32,
+                );
+                let packet = subject.build_packet(input, timestamps);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -43,50 +42,72 @@ impl PacketBuilder for Input {
     }
 }
 
-pub struct DynInputSubject(Arc<dyn IntoSubject>);
-impl From<(&Input, BlockHeight, TxId, u32, u32)> for DynInputSubject {
-    fn from(
-        (input, block_height, tx_id, tx_index, input_index): (
-            &Input,
-            BlockHeight,
-            TxId,
-            u32,
-            u32,
-        ),
+pub enum DynInputSubject {
+    Contract(InputsContractSubject),
+    Coin(InputsCoinSubject),
+    Message(InputsMessageSubject),
+}
+
+impl DynInputSubject {
+    pub fn new(
+        input: &Input,
+        block_height: BlockHeight,
+        tx_id: TxId,
+        tx_index: i32,
+        input_index: i32,
     ) -> Self {
-        DynInputSubject(match input {
-            Input::Contract(contract) => InputsContractSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                input_index: Some(input_index),
-                contract: Some(contract.contract_id.to_owned().into()),
+        match input {
+            Input::Contract(contract) => {
+                Self::Contract(InputsContractSubject {
+                    block_height: Some(block_height),
+                    tx_id: Some(tx_id),
+                    tx_index: Some(tx_index),
+                    input_index: Some(input_index),
+                    contract: Some(contract.contract_id.to_owned().into()),
+                })
             }
-            .arc(),
-            Input::Coin(coin) => InputsCoinSubject {
+            Input::Coin(coin) => Self::Coin(InputsCoinSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 input_index: Some(input_index),
                 owner: Some(coin.owner.to_owned()),
                 asset: Some(coin.asset_id.to_owned()),
-            }
-            .arc(),
-            Input::Message(message) => InputsMessageSubject {
+            }),
+            Input::Message(message) => Self::Message(InputsMessageSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 input_index: Some(input_index),
                 sender: Some(message.sender.to_owned()),
                 recipient: Some(message.recipient.to_owned()),
-            }
-            .arc(),
-        })
+            }),
+        }
     }
-}
 
-impl From<DynInputSubject> for Arc<dyn IntoSubject> {
-    fn from(subject: DynInputSubject) -> Self {
-        subject.0
+    pub fn build_packet(
+        &self,
+        input: &Input,
+        block_timestamp: BlockTimestamp,
+    ) -> RecordPacket {
+        match self {
+            Self::Contract(subject) => {
+                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+            Self::Coin(subject) => {
+                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+            Self::Message(subject) => {
+                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+        }
+    }
+
+    pub fn to_query_params(&self) -> InputsQuery {
+        match self {
+            Self::Contract(subject) => InputsQuery::from(subject.to_owned()),
+            Self::Coin(subject) => InputsQuery::from(subject.to_owned()),
+            Self::Message(subject) => InputsQuery::from(subject.to_owned()),
+        }
     }
 }

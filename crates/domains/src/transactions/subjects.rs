@@ -22,7 +22,7 @@ pub struct TransactionsSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The status of the transaction (success, failure, or submitted)"
     )]
@@ -46,7 +46,7 @@ impl From<TransactionsSubject> for TransactionsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             tx_status: subject.tx_status.clone(),
             tx_type: subject.tx_type.clone(),
             ..Default::default()

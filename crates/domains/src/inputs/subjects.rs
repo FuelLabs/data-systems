@@ -22,9 +22,9 @@ pub struct InputsCoinSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this input within the transaction")]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
     #[subject(
         sql_column = "owner_id",
         description = "The address of the coin owner (32 byte string prefixed by 0x)"
@@ -55,9 +55,9 @@ pub struct InputsContractSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this input within the transaction")]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract being called (32 byte string prefixed by 0x)"
@@ -83,9 +83,9 @@ pub struct InputsMessageSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this input within the transaction")]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
     #[subject(
         sql_column = "sender_address",
         description = "The address that sent the message (32 byte string prefixed by 0x)"
@@ -116,9 +116,9 @@ pub struct InputsSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this input within the transaction")]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
 }
 
 impl From<InputsCoinSubject> for InputsQuery {
@@ -126,7 +126,7 @@ impl From<InputsCoinSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             input_index: subject.input_index.map(|i| i as i32),
             input_type: Some(InputType::Coin),
             owner_id: subject.owner.clone(),
@@ -141,7 +141,7 @@ impl From<InputsContractSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             input_index: subject.input_index.map(|i| i as i32),
             input_type: Some(InputType::Contract),
             contract_id: subject.contract.clone(),
@@ -155,7 +155,7 @@ impl From<InputsMessageSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             input_index: subject.input_index.map(|i| i as i32),
             input_type: Some(InputType::Message),
             sender_address: subject.sender.clone(),
@@ -170,7 +170,7 @@ impl From<InputsSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             input_index: subject.input_index.map(|i| i as i32),
             input_type: subject.input_type.clone(),
             ..Default::default()

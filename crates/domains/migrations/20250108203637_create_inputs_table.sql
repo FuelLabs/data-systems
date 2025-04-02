@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS inputs (
     id SERIAL PRIMARY KEY,
-    value BYTEA NOT NULL,
+    cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}
     subject TEXT NOT NULL UNIQUE,
+    value BYTEA NOT NULL,
     block_height BIGINT NOT NULL,
     tx_id TEXT NOT NULL,
     tx_index INTEGER NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS inputs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_inputs_subject ON inputs (subject);
+CREATE INDEX IF NOT EXISTS idx_transactions_cursor ON transactions (cursor);
 CREATE INDEX IF NOT EXISTS idx_inputs_block_height ON inputs (block_height);
 CREATE INDEX IF NOT EXISTS idx_inputs_tx_id ON inputs (tx_id);
 CREATE INDEX IF NOT EXISTS idx_inputs_tx_index ON inputs (tx_index);

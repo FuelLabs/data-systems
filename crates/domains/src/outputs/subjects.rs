@@ -23,9 +23,9 @@ pub struct OutputsCoinSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the coin output (32 byte string prefixed by 0x)"
@@ -56,9 +56,9 @@ pub struct OutputsContractSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract (32 byte string prefixed by 0x)"
@@ -84,9 +84,9 @@ pub struct OutputsChangeSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the change output (32 byte string prefixed by 0x)"
@@ -117,9 +117,9 @@ pub struct OutputsVariableSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the variable output (32 byte string prefixed by 0x)"
@@ -150,9 +150,9 @@ pub struct OutputsContractCreatedSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the created contract (32 byte string prefixed by 0x)"
@@ -180,9 +180,9 @@ pub struct OutputsSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
 }
 
 impl From<OutputsCoinSubject> for OutputsQuery {
@@ -190,7 +190,7 @@ impl From<OutputsCoinSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             output_index: subject.output_index.map(|i| i as i32),
             output_type: Some(OutputType::Coin),
             to_address: subject.to.clone(),
@@ -206,7 +206,7 @@ impl From<OutputsContractSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             output_index: subject.output_index.map(|i| i as i32),
             output_type: Some(OutputType::Contract),
             contract_id: subject.contract.clone(),
@@ -221,7 +221,7 @@ impl From<OutputsChangeSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             output_index: subject.output_index.map(|i| i as i32),
             output_type: Some(OutputType::Change),
             to_address: subject.to.clone(),
@@ -237,7 +237,7 @@ impl From<OutputsVariableSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             output_index: subject.output_index.map(|i| i as i32),
             output_type: Some(OutputType::Variable),
             to_address: subject.to.clone(),
@@ -253,7 +253,7 @@ impl From<OutputsContractCreatedSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             output_index: subject.output_index.map(|i| i as i32),
             output_type: Some(OutputType::ContractCreated),
             contract_id: subject.contract.clone(),

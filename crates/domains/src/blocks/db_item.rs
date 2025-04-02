@@ -14,6 +14,7 @@ use crate::{
             RecordPacketError,
             RecordPointer,
         },
+        Cursor,
         DbError,
     },
     Subjects,
@@ -36,6 +37,10 @@ pub struct BlockDbItem {
 impl DataEncoder for BlockDbItem {}
 
 impl DbItem for BlockDbItem {
+    fn cursor(&self) -> crate::infra::Cursor {
+        Cursor::new(&[&self.block_height])
+    }
+
     fn entity(&self) -> &RecordEntity {
         &RecordEntity::Block
     }

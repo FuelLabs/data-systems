@@ -14,7 +14,7 @@ use crate::infra::{
 #[serde(rename_all = "camelCase")]
 pub struct InputsQuery {
     pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     pub input_index: Option<i32>,
     pub input_type: Option<InputType>,
     pub block_height: Option<BlockHeight>,
@@ -83,95 +83,70 @@ impl QueryParamsBuilder for InputsQuery {
         query_builder.push("SELECT * FROM inputs");
 
         if let Some(tx_id) = &self.tx_id {
-            conditions.push("tx_id = ");
-            query_builder.push_bind(tx_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("tx_id = '{}'", tx_id));
         }
 
         if let Some(tx_index) = &self.tx_index {
-            conditions.push("tx_index = ");
-            query_builder.push_bind(*tx_index as i32);
-            query_builder.push(" ");
+            conditions.push(format!("tx_index = {}", tx_index));
         }
 
         if let Some(input_index) = &self.input_index {
-            conditions.push("input_index = ");
-            query_builder.push_bind(*input_index);
-            query_builder.push(" ");
+            conditions.push(format!("input_index = {}", input_index));
         }
 
         if let Some(input_type) = &self.input_type {
-            conditions.push("input_type = ");
-            query_builder.push_bind(input_type.to_string()); // Use string representation
-            query_builder.push(" ");
+            conditions.push(format!("input_type = '{}'", input_type));
         }
 
         if let Some(block_height) = &self.block_height {
-            conditions.push("block_height = ");
-            query_builder.push_bind(*block_height);
-            query_builder.push(" ");
+            conditions.push(format!("block_height = {}", block_height));
         }
 
         if let Some(owner_id) = &self.owner_id {
-            conditions.push("owner_id = ");
-            query_builder.push_bind(owner_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("owner_id = '{}'", owner_id));
         }
 
         if let Some(asset_id) = &self.asset_id {
-            conditions.push("asset_id = ");
-            query_builder.push_bind(asset_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("asset_id = '{}'", asset_id));
         }
 
         if let Some(contract_id) = &self.contract_id {
-            conditions.push("contract_id = ");
-            query_builder.push_bind(contract_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("contract_id = '{}'", contract_id));
         }
 
         if let Some(sender_address) = &self.sender_address {
-            conditions.push("sender_address = ");
-            query_builder.push_bind(sender_address.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("sender_address = '{}'", sender_address));
         }
 
         if let Some(recipient_address) = &self.recipient_address {
-            conditions.push("recipient_address = ");
-            query_builder.push_bind(recipient_address.to_string());
-            query_builder.push(" ");
+            conditions
+                .push(format!("recipient_address = '{}'", recipient_address));
         }
 
         if let Some(address) = &self.address {
-            conditions.push("(owner_id = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(" OR sender_address = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(" OR recipient_address = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(") ");
+            conditions.push(format!(
+                "(owner_id = '{}' OR sender_address = '{}' OR recipient_address = '{}')",
+                address,
+                address,
+                address
+            ));
         }
 
-        let options = &self.options;
-        if let Some(from_block) = options.from_block {
-            conditions.push("block_height >= ");
-            query_builder.push_bind(from_block);
-            query_builder.push(" ");
-        }
-        #[cfg(any(test, feature = "test-helpers"))]
-        if let Some(ns) = &options.namespace {
-            conditions.push("subject LIKE ");
-            query_builder.push_bind(format!("{}%", ns));
-            query_builder.push(" ");
-        }
+        Self::apply_conditions(
+            &mut query_builder,
+            &mut conditions,
+            &self.options,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        self.pagination
-            .apply_on_query(&mut query_builder, "block_height");
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
         query_builder
     }

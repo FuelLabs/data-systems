@@ -14,7 +14,7 @@ use crate::infra::{
 #[serde(rename_all = "camelCase")]
 pub struct OutputsQuery {
     pub tx_id: Option<TxId>,
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     pub output_index: Option<i32>,
     pub output_type: Option<OutputType>,
     pub block_height: Option<BlockHeight>,
@@ -81,81 +81,56 @@ impl QueryParamsBuilder for OutputsQuery {
         query_builder.push("SELECT * FROM outputs");
 
         if let Some(tx_id) = &self.tx_id {
-            conditions.push("tx_id = ");
-            query_builder.push_bind(tx_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("tx_id = '{}'", tx_id));
         }
 
         if let Some(tx_index) = &self.tx_index {
-            conditions.push("tx_index = ");
-            query_builder.push_bind(*tx_index as i32);
-            query_builder.push(" ");
+            conditions.push(format!("tx_index = {}", tx_index));
         }
 
         if let Some(output_index) = &self.output_index {
-            conditions.push("output_index = ");
-            query_builder.push_bind(*output_index);
-            query_builder.push(" ");
+            conditions.push(format!("output_index = {}", output_index));
         }
 
         if let Some(output_type) = &self.output_type {
-            conditions.push("output_type = ");
-            query_builder.push_bind(output_type.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("output_type = '{}'", output_type));
         }
 
         if let Some(block_height) = &self.block_height {
-            conditions.push("block_height = ");
-            query_builder.push_bind(*block_height);
-            query_builder.push(" ");
+            conditions.push(format!("block_height = {}", block_height));
         }
 
         if let Some(to_address) = &self.to_address {
-            conditions.push("to_address = ");
-            query_builder.push_bind(to_address.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("to_address = '{}'", to_address));
         }
 
         if let Some(asset_id) = &self.asset_id {
-            conditions.push("asset_id = ");
-            query_builder.push_bind(asset_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("asset_id = '{}'", asset_id));
         }
 
         if let Some(contract_id) = &self.contract_id {
-            conditions.push("contract_id = ");
-            query_builder.push_bind(contract_id.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("contract_id = '{}'", contract_id));
         }
 
         if let Some(address) = &self.address {
-            conditions.push("to_address = ");
-            query_builder.push_bind(address.to_string());
-            query_builder.push(" ");
+            conditions.push(format!("to_address = '{}'", address));
         }
 
-        // Apply QueryOptions filters
-        let options = &self.options;
-        if let Some(from_block) = options.from_block {
-            conditions.push("block_height >= ");
-            query_builder.push_bind(from_block);
-            query_builder.push(" ");
-        }
-        #[cfg(any(test, feature = "test-helpers"))]
-        if let Some(ns) = &options.namespace {
-            conditions.push("subject LIKE ");
-            query_builder.push_bind(format!("{}%", ns));
-            query_builder.push(" ");
-        }
+        Self::apply_conditions(
+            &mut query_builder,
+            &mut conditions,
+            &self.options,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
-        if !conditions.is_empty() {
-            query_builder.push(" WHERE ");
-            query_builder.push(conditions.join(" AND "));
-        }
-
-        // Apply pagination using block_height as cursor
-        self.pagination
-            .apply_on_query(&mut query_builder, "block_height");
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            "cursor",
+            None,
+        );
 
         query_builder
     }

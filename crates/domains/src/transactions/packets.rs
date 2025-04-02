@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use rayon::prelude::*;
 
-use super::{subjects::*, Transaction};
+use super::{subjects::*, Transaction, TransactionsQuery};
 use crate::{
     infra::record::{PacketBuilder, RecordPacket, ToPacket},
     inputs::Input,
@@ -24,7 +27,8 @@ impl PacketBuilder for Transaction {
             .flat_map_iter(|(tx_index, tx)| {
                 let sub_items_params =
                     (msg_payload.clone(), tx_index, tx.to_owned());
-                let tx_packet = main_tx_packet(msg_payload, tx, tx_index);
+                let tx_packet =
+                    main_tx_packet(msg_payload, tx, tx_index as i32);
                 let input_packets = Input::build_packets(&sub_items_params);
                 let output_packets = Output::build_packets(&sub_items_params);
                 let receipt_packets = Receipt::build_packets(&sub_items_params);
@@ -43,23 +47,57 @@ impl PacketBuilder for Transaction {
     }
 }
 
+pub enum DynTransactionSubject {
+    Transaction(TransactionsSubject),
+}
+
+impl DynTransactionSubject {
+    pub fn new(
+        tx: &Transaction,
+        block_height: BlockHeight,
+        tx_index: i32,
+    ) -> Self {
+        let tx_id = tx.id.clone();
+        let tx_status = tx.status.clone();
+        Self::Transaction(TransactionsSubject {
+            block_height: Some(block_height),
+            tx_index: Some(tx_index),
+            tx_id: Some(tx_id),
+            tx_status: Some(tx_status),
+            tx_type: Some(tx.tx_type.to_owned()),
+        })
+    }
+
+    pub fn build_packet(
+        &self,
+        tx: &Transaction,
+        block_timestamp: BlockTimestamp,
+    ) -> RecordPacket {
+        match self {
+            Self::Transaction(subject) => {
+                tx.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+        }
+    }
+
+    pub fn to_query_params(&self) -> TransactionsQuery {
+        match self {
+            Self::Transaction(subject) => {
+                TransactionsQuery::from(subject.to_owned())
+            }
+        }
+    }
+}
+
 pub fn main_tx_packet(
     msg_payload: &MsgPayload,
     tx: &Transaction,
-    tx_index: usize,
+    tx_index: i32,
 ) -> Vec<RecordPacket> {
-    let tx_id = tx.id.clone();
-    let tx_status = tx.status.clone();
-    let subject = TransactionsSubject {
-        block_height: Some(msg_payload.block_height()),
-        tx_index: Some(tx_index as u32),
-        tx_id: Some(tx_id.to_owned()),
-        tx_status: Some(tx_status),
-        tx_type: Some(tx.tx_type.to_owned()),
-    }
-    .dyn_arc();
+    let block_height = msg_payload.block_height();
+    let subject = DynTransactionSubject::new(tx, block_height, tx_index as i32);
     let timestamps = msg_payload.timestamp();
-    let packet = tx.to_packet(&subject, timestamps);
+    let packet = subject.build_packet(tx, timestamps);
     let packet = match msg_payload.namespace.clone() {
         Some(ns) => packet.with_namespace(&ns),
         _ => packet,

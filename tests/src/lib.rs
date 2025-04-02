@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 pub use fuel_core_helpers::*;
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_core::{stream::*, subjects::IntoSubject, types::Block};
+use fuel_streams_core::{stream::*, types::Block};
 use fuel_streams_domains::{
-    blocks::{subjects::BlocksSubject, types::MockBlock, BlockDbItem},
+    blocks::{packets::DynBlockSubject, types::MockBlock, BlockDbItem},
     infra::{
         db::{Db, DbConnectionOpts, DbResult, DbTransaction},
-        record::{RecordPacket, ToPacket},
+        record::RecordPacket,
         repository::Repository,
     },
     MockMsgPayload,
@@ -47,13 +47,18 @@ pub async fn setup_stream(
 pub fn create_record(
     height: u32,
     prefix: &str,
-) -> (Arc<dyn IntoSubject>, Block, RecordPacket) {
+) -> (DynBlockSubject, Block, RecordPacket) {
     let block = MockBlock::build(height);
-    let subject = BlocksSubject::from(&block);
-    let subject = subject.dyn_arc();
+    let subject = DynBlockSubject::new(
+        block.height,
+        block.producer.clone(),
+        &block.header.da_height,
+    );
     let msg_payload = MockMsgPayload::build(height, prefix);
     let timestamp = msg_payload.timestamp();
-    let packet = block.to_packet(&subject, timestamp).with_namespace(prefix);
+    let packet = subject
+        .build_packet(&block, timestamp)
+        .with_namespace(prefix);
     (subject, block, packet)
 }
 
@@ -61,7 +66,7 @@ pub fn create_multiple_records(
     count: usize,
     start_height: u32,
     prefix: &str,
-) -> Vec<(Arc<dyn IntoSubject>, Block, RecordPacket)> {
+) -> Vec<(DynBlockSubject, Block, RecordPacket)> {
     (0..count)
         .map(|idx| create_record(start_height + idx as u32, prefix))
         .collect()
@@ -70,7 +75,7 @@ pub fn create_multiple_records(
 pub async fn insert_records(
     db: &Arc<Db>,
     prefix: &str,
-    records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
+    records: &[(DynBlockSubject, Block, RecordPacket)],
 ) -> anyhow::Result<Vec<BlockDbItem>> {
     let mut final_records = vec![];
     for record in records {
@@ -85,7 +90,7 @@ pub async fn insert_records(
 pub async fn insert_records_with_transaction(
     tx: &mut DbTransaction,
     prefix: &str,
-    records: &[(Arc<dyn IntoSubject>, Block, RecordPacket)],
+    records: &[(DynBlockSubject, Block, RecordPacket)],
 ) -> anyhow::Result<()> {
     let mut final_records = vec![];
     for record in records {

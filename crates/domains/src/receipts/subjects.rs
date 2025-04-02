@@ -22,11 +22,11 @@ pub struct ReceiptsCallSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "from_contract_id",
         description = "The contract ID that initiated the call (32 byte string prefixed by 0x)"
@@ -62,11 +62,11 @@ pub struct ReceiptsReturnSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that returned (32 byte string prefixed by 0x)"
@@ -92,11 +92,11 @@ pub struct ReceiptsReturnDataSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that returned data (32 byte string prefixed by 0x)"
@@ -122,11 +122,11 @@ pub struct ReceiptsPanicSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that panicked (32 byte string prefixed by 0x)"
@@ -152,11 +152,11 @@ pub struct ReceiptsRevertSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that reverted (32 byte string prefixed by 0x)"
@@ -182,11 +182,11 @@ pub struct ReceiptsLogSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that emitted the log (32 byte string prefixed by 0x)"
@@ -212,11 +212,11 @@ pub struct ReceiptsLogDataSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that emitted the log data (32 byte string prefixed by 0x)"
@@ -242,11 +242,11 @@ pub struct ReceiptsTransferSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "from_contract_id",
         description = "The contract ID that initiated the transfer (32 byte string prefixed by 0x)"
@@ -282,11 +282,11 @@ pub struct ReceiptsTransferOutSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "from_contract_id",
         description = "The contract ID that initiated the transfer out (32 byte string prefixed by 0x)"
@@ -322,11 +322,11 @@ pub struct ReceiptsScriptResultSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
 }
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
@@ -347,11 +347,11 @@ pub struct ReceiptsMessageOutSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "sender_address",
         description = "The address that sent the message (32 byte string prefixed by 0x)"
@@ -382,11 +382,11 @@ pub struct ReceiptsMintSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that performed the mint (32 byte string prefixed by 0x)"
@@ -416,11 +416,11 @@ pub struct ReceiptsBurnSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract that performed the burn (32 byte string prefixed by 0x)"
@@ -450,11 +450,11 @@ pub struct ReceiptsSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this receipt within the transaction"
     )]
-    pub receipt_index: Option<u32>,
+    pub receipt_index: Option<i32>,
 }
 
 impl From<ReceiptsCallSubject> for ReceiptsQuery {
@@ -462,7 +462,7 @@ impl From<ReceiptsCallSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Call),
             from: subject.from.clone(),
@@ -478,7 +478,7 @@ impl From<ReceiptsReturnSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Return),
             contract: subject.contract.clone(),
@@ -492,7 +492,7 @@ impl From<ReceiptsReturnDataSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::ReturnData),
             contract: subject.contract.clone(),
@@ -506,7 +506,7 @@ impl From<ReceiptsPanicSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Panic),
             contract: subject.contract.clone(),
@@ -520,7 +520,7 @@ impl From<ReceiptsRevertSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Revert),
             contract: subject.contract.clone(),
@@ -534,7 +534,7 @@ impl From<ReceiptsLogSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Log),
             contract: subject.contract.clone(),
@@ -548,7 +548,7 @@ impl From<ReceiptsLogDataSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::LogData),
             contract: subject.contract.clone(),
@@ -562,7 +562,7 @@ impl From<ReceiptsTransferSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Transfer),
             from: subject.from.clone(),
@@ -578,7 +578,7 @@ impl From<ReceiptsTransferOutSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::TransferOut),
             from: subject.from.clone(),
@@ -594,7 +594,7 @@ impl From<ReceiptsScriptResultSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::ScriptResult),
             ..Default::default()
@@ -607,7 +607,7 @@ impl From<ReceiptsMessageOutSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::MessageOut),
             sender: subject.sender.clone(),
@@ -622,7 +622,7 @@ impl From<ReceiptsMintSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Mint),
             contract: subject.contract.clone(),
@@ -637,7 +637,7 @@ impl From<ReceiptsBurnSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: Some(ReceiptType::Burn),
             contract: subject.contract.clone(),
@@ -652,7 +652,7 @@ impl From<ReceiptsSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             receipt_index: subject.receipt_index.map(|i| i as i32),
             receipt_type: subject.receipt_type.clone(),
             ..Default::default()

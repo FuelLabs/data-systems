@@ -21,11 +21,11 @@ pub struct PredicatesSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(
         description = "The index of this input within the transaction that had this predicate"
     )]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
     #[subject(
         description = "The ID of the blob containing the predicate bytecode"
     )]
@@ -81,8 +81,8 @@ impl From<PredicatesSubject> for PredicatesQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index.map(|i| i as i32),
+            input_index: subject.input_index,
             blob_id: subject.blob_id.clone(),
             predicate_address: subject.predicate_address.clone(),
             asset: subject.asset.clone(),

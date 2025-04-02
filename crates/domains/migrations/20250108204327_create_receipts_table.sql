@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS receipts (
     id SERIAL PRIMARY KEY,
+    cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{receipt_index}
     subject TEXT NOT NULL UNIQUE,
     value BYTEA NOT NULL,
     block_height BIGINT NOT NULL,
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS receipts (
     published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_receipts_cursor ON receipts (cursor);
 CREATE INDEX IF NOT EXISTS idx_receipts_subject ON receipts (subject);
 CREATE INDEX IF NOT EXISTS idx_receipts_block_height ON receipts (block_height);
 CREATE INDEX IF NOT EXISTS idx_receipts_tx_id ON receipts (tx_id);

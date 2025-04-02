@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS outputs (
     id SERIAL PRIMARY KEY,
+    cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{output_index}
     subject TEXT NOT NULL UNIQUE,
     value BYTEA NOT NULL,
     block_height BIGINT NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS outputs (
     published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_outputs_cursor ON outputs (cursor);
 CREATE INDEX IF NOT EXISTS idx_outputs_subject ON outputs (subject);
 CREATE INDEX IF NOT EXISTS idx_outputs_block_height ON outputs (block_height);
 CREATE INDEX IF NOT EXISTS idx_outputs_tx_id ON outputs (tx_id);

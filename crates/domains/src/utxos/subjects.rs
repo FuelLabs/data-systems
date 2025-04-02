@@ -20,9 +20,9 @@ pub struct UtxosSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of the input within the transaction")]
-    pub input_index: Option<u32>,
+    pub input_index: Option<i32>,
     #[subject(description = "The type of UTXO (coin, message, or contract)")]
     pub utxo_type: Option<UtxoType>,
     #[subject(
@@ -41,7 +41,7 @@ impl From<UtxosSubject> for UtxosQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index,
+            tx_index: subject.tx_index.map(|i| i as i32),
             input_index: subject.input_index.map(|i| i as i32),
             utxo_type: subject.utxo_type.as_ref().map(|t| match t {
                 UtxoType::Coin => InputType::Coin,

@@ -6,8 +6,11 @@ use axum::{
 };
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    blocks::{BlocksQuery, TimeRange},
-    infra::repository::{Repository, ValidatedQuery},
+    blocks::BlocksQuery,
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        TimeRange,
+    },
     inputs::InputsQuery,
     outputs::OutputsQuery,
     receipts::ReceiptsQuery,

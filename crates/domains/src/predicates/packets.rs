@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_subject::subject::IntoSubject;
-use fuel_streams_types::{HexData, TxId};
+use fuel_streams_types::{BlockTimestamp, HexData, TxId};
 use rayon::prelude::*;
 
-use super::{subjects::*, Predicate};
+use super::{subjects::*, Predicate, PredicatesQuery};
 use crate::{
     blocks::BlockHeight,
     infra::record::{PacketBuilder, RecordPacket, ToPacket},
@@ -32,31 +31,30 @@ impl PacketBuilder for Predicate {
                     input,
                     &block_height,
                     &tx_id,
-                    *tx_index as u32,
-                    input_index as u32,
-                );
-                subject.map(|dyn_subject| {
-                    let predicate = dyn_subject.predicate().to_owned();
-                    let packet =
-                        predicate.to_packet(&dyn_subject.into(), timestamps);
-                    match msg_payload.namespace.clone() {
-                        Some(ns) => packet.with_namespace(&ns),
-                        _ => packet,
-                    }
+                    *tx_index as i32,
+                    input_index as i32,
+                )?;
+                let packet = subject.build_packet(timestamps);
+                Some(match msg_payload.namespace.clone() {
+                    Some(ns) => packet.with_namespace(&ns),
+                    _ => packet,
                 })
             })
             .collect()
     }
 }
 
-pub struct DynPredicateSubject(Arc<dyn IntoSubject>, Predicate);
+pub enum DynPredicateSubject {
+    Coin(PredicatesSubject, Predicate),
+}
+
 impl DynPredicateSubject {
     pub fn new(
         input: &Input,
         block_height: &BlockHeight,
         tx_id: &TxId,
-        tx_index: u32,
-        input_index: u32,
+        tx_index: i32,
+        input_index: i32,
     ) -> Option<Self> {
         match input {
             Input::Coin(coin) => {
@@ -79,19 +77,33 @@ impl DynPredicateSubject {
                     &coin.predicate,
                     &coin.asset_id,
                 );
-                Some(Self(subject.arc(), predicate))
+                Some(Self::Coin(subject, predicate))
             }
             _ => None,
         }
     }
 
-    pub fn predicate(&self) -> &Predicate {
-        &self.1
+    pub fn build_packet(
+        &self,
+        block_timestamp: BlockTimestamp,
+    ) -> RecordPacket {
+        match self {
+            Self::Coin(subject, predicate) => {
+                predicate.to_packet(&Arc::new(subject.clone()), block_timestamp)
+            }
+        }
     }
-}
-impl From<DynPredicateSubject> for Arc<dyn IntoSubject> {
-    fn from(subject: DynPredicateSubject) -> Self {
-        subject.0
+
+    pub fn predicate(&self) -> &Predicate {
+        match self {
+            Self::Coin(_, predicate) => predicate,
+        }
+    }
+
+    pub fn to_query_params(&self) -> PredicatesQuery {
+        match self {
+            Self::Coin(subject, _) => PredicatesQuery::from(subject.to_owned()),
+        }
     }
 }
 

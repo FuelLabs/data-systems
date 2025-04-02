@@ -1,6 +1,7 @@
-use fuel_streams_types::BlockHeight;
-use rand::Rng;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::TimeRange;
 
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
@@ -8,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct QueryOptions {
     pub from_block: Option<BlockHeight>,
     pub namespace: Option<String>,
+    pub timestamp: Option<BlockTimestamp>,
+    pub time_range: Option<TimeRange>,
 }
 
 impl QueryOptions {
@@ -24,8 +27,25 @@ impl QueryOptions {
         self
     }
 
+    pub fn with_timestamp(
+        &mut self,
+        timestamp: Option<BlockTimestamp>,
+    ) -> &mut Self {
+        self.timestamp = timestamp;
+        self
+    }
+
+    pub fn with_time_range(
+        &mut self,
+        time_range: Option<TimeRange>,
+    ) -> &mut Self {
+        self.time_range = time_range;
+        self
+    }
+
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_random_namespace() -> Self {
+        use rand::Rng;
         let namespace =
             format!("test_{}", rand::rng().random_range(0..1000000));
         let mut opts = Self::default();
@@ -35,6 +55,11 @@ impl QueryOptions {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn random_namespace() -> String {
+        use rand::Rng;
         format!("test_{}", rand::rng().random_range(0..1000000))
     }
+}
+
+pub trait HasOptions {
+    fn options(&self) -> &QueryOptions;
 }

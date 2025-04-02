@@ -14,6 +14,7 @@ use crate::{
             RecordPacketError,
             RecordPointer,
         },
+        Cursor,
         DbError,
     },
     Subjects,
@@ -39,6 +40,10 @@ pub struct TransactionDbItem {
 impl DataEncoder for TransactionDbItem {}
 
 impl DbItem for TransactionDbItem {
+    fn cursor(&self) -> Cursor {
+        Cursor::new(&[&self.block_height, &self.tx_index])
+    }
+
     fn entity(&self) -> &RecordEntity {
         &RecordEntity::Transaction
     }
@@ -87,7 +92,7 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 value: packet.value.to_owned(),
                 block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap() as i32,
+                tx_index: subject.tx_index.unwrap().into(),
                 tx_status: subject.tx_status.unwrap().to_string(),
                 r#type: subject.tx_type.unwrap().to_string(),
                 blob_id: tx.blob_id,

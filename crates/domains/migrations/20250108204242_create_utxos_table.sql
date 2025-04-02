@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS utxos (
     id SERIAL PRIMARY KEY,
+    cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}
     subject TEXT NOT NULL UNIQUE,
     value BYTEA NOT NULL,
     block_height BIGINT NOT NULL,
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS utxos (
     published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_utxos_cursor ON utxos (cursor);
 CREATE INDEX IF NOT EXISTS idx_utxos_subject ON utxos (subject);
 CREATE INDEX IF NOT EXISTS idx_utxos_block_height ON utxos (block_height);
 CREATE INDEX IF NOT EXISTS idx_utxos_tx_id ON utxos (tx_id);
