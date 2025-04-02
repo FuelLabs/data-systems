@@ -281,7 +281,7 @@ mod tests {
     async fn test_inserting_input_coin() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let height = BlockHeight::random();
-        let input1 = MockInput::coin_signed();
+        let input1 = MockInput::coin_signed(None);
         let input2 = MockInput::coin_predicate();
         let tx = MockTransaction::script(
             vec![input1.clone(), input2.clone()],
@@ -343,7 +343,7 @@ mod tests {
     async fn test_find_one_input() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let height = BlockHeight::random();
-        let input = MockInput::coin_signed();
+        let input = MockInput::coin_signed(None);
         let tx = MockTransaction::script(vec![input.clone()], vec![], vec![]);
         insert_tx(&db, &tx, height.into(), &namespace).await?;
 

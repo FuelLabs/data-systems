@@ -21,42 +21,75 @@ impl Repository for Utxo {
         'c: 'e,
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
-        let published_at = BlockTimestamp::now();
+        let created_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, UtxoDbItem>(
-            "WITH upsert AS (
-                INSERT INTO utxos (
-                    subject, value, cursor, block_height, tx_id, tx_index,
-                    input_index, utxo_type, utxo_id, contract_id, created_at, published_at
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                ON CONFLICT (subject) DO UPDATE SET
-                    value = EXCLUDED.value,
-                    cursor = EXCLUDED.cursor,
-                    block_height = EXCLUDED.block_height,
-                    tx_id = EXCLUDED.tx_id,
-                    tx_index = EXCLUDED.tx_index,
-                    input_index = EXCLUDED.input_index,
-                    utxo_type = EXCLUDED.utxo_type,
-                    utxo_id = EXCLUDED.utxo_id,
-                    contract_id = EXCLUDED.contract_id,
-                    created_at = EXCLUDED.created_at,
-                    published_at = $12
-                RETURNING *
+            r#"
+            INSERT INTO utxos (
+                subject,
+                value,
+                block_height,
+                tx_id,
+                tx_index,
+                input_index,
+                output_index,
+                cursor,
+                utxo_id,
+                type,
+                status,
+                amount,
+                asset_id,
+                from_address,
+                to_address,
+                nonce,
+                contract_id,
+                block_time,
+                created_at
             )
-            SELECT * FROM upsert",
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::utxo_type,
+                $11::utxo_status, $12, $13, $14, $15, $16, $17, $18, $19
+            )
+            ON CONFLICT (utxo_id) DO UPDATE SET
+                subject = EXCLUDED.subject,
+                value = EXCLUDED.value,
+                block_height = EXCLUDED.block_height,
+                tx_id = EXCLUDED.tx_id,
+                tx_index = EXCLUDED.tx_index,
+                input_index = EXCLUDED.input_index,
+                output_index = EXCLUDED.output_index,
+                cursor = EXCLUDED.cursor,
+                type = EXCLUDED.type,
+                status = EXCLUDED.status,
+                amount = EXCLUDED.amount,
+                asset_id = EXCLUDED.asset_id,
+                from_address = EXCLUDED.from_address,
+                to_address = EXCLUDED.to_address,
+                nonce = EXCLUDED.nonce,
+                contract_id = EXCLUDED.contract_id,
+                block_time = EXCLUDED.block_time,
+                created_at = $19
+            RETURNING *
+            "#,
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.cursor().to_string())
         .bind(db_item.block_height)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.input_index)
-        .bind(&db_item.utxo_type)
+        .bind(db_item.output_index)
+        .bind(db_item.cursor().to_string())
         .bind(&db_item.utxo_id)
+        .bind(db_item.r#type)
+        .bind(db_item.status)
+        .bind(db_item.amount)
+        .bind(&db_item.asset_id)
+        .bind(&db_item.from_address)
+        .bind(&db_item.to_address)
+        .bind(&db_item.nonce)
         .bind(&db_item.contract_id)
-        .bind(db_item.created_at)
-        .bind(published_at)
+        .bind(db_item.block_time)
+        .bind(created_at)
         .fetch_one(executor)
         .await
         .map_err(RepositoryError::Insert)?;
@@ -67,13 +100,20 @@ impl Repository for Utxo {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
-    use fuel_streams_types::primitives::*;
+    use anyhow::Result;
+    use fuel_streams_types::{BlockHeight, UtxoId, UtxoStatus};
     use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::{
+        blocks::{
+            packets::DynBlockSubject,
+            repository::tests::insert_block,
+            Block,
+            BlockDbItem,
+        },
         infra::{
             Db,
             DbConnectionOpts,
@@ -82,11 +122,19 @@ mod tests {
             QueryParamsBuilder,
         },
         inputs::Input,
-        mocks::{MockInput, MockTransaction},
+        mocks::MockInput,
+        outputs::{MockOutput, Output},
+        transactions::{
+            repository::tests::insert_transaction,
+            DynTransactionSubject,
+            MockTransaction,
+            Transaction,
+            TransactionDbItem,
+        },
         utxos::DynUtxoSubject,
     };
 
-    async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
+    async fn setup_db() -> Result<(Arc<Db>, String)> {
         let db_opts = DbConnectionOpts::default();
         let db = Db::new(db_opts).await?;
         let namespace = QueryOptions::random_namespace();
@@ -101,79 +149,129 @@ mod tests {
         assert_eq!(result.tx_id, expected.tx_id);
         assert_eq!(result.tx_index, expected.tx_index);
         assert_eq!(result.input_index, expected.input_index);
-        assert_eq!(result.utxo_type, expected.utxo_type);
+        assert_eq!(result.output_index, expected.output_index);
         assert_eq!(result.utxo_id, expected.utxo_id);
+        assert_eq!(result.r#type, expected.r#type);
+        assert_eq!(result.status, expected.status);
+        assert_eq!(result.amount, expected.amount);
+        assert_eq!(result.asset_id, expected.asset_id);
+        assert_eq!(result.from_address, expected.from_address);
+        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.nonce, expected.nonce);
         assert_eq!(result.contract_id, expected.contract_id);
-        assert_eq!(result.created_at, expected.created_at);
+        assert_eq!(result.block_time, expected.block_time);
+    }
+
+    async fn insert_random_block(
+        db: &Arc<Db>,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
+        insert_block(db, height, namespace).await
+    }
+
+    async fn insert_tx(
+        db: &Arc<Db>,
+        tx: &Transaction,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
+        let _ = insert_random_block(db, height, namespace).await?;
+        insert_transaction(db, Some(tx.clone()), height, namespace).await
     }
 
     async fn insert_utxo(
         db: &Arc<Db>,
-        input: Option<Input>,
+        tx: &Transaction,
+        input: Option<&Input>,
+        output: Option<&Output>,
         height: u32,
         namespace: &str,
-    ) -> anyhow::Result<(UtxoDbItem, Input, DynUtxoSubject)> {
-        let input = input.unwrap_or_else(MockInput::coin_predicate);
-        let tx =
-            MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
-        let subject = DynUtxoSubject::new(&input, height.into(), tx.id, 0, 0);
+        indices: (i32, i32, i32),
+    ) -> Result<(UtxoDbItem, DynUtxoSubject)> {
+        let (tx_index, input_index, output_index) = indices;
+        let subject = if let Some(input) = input {
+            DynUtxoSubject::from_input(
+                input,
+                height.into(),
+                tx.id.clone(),
+                tx_index,
+                input_index,
+            )
+            .unwrap()
+        } else if let Some(output) = output {
+            DynUtxoSubject::from_output(
+                output,
+                height.into(),
+                tx.id.clone(),
+                tx_index,
+                output_index,
+            )
+            .unwrap()
+        } else {
+            panic!("Either input or output must be provided");
+        };
+
         let timestamps = BlockTimestamp::default();
         let packet = subject.build_packet(timestamps).with_namespace(namespace);
-
         let db_item = UtxoDbItem::try_from(&packet)?;
         let result = Utxo::insert(db.pool_ref(), &db_item).await?;
         assert_result(&result, &db_item);
 
-        Ok((db_item, input, subject))
+        Ok((db_item, subject))
     }
 
     async fn create_utxos(
         db: &Arc<Db>,
         namespace: &str,
         count: u32,
-    ) -> anyhow::Result<Vec<UtxoDbItem>> {
+    ) -> Result<Vec<UtxoDbItem>> {
         let mut utxos = Vec::with_capacity(count as usize);
-        for height in 1..=count {
-            let (db_item, _, _) =
-                insert_utxo(db, None, height, namespace).await?;
+        let height = BlockHeight::random();
+        let outputs: Vec<Output> =
+            (0..count).map(|_| MockOutput::coin(100)).collect();
+        let tx = MockTransaction::script(vec![], outputs.clone(), vec![]);
+        insert_tx(db, &tx, height.into(), namespace).await?;
+
+        for (idx, output) in outputs.iter().enumerate() {
+            let (db_item, _) = insert_utxo(
+                db,
+                &tx,
+                None,
+                Some(output),
+                height.into(),
+                namespace,
+                (0, 0, idx as i32),
+            )
+            .await?;
             utxos.push(db_item);
         }
+
+        utxos.sort_by_key(|i| i.cursor());
         Ok(utxos)
     }
 
     #[tokio::test]
-    async fn test_inserting_coin_utxo() -> anyhow::Result<()> {
+    async fn test_find_one_utxo() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let input = MockInput::coin_predicate();
-        insert_utxo(&db, Some(input), 1, &namespace).await?;
-        Ok(())
-    }
+        let height = BlockHeight::random();
+        let output = MockOutput::coin(100);
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
 
-    #[tokio::test]
-    async fn test_inserting_contract_utxo() -> anyhow::Result<()> {
-        let (db, namespace) = setup_db().await?;
-        let input = MockInput::contract();
-        insert_utxo(&db, Some(input), 1, &namespace).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_message_utxo() -> anyhow::Result<()> {
-        let (db, namespace) = setup_db().await?;
-        let input = MockInput::message_coin_signed();
-        insert_utxo(&db, Some(input), 1, &namespace).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_find_one_utxo() -> anyhow::Result<()> {
-        let (db, namespace) = setup_db().await?;
-        let (db_item, _, subject) =
-            insert_utxo(&db, None, 1, &namespace).await?;
+        let (db_item, subject) = insert_utxo(
+            &db,
+            &tx,
+            None,
+            Some(&output),
+            height.into(),
+            &namespace,
+            (0, 0, 0),
+        )
+        .await?;
 
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
-
         let result = Utxo::find_one(db.pool_ref(), &query).await?;
         assert_result(&result, &db_item);
 
@@ -181,10 +279,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_many_utxos_basic_query() -> anyhow::Result<()> {
+    async fn test_find_many_utxos_basic_query() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 3).await?;
-
         let mut query = UtxosQuery::default();
         query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
@@ -200,10 +297,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_many_utxos_with_cursor_based_pagination_after(
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 5).await?;
-
         let mut query = UtxosQuery::default();
         query.with_namespace(Some(namespace));
         query.with_after(Some(utxos[1].cursor()));
@@ -223,10 +319,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_many_utxos_with_cursor_based_pagination_before(
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 5).await?;
-
         let mut query = UtxosQuery::default();
         query.with_namespace(Some(namespace));
         query.with_before(Some(utxos[4].cursor()));
@@ -245,8 +340,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_many_utxos_with_limit_offset_pagination(
-    ) -> anyhow::Result<()> {
+    async fn test_find_many_utxos_with_limit_offset_pagination() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 5).await?;
 
@@ -265,7 +359,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_many_utxos_with_different_order() -> anyhow::Result<()> {
+    async fn test_find_many_utxos_with_different_order() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 3).await?;
 
@@ -288,7 +382,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_cursor_pagination_ignores_order_by() -> anyhow::Result<()> {
+    async fn test_cursor_pagination_ignores_order_by() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let utxos = create_utxos(&db, &namespace, 5).await?;
 
@@ -305,6 +399,58 @@ mod tests {
 
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_utxo_being_spent() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let height = BlockHeight::random();
+        let output = MockOutput::coin(100);
+        let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+
+        let (db_item_1, _) = insert_utxo(
+            &db,
+            &tx,
+            None,
+            Some(&output),
+            height.into(),
+            &namespace,
+            (0, 0, 0),
+        )
+        .await?;
+
+        let mut query = UtxosQuery::default();
+        let utxo_id = UtxoId::from_str(&db_item_1.utxo_id).unwrap();
+        query.set_utxo_id(Some(utxo_id.clone()));
+        query.with_namespace(Some(namespace.clone()));
+
+        let result = Utxo::find_many(db.pool_ref(), &query).await?;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].status, UtxoStatus::Unspent);
+
+        let input = MockInput::coin_signed(Some(utxo_id.clone()));
+        let (db_item_2, _) = insert_utxo(
+            &db,
+            &tx,
+            Some(&input),
+            None,
+            height.into(),
+            &namespace,
+            (0, 0, 0),
+        )
+        .await?;
+
+        let mut query = UtxosQuery::default();
+        query.set_utxo_id(Some(utxo_id.clone()));
+        query.with_namespace(Some(namespace.clone()));
+
+        let result = Utxo::find_many(db.pool_ref(), &query).await?;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].status, UtxoStatus::Spent);
+        assert_eq!(db_item_1.utxo_id, db_item_2.utxo_id);
 
         Ok(())
     }

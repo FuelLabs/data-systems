@@ -40,29 +40,31 @@ CREATE TABLE "outputs" (
 );
 
 -- common indexes
-CREATE INDEX ON "outputs" ("cursor");
-CREATE INDEX ON "outputs" ("subject");
-CREATE INDEX ON "outputs" ("tx_id");
-CREATE INDEX ON "outputs" ("block_height");
-CREATE INDEX ON "outputs" ("type");
+CREATE INDEX IF NOT EXISTS idx_outputs_cursor ON "outputs" ("cursor");
+CREATE INDEX IF NOT EXISTS idx_outputs_subject ON "outputs" ("subject");
+CREATE INDEX IF NOT EXISTS idx_outputs_tx_id ON "outputs" ("tx_id");
+CREATE INDEX IF NOT EXISTS idx_outputs_block_height ON "outputs" ("block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_type ON "outputs" ("type");
 
 -- coin/change/variable specific indexes
-CREATE INDEX ON "outputs" ("asset_id");
-CREATE INDEX ON "outputs" ("to_address");
+CREATE INDEX IF NOT EXISTS idx_outputs_asset_id ON "outputs" ("asset_id");
+CREATE INDEX IF NOT EXISTS idx_outputs_to_address ON "outputs" ("to_address");
 
 -- contract specific indexes
-CREATE INDEX ON "outputs" ("balance_root");
-CREATE INDEX ON "outputs" ("input_index");
+CREATE INDEX IF NOT EXISTS idx_outputs_balance_root ON "outputs" ("balance_root");
+CREATE INDEX IF NOT EXISTS idx_outputs_input_index ON "outputs" ("input_index");
 
 -- contract/contract_created shared indexes
-CREATE INDEX ON "outputs" ("state_root");
-CREATE INDEX ON "outputs" ("contract_id");
+CREATE INDEX IF NOT EXISTS idx_outputs_state_root ON "outputs" ("state_root");
+CREATE INDEX IF NOT EXISTS idx_outputs_contract_id ON "outputs" ("contract_id");
 
 -- Composite indexes for efficient querying
-CREATE INDEX ON "outputs" ("type", "block_height");
-CREATE INDEX ON "outputs" ("to_address", "block_height");
-CREATE INDEX ON "outputs" ("asset_id", "block_height");
-CREATE INDEX ON "outputs" ("contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_type_block_height ON "outputs" ("type", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_to_address_block_height ON "outputs" ("to_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_asset_id_block_height ON "outputs" ("asset_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_contract_id_block_height ON "outputs" ("contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_balance_root_block_height ON "outputs" ("balance_root", "block_height");
+CREATE INDEX IF NOT EXISTS idx_outputs_state_root_block_height ON "outputs" ("state_root", "block_height");
 
 -- Composite index for ordering
-CREATE INDEX ON "outputs" ("block_height", "tx_index", "output_index");
+CREATE INDEX IF NOT EXISTS idx_outputs_block_height_tx_output_index ON "outputs" ("block_height", "tx_index", "output_index");

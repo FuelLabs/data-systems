@@ -129,39 +129,39 @@ impl MockOutput {
     pub fn coin(amount: u64) -> Output {
         Output::Coin(OutputCoin {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn contract() -> Output {
         Output::Contract(OutputContract {
-            balance_root: Bytes32::default(),
+            balance_root: Bytes32::random(),
             input_index: 0,
-            state_root: Bytes32::default(),
+            state_root: Bytes32::random(),
         })
     }
 
     pub fn change(amount: u64) -> Output {
         Output::Change(OutputChange {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn variable(amount: u64) -> Output {
         Output::Variable(OutputVariable {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn contract_created() -> Output {
         Output::ContractCreated(OutputContractCreated {
-            contract_id: ContractId::default(),
-            state_root: Bytes32::default(),
+            contract_id: ContractId::random(),
+            state_root: Bytes32::random(),
         })
     }
 

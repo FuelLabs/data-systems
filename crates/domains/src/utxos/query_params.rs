@@ -1,10 +1,12 @@
 use fuel_streams_types::{
     Address,
+    AssetId,
     BlockHeight,
     ContractId,
-    HexData,
-    InputType,
     TxId,
+    UtxoId,
+    UtxoStatus,
+    UtxoType,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
@@ -19,14 +21,21 @@ use crate::infra::{
 )]
 #[serde(rename_all = "camelCase")]
 pub struct UtxosQuery {
+    pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
     pub input_index: Option<i32>,
-    pub utxo_type: Option<InputType>,
-    pub block_height: Option<BlockHeight>,
-    pub utxo_id: Option<HexData>,
+    pub output_index: Option<i32>,
+    // utxo props
+    pub r#type: Option<UtxoType>,
+    pub status: Option<UtxoStatus>,
+    pub utxo_id: Option<UtxoId>,
+    pub from: Option<Address>,
+    pub to: Option<Address>,
+    pub asset_id: Option<AssetId>,
     pub contract_id: Option<ContractId>, // for the contracts endpoint
     pub address: Option<Address>,        // for the accounts endpoint
+
     #[serde(flatten)]
     pub pagination: QueryPagination,
     #[serde(flatten)]
@@ -34,6 +43,14 @@ pub struct UtxosQuery {
 }
 
 impl UtxosQuery {
+    pub fn set_from(&mut self, from: &str) {
+        self.from = Some(Address::from(from));
+    }
+
+    pub fn set_to(&mut self, to: &str) {
+        self.to = Some(Address::from(to));
+    }
+
     pub fn set_address(&mut self, address: &str) {
         self.address = Some(Address::from(address));
     }
@@ -50,8 +67,20 @@ impl UtxosQuery {
         self.tx_id = Some(tx_id.into());
     }
 
-    pub fn set_utxo_type(&mut self, utxo_type: Option<InputType>) {
-        self.utxo_type = utxo_type;
+    pub fn set_type(&mut self, utxo_type: Option<UtxoType>) {
+        self.r#type = utxo_type;
+    }
+
+    pub fn set_status(&mut self, status: Option<UtxoStatus>) {
+        self.status = status;
+    }
+
+    pub fn set_asset_id(&mut self, asset_id: Option<AssetId>) {
+        self.asset_id = asset_id;
+    }
+
+    pub fn set_utxo_id(&mut self, utxo_id: Option<UtxoId>) {
+        self.utxo_id = utxo_id;
     }
 }
 
@@ -97,8 +126,16 @@ impl QueryParamsBuilder for UtxosQuery {
             conditions.push(format!("input_index = {}", input_index));
         }
 
-        if let Some(utxo_type) = &self.utxo_type {
-            conditions.push(format!("utxo_type = '{}'", utxo_type));
+        if let Some(output_index) = &self.output_index {
+            conditions.push(format!("output_index = {}", output_index));
+        }
+
+        if let Some(utxo_type) = &self.r#type {
+            conditions.push(format!("type = '{}'", utxo_type));
+        }
+
+        if let Some(status) = &self.status {
+            conditions.push(format!("status = '{}'", status));
         }
 
         if let Some(block_height) = &self.block_height {
@@ -113,8 +150,24 @@ impl QueryParamsBuilder for UtxosQuery {
             conditions.push(format!("contract_id = '{}'", contract_id));
         }
 
+        if let Some(from) = &self.from {
+            conditions.push(format!("from_address = '{}'", from));
+        }
+
+        if let Some(to) = &self.to {
+            conditions.push(format!("to_address = '{}'", to));
+        }
+
+        if let Some(asset_id) = &self.asset_id {
+            conditions.push(format!("asset_id = '{}'", asset_id));
+        }
+
         if let Some(address) = &self.address {
-            conditions.push(format!("address = '{}'", address));
+            let addr_str = address.to_string();
+            conditions.push(format!(
+                "(to_address = '{}' OR from_address = '{}')",
+                addr_str, addr_str
+            ));
         }
 
         Self::apply_conditions(

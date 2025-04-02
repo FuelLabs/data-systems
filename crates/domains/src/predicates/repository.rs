@@ -171,8 +171,13 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_predicate_without_blob_id() -> anyhow::Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_predicate(&db, Some(MockInput::coin_signed()), 1, &namespace)
-            .await?;
+        insert_predicate(
+            &db,
+            Some(MockInput::coin_signed(None)),
+            1,
+            &namespace,
+        )
+        .await?;
         Ok(())
     }
 

@@ -407,10 +407,10 @@ pub struct MockReceipt;
 impl MockReceipt {
     pub fn call() -> Receipt {
         Receipt::Call(CallReceipt {
-            id: ContractId::default(),
-            to: ContractId::default(),
+            id: ContractId::random(),
+            to: ContractId::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             gas: 1000.into(),
             param1: 0.into(),
             param2: 0.into(),
@@ -421,7 +421,7 @@ impl MockReceipt {
 
     pub fn return_receipt() -> Receipt {
         Receipt::Return(ReturnReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             val: 0.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -430,10 +430,10 @@ impl MockReceipt {
 
     pub fn return_data() -> Receipt {
         Receipt::ReturnData(ReturnDataReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ptr: 0.into(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             pc: 0.into(),
             is: 0.into(),
             data: Some(vec![1, 2, 3].into()),
@@ -442,7 +442,7 @@ impl MockReceipt {
 
     pub fn panic() -> Receipt {
         Receipt::Panic(PanicReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             reason: PanicInstruction::default(),
             pc: 0.into(),
             is: 0.into(),
@@ -452,7 +452,7 @@ impl MockReceipt {
 
     pub fn revert() -> Receipt {
         Receipt::Revert(RevertReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -461,7 +461,7 @@ impl MockReceipt {
 
     pub fn log() -> Receipt {
         Receipt::Log(LogReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             rb: 0.into(),
             rc: 0.into(),
@@ -473,12 +473,12 @@ impl MockReceipt {
 
     pub fn log_data() -> Receipt {
         Receipt::LogData(LogDataReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             rb: 0.into(),
             ptr: 0.into(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             pc: 0.into(),
             is: 0.into(),
             data: Some(vec![4, 5, 6].into()),
@@ -487,10 +487,10 @@ impl MockReceipt {
 
     pub fn transfer() -> Receipt {
         Receipt::Transfer(TransferReceipt {
-            id: ContractId::default(),
-            to: ContractId::default(),
+            id: ContractId::random(),
+            to: ContractId::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             pc: 0.into(),
             is: 0.into(),
         })
@@ -498,10 +498,10 @@ impl MockReceipt {
 
     pub fn transfer_out() -> Receipt {
         Receipt::TransferOut(TransferOutReceipt {
-            id: ContractId::default(),
-            to: Address::default(),
+            id: ContractId::random(),
+            to: Address::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             pc: 0.into(),
             is: 0.into(),
         })
@@ -516,20 +516,20 @@ impl MockReceipt {
 
     pub fn message_out() -> Receipt {
         Receipt::MessageOut(MessageOutReceipt {
-            sender: Address::default(),
-            recipient: Address::default(),
+            sender: Address::random(),
+            recipient: Address::random(),
             amount: 100.into(),
-            nonce: Nonce::default(),
+            nonce: Nonce::random(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             data: Some(vec![7, 8, 9].into()),
         })
     }
 
     pub fn mint() -> Receipt {
         Receipt::Mint(MintReceipt {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: Bytes32::random(),
+            contract_id: ContractId::random(),
             val: 100.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -538,8 +538,8 @@ impl MockReceipt {
 
     pub fn burn() -> Receipt {
         Receipt::Burn(BurnReceipt {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: Bytes32::random(),
+            contract_id: ContractId::random(),
             val: 100.into(),
             pc: 0.into(),
             is: 0.into(),

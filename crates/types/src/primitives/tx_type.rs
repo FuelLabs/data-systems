@@ -16,7 +16,7 @@ use crate::fuel_core::FuelCoreTransaction;
     derive_more::IsVariant,
     utoipa::ToSchema,
 )]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum TransactionType {
     #[default]
     #[display("create")]

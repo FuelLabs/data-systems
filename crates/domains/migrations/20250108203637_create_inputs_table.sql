@@ -46,24 +46,35 @@ CREATE TABLE "inputs" (
 );
 
 -- common indexes
-CREATE INDEX ON "inputs" ("cursor");
-CREATE INDEX ON "inputs" ("subject");
-CREATE INDEX ON "inputs" ("tx_id");
-CREATE INDEX ON "inputs" ("block_height");
-CREATE INDEX ON "inputs" ("type");
-CREATE INDEX ON "inputs" ("utxo_id");
+CREATE INDEX IF NOT EXISTS idx_inputs_cursor ON "inputs" ("cursor");
+CREATE INDEX IF NOT EXISTS idx_inputs_subject ON "inputs" ("subject");
+CREATE INDEX IF NOT EXISTS idx_inputs_tx_id ON "inputs" ("tx_id");
+CREATE INDEX IF NOT EXISTS idx_inputs_block_height ON "inputs" ("block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_type ON "inputs" ("type");
+CREATE INDEX IF NOT EXISTS idx_inputs_utxo_id ON "inputs" ("utxo_id");
 
 -- coin specific indexes
-CREATE INDEX ON "inputs" ("asset_id");
-CREATE INDEX ON "inputs" ("owner_id");
+CREATE INDEX IF NOT EXISTS idx_inputs_asset_id ON "inputs" ("asset_id");
+CREATE INDEX IF NOT EXISTS idx_inputs_owner_id ON "inputs" ("owner_id");
 
 -- contract specific index
-CREATE INDEX ON "inputs" ("contract_id");
+CREATE INDEX IF NOT EXISTS idx_inputs_contract_id ON "inputs" ("contract_id");
 
 -- message specific indexes
-CREATE INDEX ON "inputs" ("sender_address");
-CREATE INDEX ON "inputs" ("recipient_address");
-CREATE INDEX ON "inputs" ("nonce");
+CREATE INDEX IF NOT EXISTS idx_inputs_sender_address ON "inputs" ("sender_address");
+CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address ON "inputs" ("recipient_address");
+CREATE INDEX IF NOT EXISTS idx_inputs_nonce ON "inputs" ("nonce");
 
 -- shared indexes
-CREATE INDEX ON "inputs" ("predicate");
+CREATE INDEX IF NOT EXISTS idx_inputs_predicate ON "inputs" ("predicate");
+
+-- Composite indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_inputs_type_block_height ON "inputs" ("type", "block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_contract_id_block_height ON "inputs" ("contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_sender_address_block_height ON "inputs" ("sender_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address_block_height ON "inputs" ("recipient_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_owner_id_block_height ON "inputs" ("owner_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_inputs_asset_id_block_height ON "inputs" ("asset_id", "block_height");
+
+-- Composite index for ordering
+CREATE INDEX IF NOT EXISTS idx_inputs_block_height_tx_input_index ON "inputs" ("block_height", "tx_index", "input_index");

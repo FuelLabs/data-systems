@@ -18,6 +18,8 @@ pub mod tx_status;
 pub mod tx_type;
 pub mod upgrade_purpose;
 pub mod utxo_id;
+pub mod utxo_status;
+pub mod utxo_type;
 pub mod word;
 
 pub use amount::*;
@@ -40,6 +42,8 @@ pub use tx_status::*;
 pub use tx_type::*;
 pub use upgrade_purpose::*;
 pub use utxo_id::*;
+pub use utxo_status::*;
+pub use utxo_type::*;
 pub use word::*;
 
 pub type BoxedError = Box<dyn std::error::Error>;

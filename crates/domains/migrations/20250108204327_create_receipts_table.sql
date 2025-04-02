@@ -84,42 +84,42 @@ CREATE TABLE "receipts" (
 );
 
 -- common indexes
-CREATE INDEX ON "receipts" ("cursor");
-CREATE INDEX ON "receipts" ("subject");
-CREATE INDEX ON "receipts" ("tx_id");
-CREATE INDEX ON "receipts" ("block_height");
-CREATE INDEX ON "receipts" ("type");
+CREATE INDEX IF NOT EXISTS idx_receipts_cursor ON "receipts" ("cursor");
+CREATE INDEX IF NOT EXISTS idx_receipts_subject ON "receipts" ("subject");
+CREATE INDEX IF NOT EXISTS idx_receipts_tx_id ON "receipts" ("tx_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_block_height ON "receipts" ("block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_type ON "receipts" ("type");
 
 -- call/transfer shared indexes
-CREATE INDEX ON "receipts" ("from_contract_id");
-CREATE INDEX ON "receipts" ("to_contract_id");
-CREATE INDEX ON "receipts" ("asset_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_from_contract_id ON "receipts" ("from_contract_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_to_contract_id ON "receipts" ("to_contract_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_asset_id ON "receipts" ("asset_id");
 
 -- contract related indexes
-CREATE INDEX ON "receipts" ("contract_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_contract_id ON "receipts" ("contract_id");
 
 -- transfer_out specific indexes
-CREATE INDEX ON "receipts" ("to_address");
+CREATE INDEX IF NOT EXISTS idx_receipts_to_address ON "receipts" ("to_address");
 
 -- message_out specific indexes
-CREATE INDEX ON "receipts" ("sender_address");
-CREATE INDEX ON "receipts" ("recipient_address");
+CREATE INDEX IF NOT EXISTS idx_receipts_sender_address ON "receipts" ("sender_address");
+CREATE INDEX IF NOT EXISTS idx_receipts_recipient_address ON "receipts" ("recipient_address");
 
 -- mint/burn specific indexes
-CREATE INDEX ON "receipts" ("sub_id");
+CREATE INDEX IF NOT EXISTS idx_receipts_sub_id ON "receipts" ("sub_id");
 
 -- panic specific indexes
-CREATE INDEX ON "receipts" USING GIN ("reason");
+CREATE INDEX IF NOT EXISTS idx_receipts_reason_gin ON "receipts" USING GIN ("reason");
 
 -- Composite indexes for efficient querying
-CREATE INDEX ON "receipts" ("type", "block_height");
-CREATE INDEX ON "receipts" ("from_contract_id", "block_height");
-CREATE INDEX ON "receipts" ("to_contract_id", "block_height");
-CREATE INDEX ON "receipts" ("to_address", "block_height");
-CREATE INDEX ON "receipts" ("contract_id", "block_height");
-CREATE INDEX ON "receipts" ("sender_address", "block_height");
-CREATE INDEX ON "receipts" ("recipient_address", "block_height");
-CREATE INDEX ON "receipts" ("sub_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_type_block_height ON "receipts" ("type", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_from_contract_block_height ON "receipts" ("from_contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_to_contract_block_height ON "receipts" ("to_contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_to_address_block_height ON "receipts" ("to_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_contract_id_block_height ON "receipts" ("contract_id", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_sender_block_height ON "receipts" ("sender_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_recipient_block_height ON "receipts" ("recipient_address", "block_height");
+CREATE INDEX IF NOT EXISTS idx_receipts_sub_id_block_height ON "receipts" ("sub_id", "block_height");
 
 -- Composite index for ordering
-CREATE INDEX ON "receipts" ("block_height", "tx_index", "receipt_index");
+CREATE INDEX IF NOT EXISTS idx_receipts_block_height_tx_receipt ON "receipts" ("block_height", "tx_index", "receipt_index");

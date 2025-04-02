@@ -15,7 +15,7 @@ use crate::impl_enum_string_serialization;
     derive_more::IsVariant,
     utoipa::ToSchema,
 )]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum InputType {
     #[display("contract")]
     Contract,

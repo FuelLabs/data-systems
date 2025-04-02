@@ -535,7 +535,7 @@ impl MockTransaction {
             input_asset_ids: Some(vec![AssetId::random()]),
             input_contract: None,
             input_contracts: None,
-            inputs: vec![MockInput::coin_signed()],
+            inputs: vec![MockInput::coin_signed(None)],
             output_contract: None,
             outputs: vec![MockOutput::coin(100)],
             is_create: r#type == TransactionType::Create,

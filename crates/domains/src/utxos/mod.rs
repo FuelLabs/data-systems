@@ -2,6 +2,7 @@ mod db_item;
 mod packets;
 mod query_params;
 pub mod repository;
+#[allow(clippy::too_many_arguments)]
 pub mod subjects;
 pub mod types;
 
