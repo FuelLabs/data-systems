@@ -64,7 +64,7 @@ impl DynTransactionSubject {
             tx_index: Some(tx_index),
             tx_id: Some(tx_id),
             tx_status: Some(tx_status),
-            tx_type: Some(tx.tx_type.to_owned()),
+            tx_type: Some(tx.r#type.to_owned()),
         })
     }
 
@@ -95,7 +95,7 @@ pub fn main_tx_packet(
     tx_index: i32,
 ) -> Vec<RecordPacket> {
     let block_height = msg_payload.block_height();
-    let subject = DynTransactionSubject::new(tx, block_height, tx_index as i32);
+    let subject = DynTransactionSubject::new(tx, block_height, tx_index);
     let timestamps = msg_payload.timestamp();
     let packet = subject.build_packet(tx, timestamps);
     let packet = match msg_payload.namespace.clone() {

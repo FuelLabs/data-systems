@@ -155,23 +155,116 @@ mod tests {
     use super::*;
     use crate::{
         blocks::packets::DynBlockSubject,
-        infra::{DbConnectionOpts, DbItem, OrderBy, QueryParamsBuilder},
+        infra::{
+            Db,
+            DbConnectionOpts,
+            DbItem,
+            OrderBy,
+            QueryOptions,
+            QueryParamsBuilder,
+        },
         mocks::MockBlock,
     };
+
+    async fn test_block(block: &Block) -> anyhow::Result<()> {
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let namespace = QueryOptions::random_namespace();
+        let subject = DynBlockSubject::new(
+            block.height,
+            block.producer.clone(),
+            &block.header.da_height,
+        );
+        let timestamps = BlockTimestamp::default();
+        let packet = subject
+            .build_packet(block, timestamps)
+            .with_namespace(&namespace);
+
+        let db_item = BlockDbItem::try_from(&packet)?;
+        let result = Block::insert(db.pool_ref(), &db_item).await;
+        assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.subject, db_item.subject);
+        assert_eq!(result.value, db_item.value);
+        assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.block_da_height, db_item.block_da_height);
+        assert_eq!(result.producer_address, db_item.producer_address);
+        assert_eq!(result.version, db_item.version);
+        assert_eq!(result.block_propagation_ms, db_item.block_propagation_ms);
+        assert_eq!(
+            result.header_application_hash,
+            db_item.header_application_hash
+        );
+        assert_eq!(
+            result.header_consensus_parameters_version,
+            db_item.header_consensus_parameters_version
+        );
+        assert_eq!(result.header_da_height, db_item.header_da_height);
+        assert_eq!(
+            result.header_event_inbox_root,
+            db_item.header_event_inbox_root
+        );
+        assert_eq!(
+            result.header_message_outbox_root,
+            db_item.header_message_outbox_root
+        );
+        assert_eq!(
+            result.header_message_receipt_count,
+            db_item.header_message_receipt_count
+        );
+        assert_eq!(result.header_prev_root, db_item.header_prev_root);
+        assert_eq!(
+            result.header_state_transition_bytecode_version,
+            db_item.header_state_transition_bytecode_version
+        );
+        assert_eq!(result.header_time, db_item.header_time);
+        assert_eq!(
+            result.header_transactions_count,
+            db_item.header_transactions_count
+        );
+        assert_eq!(
+            result.header_transactions_root,
+            db_item.header_transactions_root
+        );
+        assert_eq!(result.header_version, db_item.header_version);
+        assert_eq!(
+            result.consensus_chain_config_hash,
+            db_item.consensus_chain_config_hash
+        );
+        assert_eq!(result.consensus_coins_root, db_item.consensus_coins_root);
+        assert_eq!(result.consensus_type, db_item.consensus_type);
+        assert_eq!(
+            result.consensus_contracts_root,
+            db_item.consensus_contracts_root
+        );
+        assert_eq!(
+            result.consensus_messages_root,
+            db_item.consensus_messages_root
+        );
+        assert_eq!(result.consensus_signature, db_item.consensus_signature);
+        assert_eq!(
+            result.consensus_transactions_root,
+            db_item.consensus_transactions_root
+        );
+        assert_eq!(result.created_at, db_item.created_at);
+
+        Ok(())
+    }
 
     async fn create_test_block(
         height: u32,
         namespace: &str,
     ) -> (BlockDbItem, Block) {
         let block = MockBlock::build(height);
-        let timestamp = BlockTimestamp::default();
-        let dyn_subject = DynBlockSubject::new(
+        let subject = DynBlockSubject::new(
             block.height,
             block.producer.clone(),
             &block.header.da_height,
         );
-        let packet = dyn_subject
-            .build_packet(&block, timestamp)
+        let timestamps = BlockTimestamp::default();
+        let packet = subject
+            .build_packet(&block, timestamps)
             .with_namespace(namespace);
         let db_item = BlockDbItem::try_from(&packet).unwrap();
         (db_item, block)
@@ -193,17 +286,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_block() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let (db_item, _) = create_test_block(1, &namespace).await;
-
-        let result = Block::insert(db.pool_ref(), &db_item).await?;
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_da_height, db_item.block_da_height);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.producer_address, db_item.producer_address);
+        let block = MockBlock::build(1);
+        test_block(&block).await?;
         Ok(())
     }
 
@@ -240,8 +324,8 @@ mod tests {
         let result = Block::find_one(db.pool_ref(), &query).await?;
         assert_eq!(result.subject, db_item.subject);
         assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_da_height, db_item.block_da_height);
         assert_eq!(result.block_height, db_item.block_height);
+        assert_eq!(result.block_da_height, db_item.block_da_height);
         assert_eq!(result.producer_address, db_item.producer_address);
 
         Ok(())
@@ -293,12 +377,10 @@ mod tests {
         let db = Db::new(db_opts).await?;
         let blocks = create_blocks(&namespace, &db, 5).await;
 
-        // Test pagination with after cursor and first
         let mut query = BlocksQuery::default();
         query.with_namespace(Some(namespace.clone()));
         query.with_after(Some(blocks[1].cursor()));
         query.with_first(Some(2));
-        // order_by is not needed for cursor-based pagination
 
         let results = Block::find_many(db.pool_ref(), &query).await?;
         assert_eq!(
@@ -331,8 +413,8 @@ mod tests {
             2,
             "Should return exactly 2 blocks before cursor"
         );
-        assert_eq!(results[0].block_height, blocks[3].block_height); // Block 4
-        assert_eq!(results[1].block_height, blocks[2].block_height); // Block 3
+        assert_eq!(results[0].block_height, blocks[3].block_height);
+        assert_eq!(results[1].block_height, blocks[2].block_height);
 
         Ok(())
     }
@@ -345,7 +427,7 @@ mod tests {
         let db = Db::new(db_opts).await?;
         let blocks = create_blocks(&namespace, &db, 5).await;
 
-        // Test first page with explicit ordering
+        // Test first page
         let mut query = BlocksQuery::default();
         query.with_namespace(Some(namespace.clone()));
         query.with_limit(Some(2));
@@ -406,6 +488,7 @@ mod tests {
         let db_opts = DbConnectionOpts::default();
         let db = Db::new(db_opts).await?;
         let blocks = create_blocks(&namespace, &db, 5).await;
+
         let mut query = BlocksQuery::default();
         query.with_namespace(Some(namespace.clone()));
         query.with_after(Some(blocks[1].cursor()));
@@ -421,6 +504,21 @@ mod tests {
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_last_block_height() -> Result<()> {
+        let namespace = QueryOptions::random_namespace();
+        let db_opts = DbConnectionOpts::default();
+        let db = Db::new(db_opts).await?;
+        let blocks = create_blocks(&namespace, &db, 3).await;
+
+        let mut options = QueryOptions::default();
+        options.with_namespace(Some(namespace));
+        let last_height = Block::find_last_block_height(&db, &options).await?;
+
+        assert_eq!(last_height, blocks.last().unwrap().block_height);
         Ok(())
     }
 }

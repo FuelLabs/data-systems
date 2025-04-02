@@ -41,8 +41,8 @@ impl From<UtxosSubject> for UtxosQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index,
             utxo_type: subject.utxo_type.as_ref().map(|t| match t {
                 UtxoType::Coin => InputType::Coin,
                 UtxoType::Contract => InputType::Contract,

@@ -190,8 +190,8 @@ impl From<OutputsCoinSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            output_index: subject.output_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
             output_type: Some(OutputType::Coin),
             to_address: subject.to.clone(),
             asset_id: subject.asset.clone(),
@@ -206,8 +206,8 @@ impl From<OutputsContractSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            output_index: subject.output_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
             output_type: Some(OutputType::Contract),
             contract_id: subject.contract.clone(),
             pagination: QueryPagination::default(),
@@ -221,8 +221,8 @@ impl From<OutputsChangeSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            output_index: subject.output_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
             output_type: Some(OutputType::Change),
             to_address: subject.to.clone(),
             asset_id: subject.asset.clone(),
@@ -237,8 +237,8 @@ impl From<OutputsVariableSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            output_index: subject.output_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
             output_type: Some(OutputType::Variable),
             to_address: subject.to.clone(),
             asset_id: subject.asset.clone(),
@@ -253,8 +253,8 @@ impl From<OutputsContractCreatedSubject> for OutputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            output_index: subject.output_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
             output_type: Some(OutputType::ContractCreated),
             contract_id: subject.contract.clone(),
             pagination: QueryPagination::default(),
@@ -269,7 +269,7 @@ impl From<OutputsSubject> for OutputsQuery {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
-            output_index: subject.output_index.map(|i| i as i32),
+            output_index: subject.output_index,
             output_type: subject.output_type.clone(),
             ..Default::default()
         }

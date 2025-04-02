@@ -9,7 +9,6 @@ use fuel_streams_core::types::{
     BurnReceipt,
     CallReceipt,
     Consensus,
-    FuelCoreUpgradePurposeWrapper,
     GasAmount,
     HexData,
     Input,
@@ -39,6 +38,7 @@ use fuel_streams_core::types::{
     TransferOutReceipt,
     TransferReceipt,
     TxPointer,
+    UpgradePurpose,
     UtxoId,
 };
 use fuel_streams_domains::{
@@ -180,7 +180,7 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         GasAmount,
         StorageSlot,
         TxPointer,
-        FuelCoreUpgradePurposeWrapper,
+        UpgradePurpose,
         CallReceipt,
         ReturnReceipt,
         ReturnDataReceipt,

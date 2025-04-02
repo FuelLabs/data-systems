@@ -462,8 +462,8 @@ impl From<ReceiptsCallSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Call),
             from: subject.from.clone(),
             to: subject.to.clone(),
@@ -478,8 +478,8 @@ impl From<ReceiptsReturnSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Return),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -492,8 +492,8 @@ impl From<ReceiptsReturnDataSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::ReturnData),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -506,8 +506,8 @@ impl From<ReceiptsPanicSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Panic),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -520,8 +520,8 @@ impl From<ReceiptsRevertSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Revert),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -534,8 +534,8 @@ impl From<ReceiptsLogSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Log),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -548,8 +548,8 @@ impl From<ReceiptsLogDataSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::LogData),
             contract: subject.contract.clone(),
             ..Default::default()
@@ -562,8 +562,8 @@ impl From<ReceiptsTransferSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Transfer),
             from: subject.from.clone(),
             to: subject.to.clone(),
@@ -578,8 +578,8 @@ impl From<ReceiptsTransferOutSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::TransferOut),
             from: subject.from.clone(),
             recipient: subject.to_address.clone(), /* Map to_address to recipient */
@@ -594,8 +594,8 @@ impl From<ReceiptsScriptResultSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::ScriptResult),
             ..Default::default()
         }
@@ -607,8 +607,8 @@ impl From<ReceiptsMessageOutSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::MessageOut),
             sender: subject.sender.clone(),
             recipient: subject.recipient.clone(),
@@ -622,8 +622,8 @@ impl From<ReceiptsMintSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Mint),
             contract: subject.contract.clone(),
             sub_id: subject.sub_id.clone(),
@@ -637,8 +637,8 @@ impl From<ReceiptsBurnSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: Some(ReceiptType::Burn),
             contract: subject.contract.clone(),
             sub_id: subject.sub_id.clone(),
@@ -652,8 +652,8 @@ impl From<ReceiptsSubject> for ReceiptsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            receipt_index: subject.receipt_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            receipt_index: subject.receipt_index,
             receipt_type: subject.receipt_type.clone(),
             ..Default::default()
         }

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::BlockTimestamp;
 use sqlx::{Acquire, PgExecutor, Postgres};
 
@@ -21,44 +22,192 @@ impl Repository for Transaction {
         'c: 'e,
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
+        let mut conn = executor.acquire().await?;
+        let mut db_tx = conn.begin().await?;
         let published_at = BlockTimestamp::now();
+        // Insert into transactions table
         let record = sqlx::query_as::<_, TransactionDbItem>(
             "WITH upsert AS (
                 INSERT INTO transactions (
-                    subject, value, cursor, block_height, tx_id, tx_index,
-                    tx_status, type, blob_id, created_at, published_at
+                    subject,
+                    value,
+                    block_height,
+                    tx_id,
+                    tx_index,
+                    cursor,
+                    type,
+                    script_gas_limit,
+                    mint_amount,
+                    mint_asset_id,
+                    mint_gas_price,
+                    receipts_root,
+                    tx_status,
+                    script,
+                    script_data,
+                    salt,
+                    bytecode_witness_index,
+                    bytecode_root,
+                    subsection_index,
+                    subsections_number,
+                    upgrade_purpose,
+                    blob_id,
+                    maturity,
+                    policies,
+                    script_length,
+                    script_data_length,
+                    storage_slots_count,
+                    proof_set_count,
+                    witnesses_count,
+                    inputs_count,
+                    outputs_count,
+                    block_time,
+                    created_at,
+                    published_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7::transaction_type, $8, $9, $10,
+                    $11, $12, $13::transaction_status, $14, $15, $16, $17, $18,
+                    $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+                    $29, $30, $31, $32, $33, $34
+                )
                 ON CONFLICT (subject) DO UPDATE SET
-                    tx_id = EXCLUDED.tx_id,
                     value = EXCLUDED.value,
-                    cursor = EXCLUDED.cursor,
                     block_height = EXCLUDED.block_height,
+                    tx_id = EXCLUDED.tx_id,
                     tx_index = EXCLUDED.tx_index,
-                    tx_status = EXCLUDED.tx_status,
+                    cursor = EXCLUDED.cursor,
                     type = EXCLUDED.type,
+                    script_gas_limit = EXCLUDED.script_gas_limit,
+                    mint_amount = EXCLUDED.mint_amount,
+                    mint_asset_id = EXCLUDED.mint_asset_id,
+                    mint_gas_price = EXCLUDED.mint_gas_price,
+                    receipts_root = EXCLUDED.receipts_root,
+                    tx_status = EXCLUDED.tx_status,
+                    script = EXCLUDED.script,
+                    script_data = EXCLUDED.script_data,
+                    salt = EXCLUDED.salt,
+                    bytecode_witness_index = EXCLUDED.bytecode_witness_index,
+                    bytecode_root = EXCLUDED.bytecode_root,
+                    subsection_index = EXCLUDED.subsection_index,
+                    subsections_number = EXCLUDED.subsections_number,
+                    upgrade_purpose = EXCLUDED.upgrade_purpose,
                     blob_id = EXCLUDED.blob_id,
+                    maturity = EXCLUDED.maturity,
+                    policies = EXCLUDED.policies,
+                    script_length = EXCLUDED.script_length,
+                    script_data_length = EXCLUDED.script_data_length,
+                    storage_slots_count = EXCLUDED.storage_slots_count,
+                    proof_set_count = EXCLUDED.proof_set_count,
+                    witnesses_count = EXCLUDED.witnesses_count,
+                    inputs_count = EXCLUDED.inputs_count,
+                    outputs_count = EXCLUDED.outputs_count,
+                    block_time = EXCLUDED.block_time,
                     created_at = EXCLUDED.created_at,
-                    published_at = $11
+                    published_at = $34
                 RETURNING *
             )
             SELECT * FROM upsert",
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.cursor().to_string())
         .bind(db_item.block_height)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
-        .bind(&db_item.tx_status)
-        .bind(&db_item.r#type)
+        .bind(db_item.cursor().to_string())
+        .bind(db_item.r#type)
+        .bind(db_item.script_gas_limit)
+        .bind(db_item.mint_amount)
+        .bind(&db_item.mint_asset_id)
+        .bind(db_item.mint_gas_price)
+        .bind(&db_item.receipts_root)
+        .bind(db_item.tx_status)
+        .bind(&db_item.script)
+        .bind(&db_item.script_data)
+        .bind(&db_item.salt)
+        .bind(db_item.bytecode_witness_index)
+        .bind(&db_item.bytecode_root)
+        .bind(db_item.subsection_index)
+        .bind(db_item.subsections_number)
+        .bind(&db_item.upgrade_purpose)
         .bind(&db_item.blob_id)
+        .bind(db_item.maturity)
+        .bind(&db_item.policies)
+        .bind(db_item.script_length)
+        .bind(db_item.script_data_length)
+        .bind(db_item.storage_slots_count)
+        .bind(db_item.proof_set_count)
+        .bind(db_item.witnesses_count)
+        .bind(db_item.inputs_count)
+        .bind(db_item.outputs_count)
+        .bind(db_item.block_time)
         .bind(db_item.created_at)
         .bind(published_at)
-        .fetch_one(executor)
+        .fetch_one(&mut *db_tx)
         .await
         .map_err(RepositoryError::Insert)?;
 
+        let tx = Transaction::decode_json(&db_item.value)?;
+        for slot in &tx.storage_slots {
+            let slot_item = super::db_item::TransactionStorageSlotDbItem {
+                tx_id: db_item.tx_id.clone(),
+                key: slot.key.to_string(),
+                value: slot.value.to_string(),
+                created_at: db_item.created_at,
+            };
+            sqlx::query(
+                "INSERT INTO transaction_storage_slots (tx_id, key, value, created_at)
+                 VALUES ($1, $2, $3, $4)"
+            )
+            .bind(&slot_item.tx_id)
+            .bind(&slot_item.key)
+            .bind(&slot_item.value)
+            .bind(slot_item.created_at)
+            .execute(&mut *db_tx)
+            .await
+            .map_err(RepositoryError::Insert)?;
+        }
+
+        // Insert witnesses
+        for witness in &tx.witnesses {
+            let witness_item = super::db_item::TransactionWitnessDbItem {
+                tx_id: db_item.tx_id.clone(),
+                witness_data: witness.to_string(),
+                witness_data_length: witness.as_ref().0.len() as i32,
+                created_at: db_item.created_at,
+            };
+            sqlx::query(
+                "INSERT INTO transaction_witnesses (tx_id, witness_data, witness_data_length, created_at)
+                 VALUES ($1, $2, $3, $4)"
+            )
+            .bind(&witness_item.tx_id)
+            .bind(&witness_item.witness_data)
+            .bind(witness_item.witness_data_length)
+            .bind(witness_item.created_at)
+            .execute(&mut *db_tx)
+            .await
+            .map_err(RepositoryError::Insert)?;
+        }
+
+        // Insert proof set
+        for proof in &tx.proof_set {
+            let proof_item = super::db_item::TransactionProofSetDbItem {
+                tx_id: db_item.tx_id.clone(),
+                proof_hash: proof.to_string(),
+                created_at: db_item.created_at,
+            };
+            sqlx::query(
+                "INSERT INTO transaction_proof_set (tx_id, proof_hash, created_at)
+                 VALUES ($1, $2, $3)"
+            )
+            .bind(&proof_item.tx_id)
+            .bind(&proof_item.proof_hash)
+            .bind(proof_item.created_at)
+            .execute(&mut *db_tx)
+            .await
+            .map_err(RepositoryError::Insert)?;
+        }
+
+        db_tx.commit().await?;
         Ok(record)
     }
 }
@@ -105,7 +254,33 @@ mod tests {
         assert_eq!(result.tx_index, db_item.tx_index);
         assert_eq!(result.tx_status, db_item.tx_status);
         assert_eq!(result.r#type, db_item.r#type);
+        assert_eq!(result.script_gas_limit, db_item.script_gas_limit);
+        assert_eq!(result.mint_amount, db_item.mint_amount);
+        assert_eq!(result.mint_asset_id, db_item.mint_asset_id);
+        assert_eq!(result.mint_gas_price, db_item.mint_gas_price);
+        assert_eq!(result.receipts_root, db_item.receipts_root);
+        assert_eq!(result.script, db_item.script);
+        assert_eq!(result.script_data, db_item.script_data);
+        assert_eq!(result.salt, db_item.salt);
+        assert_eq!(
+            result.bytecode_witness_index,
+            db_item.bytecode_witness_index
+        );
+        assert_eq!(result.bytecode_root, db_item.bytecode_root);
+        assert_eq!(result.subsection_index, db_item.subsection_index);
+        assert_eq!(result.subsections_number, db_item.subsections_number);
+        assert_eq!(result.upgrade_purpose, db_item.upgrade_purpose);
         assert_eq!(result.blob_id, db_item.blob_id);
+        assert_eq!(result.maturity, db_item.maturity);
+        assert_eq!(result.policies, db_item.policies);
+        assert_eq!(result.script_length, db_item.script_length);
+        assert_eq!(result.script_data_length, db_item.script_data_length);
+        assert_eq!(result.storage_slots_count, db_item.storage_slots_count);
+        assert_eq!(result.proof_set_count, db_item.proof_set_count);
+        assert_eq!(result.witnesses_count, db_item.witnesses_count);
+        assert_eq!(result.inputs_count, db_item.inputs_count);
+        assert_eq!(result.outputs_count, db_item.outputs_count);
+        assert_eq!(result.block_time, db_item.block_time);
         assert_eq!(result.created_at, db_item.created_at);
 
         Ok(())

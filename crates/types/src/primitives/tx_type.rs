@@ -63,6 +63,89 @@ impl From<&FuelCoreTransaction> for TransactionType {
     }
 }
 
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    derive_more::Display,
+    derive_more::FromStr,
+)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DbTransactionType {
+    #[display("SCRIPT")]
+    Script,
+    #[display("CREATE")]
+    Create,
+    #[display("MINT")]
+    Mint,
+    #[display("UPGRADE")]
+    Upgrade,
+    #[display("UPLOAD")]
+    Upload,
+    #[display("BLOB")]
+    Blob,
+}
+
+impl From<TransactionType> for DbTransactionType {
+    fn from(value: TransactionType) -> Self {
+        match value {
+            TransactionType::Script => DbTransactionType::Script,
+            TransactionType::Create => DbTransactionType::Create,
+            TransactionType::Mint => DbTransactionType::Mint,
+            TransactionType::Upgrade => DbTransactionType::Upgrade,
+            TransactionType::Upload => DbTransactionType::Upload,
+            TransactionType::Blob => DbTransactionType::Blob,
+        }
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DbTransactionType {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        match value.as_str() {
+            "SCRIPT" => Ok(DbTransactionType::Script),
+            "CREATE" => Ok(DbTransactionType::Create),
+            "MINT" => Ok(DbTransactionType::Mint),
+            "UPGRADE" => Ok(DbTransactionType::Upgrade),
+            "UPLOAD" => Ok(DbTransactionType::Upload),
+            "BLOB" => Ok(DbTransactionType::Blob),
+            _ => Err(format!("Unknown DbTransactionType: {}", value).into()),
+        }
+    }
+}
+
+impl sqlx::Type<sqlx::Postgres> for DbTransactionType {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("transaction_type")
+    }
+}
+
+impl sqlx::Encode<'_, sqlx::Postgres> for DbTransactionType {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<
+        sqlx::encode::IsNull,
+        Box<dyn std::error::Error + Send + Sync + 'static>,
+    > {
+        let s = match self {
+            DbTransactionType::Script => "SCRIPT",
+            DbTransactionType::Create => "CREATE",
+            DbTransactionType::Mint => "MINT",
+            DbTransactionType::Upgrade => "UPGRADE",
+            DbTransactionType::Upload => "UPLOAD",
+            DbTransactionType::Blob => "BLOB",
+        };
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

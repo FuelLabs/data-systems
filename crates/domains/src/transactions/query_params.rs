@@ -1,4 +1,11 @@
-use fuel_streams_types::{Address, BlockHeight, ContractId, TxId};
+use fuel_streams_types::{
+    Address,
+    BlockHeight,
+    ContractId,
+    DbTransactionStatus,
+    DbTransactionType,
+    TxId,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
@@ -16,8 +23,7 @@ pub struct TransactionsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
     pub tx_status: Option<TransactionStatus>,
-    #[serde(rename = "type")]
-    pub tx_type: Option<TransactionType>,
+    pub r#type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
     pub blob_id: Option<String>,
     pub contract_id: Option<ContractId>, // for the contracts endpoint
@@ -81,11 +87,13 @@ impl QueryParamsBuilder for TransactionsQuery {
         }
 
         if let Some(tx_status) = &self.tx_status {
-            conditions.push(format!("tx_status = '{}'", tx_status));
+            let db_tx_status = DbTransactionStatus::from(tx_status.to_owned());
+            conditions.push(format!("tx_status = '{}'", db_tx_status));
         }
 
-        if let Some(tx_type) = &self.tx_type {
-            conditions.push(format!("type = '{}'", tx_type));
+        if let Some(tx_type) = &self.r#type {
+            let db_tx_type = DbTransactionType::from(tx_type.to_owned());
+            conditions.push(format!("type = '{}'", db_tx_type));
         }
 
         if let Some(block_height) = &self.block_height {

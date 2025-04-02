@@ -71,8 +71,8 @@ impl TryFrom<&PredicateDbItem> for Predicate {
             .map_err(|e| DbError::Other(e.to_string()))?;
         let predicate = Predicate::new(
             &tx_id,
-            item.tx_index as i32,
-            item.input_index as i32,
+            item.tx_index,
+            item.input_index,
             blob_id,
             &predicate_address,
             &predicate_bytecode,

@@ -39,6 +39,26 @@ impl From<&FuelCoreStorageSlot> for StorageSlot {
 )]
 pub struct PolicyWrapper(pub FuelCorePolicies);
 
+impl PolicyWrapper {
+    pub fn to_string(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&self.0)
+    }
+}
+
+impl TryFrom<String> for PolicyWrapper {
+    type Error = serde_json::Error;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let policies: FuelCorePolicies = serde_json::from_str(&value)?;
+        Ok(Self(policies))
+    }
+}
+
+impl From<FuelCorePolicies> for PolicyWrapper {
+    fn from(policies: FuelCorePolicies) -> Self {
+        Self(policies)
+    }
+}
+
 impl utoipa::ToSchema for PolicyWrapper {
     fn name() -> std::borrow::Cow<'static, str> {
         std::borrow::Cow::Borrowed("FuelCorePolicies")
@@ -68,75 +88,13 @@ impl utoipa::PartialSchema for PolicyWrapper {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub struct FuelCoreUpgradePurposeWrapper(pub FuelCoreUpgradePurpose);
-
-impl From<FuelCoreUpgradePurpose> for FuelCoreUpgradePurposeWrapper {
-    fn from(purpose: FuelCoreUpgradePurpose) -> Self {
-        FuelCoreUpgradePurposeWrapper(purpose)
-    }
-}
-
-impl From<FuelCoreUpgradePurposeWrapper> for FuelCoreUpgradePurpose {
-    fn from(wrapper: FuelCoreUpgradePurposeWrapper) -> Self {
-        wrapper.0
-    }
-}
-
-impl utoipa::ToSchema for FuelCoreUpgradePurposeWrapper {
-    fn name() -> std::borrow::Cow<'static, str> {
-        std::borrow::Cow::Borrowed("FuelCoreUpgradePurpose")
-    }
-}
-
-impl utoipa::PartialSchema for FuelCoreUpgradePurposeWrapper {
-    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
-        // Create Object builders first
-        let consensus_params_obj = utoipa::openapi::schema::ObjectBuilder::new()
-            .schema_type(utoipa::openapi::schema::Type::Object)
-            .title(Some("ConsensusParameters"))
-            // ... other properties
-            .build();
-
-        let state_transition_obj = utoipa::openapi::schema::ObjectBuilder::new()
-            .schema_type(utoipa::openapi::schema::Type::Object)
-            .title(Some("StateTransition"))
-            // ... other properties
-            .build();
-
-        // Convert Objects to Schemas
-        let consensus_params =
-            utoipa::openapi::schema::Schema::Object(consensus_params_obj);
-        let state_transition =
-            utoipa::openapi::schema::Schema::Object(state_transition_obj);
-
-        // Create a oneOf schema with both variants
-        let mut one_of = utoipa::openapi::schema::OneOf::new();
-
-        // Now we can add Schemas to the items
-        one_of
-            .items
-            .push(utoipa::openapi::RefOr::T(consensus_params));
-        one_of
-            .items
-            .push(utoipa::openapi::RefOr::T(state_transition));
-
-        // Create the oneOf schema and return it
-        let schema = utoipa::openapi::schema::Schema::OneOf(one_of);
-
-        // Return the Schema
-        utoipa::openapi::RefOr::T(schema)
-    }
-}
-
 #[derive(
     Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: TxId,
-    #[serde(rename = "type")]
-    pub tx_type: TransactionType,
+    pub r#type: TransactionType,
     pub bytecode_root: Option<Bytes32>,
     pub bytecode_witness_index: Option<u16>,
     pub blob_id: Option<BlobId>,
@@ -169,7 +127,7 @@ pub struct Transaction {
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
     pub tx_pointer: Option<TxPointer>,
-    pub upgrade_purpose: Option<FuelCoreUpgradePurposeWrapper>,
+    pub upgrade_purpose: Option<UpgradePurpose>,
     pub witnesses: Vec<HexData>,
     pub receipts: Vec<Receipt>,
 }
@@ -486,7 +444,7 @@ impl Transaction {
 
         Transaction {
             id: id.to_owned().into(),
-            tx_type: transaction.into(),
+            r#type: transaction.into(),
             bytecode_root,
             bytecode_witness_index,
             blob_id,
@@ -519,7 +477,7 @@ impl Transaction {
             subsection_index,
             subsections_number,
             tx_pointer: Some(tx_pointer.into()),
-            upgrade_purpose: upgrade_purpose.map(FuelCoreUpgradePurposeWrapper),
+            upgrade_purpose: upgrade_purpose.map(UpgradePurpose),
             witnesses,
             receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
         }
@@ -563,10 +521,10 @@ impl FuelCoreTransactionExt for FuelCoreTransaction {
 pub struct MockTransaction;
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockTransaction {
-    fn base_transaction(tx_type: TransactionType) -> Transaction {
+    fn base_transaction(r#type: TransactionType) -> Transaction {
         Transaction {
             id: TxId::random(),
-            tx_type: tx_type.clone(),
+            r#type: r#type.clone(),
             bytecode_root: None,
             bytecode_witness_index: None,
             blob_id: None,
@@ -576,12 +534,12 @@ impl MockTransaction {
             inputs: vec![MockInput::coin_signed()],
             output_contract: None,
             outputs: vec![MockOutput::coin(100)],
-            is_create: tx_type == TransactionType::Create,
-            is_mint: tx_type == TransactionType::Mint,
-            is_script: tx_type == TransactionType::Script,
-            is_upgrade: tx_type == TransactionType::Upgrade,
-            is_upload: tx_type == TransactionType::Upload,
-            is_blob: tx_type == TransactionType::Blob,
+            is_create: r#type == TransactionType::Create,
+            is_mint: r#type == TransactionType::Mint,
+            is_script: r#type == TransactionType::Script,
+            is_upgrade: r#type == TransactionType::Upgrade,
+            is_upload: r#type == TransactionType::Upload,
+            is_blob: r#type == TransactionType::Blob,
             maturity: Some(0),
             mint_amount: None,
             mint_asset_id: None,
@@ -794,7 +752,7 @@ mod tests {
             // Verify type field is correctly serialized as lowercase
             let json_value: serde_json::Value =
                 serde_json::from_str(&serialized).unwrap();
-            assert_eq!(json_value["type"], json!(tx.tx_type.as_str()));
+            assert_eq!(json_value["type"], json!(tx.r#type.as_str()));
         }
     }
 }

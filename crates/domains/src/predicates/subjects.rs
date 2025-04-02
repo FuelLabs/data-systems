@@ -81,7 +81,7 @@ impl From<PredicatesSubject> for PredicatesQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
             input_index: subject.input_index,
             blob_id: subject.blob_id.clone(),
             predicate_address: subject.predicate_address.clone(),

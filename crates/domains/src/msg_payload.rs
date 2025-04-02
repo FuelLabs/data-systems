@@ -239,13 +239,13 @@ impl MockMsgPayload {
 
     pub fn single_transaction(
         height: u32,
-        tx_type: crate::transactions::TransactionType,
+        r#type: crate::transactions::TransactionType,
     ) -> Self {
         use crate::{mocks::*, transactions::TransactionType};
         let inputs = MockInput::all();
         let outputs = MockOutput::all();
         let receipts = MockReceipt::all();
-        let transaction = match tx_type {
+        let transaction = match r#type {
             TransactionType::Script => {
                 MockTransaction::script(inputs, outputs, receipts)
             }

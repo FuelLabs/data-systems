@@ -93,8 +93,8 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
                 subject: packet.subject_str(),
                 block_height: subject.block_height.unwrap(),
                 tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap() as i32,
-                input_index: subject.input_index.unwrap() as i32,
+                tx_index: subject.tx_index.unwrap(),
+                input_index: subject.input_index.unwrap(),
                 blob_id: subject.blob_id.map(|b| b.to_string()),
                 predicate_address: subject
                     .predicate_address

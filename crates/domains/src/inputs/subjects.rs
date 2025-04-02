@@ -126,8 +126,8 @@ impl From<InputsCoinSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index,
             input_type: Some(InputType::Coin),
             owner_id: subject.owner.clone(),
             asset_id: subject.asset.clone(),
@@ -141,8 +141,8 @@ impl From<InputsContractSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index,
             input_type: Some(InputType::Contract),
             contract_id: subject.contract.clone(),
             ..Default::default()
@@ -155,8 +155,8 @@ impl From<InputsMessageSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index,
             input_type: Some(InputType::Message),
             sender_address: subject.sender.clone(),
             recipient_address: subject.recipient.clone(),
@@ -170,8 +170,8 @@ impl From<InputsSubject> for InputsQuery {
         Self {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
-            tx_index: subject.tx_index.map(|i| i as i32),
-            input_index: subject.input_index.map(|i| i as i32),
+            tx_index: subject.tx_index,
+            input_index: subject.input_index,
             input_type: subject.input_type.clone(),
             ..Default::default()
         }
