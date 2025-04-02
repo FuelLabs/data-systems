@@ -101,7 +101,7 @@ impl QueryParamsBuilder for InputsQuery {
         }
 
         if let Some(input_type) = &self.input_type {
-            conditions.push(format!("input_type = '{}'", input_type));
+            conditions.push(format!("type = '{}'", input_type));
         }
 
         if let Some(block_height) = &self.block_height {

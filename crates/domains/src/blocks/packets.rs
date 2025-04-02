@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use fuel_streams_types::{Address, BlockTimestamp, DaBlockHeight};
 
-use super::{Block, BlocksSubject};
+use super::{Block, BlocksQuery, BlocksSubject};
 use crate::{
     blocks::BlockHeight,
     infra::record::{PacketBuilder, RecordPacket, ToPacket},
@@ -60,6 +60,12 @@ impl DynBlockSubject {
             Self::Block(subject) => {
                 block.to_packet(&Arc::new(subject.clone()), block_timestamp)
             }
+        }
+    }
+
+    pub fn to_query_params(&self) -> BlocksQuery {
+        match self {
+            Self::Block(subject) => BlocksQuery::from(subject.to_owned()),
         }
     }
 }

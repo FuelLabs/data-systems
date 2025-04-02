@@ -37,7 +37,7 @@ impl From<&Transaction> for TransactionsSubject {
         let subject = TransactionsSubject::new();
         subject
             .with_tx_id(Some(transaction.id.clone()))
-            .with_tx_type(Some(transaction.r#type.clone()))
+            .with_tx_type(Some(transaction.r#type))
     }
 }
 
@@ -47,8 +47,8 @@ impl From<TransactionsSubject> for TransactionsQuery {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
-            tx_status: subject.tx_status.clone(),
-            r#type: subject.tx_type.clone(),
+            tx_status: subject.tx_status,
+            r#type: subject.tx_type,
             ..Default::default()
         }
     }

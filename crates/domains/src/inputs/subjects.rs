@@ -172,7 +172,7 @@ impl From<InputsSubject> for InputsQuery {
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
             input_index: subject.input_index,
-            input_type: subject.input_type.clone(),
+            input_type: subject.input_type,
             ..Default::default()
         }
     }

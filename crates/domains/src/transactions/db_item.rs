@@ -12,7 +12,7 @@ use fuel_streams_types::{
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgHasArrayType, PgTypeInfo};
 
-use super::{subjects::*, PolicyWrapper};
+use super::subjects::*;
 use crate::{
     infra::{
         Cursor,
@@ -138,7 +138,6 @@ pub struct TransactionDbItem {
     // timestamps
     pub block_time: BlockTimestamp,
     pub created_at: BlockTimestamp,
-    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for TransactionDbItem {}
@@ -169,7 +168,7 @@ impl DbItem for TransactionDbItem {
     }
 
     fn block_time(&self) -> BlockTimestamp {
-        self.published_at
+        self.block_time
     }
 
     fn block_height(&self) -> BlockHeight {
@@ -181,21 +180,17 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
     type Error = RecordPacketError;
 
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
+        let transaction = Transaction::decode_json(&packet.value)?;
         let subject: Subjects = packet
             .subject_payload
             .to_owned()
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
-        let transaction = Transaction::decode_json(&packet.value)
-            .map_err(|e| RecordPacketError::DecodeFailed(e.to_string()))?;
-
         let policies: Option<String> = transaction
             .policies
             .as_ref()
-            .and_then(|p| p.to_owned().try_into().ok())
-            .map(|wrapper: PolicyWrapper| wrapper.to_string().ok())
-            .flatten();
+            .and_then(|wrapper| wrapper.to_string().ok());
 
         match subject {
             Subjects::Transactions(subject) => Ok(TransactionDbItem {
@@ -245,11 +240,11 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 script_length: transaction
                     .script
                     .as_ref()
-                    .map(|s| s.0 .0.len() as i64),
+                    .map(|s| s.len() as i64),
                 script_data_length: transaction
                     .script_data
                     .as_ref()
-                    .map(|d| d.0 .0.len() as i64),
+                    .map(|d| d.len() as i64),
                 storage_slots_count: Some(
                     transaction.storage_slots.len() as i64
                 ),
@@ -259,7 +254,6 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
                 outputs_count: Some(transaction.outputs.len() as i32),
                 block_time: packet.block_timestamp,
                 created_at: packet.block_timestamp,
-                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

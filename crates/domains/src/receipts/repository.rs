@@ -81,6 +81,8 @@ impl Repository for Receipt {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use anyhow::Result;
     use pretty_assertions::assert_eq;
 
@@ -97,189 +99,198 @@ mod tests {
         receipts::DynReceiptSubject,
     };
 
-    async fn test_receipt(receipt: &Receipt) -> Result<()> {
+    async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
         let db_opts = DbConnectionOpts::default();
         let db = Db::new(db_opts).await?;
-        let tx =
-            MockTransaction::script(vec![], vec![], vec![receipt.to_owned()]);
         let namespace = QueryOptions::random_namespace();
-        let subject = DynReceiptSubject::new(receipt, 1.into(), tx.id, 0, 0);
-        let timestamps = BlockTimestamp::default();
-
-        let packet = subject
-            .build_packet(receipt, timestamps)
-            .with_namespace(&namespace);
-
-        let db_item = ReceiptDbItem::try_from(&packet)?;
-        let result = Receipt::insert(db.pool_ref(), &db_item).await;
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
-        assert_eq!(db_item.cursor(), result.cursor());
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.tx_id, db_item.tx_id);
-        assert_eq!(result.tx_index, db_item.tx_index);
-        assert_eq!(result.receipt_index, db_item.receipt_index);
-        assert_eq!(result.receipt_type, db_item.receipt_type);
-        assert_eq!(result.from_contract_id, db_item.from_contract_id);
-        assert_eq!(result.to_contract_id, db_item.to_contract_id);
-        assert_eq!(result.to_address, db_item.to_address);
-        assert_eq!(result.asset_id, db_item.asset_id);
-        assert_eq!(result.contract_id, db_item.contract_id);
-        assert_eq!(result.sub_id, db_item.sub_id);
-        assert_eq!(result.sender_address, db_item.sender_address);
-        assert_eq!(result.recipient_address, db_item.recipient_address);
-        assert_eq!(result.created_at, db_item.created_at);
-
-        Ok(())
+        Ok((db, namespace))
     }
 
-    #[tokio::test]
-    async fn test_inserting_receipt_call() -> Result<()> {
-        test_receipt(&MockReceipt::call()).await?;
-        Ok(())
+    fn assert_result(result: &ReceiptDbItem, expected: &ReceiptDbItem) {
+        assert_eq!(result.cursor(), expected.cursor());
+        assert_eq!(result.subject, expected.subject);
+        assert_eq!(result.value, expected.value);
+        assert_eq!(result.block_height, expected.block_height);
+        assert_eq!(result.tx_id, expected.tx_id);
+        assert_eq!(result.tx_index, expected.tx_index);
+        assert_eq!(result.receipt_index, expected.receipt_index);
+        assert_eq!(result.receipt_type, expected.receipt_type);
+        assert_eq!(result.from_contract_id, expected.from_contract_id);
+        assert_eq!(result.to_contract_id, expected.to_contract_id);
+        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.asset_id, expected.asset_id);
+        assert_eq!(result.contract_id, expected.contract_id);
+        assert_eq!(result.sub_id, expected.sub_id);
+        assert_eq!(result.sender_address, expected.sender_address);
+        assert_eq!(result.recipient_address, expected.recipient_address);
+        assert_eq!(result.created_at, expected.created_at);
     }
 
-    #[tokio::test]
-    async fn test_inserting_receipt_return() -> Result<()> {
-        test_receipt(&MockReceipt::return_receipt()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_return_data() -> Result<()> {
-        test_receipt(&MockReceipt::return_data()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_panic() -> Result<()> {
-        test_receipt(&MockReceipt::panic()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_revert() -> Result<()> {
-        test_receipt(&MockReceipt::revert()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_log() -> Result<()> {
-        test_receipt(&MockReceipt::log()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_log_data() -> Result<()> {
-        test_receipt(&MockReceipt::log_data()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_transfer() -> Result<()> {
-        test_receipt(&MockReceipt::transfer()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_transfer_out() -> Result<()> {
-        test_receipt(&MockReceipt::transfer_out()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_script_result() -> Result<()> {
-        test_receipt(&MockReceipt::script_result()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_message_out() -> Result<()> {
-        test_receipt(&MockReceipt::message_out()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_mint() -> Result<()> {
-        test_receipt(&MockReceipt::mint()).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_receipt_burn() -> Result<()> {
-        test_receipt(&MockReceipt::burn()).await?;
-        Ok(())
-    }
-
-    async fn create_test_receipt(
+    async fn insert_receipt(
+        db: &Arc<Db>,
+        receipt: Option<Receipt>,
         height: u32,
         namespace: &str,
-    ) -> (ReceiptDbItem, Receipt, DynReceiptSubject) {
-        let receipt = MockReceipt::call();
+    ) -> Result<(ReceiptDbItem, Receipt, DynReceiptSubject)> {
+        let receipt = receipt.unwrap_or_else(MockReceipt::call);
         let tx =
             MockTransaction::script(vec![], vec![], vec![receipt.to_owned()]);
+
         let subject =
             DynReceiptSubject::new(&receipt, height.into(), tx.id, 0, 0);
         let timestamps = BlockTimestamp::default();
         let packet = subject
             .build_packet(&receipt, timestamps)
             .with_namespace(namespace);
-        let db_item = ReceiptDbItem::try_from(&packet).unwrap();
-        (db_item, receipt, subject)
+
+        let db_item = ReceiptDbItem::try_from(&packet)?;
+        let result = Receipt::insert(db.pool_ref(), &db_item).await?;
+        assert_result(&result, &db_item);
+
+        Ok((db_item, receipt, subject))
     }
 
     async fn create_receipts(
+        db: &Arc<Db>,
         namespace: &str,
-        db: &Db,
         count: u32,
-    ) -> Vec<ReceiptDbItem> {
+    ) -> Result<Vec<ReceiptDbItem>> {
         let mut receipts = Vec::with_capacity(count as usize);
         for height in 1..=count {
-            let (db_item, _, _) = create_test_receipt(height, namespace).await;
-            Receipt::insert(db.pool_ref(), &db_item).await.unwrap();
+            let (db_item, _, _) =
+                insert_receipt(db, None, height, namespace).await?;
             receipts.push(db_item);
         }
-        receipts
+        Ok(receipts)
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_call() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::call()), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_return() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::return_receipt()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_return_data() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::return_data()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_panic() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::panic()), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_revert() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::revert()), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_log() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::log()), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_log_data() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::log_data()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_transfer() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::transfer()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_transfer_out() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::transfer_out()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_script_result() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::script_result()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_message_out() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::message_out()), 1, &namespace)
+            .await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_mint() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::mint()), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_receipt_burn() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        insert_receipt(&db, Some(MockReceipt::burn()), 1, &namespace).await?;
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_find_one_receipt() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let (db_item, _, subject) = create_test_receipt(1, &namespace).await;
+        let (db, namespace) = setup_db().await?;
+        let (db_item, _, subject) =
+            insert_receipt(&db, None, 1, &namespace).await?;
+
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 
-        Receipt::insert(db.pool_ref(), &db_item).await?;
         let result = Receipt::find_one(db.pool_ref(), &query).await?;
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.tx_id, db_item.tx_id);
-        assert_eq!(result.receipt_type, db_item.receipt_type);
+        assert_result(&result, &db_item);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_receipts_basic_query() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 3).await?;
+
         let mut query = ReceiptsQuery::default();
         query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let results = Receipt::find_many(db.pool_ref(), &query).await?;
         assert_eq!(results.len(), 3, "Should find all three receipts");
-        assert_eq!(results[0].subject, receipts[0].subject);
-        assert_eq!(results[1].subject, receipts[1].subject);
-        assert_eq!(results[2].subject, receipts[2].subject);
+        assert_result(&results[0], &receipts[0]);
+        assert_result(&results[1], &receipts[1]);
+        assert_result(&results[2], &receipts[2]);
 
         Ok(())
     }
@@ -287,13 +298,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_receipts_with_cursor_based_pagination_after(
     ) -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 5).await?;
 
         let mut query = ReceiptsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(receipts[1].cursor()));
         query.with_first(Some(2));
 
@@ -303,8 +312,8 @@ mod tests {
             2,
             "Should return exactly 2 receipts after cursor"
         );
-        assert_eq!(results[0].cursor(), receipts[2].cursor());
-        assert_eq!(results[1].cursor(), receipts[3].cursor());
+        assert_result(&results[0], &receipts[2]);
+        assert_result(&results[1], &receipts[3]);
 
         Ok(())
     }
@@ -312,12 +321,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_receipts_with_cursor_based_pagination_before(
     ) -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 5).await?;
+
         let mut query = ReceiptsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_before(Some(receipts[4].cursor()));
         query.with_last(Some(2));
 
@@ -327,8 +335,8 @@ mod tests {
             2,
             "Should return exactly 2 receipts before cursor"
         );
-        assert_eq!(results[0].cursor(), receipts[3].cursor());
-        assert_eq!(results[1].cursor(), receipts[2].cursor());
+        assert_result(&results[0], &receipts[3]);
+        assert_result(&results[1], &receipts[2]);
 
         Ok(())
     }
@@ -336,85 +344,62 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_receipts_with_limit_offset_pagination() -> Result<()>
     {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 5).await?;
 
-        // Test first page
         let mut query = ReceiptsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_limit(Some(2));
-        query.with_offset(Some(0));
+        query.with_offset(Some(1));
         query.with_order_by(OrderBy::Asc);
 
-        let first_page = Receipt::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(first_page.len(), 2, "First page should have 2 receipts");
-        assert_eq!(first_page[0].cursor(), receipts[0].cursor());
-        assert_eq!(first_page[1].cursor(), receipts[1].cursor());
-
-        // Test second page
-        query.with_offset(Some(2));
-        let second_page = Receipt::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(second_page.len(), 2, "Second page should have 2 receipts");
-        assert_eq!(second_page[0].cursor(), receipts[2].cursor());
-        assert_eq!(second_page[1].cursor(), receipts[3].cursor());
-
-        // Test last page
-        query.with_offset(Some(4));
-        let last_page = Receipt::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(last_page.len(), 1, "Last page should have 1 receipt");
-        assert_eq!(last_page[0].cursor(), receipts[4].cursor());
+        let results = Receipt::find_many(db.pool_ref(), &query).await?;
+        assert_eq!(results.len(), 2, "Should return exactly 2 receipts");
+        assert_result(&results[0], &receipts[1]);
+        assert_result(&results[1], &receipts[2]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_receipts_with_different_order() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 3).await?;
 
-        // Test ascending order
         let mut query = ReceiptsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let asc_results = Receipt::find_many(db.pool_ref(), &query).await?;
         assert_eq!(asc_results.len(), 3);
-        assert_eq!(asc_results[0].cursor(), receipts[0].cursor());
-        assert_eq!(asc_results[2].cursor(), receipts[2].cursor());
+        assert_result(&asc_results[0], &receipts[0]);
+        assert_result(&asc_results[2], &receipts[2]);
 
-        // Test descending order
         query.with_order_by(OrderBy::Desc);
         let desc_results = Receipt::find_many(db.pool_ref(), &query).await?;
         assert_eq!(desc_results.len(), 3);
-        assert_eq!(desc_results[0].cursor(), receipts[2].cursor());
-        assert_eq!(desc_results[2].cursor(), receipts[0].cursor());
+        assert_result(&desc_results[0], &receipts[2]);
+        assert_result(&desc_results[2], &receipts[0]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_cursor_pagination_ignores_order_by() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let receipts = create_receipts(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let receipts = create_receipts(&db, &namespace, 5).await?;
 
         let mut query = ReceiptsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(receipts[1].cursor()));
         query.with_first(Some(2));
 
         let results_default = Receipt::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Asc);
-
         let results_asc = Receipt::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Desc);
-
         let results_desc = Receipt::find_many(db.pool_ref(), &query).await?;
+
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
 

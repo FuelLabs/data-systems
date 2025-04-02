@@ -2,33 +2,33 @@
 -- Enum Types
 -- ------------------------------------------------------------------------------
 CREATE TYPE "transaction_type" AS ENUM (
-    'SCRIPT',
-    'CREATE',
-    'MINT',
-    'UPGRADE',
-    'UPLOAD',
-    'BLOB'
+    'script',
+    'create',
+    'mint',
+    'upgrade',
+    'upload',
+    'blob'
 );
 
 CREATE TYPE "transaction_status" AS ENUM (
-    'FAILED',
-    'SUBMITTED',
-    'SQUEEZED_OUT',
-    'SUCCESS',
-    'NONE'
+    'failed',
+    'submitted',
+    'squeezed_out',
+    'success',
+    'none'
 );
 
 -- ------------------------------------------------------------------------------
 -- Main Transactions Table
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
-    id SERIAL PRIMARY KEY,
-    subject TEXT NOT NULL UNIQUE,
-    value BYTEA NOT NULL,
+    "id" SERIAL PRIMARY KEY,
+    "value" BYTEA NOT NULL,
+    -- uniques
+    "subject" TEXT NOT NULL UNIQUE,
     "block_height" BIGINT NOT NULL,
     "tx_id" TEXT UNIQUE NOT NULL,
     "tx_index" INTEGER NOT NULL,
-    -- cursor
     "cursor" TEXT NOT NULL, -- {block_height}-{tx_index}
     -- fields matching fuel-core
     "type" transaction_type NOT NULL,

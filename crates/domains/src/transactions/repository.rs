@@ -24,8 +24,7 @@ impl Repository for Transaction {
     {
         let mut conn = executor.acquire().await?;
         let mut db_tx = conn.begin().await?;
-        let published_at = BlockTimestamp::now();
-        // Insert into transactions table
+        let created_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, TransactionDbItem>(
             "WITH upsert AS (
                 INSERT INTO transactions (
@@ -61,14 +60,13 @@ impl Repository for Transaction {
                     inputs_count,
                     outputs_count,
                     block_time,
-                    created_at,
-                    published_at
+                    created_at
                 )
                 VALUES (
                     $1, $2, $3, $4, $5, $6, $7::transaction_type, $8, $9, $10,
                     $11, $12, $13::transaction_status, $14, $15, $16, $17, $18,
                     $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-                    $29, $30, $31, $32, $33, $34
+                    $29, $30, $31, $32, $33
                 )
                 ON CONFLICT (subject) DO UPDATE SET
                     value = EXCLUDED.value,
@@ -102,8 +100,7 @@ impl Repository for Transaction {
                     inputs_count = EXCLUDED.inputs_count,
                     outputs_count = EXCLUDED.outputs_count,
                     block_time = EXCLUDED.block_time,
-                    created_at = EXCLUDED.created_at,
-                    published_at = $34
+                    created_at = EXCLUDED.created_at
                 RETURNING *
             )
             SELECT * FROM upsert",
@@ -140,8 +137,7 @@ impl Repository for Transaction {
         .bind(db_item.inputs_count)
         .bind(db_item.outputs_count)
         .bind(db_item.block_time)
-        .bind(db_item.created_at)
-        .bind(published_at)
+        .bind(created_at)
         .fetch_one(&mut *db_tx)
         .await
         .map_err(RepositoryError::Insert)?;
@@ -213,7 +209,9 @@ impl Repository for Transaction {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use std::sync::Arc;
+
     use anyhow::Result;
     use pretty_assertions::assert_eq;
 
@@ -231,177 +229,172 @@ mod tests {
         transactions::DynTransactionSubject,
     };
 
-    async fn test_transaction(tx: &Transaction) -> anyhow::Result<()> {
+    async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
         let db_opts = DbConnectionOpts::default();
         let db = Db::new(db_opts).await?;
         let namespace = QueryOptions::random_namespace();
-        let subject = DynTransactionSubject::new(tx, 1.into(), 0);
-        let timestamps = BlockTimestamp::default();
-        let packet = subject
-            .build_packet(tx, timestamps)
-            .with_namespace(&namespace);
-
-        let db_item = TransactionDbItem::try_from(&packet)?;
-        let result = Transaction::insert(db.pool_ref(), &db_item).await;
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
-        assert_eq!(result.cursor(), db_item.cursor());
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.tx_id, db_item.tx_id);
-        assert_eq!(result.tx_index, db_item.tx_index);
-        assert_eq!(result.tx_status, db_item.tx_status);
-        assert_eq!(result.r#type, db_item.r#type);
-        assert_eq!(result.script_gas_limit, db_item.script_gas_limit);
-        assert_eq!(result.mint_amount, db_item.mint_amount);
-        assert_eq!(result.mint_asset_id, db_item.mint_asset_id);
-        assert_eq!(result.mint_gas_price, db_item.mint_gas_price);
-        assert_eq!(result.receipts_root, db_item.receipts_root);
-        assert_eq!(result.script, db_item.script);
-        assert_eq!(result.script_data, db_item.script_data);
-        assert_eq!(result.salt, db_item.salt);
-        assert_eq!(
-            result.bytecode_witness_index,
-            db_item.bytecode_witness_index
-        );
-        assert_eq!(result.bytecode_root, db_item.bytecode_root);
-        assert_eq!(result.subsection_index, db_item.subsection_index);
-        assert_eq!(result.subsections_number, db_item.subsections_number);
-        assert_eq!(result.upgrade_purpose, db_item.upgrade_purpose);
-        assert_eq!(result.blob_id, db_item.blob_id);
-        assert_eq!(result.maturity, db_item.maturity);
-        assert_eq!(result.policies, db_item.policies);
-        assert_eq!(result.script_length, db_item.script_length);
-        assert_eq!(result.script_data_length, db_item.script_data_length);
-        assert_eq!(result.storage_slots_count, db_item.storage_slots_count);
-        assert_eq!(result.proof_set_count, db_item.proof_set_count);
-        assert_eq!(result.witnesses_count, db_item.witnesses_count);
-        assert_eq!(result.inputs_count, db_item.inputs_count);
-        assert_eq!(result.outputs_count, db_item.outputs_count);
-        assert_eq!(result.block_time, db_item.block_time);
-        assert_eq!(result.created_at, db_item.created_at);
-
-        Ok(())
+        Ok((db, namespace))
     }
 
-    async fn create_test_transaction(
+    fn assert_result(result: &TransactionDbItem, expected: &TransactionDbItem) {
+        assert_eq!(result.cursor(), expected.cursor());
+        assert_eq!(result.subject, expected.subject);
+        assert_eq!(result.value, expected.value);
+        assert_eq!(result.block_height, expected.block_height);
+        assert_eq!(result.tx_id, expected.tx_id);
+        assert_eq!(result.tx_index, expected.tx_index);
+        assert_eq!(result.tx_status, expected.tx_status);
+        assert_eq!(result.r#type, expected.r#type);
+        assert_eq!(result.script_gas_limit, expected.script_gas_limit);
+        assert_eq!(result.mint_amount, expected.mint_amount);
+        assert_eq!(result.mint_asset_id, expected.mint_asset_id);
+        assert_eq!(result.mint_gas_price, expected.mint_gas_price);
+        assert_eq!(result.receipts_root, expected.receipts_root);
+        assert_eq!(result.script, expected.script);
+        assert_eq!(result.script_data, expected.script_data);
+        assert_eq!(result.salt, expected.salt);
+        assert_eq!(
+            result.bytecode_witness_index,
+            expected.bytecode_witness_index
+        );
+        assert_eq!(result.bytecode_root, expected.bytecode_root);
+        assert_eq!(result.subsection_index, expected.subsection_index);
+        assert_eq!(result.subsections_number, expected.subsections_number);
+        assert_eq!(result.upgrade_purpose, expected.upgrade_purpose);
+        assert_eq!(result.blob_id, expected.blob_id);
+        assert_eq!(result.maturity, expected.maturity);
+        assert_eq!(result.policies, expected.policies);
+        assert_eq!(result.script_length, expected.script_length);
+        assert_eq!(result.script_data_length, expected.script_data_length);
+        assert_eq!(result.storage_slots_count, expected.storage_slots_count);
+        assert_eq!(result.proof_set_count, expected.proof_set_count);
+        assert_eq!(result.witnesses_count, expected.witnesses_count);
+        assert_eq!(result.inputs_count, expected.inputs_count);
+        assert_eq!(result.outputs_count, expected.outputs_count);
+        assert_eq!(result.block_time, expected.block_time);
+    }
+
+    pub async fn insert_transaction(
+        db: &Arc<Db>,
+        tx: Option<Transaction>,
         height: u32,
         namespace: &str,
-    ) -> (TransactionDbItem, Transaction, DynTransactionSubject) {
-        let tx = MockTransaction::script(vec![], vec![], vec![]);
+    ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
+        let tx = tx
+            .unwrap_or_else(|| MockTransaction::script(vec![], vec![], vec![]));
         let subject = DynTransactionSubject::new(&tx, height.into(), 0);
         let timestamps = BlockTimestamp::default();
         let packet = subject
             .build_packet(&tx, timestamps)
             .with_namespace(namespace);
-        let db_item = TransactionDbItem::try_from(&packet).unwrap();
-        (db_item, tx, subject)
+
+        let db_item = TransactionDbItem::try_from(&packet)?;
+        let result = Transaction::insert(db.pool_ref(), &db_item).await?;
+        assert_result(&result, &db_item);
+
+        Ok((db_item, tx, subject))
     }
 
     async fn create_transactions(
+        db: &Arc<Db>,
         namespace: &str,
-        db: &Db,
         count: u32,
-    ) -> Vec<TransactionDbItem> {
+    ) -> Result<Vec<TransactionDbItem>> {
         let mut transactions = Vec::with_capacity(count as usize);
         for height in 1..=count {
             let (db_item, _, _) =
-                create_test_transaction(height, namespace).await;
-            Transaction::insert(db.pool_ref(), &db_item).await.unwrap();
+                insert_transaction(db, None, height, namespace).await?;
             transactions.push(db_item);
         }
-        transactions
+        Ok(transactions)
     }
 
     #[tokio::test]
-    async fn test_inserting_script_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_script_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::script(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_create_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_create_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::create(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_mint_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_mint_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::mint(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_upgrade_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_upgrade_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::upgrade(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_upload_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_upload_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::upload(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_blob_transaction() -> anyhow::Result<()> {
+    async fn test_inserting_blob_transaction() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         let tx = MockTransaction::blob(vec![], vec![], vec![]);
-        test_transaction(&tx).await?;
+        insert_transaction(&db, Some(tx), 1, &namespace).await?;
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_inserting_all_transaction_types() -> anyhow::Result<()> {
+    async fn test_inserting_all_transaction_types() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
         for tx in MockTransaction::all() {
-            test_transaction(&tx).await?;
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
         }
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_one_transaction() -> Result<()> {
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let namespace = QueryOptions::random_namespace();
-        let tx = MockTransaction::script(vec![], vec![], vec![]);
-        let subject = DynTransactionSubject::new(&tx, 1.into(), 0);
-        let timestamps = BlockTimestamp::default();
-        let packet = subject
-            .build_packet(&tx, timestamps)
-            .with_namespace(&namespace);
-        let db_item = TransactionDbItem::try_from(&packet)?;
+        let (db, namespace) = setup_db().await?;
+        let (db_item, _, subject) =
+            insert_transaction(&db, None, 1, &namespace).await?;
 
-        Transaction::insert(db.pool_ref(), &db_item).await?;
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
-        let result = Transaction::find_one(db.pool_ref(), &query).await?;
 
-        assert_eq!(result.subject, db_item.subject);
+        let result = Transaction::find_one(db.pool_ref(), &query).await?;
+        assert_result(&result, &db_item);
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_transactions_basic_query() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 3).await?;
+
         let mut query = TransactionsQuery::default();
         query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let results = Transaction::find_many(db.pool_ref(), &query).await?;
         assert_eq!(results.len(), 3, "Should find all three transactions");
-        assert_eq!(results[0].subject, transactions[0].subject);
-        assert_eq!(results[1].subject, transactions[1].subject);
-        assert_eq!(results[2].subject, transactions[2].subject);
+        assert_result(&results[0], &transactions[0]);
+        assert_result(&results[1], &transactions[1]);
+        assert_result(&results[2], &transactions[2]);
 
         Ok(())
     }
@@ -409,13 +402,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_transactions_with_cursor_based_pagination_after(
     ) -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 5).await?;
 
         let mut query = TransactionsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(transactions[1].cursor()));
         query.with_first(Some(2));
 
@@ -425,8 +416,8 @@ mod tests {
             2,
             "Should return exactly 2 transactions after cursor"
         );
-        assert_eq!(results[0].cursor(), transactions[2].cursor());
-        assert_eq!(results[1].cursor(), transactions[3].cursor());
+        assert_result(&results[0], &transactions[2]);
+        assert_result(&results[1], &transactions[3]);
 
         Ok(())
     }
@@ -434,12 +425,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_transactions_with_cursor_based_pagination_before(
     ) -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 5).await?;
+
         let mut query = TransactionsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_before(Some(transactions[4].cursor()));
         query.with_last(Some(2));
 
@@ -449,8 +439,8 @@ mod tests {
             2,
             "Should return exactly 2 transactions before cursor"
         );
-        assert_eq!(results[0].cursor(), transactions[3].cursor());
-        assert_eq!(results[1].cursor(), transactions[2].cursor());
+        assert_result(&results[0], &transactions[3]);
+        assert_result(&results[1], &transactions[2]);
 
         Ok(())
     }
@@ -458,96 +448,65 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_transactions_with_limit_offset_pagination(
     ) -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 5).await?;
 
-        // Test first page
         let mut query = TransactionsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_limit(Some(2));
-        query.with_offset(Some(0));
+        query.with_offset(Some(1));
         query.with_order_by(OrderBy::Asc);
 
-        let first_page = Transaction::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(
-            first_page.len(),
-            2,
-            "First page should have 2 transactions"
-        );
-        assert_eq!(first_page[0].cursor(), transactions[0].cursor());
-        assert_eq!(first_page[1].cursor(), transactions[1].cursor());
-
-        // Test second page
-        query.with_offset(Some(2));
-        let second_page = Transaction::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(
-            second_page.len(),
-            2,
-            "Second page should have 2 transactions"
-        );
-        assert_eq!(second_page[0].cursor(), transactions[2].cursor());
-        assert_eq!(second_page[1].cursor(), transactions[3].cursor());
-
-        // Test last page
-        query.with_offset(Some(4));
-        let last_page = Transaction::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(last_page.len(), 1, "Last page should have 1 transaction");
-        assert_eq!(last_page[0].cursor(), transactions[4].cursor());
+        let results = Transaction::find_many(db.pool_ref(), &query).await?;
+        assert_eq!(results.len(), 2, "Should return exactly 2 transactions");
+        assert_result(&results[0], &transactions[1]);
+        assert_result(&results[1], &transactions[2]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_transactions_with_different_order() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 3).await?;
 
-        // Test ascending order
         let mut query = TransactionsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let asc_results = Transaction::find_many(db.pool_ref(), &query).await?;
         assert_eq!(asc_results.len(), 3);
-        assert_eq!(asc_results[0].cursor(), transactions[0].cursor());
-        assert_eq!(asc_results[2].cursor(), transactions[2].cursor());
+        assert_result(&asc_results[0], &transactions[0]);
+        assert_result(&asc_results[2], &transactions[2]);
 
-        // Test descending order
         query.with_order_by(OrderBy::Desc);
         let desc_results =
             Transaction::find_many(db.pool_ref(), &query).await?;
         assert_eq!(desc_results.len(), 3);
-        assert_eq!(desc_results[0].cursor(), transactions[2].cursor());
-        assert_eq!(desc_results[2].cursor(), transactions[0].cursor());
+        assert_result(&desc_results[0], &transactions[2]);
+        assert_result(&desc_results[2], &transactions[0]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_cursor_pagination_ignores_order_by() -> Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let transactions = create_transactions(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 5).await?;
 
         let mut query = TransactionsQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(transactions[1].cursor()));
         query.with_first(Some(2));
 
         let results_default =
             Transaction::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Asc);
-
         let results_asc = Transaction::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Desc);
-
         let results_desc =
             Transaction::find_many(db.pool_ref(), &query).await?;
+
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
 

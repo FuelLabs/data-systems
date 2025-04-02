@@ -102,8 +102,7 @@ impl DbItem for BlockDbItem {
 impl TryFrom<&RecordPacket> for BlockDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
-        let block = Block::decode_json(&packet.value)
-            .map_err(|e| RecordPacketError::DecodeFailed(e.to_string()))?;
+        let block = Block::decode_json(&packet.value)?;
         let (
             consensus_type,
             consensus_chain_config_hash,

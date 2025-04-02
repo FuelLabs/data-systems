@@ -5,6 +5,20 @@ macro_rules! common_wrapper_type {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $wrapper_type(pub $inner_type);
 
+        impl $wrapper_type {
+            pub fn into_inner(self) -> $inner_type {
+                self.0
+            }
+
+            pub fn len(&self) -> usize {
+                self.0.len()
+            }
+
+            pub fn is_empty(&self) -> bool {
+                self.len() == 0
+            }
+        }
+
         impl From<$inner_type> for $wrapper_type {
             fn from(value: $inner_type) -> Self {
                 $wrapper_type(value)
@@ -54,12 +68,6 @@ macro_rules! common_wrapper_type {
         impl AsRef<$inner_type> for $wrapper_type {
             fn as_ref(&self) -> &$inner_type {
                 &self.0
-            }
-        }
-
-        impl $wrapper_type {
-            pub fn into_inner(self) -> $inner_type {
-                self.0
             }
         }
 

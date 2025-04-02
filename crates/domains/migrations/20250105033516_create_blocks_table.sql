@@ -1,21 +1,16 @@
-CREATE TYPE consensus_type AS ENUM ('GENESIS', 'POA_CONSENSUS');
+CREATE TYPE consensus_type AS ENUM ('genesis', 'poa_consensus');
 
 -- Create records table
 CREATE TABLE IF NOT EXISTS blocks (
-    -- uniques
     "id" SERIAL PRIMARY KEY,
+    "value" BYTEA NOT NULL,
+    -- uniques
     "subject" TEXT NOT NULL UNIQUE,
-    "block_height" BIGINT NOT NULL,
+    "block_height" BIGINT NOT NULL UNIQUE,
     "block_da_height" BIGINT NOT NULL,
-    -- messaging only
-    value BYTEA NOT NULL,
     -- other props
     "version" VARCHAR(10) NOT NULL,
     "producer_address" TEXT NOT NULL,
-    -- timestamps
-    "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
-    "published_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    "block_propagation_ms" INTEGER NOT NULL,
     -- block header
     "header_application_hash" TEXT NOT NULL,
     "header_consensus_parameters_version" INTEGER NOT NULL,
@@ -36,12 +31,16 @@ CREATE TABLE IF NOT EXISTS blocks (
     "consensus_contracts_root" TEXT,
     "consensus_messages_root" TEXT,
     "consensus_signature" TEXT,
-    "consensus_transactions_root" TEXT
+    "consensus_transactions_root" TEXT,
+    -- timestamps
+    "block_time" TIMESTAMPTZ NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW (),
+    "block_propagation_ms" INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_blocks_subject ON blocks (subject);
 CREATE INDEX IF NOT EXISTS idx_blocks_producer_address ON blocks (producer_address);
 CREATE INDEX IF NOT EXISTS idx_blocks_block_da_height ON blocks (block_da_height);
 CREATE INDEX IF NOT EXISTS idx_blocks_block_height ON blocks (block_height);
+CREATE INDEX IF NOT EXISTS idx_blocks_block_time ON blocks (block_time);
 CREATE INDEX IF NOT EXISTS idx_blocks_created_at ON blocks (created_at);
-CREATE INDEX IF NOT EXISTS idx_blocks_published_at ON blocks (published_at);

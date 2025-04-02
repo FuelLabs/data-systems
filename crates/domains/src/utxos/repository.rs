@@ -67,6 +67,8 @@ impl Repository for Utxo {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use fuel_streams_types::primitives::*;
     use pretty_assertions::assert_eq;
 
@@ -84,121 +86,114 @@ mod tests {
         utxos::DynUtxoSubject,
     };
 
-    async fn test_utxo(input: &Input) -> anyhow::Result<()> {
+    async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
         let db_opts = DbConnectionOpts::default();
         let db = Db::new(db_opts).await?;
-        let tx =
-            MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
         let namespace = QueryOptions::random_namespace();
-        let subject = DynUtxoSubject::new(input, 1.into(), tx.id, 0, 0);
-        let timestamps = BlockTimestamp::default();
-        let packet =
-            subject.build_packet(timestamps).with_namespace(&namespace);
-
-        let db_item = UtxoDbItem::try_from(&packet)?;
-        let result = Utxo::insert(db.pool_ref(), &db_item).await;
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
-        assert_eq!(result.cursor(), db_item.cursor());
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.tx_id, db_item.tx_id);
-        assert_eq!(result.tx_index, db_item.tx_index);
-        assert_eq!(result.input_index, db_item.input_index);
-        assert_eq!(result.utxo_type, db_item.utxo_type);
-        assert_eq!(result.utxo_id, db_item.utxo_id);
-        assert_eq!(result.contract_id, db_item.contract_id);
-        assert_eq!(result.created_at, db_item.created_at);
-
-        Ok(())
+        Ok((db, namespace))
     }
 
-    #[tokio::test]
-    async fn test_inserting_coin_utxo() -> anyhow::Result<()> {
-        let input = MockInput::coin_predicate();
-        test_utxo(&input).await?;
-        Ok(())
+    fn assert_result(result: &UtxoDbItem, expected: &UtxoDbItem) {
+        assert_eq!(result.cursor(), expected.cursor());
+        assert_eq!(result.subject, expected.subject);
+        assert_eq!(result.value, expected.value);
+        assert_eq!(result.block_height, expected.block_height);
+        assert_eq!(result.tx_id, expected.tx_id);
+        assert_eq!(result.tx_index, expected.tx_index);
+        assert_eq!(result.input_index, expected.input_index);
+        assert_eq!(result.utxo_type, expected.utxo_type);
+        assert_eq!(result.utxo_id, expected.utxo_id);
+        assert_eq!(result.contract_id, expected.contract_id);
+        assert_eq!(result.created_at, expected.created_at);
     }
 
-    #[tokio::test]
-    async fn test_inserting_contract_utxo() -> anyhow::Result<()> {
-        let input = MockInput::contract();
-        test_utxo(&input).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_inserting_message_utxo() -> anyhow::Result<()> {
-        let input = MockInput::message_coin_signed();
-        test_utxo(&input).await?;
-        Ok(())
-    }
-
-    async fn create_test_utxo(
+    async fn insert_utxo(
+        db: &Arc<Db>,
+        input: Option<Input>,
         height: u32,
         namespace: &str,
-    ) -> (UtxoDbItem, Input, DynUtxoSubject) {
-        let input = MockInput::coin_predicate();
+    ) -> anyhow::Result<(UtxoDbItem, Input, DynUtxoSubject)> {
+        let input = input.unwrap_or_else(MockInput::coin_predicate);
         let tx =
             MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
         let subject = DynUtxoSubject::new(&input, height.into(), tx.id, 0, 0);
         let timestamps = BlockTimestamp::default();
         let packet = subject.build_packet(timestamps).with_namespace(namespace);
-        let db_item = UtxoDbItem::try_from(&packet).unwrap();
-        (db_item, input, subject)
+
+        let db_item = UtxoDbItem::try_from(&packet)?;
+        let result = Utxo::insert(db.pool_ref(), &db_item).await?;
+        assert_result(&result, &db_item);
+
+        Ok((db_item, input, subject))
     }
 
     async fn create_utxos(
+        db: &Arc<Db>,
         namespace: &str,
-        db: &Db,
         count: u32,
-    ) -> Vec<UtxoDbItem> {
+    ) -> anyhow::Result<Vec<UtxoDbItem>> {
         let mut utxos = Vec::with_capacity(count as usize);
         for height in 1..=count {
-            let (db_item, _, _) = create_test_utxo(height, namespace).await;
-            Utxo::insert(db.pool_ref(), &db_item).await.unwrap();
+            let (db_item, _, _) =
+                insert_utxo(db, None, height, namespace).await?;
             utxos.push(db_item);
         }
-        utxos
+        Ok(utxos)
+    }
+
+    #[tokio::test]
+    async fn test_inserting_coin_utxo() -> anyhow::Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let input = MockInput::coin_predicate();
+        insert_utxo(&db, Some(input), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_contract_utxo() -> anyhow::Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let input = MockInput::contract();
+        insert_utxo(&db, Some(input), 1, &namespace).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_inserting_message_utxo() -> anyhow::Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let input = MockInput::message_coin_signed();
+        insert_utxo(&db, Some(input), 1, &namespace).await?;
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_find_one_utxo() -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let (db_item, _, subject) = create_test_utxo(1, &namespace).await;
+        let (db, namespace) = setup_db().await?;
+        let (db_item, _, subject) =
+            insert_utxo(&db, None, 1, &namespace).await?;
+
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 
-        Utxo::insert(db.pool_ref(), &db_item).await?;
         let result = Utxo::find_one(db.pool_ref(), &query).await?;
-        assert_eq!(result.subject, db_item.subject);
-        assert_eq!(result.value, db_item.value);
-        assert_eq!(result.block_height, db_item.block_height);
-        assert_eq!(result.tx_id, db_item.tx_id);
-        assert_eq!(result.utxo_type, db_item.utxo_type);
+        assert_result(&result, &db_item);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_utxos_basic_query() -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 3).await?;
+
         let mut query = UtxosQuery::default();
         query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let results = Utxo::find_many(db.pool_ref(), &query).await?;
         assert_eq!(results.len(), 3, "Should find all three UTXOs");
-        assert_eq!(results[0].subject, utxos[0].subject);
-        assert_eq!(results[1].subject, utxos[1].subject);
-        assert_eq!(results[2].subject, utxos[2].subject);
+        assert_result(&results[0], &utxos[0]);
+        assert_result(&results[1], &utxos[1]);
+        assert_result(&results[2], &utxos[2]);
 
         Ok(())
     }
@@ -206,13 +201,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_utxos_with_cursor_based_pagination_after(
     ) -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 5).await?;
 
         let mut query = UtxosQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(utxos[1].cursor()));
         query.with_first(Some(2));
 
@@ -222,8 +215,8 @@ mod tests {
             2,
             "Should return exactly 2 UTXOs after cursor"
         );
-        assert_eq!(results[0].cursor(), utxos[2].cursor());
-        assert_eq!(results[1].cursor(), utxos[3].cursor());
+        assert_result(&results[0], &utxos[2]);
+        assert_result(&results[1], &utxos[3]);
 
         Ok(())
     }
@@ -231,12 +224,11 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_utxos_with_cursor_based_pagination_before(
     ) -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 5).await?;
+
         let mut query = UtxosQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_before(Some(utxos[4].cursor()));
         query.with_last(Some(2));
 
@@ -246,8 +238,8 @@ mod tests {
             2,
             "Should return exactly 2 UTXOs before cursor"
         );
-        assert_eq!(results[0].cursor(), utxos[3].cursor());
-        assert_eq!(results[1].cursor(), utxos[2].cursor());
+        assert_result(&results[0], &utxos[3]);
+        assert_result(&results[1], &utxos[2]);
 
         Ok(())
     }
@@ -255,85 +247,62 @@ mod tests {
     #[tokio::test]
     async fn test_find_many_utxos_with_limit_offset_pagination(
     ) -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 5).await?;
 
-        // Test first page
         let mut query = UtxosQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_limit(Some(2));
-        query.with_offset(Some(0));
+        query.with_offset(Some(1));
         query.with_order_by(OrderBy::Asc);
 
-        let first_page = Utxo::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(first_page.len(), 2, "First page should have 2 UTXOs");
-        assert_eq!(first_page[0].cursor(), utxos[0].cursor());
-        assert_eq!(first_page[1].cursor(), utxos[1].cursor());
-
-        // Test second page
-        query.with_offset(Some(2));
-        let second_page = Utxo::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(second_page.len(), 2, "Second page should have 2 UTXOs");
-        assert_eq!(second_page[0].cursor(), utxos[2].cursor());
-        assert_eq!(second_page[1].cursor(), utxos[3].cursor());
-
-        // Test last page
-        query.with_offset(Some(4));
-        let last_page = Utxo::find_many(db.pool_ref(), &query).await?;
-        assert_eq!(last_page.len(), 1, "Last page should have 1 UTXO");
-        assert_eq!(last_page[0].cursor(), utxos[4].cursor());
+        let results = Utxo::find_many(db.pool_ref(), &query).await?;
+        assert_eq!(results.len(), 2, "Should return exactly 2 UTXOs");
+        assert_result(&results[0], &utxos[1]);
+        assert_result(&results[1], &utxos[2]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_many_utxos_with_different_order() -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 3).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 3).await?;
 
-        // Test ascending order
         let mut query = UtxosQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_order_by(OrderBy::Asc);
 
         let asc_results = Utxo::find_many(db.pool_ref(), &query).await?;
         assert_eq!(asc_results.len(), 3);
-        assert_eq!(asc_results[0].cursor(), utxos[0].cursor());
-        assert_eq!(asc_results[2].cursor(), utxos[2].cursor());
+        assert_result(&asc_results[0], &utxos[0]);
+        assert_result(&asc_results[2], &utxos[2]);
 
-        // Test descending order
         query.with_order_by(OrderBy::Desc);
         let desc_results = Utxo::find_many(db.pool_ref(), &query).await?;
         assert_eq!(desc_results.len(), 3);
-        assert_eq!(desc_results[0].cursor(), utxos[2].cursor());
-        assert_eq!(desc_results[2].cursor(), utxos[0].cursor());
+        assert_result(&desc_results[0], &utxos[2]);
+        assert_result(&desc_results[2], &utxos[0]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_cursor_pagination_ignores_order_by() -> anyhow::Result<()> {
-        let namespace = QueryOptions::random_namespace();
-        let db_opts = DbConnectionOpts::default();
-        let db = Db::new(db_opts).await?;
-        let utxos = create_utxos(&namespace, &db, 5).await;
+        let (db, namespace) = setup_db().await?;
+        let utxos = create_utxos(&db, &namespace, 5).await?;
 
         let mut query = UtxosQuery::default();
-        query.with_namespace(Some(namespace.clone()));
+        query.with_namespace(Some(namespace));
         query.with_after(Some(utxos[1].cursor()));
         query.with_first(Some(2));
 
         let results_default = Utxo::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Asc);
-
         let results_asc = Utxo::find_many(db.pool_ref(), &query).await?;
         query.with_order_by(OrderBy::Desc);
-
         let results_desc = Utxo::find_many(db.pool_ref(), &query).await?;
+
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
 

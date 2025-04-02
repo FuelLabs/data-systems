@@ -40,6 +40,10 @@ impl From<&FuelCoreStorageSlot> for StorageSlot {
 pub struct PolicyWrapper(pub FuelCorePolicies);
 
 impl PolicyWrapper {
+    pub fn random() -> Self {
+        Self(FuelCorePolicies::new())
+    }
+
     pub fn to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(&self.0)
     }
@@ -524,11 +528,11 @@ impl MockTransaction {
     fn base_transaction(r#type: TransactionType) -> Transaction {
         Transaction {
             id: TxId::random(),
-            r#type: r#type.clone(),
+            r#type,
             bytecode_root: None,
             bytecode_witness_index: None,
             blob_id: None,
-            input_asset_ids: Some(vec![AssetId::default()]),
+            input_asset_ids: Some(vec![AssetId::random()]),
             input_contract: None,
             input_contracts: None,
             inputs: vec![MockInput::coin_signed()],
@@ -544,9 +548,9 @@ impl MockTransaction {
             mint_amount: None,
             mint_asset_id: None,
             mint_gas_price: None,
-            policies: Some(PolicyWrapper::default()),
+            policies: Some(PolicyWrapper::random()),
             proof_set: vec![],
-            raw_payload: HexData::default(),
+            raw_payload: HexData::random(),
             receipts_root: None,
             salt: None,
             script: None,
@@ -556,9 +560,9 @@ impl MockTransaction {
             storage_slots: vec![],
             subsection_index: None,
             subsections_number: None,
-            tx_pointer: Some(TxPointer::default()),
+            tx_pointer: Some(TxPointer::random()),
             upgrade_purpose: None,
-            witnesses: vec![HexData::default()],
+            witnesses: vec![HexData::random()],
             receipts: vec![MockReceipt::script_result()],
         }
     }
@@ -576,29 +580,29 @@ impl MockTransaction {
 
     fn with_contract_data(mut tx: Transaction) -> Transaction {
         tx.output_contract = Some(OutputContract {
-            balance_root: Bytes32::default(),
+            balance_root: Bytes32::random(),
             input_index: 0,
-            state_root: Bytes32::default(),
+            state_root: Bytes32::random(),
         });
         tx.storage_slots = vec![StorageSlot {
-            key: HexData::default(),
-            value: HexData::default(),
+            key: HexData::random(),
+            value: HexData::random(),
         }];
         tx
     }
 
     fn with_mint_data(mut tx: Transaction) -> Transaction {
         tx.input_contract = Some(InputContract {
-            balance_root: Bytes32::default(),
-            contract_id: Bytes32::default(),
-            state_root: Bytes32::default(),
-            tx_pointer: TxPointer::default(),
-            utxo_id: UtxoId::default(),
+            balance_root: Bytes32::random(),
+            contract_id: Bytes32::random(),
+            state_root: Bytes32::random(),
+            tx_pointer: TxPointer::random(),
+            utxo_id: UtxoId::random(),
         });
         tx.mint_amount = Some(1000.into());
-        tx.mint_asset_id = Some(AssetId::default());
+        tx.mint_asset_id = Some(AssetId::random());
         tx.mint_gas_price = Some(100.into());
-        tx.tx_pointer = Some(TxPointer::default());
+        tx.tx_pointer = Some(TxPointer::random());
         tx
     }
 
@@ -624,7 +628,7 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Create);
-        tx.salt = Some(Salt::default());
+        tx.salt = Some(Salt::random());
         tx.inputs = inputs;
         tx.outputs = outputs;
         tx.receipts = receipts;
@@ -651,7 +655,7 @@ impl MockTransaction {
         let mut tx = Self::base_transaction(TransactionType::Upgrade);
         tx.upgrade_purpose = Some(
             FuelCoreUpgradePurpose::StateTransition {
-                root: FuelCoreBytes32::default(),
+                root: FuelCoreBytes32::zeroed(),
             }
             .into(),
         );
@@ -667,9 +671,9 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Upload);
-        tx.bytecode_root = Some(Bytes32::default());
+        tx.bytecode_root = Some(Bytes32::random());
         tx.bytecode_witness_index = Some(0);
-        tx.proof_set = vec![Bytes32::default()];
+        tx.proof_set = vec![Bytes32::random()];
         tx.subsection_index = Some(0);
         tx.subsections_number = Some(1);
         tx.inputs = inputs;
@@ -684,7 +688,7 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Blob);
-        tx.blob_id = Some(BlobId::default());
+        tx.blob_id = Some(BlobId::random());
         tx.inputs = inputs;
         tx.outputs = outputs;
         tx.receipts = receipts;

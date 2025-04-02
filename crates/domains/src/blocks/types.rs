@@ -228,4 +228,11 @@ impl MockBlock {
         block.header.time = BlockTime::from_unix(now.timestamp());
         block
     }
+
+    pub fn random() -> Block {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let height = rng.random_range(0..u32::MAX);
+        Self::build(height)
+    }
 }

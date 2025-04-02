@@ -54,6 +54,12 @@ macro_rules! declare_integer_wrapper {
             pub fn into_inner(&self) -> $inner_type {
                 self.0
             }
+
+            pub fn random() -> Self {
+                use rand::Rng;
+                let max = <$inner_type>::MAX;
+                Self(rand::rng().random_range(0..max))
+            }
         }
 
         impl Default for $name {

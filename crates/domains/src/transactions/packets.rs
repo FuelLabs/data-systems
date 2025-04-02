@@ -58,7 +58,7 @@ impl DynTransactionSubject {
         tx_index: i32,
     ) -> Self {
         let tx_id = tx.id.clone();
-        let tx_status = tx.status.clone();
+        let tx_status = tx.status;
         Self::Transaction(TransactionsSubject {
             block_height: Some(block_height),
             tx_index: Some(tx_index),

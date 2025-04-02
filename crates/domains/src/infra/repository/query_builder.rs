@@ -108,12 +108,26 @@ pub trait QueryParamsBuilder {
 
         if let Some(after) = pagination.after.as_ref() {
             let field = Self::prefix_field(cursor_field, join_prefix);
-            conditions.push(format!("{field} > '{after}'"));
+            if cursor_field == "block_height" {
+                // When using block height as the cursor field,
+                // we need to compare the block height as a number,
+                // not a string.
+                conditions.push(format!("{field} > {}", after));
+            } else {
+                conditions.push(format!("{field} > '{after}'"));
+            }
         }
 
         if let Some(before) = pagination.before.as_ref() {
             let field = Self::prefix_field(cursor_field, join_prefix);
-            conditions.push(format!("{field} < '{before}'"));
+            if cursor_field == "block_height" {
+                // When using block height as the cursor field,
+                // we need to compare the block height as a number,
+                // not a string.
+                conditions.push(format!("{field} < {}", before));
+            } else {
+                conditions.push(format!("{field} < '{before}'"));
+            }
         }
 
         if !conditions.is_empty() {

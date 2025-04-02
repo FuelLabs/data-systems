@@ -15,7 +15,18 @@ impl LongBytes {
     pub fn zeroed() -> Self {
         Self(vec![0; 32])
     }
+    pub fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
+
 impl AsRef<[u8]> for LongBytes {
     fn as_ref(&self) -> &[u8] {
         &self.0
