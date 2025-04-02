@@ -2,7 +2,7 @@ use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use super::{ReceiptType, ReceiptsQuery};
+use super::ReceiptsQuery;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "receipts_call")]
@@ -654,7 +654,7 @@ impl From<ReceiptsSubject> for ReceiptsQuery {
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
             receipt_index: subject.receipt_index,
-            receipt_type: subject.receipt_type.clone(),
+            receipt_type: subject.receipt_type,
             ..Default::default()
         }
     }

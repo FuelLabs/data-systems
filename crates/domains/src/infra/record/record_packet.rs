@@ -15,6 +15,8 @@ pub enum RecordPacketError {
     EncodeError(#[from] EncoderError),
     #[error("Failed to decode: {0}")]
     DecodeFailed(String),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub trait PacketBuilder: Send + Sync + 'static {

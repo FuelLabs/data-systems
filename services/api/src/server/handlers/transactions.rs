@@ -9,7 +9,7 @@ use fuel_streams_domains::{
     infra::repository::{Repository, ValidatedQuery},
     inputs::InputsQuery,
     outputs::OutputsQuery,
-    receipts::{ReceiptType, ReceiptsQuery},
+    receipts::ReceiptsQuery,
     transactions::TransactionsQuery,
 };
 

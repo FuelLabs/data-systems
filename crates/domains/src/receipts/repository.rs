@@ -21,56 +21,131 @@ impl Repository for Receipt {
         'c: 'e,
         E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
     {
-        let published_at = BlockTimestamp::now();
+        let created_at = BlockTimestamp::now();
         let record = sqlx::query_as::<_, ReceiptDbItem>(
-            "WITH upsert AS (
-                INSERT INTO receipts (
-                    subject, value, cursor, block_height, tx_id, tx_index, receipt_index,
-                    receipt_type, from_contract_id, to_contract_id, to_address,
-                    asset_id, contract_id, sub_id, sender_address, recipient_address,
-                    created_at, published_at
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-                ON CONFLICT (subject) DO UPDATE SET
-                    value = EXCLUDED.value,
-                    cursor = EXCLUDED.cursor,
-                    block_height = EXCLUDED.block_height,
-                    tx_id = EXCLUDED.tx_id,
-                    tx_index = EXCLUDED.tx_index,
-                    receipt_index = EXCLUDED.receipt_index,
-                    receipt_type = EXCLUDED.receipt_type,
-                    from_contract_id = EXCLUDED.from_contract_id,
-                    to_contract_id = EXCLUDED.to_contract_id,
-                    to_address = EXCLUDED.to_address,
-                    asset_id = EXCLUDED.asset_id,
-                    contract_id = EXCLUDED.contract_id,
-                    sub_id = EXCLUDED.sub_id,
-                    sender_address = EXCLUDED.sender_address,
-                    recipient_address = EXCLUDED.recipient_address,
-                    created_at = EXCLUDED.created_at,
-                    published_at = $18
-                RETURNING *
+            r#"
+            INSERT INTO receipts (
+                subject,
+                value,
+                block_height,
+                tx_id,
+                tx_index,
+                receipt_index,
+                cursor,
+                type,
+                from_contract_id,
+                to_contract_id,
+                amount,
+                asset_id,
+                gas,
+                param1,
+                param2,
+                contract_id,
+                pc,
+                "is",
+                val,
+                ptr,
+                len,
+                digest,
+                data,
+                ra,
+                rb,
+                rc,
+                rd,
+                to_address,
+                reason,
+                result,
+                gas_used,
+                sender_address,
+                recipient_address,
+                nonce,
+                sub_id,
+                block_time,
+                created_at
             )
-            SELECT * FROM upsert"
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8::receipt_type, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+                $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34, $35, $36, $37
+            )
+            ON CONFLICT (subject) DO UPDATE SET
+                value = EXCLUDED.value,
+                block_height = EXCLUDED.block_height,
+                tx_id = EXCLUDED.tx_id,
+                tx_index = EXCLUDED.tx_index,
+                receipt_index = EXCLUDED.receipt_index,
+                cursor = EXCLUDED.cursor,
+                type = EXCLUDED.type,
+                from_contract_id = EXCLUDED.from_contract_id,
+                to_contract_id = EXCLUDED.to_contract_id,
+                amount = EXCLUDED.amount,
+                asset_id = EXCLUDED.asset_id,
+                gas = EXCLUDED.gas,
+                param1 = EXCLUDED.param1,
+                param2 = EXCLUDED.param2,
+                contract_id = EXCLUDED.contract_id,
+                pc = EXCLUDED.pc,
+                "is" = EXCLUDED."is",
+                val = EXCLUDED.val,
+                ptr = EXCLUDED.ptr,
+                len = EXCLUDED.len,
+                digest = EXCLUDED.digest,
+                data = EXCLUDED.data,
+                ra = EXCLUDED.ra,
+                rb = EXCLUDED.rb,
+                rc = EXCLUDED.rc,
+                rd = EXCLUDED.rd,
+                to_address = EXCLUDED.to_address,
+                reason = EXCLUDED.reason,
+                result = EXCLUDED.result,
+                gas_used = EXCLUDED.gas_used,
+                sender_address = EXCLUDED.sender_address,
+                recipient_address = EXCLUDED.recipient_address,
+                nonce = EXCLUDED.nonce,
+                sub_id = EXCLUDED.sub_id,
+                block_time = EXCLUDED.block_time,
+                created_at = EXCLUDED.created_at
+            RETURNING *
+            "#,
         )
-        .bind(db_item.subject.clone())
+        .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.cursor().to_string())
         .bind(db_item.block_height)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.receipt_index)
-        .bind(&db_item.receipt_type)
+        .bind(db_item.cursor().to_string())
+        .bind(db_item.r#type)
         .bind(&db_item.from_contract_id)
         .bind(&db_item.to_contract_id)
-        .bind(&db_item.to_address)
+        .bind(db_item.amount)
         .bind(&db_item.asset_id)
+        .bind(db_item.gas)
+        .bind(db_item.param1)
+        .bind(db_item.param2)
         .bind(&db_item.contract_id)
-        .bind(&db_item.sub_id)
+        .bind(db_item.pc)
+        .bind(db_item.is)
+        .bind(db_item.val)
+        .bind(db_item.ptr)
+        .bind(db_item.len)
+        .bind(&db_item.digest)
+        .bind(&db_item.data)
+        .bind(db_item.ra)
+        .bind(db_item.rb)
+        .bind(db_item.rc)
+        .bind(db_item.rd)
+        .bind(&db_item.to_address)
+        .bind(&db_item.reason)
+        .bind(&db_item.result)
+        .bind(db_item.gas_used)
         .bind(&db_item.sender_address)
         .bind(&db_item.recipient_address)
-        .bind(db_item.created_at)
-        .bind(published_at)
+        .bind(&db_item.nonce)
+        .bind(&db_item.sub_id)
+        .bind(db_item.block_time)
+        .bind(created_at)
         .fetch_one(executor)
         .await
         .map_err(RepositoryError::Insert)?;
@@ -84,10 +159,17 @@ mod tests {
     use std::sync::Arc;
 
     use anyhow::Result;
+    use fuel_streams_types::BlockHeight;
     use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::{
+        blocks::{
+            packets::DynBlockSubject,
+            repository::tests::insert_block,
+            Block,
+            BlockDbItem,
+        },
         infra::{
             Db,
             DbConnectionOpts,
@@ -97,6 +179,12 @@ mod tests {
         },
         mocks::{MockReceipt, MockTransaction},
         receipts::DynReceiptSubject,
+        transactions::{
+            repository::tests::insert_transaction,
+            DynTransactionSubject,
+            Transaction,
+            TransactionDbItem,
+        },
     };
 
     async fn setup_db() -> anyhow::Result<(Arc<Db>, String)> {
@@ -114,40 +202,82 @@ mod tests {
         assert_eq!(result.tx_id, expected.tx_id);
         assert_eq!(result.tx_index, expected.tx_index);
         assert_eq!(result.receipt_index, expected.receipt_index);
-        assert_eq!(result.receipt_type, expected.receipt_type);
+        assert_eq!(result.r#type, expected.r#type);
         assert_eq!(result.from_contract_id, expected.from_contract_id);
         assert_eq!(result.to_contract_id, expected.to_contract_id);
-        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.amount, expected.amount);
         assert_eq!(result.asset_id, expected.asset_id);
+        assert_eq!(result.gas, expected.gas);
+        assert_eq!(result.param1, expected.param1);
+        assert_eq!(result.param2, expected.param2);
         assert_eq!(result.contract_id, expected.contract_id);
-        assert_eq!(result.sub_id, expected.sub_id);
+        assert_eq!(result.pc, expected.pc);
+        assert_eq!(result.is, expected.is);
+        assert_eq!(result.val, expected.val);
+        assert_eq!(result.ptr, expected.ptr);
+        assert_eq!(result.len, expected.len);
+        assert_eq!(result.digest, expected.digest);
+        assert_eq!(result.data, expected.data);
+        assert_eq!(result.ra, expected.ra);
+        assert_eq!(result.rb, expected.rb);
+        assert_eq!(result.rc, expected.rc);
+        assert_eq!(result.rd, expected.rd);
+        assert_eq!(result.to_address, expected.to_address);
+        assert_eq!(result.reason, expected.reason);
+        assert_eq!(result.result, expected.result);
+        assert_eq!(result.gas_used, expected.gas_used);
         assert_eq!(result.sender_address, expected.sender_address);
         assert_eq!(result.recipient_address, expected.recipient_address);
-        assert_eq!(result.created_at, expected.created_at);
+        assert_eq!(result.nonce, expected.nonce);
+        assert_eq!(result.sub_id, expected.sub_id);
+        assert_eq!(result.block_time, expected.block_time);
+    }
+
+    async fn insert_random_block(
+        db: &Arc<Db>,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
+        let (db_item, block, subject) =
+            insert_block(db, height, namespace).await?;
+        Ok((db_item, block, subject))
+    }
+
+    async fn insert_tx(
+        db: &Arc<Db>,
+        tx: &Transaction,
+        height: u32,
+        namespace: &str,
+    ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
+        let _ = insert_random_block(db, height, namespace).await?;
+        insert_transaction(db, Some(tx.clone()), height, namespace).await
     }
 
     async fn insert_receipt(
         db: &Arc<Db>,
-        receipt: Option<Receipt>,
+        tx: &Transaction,
+        receipt: &Receipt,
         height: u32,
         namespace: &str,
+        (tx_index, receipt_index): (i32, i32),
     ) -> Result<(ReceiptDbItem, Receipt, DynReceiptSubject)> {
-        let receipt = receipt.unwrap_or_else(MockReceipt::call);
-        let tx =
-            MockTransaction::script(vec![], vec![], vec![receipt.to_owned()]);
-
-        let subject =
-            DynReceiptSubject::new(&receipt, height.into(), tx.id, 0, 0);
+        let subject = DynReceiptSubject::new(
+            receipt,
+            height.into(),
+            tx.id.to_owned(),
+            tx_index,
+            receipt_index,
+        );
         let timestamps = BlockTimestamp::default();
         let packet = subject
-            .build_packet(&receipt, timestamps)
+            .build_packet(receipt, timestamps)
             .with_namespace(namespace);
 
         let db_item = ReceiptDbItem::try_from(&packet)?;
         let result = Receipt::insert(db.pool_ref(), &db_item).await?;
         assert_result(&result, &db_item);
 
-        Ok((db_item, receipt, subject))
+        Ok((db_item, receipt.clone(), subject))
     }
 
     async fn create_receipts(
@@ -156,25 +286,57 @@ mod tests {
         count: u32,
     ) -> Result<Vec<ReceiptDbItem>> {
         let mut receipts = Vec::with_capacity(count as usize);
-        for height in 1..=count {
-            let (db_item, _, _) =
-                insert_receipt(db, None, height, namespace).await?;
-            receipts.push(db_item);
+        for _ in 0..count {
+            receipts.push(MockReceipt::call())
         }
-        Ok(receipts)
+
+        let height = BlockHeight::random();
+        let tx = MockTransaction::script(vec![], vec![], receipts.clone());
+        insert_tx(db, &tx, height.into(), namespace).await?;
+
+        let mut db_items = Vec::with_capacity(count as usize);
+        for (index, receipt) in receipts.iter().enumerate() {
+            let (db_item, _, _) = insert_receipt(
+                db,
+                &tx,
+                receipt,
+                height.into(),
+                namespace,
+                (0, index as i32),
+            )
+            .await?;
+            db_items.push(db_item);
+        }
+        db_items.sort_by_key(|i| i.cursor());
+        Ok(db_items)
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_call() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::call()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt1 = MockReceipt::call();
+        let receipt2 = MockReceipt::call();
+        let tx = MockTransaction::script(vec![], vec![], vec![
+            receipt1.clone(),
+            receipt2.clone(),
+        ]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt1, height.into(), &namespace, (0, 0))
+            .await?;
+        insert_receipt(&db, &tx, &receipt2, height.into(), &namespace, (0, 1))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_return() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::return_receipt()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::return_receipt();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -182,7 +344,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_return_data() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::return_data()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::return_data();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -190,28 +356,47 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_panic() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::panic()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::panic();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_revert() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::revert()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::revert();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_log() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::log()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::log();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_log_data() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::log_data()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::log_data();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -219,7 +404,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_transfer() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::transfer()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::transfer();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -227,7 +416,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_transfer_out() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::transfer_out()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::transfer_out();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -235,7 +428,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_script_result() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::script_result()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::script_result();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -243,7 +440,11 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_message_out() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::message_out()), 1, &namespace)
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::message_out();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
             .await?;
         Ok(())
     }
@@ -251,23 +452,44 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_receipt_mint() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::mint()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::mint();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_receipt_burn() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_receipt(&db, Some(MockReceipt::burn()), 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::burn();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_find_one_receipt() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let (db_item, _, subject) =
-            insert_receipt(&db, None, 1, &namespace).await?;
+        let height = BlockHeight::random();
+        let receipt = MockReceipt::call();
+        let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
+        insert_tx(&db, &tx, height.into(), &namespace).await?;
 
+        let (db_item, _, subject) = insert_receipt(
+            &db,
+            &tx,
+            &receipt,
+            height.into(),
+            &namespace,
+            (0, 0),
+        )
+        .await?;
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 

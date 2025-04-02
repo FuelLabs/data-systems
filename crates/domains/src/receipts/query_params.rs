@@ -1,15 +1,7 @@
-use fuel_streams_types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    Bytes32,
-    ContractId,
-    TxId,
-};
+use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
-use super::ReceiptType;
 use crate::infra::{
     repository::{HasPagination, QueryPagination, QueryParamsBuilder},
     QueryOptions,
@@ -100,7 +92,7 @@ impl QueryParamsBuilder for ReceiptsQuery {
         }
 
         if let Some(receipt_type) = &self.receipt_type {
-            conditions.push(format!("receipt_type = '{}'", receipt_type));
+            conditions.push(format!("type = '{}'", receipt_type));
         }
 
         if let Some(block_height) = &self.block_height {

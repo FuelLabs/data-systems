@@ -3,8 +3,15 @@ use fuel_core_types::{fuel_asm::RawInstruction, fuel_tx::PanicReason};
 use crate::fuel_core::*;
 
 #[derive(
-    Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize,
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    serde::Serialize,
+    serde::Deserialize,
+    derive_more::Display,
 )]
+#[display("{}", serde_json::to_string(self).unwrap())]
 pub struct PanicInstruction {
     pub reason: PanicReason,
     pub instruction: RawInstruction,
@@ -131,16 +138,22 @@ impl From<FuelCorePanicInstruction> for PanicInstruction {
     Default,
     serde::Serialize,
     serde::Deserialize,
+    derive_more::Display,
     utoipa::ToSchema,
 )]
 #[repr(u64)]
 pub enum ScriptExecutionResult {
+    #[display("success")]
     Success,
+    #[display("revert")]
     Revert,
+    #[display("panic")]
     Panic,
     // Generic failure case since any u64 is valid here
+    #[display("generic_failure({})", _0)]
     GenericFailure(u64),
     #[default]
+    #[display("unknown")]
     Unknown,
 }
 impl From<FuelCoreScriptExecutionResult> for ScriptExecutionResult {

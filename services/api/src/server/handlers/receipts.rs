@@ -7,7 +7,7 @@ use axum::{
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
     infra::repository::{Repository, ValidatedQuery},
-    receipts::{ReceiptType, ReceiptsQuery},
+    receipts::ReceiptsQuery,
 };
 use paste::paste;
 
