@@ -53,7 +53,8 @@ impl Repository for Receipt {
                 rc,
                 rd,
                 to_address,
-                reason,
+                panic_reason,
+                panic_instruction,
                 result,
                 gas_used,
                 sender_address,
@@ -67,7 +68,7 @@ impl Repository for Receipt {
                 $1, $2, $3, $4, $5, $6, $7, $8::receipt_type, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
                 $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35, $36, $37
+                $31, $32, $33, $34, $35, $36, $37, $38
             )
             ON CONFLICT (subject) DO UPDATE SET
                 value = EXCLUDED.value,
@@ -97,7 +98,8 @@ impl Repository for Receipt {
                 rc = EXCLUDED.rc,
                 rd = EXCLUDED.rd,
                 to_address = EXCLUDED.to_address,
-                reason = EXCLUDED.reason,
+                panic_reason = EXCLUDED.panic_reason,
+                panic_instruction = EXCLUDED.panic_instruction,
                 result = EXCLUDED.result,
                 gas_used = EXCLUDED.gas_used,
                 sender_address = EXCLUDED.sender_address,
@@ -137,7 +139,8 @@ impl Repository for Receipt {
         .bind(db_item.rc)
         .bind(db_item.rd)
         .bind(&db_item.to_address)
-        .bind(&db_item.reason)
+        .bind(&db_item.panic_reason)
+        .bind(db_item.panic_instruction)
         .bind(&db_item.result)
         .bind(db_item.gas_used)
         .bind(&db_item.sender_address)
@@ -223,7 +226,8 @@ mod tests {
         assert_eq!(result.rc, expected.rc);
         assert_eq!(result.rd, expected.rd);
         assert_eq!(result.to_address, expected.to_address);
-        assert_eq!(result.reason, expected.reason);
+        assert_eq!(result.panic_reason, expected.panic_reason);
+        assert_eq!(result.panic_instruction, expected.panic_instruction);
         assert_eq!(result.result, expected.result);
         assert_eq!(result.gas_used, expected.gas_used);
         assert_eq!(result.sender_address, expected.sender_address);

@@ -2,13 +2,13 @@ CREATE TABLE IF NOT EXISTS predicates (
     id SERIAL PRIMARY KEY,
     blob_id TEXT,
     predicate_address TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    block_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_predicates_blob_id ON predicates (blob_id);
+CREATE INDEX IF NOT EXISTS idx_predicates_block_time ON predicates (block_time);
 CREATE INDEX IF NOT EXISTS idx_predicates_created_at ON predicates (created_at);
-CREATE INDEX IF NOT EXISTS idx_predicates_published_at ON predicates (published_at);
 
 CREATE TABLE IF NOT EXISTS predicate_transactions (
     cursor TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}

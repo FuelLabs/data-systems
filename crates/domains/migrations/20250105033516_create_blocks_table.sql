@@ -42,5 +42,8 @@ CREATE INDEX IF NOT EXISTS idx_blocks_subject ON blocks (subject);
 CREATE INDEX IF NOT EXISTS idx_blocks_producer_address ON blocks (producer_address);
 CREATE INDEX IF NOT EXISTS idx_blocks_block_da_height ON blocks (block_da_height);
 CREATE INDEX IF NOT EXISTS idx_blocks_block_height ON blocks (block_height);
+CREATE INDEX IF NOT EXISTS idx_blocks_header_time ON blocks (header_time);
+CREATE INDEX IF NOT EXISTS idx_blocks_header_version ON blocks (header_version);
+CREATE INDEX IF NOT EXISTS idx_blocks_consensus_type ON blocks (consensus_type);
 CREATE INDEX IF NOT EXISTS idx_blocks_block_time ON blocks (block_time);
 CREATE INDEX IF NOT EXISTS idx_blocks_created_at ON blocks (created_at);

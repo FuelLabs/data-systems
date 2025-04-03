@@ -44,6 +44,7 @@ pub struct InputDbItem {
     pub balance_root: Option<String>,
     pub contract_id: Option<String>,
     pub state_root: Option<String>,
+    pub tx_pointer: Option<Vec<u8>>,
 
     // Message specific props
     pub sender_address: Option<String>,
@@ -142,6 +143,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                     nonce: None,
                     data: None,
                     data_length: None,
+                    tx_pointer: None,
                     witness_index: Some(input.witness_index as i32),
                     predicate_gas_used: Some(
                         input.predicate_gas_used.into_inner() as i64,
@@ -174,6 +176,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                     balance_root: Some(input.balance_root.to_string()),
                     contract_id: Some(input.contract_id.to_string()),
                     state_root: Some(input.state_root.to_string()),
+                    tx_pointer: Some(serde_json::to_vec(&input.tx_pointer)?),
                     amount: None,
                     asset_id: None,
                     owner_id: None,
@@ -213,6 +216,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                     balance_root: None,
                     contract_id: None,
                     state_root: None,
+                    tx_pointer: None,
                     sender_address: Some(input.sender.to_string()),
                     recipient_address: Some(input.recipient.to_string()),
                     nonce: Some(input.nonce.to_string()),

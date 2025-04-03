@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use fuel_streams_types::BlockTimestamp;
 use sqlx::{Acquire, PgExecutor, Postgres};
@@ -5,47 +7,47 @@ use sqlx::{Acquire, PgExecutor, Postgres};
 use super::{Predicate, PredicateDbItem, PredicatesQuery};
 use crate::infra::{
     repository::{Repository, RepositoryResult},
+    Db,
     DbItem,
 };
 
-#[async_trait]
-impl Repository for Predicate {
-    type Item = PredicateDbItem;
-    type QueryParams = PredicatesQuery;
+impl Predicate {
+    pub async fn upsert_as_relation(
+        db: &Arc<Db>,
+        db_item: &mut PredicateDbItem,
+    ) -> RepositoryResult<PredicateDbItem> {
+        let created_at = BlockTimestamp::now();
+        db_item.created_at = created_at;
 
-    async fn insert<'e, 'c: 'e, E>(
-        executor: E,
-        db_item: &Self::Item,
-    ) -> RepositoryResult<Self::Item>
-    where
-        'c: 'e,
-        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
-    {
-        let mut conn = executor.acquire().await?;
-        let mut tx = conn.begin().await?;
-        let published_at = BlockTimestamp::now();
-        let predicate_id = sqlx::query_scalar::<_, i32>(
+        let predicate_id = match sqlx::query_scalar::<_, i32>(
             r#"
             INSERT INTO predicates (
                 blob_id,
                 predicate_address,
-                created_at,
-                published_at
+                block_time,
+                created_at
             )
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (predicate_address) DO UPDATE
-            SET blob_id = EXCLUDED.blob_id,
-                created_at = EXCLUDED.created_at,
-                published_at = EXCLUDED.published_at
+            ON CONFLICT (predicate_address) DO NOTHING
             RETURNING id
             "#,
         )
         .bind(&db_item.blob_id)
         .bind(&db_item.predicate_address)
+        .bind(db_item.block_time())
         .bind(db_item.created_at)
-        .bind(published_at)
-        .fetch_one(&mut *tx)
-        .await?;
+        .fetch_one(db.pool_ref())
+        .await
+        {
+            Ok(id) => id,
+            Err(sqlx::Error::RowNotFound) => sqlx::query_scalar::<_, i32>(
+                r#" SELECT id FROM predicates WHERE predicate_address = $1 "#,
+            )
+            .bind(&db_item.predicate_address)
+            .fetch_one(db.pool_ref())
+            .await?,
+            Err(e) => return Err(e.into()), // Propagate other errors
+        };
 
         sqlx::query(
             r#"
@@ -72,11 +74,27 @@ impl Repository for Predicate {
         .bind(db_item.input_index)
         .bind(&db_item.asset_id)
         .bind(&db_item.bytecode)
-        .execute(&mut *tx)
+        .execute(db.pool_ref())
         .await?;
-        tx.commit().await?;
 
         Ok(db_item.to_owned())
+    }
+}
+
+#[async_trait]
+impl Repository for Predicate {
+    type Item = PredicateDbItem;
+    type QueryParams = PredicatesQuery;
+
+    async fn insert<'e, 'c: 'e, E>(
+        _executor: E,
+        _db_item: &Self::Item,
+    ) -> RepositoryResult<Self::Item>
+    where
+        'c: 'e,
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
+    {
+        unreachable!("This method is not usable for predicate")
     }
 }
 
@@ -139,8 +157,8 @@ mod tests {
         let timestamps = BlockTimestamp::default();
         let packet = subject.build_packet(timestamps).with_namespace(namespace);
 
-        let db_item = PredicateDbItem::try_from(&packet)?;
-        let result = Predicate::insert(db.pool_ref(), &db_item).await?;
+        let mut db_item = PredicateDbItem::try_from(&packet)?;
+        let result = Predicate::upsert_as_relation(db, &mut db_item).await?;
         assert_result(&result, &db_item);
 
         Ok((db_item, input, subject))

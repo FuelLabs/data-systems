@@ -24,6 +24,7 @@ CREATE TABLE "inputs" (
     "balance_root" TEXT,
     "contract_id" TEXT,
     "state_root" TEXT,
+    "tx_pointer" BYTEA,
     -- message specific props
     "sender_address" TEXT,
     "recipient_address" TEXT,
@@ -64,9 +65,6 @@ CREATE INDEX IF NOT EXISTS idx_inputs_contract_id ON "inputs" ("contract_id");
 CREATE INDEX IF NOT EXISTS idx_inputs_sender_address ON "inputs" ("sender_address");
 CREATE INDEX IF NOT EXISTS idx_inputs_recipient_address ON "inputs" ("recipient_address");
 CREATE INDEX IF NOT EXISTS idx_inputs_nonce ON "inputs" ("nonce");
-
--- shared indexes
-CREATE INDEX IF NOT EXISTS idx_inputs_predicate ON "inputs" ("predicate");
 
 -- Composite indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_inputs_type_block_height ON "inputs" ("type", "block_height");

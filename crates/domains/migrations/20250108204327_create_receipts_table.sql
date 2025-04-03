@@ -63,7 +63,8 @@ CREATE TABLE "receipts" (
     "to_address" TEXT,            -- 'to' in types for transfer_out
 
     -- script_result specific props
-    "reason" JSONB,               -- panic specific: stores PanicInstruction {reason, instruction}
+    "panic_reason" TEXT,               -- panic specific: reason
+    "panic_instruction" INTEGER,         -- panic specific: instruction
     "result" TEXT,                -- script_result specific
     "gas_used" BIGINT,
 
@@ -109,7 +110,8 @@ CREATE INDEX IF NOT EXISTS idx_receipts_recipient_address ON "receipts" ("recipi
 CREATE INDEX IF NOT EXISTS idx_receipts_sub_id ON "receipts" ("sub_id");
 
 -- panic specific indexes
-CREATE INDEX IF NOT EXISTS idx_receipts_reason_gin ON "receipts" USING GIN ("reason");
+CREATE INDEX IF NOT EXISTS idx_receipts_panic_reason ON "receipts" ("panic_reason");
+CREATE INDEX IF NOT EXISTS idx_receipts_panic_instruction ON "receipts" ("panic_instruction");
 
 -- Composite indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_receipts_type_block_height ON "receipts" ("type", "block_height");

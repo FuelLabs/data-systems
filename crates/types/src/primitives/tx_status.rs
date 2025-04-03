@@ -3,13 +3,15 @@ use std::str::FromStr;
 use serde::Serialize;
 
 use crate::{
-    fuel_core::{FuelCoreClientTransactionStatus, FuelCoreTransactionStatus},
+    fuel_core::{
+        FuelCoreClientTransactionStatus,
+        FuelCoreTransactionExecutionStatus,
+    },
     impl_enum_string_serialization,
 };
 
 #[derive(
     Debug,
-    Default,
     Clone,
     Copy,
     PartialEq,
@@ -21,6 +23,10 @@ use crate::{
 )]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionStatus {
+    #[display("pre_confirmation_failed")]
+    PreConfirmationFailed,
+    #[display("pre_confirmation_success")]
+    PreConfirmationSuccess,
     #[display("failed")]
     Failed,
     #[display("submitted")]
@@ -29,20 +35,22 @@ pub enum TransactionStatus {
     SqueezedOut,
     #[display("success")]
     Success,
-    #[default]
-    #[display("none")]
-    None,
 }
 
 impl TryFrom<&str> for TransactionStatus {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.to_lowercase().as_str() {
+            "pre_confirmation_failed" => {
+                Ok(TransactionStatus::PreConfirmationFailed)
+            }
+            "pre_confirmation_success" => {
+                Ok(TransactionStatus::PreConfirmationSuccess)
+            }
             "failed" => Ok(TransactionStatus::Failed),
             "submitted" => Ok(TransactionStatus::Submitted),
             "squeezed_out" => Ok(TransactionStatus::SqueezedOut),
             "success" => Ok(TransactionStatus::Success),
-            "none" => Ok(TransactionStatus::None),
             _ => Err(format!("Unknown TransactionStatus: {}", s)),
         }
     }
@@ -50,19 +58,19 @@ impl TryFrom<&str> for TransactionStatus {
 
 impl_enum_string_serialization!(TransactionStatus, "transaction_status");
 
-impl From<&FuelCoreTransactionStatus> for TransactionStatus {
-    fn from(value: &FuelCoreTransactionStatus) -> Self {
+impl From<&FuelCoreTransactionExecutionStatus> for TransactionStatus {
+    fn from(value: &FuelCoreTransactionExecutionStatus) -> Self {
         match value {
-            FuelCoreTransactionStatus::Failed { .. } => {
+            FuelCoreTransactionExecutionStatus::Failed { .. } => {
                 TransactionStatus::Failed
             }
-            FuelCoreTransactionStatus::Submitted { .. } => {
+            FuelCoreTransactionExecutionStatus::Submitted { .. } => {
                 TransactionStatus::Submitted
             }
-            FuelCoreTransactionStatus::SqueezedOut { .. } => {
+            FuelCoreTransactionExecutionStatus::SqueezedOut { .. } => {
                 TransactionStatus::SqueezedOut
             }
-            FuelCoreTransactionStatus::Success { .. } => {
+            FuelCoreTransactionExecutionStatus::Success { .. } => {
                 TransactionStatus::Success
             }
         }
@@ -72,6 +80,12 @@ impl From<&FuelCoreTransactionStatus> for TransactionStatus {
 impl From<&FuelCoreClientTransactionStatus> for TransactionStatus {
     fn from(value: &FuelCoreClientTransactionStatus) -> Self {
         match value {
+            FuelCoreClientTransactionStatus::PreconfirmationFailure {
+                ..
+            } => TransactionStatus::PreConfirmationFailed,
+            FuelCoreClientTransactionStatus::PreconfirmationSuccess {
+                ..
+            } => TransactionStatus::PreConfirmationSuccess,
             FuelCoreClientTransactionStatus::Failure { .. } => {
                 TransactionStatus::Failed
             }

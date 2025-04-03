@@ -5,6 +5,7 @@ CREATE TYPE "utxo_type" AS ENUM (
     'output_variable',
     'output_change'
 );
+
 CREATE TYPE "utxo_status" AS ENUM (
     'unspent',
     'spent'
@@ -25,6 +26,7 @@ CREATE TABLE "utxos" (
     "output_index" INTEGER NOT NULL,
     "cursor" TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}-{output_index?}
     "utxo_id" TEXT NOT NULL UNIQUE,
+    -- props
     "type" utxo_type NOT NULL,
     "status" utxo_status NOT NULL,
     "asset_id" TEXT,

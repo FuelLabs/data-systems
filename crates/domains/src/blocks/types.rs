@@ -208,13 +208,13 @@ pub struct MockBlock(pub Block);
 impl MockBlock {
     pub fn build(height: u32) -> Block {
         use fuel_core_types::blockchain::block::BlockV1;
-        let mut block: FuelCoreBlock<FuelCoreTransaction> =
+        let mut block: FuelCoreBlock<FuelCoreTypesTransaction> =
             FuelCoreBlock::V1(BlockV1::default());
         block
             .header_mut()
             .set_block_height(FuelCoreBlockHeight::new(height));
         let txs = (0..50)
-            .map(|_| FuelCoreTransaction::default_test_tx())
+            .map(|_| FuelCoreTypesTransaction::default_test_tx())
             .collect::<Vec<_>>();
         *block.transactions_mut() = txs;
 

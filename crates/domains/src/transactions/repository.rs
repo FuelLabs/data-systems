@@ -3,7 +3,12 @@ use fuel_data_parser::DataEncoder;
 use fuel_streams_types::BlockTimestamp;
 use sqlx::{Acquire, PgExecutor, Postgres};
 
-use super::{Transaction, TransactionDbItem, TransactionsQuery};
+use super::{
+    db_relations::*,
+    Transaction,
+    TransactionDbItem,
+    TransactionsQuery,
+};
 use crate::infra::{
     repository::{Repository, RepositoryError, RepositoryResult},
     DbItem,
@@ -25,85 +30,99 @@ impl Repository for Transaction {
         let mut conn = executor.acquire().await?;
         let mut db_tx = conn.begin().await?;
         let created_at = BlockTimestamp::now();
+
         let record = sqlx::query_as::<_, TransactionDbItem>(
-            "WITH upsert AS (
-                INSERT INTO transactions (
-                    subject,
-                    value,
-                    block_height,
-                    tx_id,
-                    tx_index,
-                    cursor,
-                    type,
-                    script_gas_limit,
-                    mint_amount,
-                    mint_asset_id,
-                    mint_gas_price,
-                    receipts_root,
-                    tx_status,
-                    script,
-                    script_data,
-                    salt,
-                    bytecode_witness_index,
-                    bytecode_root,
-                    subsection_index,
-                    subsections_number,
-                    upgrade_purpose,
-                    blob_id,
-                    maturity,
-                    policies,
-                    script_length,
-                    script_data_length,
-                    storage_slots_count,
-                    proof_set_count,
-                    witnesses_count,
-                    inputs_count,
-                    outputs_count,
-                    block_time,
-                    created_at
-                )
-                VALUES (
-                    $1, $2, $3, $4, $5, $6, $7::transaction_type, $8, $9, $10,
-                    $11, $12, $13::transaction_status, $14, $15, $16, $17, $18,
-                    $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-                    $29, $30, $31, $32, $33
-                )
-                ON CONFLICT (subject) DO UPDATE SET
-                    value = EXCLUDED.value,
-                    block_height = EXCLUDED.block_height,
-                    tx_id = EXCLUDED.tx_id,
-                    tx_index = EXCLUDED.tx_index,
-                    cursor = EXCLUDED.cursor,
-                    type = EXCLUDED.type,
-                    script_gas_limit = EXCLUDED.script_gas_limit,
-                    mint_amount = EXCLUDED.mint_amount,
-                    mint_asset_id = EXCLUDED.mint_asset_id,
-                    mint_gas_price = EXCLUDED.mint_gas_price,
-                    receipts_root = EXCLUDED.receipts_root,
-                    tx_status = EXCLUDED.tx_status,
-                    script = EXCLUDED.script,
-                    script_data = EXCLUDED.script_data,
-                    salt = EXCLUDED.salt,
-                    bytecode_witness_index = EXCLUDED.bytecode_witness_index,
-                    bytecode_root = EXCLUDED.bytecode_root,
-                    subsection_index = EXCLUDED.subsection_index,
-                    subsections_number = EXCLUDED.subsections_number,
-                    upgrade_purpose = EXCLUDED.upgrade_purpose,
-                    blob_id = EXCLUDED.blob_id,
-                    maturity = EXCLUDED.maturity,
-                    policies = EXCLUDED.policies,
-                    script_length = EXCLUDED.script_length,
-                    script_data_length = EXCLUDED.script_data_length,
-                    storage_slots_count = EXCLUDED.storage_slots_count,
-                    proof_set_count = EXCLUDED.proof_set_count,
-                    witnesses_count = EXCLUDED.witnesses_count,
-                    inputs_count = EXCLUDED.inputs_count,
-                    outputs_count = EXCLUDED.outputs_count,
-                    block_time = EXCLUDED.block_time,
-                    created_at = EXCLUDED.created_at
-                RETURNING *
+            r#"
+            INSERT INTO transactions (
+                subject,
+                value,
+                block_height,
+                tx_id,
+                tx_index,
+                cursor,
+                type,
+                script_gas_limit,
+                mint_amount,
+                mint_asset_id,
+                mint_gas_price,
+                receipts_root,
+                status,
+                script,
+                script_data,
+                salt,
+                bytecode_witness_index,
+                bytecode_root,
+                subsection_index,
+                subsections_number,
+                upgrade_purpose,
+                blob_id,
+                is_blob,
+                is_create,
+                is_mint,
+                is_script,
+                is_upgrade,
+                is_upload,
+                raw_payload,
+                maturity,
+                tx_pointer,
+                script_length,
+                script_data_length,
+                storage_slots_count,
+                proof_set_count,
+                witnesses_count,
+                inputs_count,
+                outputs_count,
+                block_time,
+                created_at
             )
-            SELECT * FROM upsert",
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7::transaction_type, $8, $9, $10,
+                $11, $12, $13::transaction_status, $14, $15, $16, $17, $18,
+                $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
+            )
+            ON CONFLICT (subject) DO UPDATE SET
+                value = EXCLUDED.value,
+                block_height = EXCLUDED.block_height,
+                tx_id = EXCLUDED.tx_id,
+                tx_index = EXCLUDED.tx_index,
+                cursor = EXCLUDED.cursor,
+                type = EXCLUDED.type,
+                script_gas_limit = EXCLUDED.script_gas_limit,
+                mint_amount = EXCLUDED.mint_amount,
+                mint_asset_id = EXCLUDED.mint_asset_id,
+                mint_gas_price = EXCLUDED.mint_gas_price,
+                receipts_root = EXCLUDED.receipts_root,
+                status = EXCLUDED.status,
+                script = EXCLUDED.script,
+                script_data = EXCLUDED.script_data,
+                salt = EXCLUDED.salt,
+                bytecode_witness_index = EXCLUDED.bytecode_witness_index,
+                bytecode_root = EXCLUDED.bytecode_root,
+                subsection_index = EXCLUDED.subsection_index,
+                subsections_number = EXCLUDED.subsections_number,
+                upgrade_purpose = EXCLUDED.upgrade_purpose,
+                blob_id = EXCLUDED.blob_id,
+                is_blob = EXCLUDED.is_blob,
+                is_create = EXCLUDED.is_create,
+                is_mint = EXCLUDED.is_mint,
+                is_script = EXCLUDED.is_script,
+                is_upgrade = EXCLUDED.is_upgrade,
+                is_upload = EXCLUDED.is_upload,
+                raw_payload = EXCLUDED.raw_payload,
+                maturity = EXCLUDED.maturity,
+                tx_pointer = EXCLUDED.tx_pointer,
+                script_length = EXCLUDED.script_length,
+                script_data_length = EXCLUDED.script_data_length,
+                storage_slots_count = EXCLUDED.storage_slots_count,
+                proof_set_count = EXCLUDED.proof_set_count,
+                witnesses_count = EXCLUDED.witnesses_count,
+                inputs_count = EXCLUDED.inputs_count,
+                outputs_count = EXCLUDED.outputs_count,
+                block_time = EXCLUDED.block_time,
+                created_at = EXCLUDED.created_at
+            RETURNING *
+            "#,
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
@@ -117,7 +136,7 @@ impl Repository for Transaction {
         .bind(&db_item.mint_asset_id)
         .bind(db_item.mint_gas_price)
         .bind(&db_item.receipts_root)
-        .bind(db_item.tx_status)
+        .bind(db_item.status)
         .bind(&db_item.script)
         .bind(&db_item.script_data)
         .bind(&db_item.salt)
@@ -127,8 +146,15 @@ impl Repository for Transaction {
         .bind(db_item.subsections_number)
         .bind(&db_item.upgrade_purpose)
         .bind(&db_item.blob_id)
+        .bind(db_item.is_blob)
+        .bind(db_item.is_create)
+        .bind(db_item.is_mint)
+        .bind(db_item.is_script)
+        .bind(db_item.is_upgrade)
+        .bind(db_item.is_upload)
+        .bind(&db_item.raw_payload)
         .bind(db_item.maturity)
-        .bind(&db_item.policies)
+        .bind(&db_item.tx_pointer)
         .bind(db_item.script_length)
         .bind(db_item.script_data_length)
         .bind(db_item.storage_slots_count)
@@ -143,61 +169,198 @@ impl Repository for Transaction {
         .map_err(RepositoryError::Insert)?;
 
         let tx = Transaction::decode_json(&db_item.value)?;
-        for slot in &tx.storage_slots {
-            let slot_item = super::db_item::TransactionStorageSlotDbItem {
+
+        if let Some(storage_slots) = &tx.storage_slots {
+            for slot in storage_slots {
+                let slot_item = TransactionStorageSlotDbItem {
+                    tx_id: db_item.tx_id.clone(),
+                    block_height: db_item.block_height,
+                    key: slot.key.to_string(),
+                    value: slot.value.to_string(),
+                    block_time: db_item.block_time,
+                    created_at,
+                };
+                sqlx::query(
+                    "INSERT INTO transaction_storage_slots (
+                        tx_id, block_height, key, value, block_time, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6)",
+                )
+                .bind(&slot_item.tx_id)
+                .bind(slot_item.block_height)
+                .bind(&slot_item.key)
+                .bind(&slot_item.value)
+                .bind(slot_item.block_time)
+                .bind(slot_item.created_at)
+                .execute(&mut *db_tx)
+                .await
+                .map_err(RepositoryError::Insert)?;
+            }
+        }
+
+        if let Some(witnesses) = &tx.witnesses {
+            for witness in witnesses {
+                let witness_item = TransactionWitnessDbItem {
+                    tx_id: db_item.tx_id.clone(),
+                    block_height: db_item.block_height,
+                    witness_data: witness.to_string(),
+                    witness_data_length: witness.as_ref().0.len() as i32,
+                    block_time: db_item.block_time,
+                    created_at,
+                };
+                sqlx::query(
+                    "INSERT INTO transaction_witnesses (
+                        tx_id, block_height, witness_data, witness_data_length,
+                        block_time, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6)",
+                )
+                .bind(&witness_item.tx_id)
+                .bind(witness_item.block_height)
+                .bind(&witness_item.witness_data)
+                .bind(witness_item.witness_data_length)
+                .bind(witness_item.block_time)
+                .bind(witness_item.created_at)
+                .execute(&mut *db_tx)
+                .await
+                .map_err(RepositoryError::Insert)?;
+            }
+        }
+
+        if let Some(proof_set) = &tx.proof_set {
+            for proof in proof_set {
+                let proof_item = TransactionProofSetDbItem {
+                    tx_id: db_item.tx_id.clone(),
+                    block_height: db_item.block_height,
+                    proof_hash: proof.to_string(),
+                    block_time: db_item.block_time,
+                    created_at,
+                };
+                sqlx::query(
+                    "INSERT INTO transaction_proof_set (
+                        tx_id, block_height, proof_hash, block_time, created_at
+                    ) VALUES ($1, $2, $3, $4, $5)",
+                )
+                .bind(&proof_item.tx_id)
+                .bind(proof_item.block_height)
+                .bind(&proof_item.proof_hash)
+                .bind(proof_item.block_time)
+                .bind(proof_item.created_at)
+                .execute(&mut *db_tx)
+                .await
+                .map_err(RepositoryError::Insert)?;
+            }
+        }
+
+        if let Some(policies) = &tx.policies {
+            let policy_item = TransactionPolicyDbItem {
                 tx_id: db_item.tx_id.clone(),
-                key: slot.key.to_string(),
-                value: slot.value.to_string(),
-                created_at: db_item.created_at,
+                block_height: db_item.block_height,
+                tip: policies.tip.map(|t| t.into()),
+                maturity: policies.maturity.map(|m| m.into_inner() as i32),
+                witness_limit: policies.witness_limit.map(|w| w.into()),
+                max_fee: policies.max_fee.map(|f| f.into()),
+                block_time: db_item.block_time,
+                created_at,
             };
             sqlx::query(
-                "INSERT INTO transaction_storage_slots (tx_id, key, value, created_at)
-                 VALUES ($1, $2, $3, $4)"
+                "INSERT INTO transaction_policies (
+                    tx_id, block_height, tip, maturity, witness_limit, max_fee,
+                    block_time, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             )
-            .bind(&slot_item.tx_id)
-            .bind(&slot_item.key)
-            .bind(&slot_item.value)
-            .bind(slot_item.created_at)
+            .bind(&policy_item.tx_id)
+            .bind(policy_item.block_height)
+            .bind(policy_item.tip)
+            .bind(policy_item.maturity)
+            .bind(policy_item.witness_limit)
+            .bind(policy_item.max_fee)
+            .bind(policy_item.block_time)
+            .bind(policy_item.created_at)
             .execute(&mut *db_tx)
             .await
             .map_err(RepositoryError::Insert)?;
         }
 
-        // Insert witnesses
-        for witness in &tx.witnesses {
-            let witness_item = super::db_item::TransactionWitnessDbItem {
+        if let Some(input_contracts) = &tx.input_contracts {
+            for contract_id in input_contracts {
+                let contract_item = TransactionInputContractDbItem {
+                    tx_id: db_item.tx_id.clone(),
+                    block_height: db_item.block_height,
+                    contract_id: contract_id.to_string(),
+                    block_time: db_item.block_time,
+                    created_at,
+                };
+                sqlx::query(
+                    "INSERT INTO transaction_input_contracts (
+                        tx_id, block_height, contract_id, block_time, created_at
+                    ) VALUES ($1, $2, $3, $4, $5)",
+                )
+                .bind(&contract_item.tx_id)
+                .bind(contract_item.block_height)
+                .bind(&contract_item.contract_id)
+                .bind(contract_item.block_time)
+                .bind(contract_item.created_at)
+                .execute(&mut *db_tx)
+                .await
+                .map_err(RepositoryError::Insert)?;
+            }
+        }
+
+        if let Some(input_contract) = &tx.input_contract {
+            let tx_pointer = serde_json::to_vec(&input_contract.tx_pointer)?;
+            let contract_item = TransactionInputContractSingleDbItem {
                 tx_id: db_item.tx_id.clone(),
-                witness_data: witness.to_string(),
-                witness_data_length: witness.as_ref().0.len() as i32,
-                created_at: db_item.created_at,
+                block_height: db_item.block_height,
+                balance_root: input_contract.balance_root.to_string(),
+                contract_id: input_contract.contract_id.to_string(),
+                state_root: input_contract.state_root.to_string(),
+                tx_pointer,
+                utxo_id: input_contract.utxo_id.to_string(),
+                block_time: db_item.block_time,
+                created_at,
             };
             sqlx::query(
-                "INSERT INTO transaction_witnesses (tx_id, witness_data, witness_data_length, created_at)
-                 VALUES ($1, $2, $3, $4)"
+                "INSERT INTO transaction_input_contract (
+                    tx_id, block_height, balance_root, contract_id, state_root,
+                    tx_pointer, utxo_id, block_time, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             )
-            .bind(&witness_item.tx_id)
-            .bind(&witness_item.witness_data)
-            .bind(witness_item.witness_data_length)
-            .bind(witness_item.created_at)
+            .bind(&contract_item.tx_id)
+            .bind(contract_item.block_height)
+            .bind(&contract_item.balance_root)
+            .bind(&contract_item.contract_id)
+            .bind(&contract_item.state_root)
+            .bind(&contract_item.tx_pointer)
+            .bind(&contract_item.utxo_id)
+            .bind(contract_item.block_time)
+            .bind(contract_item.created_at)
             .execute(&mut *db_tx)
             .await
             .map_err(RepositoryError::Insert)?;
         }
 
-        // Insert proof set
-        for proof in &tx.proof_set {
-            let proof_item = super::db_item::TransactionProofSetDbItem {
+        if let Some(output_contract) = &tx.output_contract {
+            let contract_item = TransactionOutputContractDbItem {
                 tx_id: db_item.tx_id.clone(),
-                proof_hash: proof.to_string(),
-                created_at: db_item.created_at,
+                block_height: db_item.block_height,
+                balance_root: output_contract.balance_root.to_string(),
+                input_index: output_contract.input_index as i32,
+                state_root: output_contract.state_root.to_string(),
+                block_time: db_item.block_time,
+                created_at,
             };
             sqlx::query(
-                "INSERT INTO transaction_proof_set (tx_id, proof_hash, created_at)
-                 VALUES ($1, $2, $3)"
+                "INSERT INTO transaction_output_contract (
+                    tx_id, block_height, balance_root, input_index, state_root,
+                    block_time, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             )
-            .bind(&proof_item.tx_id)
-            .bind(&proof_item.proof_hash)
-            .bind(proof_item.created_at)
+            .bind(&contract_item.tx_id)
+            .bind(contract_item.block_height)
+            .bind(&contract_item.balance_root)
+            .bind(contract_item.input_index)
+            .bind(&contract_item.state_root)
+            .bind(contract_item.block_time)
+            .bind(contract_item.created_at)
             .execute(&mut *db_tx)
             .await
             .map_err(RepositoryError::Insert)?;
@@ -225,7 +388,7 @@ pub mod tests {
             QueryOptions,
             QueryParamsBuilder,
         },
-        mocks::MockTransaction,
+        mocks::{MockInput, MockOutput, MockTransaction},
         transactions::DynTransactionSubject,
     };
 
@@ -243,7 +406,7 @@ pub mod tests {
         assert_eq!(result.block_height, expected.block_height);
         assert_eq!(result.tx_id, expected.tx_id);
         assert_eq!(result.tx_index, expected.tx_index);
-        assert_eq!(result.tx_status, expected.tx_status);
+        assert_eq!(result.status, expected.status);
         assert_eq!(result.r#type, expected.r#type);
         assert_eq!(result.script_gas_limit, expected.script_gas_limit);
         assert_eq!(result.mint_amount, expected.mint_amount);
@@ -262,8 +425,14 @@ pub mod tests {
         assert_eq!(result.subsections_number, expected.subsections_number);
         assert_eq!(result.upgrade_purpose, expected.upgrade_purpose);
         assert_eq!(result.blob_id, expected.blob_id);
+        assert_eq!(result.is_blob, expected.is_blob);
+        assert_eq!(result.is_create, expected.is_create);
+        assert_eq!(result.is_mint, expected.is_mint);
+        assert_eq!(result.is_script, expected.is_script);
+        assert_eq!(result.is_upgrade, expected.is_upgrade);
+        assert_eq!(result.is_upload, expected.is_upload);
+        assert_eq!(result.raw_payload, expected.raw_payload);
         assert_eq!(result.maturity, expected.maturity);
-        assert_eq!(result.policies, expected.policies);
         assert_eq!(result.script_length, expected.script_length);
         assert_eq!(result.script_data_length, expected.script_data_length);
         assert_eq!(result.storage_slots_count, expected.storage_slots_count);
@@ -272,6 +441,92 @@ pub mod tests {
         assert_eq!(result.inputs_count, expected.inputs_count);
         assert_eq!(result.outputs_count, expected.outputs_count);
         assert_eq!(result.block_time, expected.block_time);
+    }
+
+    async fn verify_related_tables(
+        db: &Arc<Db>,
+        tx: &Transaction,
+        db_item: &TransactionDbItem,
+    ) -> Result<()> {
+        // Verify storage slots
+        if let Some(storage_slots) = &tx.storage_slots {
+            let slots: Vec<TransactionStorageSlotDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_storage_slots WHERE tx_id = $1",
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(slots.len(), storage_slots.len());
+        }
+
+        // Verify witnesses
+        if let Some(witnesses) = &tx.witnesses {
+            let db_witnesses: Vec<TransactionWitnessDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_witnesses WHERE tx_id = $1",
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(db_witnesses.len(), witnesses.len());
+        }
+
+        // Verify proof set
+        if let Some(proof_set) = &tx.proof_set {
+            let db_proofs: Vec<TransactionProofSetDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_proof_set WHERE tx_id = $1",
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(db_proofs.len(), proof_set.len());
+        }
+
+        // Verify policies
+        if tx.policies.is_some() {
+            let policies: Vec<TransactionPolicyDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_policies WHERE tx_id = $1",
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(policies.len(), 1);
+        }
+
+        // Verify input contracts
+        if let Some(input_contracts) = &tx.input_contracts {
+            let db_contracts: Vec<TransactionInputContractDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_input_contracts WHERE tx_id = $1"
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(db_contracts.len(), input_contracts.len());
+        }
+
+        // Verify single input contract
+        if tx.input_contract.is_some() {
+            let contracts: Vec<TransactionInputContractSingleDbItem> =
+                sqlx::query_as(
+                    "SELECT * FROM transaction_input_contract WHERE tx_id = $1",
+                )
+                .bind(&db_item.tx_id)
+                .fetch_all(db.pool_ref())
+                .await?;
+            assert_eq!(contracts.len(), 1);
+        }
+
+        // Verify output contract
+        if tx.output_contract.is_some() {
+            let contracts: Vec<TransactionOutputContractDbItem> = sqlx::query_as(
+                "SELECT * FROM transaction_output_contract WHERE tx_id = $1"
+            )
+            .bind(&db_item.tx_id)
+            .fetch_all(db.pool_ref())
+            .await?;
+            assert_eq!(contracts.len(), 1);
+        }
+
+        Ok(())
     }
 
     pub async fn insert_transaction(
@@ -291,6 +546,7 @@ pub mod tests {
         let db_item = TransactionDbItem::try_from(&packet)?;
         let result = Transaction::insert(db.pool_ref(), &db_item).await?;
         assert_result(&result, &db_item);
+        verify_related_tables(db, &tx, &db_item).await?;
 
         Ok((db_item, tx, subject))
     }
@@ -312,48 +568,78 @@ pub mod tests {
     #[tokio::test]
     async fn test_inserting_script_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::script(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::script(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item); // Compare with itself to verify insertion
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_create_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::create(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::create(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item);
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_mint_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::mint(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::mint(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item);
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_upgrade_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::upgrade(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::upgrade(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item);
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_upload_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::upload(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::upload(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item);
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_inserting_blob_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let tx = MockTransaction::blob(vec![], vec![], vec![]);
-        insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        let inputs = MockInput::all();
+        let outputs = MockOutput::all();
+        let tx = MockTransaction::blob(inputs, outputs, vec![]);
+        let (db_item, tx, _) =
+            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+        assert_result(&db_item, &db_item);
+        verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
     }
 
@@ -361,7 +647,10 @@ pub mod tests {
     async fn test_inserting_all_transaction_types() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         for tx in MockTransaction::all() {
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            let (db_item, tx, _) =
+                insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            assert_result(&db_item, &db_item);
+            verify_related_tables(&db, &tx, &db_item).await?;
         }
         Ok(())
     }
@@ -369,7 +658,7 @@ pub mod tests {
     #[tokio::test]
     async fn test_find_one_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
-        let (db_item, _, subject) =
+        let (db_item, tx, subject) =
             insert_transaction(&db, None, 1, &namespace).await?;
 
         let mut query = subject.to_query_params();
@@ -377,6 +666,7 @@ pub mod tests {
 
         let result = Transaction::find_one(db.pool_ref(), &query).await?;
         assert_result(&result, &db_item);
+        verify_related_tables(&db, &tx, &result).await?;
 
         Ok(())
     }

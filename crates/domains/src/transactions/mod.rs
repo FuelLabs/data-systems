@@ -1,4 +1,5 @@
 mod db_item;
+pub(super) mod db_relations;
 mod packets;
 mod query_params;
 pub mod repository;

@@ -15,7 +15,7 @@ use crate::infra::{
 pub struct TransactionsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
-    pub tx_status: Option<TransactionStatus>,
+    pub status: Option<TransactionStatus>,
     pub r#type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
     pub blob_id: Option<String>,
@@ -79,8 +79,8 @@ impl QueryParamsBuilder for TransactionsQuery {
             conditions.push(format!("tx_index = {}", tx_index));
         }
 
-        if let Some(tx_status) = &self.tx_status {
-            conditions.push(format!("tx_status = '{}'", tx_status));
+        if let Some(status) = &self.status {
+            conditions.push(format!("status = '{}'", status));
         }
 
         if let Some(tx_type) = &self.r#type {

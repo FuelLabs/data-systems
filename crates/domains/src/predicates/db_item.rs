@@ -34,8 +34,8 @@ pub struct PredicateDbItem {
     pub predicate_address: String,
     pub asset_id: String,
     pub bytecode: String,
+    pub block_time: BlockTimestamp,
     pub created_at: BlockTimestamp,
-    pub published_at: BlockTimestamp,
 }
 
 impl DataEncoder for PredicateDbItem {}
@@ -66,7 +66,7 @@ impl DbItem for PredicateDbItem {
     }
 
     fn block_time(&self) -> BlockTimestamp {
-        self.published_at
+        self.block_time
     }
 
     fn block_height(&self) -> BlockHeight {
@@ -102,8 +102,8 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
                     .to_string(),
                 bytecode: predicate.predicate_bytecode.to_string(),
                 asset_id: subject.asset.unwrap_or_default().to_string(),
+                block_time: packet.block_timestamp,
                 created_at: packet.block_timestamp,
-                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }

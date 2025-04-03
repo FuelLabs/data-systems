@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp, ReceiptType};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 use super::{subjects::*, Receipt};
 use crate::{
@@ -68,8 +67,9 @@ pub struct ReceiptDbItem {
     pub to_address: Option<String>, // 'to' in types for transfer_out
 
     // script_result specific props
-    pub reason: Option<JsonValue>, /* panic specific: stores PanicInstruction {reason, instruction} */
-    pub result: Option<String>,    // script_result specific
+    pub panic_reason: Option<String>, // panic specific: reason
+    pub panic_instruction: Option<i32>, // panic specific: instruction
+    pub result: Option<String>,       // script_result specific
     pub gas_used: Option<i64>,
 
     // message_out specific props
@@ -180,7 +180,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -225,7 +226,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -270,7 +272,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -296,7 +299,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     receipt_index: subject.receipt_index.unwrap(),
                     r#type: ReceiptType::Panic,
                     contract_id: Some(receipt.id.to_string()),
-                    reason: Some(serde_json::to_value(&receipt.reason)?),
+                    panic_reason: Some(receipt.reason.reason.to_string()),
+                    panic_instruction: Some(receipt.reason.instruction as i32),
                     pc: Some(receipt.pc.into_inner() as i64),
                     is: Some(receipt.is.into_inner() as i64),
                     from_contract_id: None,
@@ -360,7 +364,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -405,7 +410,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     digest: None,
                     data: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -450,7 +456,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -495,7 +502,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -540,7 +548,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rb: None,
                     rc: None,
                     rd: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -565,7 +574,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     tx_index: subject.tx_index.unwrap(),
                     receipt_index: subject.receipt_index.unwrap(),
                     r#type: ReceiptType::ScriptResult,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: Some(receipt.result.to_string()),
                     gas_used: Some(receipt.gas_used.into_inner() as i64),
                     from_contract_id: None,
@@ -633,7 +643,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sub_id: None,
@@ -676,7 +687,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,
@@ -721,7 +733,8 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     rc: None,
                     rd: None,
                     to_address: None,
-                    reason: None,
+                    panic_reason: None,
+                    panic_instruction: None,
                     result: None,
                     gas_used: None,
                     sender_address: None,

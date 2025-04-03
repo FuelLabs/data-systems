@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::fuel_core::FuelCoreTransaction;
+use crate::fuel_core::FuelCoreTypesTransaction;
 
 #[derive(
     Debug,
@@ -95,15 +95,15 @@ impl FromStr for TransactionType {
     }
 }
 
-impl From<&FuelCoreTransaction> for TransactionType {
-    fn from(value: &FuelCoreTransaction) -> Self {
+impl From<&FuelCoreTypesTransaction> for TransactionType {
+    fn from(value: &FuelCoreTypesTransaction) -> Self {
         match value {
-            FuelCoreTransaction::Script(_) => TransactionType::Script,
-            FuelCoreTransaction::Create(_) => TransactionType::Create,
-            FuelCoreTransaction::Mint(_) => TransactionType::Mint,
-            FuelCoreTransaction::Upgrade(_) => TransactionType::Upgrade,
-            FuelCoreTransaction::Upload(_) => TransactionType::Upload,
-            FuelCoreTransaction::Blob(_) => TransactionType::Blob,
+            FuelCoreTypesTransaction::Script(_) => TransactionType::Script,
+            FuelCoreTypesTransaction::Create(_) => TransactionType::Create,
+            FuelCoreTypesTransaction::Mint(_) => TransactionType::Mint,
+            FuelCoreTypesTransaction::Upgrade(_) => TransactionType::Upgrade,
+            FuelCoreTypesTransaction::Upload(_) => TransactionType::Upload,
+            FuelCoreTypesTransaction::Blob(_) => TransactionType::Blob,
         }
     }
 }

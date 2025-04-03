@@ -11,90 +11,7 @@ use crate::{
     receipts::types::*,
 };
 
-#[derive(
-    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
-pub struct StorageSlot {
-    pub key: HexData,
-    pub value: HexData,
-}
-
-impl From<FuelCoreStorageSlot> for StorageSlot {
-    fn from(slot: FuelCoreStorageSlot) -> Self {
-        Self::from(&slot)
-    }
-}
-
-impl From<&FuelCoreStorageSlot> for StorageSlot {
-    fn from(slot: &FuelCoreStorageSlot) -> Self {
-        Self {
-            key: HexData(slot.key().as_slice().into()),
-            value: HexData(slot.value().as_slice().into()),
-        }
-    }
-}
-
-#[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash,
-)]
-pub struct PolicyWrapper(pub FuelCorePolicies);
-
-impl PolicyWrapper {
-    pub fn random() -> Self {
-        Self(FuelCorePolicies::new())
-    }
-
-    pub fn to_string(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(&self.0)
-    }
-}
-
-impl TryFrom<String> for PolicyWrapper {
-    type Error = serde_json::Error;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let policies: FuelCorePolicies = serde_json::from_str(&value)?;
-        Ok(Self(policies))
-    }
-}
-
-impl From<FuelCorePolicies> for PolicyWrapper {
-    fn from(policies: FuelCorePolicies) -> Self {
-        Self(policies)
-    }
-}
-
-impl utoipa::ToSchema for PolicyWrapper {
-    fn name() -> std::borrow::Cow<'static, str> {
-        std::borrow::Cow::Borrowed("FuelCorePolicies")
-    }
-}
-
-impl utoipa::PartialSchema for PolicyWrapper {
-    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
-        utoipa::openapi::schema::ObjectBuilder::new()
-            .schema_type(utoipa::openapi::schema::Type::Array)
-            .title(Some("FuelCorePolicies"))
-            .description(Some("Array of u64 policy values used by the VM"))
-            .property(
-                "values",
-                utoipa::openapi::schema::ObjectBuilder::new()
-                    .schema_type(utoipa::openapi::schema::Type::Integer)
-                    .format(Some(
-                        utoipa::openapi::schema::SchemaFormat::KnownFormat(
-                            utoipa::openapi::KnownFormat::Int64,
-                        ),
-                    ))
-                    .build(),
-            )
-            .examples([Some(serde_json::json!([0, 0, 0, 0, 0]))])
-            .build()
-            .into()
-    }
-}
-
-#[derive(
-    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: TxId,
@@ -114,12 +31,10 @@ pub struct Transaction {
     pub is_upgrade: bool,
     pub is_upload: bool,
     pub is_blob: bool,
-    pub maturity: Option<u32>,
     pub mint_amount: Option<Amount>,
     pub mint_asset_id: Option<AssetId>,
     pub mint_gas_price: Option<Amount>,
-    pub policies: Option<PolicyWrapper>,
-    pub proof_set: Vec<Bytes32>,
+    pub proof_set: Option<Vec<Bytes32>>,
     pub raw_payload: HexData,
     pub receipts_root: Option<Bytes32>,
     pub salt: Option<Salt>,
@@ -127,13 +42,23 @@ pub struct Transaction {
     pub script_data: Option<HexData>,
     pub script_gas_limit: Option<GasAmount>,
     pub status: TransactionStatus,
-    pub storage_slots: Vec<StorageSlot>,
+    pub storage_slots: Option<Vec<StorageSlot>>,
     pub subsection_index: Option<u16>,
     pub subsections_number: Option<u16>,
     pub tx_pointer: Option<TxPointer>,
     pub upgrade_purpose: Option<UpgradePurpose>,
-    pub witnesses: Vec<HexData>,
+    pub witnesses: Option<Vec<HexData>>,
     pub receipts: Vec<Receipt>,
+
+    pub policies: Option<Policies>,
+    pub maturity: Option<u32>,
+    pub script_length: Option<u32>,
+    pub script_data_length: Option<u32>,
+    pub storage_slots_count: u32,
+    pub proof_set_count: u32,
+    pub witnesses_count: u32,
+    pub inputs_count: u32,
+    pub outputs_count: u32,
 }
 
 impl DataEncoder for Transaction {}
@@ -142,321 +67,27 @@ impl ToPacket for Transaction {}
 impl Transaction {
     pub fn new(
         id: &Bytes32,
-        transaction: &FuelCoreTransaction,
+        transaction: &FuelCoreTypesTransaction,
         status: &TransactionStatus,
         base_asset_id: &FuelCoreAssetId,
         receipts: &[FuelCoreReceipt],
     ) -> Self {
-        let bytecode_root = {
-            use fuel_core_types::fuel_tx::field::BytecodeRoot;
-            match transaction {
-                FuelCoreTransaction::Upload(tx) => {
-                    Some((*tx.bytecode_root()).into())
-                }
-                _ => None,
-            }
-        };
-
-        let bytecode_witness_index = {
-            use fuel_core_types::fuel_tx::field::BytecodeWitnessIndex;
-            match transaction {
-                FuelCoreTransaction::Upload(tx) => {
-                    Some(*tx.bytecode_witness_index())
-                }
-                _ => None,
-            }
-        };
-
-        let blob_id = {
-            match transaction {
-                FuelCoreTransaction::Blob(blob) => {
-                    use fuel_core_types::fuel_tx::field::BlobId;
-                    let blob_id = blob.blob_id();
-                    Some(blob_id.into())
-                }
-                _ => None,
-            }
-        };
-
-        let input_asset_ids = {
-            use fuel_core_types::fuel_tx::Executable;
-
-            match transaction {
-                FuelCoreTransaction::Script(tx) => Some(
-                    tx.input_asset_ids(base_asset_id)
-                        .map(|c| AssetId::from(*c))
-                        .collect(),
-                ),
-                FuelCoreTransaction::Create(tx) => Some(
-                    tx.input_asset_ids(base_asset_id)
-                        .map(|c| AssetId::from(*c))
-                        .collect(),
-                ),
-                FuelCoreTransaction::Mint(_) => None,
-                FuelCoreTransaction::Upgrade(tx) => Some(
-                    tx.input_asset_ids(base_asset_id)
-                        .map(|c| AssetId::from(*c))
-                        .collect(),
-                ),
-                FuelCoreTransaction::Upload(tx) => Some(
-                    tx.input_asset_ids(base_asset_id)
-                        .map(|c| AssetId::from(*c))
-                        .collect(),
-                ),
-                FuelCoreTransaction::Blob(tx) => Some(
-                    tx.input_asset_ids(base_asset_id)
-                        .map(|c| AssetId::from(*c))
-                        .collect(),
-                ),
-            }
-        };
-
-        let input_contract = {
-            use fuel_core_types::fuel_tx::field::InputContract;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => {
-                    Some(mint.input_contract().into())
-                }
-                _ => None,
-            }
-        };
-
-        let input_contracts = {
-            match transaction {
-                FuelCoreTransaction::Mint(_) => None,
-                tx => {
-                    let mut inputs: Vec<_> = tx
-                        .inputs()
-                        .iter()
-                        .filter_map(|input| match input {
-                            fuel_tx::Input::Contract(contract) => {
-                                Some(contract.contract_id)
-                            }
-                            _ => None,
-                        })
-                        .collect();
-                    inputs.sort();
-                    inputs.dedup();
-                    Some(inputs.into_iter().map(|id| (*id).into()).collect())
-                }
-            }
-        };
-
-        let output_contract = {
-            use fuel_core_types::fuel_tx::field::OutputContract;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => {
-                    Some(mint.output_contract().into())
-                }
-                _ => None,
-            }
-        };
-
-        let maturity = {
-            use fuel_core_types::fuel_tx::field::Maturity;
-            match transaction {
-                FuelCoreTransaction::Script(tx) => Some(*tx.maturity()),
-                FuelCoreTransaction::Create(tx) => Some(*tx.maturity()),
-                FuelCoreTransaction::Mint(_) => None,
-                FuelCoreTransaction::Upgrade(tx) => Some(*tx.maturity()),
-                FuelCoreTransaction::Upload(tx) => Some(*tx.maturity()),
-                FuelCoreTransaction::Blob(tx) => Some(*tx.maturity()),
-            }
-        };
-
-        let mint_gas_price = {
-            use fuel_core_types::fuel_tx::field::MintGasPrice;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => Some(*mint.gas_price()),
-                _ => None,
-            }
-        };
-
-        let mint_amount = {
-            use fuel_core_types::fuel_tx::field::MintAmount;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => Some(*mint.mint_amount()),
-                _ => None,
-            }
-        };
-
-        let mint_asset_id = {
-            use fuel_core_types::fuel_tx::field::MintAssetId;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => {
-                    Some((*mint.mint_asset_id()).into())
-                }
-                _ => None,
-            }
-        };
-
-        let policies = {
-            use fuel_core_types::fuel_tx::field::Policies;
-            match transaction {
-                FuelCoreTransaction::Script(tx) => Some(*tx.policies()),
-                FuelCoreTransaction::Create(tx) => Some(*tx.policies()),
-                FuelCoreTransaction::Mint(_) => None,
-                FuelCoreTransaction::Upgrade(tx) => Some(*tx.policies()),
-                FuelCoreTransaction::Upload(tx) => Some(*tx.policies()),
-                FuelCoreTransaction::Blob(tx) => Some(*tx.policies()),
-            }
-        };
-
-        let proof_set = {
-            use fuel_core_types::fuel_tx::field::ProofSet;
-            match transaction {
-                FuelCoreTransaction::Upload(tx) => {
-                    tx.proof_set().iter().map(|proof| (*proof).into()).collect()
-                }
-                _ => vec![],
-            }
-        };
-
-        let raw_payload = {
-            use fuel_core_types::fuel_types::canonical::Serialize;
-            HexData(transaction.to_bytes().into())
-        };
-
-        let receipts_root = {
-            use fuel_core_types::fuel_tx::field::ReceiptsRoot;
-            match transaction {
-                FuelCoreTransaction::Script(script) => {
-                    Some((*script.receipts_root()).into())
-                }
-                _ => None,
-            }
-        };
-
-        let salt = {
-            use fuel_core_types::fuel_tx::field::Salt;
-            match transaction {
-                FuelCoreTransaction::Create(create) => {
-                    Some((*create.salt()).into())
-                }
-                _ => None,
-            }
-        };
-
-        let script = {
-            use fuel_core_types::fuel_tx::field::Script;
-            match transaction {
-                FuelCoreTransaction::Script(script) => {
-                    Some(HexData(script.script().clone().into()))
-                }
-                _ => None,
-            }
-        };
-
-        let script_data = {
-            use fuel_core_types::fuel_tx::field::ScriptData;
-            match transaction {
-                FuelCoreTransaction::Script(script) => {
-                    Some(HexData(script.script_data().clone().into()))
-                }
-                _ => None,
-            }
-        };
-
-        let script_gas_limit = {
-            use fuel_core_types::fuel_tx::field::ScriptGasLimit;
-            match transaction {
-                FuelCoreTransaction::Script(script) => {
-                    Some(*script.script_gas_limit())
-                }
-                _ => None,
-            }
-        };
-
-        let storage_slots = {
-            use fuel_core_types::fuel_tx::field::StorageSlots;
-            match transaction {
-                FuelCoreTransaction::Create(create) => create
-                    .storage_slots()
-                    .iter()
-                    .map(|slot| slot.into())
-                    .collect(),
-                _ => vec![],
-            }
-        };
-
-        let subsection_index = {
-            use fuel_core_types::fuel_tx::field::SubsectionIndex;
-            match transaction {
-                FuelCoreTransaction::Upload(tx) => Some(*tx.subsection_index()),
-                _ => None,
-            }
-        };
-
-        let subsections_number = {
-            use fuel_core_types::fuel_tx::field::SubsectionsNumber;
-            match transaction {
-                FuelCoreTransaction::Upload(tx) => {
-                    Some(*tx.subsections_number())
-                }
-                _ => None,
-            }
-        };
-
-        let tx_pointer = {
-            use fuel_core_types::fuel_tx::field::TxPointer;
-            match transaction {
-                FuelCoreTransaction::Mint(mint) => Some(*mint.tx_pointer()),
-                _ => None,
-            }
-        };
-
-        let upgrade_purpose = {
-            use fuel_core_types::fuel_tx::field::UpgradePurpose;
-            match transaction {
-                FuelCoreTransaction::Upgrade(tx) => Some(*tx.upgrade_purpose()),
-                _ => None,
-            }
-        };
-
-        // hexstring encode should be HexData(data)
-        let witnesses = {
-            use fuel_core_types::fuel_tx::field::Witnesses;
-            match transaction {
-                FuelCoreTransaction::Script(tx) => tx
-                    .witnesses()
-                    .iter()
-                    .map(|w| HexData(w.clone().into_inner().into()))
-                    .collect(),
-                FuelCoreTransaction::Create(tx) => tx
-                    .witnesses()
-                    .iter()
-                    .map(|w| HexData(w.clone().into_inner().into()))
-                    .collect(),
-                FuelCoreTransaction::Mint(_) => vec![],
-                FuelCoreTransaction::Upgrade(tx) => tx
-                    .witnesses()
-                    .iter()
-                    .map(|w| HexData(w.clone().into_inner().into()))
-                    .collect(),
-                FuelCoreTransaction::Upload(tx) => tx
-                    .witnesses()
-                    .iter()
-                    .map(|w| HexData(w.clone().into_inner().into()))
-                    .collect(),
-                FuelCoreTransaction::Blob(tx) => tx
-                    .witnesses()
-                    .iter()
-                    .map(|w| HexData(w.clone().into_inner().into()))
-                    .collect(),
-            }
-        };
-
-        Transaction {
+        Self {
             id: id.to_owned().into(),
             r#type: transaction.into(),
-            bytecode_root,
-            bytecode_witness_index,
-            blob_id,
-            input_asset_ids,
-            input_contract,
-            input_contracts,
+            bytecode_root: Self::get_bytecode_root(transaction),
+            bytecode_witness_index: Self::get_bytecode_witness_index(
+                transaction,
+            ),
+            blob_id: Self::get_blob_id(transaction),
+            input_asset_ids: Self::get_input_asset_ids(
+                transaction,
+                base_asset_id,
+            ),
+            input_contract: Self::get_input_contract(transaction),
+            input_contracts: Self::get_input_contracts(transaction),
             inputs: transaction.inputs().iter().map(Into::into).collect(),
-            output_contract,
+            output_contract: Self::get_output_contract(transaction),
             outputs: transaction.outputs().iter().map(Into::into).collect(),
             is_create: transaction.is_create(),
             is_mint: transaction.is_mint(),
@@ -464,58 +95,490 @@ impl Transaction {
             is_upgrade: transaction.is_upgrade(),
             is_upload: transaction.is_upload(),
             is_blob: transaction.is_blob(),
-            maturity,
-            mint_amount: mint_amount.map(|amount| amount.into()),
-            mint_asset_id,
-            mint_gas_price: mint_gas_price.map(|amount| amount.into()),
-            policies: policies.map(PolicyWrapper),
-            proof_set,
-            raw_payload,
-            receipts_root,
-            salt,
-            script,
-            script_data,
-            script_gas_limit: script_gas_limit.map(|amount| amount.into()),
+            mint_amount: Self::get_mint_amount(transaction),
+            mint_asset_id: Self::get_mint_asset_id(transaction),
+            mint_gas_price: Self::get_mint_gas_price(transaction),
+            proof_set: Self::get_proof_set(transaction),
+            raw_payload: Self::get_raw_payload(transaction),
+            receipts_root: Self::get_receipts_root(transaction),
+            salt: Self::get_salt(transaction),
+            script: Self::get_script(transaction),
+            script_data: Self::get_script_data(transaction),
+            script_gas_limit: Self::get_script_gas_limit(transaction),
             status: status.to_owned(),
-            storage_slots,
-            subsection_index,
-            subsections_number,
-            tx_pointer: Some(tx_pointer.into()),
-            upgrade_purpose: upgrade_purpose.map(UpgradePurpose),
-            witnesses,
+            storage_slots: Self::get_storage_slots(transaction),
+            subsection_index: Self::get_subsection_index(transaction),
+            subsections_number: Self::get_subsections_number(transaction),
+            tx_pointer: Self::get_tx_pointer(transaction),
+            upgrade_purpose: Self::get_upgrade_purpose(transaction),
+            witnesses: Self::get_witnesses(transaction),
             receipts: receipts.iter().map(|r| r.to_owned().into()).collect(),
+
+            maturity: Self::get_maturity(transaction),
+            policies: Self::get_policies(transaction),
+            script_length: Self::get_script_length(transaction),
+            script_data_length: Self::get_script_data_length(transaction),
+            storage_slots_count: Self::get_storage_slots_count(transaction),
+            proof_set_count: Self::get_proof_set_count(transaction),
+            witnesses_count: Self::get_witnesses_count(transaction),
+            inputs_count: Self::get_inputs_count(transaction),
+            outputs_count: Self::get_outputs_count(transaction),
         }
+    }
+
+    fn get_bytecode_root(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Bytes32> {
+        use fuel_core_types::fuel_tx::field::BytecodeRoot;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some((*tx.bytecode_root()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_bytecode_witness_index(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<u16> {
+        use fuel_core_types::fuel_tx::field::BytecodeWitnessIndex;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some(*tx.bytecode_witness_index())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_blob_id(transaction: &FuelCoreTypesTransaction) -> Option<BlobId> {
+        use fuel_core_types::fuel_tx::field::BlobId;
+        match transaction {
+            FuelCoreTypesTransaction::Blob(blob) => Some(blob.blob_id().into()),
+            _ => None,
+        }
+    }
+
+    fn get_input_asset_ids(
+        transaction: &FuelCoreTypesTransaction,
+        base_asset_id: &FuelCoreAssetId,
+    ) -> Option<Vec<AssetId>> {
+        use fuel_core_types::fuel_tx::Executable;
+        match transaction {
+            FuelCoreTypesTransaction::Script(tx) => Some(
+                tx.input_asset_ids(base_asset_id)
+                    .map(|c| AssetId::from(*c))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Create(tx) => Some(
+                tx.input_asset_ids(base_asset_id)
+                    .map(|c| AssetId::from(*c))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Mint(_) => None,
+            FuelCoreTypesTransaction::Upgrade(tx) => Some(
+                tx.input_asset_ids(base_asset_id)
+                    .map(|c| AssetId::from(*c))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Upload(tx) => Some(
+                tx.input_asset_ids(base_asset_id)
+                    .map(|c| AssetId::from(*c))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Blob(tx) => Some(
+                tx.input_asset_ids(base_asset_id)
+                    .map(|c| AssetId::from(*c))
+                    .collect(),
+            ),
+        }
+    }
+
+    fn get_input_contract(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<InputContract> {
+        use fuel_core_types::fuel_tx::field::InputContract;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some(mint.input_contract().into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_input_contracts(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Vec<ContractId>> {
+        match transaction {
+            FuelCoreTypesTransaction::Mint(_) => None,
+            tx => {
+                let mut inputs: Vec<_> = tx
+                    .inputs()
+                    .iter()
+                    .filter_map(|input| match input {
+                        fuel_tx::Input::Contract(contract) => {
+                            Some(contract.contract_id)
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                inputs.sort();
+                inputs.dedup();
+                Some(inputs.into_iter().map(|id| (*id).into()).collect())
+            }
+        }
+    }
+
+    fn get_output_contract(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<OutputContract> {
+        use fuel_core_types::fuel_tx::field::OutputContract;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some(mint.output_contract().into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_maturity(transaction: &FuelCoreTypesTransaction) -> Option<u32> {
+        use fuel_core_types::fuel_tx::field::Maturity;
+        match transaction {
+            FuelCoreTypesTransaction::Script(tx) => Some(*tx.maturity()),
+            FuelCoreTypesTransaction::Create(tx) => Some(*tx.maturity()),
+            FuelCoreTypesTransaction::Mint(_) => None,
+            FuelCoreTypesTransaction::Upgrade(tx) => Some(*tx.maturity()),
+            FuelCoreTypesTransaction::Upload(tx) => Some(*tx.maturity()),
+            FuelCoreTypesTransaction::Blob(tx) => Some(*tx.maturity()),
+        }
+    }
+
+    fn get_mint_amount(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Amount> {
+        use fuel_core_types::fuel_tx::field::MintAmount;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some((*mint.mint_amount()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_mint_asset_id(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<AssetId> {
+        use fuel_core_types::fuel_tx::field::MintAssetId;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some((*mint.mint_asset_id()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_mint_gas_price(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Amount> {
+        use fuel_core_types::fuel_tx::field::MintGasPrice;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some((*mint.gas_price()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_policies(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Policies> {
+        use fuel_core_types::fuel_tx::field::Policies;
+        match transaction {
+            FuelCoreTypesTransaction::Script(tx) => {
+                Some((*tx.policies()).into())
+            }
+            FuelCoreTypesTransaction::Create(tx) => {
+                Some((*tx.policies()).into())
+            }
+            FuelCoreTypesTransaction::Mint(_) => None,
+            FuelCoreTypesTransaction::Upgrade(tx) => {
+                Some((*tx.policies()).into())
+            }
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some((*tx.policies()).into())
+            }
+            FuelCoreTypesTransaction::Blob(tx) => Some((*tx.policies()).into()),
+        }
+    }
+
+    fn get_proof_set(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Vec<Bytes32>> {
+        use fuel_core_types::fuel_tx::field::ProofSet;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => Some(
+                tx.proof_set().iter().map(|proof| (*proof).into()).collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    fn get_raw_payload(transaction: &FuelCoreTypesTransaction) -> HexData {
+        use fuel_core_types::fuel_types::canonical::Serialize;
+        HexData(transaction.to_bytes().into())
+    }
+
+    fn get_receipts_root(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Bytes32> {
+        use fuel_core_types::fuel_tx::field::ReceiptsRoot;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some((*script.receipts_root()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_salt(transaction: &FuelCoreTypesTransaction) -> Option<Salt> {
+        use fuel_core_types::fuel_tx::field::Salt;
+        match transaction {
+            FuelCoreTypesTransaction::Create(create) => {
+                Some((*create.salt()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_script(transaction: &FuelCoreTypesTransaction) -> Option<HexData> {
+        use fuel_core_types::fuel_tx::field::Script;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some(HexData(script.script().clone().into()))
+            }
+            _ => None,
+        }
+    }
+
+    fn get_script_data(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<HexData> {
+        use fuel_core_types::fuel_tx::field::ScriptData;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some(HexData(script.script_data().clone().into()))
+            }
+            _ => None,
+        }
+    }
+
+    fn get_script_gas_limit(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<GasAmount> {
+        use fuel_core_types::fuel_tx::field::ScriptGasLimit;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some((*script.script_gas_limit()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_storage_slots(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Vec<StorageSlot>> {
+        use fuel_core_types::fuel_tx::field::StorageSlots;
+        match transaction {
+            FuelCoreTypesTransaction::Create(create) => Some(
+                create
+                    .storage_slots()
+                    .iter()
+                    .map(|slot| slot.into())
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    fn get_subsection_index(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<u16> {
+        use fuel_core_types::fuel_tx::field::SubsectionIndex;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some(*tx.subsection_index())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_subsections_number(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<u16> {
+        use fuel_core_types::fuel_tx::field::SubsectionsNumber;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some(*tx.subsections_number())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_tx_pointer(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<TxPointer> {
+        use fuel_core_types::fuel_tx::field::TxPointer;
+        match transaction {
+            FuelCoreTypesTransaction::Mint(mint) => {
+                Some((*mint.tx_pointer()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_upgrade_purpose(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<UpgradePurpose> {
+        use fuel_core_types::fuel_tx::field::UpgradePurpose;
+        match transaction {
+            FuelCoreTypesTransaction::Upgrade(tx) => {
+                Some((*tx.upgrade_purpose()).into())
+            }
+            _ => None,
+        }
+    }
+
+    fn get_witnesses(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<Vec<HexData>> {
+        use fuel_core_types::fuel_tx::field::Witnesses;
+        match transaction {
+            FuelCoreTypesTransaction::Script(tx) => Some(
+                tx.witnesses()
+                    .iter()
+                    .map(|w| HexData(w.clone().into_inner().into()))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Create(tx) => Some(
+                tx.witnesses()
+                    .iter()
+                    .map(|w| HexData(w.clone().into_inner().into()))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Mint(_) => None,
+            FuelCoreTypesTransaction::Upgrade(tx) => Some(
+                tx.witnesses()
+                    .iter()
+                    .map(|w| HexData(w.clone().into_inner().into()))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Upload(tx) => Some(
+                tx.witnesses()
+                    .iter()
+                    .map(|w| HexData(w.clone().into_inner().into()))
+                    .collect(),
+            ),
+            FuelCoreTypesTransaction::Blob(tx) => Some(
+                tx.witnesses()
+                    .iter()
+                    .map(|w| HexData(w.clone().into_inner().into()))
+                    .collect(),
+            ),
+        }
+    }
+
+    fn get_script_length(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<u32> {
+        use fuel_core_types::fuel_tx::field::Script;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some(script.script().len() as u32)
+            }
+            _ => None,
+        }
+    }
+
+    fn get_script_data_length(
+        transaction: &FuelCoreTypesTransaction,
+    ) -> Option<u32> {
+        use fuel_core_types::fuel_tx::field::ScriptData;
+        match transaction {
+            FuelCoreTypesTransaction::Script(script) => {
+                Some(script.script_data().len() as u32)
+            }
+            _ => None,
+        }
+    }
+
+    fn get_storage_slots_count(transaction: &FuelCoreTypesTransaction) -> u32 {
+        use fuel_core_types::fuel_tx::field::StorageSlots;
+        match transaction {
+            FuelCoreTypesTransaction::Create(create) => {
+                create.storage_slots().len() as u32
+            }
+            _ => 0,
+        }
+    }
+
+    fn get_proof_set_count(transaction: &FuelCoreTypesTransaction) -> u32 {
+        use fuel_core_types::fuel_tx::field::ProofSet;
+        match transaction {
+            FuelCoreTypesTransaction::Upload(tx) => tx.proof_set().len() as u32,
+            _ => 0,
+        }
+    }
+
+    fn get_witnesses_count(transaction: &FuelCoreTypesTransaction) -> u32 {
+        use fuel_core_types::fuel_tx::field::Witnesses;
+        match transaction {
+            FuelCoreTypesTransaction::Script(tx) => tx.witnesses().len() as u32,
+            FuelCoreTypesTransaction::Create(tx) => tx.witnesses().len() as u32,
+            FuelCoreTypesTransaction::Mint(_) => 0,
+            FuelCoreTypesTransaction::Upgrade(tx) => {
+                tx.witnesses().len() as u32
+            }
+            FuelCoreTypesTransaction::Upload(tx) => tx.witnesses().len() as u32,
+            FuelCoreTypesTransaction::Blob(tx) => tx.witnesses().len() as u32,
+        }
+    }
+
+    fn get_inputs_count(transaction: &FuelCoreTypesTransaction) -> u32 {
+        transaction.inputs().len() as u32
+    }
+
+    fn get_outputs_count(transaction: &FuelCoreTypesTransaction) -> u32 {
+        transaction.outputs().len() as u32
     }
 }
 
-pub trait FuelCoreTransactionExt {
+pub trait FuelCoreTypesTransactionExt {
     fn inputs(&self) -> &[FuelCoreInput];
     fn outputs(&self) -> &Vec<FuelCoreOutput>;
 }
 
-impl FuelCoreTransactionExt for FuelCoreTransaction {
+impl FuelCoreTypesTransactionExt for FuelCoreTypesTransaction {
     fn inputs(&self) -> &[FuelCoreInput] {
         match self {
-            FuelCoreTransaction::Mint(_) => &[],
-            FuelCoreTransaction::Script(tx) => tx.inputs(),
-            FuelCoreTransaction::Blob(tx) => tx.inputs(),
-            FuelCoreTransaction::Create(tx) => tx.inputs(),
-            FuelCoreTransaction::Upload(tx) => tx.inputs(),
-            FuelCoreTransaction::Upgrade(tx) => tx.inputs(),
+            FuelCoreTypesTransaction::Mint(_) => &[],
+            FuelCoreTypesTransaction::Script(tx) => tx.inputs(),
+            FuelCoreTypesTransaction::Blob(tx) => tx.inputs(),
+            FuelCoreTypesTransaction::Create(tx) => tx.inputs(),
+            FuelCoreTypesTransaction::Upload(tx) => tx.inputs(),
+            FuelCoreTypesTransaction::Upgrade(tx) => tx.inputs(),
         }
     }
 
     fn outputs(&self) -> &Vec<FuelCoreOutput> {
         match self {
-            FuelCoreTransaction::Mint(_) => {
+            FuelCoreTypesTransaction::Mint(_) => {
                 static NO_OUTPUTS: Vec<FuelCoreOutput> = Vec::new();
                 &NO_OUTPUTS
             }
-            FuelCoreTransaction::Script(tx) => tx.outputs(),
-            FuelCoreTransaction::Blob(tx) => tx.outputs(),
-            FuelCoreTransaction::Create(tx) => tx.outputs(),
-            FuelCoreTransaction::Upload(tx) => tx.outputs(),
-            FuelCoreTransaction::Upgrade(tx) => tx.outputs(),
+            FuelCoreTypesTransaction::Script(tx) => tx.outputs(),
+            FuelCoreTypesTransaction::Blob(tx) => tx.outputs(),
+            FuelCoreTypesTransaction::Create(tx) => tx.outputs(),
+            FuelCoreTypesTransaction::Upload(tx) => tx.outputs(),
+            FuelCoreTypesTransaction::Upgrade(tx) => tx.outputs(),
         }
     }
 }
@@ -523,6 +586,7 @@ impl FuelCoreTransactionExt for FuelCoreTransaction {
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockTransaction;
+
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockTransaction {
     fn base_transaction(r#type: TransactionType) -> Transaction {
@@ -548,8 +612,8 @@ impl MockTransaction {
             mint_amount: None,
             mint_asset_id: None,
             mint_gas_price: None,
-            policies: Some(PolicyWrapper::random()),
-            proof_set: vec![],
+            policies: Some(Policies::random()),
+            proof_set: None,
             raw_payload: HexData::random(),
             receipts_root: None,
             salt: None,
@@ -557,13 +621,21 @@ impl MockTransaction {
             script_data: None,
             script_gas_limit: None,
             status: TransactionStatus::Success,
-            storage_slots: vec![],
+            storage_slots: None,
             subsection_index: None,
             subsections_number: None,
             tx_pointer: Some(TxPointer::random()),
             upgrade_purpose: None,
-            witnesses: vec![HexData::random()],
+            witnesses: None,
             receipts: vec![MockReceipt::script_result()],
+            // New fields with u32
+            script_length: None,
+            script_data_length: None,
+            storage_slots_count: 0,
+            proof_set_count: 0,
+            witnesses_count: 1, // One witness by default
+            inputs_count: 1,    // One input by default
+            outputs_count: 1,   // One output by default
         }
     }
 
@@ -572,9 +644,11 @@ impl MockTransaction {
         script: Vec<u8>,
         script_data: Vec<u8>,
     ) -> Transaction {
-        tx.script = Some(HexData(script.into()));
-        tx.script_data = Some(HexData(script_data.into()));
+        tx.script = Some(HexData(script.clone().into()));
+        tx.script_data = Some(HexData(script_data.clone().into()));
         tx.script_gas_limit = Some(1000.into());
+        tx.script_length = Some(script.len() as u32);
+        tx.script_data_length = Some(script_data.len() as u32);
         tx
     }
 
@@ -584,10 +658,12 @@ impl MockTransaction {
             input_index: 0,
             state_root: Bytes32::random(),
         });
-        tx.storage_slots = vec![StorageSlot {
-            key: HexData::random(),
-            value: HexData::random(),
+        let slots = vec![StorageSlot {
+            key: Bytes32::random(),
+            value: Bytes32::random(),
         }];
+        tx.storage_slots = Some(slots.clone());
+        tx.storage_slots_count = slots.len() as u32;
         tx
     }
 
@@ -603,6 +679,7 @@ impl MockTransaction {
         tx.mint_asset_id = Some(AssetId::random());
         tx.mint_gas_price = Some(100.into());
         tx.tx_pointer = Some(TxPointer::random());
+        tx.witnesses_count = 0; // Mint transactions typically have no witnesses
         tx
     }
 
@@ -611,14 +688,20 @@ impl MockTransaction {
         outputs: Vec<Output>,
         receipts: Vec<Receipt>,
     ) -> Transaction {
+        let script = vec![1, 2, 3];
+        let script_data = vec![4, 5, 6];
         let mut tx = Self::with_script_data(
             Self::base_transaction(TransactionType::Script),
-            vec![1, 2, 3],
-            vec![4, 5, 6],
+            script.clone(),
+            script_data.clone(),
         );
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
+        tx.witnesses_count =
+            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -629,9 +712,13 @@ impl MockTransaction {
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Create);
         tx.salt = Some(Salt::random());
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
+        tx.witnesses_count =
+            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         Self::with_contract_data(tx)
     }
 
@@ -641,9 +728,11 @@ impl MockTransaction {
         receipts: Vec<Receipt>,
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Mint);
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
         Self::with_mint_data(tx)
     }
 
@@ -659,9 +748,13 @@ impl MockTransaction {
             }
             .into(),
         );
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
+        tx.witnesses_count =
+            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -673,12 +766,18 @@ impl MockTransaction {
         let mut tx = Self::base_transaction(TransactionType::Upload);
         tx.bytecode_root = Some(Bytes32::random());
         tx.bytecode_witness_index = Some(0);
-        tx.proof_set = vec![Bytes32::random()];
+        let proof_set = vec![Bytes32::random()];
+        tx.proof_set = Some(proof_set.clone());
+        tx.proof_set_count = proof_set.len() as u32;
         tx.subsection_index = Some(0);
         tx.subsections_number = Some(1);
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
+        tx.witnesses_count =
+            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -689,9 +788,13 @@ impl MockTransaction {
     ) -> Transaction {
         let mut tx = Self::base_transaction(TransactionType::Blob);
         tx.blob_id = Some(BlobId::random());
-        tx.inputs = inputs;
-        tx.outputs = outputs;
+        tx.inputs = inputs.clone();
+        tx.outputs = outputs.clone();
         tx.receipts = receipts;
+        tx.inputs_count = inputs.len() as u32;
+        tx.outputs_count = outputs.len() as u32;
+        tx.witnesses_count =
+            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -719,41 +822,29 @@ mod tests {
 
     #[test]
     fn test_transaction_serialization_deserialization() {
-        // Create a mock transaction
         let original_tx = MockTransaction::script(
             MockInput::all(),
             MockOutput::all(),
             MockReceipt::all(),
         );
 
-        // Serialize to JSON
         let serialized = serde_json::to_string(&original_tx).unwrap();
-
-        // Deserialize back to Transaction
         let deserialized: Transaction =
             serde_json::from_str(&serialized).unwrap();
 
-        // Verify the deserialized transaction matches the original
         assert_eq!(deserialized, original_tx);
 
-        // Verify specific fields are correctly serialized
         let json_value: serde_json::Value =
             serde_json::from_str(&serialized).unwrap();
-
-        // Check transaction type is serialized as lowercase string
         assert_eq!(json_value["type"], json!("script"));
-
-        // Check transaction status is serialized as lowercase string
         assert_eq!(json_value["status"], json!("success"));
 
-        // Test with all transaction types
         for tx in MockTransaction::all() {
             let serialized = serde_json::to_string(&tx).unwrap();
             let deserialized: Transaction =
                 serde_json::from_str(&serialized).unwrap();
             assert_eq!(deserialized, tx);
 
-            // Verify type field is correctly serialized as lowercase
             let json_value: serde_json::Value =
                 serde_json::from_str(&serialized).unwrap();
             assert_eq!(json_value["type"], json!(tx.r#type.to_string()));

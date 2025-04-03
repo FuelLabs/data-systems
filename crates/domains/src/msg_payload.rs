@@ -10,7 +10,7 @@ use fuel_streams_types::{
     FuelCoreError,
     FuelCoreLike,
     FuelCoreSealedBlock,
-    FuelCoreTransaction,
+    FuelCoreTypesTransaction,
     FuelCoreUniqueIdentifier,
     TxId,
 };
@@ -140,17 +140,17 @@ impl MsgPayload {
 
     pub async fn tx_from_fuel_core(
         fuel_core: &Arc<dyn FuelCoreLike>,
-        tx: &FuelCoreTransaction,
+        tx: &FuelCoreTypesTransaction,
     ) -> Result<Transaction, MsgPayloadError> {
         let chain_id = fuel_core.chain_id();
         let base_asset_id = fuel_core.base_asset_id();
         let tx_id = tx.id(chain_id);
-        let tx_status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
+        let status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
         let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
         Ok(Transaction::new(
             &tx_id.into(),
             tx,
-            &tx_status,
+            &status,
             base_asset_id,
             &receipts,
         ))
@@ -164,8 +164,8 @@ impl MsgPayload {
         if attempts > 5 {
             return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()));
         }
-        let tx_status = fuel_core.get_tx_status(tx_id)?;
-        match tx_status {
+        let status = fuel_core.get_tx_status(tx_id)?;
+        match status {
             Some(status) => Ok((&status).into()),
             _ => {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
