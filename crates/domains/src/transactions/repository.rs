@@ -442,7 +442,10 @@ pub mod tests {
         assert_eq!(result.witnesses_count, expected.witnesses_count);
         assert_eq!(result.inputs_count, expected.inputs_count);
         assert_eq!(result.outputs_count, expected.outputs_count);
-        assert_eq!(result.block_time, expected.block_time);
+        assert_eq!(
+            result.block_time.into_inner().to_rfc3339(),
+            expected.block_time.into_inner().to_rfc3339()
+        );
     }
 
     async fn verify_related_tables(

@@ -347,14 +347,23 @@ mod tests {
     #[test]
     fn test_timestamp_conversions() {
         let now = Utc::now();
+        let normalized_now = BlockTimestamp::normalize_to_micros(now);
 
         // Test new() and into_inner()
         let timestamp = BlockTimestamp::new(now);
-        assert_eq!(timestamp.into_inner(), now);
+        assert_eq!(
+            timestamp.into_inner().timestamp_micros(),
+            normalized_now.timestamp_micros(),
+            "Microsecond precision should match"
+        );
 
         // Test as_inner()
         let timestamp = BlockTimestamp::new(now);
-        assert_eq!(timestamp.as_inner(), &now);
+        assert_eq!(
+            timestamp.as_inner().timestamp_micros(),
+            normalized_now.timestamp_micros(),
+            "Microsecond precision should match"
+        );
 
         // Test from_secs() and try_from_secs()
         let secs = 1234567890;
@@ -371,11 +380,19 @@ mod tests {
 
         // Test From<DateTime<Utc>>
         let timestamp: BlockTimestamp = now.into();
-        assert_eq!(timestamp.as_inner(), &now);
+        assert_eq!(
+            timestamp.as_inner().timestamp_micros(),
+            normalized_now.timestamp_micros(),
+            "Microsecond precision should match"
+        );
 
         // Test AsRef<DateTime<Utc>>
         let timestamp = BlockTimestamp::new(now);
-        assert_eq!(timestamp.as_ref(), &now);
+        assert_eq!(
+            timestamp.as_ref().timestamp_micros(),
+            normalized_now.timestamp_micros(),
+            "Microsecond precision should match"
+        );
     }
 
     #[test]

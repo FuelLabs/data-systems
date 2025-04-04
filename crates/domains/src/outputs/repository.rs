@@ -149,7 +149,10 @@ mod tests {
         assert_eq!(result.balance_root, expected.balance_root);
         assert_eq!(result.input_index, expected.input_index);
         assert_eq!(result.contract_id, expected.contract_id);
-        assert_eq!(result.block_time, expected.block_time);
+        assert_eq!(
+            result.block_time.into_inner().to_rfc3339(),
+            expected.block_time.into_inner().to_rfc3339()
+        );
     }
 
     async fn insert_random_block(

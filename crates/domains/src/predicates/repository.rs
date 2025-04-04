@@ -139,7 +139,10 @@ mod tests {
         assert_eq!(result.predicate_address, expected.predicate_address);
         assert_eq!(result.asset_id, expected.asset_id);
         assert_eq!(result.bytecode, expected.bytecode);
-        assert_eq!(result.created_at, expected.created_at);
+        assert_eq!(
+            result.block_time.into_inner().to_rfc3339(),
+            expected.block_time.into_inner().to_rfc3339()
+        );
     }
 
     async fn insert_predicate(

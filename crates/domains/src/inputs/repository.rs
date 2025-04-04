@@ -197,7 +197,10 @@ mod tests {
             result.predicate_data_length,
             expected.predicate_data_length
         );
-        assert_eq!(result.block_time, expected.block_time);
+        assert_eq!(
+            result.block_time.into_inner().to_rfc3339(),
+            expected.block_time.into_inner().to_rfc3339()
+        );
     }
 
     async fn insert_random_block(
