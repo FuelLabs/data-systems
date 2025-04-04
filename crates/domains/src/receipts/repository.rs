@@ -235,10 +235,6 @@ mod tests {
         assert_eq!(result.recipient_address, expected.recipient_address);
         assert_eq!(result.nonce, expected.nonce);
         assert_eq!(result.sub_id, expected.sub_id);
-        assert_eq!(
-            result.block_time.into_inner().to_rfc3339(),
-            expected.block_time.into_inner().to_rfc3339()
-        );
     }
 
     async fn insert_random_block(

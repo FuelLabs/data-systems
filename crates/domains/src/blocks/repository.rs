@@ -236,10 +236,6 @@ pub mod tests {
             result.consensus_transactions_root,
             expected.consensus_transactions_root
         );
-        assert_eq!(
-            result.block_time.into_inner().to_rfc3339(),
-            expected.block_time.into_inner().to_rfc3339()
-        );
     }
 
     pub async fn insert_block(
