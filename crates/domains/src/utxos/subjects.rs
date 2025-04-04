@@ -9,7 +9,7 @@ use super::{Utxo, UtxosQuery};
 #[subject(entity = "Utxo")]
 #[subject(query_all = "utxos.>")]
 #[subject(
-    format = "utxos.{block_height}.{tx_id}.{tx_index}.{input_index}.{output_index}.{status}.{utxo_type}.{asset_id}.{utxo_id}.{from}.{to}.{contract_id}"
+    format = "utxos.{block_height}.{tx_id}.{tx_index}.{output_index}.{status}.{utxo_type}.{asset_id}.{utxo_id}.{from}.{to}.{contract_id}"
 )]
 pub struct UtxosSubject {
     #[subject(description = "The height of the block containing this UTXO")]
@@ -20,8 +20,6 @@ pub struct UtxosSubject {
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
     pub tx_index: Option<i32>,
-    #[subject(description = "The index of the input within the transaction")]
-    pub input_index: Option<i32>,
     #[subject(description = "The index of the output within the transaction")]
     pub output_index: Option<i32>,
     #[subject(description = "The type of UTXO (coin, message, or contract)")]
@@ -73,7 +71,6 @@ impl From<UtxosSubject> for UtxosQuery {
             block_height: subject.block_height,
             tx_id: subject.tx_id.clone(),
             tx_index: subject.tx_index,
-            input_index: subject.input_index,
             output_index: subject.output_index,
             r#type: subject.utxo_type,
             utxo_id: subject.utxo_id.clone(),

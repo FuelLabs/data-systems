@@ -57,8 +57,6 @@ impl TryFrom<&PredicateDbItem> for Predicate {
     type Error = DbError;
 
     fn try_from(item: &PredicateDbItem) -> Result<Self, Self::Error> {
-        let tx_id = TxId::from_str(&item.tx_id)
-            .map_err(|e| DbError::Other(e.to_string()))?;
         let blob_id = item
             .blob_id
             .as_ref()
@@ -70,7 +68,7 @@ impl TryFrom<&PredicateDbItem> for Predicate {
         let asset_id = AssetId::from_str(&item.asset_id)
             .map_err(|e| DbError::Other(e.to_string()))?;
         let predicate = Predicate::new(
-            &tx_id,
+            &item.tx_id,
             item.tx_index,
             item.input_index,
             blob_id,

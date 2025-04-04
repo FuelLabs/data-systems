@@ -27,9 +27,8 @@ pub struct UtxoDbItem {
     pub subject: String,
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
-    pub input_index: Option<i32>,
     pub output_index: i32,
 
     pub utxo_id: String,
@@ -96,10 +95,9 @@ impl TryFrom<&RecordPacket> for UtxoDbItem {
             Ok(UtxoDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap(),
-                tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap(),
-                input_index: subject.input_index,
+                block_height: packet.pointer.block_height,
+                tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                tx_index: packet.pointer.tx_index.unwrap() as i32,
                 output_index: subject.output_index.unwrap(),
 
                 utxo_id: utxo.utxo_id.to_string(),
@@ -132,7 +130,7 @@ impl Ord for UtxoDbItem {
         self.block_height
             .cmp(&other.block_height)
             .then(self.tx_index.cmp(&other.tx_index))
-            .then(self.input_index.cmp(&other.input_index))
+            .then(self.output_index.cmp(&other.output_index))
     }
 }
 
@@ -140,8 +138,9 @@ impl From<UtxoDbItem> for RecordPointer {
     fn from(val: UtxoDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
-            input_index: val.input_index.map(|i| i as u32),
+            input_index: None,
             output_index: Some(val.output_index as u32),
             receipt_index: None,
         }

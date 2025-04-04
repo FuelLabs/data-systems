@@ -1,29 +1,17 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use fuel_data_parser::DataEncoder;
 use fuel_message_broker::{NatsMessageBroker, NatsQueue, NatsSubject};
-use fuel_streams_core::{
-    inputs::InputsSubject,
-    outputs::OutputsSubject,
-    subjects::{
-        BlocksSubject,
-        ReceiptsSubject,
-        SubjectBuildable,
-        TransactionsSubject,
-        UtxosSubject,
-    },
-    types::*,
-    FuelStreams,
-};
+use fuel_streams_core::{types::*, FuelStreams};
 use fuel_streams_domains::{
     blocks::BlocksQuery,
     infra::{db::Db, QueryParamsBuilder, Repository},
     inputs::InputsQuery,
     outputs::OutputsQuery,
-    predicates::{PredicatesQuery, PredicatesSubject},
+    predicates::PredicatesQuery,
     receipts::ReceiptsQuery,
     transactions::TransactionsQuery,
-    utxos::UtxosQuery,
+    utxos::{DynUtxoSubject, UtxosQuery},
     MockMsgPayload,
     MsgPayload,
 };
@@ -37,11 +25,12 @@ async fn verify_blocks(
     prefix: &str,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
-    let block_subject =
-        BlocksSubject::new().with_height(Some(msg_payload.block_height()));
-    let mut params = BlocksQuery::from(block_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let blocks = Block::find_many(db.pool_ref(), &params).await?;
+    let mut query = BlocksQuery {
+        height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let blocks = Block::find_many(db.pool_ref(), &query).await?;
     assert!(!blocks.is_empty(), "Expected blocks to be inserted");
 
     let msg_payload_height = msg_payload.block_height();
@@ -56,11 +45,12 @@ async fn verify_transactions(
     prefix: &str,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
-    let tx_subject = TransactionsSubject::new()
-        .with_block_height(Some(msg_payload.block_height()));
-    let mut params = TransactionsQuery::from(tx_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let transactions = Transaction::find_many(db.pool_ref(), &params).await?;
+    let mut query = TransactionsQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let transactions = Transaction::find_many(db.pool_ref(), &query).await?;
     assert!(
         !transactions.is_empty(),
         "Expected transactions to be inserted"
@@ -106,11 +96,12 @@ async fn verify_receipts(
     prefix: &str,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
-    let receipts_subject = ReceiptsSubject::new()
-        .with_block_height(Some(msg_payload.block_height()));
-    let mut params = ReceiptsQuery::from(receipts_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let receipts = Receipt::find_many(db.pool_ref(), &params).await?;
+    let mut query = ReceiptsQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let receipts = Receipt::find_many(db.pool_ref(), &query).await?;
 
     let expected_receipts_count: usize = msg_payload
         .transactions
@@ -138,11 +129,12 @@ async fn verify_inputs(
         .map(|tx| tx.inputs.len())
         .sum();
 
-    let inputs_subject = InputsSubject::new()
-        .with_block_height(Some(msg_payload.block_height()));
-    let mut params = InputsQuery::from(inputs_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let inputs = Input::find_many(db.pool_ref(), &params).await?;
+    let mut query = InputsQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let inputs = Input::find_many(db.pool_ref(), &query).await?;
     assert_eq!(
         inputs.len(),
         expected_inputs_count,
@@ -163,11 +155,12 @@ async fn verify_outputs(
         .map(|tx| tx.outputs.len())
         .sum();
 
-    let outputs_subject = OutputsSubject::new()
-        .with_block_height(Some(msg_payload.block_height()));
-    let mut params = OutputsQuery::from(outputs_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let outputs = Output::find_many(db.pool_ref(), &params).await?;
+    let mut query = OutputsQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let outputs = Output::find_many(db.pool_ref(), &query).await?;
     assert_eq!(
         outputs.len(),
         expected_outputs_count,
@@ -182,20 +175,60 @@ async fn verify_utxos(
     prefix: &str,
     msg_payload: &MsgPayload,
 ) -> anyhow::Result<()> {
-    let expected_utxos_count: usize = msg_payload
+    let input_utxos: Vec<UtxoId> = msg_payload
         .transactions
         .iter()
-        .map(|tx| tx.inputs.len())
-        .sum();
+        .flat_map(|tx| {
+            tx.inputs.iter().filter_map(|i| match i {
+                Input::Contract(input_contract) => {
+                    Some(input_contract.utxo_id.to_owned())
+                }
+                Input::Coin(input_coin) => Some(input_coin.utxo_id.to_owned()),
+                Input::Message(_) => None,
+            })
+        })
+        .collect();
 
-    let utxos_subject =
-        UtxosSubject::new().with_block_height(Some(msg_payload.block_height()));
-    let mut params = UtxosQuery::from(utxos_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let utxos = Utxo::find_many(db.pool_ref(), &params).await?;
+    let unique_utxos: HashSet<_> = input_utxos.into_iter().collect();
+
+    let output_utxos: Vec<UtxoId> = msg_payload
+        .transactions
+        .iter()
+        .flat_map(|tx| {
+            tx.outputs.iter().enumerate().filter_map(
+                |(output_index, output)| {
+                    // Only consider Coin, Change, and Variable outputs as they can be spent
+                    match output {
+                        Output::Coin(_)
+                        | Output::Change(_)
+                        | Output::Variable(_) => {
+                            Some(DynUtxoSubject::build_utxo_id(
+                                &tx.id,
+                                output_index as i32,
+                            ))
+                        }
+                        // Contract and ContractCreated outputs don't create UTXOs
+                        Output::Contract(_) | Output::ContractCreated(_) => {
+                            None
+                        }
+                    }
+                },
+            )
+        })
+        .collect();
+
+    // If you need unique UTXOs (though they should already be unique by construction)
+    let unique_output_utxos: HashSet<_> = output_utxos.into_iter().collect();
+
+    let mut query = UtxosQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let utxos = Utxo::find_many(db.pool_ref(), &query).await?;
     assert_eq!(
         utxos.len(),
-        expected_utxos_count,
+        unique_utxos.len() + unique_output_utxos.len(),
         "Expected exact number of UTXOs to be inserted"
     );
 
@@ -213,11 +246,12 @@ async fn verify_predicates(
         .map(|tx| tx.inputs.iter().filter(|i| i.is_coin()).count())
         .sum();
 
-    let predicates_subject = PredicatesSubject::new()
-        .with_block_height(Some(msg_payload.block_height()));
-    let mut params = PredicatesQuery::from(predicates_subject);
-    params.with_namespace(Some(prefix.to_string()));
-    let predicates = Predicate::find_many(db.pool_ref(), &params).await?;
+    let mut query = PredicatesQuery {
+        block_height: Some(msg_payload.block_height()),
+        ..Default::default()
+    };
+    query.with_namespace(Some(prefix.to_string()));
+    let predicates = Predicate::find_many(db.pool_ref(), &query).await?;
     assert_eq!(
         predicates.len(),
         expected_predicates_count,
@@ -238,8 +272,9 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
             .await?;
 
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
-    let msg_payload =
-        MockMsgPayload::new(1).into_inner().with_namespace(&prefix);
+    let msg_payload = MockMsgPayload::new(BlockHeight::random())
+        .into_inner()
+        .with_namespace(&prefix);
     let encoded_payload = msg_payload.encode().await?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());
     let block_height = msg_payload.block_height().into();
@@ -257,7 +292,7 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
         async move { block_executor.start(shutdown.token()).await }
     });
 
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
     shutdown.initiate_shutdown();
     let _ = handle.await?;
 

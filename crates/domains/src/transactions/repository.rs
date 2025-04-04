@@ -126,7 +126,7 @@ impl Repository for Transaction {
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.cursor().to_string())
@@ -186,7 +186,7 @@ impl Repository for Transaction {
                     ) VALUES ($1, $2, $3, $4, $5, $6)",
                 )
                 .bind(&slot_item.tx_id)
-                .bind(slot_item.block_height)
+                .bind(slot_item.block_height.into_inner() as i64)
                 .bind(&slot_item.key)
                 .bind(&slot_item.value)
                 .bind(slot_item.block_time)
@@ -214,7 +214,7 @@ impl Repository for Transaction {
                     ) VALUES ($1, $2, $3, $4, $5, $6)",
                 )
                 .bind(&witness_item.tx_id)
-                .bind(witness_item.block_height)
+                .bind(witness_item.block_height.into_inner() as i64)
                 .bind(&witness_item.witness_data)
                 .bind(witness_item.witness_data_length)
                 .bind(witness_item.block_time)
@@ -240,7 +240,7 @@ impl Repository for Transaction {
                     ) VALUES ($1, $2, $3, $4, $5)",
                 )
                 .bind(&proof_item.tx_id)
-                .bind(proof_item.block_height)
+                .bind(proof_item.block_height.into_inner() as i64)
                 .bind(&proof_item.proof_hash)
                 .bind(proof_item.block_time)
                 .bind(proof_item.created_at)
@@ -268,7 +268,7 @@ impl Repository for Transaction {
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             )
             .bind(&policy_item.tx_id)
-            .bind(policy_item.block_height)
+            .bind(policy_item.block_height.into_inner() as i64)
             .bind(policy_item.tip)
             .bind(policy_item.maturity)
             .bind(policy_item.witness_limit)
@@ -295,7 +295,7 @@ impl Repository for Transaction {
                     ) VALUES ($1, $2, $3, $4, $5)",
                 )
                 .bind(&contract_item.tx_id)
-                .bind(contract_item.block_height)
+                .bind(contract_item.block_height.into_inner() as i64)
                 .bind(&contract_item.contract_id)
                 .bind(contract_item.block_time)
                 .bind(contract_item.created_at)
@@ -325,7 +325,7 @@ impl Repository for Transaction {
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             )
             .bind(&contract_item.tx_id)
-            .bind(contract_item.block_height)
+            .bind(contract_item.block_height.into_inner() as i64)
             .bind(&contract_item.balance_root)
             .bind(&contract_item.contract_id)
             .bind(&contract_item.state_root)
@@ -355,7 +355,7 @@ impl Repository for Transaction {
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             )
             .bind(&contract_item.tx_id)
-            .bind(contract_item.block_height)
+            .bind(contract_item.block_height.into_inner() as i64)
             .bind(&contract_item.balance_root)
             .bind(contract_item.input_index)
             .bind(&contract_item.state_root)
@@ -376,6 +376,7 @@ pub mod tests {
     use std::sync::Arc;
 
     use anyhow::Result;
+    use fuel_streams_types::BlockHeight;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -387,6 +388,7 @@ pub mod tests {
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
+            RecordPointer,
         },
         mocks::{MockInput, MockOutput, MockTransaction},
         transactions::DynTransactionSubject,
@@ -532,15 +534,20 @@ pub mod tests {
     pub async fn insert_transaction(
         db: &Arc<Db>,
         tx: Option<Transaction>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
         let tx = tx
             .unwrap_or_else(|| MockTransaction::script(vec![], vec![], vec![]));
-        let subject = DynTransactionSubject::new(&tx, height.into(), 0);
+        let subject = DynTransactionSubject::new(&tx, height, 0);
         let timestamps = BlockTimestamp::default();
         let packet = subject
-            .build_packet(&tx, timestamps)
+            .build_packet(&tx, timestamps, RecordPointer {
+                block_height: height,
+                tx_id: Some(tx.id.to_owned()),
+                tx_index: Some(0_u32),
+                ..Default::default()
+            })
             .with_namespace(namespace);
 
         let db_item = TransactionDbItem::try_from(&packet)?;
@@ -559,7 +566,7 @@ pub mod tests {
         let mut transactions = Vec::with_capacity(count as usize);
         for height in 1..=count {
             let (db_item, _, _) =
-                insert_transaction(db, None, height, namespace).await?;
+                insert_transaction(db, None, height.into(), namespace).await?;
             transactions.push(db_item);
         }
         Ok(transactions)
@@ -572,7 +579,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::script(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item); // Compare with itself to verify insertion
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -585,7 +592,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::create(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item);
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -598,7 +605,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::mint(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item);
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -611,7 +618,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::upgrade(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item);
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -624,7 +631,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::upload(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item);
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -637,7 +644,7 @@ pub mod tests {
         let outputs = MockOutput::all();
         let tx = MockTransaction::blob(inputs, outputs, vec![]);
         let (db_item, tx, _) =
-            insert_transaction(&db, Some(tx), 1, &namespace).await?;
+            insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
         assert_result(&db_item, &db_item);
         verify_related_tables(&db, &tx, &db_item).await?;
         Ok(())
@@ -648,7 +655,7 @@ pub mod tests {
         let (db, namespace) = setup_db().await?;
         for tx in MockTransaction::all() {
             let (db_item, tx, _) =
-                insert_transaction(&db, Some(tx), 1, &namespace).await?;
+                insert_transaction(&db, Some(tx), 1.into(), &namespace).await?;
             assert_result(&db_item, &db_item);
             verify_related_tables(&db, &tx, &db_item).await?;
         }
@@ -659,7 +666,7 @@ pub mod tests {
     async fn test_find_one_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let (db_item, tx, subject) =
-            insert_transaction(&db, None, 1, &namespace).await?;
+            insert_transaction(&db, None, 1.into(), &namespace).await?;
 
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));

@@ -17,7 +17,10 @@ use rayon::prelude::*;
 use super::{subjects::*, types::*, UtxosQuery};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     inputs::types::*,
     outputs::Output,
     transactions::Transaction,
@@ -31,21 +34,27 @@ impl PacketBuilder for Utxo {
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
+        let block_height = msg_payload.block_height();
         let mut input_packets = tx
             .inputs
             .par_iter()
             .enumerate()
-            .filter_map(|(input_index, input)| {
+            .filter_map(|(_, input)| {
                 let subject = DynUtxoSubject::from_input(
                     input,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.clone(),
                     *tx_index as i32,
-                    input_index as i32,
                 );
                 let timestamp = msg_payload.timestamp();
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.clone()),
+                    tx_index: Some(*tx_index as u32),
+                    ..Default::default()
+                };
                 subject.map(|subject| {
-                    let packet = subject.build_packet(timestamp);
+                    let packet = subject.build_packet(timestamp, pointer);
                     match msg_payload.namespace.clone() {
                         Some(ns) => packet.with_namespace(&ns),
                         _ => packet,
@@ -61,14 +70,21 @@ impl PacketBuilder for Utxo {
             .filter_map(|(output_index, output)| {
                 let subject = DynUtxoSubject::from_output(
                     output,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.clone(),
                     *tx_index as i32,
                     output_index as i32,
                 );
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.clone()),
+                    tx_index: Some(*tx_index as u32),
+                    output_index: Some(output_index as u32),
+                    ..Default::default()
+                };
                 subject.map(|subject| {
                     let timestamp = msg_payload.timestamp();
-                    let packet = subject.build_packet(timestamp);
+                    let packet = subject.build_packet(timestamp, pointer);
                     match msg_payload.namespace.clone() {
                         Some(ns) => packet.with_namespace(&ns),
                         _ => packet,
@@ -93,7 +109,6 @@ impl DynUtxoSubject {
         block_height: BlockHeight,
         tx_id: TxId,
         tx_index: i32,
-        input_index: i32,
     ) -> Option<Self> {
         let item = match input {
             Input::Contract(InputContract {
@@ -147,7 +162,6 @@ impl DynUtxoSubject {
                 subject.block_height = Some(block_height);
                 subject.tx_id = Some(tx_id);
                 subject.tx_index = Some(tx_index);
-                subject.input_index = Some(input_index);
                 subject.output_index = Some(utxo.utxo_id.output_index as i32);
                 Some(Self { utxo, subject })
             }
@@ -224,7 +238,7 @@ impl DynUtxoSubject {
         }
     }
 
-    fn build_utxo_id(tx_id: &TxId, output_index: i32) -> UtxoId {
+    pub fn build_utxo_id(tx_id: &TxId, output_index: i32) -> UtxoId {
         let tx_id_bytes = tx_id.to_owned().into_inner();
         let tx_id_bytes = tx_id_bytes.as_slice();
         let tx_id_bytes = FuelCoreBytes32::from_bytes(tx_id_bytes)
@@ -236,9 +250,13 @@ impl DynUtxoSubject {
     pub fn build_packet(
         &self,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
-        self.utxo
-            .to_packet(&Arc::new(self.subject.clone()), block_timestamp)
+        self.utxo.to_packet(
+            &Arc::new(self.subject.clone()),
+            block_timestamp,
+            pointer,
+        )
     }
 
     pub fn to_query_params(&self) -> UtxosQuery {

@@ -6,7 +6,10 @@ use rayon::prelude::*;
 
 use super::{subjects::*, Transaction, TransactionsQuery};
 use crate::{
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     inputs::Input,
     outputs::Output,
     predicates::Predicate,
@@ -72,11 +75,14 @@ impl DynTransactionSubject {
         &self,
         tx: &Transaction,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         match self {
-            Self::Transaction(subject) => {
-                tx.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Transaction(subject) => tx.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
         }
     }
 
@@ -97,7 +103,13 @@ pub fn main_tx_packet(
     let block_height = msg_payload.block_height();
     let subject = DynTransactionSubject::new(tx, block_height, tx_index);
     let timestamps = msg_payload.timestamp();
-    let packet = subject.build_packet(tx, timestamps);
+    let pointer = RecordPointer {
+        block_height,
+        tx_id: Some(tx.id.clone()),
+        tx_index: Some(tx_index as u32),
+        ..Default::default()
+    };
+    let packet = subject.build_packet(tx, timestamps, pointer);
     let packet = match msg_payload.namespace.clone() {
         Some(ns) => packet.with_namespace(&ns),
         _ => packet,

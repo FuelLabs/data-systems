@@ -186,7 +186,7 @@ impl ApiKeyRole {
     ) -> Result<(), ApiKeyError> {
         if let Some(limit) = self.historical_limit() {
             let diff = last_height.into_inner() - current_height.into_inner();
-            if diff > limit.into_inner() as u64 {
+            if diff > limit.into_inner() {
                 return Err(ApiKeyError::HistoricalLimitExceeded(
                     limit.to_string(),
                 ));

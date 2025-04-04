@@ -7,7 +7,10 @@ use rayon::prelude::*;
 use super::{subjects::*, types::*, ReceiptsQuery};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     transactions::Transaction,
     MsgPayload,
 };
@@ -20,19 +23,27 @@ impl PacketBuilder for Receipt {
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
+        let block_height = msg_payload.block_height();
         receipts
             .par_iter()
             .enumerate()
             .map(|(receipt_index, receipt)| {
                 let subject = DynReceiptSubject::new(
                     receipt,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.clone(),
                     *tx_index as i32,
                     receipt_index as i32,
                 );
                 let timestamps = msg_payload.timestamp();
-                let packet = subject.build_packet(receipt, timestamps);
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.clone()),
+                    tx_index: Some(*tx_index as u32),
+                    receipt_index: Some(receipt_index as u32),
+                    ..Default::default()
+                };
+                let packet = subject.build_packet(receipt, timestamps, pointer);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -214,47 +225,74 @@ impl DynReceiptSubject {
         &self,
         receipt: &Receipt,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         match self {
-            Self::Call(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Return(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::ReturnData(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Panic(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Revert(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Log(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::LogData(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Transfer(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::TransferOut(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::ScriptResult(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::MessageOut(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Mint(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Burn(subject) => {
-                receipt.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Call(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Return(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::ReturnData(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Panic(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Revert(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Log(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::LogData(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Transfer(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::TransferOut(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::ScriptResult(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::MessageOut(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Mint(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Burn(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
         }
     }
 

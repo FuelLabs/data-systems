@@ -92,7 +92,7 @@ impl Repository for Input {
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.input_index)
@@ -148,6 +148,7 @@ mod tests {
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
+            RecordPointer,
         },
         inputs::DynInputSubject,
         mocks::{MockInput, MockTransaction},
@@ -201,7 +202,7 @@ mod tests {
 
     async fn insert_random_block(
         db: &Arc<Db>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
         let (db_item, block, subject) =
@@ -212,7 +213,7 @@ mod tests {
     async fn insert_tx(
         db: &Arc<Db>,
         tx: &Transaction,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
         let _ = insert_random_block(db, height, namespace).await?;
@@ -223,20 +224,26 @@ mod tests {
         db: &Arc<Db>,
         tx: &Transaction,
         input: &Input,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
         (tx_index, input_index): (i32, i32),
     ) -> Result<(InputDbItem, Input, DynInputSubject)> {
         let subject = DynInputSubject::new(
             input,
-            height.into(),
+            height,
             tx.id.to_owned(),
             tx_index,
             input_index,
         );
         let timestamps = BlockTimestamp::default();
         let packet = subject
-            .build_packet(input, timestamps)
+            .build_packet(input, timestamps, RecordPointer {
+                block_height: height,
+                tx_id: Some(tx.id.to_owned()),
+                tx_index: Some(tx_index as u32),
+                input_index: Some(input_index as u32),
+                ..Default::default()
+            })
             .with_namespace(namespace);
 
         let db_item = InputDbItem::try_from(&packet)?;
@@ -258,7 +265,7 @@ mod tests {
 
         let height = BlockHeight::random();
         let tx = MockTransaction::script(inputs.clone(), vec![], vec![]);
-        insert_tx(db, &tx, height.into(), namespace).await?;
+        insert_tx(db, &tx, height, namespace).await?;
 
         let mut db_items = Vec::with_capacity(count as usize);
         for (index, input) in inputs.iter().enumerate() {
@@ -266,7 +273,7 @@ mod tests {
                 db,
                 &tx,
                 input,
-                height.into(),
+                height,
                 namespace,
                 (0, index as i32),
             )
@@ -288,11 +295,9 @@ mod tests {
             vec![],
             vec![],
         );
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_input(&db, &tx, &input1, height.into(), &namespace, (0, 0))
-            .await?;
-        insert_input(&db, &tx, &input2, height.into(), &namespace, (0, 1))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_input(&db, &tx, &input1, height, &namespace, (0, 0)).await?;
+        insert_input(&db, &tx, &input2, height, &namespace, (0, 1)).await?;
         Ok(())
     }
 
@@ -302,9 +307,8 @@ mod tests {
         let height = BlockHeight::random();
         let input = MockInput::contract();
         let tx = MockTransaction::script(vec![input.clone()], vec![], vec![]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_input(&db, &tx, &input, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_input(&db, &tx, &input, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -327,15 +331,11 @@ mod tests {
             vec![],
         );
 
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_input(&db, &tx, &input1, height.into(), &namespace, (0, 0))
-            .await?;
-        insert_input(&db, &tx, &input2, height.into(), &namespace, (0, 1))
-            .await?;
-        insert_input(&db, &tx, &input3, height.into(), &namespace, (0, 2))
-            .await?;
-        insert_input(&db, &tx, &input4, height.into(), &namespace, (0, 3))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_input(&db, &tx, &input1, height, &namespace, (0, 0)).await?;
+        insert_input(&db, &tx, &input2, height, &namespace, (0, 1)).await?;
+        insert_input(&db, &tx, &input3, height, &namespace, (0, 2)).await?;
+        insert_input(&db, &tx, &input4, height, &namespace, (0, 3)).await?;
         Ok(())
     }
 
@@ -345,11 +345,10 @@ mod tests {
         let height = BlockHeight::random();
         let input = MockInput::coin_signed(None);
         let tx = MockTransaction::script(vec![input.clone()], vec![], vec![]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
 
         let (db_item, _, subject) =
-            insert_input(&db, &tx, &input, height.into(), &namespace, (0, 0))
-                .await?;
+            insert_input(&db, &tx, &input, height, &namespace, (0, 0)).await?;
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 

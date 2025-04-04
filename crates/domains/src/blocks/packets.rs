@@ -6,7 +6,10 @@ use fuel_streams_types::{Address, BlockTimestamp, DaBlockHeight};
 use super::{Block, BlocksQuery, BlocksSubject};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     MsgPayload,
 };
 
@@ -34,6 +37,7 @@ impl PacketBuilder for Block {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum DynBlockSubject {
     Block(BlocksSubject),
 }
@@ -57,9 +61,14 @@ impl DynBlockSubject {
         block_timestamp: BlockTimestamp,
     ) -> RecordPacket {
         match self {
-            Self::Block(subject) => {
-                block.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Block(subject) => block.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                RecordPointer {
+                    block_height: block.height,
+                    ..Default::default()
+                },
+            ),
         }
     }
 

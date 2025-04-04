@@ -41,7 +41,7 @@ macro_rules! impl_conversions {
 }
 
 #[macro_export]
-macro_rules! declare_integer_wrapper {
+macro_rules! integer_wrapper_create {
     ($name:ident, $inner_type:ty) => {
         #[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
         pub struct $name($inner_type);
@@ -58,6 +58,11 @@ macro_rules! declare_integer_wrapper {
             pub fn random() -> Self {
                 use rand::Rng;
                 let max = <$inner_type>::MAX;
+                Self(rand::rng().random_range(0..max))
+            }
+
+            pub fn random_max(max: $inner_type) -> Self {
+                use rand::Rng;
                 Self(rand::rng().random_range(0..max))
             }
         }
@@ -207,6 +212,13 @@ macro_rules! declare_integer_wrapper {
         }
 
         $crate::impl_conversions!($name, $inner_type, u32, i32, u64, i64);
+    };
+}
+
+#[macro_export]
+macro_rules! declare_integer_wrapper {
+    ($name:ident, $inner_type:ty) => {
+        $crate::integer_wrapper_create!($name, $inner_type);
 
         impl sqlx::Type<sqlx::Postgres> for $name {
             fn type_info() -> sqlx::postgres::PgTypeInfo {
@@ -281,6 +293,37 @@ macro_rules! declare_integer_wrapper {
                         );
                     }
                 }
+            }
+        }
+    };
+    ($name:ident, $inner_type:ty, $sql_type:ty) => {
+        $crate::integer_wrapper_create!($name, $inner_type);
+
+        impl sqlx::Type<sqlx::Postgres> for $name {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                <$sql_type as sqlx::Type<sqlx::Postgres>>::type_info()
+            }
+        }
+
+        impl<'r> sqlx::Decode<'r, sqlx::Postgres> for $name {
+            fn decode(
+                value: sqlx::postgres::PgValueRef<'r>,
+            ) -> Result<Self, sqlx::error::BoxDynError> {
+                let value =
+                    <$sql_type as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                Ok($name::new(value as $inner_type))
+            }
+        }
+
+        impl sqlx::Encode<'_, sqlx::Postgres> for $name {
+            fn encode_by_ref(
+                &self,
+                buf: &mut sqlx::postgres::PgArgumentBuffer,
+            ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+                <$sql_type as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
+                    &(self.0 as $sql_type),
+                    buf,
+                )
             }
         }
     };

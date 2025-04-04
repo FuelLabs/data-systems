@@ -15,7 +15,6 @@ use sv_publisher::{
     gaps::{find_next_block_to_save, BlockHeightGap},
     metrics::Metrics,
     publish::publish_block,
-    recover::recover_blob_transactions,
     state::ServerState,
 };
 use tokio::{sync::Semaphore, task::JoinSet};
@@ -53,12 +52,6 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             tokio::join!(
-                recover_blob_transactions(
-                    &db,
-                    &fuel_core,
-                    cli.from_height as u32,
-                    &last_block_height
-                ),
                 process_historical_blocks(
                     cli.from_height.into(),
                     &message_broker,
@@ -79,7 +72,6 @@ async fn main() -> anyhow::Result<()> {
         } => {
             result.0?;
             result.1?;
-            result.2?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
@@ -273,7 +265,7 @@ fn get_historical_block_range(
         return None;
     }
 
-    let total_blocks: u64 = processed_gaps
+    let total_blocks: u32 = processed_gaps
         .iter()
         .map(|gap| *gap.end - *gap.start + 1)
         .sum();

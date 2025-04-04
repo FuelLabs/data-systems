@@ -30,7 +30,6 @@ impl Repository for Utxo {
                 block_height,
                 tx_id,
                 tx_index,
-                input_index,
                 output_index,
                 cursor,
                 utxo_id,
@@ -46,16 +45,16 @@ impl Repository for Utxo {
                 created_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::utxo_type,
-                $11::utxo_status, $12, $13, $14, $15, $16, $17, $18, $19
+                $1, $2, $3, $4, $5, $6, $7, $8, $9::utxo_type, $10::utxo_status,
+                $11, $12, $13, $14, $15, $16, $17, $18
             )
-            ON CONFLICT (utxo_id) DO UPDATE SET
+            ON CONFLICT (utxo_id)
+            DO UPDATE SET
                 subject = EXCLUDED.subject,
                 value = EXCLUDED.value,
                 block_height = EXCLUDED.block_height,
                 tx_id = EXCLUDED.tx_id,
                 tx_index = EXCLUDED.tx_index,
-                input_index = EXCLUDED.input_index,
                 output_index = EXCLUDED.output_index,
                 cursor = EXCLUDED.cursor,
                 type = EXCLUDED.type,
@@ -67,16 +66,15 @@ impl Repository for Utxo {
                 nonce = EXCLUDED.nonce,
                 contract_id = EXCLUDED.contract_id,
                 block_time = EXCLUDED.block_time,
-                created_at = $19
+                created_at = EXCLUDED.created_at
             RETURNING *
             "#,
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
-        .bind(db_item.input_index)
         .bind(db_item.output_index)
         .bind(db_item.cursor().to_string())
         .bind(&db_item.utxo_id)
@@ -120,6 +118,7 @@ mod tests {
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
+            RecordPointer,
         },
         inputs::Input,
         mocks::MockInput,
@@ -148,7 +147,6 @@ mod tests {
         assert_eq!(result.block_height, expected.block_height);
         assert_eq!(result.tx_id, expected.tx_id);
         assert_eq!(result.tx_index, expected.tx_index);
-        assert_eq!(result.input_index, expected.input_index);
         assert_eq!(result.output_index, expected.output_index);
         assert_eq!(result.utxo_id, expected.utxo_id);
         assert_eq!(result.r#type, expected.r#type);
@@ -164,7 +162,7 @@ mod tests {
 
     async fn insert_random_block(
         db: &Arc<Db>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
         insert_block(db, height, namespace).await
@@ -173,7 +171,7 @@ mod tests {
     async fn insert_tx(
         db: &Arc<Db>,
         tx: &Transaction,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
         let _ = insert_random_block(db, height, namespace).await?;
@@ -185,24 +183,18 @@ mod tests {
         tx: &Transaction,
         input: Option<&Input>,
         output: Option<&Output>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
-        indices: (i32, i32, i32),
+        indices: (i32, i32),
     ) -> Result<(UtxoDbItem, DynUtxoSubject)> {
-        let (tx_index, input_index, output_index) = indices;
+        let (tx_index, output_index) = indices;
         let subject = if let Some(input) = input {
-            DynUtxoSubject::from_input(
-                input,
-                height.into(),
-                tx.id.clone(),
-                tx_index,
-                input_index,
-            )
-            .unwrap()
+            DynUtxoSubject::from_input(input, height, tx.id.clone(), tx_index)
+                .unwrap()
         } else if let Some(output) = output {
             DynUtxoSubject::from_output(
                 output,
-                height.into(),
+                height,
                 tx.id.clone(),
                 tx_index,
                 output_index,
@@ -213,7 +205,16 @@ mod tests {
         };
 
         let timestamps = BlockTimestamp::default();
-        let packet = subject.build_packet(timestamps).with_namespace(namespace);
+        let pointer = RecordPointer {
+            block_height: height,
+            tx_id: Some(tx.id.clone()),
+            tx_index: Some(tx_index as u32),
+            output_index: Some(output_index as u32),
+            ..Default::default()
+        };
+        let packet = subject
+            .build_packet(timestamps, pointer)
+            .with_namespace(namespace);
         let db_item = UtxoDbItem::try_from(&packet)?;
         let result = Utxo::insert(db.pool_ref(), &db_item).await?;
         assert_result(&result, &db_item);
@@ -231,17 +232,17 @@ mod tests {
         let outputs: Vec<Output> =
             (0..count).map(|_| MockOutput::coin(100)).collect();
         let tx = MockTransaction::script(vec![], outputs.clone(), vec![]);
-        insert_tx(db, &tx, height.into(), namespace).await?;
+        insert_tx(db, &tx, height, namespace).await?;
 
-        for (idx, output) in outputs.iter().enumerate() {
+        for (output_index, output) in outputs.iter().enumerate() {
             let (db_item, _) = insert_utxo(
                 db,
                 &tx,
                 None,
                 Some(output),
-                height.into(),
+                height,
                 namespace,
-                (0, 0, idx as i32),
+                (0, output_index as i32),
             )
             .await?;
             utxos.push(db_item);
@@ -257,16 +258,16 @@ mod tests {
         let height = BlockHeight::random();
         let output = MockOutput::coin(100);
         let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
 
         let (db_item, subject) = insert_utxo(
             &db,
             &tx,
             None,
             Some(&output),
-            height.into(),
+            height,
             &namespace,
-            (0, 0, 0),
+            (0, 0),
         )
         .await?;
 
@@ -409,16 +410,16 @@ mod tests {
         let height = BlockHeight::random();
         let output = MockOutput::coin(100);
         let tx = MockTransaction::script(vec![], vec![output.clone()], vec![]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
 
         let (db_item_1, _) = insert_utxo(
             &db,
             &tx,
             None,
             Some(&output),
-            height.into(),
+            height,
             &namespace,
-            (0, 0, 0),
+            (0, 0),
         )
         .await?;
 
@@ -437,9 +438,9 @@ mod tests {
             &tx,
             Some(&input),
             None,
-            height.into(),
+            height,
             &namespace,
-            (0, 0, 0),
+            (0, 0),
         )
         .await?;
 

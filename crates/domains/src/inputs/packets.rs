@@ -7,7 +7,10 @@ use rayon::prelude::*;
 use super::{subjects::*, Input, InputsQuery};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     transactions::Transaction,
     MsgPayload,
 };
@@ -32,7 +35,14 @@ impl PacketBuilder for Input {
                     *tx_index as i32,
                     input_index as i32,
                 );
-                let packet = subject.build_packet(input, timestamps);
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.clone()),
+                    tx_index: Some(*tx_index as u32),
+                    input_index: Some(input_index as u32),
+                    ..Default::default()
+                };
+                let packet = subject.build_packet(input, timestamps, pointer);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -89,17 +99,24 @@ impl DynInputSubject {
         &self,
         input: &Input,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         match self {
-            Self::Contract(subject) => {
-                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Coin(subject) => {
-                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Message(subject) => {
-                input.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Contract(subject) => input.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Coin(subject) => input.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Message(subject) => input.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
         }
     }
 

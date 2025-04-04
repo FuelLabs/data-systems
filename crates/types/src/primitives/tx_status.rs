@@ -40,7 +40,7 @@ pub enum TransactionStatus {
 impl TryFrom<&str> for TransactionStatus {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "pre_confirmation_failed" => {
                 Ok(TransactionStatus::PreConfirmationFailed)
             }

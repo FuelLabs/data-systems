@@ -89,9 +89,7 @@ pub trait DataEncoder:
 ///     field: String,
 /// }
 ///
-/// impl DataEncoder for TestData {
-///     type Err = DataParserError;
-/// }
+/// impl DataEncoder for TestData {}
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -206,9 +204,7 @@ impl DataParser {
     ///     field: String,
     /// }
     ///
-    /// impl DataEncoder for TestData {
-    ///     type Err = DataParserError;
-    /// }
+    /// impl DataEncoder for TestData {}
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -312,9 +308,7 @@ impl DataParser {
     ///     field: String,
     /// }
     ///
-    /// impl DataEncoder for TestData {
-    ///     type Err = DataParserError;
-    /// }
+    /// impl DataEncoder for TestData {}
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

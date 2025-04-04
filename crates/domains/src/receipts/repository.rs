@@ -113,7 +113,7 @@ impl Repository for Receipt {
         )
         .bind(&db_item.subject)
         .bind(&db_item.value)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.receipt_index)
@@ -179,6 +179,7 @@ mod tests {
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
+            RecordPointer,
         },
         mocks::{MockReceipt, MockTransaction},
         receipts::DynReceiptSubject,
@@ -239,7 +240,7 @@ mod tests {
 
     async fn insert_random_block(
         db: &Arc<Db>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
         let (db_item, block, subject) =
@@ -250,7 +251,7 @@ mod tests {
     async fn insert_tx(
         db: &Arc<Db>,
         tx: &Transaction,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
         let _ = insert_random_block(db, height, namespace).await?;
@@ -261,20 +262,26 @@ mod tests {
         db: &Arc<Db>,
         tx: &Transaction,
         receipt: &Receipt,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
         (tx_index, receipt_index): (i32, i32),
     ) -> Result<(ReceiptDbItem, Receipt, DynReceiptSubject)> {
         let subject = DynReceiptSubject::new(
             receipt,
-            height.into(),
+            height,
             tx.id.to_owned(),
             tx_index,
             receipt_index,
         );
         let timestamps = BlockTimestamp::default();
         let packet = subject
-            .build_packet(receipt, timestamps)
+            .build_packet(receipt, timestamps, RecordPointer {
+                block_height: height,
+                tx_id: Some(tx.id.to_owned()),
+                tx_index: Some(tx_index as u32),
+                receipt_index: Some(receipt_index as u32),
+                ..Default::default()
+            })
             .with_namespace(namespace);
 
         let db_item = ReceiptDbItem::try_from(&packet)?;
@@ -296,7 +303,7 @@ mod tests {
 
         let height = BlockHeight::random();
         let tx = MockTransaction::script(vec![], vec![], receipts.clone());
-        insert_tx(db, &tx, height.into(), namespace).await?;
+        insert_tx(db, &tx, height, namespace).await?;
 
         let mut db_items = Vec::with_capacity(count as usize);
         for (index, receipt) in receipts.iter().enumerate() {
@@ -304,7 +311,7 @@ mod tests {
                 db,
                 &tx,
                 receipt,
-                height.into(),
+                height,
                 namespace,
                 (0, index as i32),
             )
@@ -325,11 +332,9 @@ mod tests {
             receipt1.clone(),
             receipt2.clone(),
         ]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt1, height.into(), &namespace, (0, 0))
-            .await?;
-        insert_receipt(&db, &tx, &receipt2, height.into(), &namespace, (0, 1))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt1, height, &namespace, (0, 0)).await?;
+        insert_receipt(&db, &tx, &receipt2, height, &namespace, (0, 1)).await?;
         Ok(())
     }
 
@@ -339,9 +344,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::return_receipt();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -351,9 +355,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::return_data();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -363,9 +366,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::panic();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -375,9 +377,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::revert();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -387,9 +388,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::log();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -399,9 +399,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::log_data();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -411,9 +410,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::transfer();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -423,9 +421,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::transfer_out();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -435,9 +432,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::script_result();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -447,9 +443,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::message_out();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -459,9 +454,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::mint();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -471,9 +465,8 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::burn();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
-        insert_receipt(&db, &tx, &receipt, height.into(), &namespace, (0, 0))
-            .await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
+        insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0)).await?;
         Ok(())
     }
 
@@ -483,17 +476,11 @@ mod tests {
         let height = BlockHeight::random();
         let receipt = MockReceipt::call();
         let tx = MockTransaction::script(vec![], vec![], vec![receipt.clone()]);
-        insert_tx(&db, &tx, height.into(), &namespace).await?;
+        insert_tx(&db, &tx, height, &namespace).await?;
 
-        let (db_item, _, subject) = insert_receipt(
-            &db,
-            &tx,
-            &receipt,
-            height.into(),
-            &namespace,
-            (0, 0),
-        )
-        .await?;
+        let (db_item, _, subject) =
+            insert_receipt(&db, &tx, &receipt, height, &namespace, (0, 0))
+                .await?;
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));
 

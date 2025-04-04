@@ -22,9 +22,8 @@ CREATE TABLE "utxos" (
     "tx_id" TEXT NOT NULL,
     "block_height" BIGINT NOT NULL,
     "tx_index" INTEGER NOT NULL,
-    "input_index" INTEGER,
     "output_index" INTEGER NOT NULL,
-    "cursor" TEXT NOT NULL, -- {block_height}-{tx_index}-{input_index}-{output_index?}
+    "cursor" TEXT NOT NULL, -- {block_height}-{tx_index}-{output_index}
     "utxo_id" TEXT NOT NULL UNIQUE,
     -- props
     "type" utxo_type NOT NULL,
@@ -63,5 +62,4 @@ CREATE INDEX IF NOT EXISTS idx_utxos_from_address_block_height ON "utxos" ("from
 CREATE INDEX IF NOT EXISTS idx_utxos_contract_id_block_height ON "utxos" ("contract_id", "block_height");
 
 -- Composite indexes for ordering
-CREATE INDEX IF NOT EXISTS idx_utxos_block_height_tx_input ON "utxos" ("block_height", "tx_index", "input_index");
-CREATE INDEX IF NOT EXISTS idx_utxos_block_height_tx_input_output ON "utxos" ("block_height", "tx_index", "input_index", "output_index");
+CREATE INDEX IF NOT EXISTS idx_utxos_block_height_tx_output ON "utxos" ("block_height", "tx_index", "output_index");

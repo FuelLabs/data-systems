@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{BlockHeight, BlockTimestamp, InputType};
+use fuel_streams_types::{BlockHeight, BlockTimestamp, InputType, TxId};
 use serde::{Deserialize, Serialize};
 
 use super::{subjects::*, Input};
@@ -27,7 +27,7 @@ pub struct InputDbItem {
     pub subject: String,
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub input_index: i32,
 
@@ -117,7 +117,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::InputsCoin(subject) => {
+            Subjects::InputsCoin(_) => {
                 let input = match Input::decode_json(&packet.value)? {
                     Input::Coin(coin) => coin,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -126,10 +126,10 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 Ok(InputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    input_index: subject.input_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    input_index: packet.pointer.input_index.unwrap() as i32,
                     r#type: InputType::Coin,
                     utxo_id: Some(input.utxo_id.to_string()),
                     amount: Some(input.amount.into_inner() as i64),
@@ -158,7 +158,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::InputsContract(subject) => {
+            Subjects::InputsContract(_) => {
                 let input = match Input::decode_json(&packet.value)? {
                     Input::Contract(contract) => contract,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -167,10 +167,10 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 Ok(InputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    input_index: subject.input_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    input_index: packet.pointer.input_index.unwrap() as i32,
                     r#type: InputType::Contract,
                     utxo_id: Some(input.utxo_id.to_string()),
                     balance_root: Some(input.balance_root.to_string()),
@@ -195,7 +195,7 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::InputsMessage(subject) => {
+            Subjects::InputsMessage(_) => {
                 let input = match Input::decode_json(&packet.value)? {
                     Input::Message(message) => message,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -204,10 +204,10 @@ impl TryFrom<&RecordPacket> for InputDbItem {
                 Ok(InputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    input_index: subject.input_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    input_index: packet.pointer.input_index.unwrap() as i32,
                     r#type: InputType::Message,
                     utxo_id: None,
                     amount: Some(input.amount.into_inner() as i64),
@@ -263,6 +263,7 @@ impl From<InputDbItem> for RecordPointer {
     fn from(val: InputDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: Some(val.input_index as u32),
             output_index: None,

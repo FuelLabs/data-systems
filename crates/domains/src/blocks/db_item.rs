@@ -11,19 +11,11 @@ use fuel_streams_types::{
 use serde::{Deserialize, Serialize};
 
 use super::{Block, BlocksSubject};
-use crate::{
-    infra::{
-        db::DbItem,
-        record::{
-            RecordEntity,
-            RecordPacket,
-            RecordPacketError,
-            RecordPointer,
-        },
-        Cursor,
-        DbError,
-    },
-    Subjects,
+use crate::infra::{
+    db::DbItem,
+    record::{RecordEntity, RecordPacket, RecordPacketError, RecordPointer},
+    Cursor,
+    DbError,
 };
 
 #[derive(
@@ -113,76 +105,59 @@ impl TryFrom<&RecordPacket> for BlockDbItem {
             consensus_signature,
         ) = block.consensus.normalize_all();
 
-        let subject: Subjects = packet
-            .subject_payload
-            .to_owned()
-            .try_into()
-            .map_err(|_| RecordPacketError::SubjectMismatch)?;
-
-        match subject {
-            Subjects::Block(subject) => Ok(BlockDbItem {
-                subject: packet.subject_str(),
-                block_height: subject.height.unwrap(),
-                block_da_height: subject.da_height.unwrap(),
-                value: packet.value.to_owned(),
-                version: block.header.version.to_string(),
-                producer_address: subject.producer.unwrap().to_string(),
-                // header
-                header_application_hash: block
-                    .header
-                    .application_hash
-                    .to_string(),
-                header_consensus_parameters_version: block
-                    .header
-                    .consensus_parameters_version
-                    .to_owned(),
-                header_da_height: subject.da_height.unwrap(),
-                header_event_inbox_root: block
-                    .header
-                    .event_inbox_root
-                    .to_string(),
-                header_message_outbox_root: block
-                    .header
-                    .message_outbox_root
-                    .to_string(),
-                header_message_receipt_count: block
-                    .header
-                    .message_receipt_count
-                    .to_owned(),
-                header_prev_root: block.header.prev_root.to_string(),
-                header_state_transition_bytecode_version: block
-                    .header
-                    .state_transition_bytecode_version
-                    .to_owned(),
-                header_time: (&block.header).into(),
-                header_transactions_count: block.header.transactions_count
-                    as i16,
-                header_transactions_root: block
-                    .header
-                    .transactions_root
-                    .to_string(),
-                header_version: block.header.version.to_string(),
-                // consensus
-                consensus_chain_config_hash: consensus_chain_config_hash
-                    .map(|val| val.to_string()),
-                consensus_coins_root: consensus_coins_root
-                    .map(|val| val.to_string()),
-                consensus_type: consensus_type.unwrap(),
-                consensus_contracts_root: consensus_contracts_root
-                    .map(|val| val.to_string()),
-                consensus_messages_root: consensus_messages_root
-                    .map(|val| val.to_string()),
-                consensus_transactions_root: consensus_transactions_root
-                    .map(|val| val.to_string()),
-                consensus_signature: consensus_signature
-                    .map(|val| val.to_string()),
-                // timestamps
-                block_time: packet.block_timestamp,
-                created_at: packet.block_timestamp,
-                block_propagation_ms: 0,
-            }),
-            _ => Err(RecordPacketError::SubjectMismatch),
-        }
+        Ok(BlockDbItem {
+            subject: packet.subject_str(),
+            value: packet.value.to_owned(),
+            block_height: block.height,
+            block_da_height: block.header.da_height,
+            version: block.header.version.to_string(),
+            producer_address: block.producer.to_string(),
+            // header
+            header_application_hash: block.header.application_hash.to_string(),
+            header_consensus_parameters_version: block
+                .header
+                .consensus_parameters_version
+                .to_owned(),
+            header_da_height: block.header.da_height,
+            header_event_inbox_root: block.header.event_inbox_root.to_string(),
+            header_message_outbox_root: block
+                .header
+                .message_outbox_root
+                .to_string(),
+            header_message_receipt_count: block
+                .header
+                .message_receipt_count
+                .to_owned(),
+            header_prev_root: block.header.prev_root.to_string(),
+            header_state_transition_bytecode_version: block
+                .header
+                .state_transition_bytecode_version
+                .to_owned(),
+            header_time: (&block.header).into(),
+            header_transactions_count: block.header.transactions_count as i16,
+            header_transactions_root: block
+                .header
+                .transactions_root
+                .to_string(),
+            header_version: block.header.version.to_string(),
+            // consensus
+            consensus_chain_config_hash: consensus_chain_config_hash
+                .map(|val| val.to_string()),
+            consensus_coins_root: consensus_coins_root
+                .map(|val| val.to_string()),
+            consensus_type: consensus_type.unwrap(),
+            consensus_contracts_root: consensus_contracts_root
+                .map(|val| val.to_string()),
+            consensus_messages_root: consensus_messages_root
+                .map(|val| val.to_string()),
+            consensus_transactions_root: consensus_transactions_root
+                .map(|val| val.to_string()),
+            consensus_signature: consensus_signature.map(|val| val.to_string()),
+            // timestamps
+            block_time: packet.block_timestamp,
+            created_at: packet.block_timestamp,
+            block_propagation_ms: 0,
+        })
     }
 }
 
@@ -202,10 +177,7 @@ impl From<BlockDbItem> for RecordPointer {
     fn from(val: BlockDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
-            tx_index: None,
-            input_index: None,
-            output_index: None,
-            receipt_index: None,
+            ..Default::default()
         }
     }
 }

@@ -32,7 +32,7 @@ pub enum OutputType {
 impl TryFrom<&str> for OutputType {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "coin" => Ok(OutputType::Coin),
             "contract" => Ok(OutputType::Contract),
             "change" => Ok(OutputType::Change),

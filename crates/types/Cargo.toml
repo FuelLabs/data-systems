@@ -33,6 +33,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 utoipa.workspace = true
+voca_rs = "1.15.2"
 
 [dev-dependencies]
 pretty_assertions.workspace = true

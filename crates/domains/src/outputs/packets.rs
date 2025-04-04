@@ -7,7 +7,10 @@ use rayon::prelude::*;
 use super::{subjects::*, types::*, OutputsQuery};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     inputs::Input,
     transactions::Transaction,
     MsgPayload,
@@ -20,20 +23,28 @@ impl PacketBuilder for Output {
         (msg_payload, tx_index, tx): &Self::Opts,
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
+        let block_height = msg_payload.block_height();
         tx.outputs
             .par_iter()
             .enumerate()
             .map(|(output_index, output)| {
                 let subject = DynOutputSubject::new(
                     output,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.to_owned(),
                     *tx_index as i32,
                     output_index as i32,
                     tx,
                 );
                 let timestamps = msg_payload.timestamp();
-                let packet = subject.build_packet(output, timestamps);
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.to_owned()),
+                    tx_index: Some(*tx_index as u32),
+                    output_index: Some(output_index as u32),
+                    ..Default::default()
+                };
+                let packet = subject.build_packet(output, timestamps, pointer);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -115,23 +126,34 @@ impl DynOutputSubject {
         &self,
         output: &Output,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         match self {
-            Self::Coin(subject) => {
-                output.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Contract(subject) => {
-                output.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Change(subject) => {
-                output.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::Variable(subject) => {
-                output.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
-            Self::ContractCreated(subject) => {
-                output.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Coin(subject) => output.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Contract(subject) => output.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Change(subject) => output.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Variable(subject) => output.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::ContractCreated(subject) => output.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
         }
     }
 

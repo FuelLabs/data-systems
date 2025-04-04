@@ -94,7 +94,7 @@ impl Repository for Block {
         .bind(&db_item.subject)
         .bind(&db_item.producer_address)
         .bind(db_item.block_da_height)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.value)
         .bind(&db_item.version)
         .bind(&db_item.header_application_hash)
@@ -241,7 +241,7 @@ pub mod tests {
 
     pub async fn insert_block(
         db: &Arc<Db>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
         let block = MockBlock::build(height);
@@ -271,7 +271,7 @@ pub mod tests {
         for _ in 1..=count {
             let random_height = BlockHeight::random();
             let (db_item, _, _) =
-                insert_block(db, random_height.into(), namespace).await?;
+                insert_block(db, random_height, namespace).await?;
             blocks.push(db_item);
         }
         blocks.sort_by_key(|b| b.block_height);
@@ -282,7 +282,7 @@ pub mod tests {
     async fn test_insert_block() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let random_height = BlockHeight::random();
-        insert_block(&db, random_height.into(), &namespace).await?;
+        insert_block(&db, random_height, &namespace).await?;
         Ok(())
     }
 
@@ -290,9 +290,9 @@ pub mod tests {
     async fn test_insert_block_with_transaction() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let (db_item1, _, _) =
-            insert_block(&db, BlockHeight::random().into(), &namespace).await?;
+            insert_block(&db, BlockHeight::random(), &namespace).await?;
         let (db_item2, _, _) =
-            insert_block(&db, BlockHeight::random().into(), &namespace).await?;
+            insert_block(&db, BlockHeight::random(), &namespace).await?;
 
         let mut tx = db.pool_ref().begin().await?;
         let result1 =
@@ -310,7 +310,7 @@ pub mod tests {
     async fn test_find_one_block() -> Result<()> {
         let (db, namespace) = setup_db().await?;
         let (db_item, _, subject) =
-            insert_block(&db, BlockHeight::random().into(), &namespace).await?;
+            insert_block(&db, BlockHeight::random(), &namespace).await?;
 
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));

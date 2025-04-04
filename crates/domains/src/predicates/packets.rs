@@ -7,7 +7,10 @@ use rayon::prelude::*;
 use super::{subjects::*, Predicate, PredicatesQuery};
 use crate::{
     blocks::BlockHeight,
-    infra::record::{PacketBuilder, RecordPacket, ToPacket},
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
     inputs::Input,
     transactions::Transaction,
     MsgPayload,
@@ -22,7 +25,6 @@ impl PacketBuilder for Predicate {
         let tx_id = tx.id.clone();
         let block_height = msg_payload.block_height();
         let timestamps = msg_payload.timestamp();
-
         tx.inputs
             .par_iter()
             .enumerate()
@@ -34,7 +36,14 @@ impl PacketBuilder for Predicate {
                     *tx_index as i32,
                     input_index as i32,
                 )?;
-                let packet = subject.build_packet(timestamps);
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.to_owned()),
+                    tx_index: Some(*tx_index as u32),
+                    input_index: Some(input_index as u32),
+                    ..Default::default()
+                };
+                let packet = subject.build_packet(timestamps, pointer);
                 Some(match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -86,11 +95,14 @@ impl DynPredicateSubject {
     pub fn build_packet(
         &self,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         match self {
-            Self::Coin(subject, predicate) => {
-                predicate.to_packet(&Arc::new(subject.clone()), block_timestamp)
-            }
+            Self::Coin(subject, predicate) => predicate.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
         }
     }
 

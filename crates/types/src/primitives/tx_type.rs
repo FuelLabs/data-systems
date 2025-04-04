@@ -1,8 +1,11 @@
 use std::str::FromStr;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Serialize;
 
-use crate::fuel_core::FuelCoreTypesTransaction;
+use crate::{
+    fuel_core::FuelCoreTypesTransaction,
+    impl_enum_string_serialization,
+};
 
 #[derive(
     Debug,
@@ -33,50 +36,10 @@ pub enum TransactionType {
     Blob,
 }
 
-impl<'de> Deserialize<'de> for TransactionType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        TransactionType::try_from(s.as_str()).map_err(serde::de::Error::custom)
-    }
-}
-
-impl<'r> sqlx::Decode<'r, sqlx::Postgres> for TransactionType {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'r>,
-    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-        TransactionType::try_from(value.as_str()).map_err(|e| e.into())
-    }
-}
-
-impl sqlx::Type<sqlx::Postgres> for TransactionType {
-    fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("transaction_type")
-    }
-}
-
-impl sqlx::Encode<'_, sqlx::Postgres> for TransactionType {
-    fn encode_by_ref(
-        &self,
-        buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
-        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
-            &self.to_string().as_str(),
-            buf,
-        )
-    }
-}
-
 impl TryFrom<&str> for TransactionType {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "create" => Ok(TransactionType::Create),
             "mint" => Ok(TransactionType::Mint),
             "script" => Ok(TransactionType::Script),
@@ -88,12 +51,7 @@ impl TryFrom<&str> for TransactionType {
     }
 }
 
-impl FromStr for TransactionType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        TransactionType::try_from(s)
-    }
-}
+impl_enum_string_serialization!(TransactionType, "transaction_type");
 
 impl From<&FuelCoreTypesTransaction> for TransactionType {
     fn from(value: &FuelCoreTypesTransaction) -> Self {

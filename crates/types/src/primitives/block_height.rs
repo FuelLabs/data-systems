@@ -4,7 +4,7 @@ use crate::{
     impl_utoipa_for_integer_wrapper,
 };
 
-declare_integer_wrapper!(BlockHeight, u64);
+declare_integer_wrapper!(BlockHeight, u32, i64);
 
 impl_utoipa_for_integer_wrapper!(
     BlockHeight,
@@ -22,7 +22,7 @@ impl From<&FuelCoreBlockHeight> for BlockHeight {
 impl From<FuelCoreBlockHeight> for BlockHeight {
     fn from(value: FuelCoreBlockHeight) -> Self {
         let height = *value;
-        BlockHeight(height as u64)
+        BlockHeight(height)
     }
 }
 
@@ -96,33 +96,33 @@ mod tests {
 
     #[test]
     fn test_block_height_serialization() {
-        let height = BlockHeight(7938487056892322000);
+        let height = BlockHeight(4294967295);
         let serialized = serde_json::to_string(&height).unwrap();
         let deserialized: BlockHeight =
             serde_json::from_str(&serialized).unwrap();
         assert_eq!(height, deserialized);
 
         // Test backwards compatibility with number format
-        let json_number = "7938487056892322000";
+        let json_number = "4294967295";
         let deserialized: BlockHeight =
             serde_json::from_str(json_number).unwrap();
-        assert_eq!(deserialized.0, 7938487056892322000);
+        assert_eq!(deserialized.0, 4294967295);
     }
 
     #[test]
     fn test_block_height_option_conversions() {
         // From Option to BlockHeight
-        let some_value = Some(42u64);
+        let some_value = Some(42u32);
         let height: BlockHeight = some_value.into();
         assert_eq!(height.0, 42);
 
-        let none_value: Option<u64> = None;
+        let none_value: Option<u32> = None;
         let height: BlockHeight = none_value.into();
         assert_eq!(height.0, 0);
 
         // From BlockHeight to Option
         let height = BlockHeight(42);
-        let option: Option<u64> = height.into();
+        let option: Option<u32> = height.into();
         assert_eq!(option, Some(42));
     }
 

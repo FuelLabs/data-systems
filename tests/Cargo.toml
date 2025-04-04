@@ -43,6 +43,7 @@ fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
 fuel-streams-subject = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
+futures.workspace = true
 rand.workspace = true
 sv-consumer = { path = "../services/consumer", features = ["test-helpers"] }
 tokio = { workspace = true, features = [

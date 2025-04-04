@@ -27,7 +27,7 @@ pub struct OutputDbItem {
     pub subject: String,
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub output_index: i32,
 
@@ -107,7 +107,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::OutputsCoin(subject) => {
+            Subjects::OutputsCoin(_) => {
                 let output = match Output::decode_json(&packet.value)? {
                     Output::Coin(coin) => coin,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -116,10 +116,10 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 Ok(OutputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    output_index: subject.output_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    output_index: packet.pointer.output_index.unwrap() as i32,
                     r#type: OutputType::Coin,
                     amount: Some(output.amount.into_inner() as i64),
                     asset_id: Some(output.asset_id.to_string()),
@@ -141,10 +141,10 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 Ok(OutputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    output_index: subject.output_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    output_index: packet.pointer.output_index.unwrap() as i32,
                     r#type: OutputType::Contract,
                     amount: None,
                     asset_id: None,
@@ -152,12 +152,14 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                     state_root: Some(output.state_root.to_string()),
                     balance_root: Some(output.balance_root.to_string()),
                     input_index: Some(output.input_index as i32),
-                    contract_id: Some(subject.contract.unwrap().to_string()),
+                    contract_id: Some(
+                        subject.contract.unwrap_or_default().to_string(),
+                    ),
                     block_time: packet.block_timestamp,
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::OutputsChange(subject) => {
+            Subjects::OutputsChange(_) => {
                 let output = match Output::decode_json(&packet.value)? {
                     Output::Change(change) => change,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -166,10 +168,10 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 Ok(OutputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    output_index: subject.output_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    output_index: packet.pointer.output_index.unwrap() as i32,
                     r#type: OutputType::Change,
                     amount: Some(output.amount.into_inner() as i64),
                     asset_id: Some(output.asset_id.to_string()),
@@ -182,7 +184,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::OutputsVariable(subject) => {
+            Subjects::OutputsVariable(_) => {
                 let output = match Output::decode_json(&packet.value)? {
                     Output::Variable(variable) => variable,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -191,10 +193,10 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 Ok(OutputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    output_index: subject.output_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    output_index: packet.pointer.output_index.unwrap() as i32,
                     r#type: OutputType::Variable,
                     amount: Some(output.amount.into_inner() as i64),
                     asset_id: Some(output.asset_id.to_string()),
@@ -207,7 +209,7 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::OutputsContractCreated(subject) => {
+            Subjects::OutputsContractCreated(_) => {
                 let output = match Output::decode_json(&packet.value)? {
                     Output::ContractCreated(contract) => contract,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -216,10 +218,10 @@ impl TryFrom<&RecordPacket> for OutputDbItem {
                 Ok(OutputDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    output_index: subject.output_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    output_index: packet.pointer.output_index.unwrap() as i32,
                     r#type: OutputType::ContractCreated,
                     amount: None,
                     asset_id: None,
@@ -256,6 +258,7 @@ impl From<OutputDbItem> for RecordPointer {
     fn from(val: OutputDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: None,
             output_index: Some(val.output_index as u32),

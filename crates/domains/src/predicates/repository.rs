@@ -68,7 +68,7 @@ impl Predicate {
         .bind(predicate_id)
         .bind(db_item.cursor().to_string())
         .bind(&db_item.subject)
-        .bind(db_item.block_height)
+        .bind(db_item.block_height.into_inner() as i64)
         .bind(&db_item.tx_id)
         .bind(db_item.tx_index)
         .bind(db_item.input_index)
@@ -114,6 +114,7 @@ mod tests {
             OrderBy,
             QueryOptions,
             QueryParamsBuilder,
+            RecordPointer,
         },
         inputs::Input,
         mocks::{MockInput, MockTransaction},
@@ -144,7 +145,7 @@ mod tests {
     async fn insert_predicate(
         db: &Arc<Db>,
         input: Option<Input>,
-        height: u32,
+        height: BlockHeight,
         namespace: &str,
     ) -> anyhow::Result<(PredicateDbItem, Input, DynPredicateSubject)> {
         let input = input.unwrap_or_else(MockInput::coin_predicate);
@@ -152,10 +153,17 @@ mod tests {
             MockTransaction::script(vec![input.to_owned()], vec![], vec![]);
 
         let subject =
-            DynPredicateSubject::new(&input, &height.into(), &tx.id, 0, 0)
-                .unwrap();
+            DynPredicateSubject::new(&input, &height, &tx.id, 0, 0).unwrap();
         let timestamps = BlockTimestamp::default();
-        let packet = subject.build_packet(timestamps).with_namespace(namespace);
+        let packet = subject
+            .build_packet(timestamps, RecordPointer {
+                block_height: height,
+                tx_id: Some(tx.id.to_owned()),
+                tx_index: Some(0_u32),
+                input_index: Some(0_u32),
+                ..Default::default()
+            })
+            .with_namespace(namespace);
 
         let mut db_item = PredicateDbItem::try_from(&packet)?;
         let result = Predicate::upsert_as_relation(db, &mut db_item).await?;
@@ -172,7 +180,7 @@ mod tests {
         let mut predicates = Vec::with_capacity(count as usize);
         for height in 1..=count {
             let (db_item, _, _) =
-                insert_predicate(db, None, height, namespace).await?;
+                insert_predicate(db, None, height.into(), namespace).await?;
             predicates.push(db_item);
         }
         Ok(predicates)
@@ -181,8 +189,13 @@ mod tests {
     #[tokio::test]
     async fn test_inserting_predicate_with_blob_id() -> anyhow::Result<()> {
         let (db, namespace) = setup_db().await?;
-        insert_predicate(&db, Some(MockInput::coin_predicate()), 1, &namespace)
-            .await?;
+        insert_predicate(
+            &db,
+            Some(MockInput::coin_predicate()),
+            1.into(),
+            &namespace,
+        )
+        .await?;
         Ok(())
     }
 
@@ -192,7 +205,7 @@ mod tests {
         insert_predicate(
             &db,
             Some(MockInput::coin_signed(None)),
-            1,
+            1.into(),
             &namespace,
         )
         .await?;
@@ -203,7 +216,7 @@ mod tests {
     async fn test_find_one_predicate() -> anyhow::Result<()> {
         let (db, namespace) = setup_db().await?;
         let (db_item, _, subject) =
-            insert_predicate(&db, None, 1, &namespace).await?;
+            insert_predicate(&db, None, 1.into(), &namespace).await?;
 
         let mut query = subject.to_query_params();
         query.with_namespace(Some(namespace));

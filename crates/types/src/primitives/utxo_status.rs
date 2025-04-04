@@ -26,7 +26,7 @@ pub enum UtxoStatus {
 impl TryFrom<&str> for UtxoStatus {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "unspent" => Ok(UtxoStatus::Unspent),
             "spent" => Ok(UtxoStatus::Spent),
             _ => Err(format!("Unknown UtxoStatus: {}", s)),

@@ -32,7 +32,7 @@ pub enum UtxoType {
 impl TryFrom<&str> for UtxoType {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "input_contract" => Ok(UtxoType::InputContract),
             "input_coin" => Ok(UtxoType::InputCoin),
             "output_coin" => Ok(UtxoType::OutputCoin),

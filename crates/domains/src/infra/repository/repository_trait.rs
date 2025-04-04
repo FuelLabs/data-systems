@@ -1,3 +1,5 @@
+use std::fmt;
+
 use async_trait::async_trait;
 use sqlx::{Acquire, PgConnection, PgExecutor, Postgres};
 
@@ -9,7 +11,12 @@ pub type DbConnection = PgConnection;
 #[async_trait]
 pub trait Repository: Clone + Sized + Send + Sync + 'static {
     type Item: DbItem + Into<RecordPointer>;
-    type QueryParams: QueryParamsBuilder + Send + Sync + 'static + Clone;
+    type QueryParams: fmt::Debug
+        + QueryParamsBuilder
+        + Send
+        + Sync
+        + 'static
+        + Clone;
 
     async fn insert<'e, 'c: 'e, E>(
         executor: E,

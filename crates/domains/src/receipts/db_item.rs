@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{BlockHeight, BlockTimestamp, ReceiptType};
+use fuel_streams_types::{BlockHeight, BlockTimestamp, ReceiptType, TxId};
 use serde::{Deserialize, Serialize};
 
 use super::{subjects::*, Receipt};
@@ -27,7 +27,7 @@ pub struct ReceiptDbItem {
     pub subject: String,
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub receipt_index: i32,
 
@@ -146,7 +146,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::ReceiptsCall(subject) => {
+            Subjects::ReceiptsCall(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Call(call) => call,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -155,10 +155,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Call,
                     from_contract_id: Some(receipt.id.to_string()),
                     to_contract_id: Some(receipt.to.to_string()),
@@ -192,7 +192,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsReturn(subject) => {
+            Subjects::ReceiptsReturn(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Return(ret) => ret,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -201,10 +201,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Return,
                     contract_id: Some(receipt.id.to_string()),
                     val: Some(receipt.val.into_inner() as i64),
@@ -238,7 +238,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsReturnData(subject) => {
+            Subjects::ReceiptsReturnData(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::ReturnData(ret_data) => ret_data,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -247,10 +247,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::ReturnData,
                     contract_id: Some(receipt.id.to_string()),
                     ptr: Some(receipt.ptr.into_inner() as i64),
@@ -284,7 +284,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsPanic(subject) => {
+            Subjects::ReceiptsPanic(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Panic(panic) => panic,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -293,10 +293,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Panic,
                     contract_id: Some(receipt.id.to_string()),
                     panic_reason: Some(receipt.reason.reason.to_string()),
@@ -330,7 +330,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsRevert(subject) => {
+            Subjects::ReceiptsRevert(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Revert(revert) => revert,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -339,10 +339,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Revert,
                     contract_id: Some(receipt.id.to_string()),
                     ra: Some(receipt.ra.into_inner() as i64),
@@ -376,7 +376,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsLog(subject) => {
+            Subjects::ReceiptsLog(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Log(log) => log,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -385,10 +385,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Log,
                     contract_id: Some(receipt.id.to_string()),
                     ra: Some(receipt.ra.into_inner() as i64),
@@ -422,7 +422,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsLogData(subject) => {
+            Subjects::ReceiptsLogData(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::LogData(log_data) => log_data,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -431,10 +431,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::LogData,
                     contract_id: Some(receipt.id.to_string()),
                     ra: Some(receipt.ra.into_inner() as i64),
@@ -468,7 +468,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsTransfer(subject) => {
+            Subjects::ReceiptsTransfer(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Transfer(transfer) => transfer,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -477,10 +477,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Transfer,
                     from_contract_id: Some(receipt.id.to_string()),
                     to_contract_id: Some(receipt.to.to_string()),
@@ -514,7 +514,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsTransferOut(subject) => {
+            Subjects::ReceiptsTransferOut(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::TransferOut(transfer_out) => transfer_out,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -523,10 +523,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::TransferOut,
                     from_contract_id: Some(receipt.id.to_string()),
                     to_address: Some(receipt.to.to_string()),
@@ -560,7 +560,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsScriptResult(subject) => {
+            Subjects::ReceiptsScriptResult(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::ScriptResult(script_result) => script_result,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -569,10 +569,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::ScriptResult,
                     panic_reason: None,
                     panic_instruction: None,
@@ -606,7 +606,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsMessageOut(subject) => {
+            Subjects::ReceiptsMessageOut(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::MessageOut(message_out) => message_out,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -615,10 +615,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::MessageOut,
                     sender_address: Some(receipt.sender.to_string()),
                     recipient_address: Some(receipt.recipient.to_string()),
@@ -652,7 +652,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsMint(subject) => {
+            Subjects::ReceiptsMint(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Mint(mint) => mint,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -661,10 +661,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Mint,
                     sub_id: Some(receipt.sub_id.to_string()),
                     contract_id: Some(receipt.contract_id.to_string()),
@@ -698,7 +698,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     created_at: packet.block_timestamp,
                 })
             }
-            Subjects::ReceiptsBurn(subject) => {
+            Subjects::ReceiptsBurn(_) => {
                 let receipt = match Receipt::decode_json(&packet.value)? {
                     Receipt::Burn(burn) => burn,
                     _ => return Err(RecordPacketError::SubjectMismatch),
@@ -707,10 +707,10 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                 Ok(ReceiptDbItem {
                     subject: packet.subject_str(),
                     value: packet.value.to_owned(),
-                    block_height: subject.block_height.unwrap(),
-                    tx_id: subject.tx_id.unwrap().to_string(),
-                    tx_index: subject.tx_index.unwrap(),
-                    receipt_index: subject.receipt_index.unwrap(),
+                    block_height: packet.pointer.block_height,
+                    tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                    tx_index: packet.pointer.tx_index.unwrap() as i32,
+                    receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Burn,
                     sub_id: Some(receipt.sub_id.to_string()),
                     contract_id: Some(receipt.contract_id.to_string()),
@@ -768,6 +768,7 @@ impl From<ReceiptDbItem> for RecordPointer {
     fn from(val: ReceiptDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: None,
             output_index: None,

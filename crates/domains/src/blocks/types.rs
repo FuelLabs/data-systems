@@ -206,13 +206,13 @@ impl fmt::Display for BlockVersion {
 pub struct MockBlock(pub Block);
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockBlock {
-    pub fn build(height: u32) -> Block {
+    pub fn build(height: BlockHeight) -> Block {
         use fuel_core_types::blockchain::block::BlockV1;
         let mut block: FuelCoreBlock<FuelCoreTypesTransaction> =
             FuelCoreBlock::V1(BlockV1::default());
         block
             .header_mut()
-            .set_block_height(FuelCoreBlockHeight::new(height));
+            .set_block_height(FuelCoreBlockHeight::new(height.into()));
         let txs = (0..50)
             .map(|_| FuelCoreTypesTransaction::default_test_tx())
             .collect::<Vec<_>>();
@@ -232,7 +232,7 @@ impl MockBlock {
     pub fn random() -> Block {
         use rand::Rng;
         let mut rng = rand::rng();
-        let height = rng.random_range(0..u32::MAX);
-        Self::build(height)
+        let height = rng.random_range(0..u64::MAX);
+        Self::build(height.into())
     }
 }

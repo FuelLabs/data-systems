@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{BlockHeight, BlockTimestamp};
+use fuel_streams_types::{BlockHeight, BlockTimestamp, TxId};
 use serde::{Deserialize, Serialize};
 
 use super::{subjects::*, Predicate};
@@ -26,7 +26,7 @@ use crate::{
 pub struct PredicateDbItem {
     pub subject: String,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub input_index: i32,
     // predicate types properties
@@ -91,10 +91,10 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
         match subject {
             Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
-                block_height: subject.block_height.unwrap(),
-                tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap(),
-                input_index: subject.input_index.unwrap(),
+                block_height: packet.pointer.block_height,
+                tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                tx_index: packet.pointer.tx_index.unwrap() as i32,
+                input_index: packet.pointer.input_index.unwrap() as i32,
                 blob_id: subject.blob_id.map(|b| b.to_string()),
                 predicate_address: subject
                     .predicate_address
@@ -132,6 +132,7 @@ impl From<PredicateDbItem> for RecordPointer {
     fn from(val: PredicateDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: Some(val.input_index as u32),
             output_index: None,

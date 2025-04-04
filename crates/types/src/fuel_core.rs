@@ -186,7 +186,7 @@ pub trait FuelCoreLike: Sync + Send {
         &self,
         block_height: crate::BlockHeight,
     ) -> FuelCoreResult<FuelCoreSealedBlock> {
-        let height = block_height.as_ref().to_owned() as u32;
+        let height = block_height.as_ref().to_owned();
         let latest_view = self
             .onchain_database()
             .latest_view()

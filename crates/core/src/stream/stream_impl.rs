@@ -8,6 +8,7 @@ use fuel_streams_domains::{
     infra::{
         db::{Db, DbItem},
         repository::Repository,
+        OrderBy,
         QueryParamsBuilder,
     },
 };
@@ -161,6 +162,10 @@ impl<R: Repository> Stream<R> {
         let db = self.db.clone();
         let role = role.clone();
         let mut params: R::QueryParams = (*subject).clone().into();
+        params.with_order_by(OrderBy::Asc);
+        params.with_limit(Some(100));
+        params.with_offset(Some(0));
+
         if cfg!(any(test, feature = "test-helpers")) {
             params.with_namespace(self.namespace.clone());
         }
@@ -168,7 +173,6 @@ impl<R: Repository> Stream<R> {
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
             params.with_from_block(Some(current_height));
-
             let mut last_height = Block::find_last_block_height(&db, params.options()).await?;
                 while current_height <= last_height {
                     let items = R::find_many(db.pool_ref(), &params).await?;

@@ -113,6 +113,10 @@ impl MsgPayload {
         self.block.height
     }
 
+    pub fn block_producer(&self) -> Address {
+        self.block.producer.to_owned()
+    }
+
     pub fn block(&self) -> &Block {
         &self.block
     }
@@ -185,13 +189,13 @@ pub struct MockMsgPayload(MsgPayload);
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockMsgPayload {
-    pub fn new(height: u32) -> Self {
+    pub fn new(height: BlockHeight) -> Self {
         use crate::mocks::*;
         let block = MockBlock::build(height);
         let chain_id = Arc::new(FuelCoreChainId::default());
         let base_asset_id = Arc::new(FuelCoreAssetId::default());
-        let block_producer = Arc::new(Address::default());
-        let block_height = Arc::new(BlockHeight::from(1_u32));
+        let block_producer = Arc::new(Address::random());
+        let block_height = Arc::new(height);
         let consensus = Arc::new(Consensus::default());
         let transactions = MockTransaction::all();
         let metadata = Metadata {
@@ -214,22 +218,22 @@ impl MockMsgPayload {
         self.0
     }
 
-    pub fn build(height: u32, namespace: &str) -> MsgPayload {
+    pub fn build(height: BlockHeight, namespace: &str) -> MsgPayload {
         let mut payload = Self::new(height);
         payload.0.namespace = Some(namespace.to_string());
         payload.0
     }
 
-    pub fn with_height(height: u32) -> Self {
+    pub fn with_height(height: BlockHeight) -> Self {
         use crate::mocks::*;
         let mut payload = Self::new(height);
         payload.0.block = MockBlock::build(height);
-        payload.0.metadata.block_height = Arc::new(BlockHeight::from(height));
+        payload.0.metadata.block_height = Arc::new(height);
         payload
     }
 
     pub fn with_transactions(
-        height: u32,
+        height: BlockHeight,
         transactions: Vec<Transaction>,
     ) -> Self {
         let mut payload = Self::new(height);
@@ -238,7 +242,7 @@ impl MockMsgPayload {
     }
 
     pub fn single_transaction(
-        height: u32,
+        height: BlockHeight,
         r#type: crate::transactions::TransactionType,
     ) -> Self {
         use crate::{mocks::*, transactions::TransactionType};
@@ -275,6 +279,6 @@ impl MockMsgPayload {
 #[cfg(any(test, feature = "test-helpers"))]
 impl From<&Block> for MockMsgPayload {
     fn from(block: &Block) -> Self {
-        MockMsgPayload::new(block.height.into())
+        MockMsgPayload::new(block.height)
     }
 }

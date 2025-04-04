@@ -1,4 +1,4 @@
-use fuel_streams_types::{BlockHeight, BlockTimestamp};
+use fuel_streams_types::{BlockHeight, BlockTimestamp, TxId};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgHasArrayType, PgTypeInfo};
 
@@ -7,7 +7,7 @@ use sqlx::postgres::{PgHasArrayType, PgTypeInfo};
 )]
 #[sqlx(type_name = "transaction_storage_slots")]
 pub struct TransactionStorageSlotDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub key: String,
     pub value: String,
@@ -32,7 +32,7 @@ impl PgHasArrayType for TransactionStorageSlotDbItem {
 )]
 #[sqlx(type_name = "transaction_witnesses")]
 pub struct TransactionWitnessDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub witness_data: String,
     pub witness_data_length: i32,
@@ -57,7 +57,7 @@ impl PgHasArrayType for TransactionWitnessDbItem {
 )]
 #[sqlx(type_name = "transaction_proof_set")]
 pub struct TransactionProofSetDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub proof_hash: String,
     pub block_time: BlockTimestamp,
@@ -81,7 +81,7 @@ impl PgHasArrayType for TransactionProofSetDbItem {
 )]
 #[sqlx(type_name = "transaction_policies")]
 pub struct TransactionPolicyDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub tip: Option<i64>,
     pub maturity: Option<i32>,
@@ -108,7 +108,7 @@ impl PgHasArrayType for TransactionPolicyDbItem {
 )]
 #[sqlx(type_name = "transaction_input_contracts")]
 pub struct TransactionInputContractDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub contract_id: String,
     pub block_time: BlockTimestamp,
@@ -132,7 +132,7 @@ impl PgHasArrayType for TransactionInputContractDbItem {
 )]
 #[sqlx(type_name = "transaction_input_contract")]
 pub struct TransactionInputContractSingleDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub balance_root: String,
     pub contract_id: String,
@@ -160,7 +160,7 @@ impl PgHasArrayType for TransactionInputContractSingleDbItem {
 )]
 #[sqlx(type_name = "transaction_output_contract")]
 pub struct TransactionOutputContractDbItem {
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub block_height: BlockHeight,
     pub balance_root: String,
     pub input_index: i32,

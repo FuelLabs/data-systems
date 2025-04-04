@@ -2,7 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use fuel_data_parser::{DataEncoder, DataParserError as EncoderError};
 use fuel_streams_subject::subject::{IntoSubject, SubjectPayload};
-use fuel_streams_types::{BlockHeight, BlockTimestamp};
+use fuel_streams_types::{BlockHeight, BlockTimestamp, TxId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
@@ -29,6 +29,7 @@ pub trait ToPacket: DataEncoder {
         &self,
         subject: &Arc<S>,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
     ) -> RecordPacket {
         let value = self.encode_json().unwrap_or_else(|_| {
             panic!("Encode failed for {}", std::any::type_name::<Self>())
@@ -37,6 +38,7 @@ pub trait ToPacket: DataEncoder {
             subject.parse(),
             subject.to_payload(),
             block_timestamp,
+            pointer,
             value,
         )
     }
@@ -45,6 +47,8 @@ pub trait ToPacket: DataEncoder {
 #[derive(Debug, Default, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RecordPointer {
     pub block_height: BlockHeight,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<TxId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tx_index: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,6 +65,7 @@ pub struct RecordPacket {
     pub subject: String,
     pub subject_payload: SubjectPayload,
     pub block_timestamp: BlockTimestamp,
+    pub pointer: RecordPointer,
     start_time_timestamp: BlockTimestamp,
     namespace: Option<String>,
 }
@@ -72,6 +77,7 @@ impl RecordPacket {
         subject: impl ToString,
         subject_payload: SubjectPayload,
         block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
         value: Vec<u8>,
     ) -> Self {
         let start_time = BlockTimestamp::now();
@@ -80,6 +86,7 @@ impl RecordPacket {
             subject: subject.to_string(),
             subject_payload,
             block_timestamp,
+            pointer,
             start_time_timestamp: start_time,
             namespace: None,
         }

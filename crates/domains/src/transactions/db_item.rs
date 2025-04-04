@@ -8,6 +8,7 @@ use fuel_streams_types::{
     GasAmount,
     TransactionStatus,
     TransactionType,
+    TxId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +34,7 @@ pub struct TransactionDbItem {
     pub subject: String,
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub r#type: TransactionType,
     pub script_gas_limit: Option<GasAmount>,
@@ -124,12 +125,12 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
         match subject {
-            Subjects::Transactions(subject) => Ok(TransactionDbItem {
+            Subjects::Transactions(_) => Ok(TransactionDbItem {
                 subject: packet.subject_str(),
                 value: packet.value.to_owned(),
-                block_height: subject.block_height.unwrap(),
-                tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap(),
+                block_height: packet.pointer.block_height,
+                tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                tx_index: packet.pointer.tx_index.unwrap() as i32,
                 r#type: transaction.r#type,
                 status: transaction.status,
                 script_gas_limit: transaction.script_gas_limit,
@@ -213,6 +214,7 @@ impl From<TransactionDbItem> for RecordPointer {
     fn from(val: TransactionDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: None,
             output_index: None,

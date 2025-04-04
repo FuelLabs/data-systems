@@ -30,7 +30,7 @@ pub enum DbPolicyType {
 impl TryFrom<&str> for DbPolicyType {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
+        match voca_rs::case::snake_case(s).as_str() {
             "tip" => Ok(DbPolicyType::Tip),
             "witness_limit" => Ok(DbPolicyType::WitnessLimit),
             "maturity" => Ok(DbPolicyType::Maturity),
