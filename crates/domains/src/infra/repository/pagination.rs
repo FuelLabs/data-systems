@@ -35,7 +35,7 @@ impl Display for OrderBy {
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct QueryPagination {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub after: Option<Cursor>,

@@ -6,7 +6,12 @@ use axum::{
 };
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    infra::repository::{Repository, ValidatedQuery},
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
     outputs::OutputsQuery,
 };
 use paste::paste;
@@ -35,22 +40,28 @@ macro_rules! generate_output_endpoints {
                     path = concat!($base_path, $path_suffix),
                     tag = $tag,
                     params(
-                        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                        ("outputIndex" = Option<i32>, Query, description = "Filter by output index"),
-                        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-                        ("toAddress" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
-                        ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
-                        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
-                        ("address" = Option<Address>, Query, description = "Filter by address"),
-                        ("after" = Option<i32>, Query, description = "Return outputs after this height"),
-                        ("before" = Option<i32>, Query, description = "Return outputs before this height"),
-                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                        ("output_index" = Option<i32>, Query, description = "Filter by output index"),
+                        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                        ("to_address" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
+                        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
+                        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
+                        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                        ("after" = Option<Cursor>, Query, description = "Return outputs after this cursor"),
+                        ("before" = Option<Cursor>, Query, description = "Return outputs before this cursor"),
+                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                     ),
                     responses(
-                        (status = 200, description = "Successfully retrieved outputs", body = GetDataResponse),
+                        (status = 200, description = concat!("Successfully retrieved ", stringify!($variant), " outputs"), body = GetDataResponse),
                         (status = 400, description = "Invalid query parameters", body = String),
+                        (status = 404, description = "No outputs found", body = String),
                         (status = 500, description = "Internal server error", body = String)
                     ),
                     security(
@@ -71,29 +82,34 @@ macro_rules! generate_output_endpoints {
                 }
             )*
 
-            // Generic handler for the base path
             #[utoipa::path(
                 get,
                 path = $base_path,
                 tag = $tag,
                 params(
-                    ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                    ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                    ("outputIndex" = Option<i32>, Query, description = "Filter by output index"),
-                    ("outputType" = Option<OutputType>, Query, description = "Filter by output type"),
-                    ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-                    ("toAddress" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
-                    ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
-                    ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
-                    ("address" = Option<Address>, Query, description = "Filter by address"),
-                    ("after" = Option<i32>, Query, description = "Return outputs after this height"),
-                    ("before" = Option<i32>, Query, description = "Return outputs before this height"),
-                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                    ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                    ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                    ("output_index" = Option<i32>, Query, description = "Filter by output index"),
+                    ("output_type" = Option<OutputType>, Query, description = "Filter by output type"),
+                    ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                    ("to_address" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
+                    ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
+                    ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
+                    ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                    ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                    ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                    ("after" = Option<Cursor>, Query, description = "Return outputs after this cursor"),
+                    ("before" = Option<Cursor>, Query, description = "Return outputs before this cursor"),
+                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                    ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                    ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                    ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                 ),
                 responses(
                     (status = 200, description = "Successfully retrieved outputs", body = GetDataResponse),
                     (status = 400, description = "Invalid query parameters", body = String),
+                    (status = 404, description = "No outputs found", body = String),
                     (status = 500, description = "Internal server error", body = String)
                 ),
                 security(
@@ -116,6 +132,7 @@ macro_rules! generate_output_endpoints {
     };
 }
 
+// Generate the output endpoints with the improved macro
 generate_output_endpoints!(
     TAG_OUTPUTS,
     "/outputs",

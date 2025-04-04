@@ -216,7 +216,7 @@ impl StreamResponse {
 impl DataEncoder for StreamResponse {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub enum ServerResponse {
     Subscribed(Subscription),
     Unsubscribed(Subscription),

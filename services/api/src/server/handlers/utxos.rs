@@ -6,7 +6,12 @@ use axum::{
 };
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    infra::repository::{Repository, ValidatedQuery},
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
     utxos::UtxosQuery,
 };
 
@@ -22,22 +27,33 @@ use crate::server::{
     path = "/utxos",
     tag = TAG_UTXOS,
     params(
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-        ("utxoType" = Option<InputType>, Query, description = "Filter by UTXO type"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("utxoId" = Option<HexData>, Query, description = "Filter by UTXO ID"),
-        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID"),
-        ("address" = Option<Address>, Query, description = "Filter by address"),
-        ("after" = Option<i32>, Query, description = "Return UTXOs after this height"),
-        ("before" = Option<i32>, Query, description = "Return UTXOs before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+        ("output_index" = Option<i32>, Query, description = "Filter by output index"),
+        ("type" = Option<UtxoType>, Query, description = "Filter by UTXO type"),
+        ("status" = Option<UtxoStatus>, Query, description = "Filter by UTXO status"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("utxo_id" = Option<UtxoId>, Query, description = "Filter by UTXO ID"),
+        ("from" = Option<Address>, Query, description = "Filter by source address"),
+        ("to" = Option<Address>, Query, description = "Filter by destination address"),
+        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID"),
+        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return UTXOs after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return UTXOs before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved UTXOs", body = GetDataResponse),
         (status = 400, description = "Invalid query parameters", body = String),
+        (status = 404, description = "No UTXOs found", body = String),
         (status = 500, description = "Internal server error", body = String)
     ),
     security(

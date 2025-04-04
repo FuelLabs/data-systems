@@ -10,7 +10,7 @@ use crate::infra::{
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReceiptsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
@@ -46,6 +46,9 @@ impl ReceiptsQuery {
 
     pub fn set_tx_id(&mut self, tx_id: &str) {
         self.tx_id = Some(tx_id.into());
+    }
+    pub fn set_contract(&mut self, contract: &ContractId) {
+        self.contract = Some(contract.clone());
     }
 }
 

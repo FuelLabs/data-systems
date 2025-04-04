@@ -55,7 +55,7 @@ impl utoipa::PartialSchema for BlockTime {
 #[derive(
     Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct BlockHeader {
     pub application_hash: Bytes32,
     pub consensus_parameters_version: WrappedU32,

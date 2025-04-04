@@ -10,7 +10,7 @@ use crate::infra::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct BlocksQuery {
     pub producer: Option<Address>,
     pub height: Option<BlockHeight>,

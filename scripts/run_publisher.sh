@@ -126,7 +126,7 @@ COMMON_ARGS=(
     "--sync-block-stream-buffer-size" "50"
     "--max-database-cache-size" "17179869184"
     "--state-rewind-duration" "136y"
-    "--request-timeout" "60"
+    "--request-timeout" "60s"
     "--graphql-max-complexity" "1000000000"
     # Application specific
     "--nats-url" "nats://localhost:4222"

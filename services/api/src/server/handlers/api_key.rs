@@ -42,7 +42,7 @@ impl IntoResponse for Error {
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct GenerateApiKeyRequest {
     pub username: ApiKeyUserName,
     pub role: ApiKeyRoleName,

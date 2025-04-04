@@ -65,7 +65,7 @@ impl From<&FuelCoreOutput> for Output {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -75,7 +75,7 @@ pub struct OutputCoin {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputChange {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -85,7 +85,7 @@ pub struct OutputChange {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputVariable {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -95,7 +95,7 @@ pub struct OutputVariable {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputContract {
     pub balance_root: Bytes32,
     pub input_index: u16,
@@ -115,7 +115,7 @@ impl From<&FuelCoreOutputContract> for OutputContract {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputContractCreated {
     pub contract_id: ContractId,
     pub state_root: Bytes32,

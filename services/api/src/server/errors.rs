@@ -27,6 +27,8 @@ pub enum ApiError {
     Repository(#[from] RepositoryError),
     #[error(transparent)]
     ValidatedQuery(#[from] ValidatedQueryError),
+    #[error("Invalid contract id: {0}")]
+    InvalidContractId(String),
 }
 
 // Implement IntoResponse for custom error handling
@@ -41,6 +43,9 @@ impl IntoResponse for ApiError {
             ApiError::ValidatedQuery(e) => {
                 (axum::http::StatusCode::BAD_REQUEST, e.to_string())
                     .into_response()
+            }
+            ApiError::InvalidContractId(e) => {
+                (axum::http::StatusCode::BAD_REQUEST, e).into_response()
             }
 
             // Database related errors

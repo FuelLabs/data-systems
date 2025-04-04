@@ -17,7 +17,7 @@ use crate::infra::{record::ToPacket, DbError};
     Eq,
     utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct Predicate {
     pub blob_id: Option<HexData>,
     pub predicate_address: Address,

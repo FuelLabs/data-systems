@@ -8,7 +8,7 @@ use crate::infra::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct PredicatesQuery {
     pub block_height: Option<BlockHeight>,
     pub tx_id: Option<TxId>,

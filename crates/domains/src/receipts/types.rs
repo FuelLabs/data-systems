@@ -39,7 +39,7 @@ impl Receipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct CallReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -55,7 +55,7 @@ pub struct CallReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReturnReceipt {
     pub id: ContractId,
     pub val: Word,
@@ -66,7 +66,7 @@ pub struct ReturnReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReturnDataReceipt {
     pub id: ContractId,
     pub ptr: Word,
@@ -80,7 +80,7 @@ pub struct ReturnDataReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct PanicReceipt {
     pub id: ContractId,
     pub reason: PanicInstruction,
@@ -92,7 +92,7 @@ pub struct PanicReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct RevertReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -103,7 +103,7 @@ pub struct RevertReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct LogReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -117,7 +117,7 @@ pub struct LogReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct LogDataReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -133,7 +133,7 @@ pub struct LogDataReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TransferReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -146,7 +146,7 @@ pub struct TransferReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TransferOutReceipt {
     pub id: ContractId,
     pub to: Address,
@@ -159,7 +159,7 @@ pub struct TransferOutReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScriptResultReceipt {
     pub result: ScriptExecutionResult,
     pub gas_used: Word,
@@ -168,7 +168,7 @@ pub struct ScriptResultReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct MessageOutReceipt {
     pub sender: Address,
     pub recipient: Address,
@@ -182,7 +182,7 @@ pub struct MessageOutReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct MintReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -194,7 +194,7 @@ pub struct MintReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct BurnReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,

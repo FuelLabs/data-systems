@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
     Default,
     utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub enum TimeRange {
     #[serde(rename = "1h")]
     OneHour,

@@ -1,4 +1,4 @@
-use fuel_streams_types::{Address, BlockHeight, ContractId, TxId};
+use fuel_streams_types::{Address, BlobId, BlockHeight, ContractId, TxId};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 
@@ -11,14 +11,14 @@ use crate::infra::{
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TransactionsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
     pub status: Option<TransactionStatus>,
     pub r#type: Option<TransactionType>,
     pub block_height: Option<BlockHeight>,
-    pub blob_id: Option<String>,
+    pub blob_id: Option<BlobId>,
     pub contract_id: Option<ContractId>, // for the contracts endpoint
     pub address: Option<Address>,        // for the accounts endpoint
     #[serde(flatten)]
@@ -67,40 +67,98 @@ impl QueryParamsBuilder for TransactionsQuery {
     }
 
     fn query_builder(&self) -> QueryBuilder<'static, Postgres> {
+        if self.address.is_some() || self.contract_id.is_some() {
+            self.query_with_joins()
+        } else {
+            self.query_without_joins()
+        }
+    }
+}
+
+impl TransactionsQuery {
+    fn query_with_joins(&self) -> QueryBuilder<'static, Postgres> {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+
+        query_builder.push(
+            "SELECT DISTINCT t.* FROM transactions t
+            LEFT JOIN inputs i ON t.tx_id = i.tx_id
+            LEFT JOIN outputs o ON t.tx_id = o.tx_id",
+        );
+
+        if let Some(tx_id) = &self.tx_id {
+            conditions.push(format!("t.tx_id = '{}'", tx_id));
+        }
+        if let Some(tx_index) = &self.tx_index {
+            conditions.push(format!("t.tx_index = {}", tx_index));
+        }
+        if let Some(status) = &self.status {
+            conditions.push(format!("t.status = '{}'", status));
+        }
+        if let Some(tx_type) = &self.r#type {
+            conditions.push(format!("t.type = '{}'", tx_type));
+        }
+        if let Some(block_height) = &self.block_height {
+            conditions.push(format!("t.block_height = {}", block_height));
+        }
+        if let Some(blob_id) = &self.blob_id {
+            conditions.push(format!("t.blob_id = '{}'", blob_id));
+        }
+        if let Some(address) = &self.address {
+            conditions.push(format!(
+                "(i.sender_address = '{0}' OR i.recipient_address = '{0}' OR i.owner_id = '{0}' OR o.to_address = '{0}')",
+                address
+            ));
+        }
+        if let Some(contract_id) = &self.contract_id {
+            conditions.push(format!(
+                "(i.contract_id = '{0}' OR o.contract_id = '{0}')",
+                contract_id
+            ));
+        }
+
+        Self::apply_conditions(
+            &mut query_builder,
+            &mut conditions,
+            &self.options,
+            &self.pagination,
+            "cursor",
+            Some("t."),
+        );
+
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            "cursor",
+            Some("t."),
+        );
+
+        query_builder
+    }
+
+    fn query_without_joins(&self) -> QueryBuilder<'static, Postgres> {
+        let mut conditions = Vec::new();
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
+
         query_builder.push("SELECT * FROM transactions");
 
         if let Some(tx_id) = &self.tx_id {
             conditions.push(format!("tx_id = '{}'", tx_id));
         }
-
         if let Some(tx_index) = &self.tx_index {
             conditions.push(format!("tx_index = {}", tx_index));
         }
-
         if let Some(status) = &self.status {
             conditions.push(format!("status = '{}'", status));
         }
-
         if let Some(tx_type) = &self.r#type {
             conditions.push(format!("type = '{}'", tx_type));
         }
-
         if let Some(block_height) = &self.block_height {
             conditions.push(format!("block_height = {}", block_height));
         }
-
         if let Some(blob_id) = &self.blob_id {
             conditions.push(format!("blob_id = '{}'", blob_id));
-        }
-
-        if let Some(contract_id) = &self.contract_id {
-            conditions.push(format!("contract_id = '{}'", contract_id));
-        }
-
-        if let Some(address) = &self.address {
-            conditions.push(format!("address = '{}'", address));
         }
 
         Self::apply_conditions(

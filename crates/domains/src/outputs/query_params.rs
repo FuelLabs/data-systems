@@ -10,17 +10,20 @@ use crate::infra::{
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,
     pub output_index: Option<i32>,
     pub output_type: Option<OutputType>,
     pub block_height: Option<BlockHeight>,
-    pub to_address: Option<Address>, // for coin, change, and variable outputs
-    pub asset_id: Option<AssetId>,   // for coin, change, and variable outputs
-    pub contract_id: Option<ContractId>, /* for contract and contract_created outputs */
-    pub address: Option<Address>,        // for the accounts endpoint
+    // coin, change, and variable outputs
+    pub to_address: Option<Address>,
+    pub asset_id: Option<AssetId>,
+    // contract and contract_created outputs
+    pub contract_id: Option<ContractId>,
+    // the accounts endpoint
+    pub address: Option<Address>,
     #[serde(flatten)]
     pub pagination: QueryPagination,
     #[serde(flatten)]

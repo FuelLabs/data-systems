@@ -6,7 +6,12 @@ use axum::{
 };
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    infra::repository::{Repository, ValidatedQuery},
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
     inputs::InputsQuery,
 };
 use paste::paste;
@@ -35,24 +40,30 @@ macro_rules! generate_input_endpoints {
                     path = concat!($base_path, $path_suffix),
                     tag = $tag,
                     params(
-                        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                        ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-                        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-                        ("ownerId" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
-                        ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
-                        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
-                        ("senderAddress" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
-                        ("recipientAddress" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
-                        ("address" = Option<Address>, Query, description = "Filter by address"),
-                        ("after" = Option<i32>, Query, description = "Return inputs after this height"),
-                        ("before" = Option<i32>, Query, description = "Return inputs before this height"),
-                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                        ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+                        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                        ("owner_id" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
+                        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
+                        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
+                        ("sender_address" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
+                        ("recipient_address" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
+                        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                        ("after" = Option<Cursor>, Query, description = "Return inputs after this cursor"),
+                        ("before" = Option<Cursor>, Query, description = "Return inputs before this cursor"),
+                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                     ),
                     responses(
-                        (status = 200, description = "Successfully retrieved inputs", body = GetDataResponse),
+                        (status = 200, description = concat!("Successfully retrieved ", stringify!($variant), " inputs"), body = GetDataResponse),
                         (status = 400, description = "Invalid query parameters", body = String),
+                        (status = 404, description = "No inputs found", body = String),
                         (status = 500, description = "Internal server error", body = String)
                     ),
                     security(
@@ -73,31 +84,36 @@ macro_rules! generate_input_endpoints {
                 }
             )*
 
-            // Generic handler for the base path
             #[utoipa::path(
                 get,
                 path = $base_path,
                 tag = $tag,
                 params(
-                    ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                    ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                    ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-                    ("inputType" = Option<InputType>, Query, description = "Filter by input type"),
-                    ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-                    ("ownerId" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
-                    ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
-                    ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
-                    ("senderAddress" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
-                    ("recipientAddress" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
-                    ("address" = Option<Address>, Query, description = "Filter by address"),
-                    ("after" = Option<i32>, Query, description = "Return inputs after this height"),
-                    ("before" = Option<i32>, Query, description = "Return inputs before this height"),
-                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                    ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                    ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                    ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+                    ("input_type" = Option<InputType>, Query, description = "Filter by input type"),
+                    ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                    ("owner_id" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
+                    ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
+                    ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
+                    ("sender_address" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
+                    ("recipient_address" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
+                    ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                    ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                    ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                    ("after" = Option<Cursor>, Query, description = "Return inputs after this cursor"),
+                    ("before" = Option<Cursor>, Query, description = "Return inputs before this cursor"),
+                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                    ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                    ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                    ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                 ),
                 responses(
                     (status = 200, description = "Successfully retrieved inputs", body = GetDataResponse),
                     (status = 400, description = "Invalid query parameters", body = String),
+                    (status = 404, description = "No inputs found", body = String),
                     (status = 500, description = "Internal server error", body = String)
                 ),
                 security(

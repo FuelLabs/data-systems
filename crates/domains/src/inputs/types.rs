@@ -139,7 +139,7 @@ impl Default for Input {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -156,7 +156,7 @@ pub struct InputCoin {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
@@ -181,7 +181,7 @@ impl From<&FuelCoreInputContract> for InputContract {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputMessage {
     pub amount: Amount,
     pub data: HexData,

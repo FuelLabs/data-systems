@@ -6,7 +6,12 @@ use axum::{
 };
 use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    infra::repository::{Repository, ValidatedQuery},
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
     predicates::PredicatesQuery,
 };
 
@@ -22,21 +27,28 @@ use crate::server::{
     path = "/predicates",
     tag = TAG_PREDICATES,
     params(
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("blobId" = Option<String>, Query, description = "Filter by blob ID"),
-        ("predicateAddress" = Option<Address>, Query, description = "Filter by predicate address"),
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("blob_id" = Option<HexData>, Query, description = "Filter by blob ID"),
+        ("predicate_address" = Option<Address>, Query, description = "Filter by predicate address"),
         ("asset" = Option<AssetId>, Query, description = "Filter by asset ID"),
-        ("after" = Option<i32>, Query, description = "Return predicates after this height"),
-        ("before" = Option<i32>, Query, description = "Return predicates before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return predicates after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return predicates before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved predicates", body = GetDataResponse),
         (status = 400, description = "Invalid query parameters", body = String),
+        (status = 404, description = "No predicates found", body = String),
         (status = 500, description = "Internal server error", body = String)
     ),
     security(
