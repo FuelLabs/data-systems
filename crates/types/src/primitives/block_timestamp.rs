@@ -37,6 +37,7 @@ impl BlockTimestamp {
     pub fn from_tai64(tai: FuelCoreTai64) -> Result<Self, BlockTimestampError> {
         let unix_timestamp = tai.to_unix();
         Self::from_unix_timestamp(unix_timestamp)
+            .map(|ts| Self(Self::normalize_to_micros(ts.0)))
     }
 
     pub fn unix_timestamp(&self) -> i64 {
@@ -44,11 +45,11 @@ impl BlockTimestamp {
     }
 
     pub fn now() -> Self {
-        Self::default()
+        Self(Self::normalize_to_micros(Utc::now()))
     }
 
     pub fn new(dt: DateTime<Utc>) -> Self {
-        Self(dt)
+        Self(Self::normalize_to_micros(dt))
     }
 
     pub fn into_inner(self) -> DateTime<Utc> {
@@ -171,6 +172,11 @@ impl BlockTimestamp {
             false
         }
     }
+
+    fn normalize_to_micros(dt: DateTime<Utc>) -> DateTime<Utc> {
+        let micros = dt.timestamp_micros();
+        Utc.timestamp_micros(micros).single().unwrap_or(dt)
+    }
 }
 
 impl Default for BlockTimestamp {
@@ -224,7 +230,7 @@ impl std::str::FromStr for BlockTimestamp {
 
 impl From<DateTime<Utc>> for BlockTimestamp {
     fn from(dt: DateTime<Utc>) -> Self {
-        Self(dt)
+        Self::new(dt)
     }
 }
 
@@ -587,5 +593,58 @@ mod tests {
         let very_old = now - Duration::days(100);
         let very_old_timestamp = BlockTimestamp::new(very_old);
         assert!(!very_old_timestamp.is_within_days(30)); // Should not be within 30 days
+    }
+
+    #[test]
+    fn test_timestamp_precision_normalization() {
+        // Create a timestamp with nanosecond precision
+        let nano_precise =
+            Utc.timestamp_opt(1234567890, 123456789).single().unwrap();
+        let ts = BlockTimestamp::new(nano_precise);
+
+        // The normalized timestamp should only have microsecond precision
+        // 123456789 nanoseconds should be truncated to 123456 microseconds
+        let expected_micros = Utc
+            .timestamp_micros(nano_precise.timestamp_micros())
+            .single()
+            .unwrap();
+        assert_eq!(ts.0, expected_micros);
+
+        // Verify string representation has only 6 decimal places
+        let formatted = format!("{:?}", ts.0);
+        assert!(formatted.contains(".123456Z")); // Should only show microseconds
+        assert!(!formatted.contains(".123456789")); // Should not contain nanoseconds
+    }
+
+    #[test]
+    fn test_tai64_timestamp_precision() {
+        // Create a TAI64 timestamp
+        let tai = FuelCoreTai64::from_unix(1234567890);
+        let ts = BlockTimestamp::from_tai64(tai).unwrap();
+
+        // Verify the timestamp has microsecond precision
+        let formatted = format!("{:?}", ts.0);
+        assert!(!formatted.contains("789Z")); // Should not have nanosecond precision
+    }
+
+    #[test]
+    fn test_now_timestamp_precision() {
+        let ts = BlockTimestamp::now();
+
+        // Get the string representation
+        let formatted = format!("{:?}", ts.0);
+
+        // Count the decimal places after the dot and before Z
+        let decimal_places = formatted
+            .split('.')
+            .nth(1)
+            .map(|s| s.trim_end_matches('Z').len())
+            .unwrap_or(0);
+
+        // Should have exactly 6 decimal places (microsecond precision)
+        assert_eq!(
+            decimal_places, 6,
+            "Timestamp should have microsecond precision (6 decimal places)"
+        );
     }
 }

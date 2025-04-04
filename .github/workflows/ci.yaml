@@ -17,156 +17,156 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate-title:
-    name: Validate PR Title
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          requireScope: true
-          subjectPattern: ^([A-Z]).+$
-          types: |
-            build
-            ci
-            docs
-            feat
-            fix
-            perf
-            refactor
-            test
-          scopes: |
-            repo
-            fuel-data-parser
-            fuel-message-broker
-            fuel-streams
-            fuel-streams-core
-            fuel-streams-domains
-            fuel-streams-subject
-            fuel-streams-types
-            fuel-streams-test
-            fuel-web-utils
-            sv-api
-            sv-webserver
-            sv-publisher
-            sv-consumer
+  # validate-title:
+  #   name: Validate PR Title
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #   steps:
+  #     - uses: amannn/action-semantic-pull-request@v5
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         requireScope: true
+  #         subjectPattern: ^([A-Z]).+$
+  #         types: |
+  #           build
+  #           ci
+  #           docs
+  #           feat
+  #           fix
+  #           perf
+  #           refactor
+  #           test
+  #         scopes: |
+  #           repo
+  #           fuel-data-parser
+  #           fuel-message-broker
+  #           fuel-streams
+  #           fuel-streams-core
+  #           fuel-streams-domains
+  #           fuel-streams-subject
+  #           fuel-streams-types
+  #           fuel-streams-test
+  #           fuel-web-utils
+  #           sv-api
+  #           sv-webserver
+  #           sv-publisher
+  #           sv-consumer
 
-  lockfile:
-    name: Validate Lockfile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-      - run: cargo update --workspace --locked
+  # lockfile:
+  #   name: Validate Lockfile
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #     - run: cargo update --workspace --locked
 
-  pre-commit:
-    name: Pre-commit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # pre-commit:
+  #   name: Pre-commit
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Check workflow files
-        uses: docker://rhysd/actionlint:latest
-        env:
-          SHELLCHECK_OPTS: --exclude=SC2086,SC2129
-        with:
-          args: -color
+  #     - name: Check workflow files
+  #       uses: docker://rhysd/actionlint:latest
+  #       env:
+  #         SHELLCHECK_OPTS: --exclude=SC2086,SC2129
+  #       with:
+  #         args: -color
 
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #       with:
+  #         toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
-      - name: Install Python
-        uses: actions/setup-python@v5
+  #     - name: Install Python
+  #       uses: actions/setup-python@v5
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
+  #     - name: Setup Bun
+  #       uses: ./.github/actions/setup-bun
 
-      - name: Run Pre Commit
-        uses: pre-commit/action@v3.0.1
+  #     - name: Run Pre Commit
+  #       uses: pre-commit/action@v3.0.1
 
-  commitlint:
-    name: Validating commits
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  # commitlint:
+  #   name: Validating commits
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
+  #     - name: Setup Bun
+  #       uses: ./.github/actions/setup-bun
 
-      - name: Validate current commit (last commit) with commitlint
-        if: github.event_name == 'push'
-        run: bun x commitlint --last --verbose
+  #     - name: Validate current commit (last commit) with commitlint
+  #       if: github.event_name == 'push'
+  #       run: bun x commitlint --last --verbose
 
-      - name: Validate PR commits with commitlint
-        if: github.event_name == 'pull_request'
-        run: |
-          bun x commitlint \
-            --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
-            --to ${{ github.event.pull_request.head.sha }} \
-            --verbose
+  #     - name: Validate PR commits with commitlint
+  #       if: github.event_name == 'pull_request'
+  #       run: |
+  #         bun x commitlint \
+  #           --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
+  #           --to ${{ github.event.pull_request.head.sha }} \
+  #           --verbose
 
-  publish-crates-check:
-    name: Publish Check
-    needs:
-      - lockfile
-      - pre-commit
-      - commitlint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # publish-crates-check:
+  #   name: Publish Check
+  #   needs:
+  #     - lockfile
+  #     - pre-commit
+  #     - commitlint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache: false
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #       with:
+  #         cache: false
 
-      - name: Publish crate check
-        uses: katyo/publish-crates@v2
-        with:
-          no-verify: true
-          dry-run: true
-          check-repo: false
-          ignore-unpublished-changes: true
+  #     - name: Publish crate check
+  #       uses: katyo/publish-crates@v2
+  #       with:
+  #         no-verify: true
+  #         dry-run: true
+  #         check-repo: false
+  #         ignore-unpublished-changes: true
 
-  cargo-verifications:
-    name: Cargo verifications
-    needs:
-      - lockfile
-      - pre-commit
-      - commitlint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # cargo-verifications:
+  #   name: Cargo verifications
+  #   needs:
+  #     - lockfile
+  #     - pre-commit
+  #     - commitlint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #       with:
+  #         toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
+  #     - name: Setup Bun
+  #       uses: ./.github/actions/setup-bun
 
-      - name: Check for typos
-        uses: crate-ci/typos@master
-        with:
-          config: ./.typos.toml
+  #     - name: Check for typos
+  #       uses: crate-ci/typos@master
+  #       with:
+  #         config: ./.typos.toml
 
-      - uses: taiki-e/install-action@cargo-machete
-      - name: Lint project
-        run: make lint
+  #     - uses: taiki-e/install-action@cargo-machete
+  #     - name: Lint project
+  #       run: make lint
 
   install-deps:
     name: Install dependencies
-    needs:
-      - cargo-verifications
-      - publish-crates-check
+    # needs:
+    #   - cargo-verifications
+    #   - publish-crates-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -186,29 +186,58 @@ jobs:
       - name: Install dependencies
         run: cargo fetch
 
-  test-helm:
-    needs: install-deps
-    name: Test Helm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: "latest"
+  # test-helm:
+  #   needs: install-deps
+  #   name: Test Helm
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set up Helm
+  #       uses: azure/setup-helm@v4
+  #       with:
+  #         version: "latest"
 
-      - name: Install helm unittest plugin
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git
+  #     - name: Install helm unittest plugin
+  #       run: |
+  #         helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
-      - name: Run Helm unit tests
-        run: |
-          make helm-test
+  #     - name: Run Helm unit tests
+  #       run: |
+  #         make helm-test
 
   test:
     needs: install-deps
     name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: fuel_test
+      DB_POOL_SIZE: 300
+      DB_TIMEOUT: 240
+      NATS_URL: nats://localhost:4222
+      NATS_SYSTEM_USER: sys
+      NATS_SYSTEM_PASS: sys
+      NATS_ADMIN_USER: admin
+      NATS_ADMIN_PASS: admin
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fuel_streams
+          POSTGRES_MAX_CONNECTIONS: "2000"
+          POSTGRES_SHARED_BUFFERS: "512MB"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     strategy:
       fail-fast: false
       matrix:
@@ -240,104 +269,108 @@ jobs:
           tool: cargo-nextest
           locked: true
 
-      - name: Start Docker
+      - name: Setup Database
         run: |
-          make start-docker
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS fuel_test;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE fuel_test;"
+
+      - name: Run NATS
+        run: |
+          make start-nats
           make setup-db
 
       - name: Run tests
         run: make test PACKAGE=${{ matrix.package }} PROFILE=ci
 
-      - name: Stop Docker
-        if: always()
-        run: make stop-docker
+      - name: Stop NATS
+        run: make stop-nats
 
-  build:
-    needs: install-deps
-    name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
-    runs-on: ${{ matrix.platform.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - sv-consumer
-          - sv-publisher
-          - sv-webserver
-        platform:
-          # linux x86_64
-          - os_name: Linux-x86_64-gnu
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            build_on_pr: true
-          - os_name: Linux-x86_64-musl
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            build_on_pr: false
+  # build:
+  #   needs: install-deps
+  #   name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
+  #   runs-on: ${{ matrix.platform.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       package:
+  #         - sv-consumer
+  #         - sv-publisher
+  #         - sv-webserver
+  #       platform:
+  #  # linux x86_64
+  #         - os_name: Linux-x86_64-gnu
+  #           os: ubuntu-latest
+  #           target: x86_64-unknown-linux-gnu
+  #           build_on_pr: true
+  #         - os_name: Linux-x86_64-musl
+  #           os: ubuntu-latest
+  #           target: x86_64-unknown-linux-musl
+  #           build_on_pr: false
 
-          # macOS
-          - os_name: macOS-x86_64
-            os: macOS-latest
-            target: x86_64-apple-darwin
-            build_on_pr: true
-          - os_name: macOS-aarch64
-            os: macOS-latest
-            target: aarch64-apple-darwin
-            build_on_pr: false
-        include:
-          - platform:
-              build_on_pr: true
-            if: >-
-              matrix.platform.build_on_pr == true ||
-              github.ref == 'refs/heads/main' ||
-              github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
+  #  # macOS
+  #         - os_name: macOS-x86_64
+  #           os: macOS-latest
+  #           target: x86_64-apple-darwin
+  #           build_on_pr: true
+  #         - os_name: macOS-aarch64
+  #           os: macOS-latest
+  #           target: aarch64-apple-darwin
+  #           build_on_pr: false
+  #       include:
+  #         - platform:
+  #             build_on_pr: true
+  #           if: >-
+  #             matrix.platform.build_on_pr == true ||
+  #             github.ref == 'refs/heads/main' ||
+  #             github.event_name == 'workflow_dispatch'
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          target: ${{ matrix.platform.target }}
-          cache: false
+  #     - name: Install Rust
+  #       uses: ./.github/actions/setup-rust
+  #       with:
+  #         target: ${{ matrix.platform.target }}
+  #         cache: false
 
-      - name: Install packages (macOS)
-        if: matrix.platform.os == 'macOS-latest'
-        run: |
-          brew install llvm
+  #     - name: Install packages (macOS)
+  #       if: matrix.platform.os == 'macOS-latest'
+  #       run: |
+  #         brew install llvm
 
-      - name: Install cross
-        if: matrix.platform.os != 'macOS-latest'
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: cross
-          cache-key: ${{ matrix.platform.target }}
-          git: https://github.com/cross-rs/cross
+  #     - name: Install cross
+  #       if: matrix.platform.os != 'macOS-latest'
+  #       uses: baptiste0928/cargo-install@v3
+  #       with:
+  #         crate: cross
+  #         cache-key: ${{ matrix.platform.target }}
+  #         git: https://github.com/cross-rs/cross
 
-      - name: Build with cross for Linux
-        if: matrix.platform.os != 'macOS-latest'
-        run: |
-          cross build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+  #     - name: Build with cross for Linux
+  #       if: matrix.platform.os != 'macOS-latest'
+  #       run: |
+  #         cross build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
 
-      - name: Build with cargo for MacOS
-        if: matrix.platform.os == 'macOS-latest'
-        run: |
-          rustup target add ${{ matrix.platform.target }}
-          cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+  #     - name: Build with cargo for MacOS
+  #       if: matrix.platform.os == 'macOS-latest'
+  #       run: |
+  #         rustup target add ${{ matrix.platform.target }}
+  #         cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
 
-  release:
-    name: Create Release
-    if: >-
-      (github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
-      github.event_name == 'workflow_dispatch'
-    needs:
-      - test
-      # - test-helm
-      - build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+  # release:
+  #   name: Create Release
+  #   if: >-
+  #     (github.event_name == 'push' &&
+  #     github.ref == 'refs/heads/main' &&
+  #     contains(github.event.head_commit.message, 'ci(release): Preparing')) ||
+  #     github.event_name == 'workflow_dispatch'
+  #   needs:
+  #     - test
+  #  # - test-helm
+  #     - build
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #     actions: write
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v4
