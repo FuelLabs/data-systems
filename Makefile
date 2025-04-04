@@ -303,7 +303,7 @@ run-api-testnet-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats docker postgres monitoring
+DOCKER_SERVICES := nats docker postgres monitoring s3
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:

@@ -27,3 +27,4 @@ values-publisher-env.yaml
 .aider*
 file_contents.txt
 **/file_contents.txt
+localstack-data
