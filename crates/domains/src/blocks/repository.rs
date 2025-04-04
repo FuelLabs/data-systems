@@ -86,7 +86,7 @@ impl Repository for Block {
                 consensus_signature = EXCLUDED.consensus_signature,
                 consensus_transactions_root = EXCLUDED.consensus_transactions_root,
                 block_time = EXCLUDED.block_time,
-                created_at = $27,
+                created_at = EXCLUDED.created_at,
                 block_propagation_ms = EXCLUDED.block_propagation_ms
             RETURNING *
             "#,
