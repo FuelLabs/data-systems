@@ -67,9 +67,9 @@ pub struct ReceiptDbItem {
     pub to_address: Option<String>, // 'to' in types for transfer_out
 
     // script_result specific props
-    pub panic_reason: Option<String>, // panic specific: reason
+    pub panic_reason: Option<i32>, // panic specific: reason
     pub panic_instruction: Option<i32>, // panic specific: instruction
-    pub result: Option<String>,       // script_result specific
+    pub result: Option<String>,    // script_result specific
     pub gas_used: Option<i64>,
 
     // message_out specific props
@@ -299,7 +299,7 @@ impl TryFrom<&RecordPacket> for ReceiptDbItem {
                     receipt_index: packet.pointer.receipt_index.unwrap() as i32,
                     r#type: ReceiptType::Panic,
                     contract_id: Some(receipt.id.to_string()),
-                    panic_reason: Some(receipt.reason.reason.to_string()),
+                    panic_reason: Some(receipt.reason.reason as i32),
                     panic_instruction: Some(receipt.reason.instruction as i32),
                     pc: Some(receipt.pc.into_inner() as i64),
                     is: Some(receipt.is.into_inner() as i64),

@@ -9,7 +9,6 @@ use crate::infra::ToPacket;
 
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct Block {
     pub consensus: Consensus,
     pub header: BlockHeader,
@@ -102,6 +101,7 @@ impl Consensus {
         }
     }
 }
+
 #[derive(
     Clone,
     Debug,
@@ -112,7 +112,6 @@ impl Consensus {
     Deserialize,
     utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
 pub struct Genesis {
     pub chain_config_hash: Bytes32,
     pub coins_root: Bytes32,

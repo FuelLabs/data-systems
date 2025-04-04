@@ -1,9 +1,22 @@
+use std::collections::{BTreeMap, HashMap};
+
+use apache_avro::schema::{
+    derive::AvroSchemaComponent,
+    FixedSchema,
+    Name,
+    Namespace,
+    Schema,
+};
 use fuel_core_types::fuel_types;
 
 use super::{LongBytes, UtxoId};
 use crate::{
     fuel_core::*,
+    generate_bool_type_wrapper,
     generate_byte_type_wrapper,
+    impl_avro_schema_for_bool,
+    impl_avro_schema_for_fixed_bytes,
+    impl_avro_schema_for_variable_bytes,
     impl_bytes32_to_type,
     impl_from_type_to_bytes32,
     impl_utoipa_for_byte_type_detailed,
@@ -114,3 +127,19 @@ impl From<FuelCoreBlockId> for BlockId {
         Self(FuelCoreBytes32::from(value))
     }
 }
+
+generate_bool_type_wrapper!(BoolValue);
+impl_avro_schema_for_bool!(BoolValue);
+
+impl_avro_schema_for_fixed_bytes!(Address, 32);
+impl_avro_schema_for_fixed_bytes!(Bytes32, 32);
+impl_avro_schema_for_fixed_bytes!(ContractId, 32);
+impl_avro_schema_for_fixed_bytes!(AssetId, 32);
+impl_avro_schema_for_fixed_bytes!(BlobId, 32);
+impl_avro_schema_for_fixed_bytes!(Nonce, 32);
+impl_avro_schema_for_fixed_bytes!(Salt, 32);
+impl_avro_schema_for_fixed_bytes!(MessageId, 32);
+impl_avro_schema_for_fixed_bytes!(BlockId, 32);
+impl_avro_schema_for_fixed_bytes!(Signature, 64);
+impl_avro_schema_for_fixed_bytes!(TxId, 32);
+impl_avro_schema_for_variable_bytes!(HexData);

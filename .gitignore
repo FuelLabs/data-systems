@@ -28,3 +28,4 @@ values-publisher-env.yaml
 file_contents.txt
 **/file_contents.txt
 localstack-data
+services/dune/schemas

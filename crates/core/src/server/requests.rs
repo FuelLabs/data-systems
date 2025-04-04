@@ -5,14 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::types::*;
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub struct SubscribeRequest {
     pub deliver_policy: DeliverPolicy,
     pub subscribe: Vec<SubjectPayload>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub struct UnsubscribeRequest {
     pub deliver_policy: DeliverPolicy,
     pub unsubscribe: Vec<SubjectPayload>,

@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+apache-avro.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 derive_more.workspace = true
@@ -29,6 +30,7 @@ rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
+tai64 = { version = "=4.0.0", features = ["serde"] }
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

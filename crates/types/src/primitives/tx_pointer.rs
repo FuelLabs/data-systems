@@ -18,8 +18,8 @@ use crate::fuel_core::*;
     utoipa::ToSchema,
 )]
 pub struct TxPointer {
-    block_height: BlockHeight,
-    tx_index: u16,
+    pub block_height: BlockHeight,
+    pub tx_index: u16,
 }
 
 impl TxPointer {

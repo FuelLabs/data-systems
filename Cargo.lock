@@ -4136,8 +4136,6 @@ name = "fuel-data-parser"
 version = "0.0.28"
 dependencies = [
  "async-trait",
- "lazy_static",
- "paste",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -4417,6 +4415,7 @@ name = "fuel-streams-types"
 version = "0.0.28"
 dependencies = [
  "anyhow",
+ "apache-avro",
  "async-trait",
  "chrono",
  "derive_more 2.0.1",
@@ -4436,6 +4435,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sqlx",
+ "tai64",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
@@ -10263,6 +10263,8 @@ dependencies = [
  "aws-sdk-s3",
  "displaydoc",
  "dotenvy",
+ "fuel-streams-domains",
+ "fuel-streams-types",
  "pretty_assertions",
  "rand 0.9.0",
  "serde",

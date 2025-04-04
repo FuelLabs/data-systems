@@ -139,7 +139,7 @@ impl Repository for Receipt {
         .bind(db_item.rc)
         .bind(db_item.rd)
         .bind(&db_item.to_address)
-        .bind(&db_item.panic_reason)
+        .bind(db_item.panic_reason)
         .bind(db_item.panic_instruction)
         .bind(&db_item.result)
         .bind(db_item.gas_used)

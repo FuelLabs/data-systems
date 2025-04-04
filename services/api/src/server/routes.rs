@@ -23,7 +23,6 @@ use super::{
 };
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct GetDataResponse {
     data: Vec<StreamResponse>,
 }

@@ -1,5 +1,6 @@
 use std::{fmt, str::FromStr};
 
+use apache_avro::AvroSchema;
 use rand::Rng;
 
 use super::Bytes32;
@@ -15,6 +16,7 @@ use crate::fuel_core::*;
     serde::Serialize,
     serde::Deserialize,
     utoipa::ToSchema,
+    AvroSchema,
 )]
 pub struct UtxoId {
     pub tx_id: Bytes32,

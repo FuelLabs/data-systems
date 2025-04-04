@@ -1,4 +1,5 @@
-use fuel_core_types::{fuel_asm::RawInstruction, fuel_tx::PanicReason};
+use apache_avro::{schema::EnumSchema, AvroSchema};
+use fuel_core_types::fuel_asm::RawInstruction;
 
 use crate::fuel_core::*;
 
@@ -10,10 +11,11 @@ use crate::fuel_core::*;
     serde::Serialize,
     serde::Deserialize,
     derive_more::Display,
+    AvroSchema,
 )]
 #[display("{}", serde_json::to_string(self).unwrap())]
 pub struct PanicInstruction {
-    pub reason: PanicReason,
+    pub reason: u8,
     pub instruction: RawInstruction,
 }
 
@@ -122,7 +124,7 @@ impl utoipa::PartialSchema for PanicInstruction {
 impl From<FuelCorePanicInstruction> for PanicInstruction {
     fn from(value: FuelCorePanicInstruction) -> Self {
         Self {
-            reason: value.reason().to_owned(),
+            reason: value.reason().to_owned() as u8,
             instruction: value.instruction().to_owned(),
         }
     }
@@ -149,13 +151,13 @@ pub enum ScriptExecutionResult {
     Revert,
     #[display("panic")]
     Panic,
-    // Generic failure case since any u64 is valid here
     #[display("generic_failure({})", _0)]
     GenericFailure(u64),
     #[default]
     #[display("unknown")]
     Unknown,
 }
+
 impl From<FuelCoreScriptExecutionResult> for ScriptExecutionResult {
     fn from(value: FuelCoreScriptExecutionResult) -> Self {
         match value {
@@ -166,5 +168,24 @@ impl From<FuelCoreScriptExecutionResult> for ScriptExecutionResult {
                 Self::GenericFailure(value)
             }
         }
+    }
+}
+
+impl AvroSchema for ScriptExecutionResult {
+    fn get_schema() -> apache_avro::Schema {
+        apache_avro::Schema::Enum(EnumSchema {
+            name: "ScriptExecutionResult".into(),
+            doc: None,
+            symbols: vec![
+                "Success".to_string(),
+                "Revert".to_string(),
+                "Panic".to_string(),
+                "GenericFailure".to_string(),
+                "Unknown".to_string(),
+            ],
+            default: Some("Unknown".to_string()),
+            aliases: None,
+            attributes: Default::default(),
+        })
     }
 }

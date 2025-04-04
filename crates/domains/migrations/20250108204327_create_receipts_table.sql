@@ -63,7 +63,7 @@ CREATE TABLE "receipts" (
     "to_address" TEXT,            -- 'to' in types for transfer_out
 
     -- script_result specific props
-    "panic_reason" TEXT,               -- panic specific: reason
+    "panic_reason" INTEGER,              -- panic specific: reason
     "panic_instruction" INTEGER,         -- panic specific: instruction
     "result" TEXT,                -- script_result specific
     "gas_used" BIGINT,

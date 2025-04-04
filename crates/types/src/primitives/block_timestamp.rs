@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+
+use apache_avro::{
+    schema::{derive::AvroSchemaComponent, Name},
+    Schema,
+};
 use chrono::{DateTime, Days, TimeZone, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -289,6 +295,16 @@ impl sqlx::Encode<'_, sqlx::Postgres> for BlockTimestamp {
         <chrono::DateTime<Utc> as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
             &self.0, buf,
         )
+    }
+}
+
+impl AvroSchemaComponent for BlockTimestamp {
+    fn get_schema_in_ctxt(
+        _ctxt: &mut HashMap<Name, Schema>,
+        _namespace: &Option<String>,
+    ) -> Schema {
+        // Use Avro's `long` type (i64) for serialization
+        Schema::Long
     }
 }
 

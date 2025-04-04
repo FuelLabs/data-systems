@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use apache_avro::AvroSchema;
 use serde::Serialize;
 
 use crate::{
@@ -20,6 +21,7 @@ use crate::{
     derive_more::Display,
     derive_more::IsVariant,
     utoipa::ToSchema,
+    AvroSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionStatus {

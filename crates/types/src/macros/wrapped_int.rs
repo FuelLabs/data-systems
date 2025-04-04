@@ -1,4 +1,7 @@
-use crate::impl_utoipa_for_integer_wrapper;
+use crate::{
+    impl_avro_schema_for_wrapped_int,
+    impl_utoipa_for_integer_wrapper,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum WrappedIntError {
@@ -44,7 +47,7 @@ macro_rules! impl_conversions {
 macro_rules! integer_wrapper_create {
     ($name:ident, $inner_type:ty) => {
         #[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
-        pub struct $name($inner_type);
+        pub struct $name(pub $inner_type);
 
         impl $name {
             pub fn new<T: Into<$inner_type>>(value: T) -> Self {
@@ -330,7 +333,9 @@ macro_rules! declare_integer_wrapper {
 }
 
 declare_integer_wrapper!(WrappedU32, u32);
+impl_avro_schema_for_wrapped_int!(WrappedU32, u32);
 declare_integer_wrapper!(WrappedU64, u64);
+impl_avro_schema_for_wrapped_int!(WrappedU64, u64);
 
 impl_utoipa_for_integer_wrapper!(
     WrappedU32,
