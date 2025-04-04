@@ -50,9 +50,7 @@ struct YourDataType {
     // Your data fields here
 }
 
-impl DataEncoder for YourDataType {
-    type Err = DataParserError;
-}
+impl DataEncoder for YourDataType {}
 
 async fn example_usage() -> Result<(), Box<dyn std::error::Error>> {
     let parser = DataParser::default()

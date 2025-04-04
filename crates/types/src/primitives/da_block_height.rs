@@ -2,13 +2,7 @@ use fuel_core_types::blockchain::primitives::DaBlockHeight as FuelCoreDaBlockHei
 
 use crate::{declare_integer_wrapper, impl_utoipa_for_integer_wrapper};
 
-#[derive(thiserror::Error, Debug)]
-pub enum DaBlockHeightError {
-    #[error("Failed to parse to block_height: {0}")]
-    InvalidFormat(String),
-}
-
-declare_integer_wrapper!(DaBlockHeight, u64, DaBlockHeightError);
+declare_integer_wrapper!(DaBlockHeight, u64);
 
 impl_utoipa_for_integer_wrapper!(
     DaBlockHeight,

@@ -7,7 +7,7 @@ VERSION := $(shell cargo metadata --format-version=1 | jq -r '.packages[] | sele
 
 # Constants
 RUST_NIGHTLY_VERSION := nightly-2025-01-24
-RUST_VERSION := 1.85.0
+RUST_VERSION := 1.85.1
 
 # ------------------------------------------------------------
 #  Phony Targets
@@ -334,7 +334,7 @@ reset-nats: clean-nats start-nats
 
 setup-db:
 	@echo "Setting up database..."
-	@cargo sqlx migrate run --source crates/store/migrations
+	@cargo sqlx migrate run --source crates/domains/migrations
 	@cargo run --package generate-api-keys -- --nkeys 10
 	# I removed this for now because it was not working on CI
 	# @cargo sqlx prepare --workspace -- --all-features

@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(
     Debug,
@@ -17,6 +20,9 @@ pub enum Input {
     Message(InputMessage),
 }
 
+impl DataEncoder for Input {}
+impl ToPacket for Input {}
+
 impl From<&FuelCoreInput> for Input {
     fn from(input: &FuelCoreInput) -> Self {
         match input {
@@ -31,8 +37,8 @@ impl From<&FuelCoreInput> for Input {
                 amount: input.amount.into(),
                 asset_id: input.asset_id.into(),
                 owner: input.owner.into(),
-                predicate: HexData::default(),
-                predicate_data: HexData::default(),
+                predicate: HexData::random(),
+                predicate_data: HexData::random(),
                 predicate_gas_used: 0.into(),
                 tx_pointer: input.tx_pointer.into(),
                 utxo_id: input.utxo_id.into(),
@@ -52,11 +58,11 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageCoinSigned(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount.into(),
-                    data: HexData::default(),
+                    data: HexData::random(),
                     nonce: input.nonce.into(),
-                    predicate: HexData::default(),
+                    predicate: HexData::random(),
                     predicate_length: 0,
-                    predicate_data: HexData::default(),
+                    predicate_data: HexData::random(),
                     predicate_data_length: 0,
                     predicate_gas_used: 0.into(),
                     recipient: input.recipient.into(),
@@ -67,7 +73,7 @@ impl From<&FuelCoreInput> for Input {
             FuelCoreInput::MessageCoinPredicate(input) => {
                 Input::Message(InputMessage {
                     amount: input.amount.into(),
-                    data: HexData::default(),
+                    data: HexData::random(),
                     nonce: input.nonce.into(),
                     predicate: HexData(input.predicate.as_slice().into()),
                     predicate_length: input.predicate.as_slice().len(),
@@ -89,9 +95,9 @@ impl From<&FuelCoreInput> for Input {
                     amount: input.amount.into(),
                     data: HexData(input.data.as_slice().into()),
                     nonce: input.nonce.into(),
-                    predicate: HexData::default(),
+                    predicate: HexData::random(),
                     predicate_length: 0,
-                    predicate_data: HexData::default(),
+                    predicate_data: HexData::random(),
                     predicate_data_length: 0,
                     predicate_gas_used: 0.into(),
                     recipient: input.recipient.into(),
@@ -133,7 +139,7 @@ impl Default for Input {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -150,7 +156,7 @@ pub struct InputCoin {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
@@ -175,7 +181,7 @@ impl From<&FuelCoreInputContract> for InputContract {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct InputMessage {
     pub amount: Amount,
     pub data: HexData,
@@ -190,62 +196,6 @@ pub struct InputMessage {
     pub witness_index: u16,
 }
 
-impl InputMessage {
-    pub fn compute_message_id(&self) -> MessageId {
-        let hasher = fuel_core_types::fuel_crypto::Hasher::default()
-            .chain(self.sender.as_ref())
-            .chain(self.recipient.as_ref())
-            .chain(self.nonce.as_ref())
-            .chain(self.amount.to_be_bytes())
-            .chain(self.data.0.as_ref());
-
-        (*hasher.finalize()).into()
-    }
-
-    pub fn computed_utxo_id(&self) -> UtxoId {
-        let message_id = self.compute_message_id();
-        UtxoId {
-            tx_id: Bytes32::from(message_id),
-            output_index: 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum InputType {
-    Contract,
-    Coin,
-    Message,
-}
-
-impl InputType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            InputType::Contract => "contract",
-            InputType::Coin => "coin",
-            InputType::Message => "message",
-        }
-    }
-}
-
-impl std::fmt::Display for InputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for InputType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "contract" => Ok(InputType::Contract),
-            "coin" => Ok(InputType::Coin),
-            "message" => Ok(InputType::Message),
-            _ => Err(format!("Invalid input type: {}", s)),
-        }
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockInput;
@@ -255,24 +205,24 @@ impl MockInput {
 
     pub fn contract() -> Input {
         Input::Contract(InputContract {
-            balance_root: Bytes32::default(),
-            contract_id: Bytes32::default(),
-            state_root: Bytes32::default(),
-            tx_pointer: TxPointer::default(),
-            utxo_id: UtxoId::default(),
+            balance_root: Bytes32::random(),
+            contract_id: Bytes32::random(),
+            state_root: Bytes32::random(),
+            tx_pointer: TxPointer::random(),
+            utxo_id: UtxoId::random(),
         })
     }
 
-    pub fn coin_signed() -> Input {
+    pub fn coin_signed(utxo_id: Option<UtxoId>) -> Input {
         Input::Coin(InputCoin {
             amount: 100.into(),
             asset_id: AssetId::random(),
             owner: Address::random(),
-            predicate: HexData::default(),
-            predicate_data: HexData::default(),
+            predicate: HexData::random(),
+            predicate_data: HexData::random(),
             predicate_gas_used: 0.into(),
-            tx_pointer: TxPointer::default(),
-            utxo_id: UtxoId::default(),
+            tx_pointer: TxPointer::random(),
+            utxo_id: utxo_id.unwrap_or(UtxoId::random()),
             witness_index: 0,
         })
     }
@@ -286,8 +236,8 @@ impl MockInput {
             predicate: HexData(predicate.into()),
             predicate_data: HexData::random(),
             predicate_gas_used: 1000.into(),
-            tx_pointer: TxPointer::default(),
-            utxo_id: UtxoId::default(),
+            tx_pointer: TxPointer::random(),
+            utxo_id: UtxoId::random(),
             witness_index: 0,
         })
     }
@@ -296,10 +246,10 @@ impl MockInput {
         Input::Message(InputMessage {
             amount: 100.into(),
             data: HexData::random(),
-            nonce: Nonce::default(),
-            predicate: HexData::default(),
+            nonce: Nonce::random(),
+            predicate: HexData::random(),
             predicate_length: 0,
-            predicate_data: HexData::default(),
+            predicate_data: HexData::random(),
             predicate_data_length: 0,
             predicate_gas_used: 0.into(),
             recipient: Address::random(),
@@ -312,7 +262,7 @@ impl MockInput {
         Input::Message(InputMessage {
             amount: 100.into(),
             data: HexData::random(),
-            nonce: Nonce::default(),
+            nonce: Nonce::random(),
             predicate: HexData::random(),
             predicate_length: 3,
             predicate_data: HexData::random(),
@@ -329,9 +279,9 @@ impl MockInput {
             amount: 100.into(),
             data: HexData::random(),
             nonce: Nonce::random(),
-            predicate: HexData::default(),
+            predicate: HexData::random(),
             predicate_length: 0,
-            predicate_data: HexData::default(),
+            predicate_data: HexData::random(),
             predicate_data_length: 0,
             predicate_gas_used: 0.into(),
             recipient: Address::random(),
@@ -345,9 +295,9 @@ impl MockInput {
             amount: 100.into(),
             data: HexData::random(),
             nonce: Nonce::random(),
-            predicate: HexData::default(),
+            predicate: HexData::random(),
             predicate_length: 3,
-            predicate_data: HexData::default(),
+            predicate_data: HexData::random(),
             predicate_data_length: 3,
             predicate_gas_used: 1000.into(),
             recipient: Address::random(),
@@ -359,7 +309,7 @@ impl MockInput {
     pub fn all() -> Vec<Input> {
         vec![
             Self::contract(),
-            Self::coin_signed(),
+            Self::coin_signed(None),
             Self::coin_predicate(),
             Self::message_coin_signed(),
             Self::message_coin_predicate(),

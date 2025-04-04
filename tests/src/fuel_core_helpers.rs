@@ -7,10 +7,10 @@ use fuel_core_types::fuel_tx::{
 };
 use fuel_streams_types::fuel_core::{
     FuelCoreClientTransactionStatus,
-    FuelCoreTransaction,
+    FuelCoreTypesTransaction,
 };
 
-pub fn tx_for_gas_limit(max_fee_limit: Word) -> FuelCoreTransaction {
+pub fn tx_for_gas_limit(max_fee_limit: Word) -> FuelCoreTypesTransaction {
     TransactionBuilder::script(vec![], vec![])
         .max_fee_limit(max_fee_limit)
         .add_fee_input()

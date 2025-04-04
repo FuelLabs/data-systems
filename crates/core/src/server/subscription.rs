@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::DeliverPolicy;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct Subscription {
     pub id: String,
     pub deliver_policy: DeliverPolicy,
@@ -63,7 +63,7 @@ mod tests {
 
         // Test serialization
         let json = serde_json::to_string(&subscription).unwrap();
-        let expected = r#"{"id":"2-builder-test_subject:{}","deliverPolicy":{"fromBlock":{"blockHeight":"123"}},"payload":{"subject":"test_subject","params":{}}}"#;
+        let expected = r#"{"id":"2-builder-test_subject:{}","deliver_policy":{"from_block":{"block_height":"123"}},"payload":{"subject":"test_subject","params":{}}}"#;
         assert_eq!(json, expected);
 
         // Test deserialization
@@ -84,7 +84,7 @@ mod tests {
 
         // Test serialization
         let json = serde_json::to_string(&subscription).unwrap();
-        let expected = r#"{"id":"2-builder-test_subject:{}","deliverPolicy":"new","payload":{"subject":"test_subject","params":{}}}"#;
+        let expected = r#"{"id":"2-builder-test_subject:{}","deliver_policy":"new","payload":{"subject":"test_subject","params":{}}}"#;
         assert_eq!(json, expected);
 
         // Test deserialization

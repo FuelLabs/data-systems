@@ -38,36 +38,31 @@ pub trait DataEncoder:
     + Debug
     + std::marker::Sized
 {
-    type Err: std::error::Error + From<DataParserError>;
-
     fn data_parser() -> DataParser {
         DataParser::default()
     }
 
-    async fn encode(&self) -> Result<Vec<u8>, Self::Err> {
-        Self::data_parser().encode(self).await.map_err(Into::into)
+    async fn encode(&self) -> Result<Vec<u8>, DataParserError> {
+        Self::data_parser().encode(self).await
     }
 
     #[cfg(feature = "json")]
-    fn encode_json(&self) -> Result<Vec<u8>, Self::Err> {
-        Self::data_parser().encode_json(self).map_err(Into::into)
+    fn encode_json(&self) -> Result<Vec<u8>, DataParserError> {
+        Self::data_parser().encode_json(self)
     }
 
-    async fn decode(encoded: &[u8]) -> Result<Self, Self::Err> {
-        Self::data_parser()
-            .decode(encoded)
-            .await
-            .map_err(Into::into)
+    async fn decode(encoded: &[u8]) -> Result<Self, DataParserError> {
+        Self::data_parser().decode(encoded).await
     }
 
     #[cfg(feature = "json")]
-    fn decode_json(encoded: &[u8]) -> Result<Self, Self::Err> {
-        Self::data_parser().decode_json(encoded).map_err(Into::into)
+    fn decode_json(encoded: &[u8]) -> Result<Self, DataParserError> {
+        Self::data_parser().decode_json(encoded)
     }
 
     #[cfg(feature = "json")]
-    fn to_json_value(&self) -> Result<serde_json::Value, Self::Err> {
-        Self::data_parser().to_json_value(self).map_err(Into::into)
+    fn to_json_value(&self) -> Result<serde_json::Value, DataParserError> {
+        Self::data_parser().to_json_value(self)
     }
 }
 
@@ -94,9 +89,7 @@ pub trait DataEncoder:
 ///     field: String,
 /// }
 ///
-/// impl DataEncoder for TestData {
-///     type Err = DataParserError;
-/// }
+/// impl DataEncoder for TestData {}
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -211,9 +204,7 @@ impl DataParser {
     ///     field: String,
     /// }
     ///
-    /// impl DataEncoder for TestData {
-    ///     type Err = DataParserError;
-    /// }
+    /// impl DataEncoder for TestData {}
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -317,9 +308,7 @@ impl DataParser {
     ///     field: String,
     /// }
     ///
-    /// impl DataEncoder for TestData {
-    ///     type Err = DataParserError;
-    /// }
+    /// impl DataEncoder for TestData {}
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -398,9 +387,7 @@ mod tests {
         field: String,
     }
 
-    impl DataEncoder for TestData {
-        type Err = DataParserError;
-    }
+    impl DataEncoder for TestData {}
 
     #[tokio::test]
     async fn test_encode_decode() {

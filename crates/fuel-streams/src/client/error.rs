@@ -1,4 +1,4 @@
-use fuel_streams_store::record::RecordEntityError;
+use fuel_streams_domains::infra::RecordEntityError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {

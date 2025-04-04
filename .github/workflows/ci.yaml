@@ -39,13 +39,12 @@ jobs:
             test
           scopes: |
             repo
+            fuel-streams-core
             fuel-data-parser
             fuel-message-broker
             fuel-streams
-            fuel-streams-core
             fuel-streams-domains
             fuel-streams-subject
-            fuel-streams-store
             fuel-streams-types
             fuel-streams-test
             fuel-web-utils
@@ -210,6 +209,35 @@ jobs:
     needs: install-deps
     name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: fuel_test
+      DB_POOL_SIZE: 300
+      DB_TIMEOUT: 240
+      NATS_URL: nats://localhost:4222
+      NATS_SYSTEM_USER: sys
+      NATS_SYSTEM_PASS: sys
+      NATS_ADMIN_USER: admin
+      NATS_ADMIN_PASS: admin
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fuel_streams
+          POSTGRES_MAX_CONNECTIONS: "2000"
+          POSTGRES_SHARED_BUFFERS: "512MB"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     strategy:
       fail-fast: false
       matrix:
@@ -219,7 +247,6 @@ jobs:
           - fuel-streams-domains
           - fuel-streams
           - fuel-message-broker
-          - fuel-streams-store
           - fuel-streams-subject
           - fuel-streams-types
           - fuel-streams-test
@@ -242,17 +269,21 @@ jobs:
           tool: cargo-nextest
           locked: true
 
-      - name: Start Docker
+      - name: Setup Database
         run: |
-          make start-docker
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS fuel_test;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE fuel_test;"
+
+      - name: Run NATS
+        run: |
+          make start-nats
           make setup-db
 
       - name: Run tests
         run: make test PACKAGE=${{ matrix.package }} PROFILE=ci
 
-      - name: Stop Docker
-        if: always()
-        run: make stop-docker
+      - name: Stop NATS
+        run: make stop-nats
 
   build:
     needs: install-deps

@@ -2,7 +2,8 @@ use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use super::OutputType;
+use super::OutputsQuery;
+use crate::infra::QueryPagination;
 
 #[derive(Subject, Debug, Clone, Default, Serialize, Deserialize)]
 #[subject(id = "outputs_coin")]
@@ -22,9 +23,9 @@ pub struct OutputsCoinSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the coin output (32 byte string prefixed by 0x)"
@@ -55,9 +56,9 @@ pub struct OutputsContractSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the contract (32 byte string prefixed by 0x)"
@@ -83,9 +84,9 @@ pub struct OutputsChangeSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the change output (32 byte string prefixed by 0x)"
@@ -116,9 +117,9 @@ pub struct OutputsVariableSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "to_address",
         description = "The recipient address of the variable output (32 byte string prefixed by 0x)"
@@ -149,9 +150,9 @@ pub struct OutputsContractCreatedSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
     #[subject(
         sql_column = "contract_id",
         description = "The ID of the created contract (32 byte string prefixed by 0x)"
@@ -179,7 +180,98 @@ pub struct OutputsSubject {
     )]
     pub tx_id: Option<TxId>,
     #[subject(description = "The index of the transaction within the block")]
-    pub tx_index: Option<u32>,
+    pub tx_index: Option<i32>,
     #[subject(description = "The index of this output within the transaction")]
-    pub output_index: Option<u32>,
+    pub output_index: Option<i32>,
+}
+
+impl From<OutputsCoinSubject> for OutputsQuery {
+    fn from(subject: OutputsCoinSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: Some(OutputType::Coin),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<OutputsContractSubject> for OutputsQuery {
+    fn from(subject: OutputsContractSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: Some(OutputType::Contract),
+            contract_id: subject.contract.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<OutputsChangeSubject> for OutputsQuery {
+    fn from(subject: OutputsChangeSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: Some(OutputType::Change),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<OutputsVariableSubject> for OutputsQuery {
+    fn from(subject: OutputsVariableSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: Some(OutputType::Variable),
+            to_address: subject.to.clone(),
+            asset_id: subject.asset.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<OutputsContractCreatedSubject> for OutputsQuery {
+    fn from(subject: OutputsContractCreatedSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: Some(OutputType::ContractCreated),
+            contract_id: subject.contract.clone(),
+            pagination: QueryPagination::default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<OutputsSubject> for OutputsQuery {
+    fn from(subject: OutputsSubject) -> Self {
+        Self {
+            block_height: subject.block_height,
+            tx_id: subject.tx_id.clone(),
+            tx_index: subject.tx_index,
+            output_index: subject.output_index,
+            output_type: subject.output_type,
+            ..Default::default()
+        }
+    }
 }

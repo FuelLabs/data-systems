@@ -1,13 +1,19 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use fuel_streams_store::record::{PacketBuilder, Record, RecordPacket};
-use fuel_streams_subject::subject::IntoSubject;
-use fuel_streams_types::TxId;
+use fuel_streams_types::{BlockTimestamp, TxId};
 use rayon::prelude::*;
 
-use super::{subjects::*, types::*};
-use crate::{blocks::BlockHeight, transactions::Transaction, MsgPayload};
+use super::{subjects::*, types::*, ReceiptsQuery};
+use crate::{
+    blocks::BlockHeight,
+    infra::{
+        record::{PacketBuilder, RecordPacket, ToPacket},
+        RecordPointer,
+    },
+    transactions::Transaction,
+    MsgPayload,
+};
 
 #[async_trait]
 impl PacketBuilder for Receipt {
@@ -17,19 +23,27 @@ impl PacketBuilder for Receipt {
     ) -> Vec<RecordPacket> {
         let tx_id = tx.id.clone();
         let receipts = tx.receipts.clone();
+        let block_height = msg_payload.block_height();
         receipts
             .par_iter()
             .enumerate()
             .map(|(receipt_index, receipt)| {
-                let subject = DynReceiptSubject::from((
+                let subject = DynReceiptSubject::new(
                     receipt,
-                    msg_payload.block_height(),
+                    block_height,
                     tx_id.clone(),
-                    *tx_index as u32,
-                    receipt_index as u32,
-                ));
+                    *tx_index as i32,
+                    receipt_index as i32,
+                );
                 let timestamps = msg_payload.timestamp();
-                let packet = receipt.to_packet(&subject.into(), timestamps);
+                let pointer = RecordPointer {
+                    block_height,
+                    tx_id: Some(tx_id.clone()),
+                    tx_index: Some(*tx_index as u32),
+                    receipt_index: Some(receipt_index as u32),
+                    ..Default::default()
+                };
+                let packet = subject.build_packet(receipt, timestamps, pointer);
                 match msg_payload.namespace.clone() {
                     Some(ns) => packet.with_namespace(&ns),
                     _ => packet,
@@ -39,24 +53,37 @@ impl PacketBuilder for Receipt {
     }
 }
 
-pub struct DynReceiptSubject(Arc<dyn IntoSubject>);
-impl From<(&Receipt, BlockHeight, TxId, u32, u32)> for DynReceiptSubject {
-    fn from(
-        (receipt, block_height, tx_id, tx_index, receipt_index): (
-            &Receipt,
-            BlockHeight,
-            TxId,
-            u32,
-            u32,
-        ),
+pub enum DynReceiptSubject {
+    Call(ReceiptsCallSubject),
+    Return(ReceiptsReturnSubject),
+    ReturnData(ReceiptsReturnDataSubject),
+    Panic(ReceiptsPanicSubject),
+    Revert(ReceiptsRevertSubject),
+    Log(ReceiptsLogSubject),
+    LogData(ReceiptsLogDataSubject),
+    Transfer(ReceiptsTransferSubject),
+    TransferOut(ReceiptsTransferOutSubject),
+    ScriptResult(ReceiptsScriptResultSubject),
+    MessageOut(ReceiptsMessageOutSubject),
+    Mint(ReceiptsMintSubject),
+    Burn(ReceiptsBurnSubject),
+}
+
+impl DynReceiptSubject {
+    pub fn new(
+        receipt: &Receipt,
+        block_height: BlockHeight,
+        tx_id: TxId,
+        tx_index: i32,
+        receipt_index: i32,
     ) -> Self {
-        DynReceiptSubject(match receipt {
+        match receipt {
             Receipt::Call(CallReceipt {
                 id: from,
                 to,
                 asset_id,
                 ..
-            }) => ReceiptsCallSubject {
+            }) => Self::Call(ReceiptsCallSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
@@ -64,70 +91,67 @@ impl From<(&Receipt, BlockHeight, TxId, u32, u32)> for DynReceiptSubject {
                 from: Some(from.to_owned()),
                 to: Some(to.to_owned()),
                 asset: Some(asset_id.to_owned()),
-            }
-            .arc(),
+            }),
             Receipt::Return(ReturnReceipt { id, .. }) => {
-                ReceiptsReturnSubject {
+                Self::Return(ReceiptsReturnSubject {
                     block_height: Some(block_height),
                     tx_id: Some(tx_id),
                     tx_index: Some(tx_index),
                     receipt_index: Some(receipt_index),
                     contract: Some(id.to_owned()),
-                }
-                .arc()
+                })
             }
             Receipt::ReturnData(ReturnDataReceipt { id, .. }) => {
-                ReceiptsReturnDataSubject {
+                Self::ReturnData(ReceiptsReturnDataSubject {
                     block_height: Some(block_height),
                     tx_id: Some(tx_id),
                     tx_index: Some(tx_index),
                     receipt_index: Some(receipt_index),
                     contract: Some(id.to_owned()),
-                }
-                .arc()
+                })
             }
-            Receipt::Panic(PanicReceipt { id, .. }) => ReceiptsPanicSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                receipt_index: Some(receipt_index),
-                contract: Some(id.to_owned()),
+            Receipt::Panic(PanicReceipt { id, .. }) => {
+                Self::Panic(ReceiptsPanicSubject {
+                    block_height: Some(block_height),
+                    tx_id: Some(tx_id),
+                    tx_index: Some(tx_index),
+                    receipt_index: Some(receipt_index),
+                    contract: Some(id.to_owned()),
+                })
             }
-            .arc(),
             Receipt::Revert(RevertReceipt { id, .. }) => {
-                ReceiptsRevertSubject {
+                Self::Revert(ReceiptsRevertSubject {
                     block_height: Some(block_height),
                     tx_id: Some(tx_id),
                     tx_index: Some(tx_index),
                     receipt_index: Some(receipt_index),
                     contract: Some(id.to_owned()),
-                }
-                .arc()
+                })
             }
-            Receipt::Log(LogReceipt { id, .. }) => ReceiptsLogSubject {
-                block_height: Some(block_height),
-                tx_id: Some(tx_id),
-                tx_index: Some(tx_index),
-                receipt_index: Some(receipt_index),
-                contract: Some(id.to_owned()),
+            Receipt::Log(LogReceipt { id, .. }) => {
+                Self::Log(ReceiptsLogSubject {
+                    block_height: Some(block_height),
+                    tx_id: Some(tx_id),
+                    tx_index: Some(tx_index),
+                    receipt_index: Some(receipt_index),
+                    contract: Some(id.to_owned()),
+                })
             }
-            .arc(),
             Receipt::LogData(LogDataReceipt { id, .. }) => {
-                ReceiptsLogDataSubject {
+                Self::LogData(ReceiptsLogDataSubject {
                     block_height: Some(block_height),
                     tx_id: Some(tx_id),
                     tx_index: Some(tx_index),
                     receipt_index: Some(receipt_index),
                     contract: Some(id.to_owned()),
-                }
-                .arc()
+                })
             }
             Receipt::Transfer(TransferReceipt {
                 id: from,
                 to,
                 asset_id,
                 ..
-            }) => ReceiptsTransferSubject {
+            }) => Self::Transfer(ReceiptsTransferSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
@@ -135,14 +159,13 @@ impl From<(&Receipt, BlockHeight, TxId, u32, u32)> for DynReceiptSubject {
                 from: Some(from.to_owned()),
                 to: Some(to.to_owned()),
                 asset: Some(asset_id.to_owned()),
-            }
-            .arc(),
+            }),
             Receipt::TransferOut(TransferOutReceipt {
                 id: from,
                 to,
                 asset_id,
                 ..
-            }) => ReceiptsTransferOutSubject {
+            }) => Self::TransferOut(ReceiptsTransferOutSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
@@ -150,62 +173,152 @@ impl From<(&Receipt, BlockHeight, TxId, u32, u32)> for DynReceiptSubject {
                 from: Some(from.to_owned()),
                 to_address: Some(to.to_owned()),
                 asset: Some(asset_id.to_owned()),
-            }
-            .arc(),
+            }),
             Receipt::ScriptResult(ScriptResultReceipt { .. }) => {
-                ReceiptsScriptResultSubject {
+                Self::ScriptResult(ReceiptsScriptResultSubject {
                     block_height: Some(block_height),
                     tx_id: Some(tx_id),
                     tx_index: Some(tx_index),
                     receipt_index: Some(receipt_index),
-                }
-                .arc()
+                })
             }
             Receipt::MessageOut(MessageOutReceipt {
                 sender,
                 recipient,
                 ..
-            }) => ReceiptsMessageOutSubject {
+            }) => Self::MessageOut(ReceiptsMessageOutSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 receipt_index: Some(receipt_index),
                 sender: Some(sender.to_owned()),
                 recipient: Some(recipient.to_owned()),
-            }
-            .arc(),
+            }),
             Receipt::Mint(MintReceipt {
                 contract_id,
                 sub_id,
                 ..
-            }) => ReceiptsMintSubject {
+            }) => Self::Mint(ReceiptsMintSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 receipt_index: Some(receipt_index),
                 contract: Some(contract_id.to_owned()),
                 sub_id: Some((*sub_id).to_owned()),
-            }
-            .arc(),
+            }),
             Receipt::Burn(BurnReceipt {
                 contract_id,
                 sub_id,
                 ..
-            }) => ReceiptsBurnSubject {
+            }) => Self::Burn(ReceiptsBurnSubject {
                 block_height: Some(block_height),
                 tx_id: Some(tx_id),
                 tx_index: Some(tx_index),
                 receipt_index: Some(receipt_index),
                 contract: Some(contract_id.to_owned()),
                 sub_id: Some((*sub_id).to_owned()),
-            }
-            .arc(),
-        })
+            }),
+        }
     }
-}
 
-impl From<DynReceiptSubject> for Arc<dyn IntoSubject> {
-    fn from(subject: DynReceiptSubject) -> Self {
-        subject.0
+    pub fn build_packet(
+        &self,
+        receipt: &Receipt,
+        block_timestamp: BlockTimestamp,
+        pointer: RecordPointer,
+    ) -> RecordPacket {
+        match self {
+            Self::Call(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Return(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::ReturnData(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Panic(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Revert(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Log(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::LogData(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Transfer(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::TransferOut(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::ScriptResult(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::MessageOut(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Mint(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+            Self::Burn(subject) => receipt.to_packet(
+                &Arc::new(subject.clone()),
+                block_timestamp,
+                pointer,
+            ),
+        }
+    }
+
+    pub fn to_query_params(&self) -> ReceiptsQuery {
+        match self {
+            Self::Call(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::Return(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::ReturnData(subject) => {
+                ReceiptsQuery::from(subject.to_owned())
+            }
+            Self::Panic(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::Revert(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::Log(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::LogData(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::Transfer(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::TransferOut(subject) => {
+                ReceiptsQuery::from(subject.to_owned())
+            }
+            Self::ScriptResult(subject) => {
+                ReceiptsQuery::from(subject.to_owned())
+            }
+            Self::MessageOut(subject) => {
+                ReceiptsQuery::from(subject.to_owned())
+            }
+            Self::Mint(subject) => ReceiptsQuery::from(subject.to_owned()),
+            Self::Burn(subject) => ReceiptsQuery::from(subject.to_owned()),
+        }
     }
 }

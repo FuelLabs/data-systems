@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
@@ -19,6 +22,9 @@ pub enum Receipt {
     Burn(BurnReceipt),
 }
 
+impl DataEncoder for Receipt {}
+impl ToPacket for Receipt {}
+
 impl Receipt {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn as_call(&self) -> CallReceipt {
@@ -33,7 +39,7 @@ impl Receipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct CallReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -49,7 +55,7 @@ pub struct CallReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReturnReceipt {
     pub id: ContractId,
     pub val: Word,
@@ -60,7 +66,7 @@ pub struct ReturnReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReturnDataReceipt {
     pub id: ContractId,
     pub ptr: Word,
@@ -74,7 +80,7 @@ pub struct ReturnDataReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct PanicReceipt {
     pub id: ContractId,
     pub reason: PanicInstruction,
@@ -86,7 +92,7 @@ pub struct PanicReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct RevertReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -97,7 +103,7 @@ pub struct RevertReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct LogReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -111,7 +117,7 @@ pub struct LogReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct LogDataReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -127,7 +133,7 @@ pub struct LogDataReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TransferReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -140,7 +146,7 @@ pub struct TransferReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TransferOutReceipt {
     pub id: ContractId,
     pub to: Address,
@@ -153,7 +159,7 @@ pub struct TransferOutReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScriptResultReceipt {
     pub result: ScriptExecutionResult,
     pub gas_used: Word,
@@ -162,7 +168,7 @@ pub struct ScriptResultReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct MessageOutReceipt {
     pub sender: Address,
     pub recipient: Address,
@@ -176,7 +182,7 @@ pub struct MessageOutReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct MintReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -188,7 +194,7 @@ pub struct MintReceipt {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct BurnReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -394,91 +400,6 @@ impl From<&FuelCoreReceipt> for Receipt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum ReceiptType {
-    Call,
-    Return,
-    ReturnData,
-    Panic,
-    Revert,
-    Log,
-    LogData,
-    Transfer,
-    TransferOut,
-    ScriptResult,
-    MessageOut,
-    Mint,
-    Burn,
-}
-
-impl ReceiptType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            ReceiptType::Call => "call",
-            ReceiptType::Return => "return",
-            ReceiptType::ReturnData => "return_data",
-            ReceiptType::Panic => "panic",
-            ReceiptType::Revert => "revert",
-            ReceiptType::Log => "log",
-            ReceiptType::LogData => "log_data",
-            ReceiptType::Transfer => "transfer",
-            ReceiptType::TransferOut => "transfer_out",
-            ReceiptType::ScriptResult => "script_result",
-            ReceiptType::MessageOut => "message_out",
-            ReceiptType::Mint => "mint",
-            ReceiptType::Burn => "burn",
-        }
-    }
-}
-
-impl std::fmt::Display for ReceiptType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl From<ReceiptType> for String {
-    fn from(value: ReceiptType) -> Self {
-        match value {
-            ReceiptType::Call => "call".to_string(),
-            ReceiptType::Return => "return".to_string(),
-            ReceiptType::ReturnData => "return_data".to_string(),
-            ReceiptType::Panic => "panic".to_string(),
-            ReceiptType::Revert => "revert".to_string(),
-            ReceiptType::Log => "log".to_string(),
-            ReceiptType::LogData => "log_data".to_string(),
-            ReceiptType::Transfer => "transfer".to_string(),
-            ReceiptType::TransferOut => "transfer_out".to_string(),
-            ReceiptType::ScriptResult => "script_result".to_string(),
-            ReceiptType::MessageOut => "message_out".to_string(),
-            ReceiptType::Mint => "mint".to_string(),
-            ReceiptType::Burn => "burn".to_string(),
-        }
-    }
-}
-
-impl std::str::FromStr for ReceiptType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "call" => Ok(ReceiptType::Call),
-            "return" => Ok(ReceiptType::Return),
-            "return_data" => Ok(ReceiptType::ReturnData),
-            "panic" => Ok(ReceiptType::Panic),
-            "revert" => Ok(ReceiptType::Revert),
-            "log" => Ok(ReceiptType::Log),
-            "log_data" => Ok(ReceiptType::LogData),
-            "transfer" => Ok(ReceiptType::Transfer),
-            "transfer_out" => Ok(ReceiptType::TransferOut),
-            "script_result" => Ok(ReceiptType::ScriptResult),
-            "message_out" => Ok(ReceiptType::MessageOut),
-            "mint" => Ok(ReceiptType::Mint),
-            "burn" => Ok(ReceiptType::Burn),
-            _ => Err(format!("Invalid receipt type: {}", s)),
-        }
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockReceipt;
@@ -486,10 +407,10 @@ pub struct MockReceipt;
 impl MockReceipt {
     pub fn call() -> Receipt {
         Receipt::Call(CallReceipt {
-            id: ContractId::default(),
-            to: ContractId::default(),
+            id: ContractId::random(),
+            to: ContractId::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             gas: 1000.into(),
             param1: 0.into(),
             param2: 0.into(),
@@ -500,7 +421,7 @@ impl MockReceipt {
 
     pub fn return_receipt() -> Receipt {
         Receipt::Return(ReturnReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             val: 0.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -509,10 +430,10 @@ impl MockReceipt {
 
     pub fn return_data() -> Receipt {
         Receipt::ReturnData(ReturnDataReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ptr: 0.into(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             pc: 0.into(),
             is: 0.into(),
             data: Some(vec![1, 2, 3].into()),
@@ -521,7 +442,7 @@ impl MockReceipt {
 
     pub fn panic() -> Receipt {
         Receipt::Panic(PanicReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             reason: PanicInstruction::default(),
             pc: 0.into(),
             is: 0.into(),
@@ -531,7 +452,7 @@ impl MockReceipt {
 
     pub fn revert() -> Receipt {
         Receipt::Revert(RevertReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -540,7 +461,7 @@ impl MockReceipt {
 
     pub fn log() -> Receipt {
         Receipt::Log(LogReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             rb: 0.into(),
             rc: 0.into(),
@@ -552,12 +473,12 @@ impl MockReceipt {
 
     pub fn log_data() -> Receipt {
         Receipt::LogData(LogDataReceipt {
-            id: ContractId::default(),
+            id: ContractId::random(),
             ra: 0.into(),
             rb: 0.into(),
             ptr: 0.into(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             pc: 0.into(),
             is: 0.into(),
             data: Some(vec![4, 5, 6].into()),
@@ -566,10 +487,10 @@ impl MockReceipt {
 
     pub fn transfer() -> Receipt {
         Receipt::Transfer(TransferReceipt {
-            id: ContractId::default(),
-            to: ContractId::default(),
+            id: ContractId::random(),
+            to: ContractId::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             pc: 0.into(),
             is: 0.into(),
         })
@@ -577,10 +498,10 @@ impl MockReceipt {
 
     pub fn transfer_out() -> Receipt {
         Receipt::TransferOut(TransferOutReceipt {
-            id: ContractId::default(),
-            to: Address::default(),
+            id: ContractId::random(),
+            to: Address::random(),
             amount: 100.into(),
-            asset_id: AssetId::default(),
+            asset_id: AssetId::random(),
             pc: 0.into(),
             is: 0.into(),
         })
@@ -595,20 +516,20 @@ impl MockReceipt {
 
     pub fn message_out() -> Receipt {
         Receipt::MessageOut(MessageOutReceipt {
-            sender: Address::default(),
-            recipient: Address::default(),
+            sender: Address::random(),
+            recipient: Address::random(),
             amount: 100.into(),
-            nonce: Nonce::default(),
+            nonce: Nonce::random(),
             len: 0.into(),
-            digest: Bytes32::default(),
+            digest: Bytes32::random(),
             data: Some(vec![7, 8, 9].into()),
         })
     }
 
     pub fn mint() -> Receipt {
         Receipt::Mint(MintReceipt {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: Bytes32::random(),
+            contract_id: ContractId::random(),
             val: 100.into(),
             pc: 0.into(),
             is: 0.into(),
@@ -617,8 +538,8 @@ impl MockReceipt {
 
     pub fn burn() -> Receipt {
         Receipt::Burn(BurnReceipt {
-            sub_id: Bytes32::default(),
-            contract_id: ContractId::default(),
+            sub_id: Bytes32::random(),
+            contract_id: ContractId::random(),
             val: 100.into(),
             pc: 0.into(),
             is: 0.into(),

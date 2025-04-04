@@ -4,24 +4,19 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    ContractId,
-    HexData,
-    InputType,
-    OutputType,
-    TransactionStatus,
-    TransactionType,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    inputs::queryable::InputsQuery,
-    outputs::queryable::OutputsQuery,
-    queryable::{Queryable, ValidatedQuery},
-    transactions::queryable::TransactionsQuery,
-    utxos::queryable::UtxosQuery,
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
+    inputs::InputsQuery,
+    outputs::OutputsQuery,
+    receipts::ReceiptsQuery,
+    transactions::TransactionsQuery,
+    utxos::UtxosQuery,
 };
 
 use super::open_api::TAG_ACCOUNTS;
@@ -37,15 +32,22 @@ use crate::server::{
     tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("txStatus" = Option<TransactionStatus>, Query, description = "Filter by transaction status"),
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("tx_status" = Option<TransactionStatus>, Query, description = "Filter by transaction status"),
         ("type" = Option<TransactionType>, Query, description = "Filter by transaction type"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("after" = Option<i32>, Query, description = "Return transactions after this height"),
-        ("before" = Option<i32>, Query, description = "Return transactions before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("blob_id" = Option<BlobId>, Query, description = "Filter by blob ID"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return transactions after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return transactions before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved account transactions", body = GetDataResponse),
@@ -68,7 +70,9 @@ pub async fn get_accounts_transactions(
             .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Transaction::find_many(&state.db.pool, &query)
+            .await?
+            .try_into()?;
     Ok(Json(response))
 }
 
@@ -78,20 +82,26 @@ pub async fn get_accounts_transactions(
     tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-        ("inputType" = Option<InputType>, Query, description = "Filter by input type"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("ownerId" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
-        ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
-        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
-        ("senderAddress" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
-        ("recipientAddress" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
-        ("after" = Option<i32>, Query, description = "Return inputs after this height"),
-        ("before" = Option<i32>, Query, description = "Return inputs before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+        ("input_type" = Option<InputType>, Query, description = "Filter by input type"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("owner_id" = Option<Address>, Query, description = "Filter by owner ID (for coin inputs)"),
+        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin inputs)"),
+        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract inputs)"),
+        ("sender_address" = Option<Address>, Query, description = "Filter by sender address (for message inputs)"),
+        ("recipient_address" = Option<Address>, Query, description = "Filter by recipient address (for message inputs)"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return inputs after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return inputs before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved account inputs", body = GetDataResponse),
@@ -113,7 +123,7 @@ pub async fn get_accounts_inputs(
         .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Input::find_many(&state.db.pool, &query).await?.try_into()?;
     Ok(Json(response))
 }
 
@@ -123,18 +133,24 @@ pub async fn get_accounts_inputs(
     tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("outputIndex" = Option<i32>, Query, description = "Filter by output index"),
-        ("outputType" = Option<OutputType>, Query, description = "Filter by output type"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("toAddress" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
-        ("assetId" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
-        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
-        ("after" = Option<i32>, Query, description = "Return outputs after this height"),
-        ("before" = Option<i32>, Query, description = "Return outputs before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("output_index" = Option<i32>, Query, description = "Filter by output index"),
+        ("output_type" = Option<OutputType>, Query, description = "Filter by output type"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("to_address" = Option<Address>, Query, description = "Filter by recipient address (for coin, change, and variable outputs)"),
+        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID (for coin, change, and variable outputs)"),
+        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID (for contract and contract_created outputs)"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return outputs after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return outputs before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved account outputs", body = GetDataResponse),
@@ -155,8 +171,9 @@ pub async fn get_accounts_outputs(
         .await?
         .into_inner();
     query.set_address(&address);
-    let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+    let response: GetDataResponse = Output::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }
 
@@ -166,17 +183,28 @@ pub async fn get_accounts_outputs(
     tag = TAG_ACCOUNTS,
     params(
         ("address" = String, Path, description = "Account address"),
-        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-        ("inputIndex" = Option<i32>, Query, description = "Filter by input index"),
-        ("utxoType" = Option<InputType>, Query, description = "Filter by UTXO type"),
-        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
-        ("utxoId" = Option<HexData>, Query, description = "Filter by UTXO ID"),
-        ("contractId" = Option<ContractId>, Query, description = "Filter by contract ID (for contract UTXOs)"),
-        ("after" = Option<i32>, Query, description = "Return UTXOs after this height"),
-        ("before" = Option<i32>, Query, description = "Return UTXOs before this height"),
-        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("input_index" = Option<i32>, Query, description = "Filter by input index"),
+        ("output_index" = Option<i32>, Query, description = "Filter by output index"),
+        ("type" = Option<UtxoType>, Query, description = "Filter by UTXO type"),
+        ("status" = Option<UtxoStatus>, Query, description = "Filter by UTXO status"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("utxo_id" = Option<UtxoId>, Query, description = "Filter by UTXO ID"),
+        ("from" = Option<Address>, Query, description = "Filter by source address"),
+        ("to" = Option<Address>, Query, description = "Filter by destination address"),
+        ("asset_id" = Option<AssetId>, Query, description = "Filter by asset ID"),
+        ("contract_id" = Option<ContractId>, Query, description = "Filter by contract ID"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return UTXOs after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return UTXOs before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
     ),
     responses(
         (status = 200, description = "Successfully retrieved account UTXOs", body = GetDataResponse),
@@ -198,6 +226,60 @@ pub async fn get_accounts_utxos(
         .into_inner();
     query.set_address(&address);
     let response: GetDataResponse =
-        query.execute(&state.db.pool).await?.try_into()?;
+        Utxo::find_many(&state.db.pool, &query).await?.try_into()?;
+    Ok(Json(response))
+}
+
+#[utoipa::path(
+    get,
+    path = "/accounts/{address}/receipts",
+    tag = TAG_ACCOUNTS,
+    params(
+        ("address" = String, Path, description = "Account address"),
+        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+        ("receipt_index" = Option<i32>, Query, description = "Filter by receipt index"),
+        ("receipt_type" = Option<ReceiptType>, Query, description = "Filter by receipt type"),
+        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
+        ("from" = Option<ContractId>, Query, description = "Filter by source contract ID"),
+        ("to" = Option<ContractId>, Query, description = "Filter by destination contract ID"),
+        ("contract" = Option<ContractId>, Query, description = "Filter by contract ID"),
+        ("asset" = Option<AssetId>, Query, description = "Filter by asset ID"),
+        ("sender" = Option<Address>, Query, description = "Filter by sender address"),
+        ("recipient" = Option<Address>, Query, description = "Filter by recipient address"),
+        ("sub_id" = Option<Bytes32>, Query, description = "Filter by sub ID"),
+        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+        ("after" = Option<Cursor>, Query, description = "Return receipts after this cursor"),
+        ("before" = Option<Cursor>, Query, description = "Return receipts before this cursor"),
+        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
+    ),
+    responses(
+        (status = 200, description = "Successfully retrieved account receipts", body = GetDataResponse),
+        (status = 400, description = "Invalid query parameters", body = String),
+        (status = 404, description = "Account not found", body = String),
+        (status = 500, description = "Internal server error", body = String)
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+pub async fn get_accounts_receipts(
+    State(state): State<ServerState>,
+    Path(address): Path<String>,
+    req: Request<axum::body::Body>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut query = ValidatedQuery::<ReceiptsQuery>::from_request(req, &state)
+        .await?
+        .into_inner();
+    query.set_address(&address);
+    let response: GetDataResponse = Receipt::find_many(&state.db.pool, &query)
+        .await?
+        .try_into()?;
     Ok(Json(response))
 }

@@ -36,7 +36,6 @@ changelog_include = [
   "fuel-streams-core",
   "fuel-streams-domains",
   "fuel-streams-subject",
-  "fuel-streams-store",
   "fuel-streams-types",
   "fuel-web-utils",
   "sv-api",
@@ -76,12 +75,6 @@ publish = true
 name = "fuel-streams-subject"
 release = true
 publish = true
-
-[[package]]
-name = "fuel-streams-store"
-release = true
-publish = true
-semver_check = true
 
 [[package]]
 name = "fuel-streams-types"

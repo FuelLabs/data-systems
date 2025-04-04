@@ -4,17 +4,15 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use fuel_streams_core::types::{
-    Address,
-    AssetId,
-    BlockHeight,
-    Bytes32,
-    ContractId,
-    TxId,
-};
+use fuel_streams_core::types::*;
 use fuel_streams_domains::{
-    queryable::{Queryable, ValidatedQuery},
-    receipts::{queryable::ReceiptsQuery, ReceiptType},
+    infra::{
+        repository::{Repository, ValidatedQuery},
+        Cursor,
+        OrderBy,
+        TimeRange,
+    },
+    receipts::ReceiptsQuery,
 };
 use paste::paste;
 
@@ -42,26 +40,32 @@ macro_rules! generate_receipt_endpoints {
                     path = concat!($base_path, $path_suffix),
                     tag = $tag,
                     params(
-                        ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                        ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                        ("receiptIndex" = Option<i32>, Query, description = "Filter by receipt index"),
-                        ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                        ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                        ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                        ("receipt_index" = Option<i32>, Query, description = "Filter by receipt index"),
+                        ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
                         ("from" = Option<ContractId>, Query, description = "Filter by source contract ID"),
                         ("to" = Option<ContractId>, Query, description = "Filter by destination contract ID"),
                         ("contract" = Option<ContractId>, Query, description = "Filter by contract ID"),
                         ("asset" = Option<AssetId>, Query, description = "Filter by asset ID"),
                         ("sender" = Option<Address>, Query, description = "Filter by sender address"),
                         ("recipient" = Option<Address>, Query, description = "Filter by recipient address"),
-                        ("subId" = Option<Bytes32>, Query, description = "Filter by sub ID"),
-                        ("address" = Option<Address>, Query, description = "Filter by address"),
-                        ("after" = Option<i32>, Query, description = "Return receipts after this height"),
-                        ("before" = Option<i32>, Query, description = "Return receipts before this height"),
-                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                        ("sub_id" = Option<Bytes32>, Query, description = "Filter by sub ID"),
+                        ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                        ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                        ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                        ("after" = Option<Cursor>, Query, description = "Return receipts after this cursor"),
+                        ("before" = Option<Cursor>, Query, description = "Return receipts before this cursor"),
+                        ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                        ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                        ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                        ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                        ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                     ),
                     responses(
-                        (status = 200, description = "Successfully retrieved receipts", body = GetDataResponse),
+                        (status = 200, description = concat!("Successfully retrieved ", stringify!($variant), " receipts"), body = GetDataResponse),
                         (status = 400, description = "Invalid query parameters", body = String),
+                        (status = 404, description = "No receipts found", body = String),
                         (status = 500, description = "Internal server error", body = String)
                     ),
                     security(
@@ -77,38 +81,43 @@ macro_rules! generate_receipt_endpoints {
                         .into_inner();
                     query.set_receipt_type(Some(ReceiptType::$variant));
                     let response: GetDataResponse =
-                        query.execute(&state.db.pool).await?.try_into()?;
+                        Receipt::find_many(&state.db.pool, &query).await?.try_into()?;
                     Ok(Json(response))
                 }
             )*
 
-            // Generic handler for the base path
             #[utoipa::path(
                 get,
                 path = $base_path,
                 tag = $tag,
                 params(
-                    ("txId" = Option<TxId>, Query, description = "Filter by transaction ID"),
-                    ("txIndex" = Option<u32>, Query, description = "Filter by transaction index"),
-                    ("receiptIndex" = Option<i32>, Query, description = "Filter by receipt index"),
-                    ("receiptType" = Option<ReceiptType>, Query, description = "Filter by receipt type"),
-                    ("blockHeight" = Option<BlockHeight>, Query, description = "Filter by block height"),
+                    ("tx_id" = Option<TxId>, Query, description = "Filter by transaction ID"),
+                    ("tx_index" = Option<i32>, Query, description = "Filter by transaction index"),
+                    ("receipt_index" = Option<i32>, Query, description = "Filter by receipt index"),
+                    ("receipt_type" = Option<ReceiptType>, Query, description = "Filter by receipt type"),
+                    ("block_height" = Option<BlockHeight>, Query, description = "Filter by block height"),
                     ("from" = Option<ContractId>, Query, description = "Filter by source contract ID"),
                     ("to" = Option<ContractId>, Query, description = "Filter by destination contract ID"),
                     ("contract" = Option<ContractId>, Query, description = "Filter by contract ID"),
                     ("asset" = Option<AssetId>, Query, description = "Filter by asset ID"),
                     ("sender" = Option<Address>, Query, description = "Filter by sender address"),
                     ("recipient" = Option<Address>, Query, description = "Filter by recipient address"),
-                    ("subId" = Option<Bytes32>, Query, description = "Filter by sub ID"),
-                    ("address" = Option<Address>, Query, description = "Filter by address"),
-                    ("after" = Option<i32>, Query, description = "Return receipts after this height"),
-                    ("before" = Option<i32>, Query, description = "Return receipts before this height"),
-                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending block height", maximum = 100),
-                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending block height", maximum = 100)
+                    ("sub_id" = Option<Bytes32>, Query, description = "Filter by sub ID"),
+                    ("timestamp" = Option<BlockTimestamp>, Query, description = "Filter by exact block timestamp"),
+                    ("time_range" = Option<TimeRange>, Query, description = "Filter by time range"),
+                    ("from_block" = Option<BlockHeight>, Query, description = "Filter from specific block height"),
+                    ("after" = Option<Cursor>, Query, description = "Return receipts after this cursor"),
+                    ("before" = Option<Cursor>, Query, description = "Return receipts before this cursor"),
+                    ("first" = Option<i32>, Query, description = "Limit results, sorted by ascending order", minimum = 1, maximum = 100),
+                    ("last" = Option<i32>, Query, description = "Limit results, sorted by descending order", minimum = 1, maximum = 100),
+                    ("limit" = Option<i32>, Query, description = "Maximum number of results to return", minimum = 1, maximum = 1000),
+                    ("offset" = Option<i32>, Query, description = "Number of results to skip", minimum = 0),
+                    ("order_by" = Option<OrderBy>, Query, description = "Sort order (ASC or DESC)")
                 ),
                 responses(
                     (status = 200, description = "Successfully retrieved receipts", body = GetDataResponse),
                     (status = 400, description = "Invalid query parameters", body = String),
+                    (status = 404, description = "No receipts found", body = String),
                     (status = 500, description = "Internal server error", body = String)
                 ),
                 security(
@@ -123,13 +132,14 @@ macro_rules! generate_receipt_endpoints {
                     .await?
                     .into_inner();
                 let response: GetDataResponse =
-                    query.execute(&state.db.pool).await?.try_into()?;
+                    Receipt::find_many(&state.db.pool, &query).await?.try_into()?;
                 Ok(Json(response))
             }
         }
     };
 }
 
+// Generate the receipt endpoints with the improved macro
 generate_receipt_endpoints!(
     TAG_RECEIPTS,
     "/receipts",

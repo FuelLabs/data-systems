@@ -55,7 +55,7 @@ Here's a simple example to get you started with Fuel Streams Core:
 
 ```rust,no_run
 use fuel_streams_core::prelude::*;
-use fuel_streams_store::db::*;
+use fuel_streams_domains::infra::*;
 use fuel_web_utils::api_key::*;
 use fuel_message_broker::*;
 use futures::StreamExt;

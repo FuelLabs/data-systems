@@ -28,7 +28,7 @@ Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ### 🏗️ Build
 
-- _(repo)_: Update rust to v1.85.0 ([90e5425](https://github.com/FuelLabs/data-systems/commit/90e5425d851460b25a92b8fb9b3cee0ab41c20c4) @pedronauck)
+- _(repo)_: Update rust to v1.85.1 ([90e5425](https://github.com/FuelLabs/data-systems/commit/90e5425d851460b25a92b8fb9b3cee0ab41c20c4) @pedronauck)
 
 - _(repo)_: Adjust Cargo.toml dependencies ([54b7c86](https://github.com/FuelLabs/data-systems/commit/54b7c863d1bb5dd4c48c04603e5ef795b86eabcd) @pedronauck)
 

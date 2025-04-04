@@ -27,7 +27,6 @@ fuel-data-parser.workspace = true
 fuel-message-broker.workspace = true
 fuel-streams-core.workspace = true
 fuel-streams-domains.workspace = true
-fuel-streams-store.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 fuel-web-utils.workspace = true
@@ -51,7 +50,6 @@ test-helpers = [
   "fuel-message-broker/test-helpers",
   "fuel-streams-core/test-helpers",
   "fuel-streams-domains/test-helpers",
-  "fuel-streams-store/test-helpers",
   "fuel-web-utils/test-helpers",
 ]
 

@@ -1,49 +1,56 @@
 use std::cmp::Ordering;
 
-use fuel_streams_store::{
-    db::{DbError, DbItem},
-    record::{
-        DataEncoder,
-        RecordEntity,
-        RecordPacket,
-        RecordPacketError,
-        RecordPointer,
-    },
-};
-use fuel_streams_types::{BlockHeight, BlockTimestamp};
+use fuel_data_parser::DataEncoder;
+use fuel_streams_types::{BlockHeight, BlockTimestamp, TxId};
 use serde::{Deserialize, Serialize};
 
-use super::subjects::*;
-use crate::Subjects;
+use super::{subjects::*, Predicate};
+use crate::{
+    infra::{
+        db::DbItem,
+        record::{
+            RecordEntity,
+            RecordPacket,
+            RecordPacketError,
+            RecordPointer,
+        },
+        Cursor,
+        DbError,
+    },
+    Subjects,
+};
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::FromRow,
 )]
 pub struct PredicateDbItem {
     pub subject: String,
-    pub value: Vec<u8>,
     pub block_height: BlockHeight,
-    pub tx_id: String,
+    pub tx_id: TxId,
     pub tx_index: i32,
     pub input_index: i32,
     // predicate types properties
     pub blob_id: Option<String>,
     pub predicate_address: String,
+    pub asset_id: String,
+    pub bytecode: String,
+    pub block_time: BlockTimestamp,
     pub created_at: BlockTimestamp,
-    pub published_at: BlockTimestamp,
 }
 
-impl DataEncoder for PredicateDbItem {
-    type Err = DbError;
-}
+impl DataEncoder for PredicateDbItem {}
 
 impl DbItem for PredicateDbItem {
+    fn cursor(&self) -> Cursor {
+        Cursor::new(&[&self.block_height, &self.tx_index, &self.input_index])
+    }
+
     fn entity(&self) -> &RecordEntity {
         &RecordEntity::Predicate
     }
 
-    fn encoded_value(&self) -> &[u8] {
-        &self.value
+    fn encoded_value(&self) -> Result<Vec<u8>, DbError> {
+        Ok(Predicate::try_from(self)?.encode_json()?)
     }
 
     fn subject_str(&self) -> String {
@@ -58,8 +65,8 @@ impl DbItem for PredicateDbItem {
         self.created_at
     }
 
-    fn published_at(&self) -> BlockTimestamp {
-        self.published_at
+    fn block_time(&self) -> BlockTimestamp {
+        self.block_time
     }
 
     fn block_height(&self) -> BlockHeight {
@@ -76,21 +83,27 @@ impl TryFrom<&RecordPacket> for PredicateDbItem {
             .try_into()
             .map_err(|_| RecordPacketError::SubjectMismatch)?;
 
+        let predicate =
+            Predicate::decode_json(&packet.value).map_err(|_| {
+                RecordPacketError::DecodeFailed(packet.subject_str())
+            })?;
+
         match subject {
             Subjects::Predicates(subject) => Ok(PredicateDbItem {
                 subject: packet.subject_str(),
-                value: packet.value.clone(),
-                block_height: subject.block_height.unwrap(),
-                tx_id: subject.tx_id.unwrap().to_string(),
-                tx_index: subject.tx_index.unwrap() as i32,
-                input_index: subject.input_index.unwrap() as i32,
+                block_height: packet.pointer.block_height,
+                tx_id: packet.pointer.tx_id.to_owned().unwrap(),
+                tx_index: packet.pointer.tx_index.unwrap() as i32,
+                input_index: packet.pointer.input_index.unwrap() as i32,
                 blob_id: subject.blob_id.map(|b| b.to_string()),
                 predicate_address: subject
                     .predicate_address
                     .unwrap()
                     .to_string(),
+                bytecode: predicate.predicate_bytecode.to_string(),
+                asset_id: subject.asset.unwrap_or_default().to_string(),
+                block_time: packet.block_timestamp,
                 created_at: packet.block_timestamp,
-                published_at: packet.block_timestamp,
             }),
             _ => Err(RecordPacketError::SubjectMismatch),
         }
@@ -119,6 +132,7 @@ impl From<PredicateDbItem> for RecordPointer {
     fn from(val: PredicateDbItem) -> Self {
         RecordPointer {
             block_height: val.block_height,
+            tx_id: Some(val.tx_id),
             tx_index: Some(val.tx_index as u32),
             input_index: Some(val.input_index as u32),
             output_index: None,

@@ -8,9 +8,7 @@ async fn main() -> anyhow::Result<()> {
     let mut connection = client.connect().await?;
 
     println!("Listening for UTXOs...");
-
-    // Create a subject for all UTXOs, optionally filter by type
-    let subject = UtxosSubject::new().with_utxo_type(Some(UtxoType::Message)); // Example: filter for message UTXOs
+    let subject = UtxosSubject::new(); // Example: filter for message UTXOs
     let filter_subjects = vec![subject.into()];
 
     // Subscribe to the UTXO stream with the specified configuration

@@ -1,11 +1,16 @@
 use std::{sync::Arc, time::Duration};
 
 pub use async_nats::Subscriber as StreamLiveSubscriber;
+use fuel_data_parser::DataEncoder;
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_store::{
-    db::{Db, DbItem},
-    record::{DataEncoder, QueryOptions, Record},
-    store::{find_last_block_height, Store},
+use fuel_streams_domains::{
+    blocks::Block,
+    infra::{
+        db::{Db, DbItem},
+        repository::Repository,
+        OrderBy,
+        QueryParamsBuilder,
+    },
 };
 use fuel_streams_subject::subject::IntoSubject;
 use fuel_streams_types::BlockHeight;
@@ -23,14 +28,14 @@ pub type BoxedStoreItem = Result<StreamResponse, StreamError>;
 pub type BoxedStream = Box<dyn FStream<Item = BoxedStoreItem> + Send + Unpin>;
 
 #[derive(Debug, Clone)]
-pub struct Stream<S: Record> {
-    store: Arc<Store<S>>,
+pub struct Stream<S: Repository> {
+    db: Arc<Db>,
     broker: Arc<NatsMessageBroker>,
     namespace: Option<String>,
     _marker: std::marker::PhantomData<S>,
 }
 
-impl<R: Record> Stream<R> {
+impl<R: Repository> Stream<R> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INSTANCE: OnceCell<Self> = OnceCell::const_new();
 
@@ -45,10 +50,9 @@ impl<R: Record> Stream<R> {
     }
 
     pub async fn new(broker: &Arc<NatsMessageBroker>, db: &Arc<Db>) -> Self {
-        let store = Arc::new(Store::new(db));
         let broker = Arc::clone(broker);
         Self {
-            store,
+            db: db.clone(),
             broker,
             namespace: None,
             _marker: std::marker::PhantomData,
@@ -61,22 +65,12 @@ impl<R: Record> Stream<R> {
         db: &Arc<Db>,
         namespace: String,
     ) -> Self {
-        let store = Arc::new(Store::new(db));
         let broker = Arc::clone(broker);
         Self {
-            store,
+            db: db.clone(),
             broker,
             namespace: Some(namespace),
             _marker: std::marker::PhantomData,
-        }
-    }
-
-    pub fn store(&self) -> Store<R> {
-        if let Some(namespace) = &self.namespace {
-            let mut store = (*self.store).clone();
-            store.with_namespace(&namespace.clone()).to_owned()
-        } else {
-            (*self.store).to_owned()
         }
     }
 
@@ -96,7 +90,7 @@ impl<R: Record> Stream<R> {
         Ok(())
     }
 
-    pub async fn subscribe<S: IntoSubject>(
+    pub async fn subscribe<S: IntoSubject + Into<R::QueryParams> + Clone>(
         &self,
         subject: S,
         deliver_policy: DeliverPolicy,
@@ -107,9 +101,11 @@ impl<R: Record> Stream<R> {
             .await
     }
 
-    pub async fn subscribe_dynamic(
+    pub async fn subscribe_dynamic<
+        S: IntoSubject + Into<R::QueryParams> + Clone,
+    >(
         &self,
-        subject: Arc<dyn IntoSubject>,
+        subject: Arc<S>,
         deliver_policy: DeliverPolicy,
         api_key_role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
@@ -155,43 +151,47 @@ impl<R: Record> Stream<R> {
         Box::pin(stream)
     }
 
-    pub fn historical_streaming(
+    pub fn historical_streaming<
+        S: IntoSubject + Into<R::QueryParams> + Clone,
+    >(
         &self,
-        subject: Arc<dyn IntoSubject>,
+        subject: Arc<S>,
         from_block: Option<BlockHeight>,
         role: &ApiKeyRole,
     ) -> BoxStream<'static, Result<StreamResponse, StreamError>> {
-        let store = self.store().clone();
-        let db = self.store().db.clone();
+        let db = self.db.clone();
         let role = role.clone();
-        let opts = if cfg!(any(test, feature = "test-helpers")) {
-            QueryOptions::default()
-        } else {
-            QueryOptions::default().with_namespace(self.namespace.clone())
-        };
+        let mut params: R::QueryParams = (*subject).clone().into();
+        params.with_order_by(OrderBy::Asc);
+        params.with_limit(Some(100));
+        params.with_offset(Some(0));
+
+        if cfg!(any(test, feature = "test-helpers")) {
+            params.with_namespace(self.namespace.clone());
+        }
 
         let stream = async_stream::try_stream! {
             let mut current_height = from_block.unwrap_or_default();
-            let mut opts = opts.with_from_block(Some(current_height));
-            let mut last_height = find_last_block_height(&db, opts.clone()).await?;
-            while current_height <= last_height {
-                let items = store.find_many_by_subject(&subject, opts.clone()).await?;
+            params.with_from_block(Some(current_height));
+            let mut last_height = Block::find_last_block_height(&db, params.options()).await?;
+                while current_height <= last_height {
+                    let items = R::find_many(db.pool_ref(), &params).await?;
                 for item in items {
                     let subject = item.subject_str();
                     let subject_id = item.subject_id();
                     let block_height = item.block_height();
                     role.validate_historical_limit(last_height, block_height)?;
-                    let value = item.encoded_value().to_vec();
+                    let value = item.encoded_value()?;
                     let pointer = item.into();
                     let response = StreamResponse::new(subject, subject_id, &value, pointer.to_owned(), None)?;
                     yield response;
                     current_height = pointer.block_height;
                 }
-                opts.increment_offset();
+                params.increment_offset();
                 // When we reach the last known height, we need to check if any new blocks
                 // were produced while we were processing the previous ones
                 if current_height == last_height {
-                    let new_last_height = find_last_block_height(&db, opts.clone()).await?;
+                    let new_last_height = Block::find_last_block_height(&db, params.options()).await?;
                     if new_last_height > last_height {
                         // Reset current_height back to process the blocks we haven't seen yet
                         current_height = last_height;

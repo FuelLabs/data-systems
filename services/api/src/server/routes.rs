@@ -4,7 +4,7 @@ use axum::{
     Router,
 };
 use fuel_streams_core::types::StreamResponse;
-use fuel_streams_store::{db::DbItem, record::RecordPointer};
+use fuel_streams_domains::infra::{db::DbItem, record::RecordPointer};
 use fuel_web_utils::{
     api_key::middleware::ApiKeyMiddleware,
     router_builder::RouterBuilder,
@@ -23,7 +23,7 @@ use super::{
 };
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct GetDataResponse {
     data: Vec<StreamResponse>,
 }
@@ -90,6 +90,7 @@ pub fn create_routes(state: &ServerState) -> Router {
         .related("/{address}/inputs", get(accounts::get_accounts_inputs))
         .related("/{address}/outputs", get(accounts::get_accounts_outputs))
         .related("/{address}/utxos", get(accounts::get_accounts_utxos))
+        .related("/{address}/receipts", get(accounts::get_accounts_receipts))
         .with_layer(from_fn(validate_scope_middleware))
         .with_layer(from_fn_with_state(
             auth_params.clone(),
@@ -99,15 +100,22 @@ pub fn create_routes(state: &ServerState) -> Router {
 
     let (contracts_path, contracts_router) = RouterBuilder::new("/contracts")
         .related(
-            "/{contractId}/transactions",
+            "/{contract_id}/transactions",
             get(contracts::get_contracts_transactions),
         )
-        .related("/{contractId}/inputs", get(contracts::get_contracts_inputs))
         .related(
-            "/{contractId}/outputs",
+            "/{contract_id}/inputs",
+            get(contracts::get_contracts_inputs),
+        )
+        .related(
+            "/{contract_id}/outputs",
             get(contracts::get_contracts_outputs),
         )
-        .related("/{contractId}/utxos", get(contracts::get_contracts_utxos))
+        .related("/{contract_id}/utxos", get(contracts::get_contracts_utxos))
+        .related(
+            "/{contract_id}/receipts",
+            get(contracts::get_contracts_receipts),
+        )
         .with_layer(from_fn(validate_scope_middleware))
         .with_layer(from_fn_with_state(
             auth_params.clone(),
@@ -170,17 +178,18 @@ pub fn create_routes(state: &ServerState) -> Router {
         RouterBuilder::new("/transactions")
             .root(get(transactions::get_transactions))
             .related(
-                "/{txId}/receipts",
+                "/{tx_id}/receipts",
                 get(transactions::get_transaction_receipts),
             )
             .related(
-                "/{txId}/inputs",
+                "/{tx_id}/inputs",
                 get(transactions::get_transaction_inputs),
             )
             .related(
-                "/{txId}/outputs",
+                "/{tx_id}/outputs",
                 get(transactions::get_transaction_outputs),
             )
+            .related("/{tx_id}/utxos", get(transactions::get_transaction_utxos))
             .with_layer(from_fn(validate_scope_middleware))
             .with_layer(from_fn_with_state(
                 auth_params.clone(),

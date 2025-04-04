@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+pub use fuel_core::schema::tx::types::Transaction as FuelCoreTransaction;
 use fuel_core::{
     combined_database::CombinedDatabase,
     database::{database_description::on_chain::OnChain, Database},
@@ -7,7 +8,18 @@ use fuel_core::{
 };
 use fuel_core_bin::FuelService;
 pub use fuel_core_client::client::{
-    schema::Tai64Timestamp as FuelCoreTai64Timestamp,
+    schema::{
+        tx::transparent_tx::{
+            ConsensusParametersPurpose as FuelCoreClientConsensusParametersPurpose,
+            Input as FuelCoreClientInput,
+            Output as FuelCoreClientOutput,
+            Policies as FuelCoreClientPolicies,
+            StateTransitionPurpose as FuelCoreClientStateTransitionPurpose,
+            Transaction as FuelCoreClientTransaction,
+            UpgradePurpose as FuelCoreClientUpgradePurpose,
+        },
+        Tai64Timestamp as FuelCoreTai64Timestamp,
+    },
     types::TransactionStatus as FuelCoreClientTransactionStatus,
 };
 use fuel_core_importer::ports::ImporterDatabase;
@@ -17,7 +29,6 @@ use fuel_core_storage::{
     transactional::AtomicView,
     StorageAsRef,
 };
-use fuel_core_types::blockchain::consensus::{Consensus, Sealed};
 pub use fuel_core_types::{
     blockchain::{
         block::Block as FuelCoreBlock,
@@ -25,6 +36,7 @@ pub use fuel_core_types::{
             poa::PoAConsensus as FuelCorePoAConsensus,
             Consensus as FuelCoreConsensus,
             Genesis as FuelCoreGenesis,
+            Sealed as FuelCoreSealed,
         },
         header::BlockHeader as FuelCoreBlockHeader,
         primitives::{
@@ -53,7 +65,7 @@ pub use fuel_core_types::{
         Receipt as FuelCoreReceipt,
         ScriptExecutionResult as FuelCoreScriptExecutionResult,
         StorageSlot as FuelCoreStorageSlot,
-        Transaction as FuelCoreTransaction,
+        Transaction as FuelCoreTypesTransaction,
         TxId as FuelCoreTxId,
         TxPointer as FuelCoreTxPointer,
         UniqueIdentifier as FuelCoreUniqueIdentifier,
@@ -69,7 +81,10 @@ pub use fuel_core_types::{
             ImportResult as FuelCoreImportResult,
             SharedImportResult as FuelCoreSharedImportResult,
         },
-        txpool::TransactionStatus as FuelCoreTransactionStatus,
+        txpool::{
+            TransactionExecutionStatus as FuelCoreTransactionExecutionStatus,
+            TransactionStatus as FuelCoreTransactionStatus,
+        },
     },
     tai64::Tai64 as FuelCoreTai64,
 };
@@ -132,12 +147,12 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_tx_by_id(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<FuelCoreTransaction>;
+    ) -> FuelCoreResult<FuelCoreTypesTransaction>;
 
     fn get_tx_status(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>>;
+    ) -> FuelCoreResult<Option<FuelCoreTransactionExecutionStatus>>;
 
     fn get_receipts(
         &self,
@@ -147,7 +162,7 @@ pub trait FuelCoreLike: Sync + Send {
     fn get_consensus(
         &self,
         block_height: &FuelCoreBlockHeight,
-    ) -> FuelCoreResult<Consensus> {
+    ) -> FuelCoreResult<FuelCoreConsensus> {
         self.onchain_database()
             .latest_view()
             .map_err(|e| FuelCoreError::Database(e.to_string()))?
@@ -157,7 +172,7 @@ pub trait FuelCoreLike: Sync + Send {
 
     fn get_block_and_producer(
         &self,
-        sealed_block: &Sealed<FuelCoreBlock>,
+        sealed_block: &FuelCoreSealed<FuelCoreBlock>,
     ) -> FuelCoreResult<(FuelCoreBlock, crate::Address)> {
         let block = sealed_block.entity.clone();
         let block_producer = sealed_block
@@ -171,7 +186,7 @@ pub trait FuelCoreLike: Sync + Send {
         &self,
         block_height: crate::BlockHeight,
     ) -> FuelCoreResult<FuelCoreSealedBlock> {
-        let height = block_height.as_ref().to_owned() as u32;
+        let height = block_height.as_ref().to_owned();
         let latest_view = self
             .onchain_database()
             .latest_view()
@@ -293,7 +308,7 @@ impl FuelCoreLike for FuelCore {
     fn get_tx_by_id(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<FuelCoreTransaction> {
+    ) -> FuelCoreResult<FuelCoreTypesTransaction> {
         let storage =
             self.database().on_chain().storage_as_ref::<Transactions>();
         let tx = storage.get(tx_id).map_err(FuelCoreError::Storage)?;
@@ -306,7 +321,7 @@ impl FuelCoreLike for FuelCore {
     fn get_tx_status(
         &self,
         tx_id: &FuelCoreBytes32,
-    ) -> FuelCoreResult<Option<FuelCoreTransactionStatus>> {
+    ) -> FuelCoreResult<Option<FuelCoreTransactionExecutionStatus>> {
         let offchain_database = self
             .database()
             .off_chain()
@@ -324,10 +339,13 @@ impl FuelCoreLike for FuelCore {
         let receipts = self
             .get_tx_status(tx_id)?
             .map(|status| match &status {
-                FuelCoreTransactionStatus::Success { receipts, .. }
-                | FuelCoreTransactionStatus::Failed { receipts, .. } => {
-                    Some(receipts.clone())
+                FuelCoreTransactionExecutionStatus::Success {
+                    receipts,
+                    ..
                 }
+                | FuelCoreTransactionExecutionStatus::Failed {
+                    receipts, ..
+                } => Some(receipts.clone()),
                 _ => None,
             })
             .unwrap_or_default();

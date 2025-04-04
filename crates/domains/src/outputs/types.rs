@@ -1,5 +1,8 @@
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{fuel_core::*, primitives::*};
 use serde::{Deserialize, Serialize};
+
+use crate::infra::record::ToPacket;
 
 // Output enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -11,6 +14,9 @@ pub enum Output {
     Variable(OutputVariable),
     ContractCreated(OutputContractCreated),
 }
+
+impl DataEncoder for Output {}
+impl ToPacket for Output {}
 
 impl From<&FuelCoreOutput> for Output {
     fn from(output: &FuelCoreOutput) -> Self {
@@ -59,7 +65,7 @@ impl From<&FuelCoreOutput> for Output {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -69,7 +75,7 @@ pub struct OutputCoin {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputChange {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -79,7 +85,7 @@ pub struct OutputChange {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputVariable {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -89,7 +95,7 @@ pub struct OutputVariable {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputContract {
     pub balance_root: Bytes32,
     pub input_index: u16,
@@ -109,51 +115,10 @@ impl From<&FuelCoreOutputContract> for OutputContract {
 #[derive(
     Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct OutputContractCreated {
     pub contract_id: ContractId,
     pub state_root: Bytes32,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum OutputType {
-    Coin,
-    Contract,
-    Change,
-    Variable,
-    ContractCreated,
-}
-
-impl OutputType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            OutputType::Coin => "coin",
-            OutputType::Contract => "contract",
-            OutputType::Change => "change",
-            OutputType::Variable => "variable",
-            OutputType::ContractCreated => "contract_created",
-        }
-    }
-}
-
-impl std::fmt::Display for OutputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for OutputType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "coin" => Ok(OutputType::Coin),
-            "contract" => Ok(OutputType::Contract),
-            "change" => Ok(OutputType::Change),
-            "variable" => Ok(OutputType::Variable),
-            "contract_created" => Ok(OutputType::ContractCreated),
-            _ => Err(format!("Invalid output type: {}", s)),
-        }
-    }
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -164,39 +129,39 @@ impl MockOutput {
     pub fn coin(amount: u64) -> Output {
         Output::Coin(OutputCoin {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn contract() -> Output {
         Output::Contract(OutputContract {
-            balance_root: Bytes32::default(),
+            balance_root: Bytes32::random(),
             input_index: 0,
-            state_root: Bytes32::default(),
+            state_root: Bytes32::random(),
         })
     }
 
     pub fn change(amount: u64) -> Output {
         Output::Change(OutputChange {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn variable(amount: u64) -> Output {
         Output::Variable(OutputVariable {
             amount: amount.into(),
-            asset_id: AssetId::default(),
-            to: Address::default(),
+            asset_id: AssetId::random(),
+            to: Address::random(),
         })
     }
 
     pub fn contract_created() -> Output {
         Output::ContractCreated(OutputContractCreated {
-            contract_id: ContractId::default(),
-            state_root: Bytes32::default(),
+            contract_id: ContractId::random(),
+            state_root: Bytes32::random(),
         })
     }
 

@@ -1,16 +1,18 @@
 use std::sync::Arc;
 
 use fuel_message_broker::NatsMessageBroker;
-use fuel_streams_domains::{predicates::Predicate, Subjects};
-use fuel_streams_store::{
-    db::Db,
-    record::{RecordEntity, RecordPacket},
+use fuel_streams_domains::{
+    infra::{
+        db::Db,
+        record::{RecordEntity, RecordPacket},
+    },
+    predicates::Predicate,
+    Subjects,
 };
-use fuel_streams_subject::subject::IntoSubject;
 use fuel_web_utils::api_key::ApiKeyRole;
 
 use super::{BoxedStream, Stream, StreamError};
-use crate::types::*;
+use crate::{subjects::*, types::*};
 
 #[derive(Clone, Debug)]
 pub struct FuelStreams {
@@ -80,54 +82,187 @@ impl FuelStreams {
         }
     }
 
-    pub async fn subscribe_by_entity(
+    pub async fn subscribe_by_subject(
         &self,
         api_key_role: &ApiKeyRole,
         subscription: &Subscription,
     ) -> Result<BoxedStream, StreamError> {
         let subject_payload = subscription.payload.clone();
         let deliver_policy = subscription.deliver_policy;
-        let subject: Subjects = subject_payload.clone().try_into()?;
-        let subject: Arc<dyn IntoSubject> = subject.into();
-        let subject_id = subject_payload.subject.as_str();
-        let record_entity = RecordEntity::try_from(subject_id)?;
-        let stream = match record_entity {
-            RecordEntity::Block => {
+        let subject: Subjects = subject_payload.try_into()?;
+        let stream = match subject {
+            Subjects::Block(blocks_subject) => {
+                let subject = Arc::new(blocks_subject);
                 self.blocks
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
-            RecordEntity::Transaction => {
-                self.transactions
-                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
-                    .await
-            }
-            RecordEntity::Input => {
+            Subjects::Inputs(inputs_subject) => {
+                let subject = Arc::new(inputs_subject);
                 self.inputs
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
-            RecordEntity::Output => {
+            Subjects::InputsCoin(inputs_coin_subject) => {
+                let subject = Arc::new(inputs_coin_subject);
+                self.inputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::InputsContract(inputs_contract_subject) => {
+                let subject = Arc::new(inputs_contract_subject);
+                self.inputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::InputsMessage(inputs_message_subject) => {
+                let subject = Arc::new(inputs_message_subject);
+                self.inputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::Outputs(outputs_subject) => {
+                let subject = Arc::new(outputs_subject);
                 self.outputs
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
-            RecordEntity::Receipt => {
-                self.receipts
+            Subjects::OutputsCoin(outputs_coin_subject) => {
+                let subject = Arc::new(outputs_coin_subject);
+                self.outputs
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
-            RecordEntity::Utxo => {
-                self.utxos
+            Subjects::OutputsContract(outputs_contract_subject) => {
+                let subject = Arc::new(outputs_contract_subject);
+                self.outputs
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
-            RecordEntity::Predicate => {
+            Subjects::OutputsChange(outputs_change_subject) => {
+                let subject = Arc::new(outputs_change_subject);
+                self.outputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::OutputsVariable(outputs_variable_subject) => {
+                let subject = Arc::new(outputs_variable_subject);
+                self.outputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::OutputsContractCreated(
+                outputs_contract_created_subject,
+            ) => {
+                let subject = Arc::new(outputs_contract_created_subject);
+                self.outputs
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::Predicates(predicates_subject) => {
+                let subject = Arc::new(predicates_subject);
                 self.predicates
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }
+            Subjects::Receipts(receipts_subject) => {
+                let subject = Arc::new(receipts_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsCall(receipts_call_subject) => {
+                let subject = Arc::new(receipts_call_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsReturn(receipts_return_subject) => {
+                let subject = Arc::new(receipts_return_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsReturnData(receipts_return_data_subject) => {
+                let subject = Arc::new(receipts_return_data_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsPanic(receipts_panic_subject) => {
+                let subject = Arc::new(receipts_panic_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsRevert(receipts_revert_subject) => {
+                let subject = Arc::new(receipts_revert_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsLog(receipts_log_subject) => {
+                let subject = Arc::new(receipts_log_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsLogData(receipts_log_data_subject) => {
+                let subject = Arc::new(receipts_log_data_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsTransfer(receipts_transfer_subject) => {
+                let subject = Arc::new(receipts_transfer_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsTransferOut(receipts_transfer_out_subject) => {
+                let subject = Arc::new(receipts_transfer_out_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsScriptResult(receipts_script_result_subject) => {
+                let subject = Arc::new(receipts_script_result_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsMessageOut(receipts_message_out_subject) => {
+                let subject = Arc::new(receipts_message_out_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsMint(receipts_mint_subject) => {
+                let subject = Arc::new(receipts_mint_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::ReceiptsBurn(receipts_burn_subject) => {
+                let subject = Arc::new(receipts_burn_subject);
+                self.receipts
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::Transactions(transactions_subject) => {
+                let subject = Arc::new(transactions_subject);
+                self.transactions
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::Utxos(utxos_subject) => {
+                let subject = Arc::new(utxos_subject);
+                self.utxos
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
         };
+
         Ok(Box::new(stream))
     }
 }

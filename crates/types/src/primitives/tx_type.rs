@@ -1,64 +1,67 @@
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
-use crate::fuel_core::FuelCoreTransaction;
+use serde::Serialize;
+
+use crate::{
+    fuel_core::FuelCoreTypesTransaction,
+    impl_enum_string_serialization,
+};
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    derive_more::Display,
+    derive_more::IsVariant,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionType {
     #[default]
+    #[display("create")]
     Create,
+    #[display("mint")]
     Mint,
+    #[display("script")]
     Script,
+    #[display("upgrade")]
     Upgrade,
+    #[display("upload")]
     Upload,
+    #[display("blob")]
     Blob,
 }
 
-impl TransactionType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Create => "create",
-            Self::Mint => "mint",
-            Self::Script => "script",
-            Self::Upgrade => "upgrade",
-            Self::Upload => "upload",
-            Self::Blob => "blob",
+impl TryFrom<&str> for TransactionType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match voca_rs::case::snake_case(s).as_str() {
+            "create" => Ok(TransactionType::Create),
+            "mint" => Ok(TransactionType::Mint),
+            "script" => Ok(TransactionType::Script),
+            "upgrade" => Ok(TransactionType::Upgrade),
+            "upload" => Ok(TransactionType::Upload),
+            "blob" => Ok(TransactionType::Blob),
+            _ => Err(format!("Unknown TransactionType: {}", s)),
         }
     }
 }
 
-impl std::fmt::Display for TransactionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
+impl_enum_string_serialization!(TransactionType, "transaction_type");
 
-impl std::str::FromStr for TransactionType {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            s if s == Self::Create.as_str() => Ok(Self::Create),
-            s if s == Self::Mint.as_str() => Ok(Self::Mint),
-            s if s == Self::Script.as_str() => Ok(Self::Script),
-            s if s == Self::Upgrade.as_str() => Ok(Self::Upgrade),
-            s if s == Self::Upload.as_str() => Ok(Self::Upload),
-            s if s == Self::Blob.as_str() => Ok(Self::Blob),
-            _ => Err(format!("Invalid transaction type: {s}")),
-        }
-    }
-}
-
-impl From<&FuelCoreTransaction> for TransactionType {
-    fn from(value: &FuelCoreTransaction) -> Self {
+impl From<&FuelCoreTypesTransaction> for TransactionType {
+    fn from(value: &FuelCoreTypesTransaction) -> Self {
         match value {
-            FuelCoreTransaction::Script(_) => TransactionType::Script,
-            FuelCoreTransaction::Create(_) => TransactionType::Create,
-            FuelCoreTransaction::Mint(_) => TransactionType::Mint,
-            FuelCoreTransaction::Upgrade(_) => TransactionType::Upgrade,
-            FuelCoreTransaction::Upload(_) => TransactionType::Upload,
-            FuelCoreTransaction::Blob(_) => TransactionType::Blob,
+            FuelCoreTypesTransaction::Script(_) => TransactionType::Script,
+            FuelCoreTypesTransaction::Create(_) => TransactionType::Create,
+            FuelCoreTypesTransaction::Mint(_) => TransactionType::Mint,
+            FuelCoreTypesTransaction::Upgrade(_) => TransactionType::Upgrade,
+            FuelCoreTypesTransaction::Upload(_) => TransactionType::Upload,
+            FuelCoreTypesTransaction::Blob(_) => TransactionType::Blob,
         }
     }
 }
@@ -78,28 +81,21 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_invalid() {
+    fn test_deserialize_mixed_case() {
         let json = json!("Mint");
         let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionType::Mint);
 
-        let json = json!({ "type": "Mint" });
+        let json = json!("MINT");
         let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TransactionType::Mint);
+    }
 
-        let json = json!({ "type": "mint" });
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
+    #[test]
+    fn test_deserialize_invalid() {
         let json = json!("invalid");
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({ "type": "invalid" });
-        let result: Result<TransactionType, _> = serde_json::from_value(json);
-        assert!(result.is_err());
-
-        let json = json!({});
         let result: Result<TransactionType, _> = serde_json::from_value(json);
         assert!(result.is_err());
     }
@@ -109,5 +105,28 @@ mod tests {
         let value = TransactionType::Mint;
         let serialized = serde_json::to_value(value).unwrap();
         assert_eq!(serialized, json!("mint"));
+    }
+
+    #[test]
+    fn test_case_insensitive_from_str() {
+        assert_eq!(
+            TransactionType::from_str("MINT").unwrap(),
+            TransactionType::Mint
+        );
+        assert_eq!(
+            TransactionType::from_str("mint").unwrap(),
+            TransactionType::Mint
+        );
+        assert_eq!(
+            TransactionType::from_str("Mint").unwrap(),
+            TransactionType::Mint
+        );
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(TransactionType::Mint.to_string(), "mint");
+        assert_eq!(TransactionType::Create.to_string(), "create");
+        assert_eq!(TransactionType::Script.to_string(), "script");
     }
 }

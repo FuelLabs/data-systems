@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fuel_streams_store::record::{DataEncoder, EncoderError};
+use fuel_data_parser::{DataEncoder, DataParserError};
 use fuel_streams_types::{
     Address,
     BlockTimestamp,
@@ -10,7 +10,7 @@ use fuel_streams_types::{
     FuelCoreError,
     FuelCoreLike,
     FuelCoreSealedBlock,
-    FuelCoreTransaction,
+    FuelCoreTypesTransaction,
     FuelCoreUniqueIdentifier,
     TxId,
 };
@@ -26,7 +26,7 @@ pub enum MsgPayloadError {
     #[error("Failed to fetch transaction status: {0}")]
     TransactionStatus(String),
     #[error(transparent)]
-    Serialization(#[from] EncoderError),
+    Serialization(#[from] DataParserError),
     #[error(transparent)]
     FuelCore(#[from] FuelCoreError),
 }
@@ -70,9 +70,7 @@ pub struct MsgPayload {
     pub namespace: Option<String>,
 }
 
-impl DataEncoder for MsgPayload {
-    type Err = MsgPayloadError;
-}
+impl DataEncoder for MsgPayload {}
 
 impl MsgPayload {
     pub async fn new(
@@ -115,6 +113,10 @@ impl MsgPayload {
         self.block.height
     }
 
+    pub fn block_producer(&self) -> Address {
+        self.block.producer.to_owned()
+    }
+
     pub fn block(&self) -> &Block {
         &self.block
     }
@@ -142,17 +144,17 @@ impl MsgPayload {
 
     pub async fn tx_from_fuel_core(
         fuel_core: &Arc<dyn FuelCoreLike>,
-        tx: &FuelCoreTransaction,
+        tx: &FuelCoreTypesTransaction,
     ) -> Result<Transaction, MsgPayloadError> {
         let chain_id = fuel_core.chain_id();
         let base_asset_id = fuel_core.base_asset_id();
         let tx_id = tx.id(chain_id);
-        let tx_status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
+        let status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
         let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
         Ok(Transaction::new(
             &tx_id.into(),
             tx,
-            &tx_status,
+            &status,
             base_asset_id,
             &receipts,
         ))
@@ -166,8 +168,8 @@ impl MsgPayload {
         if attempts > 5 {
             return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()));
         }
-        let tx_status = fuel_core.get_tx_status(tx_id)?;
-        match tx_status {
+        let status = fuel_core.get_tx_status(tx_id)?;
+        match status {
             Some(status) => Ok((&status).into()),
             _ => {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -187,13 +189,13 @@ pub struct MockMsgPayload(MsgPayload);
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockMsgPayload {
-    pub fn new(height: u32) -> Self {
+    pub fn new(height: BlockHeight) -> Self {
         use crate::mocks::*;
         let block = MockBlock::build(height);
         let chain_id = Arc::new(FuelCoreChainId::default());
         let base_asset_id = Arc::new(FuelCoreAssetId::default());
-        let block_producer = Arc::new(Address::default());
-        let block_height = Arc::new(BlockHeight::from(1_u32));
+        let block_producer = Arc::new(Address::random());
+        let block_height = Arc::new(height);
         let consensus = Arc::new(Consensus::default());
         let transactions = MockTransaction::all();
         let metadata = Metadata {
@@ -216,22 +218,22 @@ impl MockMsgPayload {
         self.0
     }
 
-    pub fn build(height: u32, namespace: &str) -> MsgPayload {
+    pub fn build(height: BlockHeight, namespace: &str) -> MsgPayload {
         let mut payload = Self::new(height);
         payload.0.namespace = Some(namespace.to_string());
         payload.0
     }
 
-    pub fn with_height(height: u32) -> Self {
+    pub fn with_height(height: BlockHeight) -> Self {
         use crate::mocks::*;
         let mut payload = Self::new(height);
         payload.0.block = MockBlock::build(height);
-        payload.0.metadata.block_height = Arc::new(BlockHeight::from(height));
+        payload.0.metadata.block_height = Arc::new(height);
         payload
     }
 
     pub fn with_transactions(
-        height: u32,
+        height: BlockHeight,
         transactions: Vec<Transaction>,
     ) -> Self {
         let mut payload = Self::new(height);
@@ -240,14 +242,14 @@ impl MockMsgPayload {
     }
 
     pub fn single_transaction(
-        height: u32,
-        tx_type: crate::transactions::TransactionType,
+        height: BlockHeight,
+        r#type: crate::transactions::TransactionType,
     ) -> Self {
         use crate::{mocks::*, transactions::TransactionType};
         let inputs = MockInput::all();
         let outputs = MockOutput::all();
         let receipts = MockReceipt::all();
-        let transaction = match tx_type {
+        let transaction = match r#type {
             TransactionType::Script => {
                 MockTransaction::script(inputs, outputs, receipts)
             }
@@ -277,6 +279,6 @@ impl MockMsgPayload {
 #[cfg(any(test, feature = "test-helpers"))]
 impl From<&Block> for MockMsgPayload {
     fn from(block: &Block) -> Self {
-        MockMsgPayload::new(block.height.into())
+        MockMsgPayload::new(block.height)
     }
 }

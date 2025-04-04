@@ -97,11 +97,6 @@ impl RetryService {
     }
 
     fn is_retryable_error(error: &ConsumerError) -> bool {
-        matches!(
-            error,
-            ConsumerError::DatabaseTimeout
-                | ConsumerError::Db(_)
-                | ConsumerError::Store(_)
-        )
+        matches!(error, ConsumerError::DatabaseTimeout | ConsumerError::Db(_))
     }
 }

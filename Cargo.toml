@@ -20,7 +20,7 @@ homepage = "https://fuel.network/"
 keywords = ["blockchain", "cryptocurrencies", "data-stream"]
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
-rust-version = "1.85.0"
+rust-version = "1.85.1"
 version = "0.0.28"
 
 [workspace.dependencies]
@@ -34,7 +34,11 @@ bytes = "1.10.1"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.32", features = ["derive", "env"] }
 dashmap = { version = "6.1.0", features = ["serde"] }
-derive_more = { version = "2.0.1", features = ["is_variant"] }
+derive_more = { version = "2.0.1", features = [
+  "is_variant",
+  "display",
+  "from_str",
+] }
 displaydoc = "0.2.5"
 dotenvy = "0.15.7"
 futures = "0.3.31"
@@ -86,25 +90,25 @@ tracing-subscriber = { version = "0.3.19", features = [
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
 # Fuel Core dependencies
-fuel-core = { version = "0.41.9", default-features = false, features = [
+fuel-core = { version = "0.42.0", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "0.41.9", default-features = false, features = [
+fuel-core-bin = { version = "0.42.0", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "0.41.9", default-features = false, features = [
+fuel-core-client = { version = "0.42.0", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "0.41.9" }
-fuel-core-poa = { version = "0.41.9", default-features = false }
-fuel-core-services = { version = "0.41.9", default-features = false }
-fuel-core-storage = { version = "0.41.9" }
-fuel-core-txpool = { version = "0.41.9" }
-fuel-core-types = { version = "0.41.9", default-features = false, features = [
+fuel-core-importer = { version = "0.42.0" }
+fuel-core-poa = { version = "0.42.0", default-features = false }
+fuel-core-services = { version = "0.42.0", default-features = false }
+fuel-core-storage = { version = "0.42.0" }
+fuel-core-txpool = { version = "0.42.0" }
+fuel-core-types = { version = "0.42.0", default-features = false, features = [
   "serde",
   "std",
 ] }
@@ -117,7 +121,6 @@ fuel-message-broker = { version = "0.0.28", path = "crates/message-broker" }
 fuel-streams = { version = "0.0.28", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.28", path = "crates/core" }
 fuel-streams-domains = { version = "0.0.28", path = "crates/domains" }
-fuel-streams-store = { version = "0.0.28", path = "crates/store" }
 fuel-streams-subject = { version = "0.0.28", path = "crates/subject" }
 fuel-streams-test = { version = "0.0.22", path = "crates/test" }
 fuel-streams-types = { version = "0.0.28", path = "crates/types" }

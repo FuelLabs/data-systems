@@ -2,7 +2,7 @@ use fuel_streams_subject::subject::*;
 use fuel_streams_types::*;
 use serde::{Deserialize, Serialize};
 
-use super::types::*;
+use super::{types::*, BlocksQuery};
 
 #[derive(
     Subject, Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq,
@@ -35,6 +35,16 @@ impl From<&Block> for BlocksSubject {
             producer: Some(block.producer.to_owned()),
             da_height: Some(block.header.da_height.to_owned()),
             height: Some(block.height.to_owned()),
+        }
+    }
+}
+
+impl From<BlocksSubject> for BlocksQuery {
+    fn from(subject: BlocksSubject) -> Self {
+        Self {
+            producer: subject.producer.clone(),
+            height: subject.height,
+            ..Default::default()
         }
     }
 }

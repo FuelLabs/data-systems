@@ -6,7 +6,7 @@ use std::{
 use async_trait::async_trait;
 use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
-use fuel_streams_store::db::{Db, DbConnectionOpts};
+use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_web_utils::{
     api_key::{ApiKeysManager, KeyStorage},
     server::state::StateProvider,
