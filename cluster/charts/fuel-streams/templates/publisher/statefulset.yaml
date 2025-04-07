@@ -19,6 +19,8 @@ spec:
           emptyDir: {}
         - name: var-dir
           emptyDir: {}
+        - name: cache-dir
+          emptyDir: {}
       initContainers:
         - name: update-{{ $publisher.storage.name }}
           image: alpine:latest
@@ -42,10 +44,14 @@ spec:
           args:
             - |
               mkdir -p /var/fuel-streams/tmp && \
-              chown -R 1000:1000 /var/fuel-streams
+              mkdir -p /.cache/wasmtime && \
+              chown -R 1000:1000 /var/fuel-streams && \
+              chown -R 1000:1000 /.cache
           volumeMounts:
             - name: var-dir
               mountPath: /var/fuel-streams
+            - name: cache-dir
+              mountPath: /.cache
           securityContext:
             runAsUser: 0
             runAsNonRoot: false
@@ -113,6 +119,8 @@ spec:
               readOnly: false
             - name: var-dir
               mountPath: /var/fuel-streams
+            - name: cache-dir
+              mountPath: /.cache
   volumeClaimTemplates:
     - metadata:
         name: {{ $publisher.storage.name }}
