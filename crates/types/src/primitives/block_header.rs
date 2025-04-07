@@ -1,4 +1,11 @@
-use chrono::Utc;
+use std::collections::HashMap;
+
+use apache_avro::{
+    schema::{derive::AvroSchemaComponent, Name},
+    AvroSchema,
+    Schema,
+};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use wrapped_int::WrappedU32;
 
@@ -51,9 +58,26 @@ impl utoipa::PartialSchema for BlockTime {
     }
 }
 
+impl AvroSchemaComponent for BlockTime {
+    fn get_schema_in_ctxt(
+        _ctxt: &mut HashMap<Name, Schema>,
+        _namespace: &Option<String>,
+    ) -> Schema {
+        // Use Avro's `long` type (i64) for serialization
+        Schema::Long
+    }
+}
+
 // Header type
 #[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema,
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Default,
+    utoipa::ToSchema,
+    AvroSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub struct BlockHeader {
@@ -71,6 +95,15 @@ pub struct BlockHeader {
     pub transactions_count: u16,
     pub transactions_root: Bytes32,
     pub version: BlockHeaderVersion,
+}
+
+impl BlockHeader {
+    pub fn get_timestamp_utc(&self) -> DateTime<Utc> {
+        let t = self.time.0;
+        let tai64_timestamp = FuelCoreTai64Timestamp(t);
+        let unix_timestamp = tai64_timestamp.to_unix();
+        Utc.timestamp_opt(unix_timestamp, 0).unwrap()
+    }
 }
 
 impl From<&FuelCoreBlockHeader> for BlockHeader {
@@ -112,6 +145,7 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
     Default,
     utoipa::ToSchema,
     derive_more::Display,
+    apache_avro::AvroSchema,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BlockHeaderVersion {

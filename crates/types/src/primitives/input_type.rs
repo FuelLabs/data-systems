@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use apache_avro::AvroSchema;
 use serde::Serialize;
 
 use crate::impl_enum_string_serialization;
@@ -14,6 +15,7 @@ use crate::impl_enum_string_serialization;
     derive_more::Display,
     derive_more::IsVariant,
     utoipa::ToSchema,
+    AvroSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum InputType {

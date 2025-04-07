@@ -1,10 +1,16 @@
+use fuel_data_parser::DataEncoder;
+
 use crate::{
     declare_integer_wrapper,
     fuel_core::FuelCoreBlockHeight,
+    impl_avro_schema_for_wrapped_int,
     impl_utoipa_for_integer_wrapper,
 };
 
 declare_integer_wrapper!(BlockHeight, u32, i64);
+impl_avro_schema_for_wrapped_int!(BlockHeight, u32);
+
+impl DataEncoder for BlockHeight {}
 
 impl_utoipa_for_integer_wrapper!(
     BlockHeight,

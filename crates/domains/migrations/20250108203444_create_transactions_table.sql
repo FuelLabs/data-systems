@@ -78,7 +78,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     "outputs_count" INTEGER,
     -- timestamps
     "block_time" TIMESTAMPTZ NOT NULL,
-    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- constraints
+    FOREIGN KEY ("block_height") REFERENCES "blocks" ("block_height")
 );
 
 -- Indexes for the main table

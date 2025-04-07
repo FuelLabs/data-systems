@@ -1,0 +1,54 @@
+[package]
+name = "sv-dune"
+description = "Fuel library for processing live and historical data for dune analytics"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish = false
+
+[[bin]]
+name = "sv-dune"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+apache-avro.workspace = true
+async-trait.workspace = true
+aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.71.0"
+bytes.workspace = true
+clap.workspace = true
+derive_more.workspace = true
+displaydoc.workspace = true
+dotenvy.workspace = true
+fuel-data-parser.workspace = true
+fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
+fuel-streams-types = { workspace = true, features = ["test-helpers"] }
+fuel-web-utils = { workspace = true, features = ["test-helpers"] }
+rand.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+surrealkv = "0.9.1"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = [
+  "rt-multi-thread",
+  "macros",
+  "test-util",
+] }
+tracing-test = "0.2.0"
+
+[features]
+default = []
+test-helpers = []
+bench-helpers = []

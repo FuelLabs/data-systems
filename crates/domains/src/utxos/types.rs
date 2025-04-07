@@ -9,7 +9,6 @@ use crate::{inputs::Input, outputs::Output};
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
 pub struct Utxo {
     pub status: UtxoStatus,
     pub r#type: UtxoType,

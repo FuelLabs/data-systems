@@ -17,7 +17,6 @@ use crate::infra::{
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, PartialEq, utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
 pub struct InputsQuery {
     pub tx_id: Option<TxId>,
     pub tx_index: Option<i32>,

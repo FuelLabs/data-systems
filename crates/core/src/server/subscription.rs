@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use super::DeliverPolicy;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub struct Subscription {
     pub id: String,
     pub deliver_policy: DeliverPolicy,

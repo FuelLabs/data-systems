@@ -27,3 +27,6 @@ values-publisher-env.yaml
 .aider*
 file_contents.txt
 **/file_contents.txt
+localstack-data
+services/dune/schemas
+services/dune/output

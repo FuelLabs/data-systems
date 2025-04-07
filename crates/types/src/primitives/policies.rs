@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{WrappedU32, WrappedU64};
+use crate::{WrappedU32, WrappedU64};
 
 #[derive(
     Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash,

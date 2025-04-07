@@ -25,14 +25,15 @@ version = "0.0.28"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
-async-nats = "0.39.0"
+apache-avro = { version = "0.17.0", features = ["derive"] }
+async-nats = "0.40.0"
 async-stream = "0.3.6"
-async-trait = "0.1.87"
-axum = { version = "0.8.1", features = ["json", "ws", "query"] }
+async-trait = "0.1.88"
+axum = { version = "0.8.3", features = ["json", "ws", "query"] }
 bincode = "2.0.1"
 bytes = "1.10.1"
 chrono = { version = "0.4.40", features = ["serde"] }
-clap = { version = "4.5.32", features = ["derive", "env"] }
+clap = { version = "4.5.35", features = ["derive", "env"] }
 dashmap = { version = "6.1.0", features = ["serde"] }
 derive_more = { version = "2.0.1", features = [
   "is_variant",
@@ -66,7 +67,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 test-case = "3.3.1"
 thiserror = "2.0.12"
-time = { version = "0.3", features = ["serde"] }
+time = { version = "0.3.41", features = ["serde"] }
 tokio = { version = "1.44.1", features = [
   "io-util",
   "macros",

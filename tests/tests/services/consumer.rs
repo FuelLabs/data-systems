@@ -275,7 +275,7 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
     let msg_payload = MockMsgPayload::new(BlockHeight::random())
         .into_inner()
         .with_namespace(&prefix);
-    let encoded_payload = msg_payload.encode().await?;
+    let encoded_payload = msg_payload.encode_json()?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());
     let block_height = msg_payload.block_height().into();
     let subject = NatsSubject::BlockSubmitted(block_height);

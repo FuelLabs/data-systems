@@ -131,7 +131,7 @@ impl BlockExecutor {
         let semaphore = self.semaphore.clone();
         let fuel_streams = self.fuel_streams.clone();
         let payload = msg.payload();
-        let msg_payload = MsgPayload::decode(&payload).await?.arc();
+        let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
         join_set.spawn({
             let semaphore = semaphore.clone();
@@ -217,7 +217,7 @@ async fn handle_stores(
         .with_retry("store_insertions", || async {
             let mut tx = db.pool.begin().await?;
 
-            // First insert all packets unless UTXOs and predicates
+            // First insert blocks
             for packet in packets.iter() {
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;

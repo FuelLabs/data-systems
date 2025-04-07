@@ -49,6 +49,7 @@ jobs:
             fuel-streams-test
             fuel-web-utils
             sv-api
+            sv-dune
             sv-webserver
             sv-publisher
             sv-consumer
@@ -252,6 +253,7 @@ jobs:
           - fuel-streams-test
           - fuel-web-utils
           - sv-api
+          - sv-dune
           - sv-consumer
           - sv-publisher
           - sv-webserver

@@ -621,3 +621,47 @@ prometheus:
       network: true
       node: true
       prometheus: true
+
+# ------------------------------------------------------------------------------
+# Dune configuration
+# ------------------------------------------------------------------------------
+
+dune:
+  enabled: true
+  network: mainnet
+
+  image:
+    repository: ghcr.io/fuellabs/sv-dune
+    pullPolicy: Always
+    tag: latest
+
+  storage:
+    name: dune-state
+    size: 10Mi # Small size since we only store block height state
+    storageClass: "gp3-generic"
+    accessMode: ReadWriteOnce
+    mountPath: /data/dune
+
+  cronjob:
+    schedule: "0 * * * *" # Run every hour
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    concurrencyPolicy: Forbid
+
+  config:
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    podSecurityContext: {}
+    containerSecurityContext: {}
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
