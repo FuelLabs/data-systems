@@ -31,4 +31,11 @@ pub struct Cli {
         help = "Type of storage to use. Options are 'S3' or 'File'."
     )]
     pub storage_type: String,
+
+    #[arg(
+        long,
+        value_name = "MAX_BLOCKS_TO_STORE",
+        env = "MAX_BLOCKS_TO_STORE"
+    )]
+    pub max_blocks_to_store: Option<u16>,
 }

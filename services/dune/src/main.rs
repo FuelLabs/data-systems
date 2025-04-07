@@ -1,7 +1,6 @@
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 use anyhow::Result;
-use bytes::Bytes;
 use clap::Parser;
 use fuel_data_parser::DataEncoder;
 use fuel_streams_domains::{
@@ -11,9 +10,8 @@ use fuel_streams_domains::{
 };
 use fuel_streams_types::BlockHeight;
 use fuel_web_utils::{shutdown::ShutdownController, tracing::init_tracing};
-use surrealkv::{Options, Store};
 use sv_dune::{
-    helpers::BatchCalculator,
+    helpers::{BatchCalculator, Store},
     processor::BlocksProcessor,
     Cli,
     DuneError,
@@ -32,7 +30,7 @@ async fn main() -> Result<()> {
 
     let opts = QueryOptions::default();
     let last_height_indexed = Block::find_last_block_height(&db, &opts).await?;
-    let last_height_saved = get_last_block_saved(&store).await?;
+    let last_height_saved = store.get_last_block_saved().await?;
     if *last_height_saved >= *last_height_indexed {
         tracing::info!("Last block saved is up to date");
         return Ok(());
@@ -71,19 +69,7 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, DuneError> {
 }
 
 fn setup_store(cli: &Cli) -> Result<Store> {
-    let mut opts = Options::new();
-    let storage_dir = match cli.storage_file_dir.as_ref() {
-        Some(file_dir) => Path::new(file_dir).to_path_buf(),
-        None => {
-            let manifest_dir = env!("CARGO_MANIFEST_DIR");
-            let manifest_dir = Path::new(manifest_dir).join("output/storage");
-            manifest_dir.to_path_buf()
-        }
-    };
-    opts.dir = storage_dir.to_owned();
-    opts.disk_persistence = true;
-    let store = Store::new(opts)?;
-    Ok(store)
+    Store::new(cli.storage_file_dir.as_deref())
 }
 
 async fn process_blocks(
@@ -112,6 +98,18 @@ async fn process_blocks(
             break;
         }
 
+        // Check if we should continue processing based on max_blocks
+        if !store
+            .should_continue_processing(cli.max_blocks_to_store)
+            .await?
+        {
+            tracing::info!(
+                "Reached maximum blocks to store ({}), stopping processing",
+                cli.max_blocks_to_store.unwrap()
+            );
+            break;
+        }
+
         let start_time = Instant::now();
         let batch_end = std::cmp::min(
             current_start + (BATCH_SIZE - 1) as u32,
@@ -131,7 +129,8 @@ async fn process_blocks(
 
         process_batch(&processor, &blocks_and_txs, shutdown).await?;
         if let Some((block, _)) = blocks_and_txs.last() {
-            save_last_block(store, block).await?;
+            store.save_last_block(block).await?;
+            store.save_total_blocks(blocks_and_txs.len() as u16).await?;
         }
         tracing::info!("Batch processed in {:?}", start_time.elapsed());
         current_start = batch_end + 1;
@@ -228,31 +227,6 @@ async fn get_initial_height(
     } else {
         Ok(*last_height_saved)
     }
-}
-
-async fn get_last_block_saved(store: &Store) -> anyhow::Result<BlockHeight> {
-    let block_height = {
-        let mut txn = store.begin()?;
-        let key = Bytes::from("last_block_saved");
-        match txn.get(&key)? {
-            Some(value) => {
-                Ok::<BlockHeight, DuneError>(serde_json::from_slice(&value)?)
-            }
-            None => Ok(BlockHeight::from(0)),
-        }
-    }?;
-    Ok(block_height)
-}
-
-async fn save_last_block(store: &Store, block: &Block) -> Result<()> {
-    {
-        let mut txn = store.begin()?;
-        let key = Bytes::from("last_block_saved");
-        let value = block.height.encode_json()?;
-        txn.set(&key, &value)?;
-        txn.commit()?;
-    }
-    Ok(())
 }
 
 async fn get_blocks_and_transactions(
