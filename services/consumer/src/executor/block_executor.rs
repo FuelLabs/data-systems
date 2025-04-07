@@ -217,7 +217,7 @@ async fn handle_stores(
         .with_retry("store_insertions", || async {
             let mut tx = db.pool.begin().await?;
 
-            // First insert all packets unless UTXOs and predicates
+            // First insert blocks
             for packet in packets.iter() {
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;

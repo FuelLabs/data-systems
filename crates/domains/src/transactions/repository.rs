@@ -412,6 +412,12 @@ pub mod tests {
 
     use super::*;
     use crate::{
+        blocks::{
+            packets::DynBlockSubject,
+            repository::tests::insert_block,
+            Block,
+            BlockDbItem,
+        },
         infra::{
             Db,
             DbConnectionOpts,
@@ -561,12 +567,23 @@ pub mod tests {
         Ok(())
     }
 
+    async fn insert_random_block(
+        db: &Arc<Db>,
+        height: BlockHeight,
+        namespace: &str,
+    ) -> Result<(BlockDbItem, Block, DynBlockSubject)> {
+        let (db_item, block, subject) =
+            insert_block(db, height, namespace).await?;
+        Ok((db_item, block, subject))
+    }
+
     pub async fn insert_transaction(
         db: &Arc<Db>,
         tx: Option<Transaction>,
         height: BlockHeight,
         namespace: &str,
     ) -> Result<(TransactionDbItem, Transaction, DynTransactionSubject)> {
+        let _ = insert_random_block(db, height, namespace).await?;
         let tx = tx
             .unwrap_or_else(|| MockTransaction::script(vec![], vec![], vec![]));
         let subject = DynTransactionSubject::new(&tx, height, 0);
