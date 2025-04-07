@@ -9,7 +9,7 @@ kind: CronJob
 metadata:
   {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
 spec:
-  schedule: {{ $cronjob.schedule }}
+  schedule: {{ $cronjob.schedule | quote }}
   concurrencyPolicy: {{ $cronjob.concurrencyPolicy }}
   successfulJobsHistoryLimit: {{ $cronjob.successfulJobsHistoryLimit }}
   failedJobsHistoryLimit: {{ $cronjob.failedJobsHistoryLimit }}

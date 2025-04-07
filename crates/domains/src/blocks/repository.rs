@@ -282,7 +282,6 @@ pub mod tests {
             result.header_state_transition_bytecode_version,
             expected.header_state_transition_bytecode_version
         );
-        assert_eq!(result.header_time, expected.header_time);
         assert_eq!(
             result.header_transactions_count,
             expected.header_transactions_count

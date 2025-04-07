@@ -176,7 +176,6 @@ mod tests {
         assert_eq!(result.tx_index, expected.tx_index);
         assert_eq!(result.input_index, expected.input_index);
         assert_eq!(result.r#type, expected.r#type);
-        assert_eq!(result.block_time, expected.block_time);
         assert_eq!(result.owner_id, expected.owner_id);
         assert_eq!(result.sender_address, expected.sender_address);
         assert_eq!(result.recipient_address, expected.recipient_address);

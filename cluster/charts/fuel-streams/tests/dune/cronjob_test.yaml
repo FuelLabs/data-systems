@@ -1,5 +1,5 @@
 # Test suite for Dune CronJob
-suite: test dune cronjob
+suite: Testing Dune CronJob
 templates:
   - dune/cronjob.yaml
 tests:
@@ -9,7 +9,7 @@ tests:
       dune:
         enabled: true
         cronjob:
-          schedule: "*/5 * * * *"
+          schedule: "*/15 * * * *"
           concurrencyPolicy: "Forbid"
           successfulJobsHistoryLimit: 3
           failedJobsHistoryLimit: 1
@@ -21,7 +21,7 @@ tests:
           value: RELEASE-NAME-fuel-streams-dune
       - equal:
           path: spec.schedule
-          value: "*/5 * * * *"
+          value: "*/15 * * * *"
       - equal:
           path: spec.concurrencyPolicy
           value: "Forbid"
@@ -47,7 +47,6 @@ tests:
       - hasDocuments:
           count: 0
 
-  # Test 3: Verify container configuration
   - it: should configure container correctly
     set:
       dune.enabled: true
@@ -58,11 +57,14 @@ tests:
         name: "dune-state"
         mountPath: "/data/dune"
     asserts:
-      - contains:
-          path: spec.jobTemplate.spec.template.spec.containers[0].args
+      - isSubset:
+          path: spec.jobTemplate.spec.template.spec.containers[0]
           content:
-            - "--network"
-            - "mainnet"
+            args:
+              - --network
+              - mainnet
+              - --storage-file-dir
+              - /data/dune
       - contains:
           path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
           content:
