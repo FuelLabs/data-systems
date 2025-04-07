@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::BlockTimestamp;
+use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use sqlx::{Acquire, PgExecutor, Postgres};
 
 use super::{
@@ -11,7 +11,9 @@ use super::{
 };
 use crate::infra::{
     repository::{Repository, RepositoryError, RepositoryResult},
+    Db,
     DbItem,
+    QueryOptions,
 };
 
 #[async_trait]
@@ -368,6 +370,35 @@ impl Repository for Transaction {
 
         db_tx.commit().await?;
         Ok(record)
+    }
+}
+
+impl Transaction {
+    pub async fn find_in_height_range(
+        db: &Db,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        options: &QueryOptions,
+    ) -> RepositoryResult<Vec<TransactionDbItem>> {
+        let select = "SELECT * FROM transactions".to_string();
+        let mut query_builder = sqlx::QueryBuilder::new(select);
+        query_builder
+            .push(" WHERE block_height >= ")
+            .push_bind(start_height.into_inner() as i64)
+            .push(" AND block_height <= ")
+            .push_bind(end_height.into_inner() as i64);
+
+        if let Some(ns) = options.namespace.as_ref() {
+            query_builder
+                .push(" AND subject LIKE ")
+                .push_bind(format!("{}%", ns));
+        }
+
+        query_builder.push(" ORDER BY block_height ASC");
+        let query = query_builder.build_query_as::<TransactionDbItem>();
+        let records = query.fetch_all(&db.pool).await?;
+
+        Ok(records)
     }
 }
 
@@ -806,6 +837,36 @@ pub mod tests {
         assert_eq!(results_default, results_asc);
         assert_eq!(results_default, results_desc);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_transactions_in_height_range() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let transactions = create_transactions(&db, &namespace, 10).await?;
+        let start_height = transactions[1].block_height;
+        let end_height = transactions[5].block_height;
+        let mut options = QueryOptions::default();
+        options.with_namespace(Some(namespace));
+
+        let results = Transaction::find_in_height_range(
+            &db,
+            start_height,
+            end_height,
+            &options,
+        )
+        .await?;
+
+        assert_eq!(
+            results.len(),
+            5,
+            "Should return exactly 5 transactions in range"
+        );
+        assert_result(&results[0], &transactions[1]);
+        assert_result(&results[1], &transactions[2]);
+        assert_result(&results[2], &transactions[3]);
+        assert_result(&results[3], &transactions[4]);
+        assert_result(&results[4], &transactions[5]);
         Ok(())
     }
 }

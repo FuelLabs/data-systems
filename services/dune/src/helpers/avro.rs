@@ -21,9 +21,7 @@ pub enum AvroParserError {
 }
 
 pub struct AvroWriter<T> {
-    writer: Vec<u8>,
-    schema: Schema,
-    codec: Codec,
+    writer: Writer<'static, Vec<u8>>, // We'll adjust this
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -31,24 +29,26 @@ impl<T> AvroWriter<T>
 where
     T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
 {
-    fn new(schema: Schema, codec: Codec) -> Self {
+    pub fn new(schema: Schema, codec: Codec) -> Self {
+        let schema_static: &'static Schema = Box::leak(Box::new(schema));
+        let writer = Writer::builder()
+            .schema(schema_static)
+            .codec(codec)
+            .writer(Vec::new())
+            .build();
         Self {
-            writer: Vec::new(),
-            schema,
-            codec,
+            writer,
             _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn serialize(&mut self, value: &T) -> Result<Vec<u8>, AvroParserError> {
-        let mut writer = Writer::builder()
-            .schema(&self.schema)
-            .codec(self.codec)
-            .writer(&mut self.writer)
-            .build();
+    pub fn append(&mut self, value: &T) -> Result<(), AvroParserError> {
+        self.writer.append_ser(value)?;
+        Ok(())
+    }
 
-        writer.append_ser(value)?;
-        Ok(writer.into_inner()?.to_vec())
+    pub fn into_inner(self) -> Result<Vec<u8>, AvroParserError> {
+        Ok(self.writer.into_inner()?.to_vec())
     }
 }
 
@@ -179,7 +179,8 @@ mod tests {
 
         // serialize
         let mut avro_writer = parser.writer_with_schema::<Test>().unwrap();
-        let serialized = avro_writer.serialize(&test).unwrap();
+        avro_writer.append(&test).unwrap();
+        let serialized = avro_writer.into_inner().unwrap();
 
         // deserialize
         let deserialized = parser

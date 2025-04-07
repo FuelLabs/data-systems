@@ -363,7 +363,6 @@ impl S3Storage {
         Ok(storage)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub async fn ensure_bucket(&self) -> Result<(), StorageError> {
         // Check if bucket exists
         let exists = self

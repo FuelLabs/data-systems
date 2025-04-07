@@ -23,6 +23,7 @@ fuel-core-importer.workspace = true
 fuel-core-services.workspace = true
 fuel-core-storage.workspace = true
 fuel-core-types.workspace = true
+fuel-data-parser.workspace = true
 fuel-tx.workspace = true
 fuel-vm.workspace = true
 hex.workspace = true

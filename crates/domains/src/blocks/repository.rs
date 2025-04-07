@@ -1,12 +1,18 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
+use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
 use sqlx::{Acquire, PgExecutor, Postgres};
 
 use super::{Block, BlockDbItem, BlocksQuery};
-use crate::infra::{
-    db::Db,
-    repository::{Repository, RepositoryResult},
-    QueryOptions,
+use crate::{
+    infra::{
+        db::Db,
+        repository::{Repository, RepositoryResult},
+        QueryOptions,
+    },
+    transactions::{Transaction, TransactionsQuery},
 };
 
 #[async_trait]
@@ -142,6 +148,75 @@ impl Block {
         let query = query_builder.build_query_as::<(i64,)>();
         let record: Option<(i64,)> = query.fetch_optional(&db.pool).await?;
         Ok(record.map(|(height,)| height.into()).unwrap_or_default())
+    }
+
+    pub async fn find_first_block_height(
+        db: &Db,
+        options: &QueryOptions,
+    ) -> RepositoryResult<BlockHeight> {
+        let select = "SELECT block_height FROM blocks".to_string();
+        let mut query_builder = sqlx::QueryBuilder::new(select);
+        if let Some(ns) = options.namespace.as_ref() {
+            query_builder
+                .push(" WHERE subject LIKE ")
+                .push_bind(format!("{}%", ns));
+        }
+        query_builder.push(" ORDER BY block_height ASC LIMIT 1");
+        let query = query_builder.build_query_as::<(i64,)>();
+        let record: Option<(i64,)> = query.fetch_optional(&db.pool).await?;
+        Ok(record.map(|(height,)| height.into()).unwrap_or_default())
+    }
+
+    pub async fn find_in_height_range(
+        db: &Db,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        options: &QueryOptions,
+    ) -> RepositoryResult<Vec<BlockDbItem>> {
+        let select = "SELECT * FROM blocks".to_string();
+        let mut query_builder = sqlx::QueryBuilder::new(select);
+        query_builder
+            .push(" WHERE block_height >= ")
+            .push_bind(start_height.into_inner() as i64)
+            .push(" AND block_height <= ")
+            .push_bind(end_height.into_inner() as i64);
+
+        if let Some(ns) = options.namespace.as_ref() {
+            query_builder
+                .push(" AND subject LIKE ")
+                .push_bind(format!("{}%", ns));
+        }
+
+        query_builder.push(" ORDER BY block_height ASC");
+        let query = query_builder.build_query_as::<BlockDbItem>();
+        let records = query.fetch_all(&db.pool).await?;
+
+        Ok(records)
+    }
+
+    pub async fn transactions_from_db(
+        &self,
+        db: &Arc<Db>,
+    ) -> RepositoryResult<Vec<Transaction>> {
+        let mut all_transactions =
+            Vec::with_capacity(self.transaction_ids.len());
+        for chunk in self.transaction_ids.chunks(50) {
+            let mut db_tx = db.pool_ref().begin().await?;
+            for tx_id in chunk {
+                let txs_query = TransactionsQuery {
+                    block_height: Some(self.height),
+                    tx_id: Some(tx_id.to_owned()),
+                    ..Default::default()
+                };
+                let db_item =
+                    Transaction::find_one_with_db_tx(&mut db_tx, &txs_query)
+                        .await?;
+                let transaction = Transaction::decode_json(&db_item.value)?;
+                all_transactions.push(transaction);
+            }
+            db_tx.commit().await?;
+        }
+        Ok(all_transactions)
     }
 }
 
@@ -477,6 +552,30 @@ pub mod tests {
         let last_height = Block::find_last_block_height(&db, &options).await?;
 
         assert_eq!(last_height, blocks.last().unwrap().block_height);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_blocks_in_height_range() -> Result<()> {
+        let (db, namespace) = setup_db().await?;
+        let blocks = create_blocks(&db, &namespace, 5).await?;
+        let start_height = blocks[1].block_height;
+        let end_height = blocks[3].block_height;
+        let mut options = QueryOptions::default();
+        options.with_namespace(Some(namespace));
+
+        let results = Block::find_in_height_range(
+            &db,
+            start_height,
+            end_height,
+            &options,
+        )
+        .await?;
+
+        assert_eq!(results.len(), 3, "Should return exactly 3 blocks in range");
+        assert_result(&results[0], &blocks[1]);
+        assert_result(&results[1], &blocks[2]);
+        assert_result(&results[2], &blocks[3]);
         Ok(())
     }
 }

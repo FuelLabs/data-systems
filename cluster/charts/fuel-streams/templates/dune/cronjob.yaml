@@ -1,0 +1,40 @@
+{{- $dune := .Values.dune -}}
+{{- $cronjob := $dune.cronjob -}}
+{{- $name := "dune" -}}
+{{- $component := "dune" -}}
+{{- $serviceDict := dict "root" . "context" $dune "name" $name "component" $component -}}
+{{- if $dune.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
+spec:
+  schedule: {{ $cronjob.schedule }}
+  concurrencyPolicy: {{ $cronjob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ $cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        {{- include "k8s.template-metadata" $serviceDict | nindent 8 }}
+        spec:
+          {{- include "k8s.pod-config" $serviceDict | nindent 10 }}
+          containers:
+            - name: dune
+              {{- include "k8s.container-config.image" $serviceDict | nindent 14 }}
+              command: ["/usr/src/sv-dune"]
+              args:
+                - "--network"
+                - "{{ $dune.network }}"
+                - "--storage-file-dir"
+                - "{{ $dune.storage.mountPath }}"
+              {{- include "k8s.container-config" $serviceDict | nindent 14 }}
+              volumeMounts:
+                - name: {{ $dune.storage.name }}
+                  mountPath: {{ $dune.storage.mountPath }}
+          volumes:
+            - name: {{ $dune.storage.name }}
+              persistentVolumeClaim:
+                claimName: {{ include "fuel-streams.fullname" . }}-dune-state
+          restartPolicy: OnFailure
+{{- end }}

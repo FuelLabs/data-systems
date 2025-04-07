@@ -1,5 +1,9 @@
 use apache_avro::AvroSchema;
-use fuel_streams_domains::receipts::Receipt;
+use fuel_streams_domains::{
+    blocks::Block,
+    receipts::Receipt,
+    transactions::Transaction,
+};
 use fuel_streams_types::{
     FuelCoreScriptExecutionResult,
     FuelCoreWord,
@@ -348,6 +352,20 @@ impl AvroReceipt {
     }
 }
 
+impl From<(&Block, &Transaction, &Receipt)> for AvroReceipt {
+    fn from((block, tx, receipt): (&Block, &Transaction, &Receipt)) -> Self {
+        let timestamp = block.header.get_timestamp_utc().timestamp();
+        let metadata = ReceiptMetadata {
+            block_time: Some(timestamp),
+            block_height: Some(block.height.0 as i64),
+            block_version: Some(block.version.to_string()),
+            block_producer: Some(block.producer.0.to_vec()),
+            transaction_id: Some(tx.id.0.to_vec()),
+        };
+        Self::new(receipt, &metadata)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use apache_avro::AvroSchema;
@@ -370,7 +388,8 @@ mod tests {
         // Test Avro serialization/deserialization
         let mut avro_writer =
             parser.writer_with_schema::<AvroReceipt>().unwrap();
-        let serialized = avro_writer.serialize(&avro_receipt).unwrap();
+        avro_writer.append(&avro_receipt).unwrap();
+        let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser
             .reader_with_schema::<AvroReceipt>()
             .unwrap()

@@ -1,5 +1,5 @@
 use apache_avro::AvroSchema;
-use fuel_streams_domains::transactions::Transaction;
+use fuel_streams_domains::{blocks::Block, transactions::Transaction};
 use fuel_streams_types::{
     FuelCoreUpgradePurpose,
     Policies as DomainPolicies,
@@ -322,6 +322,19 @@ impl AvroTransaction {
     }
 }
 
+impl From<(&Block, &Transaction)> for AvroTransaction {
+    fn from((block, transaction): (&Block, &Transaction)) -> Self {
+        AvroTransaction::new(
+            transaction,
+            Some(block.height.into()),
+            Some(block.header.get_timestamp_utc().timestamp()),
+            Some(block.id.as_ref().to_vec()),
+            Some(block.version.to_string()),
+            Some(block.producer.as_ref().to_vec()),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use fuel_streams_domains::{
@@ -347,7 +360,8 @@ mod tests {
         // Test Avro serialization/deserialization
         let mut avro_writer =
             parser.writer_with_schema::<AvroTransaction>().unwrap();
-        let serialized = avro_writer.serialize(&avro_tx).unwrap();
+        avro_writer.append(&avro_tx).unwrap();
+        let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser
             .reader_with_schema::<AvroTransaction>()
             .unwrap()

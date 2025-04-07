@@ -404,3 +404,28 @@ subjects-schema:
 	@cat scripts/subjects-schema/schema.json | pbcopy
 	@echo "Subjects schema copied to clipboard"
 	@rm -rf scripts/subjects-schema/schema.json
+
+# ------------------------------------------------------------
+#  Dune Run Commands
+# ------------------------------------------------------------
+
+run-dune: MODE="dev"
+run-dune: NETWORK="local"
+run-dune: DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fuel_streams?sslmode=disable"
+run-dune: STORAGE_TYPE="File"
+run-dune: STORAGE_FILE_DIR=""
+run-dune: EXTRA_ARGS=""
+run-dune:
+	@./scripts/run_dune.sh \
+		--mode $(MODE) \
+		--network $(NETWORK) \
+		--db-url "$(DATABASE_URL)" \
+		--storage-type $(STORAGE_TYPE) \
+		$(if $(STORAGE_FILE_DIR),--storage-file-dir "$(STORAGE_FILE_DIR)") \
+		$(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
+
+run-dune-dev:
+	$(MAKE) run-dune MODE=dev
+
+run-dune-profiling:
+	$(MAKE) run-dune MODE=profiling

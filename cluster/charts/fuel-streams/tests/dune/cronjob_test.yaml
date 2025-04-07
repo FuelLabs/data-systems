@@ -1,0 +1,120 @@
+# Test suite for Dune CronJob
+suite: test dune cronjob
+templates:
+  - dune/cronjob.yaml
+tests:
+  # Test 1: Ensure CronJob is created when enabled
+  - it: should create cronjob when enabled
+    set:
+      dune:
+        enabled: true
+        cronjob:
+          schedule: "*/5 * * * *"
+          concurrencyPolicy: "Forbid"
+          successfulJobsHistoryLimit: 3
+          failedJobsHistoryLimit: 1
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-fuel-streams-dune
+      - equal:
+          path: spec.schedule
+          value: "*/5 * * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: "Forbid"
+      - equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 3
+      - equal:
+          path: spec.failedJobsHistoryLimit
+          value: 1
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].name
+          value: "dune"
+      - matchRegex:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          pattern: ghcr.io/fuellabs/sv-dune:latest
+
+  # Test 2: Ensure CronJob is not created when disabled
+  - it: should not create cronjob when disabled
+    set:
+      dune:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # Test 3: Verify container configuration
+  - it: should configure container correctly
+    set:
+      dune.enabled: true
+      dune.network: "mainnet"
+      dune.cronjob:
+        schedule: "0 * * * *"
+      dune.storage:
+        name: "dune-state"
+        mountPath: "/data/dune"
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].args
+          content:
+            - "--network"
+            - "mainnet"
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content:
+            name: "dune-state"
+            mountPath: "/data/dune"
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: "dune-state"
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-fuel-streams-dune-state
+
+  # Test 4: Verify resource requests and limits from values
+  - it: should apply resource requests and limits
+    set:
+      dune.enabled: true
+      dune.config:
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu
+          value: "100m"
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.memory
+          value: "256Mi"
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.cpu
+          value: "500m"
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory
+          value: "512Mi"
+
+  # Test 5: Verify security context
+  - it: should apply default security context
+    set:
+      dune.enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.securityContext.fsGroup
+          value: 1000
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true

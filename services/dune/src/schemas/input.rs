@@ -179,7 +179,8 @@ mod tests {
 
         // Test Avro serialization/deserialization
         let mut avro_writer = parser.writer_with_schema::<Inputs>().unwrap();
-        let serialized = avro_writer.serialize(&avro_input).unwrap();
+        avro_writer.append(&avro_input).unwrap();
+        let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser
             .reader_with_schema::<Inputs>()
             .unwrap()

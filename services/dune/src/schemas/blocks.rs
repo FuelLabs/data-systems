@@ -67,8 +67,8 @@ pub struct AvroBlock {
 }
 
 impl AvroBlock {
-    pub fn new(block: Block, transactions: Vec<AvroTransaction>) -> Self {
-        let (consensus_type, genesis_data, poa_data) = match block.consensus {
+    pub fn new(block: &Block, transactions: Vec<AvroTransaction>) -> Self {
+        let (consensus_type, genesis_data, poa_data) = match &block.consensus {
             Consensus::Genesis(genesis) => (
                 Some("Genesis".to_string()),
                 Some(Genesis {
@@ -152,7 +152,8 @@ mod tests {
 
         // Test Avro serialization/deserialization
         let mut avro_writer = parser.writer_with_schema::<AvroBlock>().unwrap();
-        let serialized = avro_writer.serialize(&avro_block).unwrap();
+        avro_writer.append(&avro_block).unwrap();
+        let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser
             .reader_with_schema::<AvroBlock>()
             .unwrap()
@@ -215,7 +216,7 @@ mod tests {
         let block = create_test_block();
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(block.clone(), vec![]);
+        let avro_block = AvroBlock::new(&block, vec![]);
 
         test_block_serialization(parser, avro_block);
     }
@@ -233,8 +234,7 @@ mod tests {
         );
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(block.clone(), vec![]);
-
+        let avro_block = AvroBlock::new(&block, vec![]);
         test_block_serialization(parser, avro_block);
     }
 
@@ -259,8 +259,7 @@ mod tests {
         block.producer = Address::random();
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(block, vec![]);
-
+        let avro_block = AvroBlock::new(&block, vec![]);
         test_block_serialization(parser, avro_block);
     }
 
