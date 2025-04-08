@@ -4,6 +4,7 @@ use fuel_streams_domains::{
     blocks::subjects::*,
     inputs::subjects::*,
     outputs::subjects::*,
+    predicates::PredicatesSubject,
     receipts::subjects::*,
     transactions::subjects::*,
     utxos::subjects::*,
@@ -38,6 +39,8 @@ fn main() {
         "contract_created".to_string(),
         outputs_contract_created_schema,
     );
+
+    let predicates_schema = PredicatesSubject::new().schema();
 
     let mut receipts_schema = ReceiptsSubject::new().schema();
     let receipts_call_schema = ReceiptsCallSubject::new().schema();
@@ -82,6 +85,7 @@ fn main() {
         ("transactions".to_string(), transaction_schema),
         ("inputs".to_string(), inputs_schema),
         ("outputs".to_string(), outputs_schema),
+        ("predicates".to_string(), predicates_schema),
         ("receipts".to_string(), receipts_schema),
         ("utxos".to_string(), utxos_schema),
     ]);
