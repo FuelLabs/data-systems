@@ -91,30 +91,28 @@ tracing-subscriber = { version = "0.3.19", features = [
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
 # Fuel Core dependencies
-fuel-core = { version = "0.42.0", default-features = false, features = [
+fuel-core = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "0.42.0", default-features = false, features = [
+fuel-core-bin = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "0.42.0", default-features = false, features = [
+fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "0.42.0" }
-fuel-core-poa = { version = "0.42.0", default-features = false }
-fuel-core-services = { version = "0.42.0", default-features = false }
-fuel-core-storage = { version = "0.42.0" }
-fuel-core-txpool = { version = "0.42.0" }
-fuel-core-types = { version = "0.42.0", default-features = false, features = [
+fuel-core-importer = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3" }
+fuel-core-poa = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false }
+fuel-core-services = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false }
+fuel-core-storage = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3" }
+fuel-core-txpool = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3" }
+fuel-core-types = { git = "https://github.com/fuellabs/fuel-core", rev = "36dacc3", default-features = false, features = [
   "serde",
   "std",
 ] }
-fuel-tx = { version = "0.60.0" }
-fuel-vm = { version = "0.60.0" }
 
 # Internal dependencies
 fuel-data-parser = { version = "0.0.28", path = "crates/data-parser" }
@@ -130,7 +128,7 @@ subject-derive = { version = "0.0.28", path = "crates/subject/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["anyhow", "fuel-core", "fuel-tx", "fuel-vm", "tokio"]
+ignored = ["anyhow", "fuel-core", "tokio"]
 
 [profile.release]
 codegen-units = 1

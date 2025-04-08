@@ -254,147 +254,314 @@ async fn get_blocks_and_transactions(
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-
     use anyhow::Result;
     use fuel_streams_domains::mocks::{MockBlock, MockTransaction};
-    use pretty_assertions::assert_eq;
-    use sv_dune::{helpers::AvroParser, schemas::AvroBlock};
+    use sv_dune::{
+        helpers::AvroParser,
+        s3::{S3Storage, S3StorageOpts, Storage},
+        schemas::AvroBlock,
+    };
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_process_blocks_range_serialization() -> Result<()> {
-        let processor = BlocksProcessor::new("File").await?;
-        let mut blocks_and_txs = Vec::new();
+    mod file_storage {
+        use pretty_assertions::assert_eq;
 
-        // Create 10 blocks with transactions
-        for _ in 0..10 {
-            let block = MockBlock::random();
-            let txs = MockTransaction::all();
-            blocks_and_txs.push((block, txs.clone()));
+        use super::*;
+
+        #[tokio::test]
+        async fn test_process_blocks_range_serialization() -> Result<()> {
+            let processor = BlocksProcessor::new("File").await?;
+            let mut blocks_and_txs = Vec::new();
+
+            // Create 10 blocks with transactions
+            for _ in 0..10 {
+                let block = MockBlock::random();
+                let txs = MockTransaction::all();
+                blocks_and_txs.push((block, txs.clone()));
+            }
+
+            // Sort blocks by height like in the repository
+            blocks_and_txs.sort_by_key(|(block, _)| block.height);
+
+            let first_block = &blocks_and_txs.first().unwrap().0;
+            let last_block = &blocks_and_txs.last().unwrap().0;
+            let first_height = first_block.height;
+            let last_height = last_block.height;
+
+            // Process the blocks
+            let created = processor
+                .process_blocks_range(
+                    &blocks_and_txs,
+                    first_height,
+                    last_height,
+                )
+                .await?;
+
+            // Deserialize using Avro
+            let file_contents = std::fs::read(&created)?;
+            let parser = AvroParser::default();
+            let deserialized = parser
+                .reader_with_schema::<AvroBlock>()
+                .unwrap()
+                .deserialize(&file_contents)
+                .unwrap();
+
+            // Verify the deserialized data
+            assert_eq!(
+                deserialized.len(),
+                blocks_and_txs.len(),
+                "Should have same number of blocks"
+            );
+
+            // Check each block's data is in order
+            for (i, deserialized_block) in deserialized.iter().enumerate() {
+                let (original_block, original_txs) = &blocks_and_txs[i];
+
+                // Verify block metadata
+                assert_eq!(
+                    deserialized_block.height,
+                    Some(original_block.height.0 as i64),
+                    "Block height should match"
+                );
+                assert_eq!(
+                    deserialized_block.version,
+                    Some(original_block.version.to_string()),
+                    "Block version should match"
+                );
+                assert_eq!(
+                    deserialized_block.producer,
+                    Some(original_block.producer.as_ref().to_vec()),
+                    "Block producer should match"
+                );
+
+                // Verify transactions
+                assert_eq!(
+                    deserialized_block.transactions.len(),
+                    original_txs.len(),
+                    "Number of transactions should match"
+                );
+
+                // Verify transaction data
+                for (j, deserialized_tx) in
+                    deserialized_block.transactions.iter().enumerate()
+                {
+                    let original_tx = &original_txs[j];
+                    assert_eq!(
+                        deserialized_tx.id,
+                        Some(original_tx.id.as_ref().to_vec()),
+                        "Transaction ID should match"
+                    );
+                    assert_eq!(
+                        deserialized_tx.block_height,
+                        Some(original_block.height.0 as i64),
+                        "Transaction block height should match"
+                    );
+                }
+            }
+
+            // Clean up the test file
+            let _ = std::fs::remove_file(&created);
+
+            Ok(())
         }
 
-        // Sort blocks by height like in the repository
-        blocks_and_txs.sort_by_key(|(block, _)| block.height);
+        #[tokio::test]
+        async fn test_process_empty_blocks_range() -> Result<()> {
+            let processor = BlocksProcessor::new("File").await?;
 
-        let first_block = &blocks_and_txs.first().unwrap().0;
-        let last_block = &blocks_and_txs.last().unwrap().0;
-        let first_height = first_block.height;
-        let last_height = last_block.height;
+            // Create a single empty block for testing
+            let block = MockBlock::random();
+            let height = block.height;
+            let blocks_and_txs = vec![(block.clone(), vec![])];
 
-        // Process the blocks
-        let created = processor
-            .process_blocks_range(&blocks_and_txs, first_height, last_height)
-            .await?;
+            // Process the empty block
+            let created = processor
+                .process_blocks_range(&blocks_and_txs, height, height)
+                .await?;
 
-        // Deserialize using Avro
-        let file_contents = fs::read(&created)?;
-        let parser = AvroParser::default();
-        let deserialized = parser
-            .reader_with_schema::<AvroBlock>()
-            .unwrap()
-            .deserialize(&file_contents)
-            .unwrap();
+            // Deserialize and verify
+            let file_contents = std::fs::read(&created)?;
+            let parser = AvroParser::default();
+            let deserialized = parser
+                .reader_with_schema::<AvroBlock>()
+                .unwrap()
+                .deserialize(&file_contents)
+                .unwrap();
 
-        // Verify the deserialized data
-        assert_eq!(
-            deserialized.len(),
-            blocks_and_txs.len(),
-            "Should have same number of blocks"
-        );
-
-        // Check each block's data is in order
-        for (i, deserialized_block) in deserialized.iter().enumerate() {
-            let (original_block, original_txs) = &blocks_and_txs[i];
-
-            // Verify block metadata
+            assert_eq!(deserialized.len(), 1, "Should have one block");
+            let deserialized_block = &deserialized[0];
             assert_eq!(
                 deserialized_block.height,
-                Some(original_block.height.0 as i64),
+                Some(block.height.0 as i64),
                 "Block height should match"
             );
             assert_eq!(
-                deserialized_block.version,
-                Some(original_block.version.to_string()),
-                "Block version should match"
-            );
-            assert_eq!(
-                deserialized_block.producer,
-                Some(original_block.producer.as_ref().to_vec()),
-                "Block producer should match"
-            );
-
-            // Verify transactions
-            assert_eq!(
                 deserialized_block.transactions.len(),
-                original_txs.len(),
-                "Number of transactions should match"
+                0,
+                "Should have no transactions"
             );
 
-            // Verify transaction data
-            for (j, deserialized_tx) in
-                deserialized_block.transactions.iter().enumerate()
-            {
-                let original_tx = &original_txs[j];
-                assert_eq!(
-                    deserialized_tx.id,
-                    Some(original_tx.id.as_ref().to_vec()),
-                    "Transaction ID should match"
-                );
-                assert_eq!(
-                    deserialized_tx.block_height,
-                    Some(original_block.height.0 as i64),
-                    "Transaction block height should match"
-                );
-            }
+            // Clean up
+            let _ = std::fs::remove_file(&created);
+
+            Ok(())
         }
-
-        // Clean up the test file
-        let _ = fs::remove_file(&created);
-
-        Ok(())
     }
 
-    #[tokio::test]
-    async fn test_process_empty_blocks_range() -> Result<()> {
-        let processor = BlocksProcessor::new("File").await?;
+    mod s3_storage {
+        use pretty_assertions::assert_eq;
+        use sv_dune::s3::StorageConfig;
 
-        // Create a single empty block for testing
-        let block = MockBlock::random();
-        let height = block.height;
-        let blocks_and_txs = vec![(block.clone(), vec![])];
+        use super::*;
 
-        // Process the empty block
-        let created = processor
-            .process_blocks_range(&blocks_and_txs, height, height)
-            .await?;
+        #[tokio::test]
+        async fn test_process_blocks_range_serialization() -> Result<()> {
+            let processor = BlocksProcessor::new("S3").await?;
+            let mut blocks_and_txs = Vec::new();
 
-        // Deserialize and verify
-        let file_contents = fs::read(&created)?;
-        let parser = AvroParser::default();
-        let deserialized = parser
-            .reader_with_schema::<AvroBlock>()
-            .unwrap()
-            .deserialize(&file_contents)
-            .unwrap();
+            // Create 10 blocks with transactions
+            for _ in 0..10 {
+                let block = MockBlock::random();
+                let txs = MockTransaction::all();
+                blocks_and_txs.push((block, txs.clone()));
+            }
 
-        assert_eq!(deserialized.len(), 1, "Should have one block");
-        let deserialized_block = &deserialized[0];
-        assert_eq!(
-            deserialized_block.height,
-            Some(block.height.0 as i64),
-            "Block height should match"
-        );
-        assert_eq!(
-            deserialized_block.transactions.len(),
-            0,
-            "Should have no transactions"
-        );
+            // Sort blocks by height like in the repository
+            blocks_and_txs.sort_by_key(|(block, _)| block.height);
 
-        // Clean up
-        let _ = fs::remove_file(&created);
+            let first_block = &blocks_and_txs.first().unwrap().0;
+            let last_block = &blocks_and_txs.last().unwrap().0;
+            let first_height = first_block.height;
+            let last_height = last_block.height;
 
-        Ok(())
+            // Process the blocks
+            let s3_key = processor
+                .process_blocks_range(
+                    &blocks_and_txs,
+                    first_height,
+                    last_height,
+                )
+                .await?;
+
+            // Get the S3 storage client to retrieve and verify the data
+            let s3_storage_opts = S3StorageOpts::admin_opts();
+            let s3_storage = S3Storage::new(s3_storage_opts).await?;
+
+            // Retrieve the data from S3
+            let data = s3_storage.retrieve(&s3_key).await?;
+
+            // Deserialize using Avro
+            let parser = AvroParser::default();
+            let deserialized = parser
+                .reader_with_schema::<AvroBlock>()
+                .unwrap()
+                .deserialize(&data)
+                .unwrap();
+
+            // Verify the deserialized data
+            assert_eq!(
+                deserialized.len(),
+                blocks_and_txs.len(),
+                "Should have same number of blocks"
+            );
+
+            // Check each block's data is in order
+            for (i, deserialized_block) in deserialized.iter().enumerate() {
+                let (original_block, original_txs) = &blocks_and_txs[i];
+
+                // Verify block metadata
+                assert_eq!(
+                    deserialized_block.height,
+                    Some(original_block.height.0 as i64),
+                    "Block height should match"
+                );
+                assert_eq!(
+                    deserialized_block.version,
+                    Some(original_block.version.to_string()),
+                    "Block version should match"
+                );
+                assert_eq!(
+                    deserialized_block.producer,
+                    Some(original_block.producer.as_ref().to_vec()),
+                    "Block producer should match"
+                );
+
+                // Verify transactions
+                assert_eq!(
+                    deserialized_block.transactions.len(),
+                    original_txs.len(),
+                    "Number of transactions should match"
+                );
+
+                // Verify transaction data
+                for (j, deserialized_tx) in
+                    deserialized_block.transactions.iter().enumerate()
+                {
+                    let original_tx = &original_txs[j];
+                    assert_eq!(
+                        deserialized_tx.id,
+                        Some(original_tx.id.as_ref().to_vec()),
+                        "Transaction ID should match"
+                    );
+                    assert_eq!(
+                        deserialized_tx.block_height,
+                        Some(original_block.height.0 as i64),
+                        "Transaction block height should match"
+                    );
+                }
+            }
+
+            // Clean up - delete the test object from S3
+            s3_storage.delete(&s3_key).await?;
+
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn test_process_empty_blocks_range() -> Result<()> {
+            let processor = BlocksProcessor::new("S3").await?;
+
+            // Create a single empty block for testing
+            let block = MockBlock::random();
+            let height = block.height;
+            let blocks_and_txs = vec![(block.clone(), vec![])];
+
+            // Process the empty block
+            let s3_key = processor
+                .process_blocks_range(&blocks_and_txs, height, height)
+                .await?;
+
+            // Get the S3 storage client to retrieve and verify the data
+            let s3_storage_opts = S3StorageOpts::admin_opts();
+            let s3_storage = S3Storage::new(s3_storage_opts).await?;
+
+            // Retrieve and verify
+            let data = s3_storage.retrieve(&s3_key).await?;
+            let parser = AvroParser::default();
+            let deserialized = parser
+                .reader_with_schema::<AvroBlock>()
+                .unwrap()
+                .deserialize(&data)
+                .unwrap();
+
+            assert_eq!(deserialized.len(), 1, "Should have one block");
+            let deserialized_block = &deserialized[0];
+            assert_eq!(
+                deserialized_block.height,
+                Some(block.height.0 as i64),
+                "Block height should match"
+            );
+            assert_eq!(
+                deserialized_block.transactions.len(),
+                0,
+                "Should have no transactions"
+            );
+
+            // Clean up - delete the test object from S3
+            s3_storage.delete(&s3_key).await?;
+
+            Ok(())
+        }
     }
 }

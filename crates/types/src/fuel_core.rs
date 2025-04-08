@@ -81,7 +81,7 @@ pub use fuel_core_types::{
             ImportResult as FuelCoreImportResult,
             SharedImportResult as FuelCoreSharedImportResult,
         },
-        txpool::{
+        transaction_status::{
             TransactionExecutionStatus as FuelCoreTransactionExecutionStatus,
             TransactionStatus as FuelCoreTransactionStatus,
         },

@@ -1,6 +1,7 @@
+use fuel_core_types::fuel_tx::policies::PolicyType;
 use serde::{Deserialize, Serialize};
 
-use crate::{WrappedU32, WrappedU64};
+use crate::{fuel_core::FuelCorePolicies, WrappedU32, WrappedU64};
 
 #[derive(
     Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash,
@@ -35,21 +36,17 @@ impl TryFrom<String> for Policies {
     }
 }
 
-impl From<fuel_tx::policies::Policies> for Policies {
-    fn from(policies: fuel_tx::policies::Policies) -> Self {
+impl From<FuelCorePolicies> for Policies {
+    fn from(policies: FuelCorePolicies) -> Self {
         Self {
-            tip: policies
-                .get(fuel_tx::policies::PolicyType::Tip)
-                .map(WrappedU64::from),
+            tip: policies.get(PolicyType::Tip).map(WrappedU64::from),
             maturity: policies
-                .get(fuel_tx::policies::PolicyType::Maturity)
+                .get(PolicyType::Maturity)
                 .map(|v| WrappedU32::from(v as u32)),
             witness_limit: policies
-                .get(fuel_tx::policies::PolicyType::WitnessLimit)
+                .get(PolicyType::WitnessLimit)
                 .map(WrappedU64::from),
-            max_fee: policies
-                .get(fuel_tx::policies::PolicyType::MaxFee)
-                .map(WrappedU64::from),
+            max_fee: policies.get(PolicyType::MaxFee).map(WrappedU64::from),
         }
     }
 }

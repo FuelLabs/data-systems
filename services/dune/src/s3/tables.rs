@@ -74,6 +74,6 @@ impl S3KeyBuilder {
         end_block: BlockHeight,
     ) -> String {
         let filename = format!("{:010}-{:010}.avro", start_block, end_block);
-        format!("{}/{}/{}", self.chain, self.table, filename)
+        format!("v1/{}/{}/{}", self.chain, self.table, filename)
     }
 }
