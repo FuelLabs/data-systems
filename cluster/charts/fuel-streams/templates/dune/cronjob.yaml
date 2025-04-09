@@ -2,6 +2,7 @@
 {{- $cronjob := $dune.cronjob -}}
 {{- $name := "dune" -}}
 {{- $component := "dune" -}}
+{{- $pvcName := printf "%s-dune-state" (include "fuel-streams.fullname" .) -}}
 {{- $serviceDict := dict "root" . "context" $dune "name" $name "component" $component -}}
 {{- if $dune.enabled -}}
 apiVersion: batch/v1
@@ -30,11 +31,11 @@ spec:
                 - "{{ $dune.storage.mountPath }}"
               {{- include "k8s.container-config" $serviceDict | nindent 14 }}
               volumeMounts:
-                - name: {{ $dune.storage.name }}
+                - name: dune-state
                   mountPath: {{ $dune.storage.mountPath }}
           volumes:
-            - name: {{ $dune.storage.name }}
+            - name: dune-state
               persistentVolumeClaim:
-                claimName: {{ include "fuel-streams.fullname" . }}-dune-state
+                claimName: {{ $pvcName }}
           restartPolicy: OnFailure
 {{- end }}

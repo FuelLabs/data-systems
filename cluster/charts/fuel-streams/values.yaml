@@ -420,7 +420,6 @@ dune:
     tag: latest
 
   storage:
-    name: dune-state
     size: 10Mi # Small size since we only store block height state
     storageClass: "gp3-generic"
     accessMode: ReadWriteOnce

@@ -100,7 +100,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_is_upgrade ON transactions (is_upgra
 CREATE INDEX IF NOT EXISTS idx_transactions_is_upload ON transactions (is_upload);
 CREATE INDEX IF NOT EXISTS idx_transactions_inputs_count ON transactions (inputs_count);
 CREATE INDEX IF NOT EXISTS idx_transactions_outputs_count ON transactions (outputs_count);
-CREATE INDEX IF NOT EXISTS idx_transactions_script ON transactions (script);
 CREATE INDEX IF NOT EXISTS idx_transactions_block_time ON transactions (block_time);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions (created_at);
 
@@ -256,7 +255,6 @@ CREATE TABLE "transaction_proof_set" (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transaction_proof_set_tx_id ON transaction_proof_set (tx_id);
-CREATE INDEX IF NOT EXISTS idx_transaction_proof_set_proof_hash ON transaction_proof_set (proof_hash);
 CREATE INDEX IF NOT EXISTS idx_transaction_proof_set_block_height ON transaction_proof_set (block_height);
 CREATE INDEX IF NOT EXISTS idx_transaction_proof_set_block_time ON transaction_proof_set (block_time);
 CREATE INDEX IF NOT EXISTS idx_transaction_proof_set_created_at ON transaction_proof_set (created_at);
@@ -283,3 +281,6 @@ CREATE INDEX IF NOT EXISTS idx_transaction_policies_tx_id ON transaction_policie
 CREATE INDEX IF NOT EXISTS idx_transaction_policies_block_height ON transaction_policies (block_height);
 CREATE INDEX IF NOT EXISTS idx_transaction_policies_block_time ON transaction_policies (block_time);
 CREATE INDEX IF NOT EXISTS idx_transaction_policies_created_at ON transaction_policies (created_at);
+
+DROP INDEX IF EXISTS idx_transactions_script;
+DROP INDEX IF EXISTS idx_transaction_proof_set_proof_hash;

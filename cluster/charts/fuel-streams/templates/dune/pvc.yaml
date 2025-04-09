@@ -2,7 +2,7 @@
 {{- $storage := $dune.storage }}
 {{- $component := "dune" -}}
 {{- $pvcName := printf "%s-dune-state" (include "fuel-streams.fullname" .) -}}
-{{- $storageDict := dict "root" . "context" $storage "name" "dune-storage" "component" $component -}}
+{{- $storageDict := dict "root" . "context" $storage "name" $pvcName "component" $component -}}
 {{- if $dune.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
