@@ -225,7 +225,6 @@ jobs:
       AWS_STORAGE_ENV: local
       AWS_ENDPOINT_URL: http://localhost:4566
       AWS_REGION: us-east-1
-      AWS_S3_ENABLED: false
       AWS_S3_BUCKET_NAME: fuel-streams-local
       STORAGE_MAX_RETRIES: 5
     services:

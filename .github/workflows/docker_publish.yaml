@@ -45,6 +45,8 @@ jobs:
             image: cluster/docker/sv-consumer.Dockerfile
           - name: sv-api
             image: cluster/docker/sv-api.Dockerfile
+          - name: sv-dune
+            image: cluster/docker/sv-dune.Dockerfile
     steps:
       - uses: actions/checkout@v4
 
