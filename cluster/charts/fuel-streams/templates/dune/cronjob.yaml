@@ -2,7 +2,6 @@
 {{- $cronjob := $dune.cronjob -}}
 {{- $name := "dune" -}}
 {{- $component := "dune" -}}
-{{- $pvcName := printf "%s-dune-state" (include "fuel-streams.fullname" .) -}}
 {{- $serviceDict := dict "root" . "context" $dune "name" $name "component" $component -}}
 {{- if $dune.enabled -}}
 apiVersion: batch/v1
@@ -36,6 +35,6 @@ spec:
           volumes:
             - name: dune-state
               persistentVolumeClaim:
-                claimName: {{ $pvcName }}
+                claimName: {{ include "fuel-streams.fullname" . }}-dune-state
           restartPolicy: OnFailure
 {{- end }}
