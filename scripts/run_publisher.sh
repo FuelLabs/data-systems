@@ -56,7 +56,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         --extra-args)
-            EXTRA_ARGS="$2"
+            ARGS="$2"
             shift 2
             ;;
         --from-height)
@@ -90,8 +90,8 @@ echo "  → Mode: $MODE"
 echo "  → Fuel Block Consumer Port: $PORT"
 echo "  → Telemetry Port: $TELEMETRY_PORT"
 echo "  → From Height: $FROM_HEIGHT"
-if [ -n "$EXTRA_ARGS" ]; then
-    echo "→ Extra Arguments: $EXTRA_ARGS"
+if [ -n "$ARGS" ]; then
+    echo "→ Extra Arguments: $ARGS"
 fi
 
 # Environment Variables
@@ -136,8 +136,8 @@ COMMON_ARGS=(
 
 # Execute based on mode
 if [ "$MODE" == "dev" ]; then
-    cargo run -p sv-publisher -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-publisher -- "${COMMON_ARGS[@]}" ${ARGS}
 else
     cargo build --profile profiling --package sv-publisher
-    samply record ./target/profiling/sv-publisher "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    samply record ./target/profiling/sv-publisher "${COMMON_ARGS[@]}" ${ARGS}
 fi

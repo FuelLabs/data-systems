@@ -6,7 +6,7 @@ set -e
 # Load environment variables with defaults
 PORT=${PORT:-9004}
 MODE=${MODE:-dev}
-EXTRA_ARGS=${EXTRA_ARGS:-""}
+ARGS=${ARGS:-""}
 
 # ------------------------------
 # Function to Display Usage
@@ -36,7 +36,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         --extra-args)
-            EXTRA_ARGS="$2"
+            ARGS="$2"
             shift 2
             ;;
         --help)
@@ -63,8 +63,8 @@ echo -e "=========================================="
 echo "Runtime Settings:"
 echo "→ Mode: ${MODE:-dev}"
 echo "→ API Port: ${PORT:-9004}"
-if [ -n "$EXTRA_ARGS" ]; then
-    echo "→ Extra Arguments: $EXTRA_ARGS"
+if [ -n "$ARGS" ]; then
+    echo "→ Extra Arguments: $ARGS"
 fi
 
 echo -e "==========================================\n"
@@ -76,8 +76,8 @@ COMMON_ARGS=(
 
 # Execute based on mode
 if [ "${MODE:-dev}" == "dev" ]; then
-    cargo run -p sv-api -- "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    cargo run -p sv-api -- "${COMMON_ARGS[@]}" ${ARGS}
 else
     cargo build --profile profiling --package sv-api
-    samply record ./target/profiling/sv-api "${COMMON_ARGS[@]}" ${EXTRA_ARGS}
+    samply record ./target/profiling/sv-api "${COMMON_ARGS[@]}" ${ARGS}
 fi

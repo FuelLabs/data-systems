@@ -209,7 +209,12 @@ docs-serve: docs
 # ------------------------------------------------------------
 
 load-test:
-	cargo run -p load-tester -- --network staging --ws-url "wss://stream-staging.fuel.network" --api-key "your_api_key" --max-subscriptions 10 --step-size 1
+	cargo run -p load-tester -- \
+		--network staging \
+		--ws-url "wss://stream-staging.fuel.network" \
+		--api-key "your_api_key" \
+		--max-subscriptions 10 \
+		--step-size 1
 
 bench:
 	cargo bench -p data-parser
@@ -223,10 +228,15 @@ run-publisher: MODE="dev"
 run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="9001"
 run-publisher: NATS_URL="localhost:4222"
-run-publisher: EXTRA_ARGS=""
+run-publisher: ARGS=""
 run-publisher: FROM_HEIGHT="0"
 run-publisher: check-network
-	@./scripts/run_publisher.sh --mode $(MODE) --network $(NETWORK) --telemetry-port $(TELEMETRY_PORT) --from-height $(FROM_HEIGHT) --extra-args $(EXTRA_ARGS)
+	@./scripts/run_publisher.sh \
+		--mode $(MODE) \
+		--network $(NETWORK) \
+		--telemetry-port $(TELEMETRY_PORT) \
+		--from-height $(FROM_HEIGHT) \
+		--extra-args $(ARGS)
 
 run-publisher-mainnet-dev:
 	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0
@@ -259,10 +269,14 @@ run-webserver: NETWORK="testnet"
 run-webserver: MODE="dev"
 run-webserver: PORT="9003"
 run-webserver: NATS_URL="nats://localhost:4222"
-run-webserver: EXTRA_ARGS=""
+run-webserver: ARGS=""
 run-webserver: RUST_LOG="info"
 run-webserver: check-network
-	@RUST_LOG="$(RUST_LOG)" ./scripts/run_webserver.sh --mode $(MODE) --port $(PORT) --nats-url $(NATS_URL) --extra-args $(EXTRA_ARGS)
+	@RUST_LOG="$(RUST_LOG)" ./scripts/run_webserver.sh \
+		--mode $(MODE) \
+		--port $(PORT) \
+		--nats-url $(NATS_URL) \
+		--extra-args $(ARGS)
 
 run-webserver-mainnet-dev:
 	$(MAKE) run-webserver NETWORK=mainnet MODE=dev
@@ -282,9 +296,12 @@ run-webserver-testnet-profiling:
 
 run-api: MODE="dev"
 run-api: PORT="9004"
-run-api: EXTRA_ARGS=""
+run-api: ARGS=""
 run-api: check-network
-	@./scripts/run_api.sh --mode $(MODE) --port $(PORT) --extra-args $(EXTRA_ARGS)
+	@./scripts/run_api.sh \
+		--mode $(MODE) \
+		--port $(PORT) \
+		--extra-args $(ARGS)
 
 run-api-mainnet-dev:
 	$(MAKE) run-api NETWORK=mainnet MODE=dev
@@ -299,6 +316,21 @@ run-api-testnet-profiling:
 	$(MAKE) run-api NETWORK=testnet MODE=profiling
 
 # ------------------------------------------------------------
+#  Dune Run Commands
+# ------------------------------------------------------------
+
+run-dune: MODE="dev"
+run-dune: ARGS=""
+run-dune:
+	@./scripts/run_dune.sh --mode $(MODE) $(ARGS)
+
+run-dune-dev:
+	$(MAKE) run-dune MODE=dev
+
+run-dune-profiling:
+	$(MAKE) run-dune MODE=profiling
+
+# ------------------------------------------------------------
 #  Docker Compose
 # ------------------------------------------------------------
 
@@ -308,7 +340,11 @@ DOCKER_SERVICES := nats docker postgres monitoring s3
 run-docker-compose: PROFILE="all"
 run-docker-compose:
 	@./scripts/set_env.sh
-	@docker compose -f cluster/docker/docker-compose.yml --profile $(PROFILE) --env-file .env $(COMMAND)
+	@docker compose \
+		-f cluster/docker/docker-compose.yml \
+		--profile $(PROFILE) \
+		--env-file .env \
+		$(COMMAND)
 
 # Common docker-compose commands
 define make-docker-commands
@@ -404,28 +440,3 @@ subjects-schema:
 	@cat scripts/subjects-schema/schema.json | pbcopy
 	@echo "Subjects schema copied to clipboard"
 	@rm -rf scripts/subjects-schema/schema.json
-
-# ------------------------------------------------------------
-#  Dune Run Commands
-# ------------------------------------------------------------
-
-run-dune: MODE="dev"
-run-dune: NETWORK="local"
-run-dune: DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fuel_streams?sslmode=disable"
-run-dune: STORAGE_TYPE="File"
-run-dune: STORAGE_FILE_DIR=""
-run-dune: EXTRA_ARGS=""
-run-dune:
-	@./scripts/run_dune.sh \
-		--mode $(MODE) \
-		--network $(NETWORK) \
-		--db-url "$(DATABASE_URL)" \
-		--storage-type $(STORAGE_TYPE) \
-		$(if $(STORAGE_FILE_DIR),--storage-file-dir "$(STORAGE_FILE_DIR)") \
-		$(if $(EXTRA_ARGS),--extra-args "$(EXTRA_ARGS)")
-
-run-dune-dev:
-	$(MAKE) run-dune MODE=dev
-
-run-dune-profiling:
-	$(MAKE) run-dune MODE=profiling

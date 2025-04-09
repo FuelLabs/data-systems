@@ -106,7 +106,6 @@ impl S3StorageOpts {
         }
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn with_random_namespace(mut self) -> Self {
         let random_namespace = {
             use rand::Rng;

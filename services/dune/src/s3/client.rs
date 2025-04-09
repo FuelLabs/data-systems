@@ -329,7 +329,7 @@ impl S3Storage {
         Ok(())
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
+    #[cfg(test)]
     pub async fn new_for_testing() -> Result<Self, StorageError> {
         dotenvy::dotenv().ok();
 

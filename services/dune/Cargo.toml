@@ -47,8 +47,3 @@ tokio = { workspace = true, features = [
   "test-util",
 ] }
 tracing-test = "0.2.0"
-
-[features]
-default = []
-test-helpers = []
-bench-helpers = []
