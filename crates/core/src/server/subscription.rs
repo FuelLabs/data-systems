@@ -40,7 +40,6 @@ impl std::fmt::Display for Subscription {
 
 #[cfg(test)]
 mod tests {
-    use fuel_web_utils::api_key::MockApiKey;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -48,6 +47,7 @@ mod tests {
 
     #[test]
     fn test_subscription_serialization() {
+        use fuel_web_utils::api_key::MockApiKey;
         let api_key = MockApiKey::builder(2.into()).into_inner();
         let deliver_policy = DeliverPolicy::FromBlock {
             block_height: 123u64.into(),
@@ -72,6 +72,7 @@ mod tests {
 
     #[test]
     fn test_subscription_with_new_policy() {
+        use fuel_web_utils::api_key::MockApiKey;
         let api_key = MockApiKey::builder(2.into()).into_inner();
         let deliver_policy = DeliverPolicy::New;
         let payload = SubjectPayload {

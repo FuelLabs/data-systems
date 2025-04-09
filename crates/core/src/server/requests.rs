@@ -5,13 +5,17 @@ use serde::{Deserialize, Serialize};
 use crate::types::*;
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SubscribeRequest {
+    #[serde(alias = "deliverPolicy")]
     pub deliver_policy: DeliverPolicy,
     pub subscribe: Vec<SubjectPayload>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct UnsubscribeRequest {
+    #[serde(alias = "deliverPolicy")]
     pub deliver_policy: DeliverPolicy,
     pub unsubscribe: Vec<SubjectPayload>,
 }
@@ -25,7 +29,9 @@ pub enum ServerRequestError {
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerRequest {
+    #[serde(alias = "subscribe")]
     Subscribe(SubscribeRequest),
+    #[serde(alias = "unsubscribe")]
     Unsubscribe(UnsubscribeRequest),
 }
 
@@ -71,5 +77,107 @@ impl TryFrom<&[u8]> for ServerRequest {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_subscribe_request_snake_case() {
+        let json = r#"{
+            "deliver_policy": "new",
+            "subscribe": []
+        }"#;
+
+        let request: SubscribeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.deliver_policy, DeliverPolicy::New);
+        assert!(request.subscribe.is_empty());
+    }
+
+    #[test]
+    fn test_subscribe_request_camel_case() {
+        let json = r#"{
+            "deliverPolicy": "new",
+            "subscribe": []
+        }"#;
+
+        let request: SubscribeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.deliver_policy, DeliverPolicy::New);
+        assert!(request.subscribe.is_empty());
+    }
+
+    #[test]
+    fn test_unsubscribe_request_snake_case() {
+        let json = r#"{
+            "deliver_policy": "new",
+            "unsubscribe": []
+        }"#;
+
+        let request: UnsubscribeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.deliver_policy, DeliverPolicy::New);
+        assert!(request.unsubscribe.is_empty());
+    }
+
+    #[test]
+    fn test_unsubscribe_request_camel_case() {
+        let json = r#"{
+            "deliverPolicy": "new",
+            "unsubscribe": []
+        }"#;
+
+        let request: UnsubscribeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.deliver_policy, DeliverPolicy::New);
+        assert!(request.unsubscribe.is_empty());
+    }
+
+    #[test]
+    fn test_server_request_try_from_subscribe() {
+        // Test snake_case
+        let json = r#"{
+            "deliver_policy": "new",
+            "subscribe": []
+        }"#;
+        let request = ServerRequest::try_from(json.as_bytes()).unwrap();
+        assert!(matches!(request, ServerRequest::Subscribe(_)));
+
+        // Test camelCase
+        let json = r#"{
+            "deliverPolicy": "new",
+            "subscribe": []
+        }"#;
+        let request = ServerRequest::try_from(json.as_bytes()).unwrap();
+        assert!(matches!(request, ServerRequest::Subscribe(_)));
+    }
+
+    #[test]
+    fn test_server_request_try_from_unsubscribe() {
+        // Test snake_case
+        let json = r#"{
+            "deliver_policy": "new",
+            "unsubscribe": []
+        }"#;
+        let request = ServerRequest::try_from(json.as_bytes()).unwrap();
+        assert!(matches!(request, ServerRequest::Unsubscribe(_)));
+
+        // Test camelCase
+        let json = r#"{
+            "deliverPolicy": "new",
+            "unsubscribe": []
+        }"#;
+        let request = ServerRequest::try_from(json.as_bytes()).unwrap();
+        assert!(matches!(request, ServerRequest::Unsubscribe(_)));
+    }
+
+    #[test]
+    fn test_invalid_request() {
+        let json = r#"{
+            "invalid_field": "value"
+        }"#;
+        let result = ServerRequest::try_from(json.as_bytes());
+        assert!(matches!(result, Err(ServerRequestError::InvalidRequest(_))));
     }
 }

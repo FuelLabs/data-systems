@@ -185,6 +185,7 @@ pub struct StreamResponse {
     pub pointer: RecordPointer,
     pub payload: MessagePayload,
     pub propagation_time_ms: Option<u64>,
+    pub block_time: BlockTimestamp,
 }
 
 impl StreamResponse {
@@ -194,6 +195,7 @@ impl StreamResponse {
         value: &[u8],
         pointer: RecordPointer,
         propagation_ms: Option<u64>,
+        block_time: BlockTimestamp,
     ) -> Result<Self, StreamResponseError> {
         let payload = MessagePayload::new(&subject_id, value)?;
         Ok(Self {
@@ -202,6 +204,7 @@ impl StreamResponse {
             subject,
             payload,
             pointer,
+            block_time,
             propagation_time_ms: propagation_ms,
         })
     }
@@ -228,12 +231,14 @@ impl<T: DbItem + Into<RecordPointer>> TryFrom<(String, T)> for StreamResponse {
     type Error = StreamResponseError;
     fn try_from((subject_id, item): (String, T)) -> Result<Self, Self::Error> {
         let pointer: RecordPointer = item.to_owned().into();
+        let block_time = item.block_time();
         StreamResponse::new(
             item.subject_str(),
             subject_id,
             &item.encoded_value()?,
             pointer,
             None,
+            block_time,
         )
     }
 }

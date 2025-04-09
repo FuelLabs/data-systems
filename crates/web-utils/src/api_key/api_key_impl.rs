@@ -297,7 +297,6 @@ impl std::fmt::Display for ApiKey {
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub struct MockApiKey(pub ApiKey);
-
 #[cfg(any(test, feature = "test-helpers"))]
 impl MockApiKey {
     pub fn new(api_key: ApiKey) -> Self {
@@ -309,7 +308,7 @@ impl MockApiKey {
     }
 
     pub fn admin(id: ApiKeyId) -> Self {
-        use crate::api_key::MockApiKeyRole;
+        use super::role::MockApiKeyRole;
         let api_key = ApiKey::new(
             id,
             "admin".into(),
@@ -321,7 +320,7 @@ impl MockApiKey {
     }
 
     pub fn builder(id: ApiKeyId) -> Self {
-        use crate::api_key::MockApiKeyRole;
+        use super::role::MockApiKeyRole;
         let api_key = ApiKey::new(
             id,
             "builder".into(),
@@ -333,7 +332,7 @@ impl MockApiKey {
     }
 
     pub fn web_client(id: ApiKeyId) -> Self {
-        use crate::api_key::MockApiKeyRole;
+        use super::role::MockApiKeyRole;
         let api_key = ApiKey::new(
             id,
             "web_client".into(),

@@ -15,9 +15,11 @@ pub enum DeliverPolicyError {
 #[serde(rename_all = "snake_case")]
 pub enum DeliverPolicy {
     #[default]
+    #[serde(alias = "new")]
     New,
+    #[serde(alias = "fromBlock")]
     FromBlock {
-        #[serde(rename = "block_height")]
+        #[serde(alias = "blockHeight")]
         block_height: BlockHeight,
     },
 }
@@ -77,24 +79,24 @@ impl<'de> Deserialize<'de> for DeliverPolicy {
         enum PolicyHelper {
             String(String),
             Object {
-                #[serde(rename = "from_block")]
+                #[serde(alias = "fromBlock")]
                 from_block: BlockHeightU64,
             },
             ObjectString {
-                #[serde(rename = "from_block")]
+                #[serde(alias = "fromBlock")]
                 from_block: BlockHeightStr,
             },
         }
 
         #[derive(Deserialize)]
         struct BlockHeightU64 {
-            #[serde(rename = "block_height")]
+            #[serde(alias = "blockHeight")]
             block_height: u64,
         }
 
         #[derive(Deserialize)]
         struct BlockHeightStr {
-            #[serde(rename = "block_height")]
+            #[serde(alias = "blockHeight")]
             block_height: String,
         }
 
