@@ -121,9 +121,6 @@ serviceAccount:
   name: fuel-streams-publisher
   create: true
   automount: true
-  config:
-    annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::533267304813:role/fuel_streams_publisher_s3_role
 
 # ------------------------------------------------------------------------------
 # Publisher configuration
