@@ -119,11 +119,14 @@ app.kubernetes.io/instance: {{ $context.Release.Name }}
 {{/*
 Create the name of the service account to use
 Logic:
+- If serviceAccount.name is provided, use that value
 - If service account creation is enabled, use the fullname template with "-service-account" suffix
 Returns: String - The name of the service account to use
 */}}
 {{- define "fuel-streams.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
+{{- if .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name }}
+{{- else if .Values.serviceAccount.create }}
 {{- printf "%s-%s" (include "fuel-streams.fullname" .) "service-account" }}
 {{- end }}
 {{- end }}

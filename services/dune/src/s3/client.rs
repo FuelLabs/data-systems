@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use aws_config::BehaviorVersion;
+use aws_config::{
+    default_provider::credentials::DefaultCredentialsChain,
+    BehaviorVersion,
+};
 use aws_sdk_s3::{config::retry::RetryConfig as S3RetryConfig, Client};
 
 use super::{
@@ -31,18 +34,37 @@ impl Storage for S3Storage {
         let aws_config = match config.env {
             StorageEnv::Local => {
                 aws_config::defaults(BehaviorVersion::latest())
-                .endpoint_url(config.endpoint_url())
-                .region(config.region())
-                .no_credentials()
-                .load()
-                .await
+                    .endpoint_url(config.endpoint_url())
+                    .region(config.region())
+                    .no_credentials()
+                    .load()
+                    .await
             }
             StorageEnv::Testnet | StorageEnv::Mainnet => {
-                aws_config::defaults(BehaviorVersion::latest())
-                .region(config.region())
-                .credentials_provider(aws_config::environment::EnvironmentVariableCredentialsProvider::new())
-                .load()
-                .await
+                let role_arn = dotenvy::var("AWS_ROLE_ARN")
+                    .expect("ROLE ARN should be defined");
+
+                let base_config =
+                    aws_config::defaults(BehaviorVersion::latest())
+                        .region(config.region())
+                        .credentials_provider(
+                            DefaultCredentialsChain::builder().build().await,
+                        )
+                        .load()
+                        .await;
+
+                let provider =
+                    aws_config::sts::AssumeRoleProvider::builder(role_arn)
+                        .session_name("fuel_storage_session")
+                        .configure(&base_config)
+                        .build()
+                        .await;
+
+                aws_config::from_env()
+                    .region(config.region())
+                    .credentials_provider(provider)
+                    .load()
+                    .await
             }
         };
 

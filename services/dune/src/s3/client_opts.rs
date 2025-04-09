@@ -34,8 +34,17 @@ impl StorageConfig for S3StorageOpts {
 
     fn endpoint_url(&self) -> String {
         match self.role {
-            StorageRole::Admin => dotenvy::var("AWS_ENDPOINT_URL")
-                .expect("AWS_ENDPOINT_URL must be set for admin role"),
+            StorageRole::Admin => match dotenvy::var("AWS_ENDPOINT_URL") {
+                Ok(url) => url,
+                Err(_) => match self.env {
+                    StorageEnv::Local => "http://localhost:4566".to_string(),
+                    StorageEnv::Testnet | StorageEnv::Mainnet => {
+                        let bucket = self.bucket();
+                        let region = self.region();
+                        format!("https://{bucket}.s3-website-{region}.amazonaws.com")
+                    }
+                },
+            },
             StorageRole::Public => {
                 match self.env {
                     StorageEnv::Local => "http://localhost:4566".to_string(),
@@ -88,21 +97,6 @@ impl S3StorageOpts {
         match &self.namespace {
             Some(ns) => format!("{base_bucket}-{ns}"),
             None => base_bucket.to_string(),
-        }
-    }
-
-    pub fn credentials(&self) -> Option<aws_sdk_s3::config::Credentials> {
-        match self.role {
-            StorageRole::Admin => Some(aws_sdk_s3::config::Credentials::new(
-                dotenvy::var("AWS_ACCESS_KEY_ID")
-                    .expect("AWS_ACCESS_KEY_ID must be set for admin role"),
-                dotenvy::var("AWS_SECRET_ACCESS_KEY")
-                    .expect("AWS_SECRET_ACCESS_KEY must be set for admin role"),
-                None,
-                None,
-                "static",
-            )),
-            StorageRole::Public => None,
         }
     }
 
