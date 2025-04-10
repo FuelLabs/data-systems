@@ -240,7 +240,7 @@ impl Processor {
     pub fn calculate_height_batches(
         start_height: BlockHeight,
         last_height: BlockHeight,
-        batch_size: u32,
+        batch_size: usize,
     ) -> DuneResult<Vec<(BlockHeight, BlockHeight)>> {
         if *last_height < *start_height {
             return Err(DuneError::InvalidBlockRange {

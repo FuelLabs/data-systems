@@ -124,7 +124,7 @@ async fn process_blocks(
         process_batch(&processor, &blocks_and_txs, shutdown).await?;
         if let Some((block, _)) = blocks_and_txs.last() {
             store.save_last_block(block).await?;
-            store.save_total_blocks(blocks_and_txs.len() as u16).await?;
+            store.save_total_blocks(blocks_and_txs.len()).await?;
         }
         tracing::info!("Batch processed in {:?}", start_time.elapsed());
     }

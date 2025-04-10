@@ -38,7 +38,7 @@ pub struct Cli {
         value_name = "MAX_BLOCKS_TO_STORE",
         env = "MAX_BLOCKS_TO_STORE"
     )]
-    pub max_blocks_to_store: Option<u16>,
+    pub max_blocks_to_store: Option<usize>,
 
     #[arg(long, value_name = "FROM_BLOCK", env = "FROM_BLOCK")]
     pub from_block: Option<BlockHeight>,
@@ -49,5 +49,5 @@ pub struct Cli {
         env = "BATCH_SIZE",
         default_value = "3600"
     )]
-    pub batch_size: u32,
+    pub batch_size: usize,
 }

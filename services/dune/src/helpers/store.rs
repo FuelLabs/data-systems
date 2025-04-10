@@ -50,19 +50,19 @@ impl Store {
         Ok(())
     }
 
-    pub async fn get_total_blocks(&self) -> Result<u16> {
+    pub async fn get_total_blocks(&self) -> Result<usize> {
         let total = {
             let mut txn = self.inner.begin()?;
             let key = Bytes::from("blocks_saved");
             match txn.get(&key)? {
                 Some(value) => serde_json::from_slice(&value)?,
-                None => 0u16,
+                None => 0,
             }
         };
         Ok(total)
     }
 
-    pub async fn save_total_blocks(&self, blocks_num: u16) -> Result<()> {
+    pub async fn save_total_blocks(&self, blocks_num: usize) -> Result<()> {
         let current = self.get_total_blocks().await?;
         let mut txn = self.inner.begin()?;
         let key = Bytes::from("blocks_saved");
@@ -75,7 +75,7 @@ impl Store {
 
     pub async fn should_continue_processing(
         &self,
-        max_blocks: Option<u16>,
+        max_blocks: Option<usize>,
     ) -> Result<bool> {
         if let Some(max) = max_blocks {
             let total = self.get_total_blocks().await?;
