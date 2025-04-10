@@ -35,6 +35,6 @@ spec:
           volumes:
             - name: dune-state
               persistentVolumeClaim:
-                claimName: {{ include "fuel-streams.fullname" . }}-fuel-streams-dune-state
+                claimName: {{ include "fuel-streams.fullname" . }}-dune-state
           restartPolicy: OnFailure
 {{- end }}
