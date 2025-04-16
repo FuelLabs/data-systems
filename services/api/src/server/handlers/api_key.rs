@@ -66,7 +66,7 @@ pub async fn generate_api_key(
 ) -> Result<Json<ApiKey>, Error> {
     req.validate().map_err(Error::Validation)?;
     let api_key =
-        ApiKey::create(&state.db.pool, &req.username, &req.role).await?;
+        ApiKey::create(state.db.pool_ref(), &req.username, &req.role).await?;
     Ok(Json(api_key))
 }
 

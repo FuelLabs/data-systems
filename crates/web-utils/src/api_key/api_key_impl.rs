@@ -143,7 +143,7 @@ impl ApiKey {
 
         let db_record = sqlx::query_as::<_, DbApiKey>(
             "INSERT INTO api_keys (user_name, api_key, status, role_id)
-             VALUES ($1, $2, 'ACTIVE', $3)
+             VALUES ($1, $2, 'ACTIVE'::api_key_status, $3)
              RETURNING id, user_name, api_key, status, role_id",
         )
         .bind(user_name)
