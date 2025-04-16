@@ -1,8 +1,5 @@
 use async_trait::async_trait;
-use aws_config::{
-    default_provider::credentials::DefaultCredentialsChain,
-    BehaviorVersion,
-};
+use aws_config::BehaviorVersion;
 use aws_sdk_s3::{config::retry::RetryConfig as S3RetryConfig, Client};
 
 use super::{
@@ -44,9 +41,6 @@ impl Storage for S3Storage {
                 let base_config =
                     aws_config::defaults(BehaviorVersion::latest())
                         .region(config.region())
-                        .credentials_provider(
-                            DefaultCredentialsChain::builder().build().await,
-                        )
                         .load()
                         .await;
 
@@ -63,7 +57,7 @@ impl Storage for S3Storage {
                         .build()
                         .await;
 
-                    aws_config::from_env()
+                    aws_config::defaults(BehaviorVersion::latest())
                         .region(config.region())
                         .credentials_provider(provider)
                         .load()
