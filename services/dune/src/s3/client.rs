@@ -52,13 +52,16 @@ impl Storage for S3Storage {
 
                 // Support assuming a role for cross-account access
                 // or fallback to the default credential provider
-                if let Ok(assume_role_arn) = dotenvy::var("AWS_ASSUME_ROLE_ARN") {
+                if let Ok(assume_role_arn) = dotenvy::var("AWS_ASSUME_ROLE_ARN")
+                {
                     let provider =
-                        aws_config::sts::AssumeRoleProvider::builder(assume_role_arn.parse().unwrap())
-                            .session_name("fuel_data_services_dune")
-                            .configure(&base_config)
-                            .build()
-                            .await;
+                        aws_config::sts::AssumeRoleProvider::builder(
+                            assume_role_arn.parse().unwrap(),
+                        )
+                        .session_name("fuel_data_services_dune")
+                        .configure(&base_config)
+                        .build()
+                        .await;
 
                     aws_config::from_env()
                         .region(config.region())
