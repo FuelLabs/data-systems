@@ -41,9 +41,6 @@ impl Storage for S3Storage {
                     .await
             }
             StorageEnv::Testnet | StorageEnv::Mainnet => {
-                let role_arn = dotenvy::var("AWS_ROLE_ARN")
-                    .expect("ROLE ARN should be defined");
-
                 let base_config =
                     aws_config::defaults(BehaviorVersion::latest())
                         .region(config.region())
@@ -53,18 +50,24 @@ impl Storage for S3Storage {
                         .load()
                         .await;
 
-                let provider =
-                    aws_config::sts::AssumeRoleProvider::builder(role_arn)
-                        .session_name("fuel_storage_session")
-                        .configure(&base_config)
-                        .build()
-                        .await;
+                // Support assuming a role for cross-account access
+                // or fallback to the default credential provider
+                if let Ok(assume_role_arn) = dotenvy::var("AWS_ASSUME_ROLE_ARN") {
+                    let provider =
+                        aws_config::sts::AssumeRoleProvider::builder(assume_role_arn.parse().unwrap())
+                            .session_name("fuel_data_services_dune")
+                            .configure(&base_config)
+                            .build()
+                            .await;
 
-                aws_config::from_env()
-                    .region(config.region())
-                    .credentials_provider(provider)
-                    .load()
-                    .await
+                    aws_config::from_env()
+                        .region(config.region())
+                        .credentials_provider(provider)
+                        .load()
+                        .await
+                } else {
+                    base_config
+                }
             }
         };
 
