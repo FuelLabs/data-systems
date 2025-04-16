@@ -79,11 +79,7 @@ impl TransactionsQuery {
         let mut conditions = Vec::new();
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::default();
 
-        query_builder.push(
-            "SELECT DISTINCT t.* FROM transactions t
-            LEFT JOIN inputs i ON t.tx_id = i.tx_id
-            LEFT JOIN outputs o ON t.tx_id = o.tx_id",
-        );
+        query_builder.push("SELECT t.* FROM transactions t");
 
         if let Some(tx_id) = &self.tx_id {
             conditions.push(format!("t.tx_id = '{}'", tx_id));
@@ -105,13 +101,35 @@ impl TransactionsQuery {
         }
         if let Some(address) = &self.address {
             conditions.push(format!(
-                "(i.sender_address = '{0}' OR i.recipient_address = '{0}' OR i.owner_id = '{0}' OR o.to_address = '{0}')",
+                "(
+                    EXISTS (
+                        SELECT 1 FROM inputs i
+                        WHERE i.tx_id = t.tx_id
+                          AND (i.sender_address = '{0}' OR i.recipient_address = '{0}' OR i.owner_id = '{0}')
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM outputs o
+                        WHERE o.tx_id = t.tx_id
+                          AND o.to_address = '{0}'
+                    )
+                )",
                 address
             ));
         }
         if let Some(contract_id) = &self.contract_id {
             conditions.push(format!(
-                "(i.contract_id = '{0}' OR o.contract_id = '{0}')",
+                "(
+                    EXISTS (
+                        SELECT 1 FROM inputs i
+                        WHERE i.tx_id = t.tx_id
+                          AND i.contract_id = '{0}'
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM outputs o
+                        WHERE o.tx_id = t.tx_id
+                          AND o.contract_id = '{0}'
+                    )
+                )",
                 contract_id
             ));
         }
