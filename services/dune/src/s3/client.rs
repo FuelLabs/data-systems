@@ -50,7 +50,7 @@ impl Storage for S3Storage {
                 {
                     let provider =
                         aws_config::sts::AssumeRoleProvider::builder(
-                            assume_role_arn.parse().unwrap(),
+                            assume_role_arn,
                         )
                         .session_name("fuel_data_services_dune")
                         .configure(&base_config)
