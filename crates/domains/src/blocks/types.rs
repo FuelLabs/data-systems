@@ -175,8 +175,9 @@ impl From<FuelCoreConsensus> for Consensus {
 #[derive(
     Debug, Clone, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "snake_case")]
 pub enum BlockVersion {
+    #[serde(alias = "V1", alias = "v1")]
     V1,
 }
 
@@ -233,5 +234,34 @@ impl MockBlock {
         let mut rng = rand::rng();
         let height = rng.random_range(0..u64::MAX);
         Self::build(height.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{json, Value};
+
+    use super::*;
+
+    #[test]
+    fn test_block_version_deserialization() {
+        // Test uppercase "V1"
+        let uppercase = r#""V1""#;
+        let version: BlockVersion = serde_json::from_str(uppercase).unwrap();
+        assert_eq!(version, BlockVersion::V1);
+
+        // Test lowercase "v1"
+        let lowercase = r#""v1""#;
+        let version: BlockVersion = serde_json::from_str(lowercase).unwrap();
+        assert_eq!(version, BlockVersion::V1);
+
+        // Test within a JSON object
+        let json_obj = json!({
+            "version": "V1"
+        });
+        let parsed: Value = serde_json::from_value(json_obj).unwrap();
+        let version: BlockVersion =
+            serde_json::from_value(parsed["version"].clone()).unwrap();
+        assert_eq!(version, BlockVersion::V1);
     }
 }
