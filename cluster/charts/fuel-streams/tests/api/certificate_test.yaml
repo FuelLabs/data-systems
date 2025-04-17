@@ -87,7 +87,7 @@ tests:
       # Certificate metadata tests
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-api-cert
+          value: RELEASE-NAME-fuel-streams-api-cert-v1
         documentIndex: 0
       - equal:
           path: metadata.namespace
@@ -95,7 +95,7 @@ tests:
         documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
-          value: api-cert
+          value: api-cert-v1
         documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]
@@ -116,7 +116,7 @@ tests:
       # Ingress metadata tests
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-fuel-streams-api-cert-validator
+          value: RELEASE-NAME-fuel-streams-api-cert-validator-v1
         documentIndex: 1
       - equal:
           path: metadata.namespace
@@ -124,7 +124,7 @@ tests:
         documentIndex: 1
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
-          value: api-cert-validator
+          value: api-cert-validator-v1
         documentIndex: 1
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]

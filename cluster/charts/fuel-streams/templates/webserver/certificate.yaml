@@ -4,10 +4,10 @@
 {{- $certificate := $tls.certificate }}
 {{- $ingress := $tls.ingress }}
 {{- $component := "webserver" -}}
-{{- $secretName := printf "%s-webserver-tls" (include "fuel-streams.fullname" .) -}}
+{{- $secretName := printf "%s-webserver-tls-v1" (include "fuel-streams.fullname" .) -}}
 {{- $serviceName := printf "%s-webserver" (include "fuel-streams.fullname" .) -}}
-{{- $certificateDict := dict "root" . "context" $certificate "name" "webserver-cert" "component" $component -}}
-{{- $ingressDict := dict "root" . "context" $ingress "name" "webserver-cert-validator" "component" $component -}}
+{{- $certificateDict := dict "root" . "context" $certificate "name" "webserver-cert-v1" "component" $component -}}
+{{- $ingressDict := dict "root" . "context" $ingress "name" "webserver-cert-validator-v1" "component" $component -}}
 {{- if and $webserver.enabled $service.host }}
 {{- if $tls.enabled }}
 ---
