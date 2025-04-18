@@ -41,7 +41,7 @@ tests:
           path: spec.rules[0].http.paths[0].backend.service.port.number
           value: 8080
 
-  - it: should create both certificate and ingress when TLS is enabled
+  - it: should create ingress when TLS is enabled
     set:
       webserver:
         enabled: true
@@ -54,11 +54,6 @@ tests:
             duration: 2160h
             renewBefore: 360h
             issuer: letsencrypt-prod
-            config:
-              annotations:
-                custom.annotation: "test"
-              labels:
-                custom.label: "test"
           ingress:
             config:
               annotations:
@@ -67,82 +62,45 @@ tests:
                 custom.label: "test"
     asserts:
       - hasDocuments:
-          count: 2
-      # Certificate tests
-      - isKind:
-          of: Certificate
-        documentIndex: 0
-      - equal:
-          path: spec.dnsNames[0]
-          value: test.example.com
-        documentIndex: 0
-      - equal:
-          path: spec.issuerRef.name
-          value: letsencrypt-prod
-        documentIndex: 0
-      - equal:
-          path: spec.duration
-          value: 2160h
-        documentIndex: 0
-      # Certificate metadata tests
-      - equal:
-          path: metadata.name
-          value: RELEASE-NAME-fuel-streams-webserver-cert-v1
-        documentIndex: 0
-      - equal:
-          path: metadata.namespace
-          value: NAMESPACE
-        documentIndex: 0
-      - equal:
-          path: metadata.labels["app.kubernetes.io/name"]
-          value: webserver-cert-v1
-        documentIndex: 0
-      - equal:
-          path: metadata.labels["app.kubernetes.io/instance"]
-          value: RELEASE-NAME
-        documentIndex: 0
-      - equal:
-          path: metadata.labels["app.kubernetes.io/component"]
-          value: webserver
-        documentIndex: 0
+          count: 1
       # Ingress tests
       - isKind:
           of: Ingress
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: spec.tls[0].hosts[0]
           value: test.example.com
-        documentIndex: 1
+        documentIndex: 0
       # Ingress metadata tests
       - equal:
           path: metadata.name
           value: RELEASE-NAME-fuel-streams-webserver-cert-validator-v1
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.namespace
           value: NAMESPACE
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
           value: webserver-cert-validator-v1
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.labels["app.kubernetes.io/component"]
           value: webserver
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.labels["custom.label"]
           value: test
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.annotations["custom.annotation"]
           value: test
-        documentIndex: 1
+        documentIndex: 0
       - equal:
           path: metadata.annotations["kubernetes.io/ingress.class"]
           value: nginx
-        documentIndex: 1
+        documentIndex: 0

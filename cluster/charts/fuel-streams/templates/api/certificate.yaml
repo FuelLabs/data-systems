@@ -6,26 +6,8 @@
 {{- $component := "api" -}}
 {{- $secretName := printf "%s-api-tls-v1" (include "fuel-streams.fullname" .) -}}
 {{- $serviceName := printf "%s-api" (include "fuel-streams.fullname" .) -}}
-{{- $certificateDict := dict "root" . "context" $certificate "name" "api-cert-v1" "component" $component -}}
 {{- $ingressDict := dict "root" . "context" $ingress "name" "api-cert-validator-v1" "component" $component -}}
 {{- if and $api.enabled $service.host }}
-{{- if $tls.enabled }}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  {{- include "k8s.resource-metadata" $certificateDict | nindent 2 }}
-spec:
-  secretName: {{ $secretName }}
-  duration: {{ $certificate.duration }}
-  renewBefore: {{ $certificate.renewBefore }}
-  dnsNames:
-    - {{ $service.host }}
-  issuerRef:
-    name: {{ $certificate.issuer }}
-    kind: ClusterIssuer
-{{- end }}
----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
