@@ -2,8 +2,6 @@ use apache_avro::AvroSchema;
 use fuel_streams_domains::blocks::{Block, Consensus};
 use serde::{Deserialize, Serialize};
 
-use super::AvroTransaction;
-
 #[derive(
     Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, AvroSchema,
 )]
@@ -58,17 +56,14 @@ pub struct AvroBlock {
     pub version: Option<String>,
     #[avro(rename = "consensusType")]
     pub consensus_type: Option<String>,
-    #[avro(rename = "genesisData")]
-    pub genesis_data: Option<Genesis>,
     #[avro(rename = "poaConsensusDataSignature")]
     pub poa_consensus_data_signature: Option<Vec<u8>>,
     pub producer: Option<Vec<u8>>,
-    pub transactions: Vec<AvroTransaction>,
 }
 
 impl AvroBlock {
-    pub fn new(block: &Block, transactions: Vec<AvroTransaction>) -> Self {
-        let (consensus_type, genesis_data, poa_data) = match &block.consensus {
+    pub fn new(block: &Block) -> Self {
+        let (consensus_type, _, poa_data) = match &block.consensus {
             Consensus::Genesis(genesis) => (
                 Some("Genesis".to_string()),
                 Some(Genesis {
@@ -113,12 +108,10 @@ impl AvroBlock {
             ),
             version: Some(block.version.to_string()),
             consensus_type,
-            genesis_data,
             poa_consensus_data_signature: poa_data
                 .as_ref()
                 .and_then(|p| p.signature.clone()),
             producer: Some(block.producer.0.to_vec()),
-            transactions,
         }
     }
 }
@@ -216,7 +209,7 @@ mod tests {
         let block = create_test_block();
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(&block, vec![]);
+        let avro_block = AvroBlock::new(&block);
 
         test_block_serialization(parser, avro_block);
     }
@@ -234,7 +227,7 @@ mod tests {
         );
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(&block, vec![]);
+        let avro_block = AvroBlock::new(&block);
         test_block_serialization(parser, avro_block);
     }
 
@@ -259,7 +252,7 @@ mod tests {
         block.producer = Address::random();
 
         // Create AvroBlock
-        let avro_block = AvroBlock::new(&block, vec![]);
+        let avro_block = AvroBlock::new(&block);
         test_block_serialization(parser, avro_block);
     }
 

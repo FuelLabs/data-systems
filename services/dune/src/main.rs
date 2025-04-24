@@ -294,7 +294,7 @@ mod tests {
 
             // Check each block's data is in order
             for (i, deserialized_block) in deserialized.iter().enumerate() {
-                let (original_block, original_txs) = &blocks_and_txs[i];
+                let (original_block, _) = &blocks_and_txs[i];
 
                 // Verify block metadata
                 assert_eq!(
@@ -312,30 +312,6 @@ mod tests {
                     Some(original_block.producer.as_ref().to_vec()),
                     "Block producer should match"
                 );
-
-                // Verify transactions
-                assert_eq!(
-                    deserialized_block.transactions.len(),
-                    original_txs.len(),
-                    "Number of transactions should match"
-                );
-
-                // Verify transaction data
-                for (j, deserialized_tx) in
-                    deserialized_block.transactions.iter().enumerate()
-                {
-                    let original_tx = &original_txs[j];
-                    assert_eq!(
-                        deserialized_tx.id,
-                        Some(original_tx.id.as_ref().to_vec()),
-                        "Transaction ID should match"
-                    );
-                    assert_eq!(
-                        deserialized_tx.block_height,
-                        Some(original_block.height.0 as i64),
-                        "Transaction block height should match"
-                    );
-                }
             }
 
             // Clean up the test file
@@ -402,7 +378,7 @@ mod tests {
 
             // Check each block's data is in order
             for (i, deserialized_block) in deserialized.iter().enumerate() {
-                let (original_block, original_txs) = &blocks_and_txs[i];
+                let (original_block, _) = &blocks_and_txs[i];
 
                 // Verify block metadata
                 assert_eq!(
@@ -420,30 +396,6 @@ mod tests {
                     Some(original_block.producer.as_ref().to_vec()),
                     "Block producer should match"
                 );
-
-                // Verify transactions
-                assert_eq!(
-                    deserialized_block.transactions.len(),
-                    original_txs.len(),
-                    "Number of transactions should match"
-                );
-
-                // Verify transaction data
-                for (j, deserialized_tx) in
-                    deserialized_block.transactions.iter().enumerate()
-                {
-                    let original_tx = &original_txs[j];
-                    assert_eq!(
-                        deserialized_tx.id,
-                        Some(original_tx.id.as_ref().to_vec()),
-                        "Transaction ID should match"
-                    );
-                    assert_eq!(
-                        deserialized_tx.block_height,
-                        Some(original_block.height.0 as i64),
-                        "Transaction block height should match"
-                    );
-                }
             }
 
             // Clean up - delete the test object from S3

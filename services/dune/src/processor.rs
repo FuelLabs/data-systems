@@ -162,12 +162,8 @@ impl Processor {
         blocks: &[(Block, Vec<Transaction>)],
     ) -> DuneResult<Vec<(BlockHeight, BlockHeight, Vec<u8>)>> {
         let mut items = Vec::with_capacity(blocks.len());
-        for (block, transactions) in blocks {
-            let avro_transactions = transactions
-                .iter()
-                .map(|tx| AvroTransaction::from((block, tx)))
-                .collect();
-            let avro_block = AvroBlock::new(block, avro_transactions);
+        for (block, _) in blocks {
+            let avro_block = AvroBlock::new(block);
             items.push(avro_block);
         }
 

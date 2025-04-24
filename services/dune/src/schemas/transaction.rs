@@ -9,7 +9,7 @@ use fuel_streams_types::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{InputContract, Inputs, OutputContract, Outputs};
+use super::{InputContract, OutputContract};
 
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
@@ -153,16 +153,12 @@ pub struct AvroTransaction {
     pub subsections_number: Option<i64>,
     #[avro(rename = "inputAssetIds")]
     pub input_asset_ids: Option<Vec<Vec<u8>>>,
-    #[avro(rename = "inputContracts")]
-    pub input_contracts: Option<Vec<Vec<u8>>>,
     #[avro(rename = "proofSet")]
     pub proof_set: Option<Vec<Vec<u8>>>,
     #[avro(rename = "inputContract")]
     pub input_contract: Option<InputContract>,
-    pub inputs: Option<Inputs>,
     #[avro(rename = "outputContract")]
     pub output_contract: Option<OutputContract>,
-    pub outputs: Option<Outputs>,
     pub policies: Option<Policies>,
     #[avro(rename = "rawPayload")]
     pub raw_payload: Option<Vec<u8>>,
@@ -265,11 +261,6 @@ impl AvroTransaction {
                 .input_asset_ids
                 .as_ref()
                 .map(|ids| ids.iter().map(|id| id.as_ref().to_vec()).collect()),
-            input_contracts: transaction.input_contracts.as_ref().map(
-                |contracts| {
-                    contracts.iter().map(|c| c.as_ref().to_vec()).collect()
-                },
-            ),
             proof_set: transaction.proof_set.as_ref().map(|proofs| {
                 proofs.iter().map(|p| p.as_ref().to_vec()).collect()
             }),
@@ -277,12 +268,10 @@ impl AvroTransaction {
                 .input_contract
                 .as_ref()
                 .map(InputContract::new),
-            inputs: Some(Inputs::new(&transaction.inputs)),
             output_contract: transaction
                 .output_contract
                 .as_ref()
                 .map(OutputContract::new),
-            outputs: Some(Outputs::new(&transaction.outputs)),
             policies: transaction.policies.as_ref().map(Policies::new),
             raw_payload: Some(
                 transaction.raw_payload.as_ref().as_ref().to_vec(),
