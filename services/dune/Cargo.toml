@@ -21,7 +21,6 @@ apache-avro.workspace = true
 async-trait.workspace = true
 aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.71.0"
-bytes.workspace = true
 clap.workspace = true
 derive_more.workspace = true
 displaydoc.workspace = true
@@ -31,13 +30,10 @@ fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
 rand.workspace = true
-rayon.workspace = true
 redis = { version = "0.30.0", features = ["tls-native-tls"] }
 serde.workspace = true
-serde-avro-bytes = "0.2.0"
 serde_bytes = "0.11.17"
 serde_json.workspace = true
-surrealkv = "0.9.1"
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

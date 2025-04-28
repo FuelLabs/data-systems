@@ -84,7 +84,7 @@ impl ReceiptMetadata {
             block_time: Some(metadata.block_time),
             block_height: Some(metadata.block_height),
             block_version: Some(metadata.block_version.clone()),
-            block_producer: Some(metadata.block_producer.clone().into()),
+            block_producer: Some(metadata.block_producer.clone()),
             transaction_id: Some(tx_id),
         }
     }

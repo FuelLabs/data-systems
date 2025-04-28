@@ -98,9 +98,14 @@ impl RateLimitsController {
 
     pub fn remove_active_key_sub(&self, id: &ApiKeyId) {
         if let Some(user_rate_limiter) = self.map.get_mut(id) {
-            user_rate_limiter
+            let current = user_rate_limiter
                 .current_subscriptions
-                .fetch_sub(1, Ordering::Relaxed);
+                .load(Ordering::Relaxed);
+            if current > 0 {
+                user_rate_limiter
+                    .current_subscriptions
+                    .fetch_sub(1, Ordering::Relaxed);
+            }
         }
     }
 

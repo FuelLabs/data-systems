@@ -128,7 +128,7 @@ subject-derive = { version = "0.0.29", path = "crates/subject/subject-derive" }
 
 # Workspace projects
 [workspace.metadata.cargo-machete]
-ignored = ["anyhow", "fuel-core", "tokio"]
+ignored = ["anyhow", "fuel-core", "tokio", "serde_bytes"]
 
 [profile.release]
 codegen-units = 1
