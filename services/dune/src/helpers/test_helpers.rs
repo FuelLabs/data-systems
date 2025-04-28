@@ -1,12 +1,14 @@
 use fuel_streams_types::{Address, BlockHeight, BlockId};
 
+use super::AvroBytes;
+
 #[derive(Debug, Clone)]
 pub struct TestBlockMetadata {
     pub block_height: i64,
     pub block_time: i64,
-    pub block_id: Vec<u8>,
+    pub block_id: AvroBytes,
     pub block_version: String,
-    pub block_producer: Vec<u8>,
+    pub block_producer: AvroBytes,
 }
 
 impl Default for TestBlockMetadata {
@@ -15,8 +17,8 @@ impl Default for TestBlockMetadata {
             block_height: BlockHeight::random().0 as i64,
             block_time: 1000,
             block_version: "V1".to_string(),
-            block_id: BlockId::default().0.to_vec(),
-            block_producer: Address::random().0.to_vec(),
+            block_id: BlockId::default().clone().into(),
+            block_producer: Address::random().clone().into(),
         }
     }
 }
@@ -24,9 +26,9 @@ impl Default for TestBlockMetadata {
 pub type TestBlockMetadataOptions = (
     Option<i64>,
     Option<i64>,
-    Option<Vec<u8>>,
+    Option<AvroBytes>,
     Option<String>,
-    Option<Vec<u8>>,
+    Option<AvroBytes>,
 );
 
 impl TestBlockMetadata {
@@ -39,9 +41,9 @@ impl TestBlockMetadata {
     pub fn with_values(
         block_height: i64,
         block_time: i64,
-        block_id: Vec<u8>,
+        block_id: AvroBytes,
         block_version: String,
-        block_producer: Vec<u8>,
+        block_producer: AvroBytes,
     ) -> Self {
         Self {
             block_height,

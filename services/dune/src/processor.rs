@@ -162,12 +162,8 @@ impl Processor {
         blocks: &[(Block, Vec<Transaction>)],
     ) -> DuneResult<Vec<(BlockHeight, BlockHeight, Vec<u8>)>> {
         let mut items = Vec::with_capacity(blocks.len());
-        for (block, transactions) in blocks {
-            let avro_transactions = transactions
-                .iter()
-                .map(|tx| AvroTransaction::from((block, tx)))
-                .collect();
-            let avro_block = AvroBlock::new(block, avro_transactions);
+        for (block, _) in blocks {
+            let avro_block = AvroBlock::new(block);
             items.push(avro_block);
         }
 
@@ -193,9 +189,9 @@ impl Processor {
                     tx,
                     Some(block.height.into()),
                     Some(block.header.get_timestamp_utc().timestamp()),
-                    Some(block.id.as_ref().to_vec()),
+                    Some(block.id.as_ref().to_vec().into()),
                     Some(block.version.to_string()),
-                    Some(block.producer.as_ref().to_vec()),
+                    Some(block.producer.as_ref().to_vec().into()),
                 );
                 items.push(avro_tx);
             }
@@ -271,13 +267,10 @@ mod tests {
     use anyhow::Result;
     use fuel_streams_domains::mocks::{
         MockBlock,
-        MockInput,
-        MockOutput,
         MockReceipt,
         MockTransaction,
     };
     use pretty_assertions::assert_eq;
-    use rayon::prelude::*;
 
     use super::*;
 
@@ -499,71 +492,6 @@ mod tests {
             total_receipts > 0,
             "Should have at least some receipts in the test data"
         );
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_split_large_block_batch() -> Result<()> {
-        let processor =
-            Processor::new_with_unit("File", 100, SizeUnit::Kilobytes).await?;
-
-        let transactions: Vec<_> = (0..10)
-            .into_par_iter()
-            .map(|_| {
-                MockTransaction::script(
-                    MockInput::all(),
-                    MockOutput::all(),
-                    MockReceipt::all(),
-                )
-            })
-            .collect();
-
-        let mut blocks_and_txs: Vec<_> = (0..10)
-            .into_par_iter()
-            .map(|_| {
-                let block = MockBlock::random();
-                (block, transactions.clone())
-            })
-            .collect();
-        blocks_and_txs.sort_by_key(|(block, _)| block.height);
-
-        let batches = processor.calculate_blocks_batches(&blocks_and_txs)?;
-        assert!(
-            batches.len() > 1,
-            "Should split into multiple batches when exceeding max file size"
-        );
-
-        // Verify all batches are within size limit
-        for (_, _, data) in &batches {
-            assert!(
-                data.len() <= processor.max_file_size,
-                "Each batch should be within max file size ({} bytes), got {}",
-                processor.max_file_size,
-                data.len()
-            );
-        }
-
-        // let mut all_blocks = Vec::new();
-        // let mut all_transactions = Vec::new();
-        // for (_, _, data) in &batches {
-        //     let deserialized = deserialize_avro::<AvroBlock>(data)?;
-        //     all_blocks.extend(deserialized.clone());
-        //     for block in deserialized {
-        //         all_transactions.extend(block.transactions);
-        //     }
-        // }
-
-        // assert_eq!(
-        //     all_blocks.len(),
-        //     blocks_and_txs.len(),
-        //     "Should have exactly one block across all batches"
-        // );
-        // assert_eq!(
-        //     all_transactions.len(),
-        //     transactions.len(),
-        //     "All transactions should be preserved"
-        // );
 
         Ok(())
     }

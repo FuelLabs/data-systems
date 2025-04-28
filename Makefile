@@ -122,11 +122,9 @@ test: PROFILE="dev"
 test:
 	@echo "Running tests for package $(PACKAGE) with profile $(PROFILE)"
 	@if [ "$(PACKAGE)" = "all" ] || [ -z "$(PACKAGE)" ]; then \
-		cargo nextest run --cargo-profile $(PROFILE) --workspace --color always --no-tests=pass --all-features && \
-		cargo test --profile $(PROFILE) --doc --workspace --all-features; \
+		cargo test --profile $(PROFILE) --workspace --all-features; \
 	else \
-		cargo nextest run --cargo-profile $(PROFILE) -p $(PACKAGE) --color always --no-tests=pass --all-features && \
-		cargo test --profile $(PROFILE) --doc -p $(PACKAGE) --all-features; \
+		cargo test --profile $(PROFILE) -p $(PACKAGE) --all-features; \
 	fi
 
 helm-test:
@@ -335,7 +333,7 @@ run-dune-profiling:
 # ------------------------------------------------------------
 
 # Define service profiles
-DOCKER_SERVICES := nats docker postgres monitoring s3
+DOCKER_SERVICES := nats docker postgres monitoring s3 redis
 
 run-docker-compose: PROFILE="all"
 run-docker-compose:

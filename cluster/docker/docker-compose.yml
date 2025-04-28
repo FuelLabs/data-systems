@@ -50,6 +50,29 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    profiles:
+      - all
+      - redis
+    image: redis:7 # Use Redis 7 for compatibility with Upstash features
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379" # Default Redis port
+    command:
+      - redis-server
+      - --requirepass ${REDIS_PASSWORD:-redis_password} # Set a password for security
+      - --appendonly yes # Enable AOF persistence to match Upstash durability
+    volumes:
+      - redis_data:/data # Persist Redis data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password} # Password for Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   localstack:
     profiles:
       - all
@@ -182,3 +205,4 @@ volumes:
   prometheus_data:
   grafana_data:
   postgres_data:
+  redis_data:

@@ -3,6 +3,7 @@ use fuel_streams_domains::inputs;
 use serde::{Deserialize, Serialize};
 
 use super::TxPointer;
+use crate::helpers::AvroBytes;
 
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
@@ -10,11 +11,11 @@ use super::TxPointer;
 #[serde(rename_all = "camelCase")]
 pub struct InputContract {
     #[avro(rename = "balanceRoot")]
-    pub balance_root: Option<Vec<u8>>,
+    pub balance_root: Option<AvroBytes>,
     #[avro(rename = "contractId")]
-    pub contract_id: Option<Vec<u8>>,
+    pub contract_id: Option<AvroBytes>,
     #[avro(rename = "stateRoot")]
-    pub state_root: Option<Vec<u8>>,
+    pub state_root: Option<AvroBytes>,
     #[avro(rename = "txPointer")]
     pub tx_pointer: Option<TxPointer>,
     #[avro(rename = "utxoId")]
@@ -24,9 +25,9 @@ pub struct InputContract {
 impl InputContract {
     pub fn new(input: &inputs::InputContract) -> Self {
         Self {
-            balance_root: Some(input.balance_root.0.to_vec()),
-            contract_id: Some(input.contract_id.0.to_vec()),
-            state_root: Some(input.state_root.0.to_vec()),
+            balance_root: Some(input.balance_root.clone().into()),
+            contract_id: Some(input.contract_id.clone().into()),
+            state_root: Some(input.state_root.clone().into()),
             tx_pointer: Some((&input.tx_pointer).into()),
             utxo_id: Some(input.utxo_id.to_string()),
         }
@@ -40,11 +41,11 @@ impl InputContract {
 pub struct InputCoin {
     pub amount: Option<i64>,
     #[avro(rename = "assetId")]
-    pub asset_id: Option<Vec<u8>>,
-    pub owner: Option<Vec<u8>>,
-    pub predicate: Option<Vec<u8>>,
+    pub asset_id: Option<AvroBytes>,
+    pub owner: Option<AvroBytes>,
+    pub predicate: Option<AvroBytes>,
     #[avro(rename = "predicateData")]
-    pub predicate_data: Option<Vec<u8>>,
+    pub predicate_data: Option<AvroBytes>,
     #[avro(rename = "predicateGasUsed")]
     pub predicate_gas_used: Option<i64>,
     #[avro(rename = "txPointer")]
@@ -59,10 +60,10 @@ impl InputCoin {
     pub fn new(input: &inputs::InputCoin) -> Self {
         Self {
             amount: Some(input.amount.0 as i64),
-            asset_id: Some(input.asset_id.0.to_vec()),
-            owner: Some(input.owner.0.to_vec()),
-            predicate: Some(input.predicate.0 .0.clone()),
-            predicate_data: Some(input.predicate_data.0 .0.clone()),
+            asset_id: Some(input.asset_id.clone().into()),
+            owner: Some(input.owner.clone().into()),
+            predicate: Some(input.predicate.clone().into()),
+            predicate_data: Some(input.predicate_data.clone().into()),
             predicate_gas_used: Some(input.predicate_gas_used.0 as i64),
             tx_pointer: Some((&input.tx_pointer).into()),
             utxo_id: Some(input.utxo_id.to_string()),
@@ -77,19 +78,19 @@ impl InputCoin {
 #[serde(rename_all = "camelCase")]
 pub struct InputMessage {
     pub amount: Option<i64>,
-    pub data: Option<Vec<u8>>,
-    pub nonce: Option<Vec<u8>>,
-    pub predicate: Option<Vec<u8>>,
+    pub data: Option<AvroBytes>,
+    pub nonce: Option<AvroBytes>,
+    pub predicate: Option<AvroBytes>,
     #[avro(rename = "predicateLength")]
     pub predicate_length: Option<i64>,
     #[avro(rename = "predicateData")]
-    pub predicate_data: Option<Vec<u8>>,
+    pub predicate_data: Option<AvroBytes>,
     #[avro(rename = "predicateGasUsed")]
     pub predicate_gas_used: Option<i64>,
     #[avro(rename = "predicateDataLength")]
     pub predicate_data_length: Option<i64>,
-    pub recipient: Option<Vec<u8>>,
-    pub sender: Option<Vec<u8>>,
+    pub recipient: Option<AvroBytes>,
+    pub sender: Option<AvroBytes>,
     #[avro(rename = "witnessIndex")]
     pub witness_index: Option<i64>,
 }
@@ -98,21 +99,20 @@ impl InputMessage {
     pub fn new(input: &inputs::InputMessage) -> Self {
         Self {
             amount: Some(input.amount.0 as i64),
-            data: Some(input.data.0 .0.to_owned()),
-            nonce: Some(input.nonce.0.to_vec()),
-            predicate: Some(input.predicate.0 .0.to_owned()),
+            data: Some(input.data.clone().into()),
+            nonce: Some(input.nonce.clone().into()),
+            predicate: Some(input.predicate.clone().into()),
             predicate_length: Some(input.predicate_length as i64),
-            predicate_data: Some(input.predicate_data.0 .0.to_owned()),
+            predicate_data: Some(input.predicate_data.clone().into()),
             predicate_gas_used: Some(input.predicate_gas_used.0 as i64),
             predicate_data_length: Some(input.predicate_data_length as i64),
-            recipient: Some(input.recipient.0.to_vec()),
-            sender: Some(input.sender.0.to_vec()),
+            recipient: Some(input.recipient.clone().into()),
+            sender: Some(input.sender.clone().into()),
             witness_index: Some(input.witness_index as i64),
         }
     }
 }
 
-// Inputs struct
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
 )]
@@ -170,14 +170,11 @@ mod tests {
     use super::*;
     use crate::helpers::{write_schema_files, AvroParser};
 
-    // Helper function to reduce code duplication in tests
     fn test_input_serialization(parser: AvroParser, avro_input: Inputs) {
-        // Test JSON serialization/deserialization
         let ser = serde_json::to_vec(&avro_input).unwrap();
         let deser = serde_json::from_slice::<Inputs>(&ser).unwrap();
         assert_eq!(avro_input, deser);
 
-        // Test Avro serialization/deserialization
         let mut avro_writer = parser.writer_with_schema::<Inputs>().unwrap();
         avro_writer.append(&avro_input).unwrap();
         let serialized = avro_writer.into_inner().unwrap();
@@ -257,7 +254,6 @@ mod tests {
 
     #[tokio::test]
     async fn write_input_schemas() {
-        // Write schemas for all input types
         let schemas = [
             ("input_contract.json", InputContract::get_schema()),
             ("input_coin.json", InputCoin::get_schema()),

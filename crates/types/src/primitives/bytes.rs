@@ -24,6 +24,7 @@ use crate::{
 
 generate_byte_type_wrapper!(Address, fuel_types::Address, 32);
 generate_byte_type_wrapper!(Bytes32, fuel_types::Bytes32, 32);
+generate_byte_type_wrapper!(Bytes64, fuel_types::Bytes64, 64);
 generate_byte_type_wrapper!(ContractId, fuel_types::ContractId, 32);
 generate_byte_type_wrapper!(AssetId, fuel_types::AssetId, 32);
 generate_byte_type_wrapper!(BlobId, fuel_types::BlobId, 32);
@@ -108,6 +109,30 @@ impl From<UtxoId> for HexData {
     }
 }
 
+impl From<Address> for HexData {
+    fn from(value: Address) -> Self {
+        HexData(value.into_inner().to_vec().into())
+    }
+}
+
+impl From<BlockId> for HexData {
+    fn from(value: BlockId) -> Self {
+        HexData(value.into_inner().to_vec().into())
+    }
+}
+
+impl From<Bytes32> for HexData {
+    fn from(value: Bytes32) -> Self {
+        HexData(value.into_inner().to_vec().into())
+    }
+}
+
+impl From<Bytes64> for HexData {
+    fn from(value: Bytes64) -> Self {
+        HexData(value.into_inner().to_vec().into())
+    }
+}
+
 impl_bytes32_to_type!(MessageId);
 impl_bytes32_to_type!(ContractId);
 impl_bytes32_to_type!(AssetId);
@@ -133,6 +158,7 @@ impl_avro_schema_for_bool!(BoolValue);
 
 impl_avro_schema_for_fixed_bytes!(Address, 32);
 impl_avro_schema_for_fixed_bytes!(Bytes32, 32);
+impl_avro_schema_for_fixed_bytes!(Bytes64, 64);
 impl_avro_schema_for_fixed_bytes!(ContractId, 32);
 impl_avro_schema_for_fixed_bytes!(AssetId, 32);
 impl_avro_schema_for_fixed_bytes!(BlobId, 32);
