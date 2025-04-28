@@ -227,26 +227,26 @@ run-publisher: PORT="4000"
 run-publisher: TELEMETRY_PORT="9001"
 run-publisher: NATS_URL="localhost:4222"
 run-publisher: ARGS=""
-run-publisher: FROM_HEIGHT="0"
+run-publisher: FROM_BLOCK="0"
 run-publisher: check-network
 	@./scripts/run_publisher.sh \
 		--mode $(MODE) \
 		--network $(NETWORK) \
 		--telemetry-port $(TELEMETRY_PORT) \
-		--from-height $(FROM_HEIGHT) \
+		--from-block $(FROM_BLOCK) \
 		--extra-args $(ARGS)
 
 run-publisher-mainnet-dev:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_HEIGHT=0
+	$(MAKE) run-publisher NETWORK=mainnet MODE=dev FROM_BLOCK=0
 
 run-publisher-mainnet-profiling:
-	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling FROM_HEIGHT=0
+	$(MAKE) run-publisher NETWORK=mainnet MODE=profiling FROM_BLOCK=0
 
 run-publisher-testnet-dev:
-	$(MAKE) run-publisher NETWORK=testnet MODE=dev FROM_HEIGHT=0
+	$(MAKE) run-publisher NETWORK=testnet MODE=dev FROM_BLOCK=0
 
 run-publisher-testnet-profiling:
-	$(MAKE) run-publisher NETWORK=testnet MODE=profiling FROM_HEIGHT=0
+	$(MAKE) run-publisher NETWORK=testnet MODE=profiling FROM_BLOCK=0
 
 # ------------------------------------------------------------
 #  Consumer Run Commands

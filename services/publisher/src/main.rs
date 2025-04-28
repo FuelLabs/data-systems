@@ -15,6 +15,7 @@ use sv_publisher::{
     gaps::{find_next_block_to_save, BlockHeightGap},
     metrics::Metrics,
     publish::publish_block,
+    recover::recover_tx_pointers,
     state::ServerState,
 };
 use tokio::{sync::Semaphore, task::JoinSet};
@@ -52,8 +53,9 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             tokio::join!(
+                recover_tx_pointers(&db),
                 process_historical_blocks(
-                    cli.from_height.into(),
+                    cli.from_block.into(),
                     &message_broker,
                     &fuel_core,
                     &last_block_height,
@@ -72,6 +74,7 @@ async fn main() -> anyhow::Result<()> {
         } => {
             result.0?;
             result.1?;
+            result.2?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
@@ -124,7 +127,7 @@ async fn process_live_blocks(
 }
 
 fn process_historical_blocks(
-    from_height: BlockHeight,
+    from_block: BlockHeight,
     message_broker: &Arc<NatsMessageBroker>,
     fuel_core: &Arc<dyn FuelCoreLike>,
     last_block_height: &Arc<BlockHeight>,
@@ -145,7 +148,7 @@ fn process_historical_blocks(
         }
 
         let Some(processed_gaps) =
-            get_historical_block_range(from_height, &gaps, last_block_height)
+            get_historical_block_range(from_block, &gaps, last_block_height)
         else {
             return Ok(());
         };
@@ -242,7 +245,7 @@ async fn process_blocks_with_join_set(
 }
 
 fn get_historical_block_range(
-    from_height: BlockHeight,
+    from_block: BlockHeight,
     gaps: &[BlockHeightGap],
     last_block_height: BlockHeight,
 ) -> Option<Vec<BlockHeightGap>> {
@@ -252,7 +255,7 @@ fn get_historical_block_range(
 
     let mut processed_gaps = Vec::new();
     for gap in gaps {
-        let start = std::cmp::max(from_height, gap.start);
+        let start = std::cmp::max(from_block, gap.start);
         let end = std::cmp::min(gap.end, last_block_height);
 
         if start <= end {

@@ -209,7 +209,7 @@ make run-publisher \
     PORT=4000 \
     TELEMETRY_PORT=9001 \
     NATS_URL=localhost:4222 \
-    FROM_HEIGHT=0
+    FROM_BLOCK=0
 ```
 
 - Use `testnet-dev` when developing features against testnet
@@ -221,7 +221,7 @@ make run-publisher \
     - `PORT`: Service port (default: 4000)
     - `TELEMETRY_PORT`: Metrics port (default: 9001)
     - `NATS_URL`: NATS server URL
-    - `FROM_HEIGHT`: Starting block height
+    - `FROM_BLOCK`: Starting block height
 
 ### Consumer Service
 

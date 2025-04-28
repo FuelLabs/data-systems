@@ -18,7 +18,7 @@ usage() {
     echo "  --telemetry-port : Specify the telemetry port number"
     echo "                  Default: 8080"
     echo "  --extra-args  : Optional additional arguments to append (in quotes)"
-    echo "  --from-height : Specify the starting block height"
+    echo "  --from-block : Specify the starting block height"
     echo "                  Default: 0"
     echo ""
     echo "Examples:"
@@ -26,7 +26,7 @@ usage() {
     echo "  $0 --network mainnet                            # Runs mainnet with default settings"
     echo "  $0 --port 9000                                  # Runs on port 9000"
     echo "  $0 --network mainnet --port 4001 --telemetry-port 8080 --mode dev     # Custom network, port, telemetry-port and mode"
-    echo "  $0 --from-height 1000                           # Start from block height 1000"
+    echo "  $0 --from-block 1000                           # Start from block height 1000"
     exit 1
 }
 
@@ -35,7 +35,7 @@ NETWORK=${NETWORK:-"testnet"}
 MODE=${MODE:-"profiling"}
 PORT=${PORT:-"4004"}
 TELEMETRY_PORT=${TELEMETRY_PORT:-"9002"}
-FROM_HEIGHT=${FROM_HEIGHT:-"0"}
+FROM_BLOCK=${FROM_BLOCK:-"0"}
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -59,8 +59,8 @@ while [[ "$#" -gt 0 ]]; do
             ARGS="$2"
             shift 2
             ;;
-        --from-height)
-            FROM_HEIGHT="$2"
+        --from-block)
+            FROM_BLOCK="$2"
             shift 2
             ;;
         --help)
@@ -89,7 +89,7 @@ echo "  → Network: $NETWORK"
 echo "  → Mode: $MODE"
 echo "  → Fuel Block Consumer Port: $PORT"
 echo "  → Telemetry Port: $TELEMETRY_PORT"
-echo "  → From Height: $FROM_HEIGHT"
+echo "  → From Height: $FROM_BLOCK"
 if [ -n "$ARGS" ]; then
     echo "→ Extra Arguments: $ARGS"
 fi
@@ -131,7 +131,7 @@ COMMON_ARGS=(
     # Application specific
     "--nats-url" "nats://localhost:4222"
     "--telemetry-port" "${TELEMETRY_PORT}"
-    "--from-height" "${FROM_HEIGHT}"
+    "--from-block" "${FROM_BLOCK}"
 )
 
 # Execute based on mode

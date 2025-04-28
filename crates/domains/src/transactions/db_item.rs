@@ -9,6 +9,7 @@ use fuel_streams_types::{
     TransactionStatus,
     TransactionType,
     TxId,
+    TxPointer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -115,7 +116,14 @@ impl TryFrom<&RecordPacket> for TransactionDbItem {
         let transaction = Transaction::decode_json(&packet.value)?;
         let tx_pointer = match transaction.tx_pointer {
             Some(tx_pointer) => Some(serde_json::to_vec(&tx_pointer)?),
-            None => None,
+            None => Some(serde_json::to_vec(&TxPointer {
+                block_height: packet.pointer.block_height.to_owned(),
+                tx_index: packet
+                    .pointer
+                    .tx_index
+                    .expect("tx_index should be defined")
+                    as u16,
+            })?),
         };
 
         let subject: Subjects = packet

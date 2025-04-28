@@ -32,7 +32,6 @@ impl Repository for Transaction {
         let mut conn = executor.acquire().await?;
         let mut db_tx = conn.begin().await?;
         let created_at = BlockTimestamp::now();
-
         let record = sqlx::query_as::<_, TransactionDbItem>(
             r#"
             INSERT INTO transactions (
@@ -171,7 +170,6 @@ impl Repository for Transaction {
         .map_err(RepositoryError::Insert)?;
 
         let tx = Transaction::decode_json(&db_item.value)?;
-
         if let Some(storage_slots) = &tx.storage_slots {
             for slot in storage_slots {
                 let slot_item = TransactionStorageSlotDbItem {

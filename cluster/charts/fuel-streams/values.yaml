@@ -419,12 +419,6 @@ dune:
     pullPolicy: Always
     tag: latest
 
-  storage:
-    size: 10Mi # Small size since we only store block height state
-    storageClass: "gp3-generic"
-    accessMode: ReadWriteOnce
-    mountPath: /data/dune
-
   cronjob:
     schedule: "0 * * * *" # Run every hour
     successfulJobsHistoryLimit: 3
