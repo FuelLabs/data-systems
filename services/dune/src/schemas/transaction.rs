@@ -10,6 +10,7 @@ use fuel_streams_types::{
 use serde::{Deserialize, Serialize};
 
 use super::{InputContract, OutputContract};
+use crate::helpers::AvroBytes;
 
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
@@ -64,8 +65,8 @@ pub struct UpgradePurpose {
     pub purpose_type: Option<String>,
     #[avro(rename = "witnessIndex")]
     pub witness_index: Option<i64>,
-    pub checksum: Option<Vec<u8>>,
-    pub root: Option<Vec<u8>>,
+    pub checksum: Option<AvroBytes>,
+    pub root: Option<AvroBytes>,
 }
 
 impl UpgradePurpose {
@@ -77,14 +78,14 @@ impl UpgradePurpose {
             } => Self {
                 purpose_type: Some("ConsensusParameters".to_string()),
                 witness_index: Some(witness_index as i64),
-                checksum: Some(checksum.to_vec()),
+                checksum: Some(checksum.to_vec().into()),
                 root: None,
             },
             FuelCoreUpgradePurpose::StateTransition { root } => Self {
                 purpose_type: Some("StateTransition".to_string()),
                 witness_index: None,
                 checksum: None,
-                root: Some(root.to_vec()),
+                root: Some(root.to_vec().into()),
             },
         }
     }
@@ -95,15 +96,15 @@ impl UpgradePurpose {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AvroStorageSlot {
-    pub key: Vec<u8>,
-    pub value: Vec<u8>,
+    pub key: AvroBytes,
+    pub value: AvroBytes,
 }
 
 impl From<&StorageSlot> for AvroStorageSlot {
     fn from(slot: &StorageSlot) -> Self {
         Self {
-            key: slot.key.as_ref().to_vec(),
-            value: slot.value.as_ref().to_vec(),
+            key: slot.key.as_ref().to_vec().into(),
+            value: slot.value.as_ref().to_vec().into(),
         }
     }
 }
@@ -118,33 +119,33 @@ pub struct AvroTransaction {
     #[avro(rename = "blockTime")]
     pub block_time: Option<i64>,
     #[avro(rename = "blockId")]
-    pub block_id: Option<Vec<u8>>,
+    pub block_id: Option<AvroBytes>,
     #[avro(rename = "blockVersion")]
     pub block_version: Option<String>,
     #[avro(rename = "blockProducer")]
-    pub block_producer: Option<Vec<u8>>,
+    pub block_producer: Option<AvroBytes>,
     pub status: Option<String>,
-    pub id: Option<Vec<u8>>,
+    pub id: Option<AvroBytes>,
     #[avro(rename = "type")]
     pub r#type: Option<String>,
     #[avro(rename = "txPointer")]
     pub tx_pointer: Option<TxPointer>,
     #[avro(rename = "bytecodeRoot")]
-    pub bytecode_root: Option<Vec<u8>>,
+    pub bytecode_root: Option<AvroBytes>,
     #[avro(rename = "bytecodeWitnessIndex")]
     pub bytecode_witness_index: Option<i64>,
     #[avro(rename = "blobId")]
-    pub blob_id: Option<Vec<u8>>,
+    pub blob_id: Option<AvroBytes>,
     pub maturity: Option<i64>,
     #[avro(rename = "mintAmount")]
     pub mint_amount: Option<i64>,
     #[avro(rename = "mintAssetId")]
-    pub mint_asset_id: Option<Vec<u8>>,
+    pub mint_asset_id: Option<AvroBytes>,
     #[avro(rename = "mintGasPrice")]
     pub mint_gas_price: Option<i64>,
     #[avro(rename = "receiptsRoot")]
-    pub receipts_root: Option<Vec<u8>>,
-    pub salt: Option<Vec<u8>>,
+    pub receipts_root: Option<AvroBytes>,
+    pub salt: Option<AvroBytes>,
     #[avro(rename = "scriptGasLimit")]
     pub script_gas_limit: Option<i64>,
     #[avro(rename = "subsectionIndex")]
@@ -152,24 +153,24 @@ pub struct AvroTransaction {
     #[avro(rename = "subsectionsNumber")]
     pub subsections_number: Option<i64>,
     #[avro(rename = "inputAssetIds")]
-    pub input_asset_ids: Option<Vec<Vec<u8>>>,
+    pub input_asset_ids: Option<Vec<AvroBytes>>,
     #[avro(rename = "proofSet")]
-    pub proof_set: Option<Vec<Vec<u8>>>,
+    pub proof_set: Option<Vec<AvroBytes>>,
     #[avro(rename = "inputContract")]
     pub input_contract: Option<InputContract>,
     #[avro(rename = "outputContract")]
     pub output_contract: Option<OutputContract>,
     pub policies: Option<Policies>,
     #[avro(rename = "rawPayload")]
-    pub raw_payload: Option<Vec<u8>>,
-    pub script: Option<Vec<u8>>,
+    pub raw_payload: Option<AvroBytes>,
+    pub script: Option<AvroBytes>,
     #[avro(rename = "scriptData")]
-    pub script_data: Option<Vec<u8>>,
+    pub script_data: Option<AvroBytes>,
     #[avro(rename = "storageSlots")]
     pub storage_slots: Option<Vec<AvroStorageSlot>>,
     #[avro(rename = "upgradePurpose")]
     pub upgrade_purpose: Option<UpgradePurpose>,
-    pub witnesses: Option<Vec<Vec<u8>>>,
+    pub witnesses: Option<Vec<AvroBytes>>,
     #[avro(rename = "scriptLength")]
     pub script_length: Option<i64>,
     #[avro(rename = "scriptDataLength")]
@@ -203,9 +204,9 @@ impl AvroTransaction {
         transaction: &Transaction,
         block_height: Option<i64>,
         block_time: Option<i64>,
-        block_id: Option<Vec<u8>>,
+        block_id: Option<AvroBytes>,
         block_version: Option<String>,
-        block_producer: Option<Vec<u8>>,
+        block_producer: Option<AvroBytes>,
     ) -> Self {
         let status = Some(transaction.status.to_string());
         let storage_slots = transaction
@@ -219,20 +220,20 @@ impl AvroTransaction {
             block_version,
             block_producer,
             status,
-            id: Some(transaction.id.as_ref().to_vec()),
+            id: Some(transaction.id.as_ref().to_vec().into()),
             r#type: Some(transaction.r#type.to_string()),
             tx_pointer: transaction.tx_pointer.as_ref().map(TxPointer::from),
             bytecode_root: transaction
                 .bytecode_root
                 .as_ref()
-                .map(|br| br.as_ref().to_vec()),
+                .map(|br| br.as_ref().to_vec().into()),
             bytecode_witness_index: transaction
                 .bytecode_witness_index
                 .map(Into::into),
             blob_id: transaction
                 .blob_id
                 .as_ref()
-                .map(|bid| bid.as_ref().to_vec()),
+                .map(|bid| bid.as_ref().to_vec().into()),
             maturity: transaction.maturity.map(Into::into),
             mint_amount: transaction
                 .mint_amount
@@ -241,7 +242,7 @@ impl AvroTransaction {
             mint_asset_id: transaction
                 .mint_asset_id
                 .as_ref()
-                .map(|id| id.as_ref().to_vec()),
+                .map(|id| id.as_ref().to_vec().into()),
             mint_gas_price: transaction
                 .mint_gas_price
                 .as_ref()
@@ -249,20 +250,22 @@ impl AvroTransaction {
             receipts_root: transaction
                 .receipts_root
                 .as_ref()
-                .map(|root| root.as_ref().to_vec()),
-            salt: transaction.salt.as_ref().map(|s| s.as_ref().to_vec()),
+                .map(|root| root.as_ref().to_vec().into()),
+            salt: transaction
+                .salt
+                .as_ref()
+                .map(|s| s.as_ref().to_vec().into()),
             script_gas_limit: transaction
                 .script_gas_limit
                 .as_ref()
                 .map(|limit| limit.as_ref().to_owned() as i64),
             subsection_index: transaction.subsection_index.map(Into::into),
             subsections_number: transaction.subsections_number.map(Into::into),
-            input_asset_ids: transaction
-                .input_asset_ids
-                .as_ref()
-                .map(|ids| ids.iter().map(|id| id.as_ref().to_vec()).collect()),
+            input_asset_ids: transaction.input_asset_ids.as_ref().map(|ids| {
+                ids.iter().map(|id| id.as_ref().to_vec().into()).collect()
+            }),
             proof_set: transaction.proof_set.as_ref().map(|proofs| {
-                proofs.iter().map(|p| p.as_ref().to_vec()).collect()
+                proofs.iter().map(|p| p.as_ref().to_vec().into()).collect()
             }),
             input_contract: transaction
                 .input_contract
@@ -274,16 +277,16 @@ impl AvroTransaction {
                 .map(OutputContract::new),
             policies: transaction.policies.as_ref().map(Policies::new),
             raw_payload: Some(
-                transaction.raw_payload.as_ref().as_ref().to_vec(),
+                transaction.raw_payload.as_ref().as_ref().to_vec().into(),
             ),
             script: transaction
                 .script
                 .as_ref()
-                .map(|s| s.as_ref().as_ref().to_vec()),
+                .map(|s| s.as_ref().as_ref().to_vec().into()),
             script_data: transaction
                 .script_data
                 .as_ref()
-                .map(|s| s.as_ref().as_ref().to_vec()),
+                .map(|s| s.as_ref().as_ref().to_vec().into()),
             storage_slots,
             upgrade_purpose: transaction
                 .upgrade_purpose
@@ -291,7 +294,7 @@ impl AvroTransaction {
                 .map(UpgradePurpose::new),
             witnesses: transaction.witnesses.as_ref().map(|w| {
                 w.iter()
-                    .map(|witness| witness.as_ref().as_ref().to_vec())
+                    .map(|witness| witness.as_ref().as_ref().to_vec().into())
                     .collect()
             }),
             script_length: transaction.script_length.map(Into::into),
@@ -317,9 +320,9 @@ impl From<(&Block, &Transaction)> for AvroTransaction {
             transaction,
             Some(block.height.into()),
             Some(block.header.get_timestamp_utc().timestamp()),
-            Some(block.id.as_ref().to_vec()),
+            Some(block.id.as_ref().to_vec().into()),
             Some(block.version.to_string()),
-            Some(block.producer.as_ref().to_vec()),
+            Some(block.producer.as_ref().to_vec().into()),
         )
     }
 }
@@ -336,17 +339,14 @@ mod tests {
     use super::*;
     use crate::helpers::{write_schema_files, AvroParser, TestBlockMetadata};
 
-    // Helper function to reduce code duplication in tests
     fn test_transaction_serialization(
         parser: AvroParser,
         avro_tx: AvroTransaction,
     ) {
-        // Test JSON serialization/deserialization
         let ser = serde_json::to_vec(&avro_tx).unwrap();
         let deser = serde_json::from_slice::<AvroTransaction>(&ser).unwrap();
         assert_eq!(avro_tx, deser);
 
-        // Test Avro serialization/deserialization
         let mut avro_writer =
             parser.writer_with_schema::<AvroTransaction>().unwrap();
         avro_writer.append(&avro_tx).unwrap();

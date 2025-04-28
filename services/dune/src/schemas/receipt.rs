@@ -11,6 +11,8 @@ use fuel_streams_types::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::helpers::AvroBytes;
+
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
 )]
@@ -23,23 +25,23 @@ pub struct AvroReceipt {
     #[avro(rename = "blockVersion")]
     pub block_version: Option<String>,
     #[avro(rename = "blockProducer")]
-    pub block_producer: Option<Vec<u8>>,
+    pub block_producer: Option<AvroBytes>,
     #[avro(rename = "transactionId")]
-    pub transaction_id: Option<Vec<u8>>,
+    pub transaction_id: Option<AvroBytes>,
     pub amount: Option<i64>,
     #[avro(rename = "assetId")]
-    pub asset_id: Option<Vec<u8>>,
+    pub asset_id: Option<AvroBytes>,
     #[avro(rename = "contractId")]
-    pub contract_id: Option<Vec<u8>>,
+    pub contract_id: Option<AvroBytes>,
     pub data: Option<String>,
-    pub digest: Option<Vec<u8>>,
+    pub digest: Option<AvroBytes>,
     pub gas: Option<i64>,
     #[avro(rename = "gasUsed")]
     pub gas_used: Option<i64>,
     pub id: Option<String>,
     pub is: Option<i64>,
     pub len: Option<i64>,
-    pub nonce: Option<Vec<u8>>,
+    pub nonce: Option<AvroBytes>,
     pub param1: Option<i64>,
     pub param2: Option<i64>,
     pub ptr: Option<i64>,
@@ -53,12 +55,12 @@ pub struct AvroReceipt {
     pub reason_instruction: Option<i64>,
     #[avro(rename = "receiptType")]
     pub receipt_type: Option<String>,
-    pub recipient: Option<Vec<u8>>,
+    pub recipient: Option<AvroBytes>,
     pub result: Option<i64>,
-    pub sender: Option<Vec<u8>>,
+    pub sender: Option<AvroBytes>,
     #[avro(rename = "subId")]
-    pub sub_id: Option<Vec<u8>>,
-    pub to: Option<Vec<u8>>,
+    pub sub_id: Option<AvroBytes>,
+    pub to: Option<AvroBytes>,
     #[avro(rename = "toAddress")]
     pub to_address: Option<String>,
     pub val: Option<i64>,
@@ -69,20 +71,20 @@ pub struct ReceiptMetadata {
     pub block_time: Option<i64>,
     pub block_height: Option<i64>,
     pub block_version: Option<String>,
-    pub block_producer: Option<Vec<u8>>,
-    pub transaction_id: Option<Vec<u8>>,
+    pub block_producer: Option<AvroBytes>,
+    pub transaction_id: Option<AvroBytes>,
 }
 
 impl ReceiptMetadata {
     pub fn from_test_metadata(
         metadata: &crate::helpers::TestBlockMetadata,
-        tx_id: Vec<u8>,
+        tx_id: AvroBytes,
     ) -> Self {
         Self {
             block_time: Some(metadata.block_time),
             block_height: Some(metadata.block_height),
             block_version: Some(metadata.block_version.clone()),
-            block_producer: Some(metadata.block_producer.clone()),
+            block_producer: Some(metadata.block_producer.clone().into()),
             transaction_id: Some(tx_id),
         }
     }
@@ -90,14 +92,12 @@ impl ReceiptMetadata {
 
 impl AvroReceipt {
     pub fn new(receipt: &Receipt, metadata: &ReceiptMetadata) -> Self {
-        // Block-related fields
         let block_time = metadata.block_time;
         let block_height = metadata.block_height;
         let block_version = metadata.block_version.clone();
         let block_producer = metadata.block_producer.clone();
         let transaction_id = metadata.transaction_id.clone();
 
-        // Receipt type-specific fields
         let amount = match receipt {
             Receipt::Call(r) => Some(r.amount.0 as i64),
             Receipt::Transfer(r) => Some(r.amount.0 as i64),
@@ -107,24 +107,24 @@ impl AvroReceipt {
         };
 
         let asset_id = match receipt {
-            Receipt::Call(r) => Some(r.asset_id.0.to_vec()),
-            Receipt::Transfer(r) => Some(r.asset_id.0.to_vec()),
-            Receipt::TransferOut(r) => Some(r.asset_id.0.to_vec()),
+            Receipt::Call(r) => Some(r.asset_id.clone().into()),
+            Receipt::Transfer(r) => Some(r.asset_id.clone().into()),
+            Receipt::TransferOut(r) => Some(r.asset_id.clone().into()),
             _ => None,
         };
 
         let contract_id = match receipt {
-            Receipt::Call(r) => Some(r.id.0.to_vec()),
-            Receipt::Return(r) => Some(r.id.0.to_vec()),
-            Receipt::ReturnData(r) => Some(r.id.0.to_vec()),
-            Receipt::Panic(r) => Some(r.id.0.to_vec()),
-            Receipt::Revert(r) => Some(r.id.0.to_vec()),
-            Receipt::Log(r) => Some(r.id.0.to_vec()),
-            Receipt::LogData(r) => Some(r.id.0.to_vec()),
-            Receipt::Transfer(r) => Some(r.id.0.to_vec()),
-            Receipt::TransferOut(r) => Some(r.id.0.to_vec()),
-            Receipt::Mint(r) => Some(r.contract_id.0.to_vec()),
-            Receipt::Burn(r) => Some(r.contract_id.0.to_vec()),
+            Receipt::Call(r) => Some(r.id.clone().into()),
+            Receipt::Return(r) => Some(r.id.clone().into()),
+            Receipt::ReturnData(r) => Some(r.id.clone().into()),
+            Receipt::Panic(r) => Some(r.id.clone().into()),
+            Receipt::Revert(r) => Some(r.id.clone().into()),
+            Receipt::Log(r) => Some(r.id.clone().into()),
+            Receipt::LogData(r) => Some(r.id.clone().into()),
+            Receipt::Transfer(r) => Some(r.id.clone().into()),
+            Receipt::TransferOut(r) => Some(r.id.clone().into()),
+            Receipt::Mint(r) => Some(r.contract_id.clone().into()),
+            Receipt::Burn(r) => Some(r.contract_id.clone().into()),
             _ => None,
         };
 
@@ -136,9 +136,9 @@ impl AvroReceipt {
         };
 
         let digest = match receipt {
-            Receipt::ReturnData(r) => Some(r.digest.0.to_vec()),
-            Receipt::LogData(r) => Some(r.digest.0.to_vec()),
-            Receipt::MessageOut(r) => Some(r.digest.0.to_vec()),
+            Receipt::ReturnData(r) => Some(r.digest.clone().into()),
+            Receipt::LogData(r) => Some(r.digest.clone().into()),
+            Receipt::MessageOut(r) => Some(r.digest.clone().into()),
             _ => None,
         };
 
@@ -188,7 +188,7 @@ impl AvroReceipt {
         };
 
         let nonce = match receipt {
-            Receipt::MessageOut(r) => Some(r.nonce.0.to_vec()),
+            Receipt::MessageOut(r) => Some(r.nonce.clone().into()),
             _ => None,
         };
 
@@ -258,7 +258,7 @@ impl AvroReceipt {
         );
 
         let recipient = match receipt {
-            Receipt::MessageOut(r) => Some(r.recipient.0.to_vec()),
+            Receipt::MessageOut(r) => Some(r.recipient.clone().into()),
             _ => None,
         };
 
@@ -286,19 +286,19 @@ impl AvroReceipt {
         };
 
         let sender = match receipt {
-            Receipt::MessageOut(r) => Some(r.sender.0.to_vec()),
+            Receipt::MessageOut(r) => Some(r.sender.clone().into()),
             _ => None,
         };
 
         let sub_id = match receipt {
-            Receipt::Mint(r) => Some(r.sub_id.0.to_vec()),
-            Receipt::Burn(r) => Some(r.sub_id.0.to_vec()),
+            Receipt::Mint(r) => Some(r.sub_id.clone().into()),
+            Receipt::Burn(r) => Some(r.sub_id.clone().into()),
             _ => None,
         };
 
         let to = match receipt {
-            Receipt::Call(r) => Some(r.to.0.to_vec()),
-            Receipt::Transfer(r) => Some(r.to.0.to_vec()),
+            Receipt::Call(r) => Some(r.to.clone().into()),
+            Receipt::Transfer(r) => Some(r.to.clone().into()),
             _ => None,
         };
 
@@ -359,8 +359,8 @@ impl From<(&Block, &Transaction, &Receipt)> for AvroReceipt {
             block_time: Some(timestamp),
             block_height: Some(block.height.0 as i64),
             block_version: Some(block.version.to_string()),
-            block_producer: Some(block.producer.0.to_vec()),
-            transaction_id: Some(tx.id.0.to_vec()),
+            block_producer: Some(block.producer.clone().into()),
+            transaction_id: Some(tx.id.clone().into()),
         };
         Self::new(receipt, &metadata)
     }
@@ -375,17 +375,14 @@ mod tests {
     use super::*;
     use crate::helpers::{write_schema_files, AvroParser, TestBlockMetadata};
 
-    // Helper function to reduce code duplication in tests
     fn test_receipt_serialization(
         parser: AvroParser,
         avro_receipt: AvroReceipt,
     ) {
-        // Test JSON serialization/deserialization
         let ser = serde_json::to_vec(&avro_receipt).unwrap();
         let deser = serde_json::from_slice::<AvroReceipt>(&ser).unwrap();
         assert_eq!(avro_receipt, deser);
 
-        // Test Avro serialization/deserialization
         let mut avro_writer =
             parser.writer_with_schema::<AvroReceipt>().unwrap();
         avro_writer.append(&avro_receipt).unwrap();
@@ -402,8 +399,7 @@ mod tests {
 
     fn create_receipt_metadata() -> ReceiptMetadata {
         let metadata = TestBlockMetadata::new();
-        let transaction_id = vec![4, 5, 6];
-
+        let transaction_id = AvroBytes::random(32);
         ReceiptMetadata::from_test_metadata(&metadata, transaction_id)
     }
 
@@ -543,8 +539,10 @@ mod tests {
         let parser = AvroParser::default();
         let receipts = MockReceipt::all();
         let test_metadata = TestBlockMetadata::new();
-        let metadata =
-            ReceiptMetadata::from_test_metadata(&test_metadata, vec![4, 5, 6]);
+        let metadata = ReceiptMetadata::from_test_metadata(
+            &test_metadata,
+            AvroBytes::random(32),
+        );
 
         for receipt in receipts {
             let avro_receipt = AvroReceipt::new(&receipt, &metadata);
@@ -557,18 +555,11 @@ mod tests {
         let parser = AvroParser::default();
         let receipt = MockReceipt::call();
 
-        // Create custom metadata
-        let test_metadata = TestBlockMetadata::with_values(
-            100,
-            2000,
-            vec![4, 5, 6],
-            "2.0".to_string(),
-            vec![7, 8, 9],
+        let test_metadata = TestBlockMetadata::default();
+        let metadata = ReceiptMetadata::from_test_metadata(
+            &test_metadata,
+            AvroBytes::random(32),
         );
-        let metadata =
-            ReceiptMetadata::from_test_metadata(&test_metadata, vec![
-                10, 11, 12,
-            ]);
 
         let avro_receipt = AvroReceipt::new(&receipt, &metadata);
         test_receipt_serialization(parser, avro_receipt);

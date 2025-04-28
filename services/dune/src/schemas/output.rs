@@ -2,6 +2,8 @@ use apache_avro::AvroSchema;
 use fuel_streams_domains::outputs;
 use serde::{Deserialize, Serialize};
 
+use crate::helpers::AvroBytes;
+
 #[derive(
     Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
 )]
@@ -9,8 +11,8 @@ use serde::{Deserialize, Serialize};
 pub struct OutputCoin {
     pub amount: Option<i64>,
     #[avro(rename = "assetId")]
-    pub asset_id: Option<Vec<u8>>,
-    pub to: Option<Vec<u8>>,
+    pub asset_id: Option<AvroBytes>,
+    pub to: Option<AvroBytes>,
 }
 
 #[derive(
@@ -19,11 +21,11 @@ pub struct OutputCoin {
 #[serde(rename_all = "camelCase")]
 pub struct OutputContract {
     #[avro(rename = "balanceRoot")]
-    pub balance_root: Option<Vec<u8>>,
+    pub balance_root: Option<AvroBytes>,
     #[avro(rename = "inputIndex")]
     pub input_index: Option<i64>,
     #[avro(rename = "stateRoot")]
-    pub state_root: Option<Vec<u8>>,
+    pub state_root: Option<AvroBytes>,
 }
 
 #[derive(
@@ -32,9 +34,9 @@ pub struct OutputContract {
 #[serde(rename_all = "camelCase")]
 pub struct OutputContractCreated {
     #[avro(rename = "contractId")]
-    pub contract_id: Option<Vec<u8>>,
+    pub contract_id: Option<AvroBytes>,
     #[avro(rename = "stateRoot")]
-    pub state_root: Option<Vec<u8>>,
+    pub state_root: Option<AvroBytes>,
 }
 
 #[derive(
@@ -44,8 +46,8 @@ pub struct OutputContractCreated {
 pub struct OutputChange {
     pub amount: Option<i64>,
     #[avro(rename = "assetId")]
-    pub asset_id: Option<Vec<u8>>,
-    pub to: Option<Vec<u8>>,
+    pub asset_id: Option<AvroBytes>,
+    pub to: Option<AvroBytes>,
 }
 
 #[derive(
@@ -55,8 +57,8 @@ pub struct OutputChange {
 pub struct OutputVariable {
     pub amount: Option<i64>,
     #[avro(rename = "assetId")]
-    pub asset_id: Option<Vec<u8>>,
-    pub to: Option<Vec<u8>>,
+    pub asset_id: Option<AvroBytes>,
+    pub to: Option<AvroBytes>,
 }
 
 #[derive(
@@ -82,8 +84,8 @@ impl OutputCoin {
     pub fn new(output: &outputs::OutputCoin) -> Self {
         Self {
             amount: Some(output.amount.0 as i64),
-            asset_id: Some(output.asset_id.0.to_vec()),
-            to: Some(output.to.0.to_vec()),
+            asset_id: Some(output.asset_id.clone().into()),
+            to: Some(output.to.clone().into()),
         }
     }
 }
@@ -91,9 +93,9 @@ impl OutputCoin {
 impl OutputContract {
     pub fn new(output: &outputs::OutputContract) -> Self {
         Self {
-            balance_root: Some(output.balance_root.0.to_vec()),
+            balance_root: Some(output.balance_root.clone().into()),
             input_index: Some(output.input_index as i64),
-            state_root: Some(output.state_root.0.to_vec()),
+            state_root: Some(output.state_root.clone().into()),
         }
     }
 }
@@ -101,8 +103,8 @@ impl OutputContract {
 impl OutputContractCreated {
     pub fn new(output: &outputs::OutputContractCreated) -> Self {
         Self {
-            contract_id: Some(output.contract_id.0.to_vec()),
-            state_root: Some(output.state_root.0.to_vec()),
+            contract_id: Some(output.contract_id.clone().into()),
+            state_root: Some(output.state_root.clone().into()),
         }
     }
 }
@@ -111,8 +113,8 @@ impl OutputChange {
     pub fn new(output: &outputs::OutputChange) -> Self {
         Self {
             amount: Some(output.amount.0 as i64),
-            asset_id: Some(output.asset_id.0.to_vec()),
-            to: Some(output.to.0.to_vec()),
+            asset_id: Some(output.asset_id.clone().into()),
+            to: Some(output.to.clone().into()),
         }
     }
 }
@@ -121,8 +123,8 @@ impl OutputVariable {
     pub fn new(output: &outputs::OutputVariable) -> Self {
         Self {
             amount: Some(output.amount.0 as i64),
-            asset_id: Some(output.asset_id.0.to_vec()),
-            to: Some(output.to.0.to_vec()),
+            asset_id: Some(output.asset_id.clone().into()),
+            to: Some(output.to.clone().into()),
         }
     }
 }

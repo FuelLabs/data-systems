@@ -32,7 +32,10 @@ fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
 rand.workspace = true
 rayon.workspace = true
+redis = { version = "0.30.0", features = ["tls-native-tls"] }
 serde.workspace = true
+serde-avro-bytes = "0.2.0"
+serde_bytes = "0.11.17"
 serde_json.workspace = true
 surrealkv = "0.9.1"
 thiserror.workspace = true
@@ -41,6 +44,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+serial_test = "3.2.0"
 tokio = { workspace = true, features = [
   "rt-multi-thread",
   "macros",

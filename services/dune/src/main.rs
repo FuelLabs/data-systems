@@ -309,7 +309,7 @@ mod tests {
                 );
                 assert_eq!(
                     deserialized_block.producer,
-                    Some(original_block.producer.as_ref().to_vec()),
+                    Some(original_block.producer.as_ref().to_vec().into()),
                     "Block producer should match"
                 );
             }
@@ -393,7 +393,7 @@ mod tests {
                 );
                 assert_eq!(
                     deserialized_block.producer,
-                    Some(original_block.producer.as_ref().to_vec()),
+                    Some(original_block.producer.as_ref().to_vec().into()),
                     "Block producer should match"
                 );
             }

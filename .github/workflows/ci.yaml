@@ -211,6 +211,8 @@ jobs:
     name: Test ${{ matrix.package }}
     runs-on: ubuntu-latest
     env:
+      REDIS_URL: redis://:test@localhost:6379
+      REDIS_PASSWORD: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable
       DB_USER: postgres
       DB_PASSWORD: postgres
@@ -285,6 +287,7 @@ jobs:
         run: |
           make start-nats
           make start-s3
+          make start-redis
           make setup-db
 
       - name: Run tests
@@ -294,6 +297,7 @@ jobs:
         run: |
           make stop-nats
           make stop-s3
+          make stop-redis
 
   build:
     needs: install-deps
