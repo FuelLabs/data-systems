@@ -8,7 +8,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn new(_storage_dir: Option<&str>) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let redis_url = dotenvy::var("REDIS_URL")
             .map_err(|_| anyhow!("REDIS_URL must be set"))?;
         let client = redis::Client::open(redis_url.as_str())
@@ -116,7 +116,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_store_creation() -> Result<()> {
-        let store = Store::new(None)?;
+        let store = Store::new()?;
         assert!(store.client.get_connection().is_ok());
         cleanup_redis(&store).await?;
         Ok(())
@@ -125,7 +125,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_last_block_operations() -> Result<()> {
-        let store = Store::new(None)?;
+        let store = Store::new()?;
 
         // Test initial state
         let initial_height = store.get_last_block_saved().await?;
@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_total_blocks_operations() -> Result<()> {
-        let store = Store::new(None)?;
+        let store = Store::new()?;
 
         // Test initial state
         let initial_total = store.get_total_blocks().await?;
@@ -168,7 +168,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_should_continue_processing() -> Result<()> {
-        let store = Store::new(None)?;
+        let store = Store::new()?;
 
         // Test with no max blocks (should always return true)
         assert!(store.should_continue_processing(None).await?);

@@ -63,19 +63,6 @@ tests:
             args:
               - --network
               - mainnet
-              - --storage-file-dir
-              - /data/dune
-      - contains:
-          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
-          content:
-            name: "dune-state"
-            mountPath: "/data/dune"
-      - contains:
-          path: spec.jobTemplate.spec.template.spec.volumes
-          content:
-            name: "dune-state"
-            persistentVolumeClaim:
-              claimName: RELEASE-NAME-fuel-streams-dune-state
 
   # Test 4: Verify resource requests and limits from values
   - it: should apply resource requests and limits

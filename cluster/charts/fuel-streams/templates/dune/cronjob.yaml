@@ -26,15 +26,6 @@ spec:
               args:
                 - "--network"
                 - "{{ $dune.network }}"
-                - "--storage-file-dir"
-                - "{{ $dune.storage.mountPath }}"
               {{- include "k8s.container-config" $serviceDict | nindent 14 }}
-              volumeMounts:
-                - name: dune-state
-                  mountPath: {{ $dune.storage.mountPath }}
-          volumes:
-            - name: dune-state
-              persistentVolumeClaim:
-                claimName: {{ include "fuel-streams.fullname" . }}-dune-state
           restartPolicy: OnFailure
 {{- end }}

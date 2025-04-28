@@ -21,9 +21,6 @@ pub struct Cli {
     )]
     pub db_url: String,
 
-    #[arg(long, value_name = "STORAGE_FILE_DIR", env = "STORAGE_FILE_DIR")]
-    pub storage_file_dir: Option<String>,
-
     #[arg(
         long,
         value_name = "STORAGE_TYPE",

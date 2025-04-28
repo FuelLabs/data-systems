@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let db = setup_db(&cli.db_url).await?;
-    let store = setup_store(&cli)?;
+    let store = Store::new()?;
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
@@ -66,10 +66,6 @@ async fn setup_db(db_url: &str) -> Result<Arc<Db>, DuneError> {
     })
     .await?;
     Ok(db)
-}
-
-fn setup_store(cli: &Cli) -> Result<Store> {
-    Store::new(cli.storage_file_dir.as_deref())
 }
 
 async fn process_blocks(
