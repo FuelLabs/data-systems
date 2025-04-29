@@ -5,9 +5,10 @@ use fuel_streams_domains::infra::Db;
 use fuel_streams_types::TxPointer;
 use serde_json;
 use sqlx::PgPool;
-use tokio::{sync::Semaphore, task::JoinSet};
+use tokio::task::JoinSet;
+use tracing::info;
 
-const QUERY_BATCH_SIZE: i64 = 50;
+const QUERY_BATCH_SIZE: i64 = 500;
 
 #[derive(Clone, Debug, sqlx::FromRow)]
 struct TransactionRecord {
@@ -20,7 +21,6 @@ async fn fetch_transaction_chunk(
     pool: &PgPool,
     offset: i64,
 ) -> Result<Vec<TransactionRecord>> {
-    println!("Fetching transaction chunk with offset {}", offset);
     sqlx::query_as::<_, TransactionRecord>(
         "SELECT id, block_height, tx_index
          FROM transactions
@@ -44,66 +44,76 @@ async fn update_transaction_chunk(
         return Ok(0);
     }
 
-    let mut tx = pool.begin().await?;
-    for record in transactions.clone() {
-        let tx_pointer = TxPointer {
-            block_height: record.block_height.try_into()?,
-            tx_index: record.tx_index as u16,
-        };
-        let tx_pointer = serde_json::to_vec(&tx_pointer)?;
-        sqlx::query(
-            "UPDATE transactions
-             SET tx_pointer = $1
-             WHERE id = $2",
-        )
-        .bind(&tx_pointer)
-        .bind(record.id)
-        .execute(&mut *tx)
-        .await?;
-    }
+    let ids: Vec<i32> = transactions.iter().map(|t| t.id).collect();
+    let tx_pointers: Vec<Vec<u8>> = transactions
+        .iter()
+        .map(|t| {
+            let tx_pointer = TxPointer {
+                block_height: t.block_height.into(),
+                tx_index: t.tx_index as u16,
+            };
+            serde_json::to_vec(&tx_pointer).map_err(|e| e.into())
+        })
+        .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
-    tx.commit().await?;
-    Ok(transactions.len())
+    let updated = sqlx::query(
+        r#"
+        UPDATE transactions
+        SET tx_pointer = data.tx_pointer
+        FROM (
+            SELECT unnest($1::integer[]) AS id, unnest($2::bytea[]) AS tx_pointer
+        ) AS data
+        WHERE transactions.id = data.id
+        "#,
+    )
+    .bind(&ids)
+    .bind(&tx_pointers)
+    .execute(pool)
+    .await?
+    .rows_affected() as usize;
+
+    Ok(updated)
 }
 
 pub async fn recover_tx_pointers(db: &Arc<Db>) -> Result<()> {
     let pool = db.pool_ref();
-    let semaphore = Arc::new(Semaphore::new(30));
     let mut join_set = JoinSet::new();
     let mut offset = 0;
     let mut total_updated = 0;
+    let mut chunk = 1;
 
     loop {
-        let transactions = fetch_transaction_chunk(&pool, offset).await?;
+        info!(
+            "Fetching transaction chunk {} with offset {}",
+            chunk, offset
+        );
+
+        let transactions = fetch_transaction_chunk(pool, offset).await?;
         if transactions.is_empty() {
             break;
         }
 
         let pool = pool.clone();
-        let permit = semaphore.clone().acquire_owned().await?;
         let chunk_transactions = transactions;
+        let current_chunk = chunk;
         join_set.spawn(async move {
             let updated =
                 update_transaction_chunk(&pool, chunk_transactions).await?;
-            println!(
-                "Completed chunk at offset {}, updated {} transactions",
-                offset, updated
+            info!(
+                "Completed chunk {}, updated {} transactions",
+                current_chunk, updated
             );
-            drop(permit);
             Ok::<usize, anyhow::Error>(updated)
         });
 
         offset += QUERY_BATCH_SIZE;
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        chunk += 1;
     }
 
     while let Some(result) = join_set.join_next().await {
         total_updated += result??;
     }
 
-    println!(
-        "Successfully completed transaction updates. Total transactions updated: {}",
-        total_updated
-    );
+    info!("Total transactions updated: {}", total_updated);
     Ok(())
 }
