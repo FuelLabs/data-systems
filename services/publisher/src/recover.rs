@@ -52,7 +52,7 @@ async fn update_transaction_chunk(
     let mut tx = pool.begin().await?;
     for record in transactions.clone() {
         let tx_pointer = TxPointer {
-            block_height: record.block_height.try_into()?,
+            block_height: record.block_height.into(),
             tx_index: record.tx_index as u16,
         };
         let tx_pointer = serde_json::to_vec(&tx_pointer)?;
@@ -79,7 +79,7 @@ pub async fn recover_tx_pointers(db: &Arc<Db>) -> Result<()> {
     let mut total_updated = 0;
 
     loop {
-        let transactions = fetch_transaction_chunk(&pool, offset).await?;
+        let transactions = fetch_transaction_chunk(pool, offset).await?;
         if transactions.is_empty() {
             break;
         }
