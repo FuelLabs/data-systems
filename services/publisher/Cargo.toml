@@ -19,6 +19,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 async-trait.workspace = true
 clap.workspace = true
+dotenvy.workspace = true
 fuel-core.workspace = true
 fuel-core-bin.workspace = true
 fuel-core-types.workspace = true
