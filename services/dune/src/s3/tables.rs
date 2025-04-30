@@ -1,6 +1,13 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::LazyLock};
 
 use fuel_streams_types::BlockHeight;
+
+pub static BUCKET_PREFIX: LazyLock<String> = LazyLock::new(|| {
+    dotenvy::var("BUCKET_PREFIX")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or("v1".to_string())
+});
 
 #[derive(Debug, Clone, Copy, Default, derive_more::Display)]
 pub enum FuelNetwork {
@@ -74,6 +81,9 @@ impl S3KeyBuilder {
         end_block: BlockHeight,
     ) -> String {
         let filename = format!("{:010}-{:010}.avro", start_block, end_block);
-        format!("v1/{}/{}/{}", self.chain, self.table, filename)
+        format!(
+            "{}/{}/{}/{}",
+            *BUCKET_PREFIX, self.chain, self.table, filename
+        )
     }
 }
