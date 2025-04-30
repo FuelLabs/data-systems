@@ -158,23 +158,11 @@ async fn process_batch(
     };
 
     tokio::select! {
-        result = blocks_task => {
-            if let Err(e) = result {
-                tracing::error!("Error processing blocks: {:?}", e);
-                return Err(e.into());
-            }
-        }
-        result = tx_task => {
-            if let Err(e) = result {
-                tracing::error!("Error processing transactions: {:?}", e);
-                return Err(e.into());
-            }
-        }
-        result = receipts_task => {
-            if let Err(e) = result {
-                tracing::error!("Error processing receipts: {:?}", e);
-                return Err(e.into());
-            }
+        result = async {
+            tokio::try_join!(blocks_task, tx_task, receipts_task)?;
+            Ok::<_, DuneError>(())
+        } => {
+            result?;
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, stopping batch processing...");
