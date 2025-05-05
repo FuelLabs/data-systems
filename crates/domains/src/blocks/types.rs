@@ -175,9 +175,8 @@ impl From<FuelCoreConsensus> for Consensus {
 #[derive(
     Debug, Clone, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
 )]
-#[serde(rename_all = "snake_case")]
 pub enum BlockVersion {
-    #[serde(alias = "V1", alias = "v1")]
+    #[serde(alias = "v1")]
     V1,
 }
 
