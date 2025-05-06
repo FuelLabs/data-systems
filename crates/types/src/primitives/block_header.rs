@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, str::FromStr};
 
 use apache_avro::{
     schema::{derive::AvroSchemaComponent, Name},
@@ -179,7 +179,7 @@ pub struct BlockHeader {
     pub time: BlockTime,
     pub transactions_count: u16,
     pub transactions_root: Bytes32,
-    pub version: BlockHeaderVersion,
+    pub version: BlockVersion,
 }
 
 impl BlockHeader {
@@ -194,7 +194,7 @@ impl BlockHeader {
 impl From<&FuelCoreBlockHeader> for BlockHeader {
     fn from(header: &FuelCoreBlockHeader) -> Self {
         let version = match header {
-            FuelCoreBlockHeader::V1(_) => BlockHeaderVersion::V1,
+            FuelCoreBlockHeader::V1(_) => BlockVersion::V1,
         };
 
         Self {
@@ -220,22 +220,42 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
     }
 }
 
+// BlockVersion enum
 #[derive(
     Debug,
     Clone,
+    Eq,
     PartialEq,
     Serialize,
     Deserialize,
-    Default,
     utoipa::ToSchema,
-    derive_more::Display,
     apache_avro::AvroSchema,
+    Default,
 )]
-#[serde(rename_all = "snake_case")]
-pub enum BlockHeaderVersion {
+pub enum BlockVersion {
     #[default]
-    #[display("V1")]
+    #[serde(alias = "v1")]
     V1,
+}
+
+impl FromStr for BlockVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "V1" => Ok(BlockVersion::V1),
+            _ => Err(format!("Unknown BlockVersion: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for BlockVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            BlockVersion::V1 => "V1",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 #[cfg(test)]
@@ -316,5 +336,28 @@ mod tests {
         let expected = BlockTime::from_unix(1614556800);
         assert_eq!(deserialized, expected);
         assert_eq!(deserialized.0.to_unix(), 1614556800);
+    }
+
+    #[test]
+    fn test_block_version_deserialization() {
+        // Test uppercase "V1"
+        let uppercase = r#""V1""#;
+        let version: BlockVersion = serde_json::from_str(uppercase).unwrap();
+        assert_eq!(version, BlockVersion::V1);
+
+        // Test lowercase "v1"
+        let lowercase = r#""v1""#;
+        let version: BlockVersion = serde_json::from_str(lowercase).unwrap();
+        assert_eq!(version, BlockVersion::V1);
+
+        // Test within a JSON object
+        let json_obj = serde_json::json!({
+            "version": "V1"
+        });
+        let parsed: serde_json::Value =
+            serde_json::from_value(json_obj).unwrap();
+        let version: BlockVersion =
+            serde_json::from_value(parsed["version"].clone()).unwrap();
+        assert_eq!(version, BlockVersion::V1);
     }
 }

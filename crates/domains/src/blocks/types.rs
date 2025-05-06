@@ -1,5 +1,3 @@
-use std::{fmt, str::FromStr};
-
 use fuel_data_parser::DataEncoder;
 pub use fuel_streams_types::BlockHeight;
 use fuel_streams_types::{fuel_core::*, primitives::*};
@@ -171,35 +169,6 @@ impl From<FuelCoreConsensus> for Consensus {
     }
 }
 
-// BlockVersion enum
-#[derive(
-    Debug, Clone, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
-pub enum BlockVersion {
-    #[serde(alias = "v1")]
-    V1,
-}
-
-impl FromStr for BlockVersion {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().as_str() {
-            "V1" => Ok(BlockVersion::V1),
-            _ => Err(format!("Unknown BlockVersion: {}", s)),
-        }
-    }
-}
-
-impl fmt::Display for BlockVersion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            BlockVersion::V1 => "V1",
-        };
-        write!(f, "{}", s)
-    }
-}
-
 #[derive(Debug, Clone)]
 #[cfg(any(test, feature = "test-helpers"))]
 pub struct MockBlock(pub Block);
@@ -233,35 +202,5 @@ impl MockBlock {
         let mut rng = rand::rng();
         let height = rng.random_range(0..u64::MAX);
         Self::build(height.into())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use pretty_assertions::assert_eq;
-    use serde_json::{json, Value};
-
-    use super::*;
-
-    #[test]
-    fn test_block_version_deserialization() {
-        // Test uppercase "V1"
-        let uppercase = r#""V1""#;
-        let version: BlockVersion = serde_json::from_str(uppercase).unwrap();
-        assert_eq!(version, BlockVersion::V1);
-
-        // Test lowercase "v1"
-        let lowercase = r#""v1""#;
-        let version: BlockVersion = serde_json::from_str(lowercase).unwrap();
-        assert_eq!(version, BlockVersion::V1);
-
-        // Test within a JSON object
-        let json_obj = json!({
-            "version": "V1"
-        });
-        let parsed: Value = serde_json::from_value(json_obj).unwrap();
-        let version: BlockVersion =
-            serde_json::from_value(parsed["version"].clone()).unwrap();
-        assert_eq!(version, BlockVersion::V1);
     }
 }
