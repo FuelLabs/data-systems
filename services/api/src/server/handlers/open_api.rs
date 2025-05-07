@@ -4,6 +4,7 @@ use fuel_streams_core::types::*;
 use fuel_streams_domains::{
     blocks::BlocksQuery,
     inputs::InputsQuery,
+    messages::{Message, MessageType, MessagesQuery},
     outputs::OutputsQuery,
     receipts::ReceiptsQuery,
     transactions::TransactionsQuery,
@@ -22,6 +23,7 @@ pub const TAG_ACCOUNTS: &str = "Accounts";
 pub const TAG_BLOCKS: &str = "Blocks";
 pub const TAG_CONTRACTS: &str = "Contracts";
 pub const TAG_INPUTS: &str = "Inputs";
+pub const TAG_MESSAGES: &str = "Messages";
 pub const TAG_OUTPUTS: &str = "Outputs";
 pub const TAG_RECEIPTS: &str = "Receipts";
 pub const TAG_TRANSACTIONS: &str = "Transactions";
@@ -56,6 +58,7 @@ use super::{
     blocks::*,
     contracts::*,
     inputs::*,
+    messages::*,
     outputs::*,
     predicates::*,
     receipts::*,
@@ -110,6 +113,7 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         get_utxos,
         get_predicates,
         generate_api_key,
+        get_messages,
     ),
     components(schemas(
         BlocksQuery,
@@ -117,6 +121,7 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         ReceiptsQuery,
         InputsQuery,
         OutputsQuery,
+        MessagesQuery,
         Consensus,
         BlockHeader,
         BlockId,
@@ -158,12 +163,15 @@ use crate::server::handlers::api_key::GenerateApiKeyRequest;
         UtxoId,
         GenerateApiKeyRequest,
         ApiKey,
+        Message,
+        MessageType,
     )),
     tags(
         (name = "Blocks", description = "Block retrieval endpoints"),
         (name = "Accounts", description = "Accounts retrieval endpoints"),
         (name = "Contracts", description = "Contracts retrieval endpoints"),
         (name = "Inputs", description = "Inputs retrieval endpoints"),
+        (name = "Messages", description = "Messages retrieval endpoints"),
         (name = "Outputs", description = "Outputs retrieval endpoints"),
         (name = "Receipts", description = "Receipts retrieval endpoints"),
         (name = "Transactions", description = "Transactions retrieval endpoints"),

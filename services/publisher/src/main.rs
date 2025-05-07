@@ -106,8 +106,14 @@ async fn process_live_blocks(
     let process_fut = async {
         while let Ok(data) = subscription.recv().await {
             let sealed_block = Arc::new(data.sealed_block.to_owned());
-            publish_block(message_broker, fuel_core, &sealed_block, telemetry)
-                .await?;
+            publish_block(
+                message_broker,
+                fuel_core,
+                &sealed_block,
+                telemetry,
+                Some(&data),
+            )
+            .await?;
         }
         Ok::<_, PublishError>(())
     };
@@ -204,6 +210,7 @@ async fn process_blocks_with_join_set(
                     &fuel_core,
                     &sealed_block,
                     &telemetry,
+                    None,
                 )
                 .await
             });

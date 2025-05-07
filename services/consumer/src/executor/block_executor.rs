@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
-use fuel_message_broker::{Message, NatsMessageBroker, NatsQueue};
+use fuel_message_broker::{
+    Message as NatsMessage,
+    NatsMessageBroker,
+    NatsQueue,
+};
 use fuel_streams_core::{
     types::{
         Block,
@@ -23,6 +27,7 @@ use fuel_streams_domains::{
         repository::Repository,
     },
     inputs::InputDbItem,
+    messages::{Message, MessageDbItem},
     outputs::OutputDbItem,
     predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
@@ -45,7 +50,7 @@ use super::{
     block_stats::{ActionType, BlockStats},
     retry::RetryService,
 };
-use crate::{errors::ConsumerError, metrics::Metrics};
+use crate::{cli::Cli, errors::ConsumerError, metrics::Metrics};
 
 const MAX_CONCURRENT_TASKS: usize = 32;
 const BATCH_SIZE: usize = 100;
@@ -57,6 +62,7 @@ enum ProcessResult {
 }
 
 pub struct BlockExecutor {
+    cli: Option<Arc<Cli>>,
     db: Arc<Db>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
@@ -66,6 +72,7 @@ pub struct BlockExecutor {
 
 impl BlockExecutor {
     pub fn new(
+        cli: Option<Arc<Cli>>,
         db: Arc<Db>,
         message_broker: &Arc<NatsMessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
@@ -73,6 +80,7 @@ impl BlockExecutor {
     ) -> Self {
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
         Self {
+            cli,
             db,
             semaphore,
             message_broker: message_broker.clone(),
@@ -124,7 +132,7 @@ impl BlockExecutor {
 
     async fn spawn_processing_tasks(
         &self,
-        msg: Box<dyn Message>,
+        msg: Box<dyn NatsMessage>,
         join_set: &mut JoinSet<Result<ProcessResult, ConsumerError>>,
     ) -> Result<(), ConsumerError> {
         let db = self.db.clone();
@@ -133,13 +141,16 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
+        let cli = self.cli.as_ref().cloned();
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
             async move {
                 let _permit = semaphore.acquire().await?;
-                let result = handle_stores(&db, &packets, &msg_payload).await;
+                let result =
+                    handle_stores(cli.as_ref(), &db, &packets, &msg_payload)
+                        .await;
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -206,6 +217,7 @@ impl BlockExecutor {
 }
 
 async fn handle_stores(
+    cli: Option<&Arc<Cli>>,
     db: &Arc<Db>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
@@ -221,6 +233,16 @@ async fn handle_stores(
             for packet in packets.iter() {
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
+
+                // Skip if store_only_entity is set and doesn't match current entity
+                if let Some(cli) = &cli {
+                    if let Some(store_only) = &cli.store_only_entity {
+                        if entity.as_str() != store_only {
+                            continue;
+                        }
+                    }
+                }
+
                 match entity {
                     RecordEntity::Block => {
                         let db_item = BlockDbItem::try_from(packet)?;
@@ -247,6 +269,11 @@ async fn handle_stores(
                         Receipt::insert_with_transaction(&mut tx, &db_item)
                             .await?;
                     }
+                    RecordEntity::Message => {
+                        let db_item = MessageDbItem::try_from(packet)?;
+                        Message::insert_with_transaction(&mut tx, &db_item)
+                            .await?;
+                    }
                     _ => {}
                 }
             }
@@ -263,6 +290,16 @@ async fn handle_stores(
             for packet in packets.iter() {
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
+
+                // Skip if store_only_entity is set and doesn't match current entity
+                if let Some(cli) = &cli {
+                    if let Some(store_only) = &cli.store_only_entity {
+                        if entity.as_str() != store_only {
+                            continue;
+                        }
+                    }
+                }
+
                 match entity {
                     RecordEntity::Predicate => {
                         let mut db_item = PredicateDbItem::try_from(packet)?;

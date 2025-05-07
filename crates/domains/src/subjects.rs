@@ -9,6 +9,7 @@ use fuel_streams_subject::subject::{
 use crate::{
     blocks::*,
     inputs::*,
+    messages::MessagesSubject,
     outputs::*,
     predicates::*,
     receipts::*,
@@ -54,6 +55,7 @@ pub enum Subjects {
     ReceiptsBurn(ReceiptsBurnSubject),
     Transactions(TransactionsSubject),
     Utxos(UtxosSubject),
+    Messages(MessagesSubject),
 }
 
 impl From<Subjects> for Arc<dyn IntoSubject> {
@@ -87,6 +89,7 @@ impl From<Subjects> for Arc<dyn IntoSubject> {
             Subjects::ReceiptsBurn(s) => s.dyn_arc(),
             Subjects::Transactions(s) => s.dyn_arc(),
             Subjects::Utxos(s) => s.dyn_arc(),
+            Subjects::Messages(s) => s.dyn_arc(),
         }
     }
 }
@@ -144,6 +147,8 @@ impl_try_from_subjects!(
     (UtxosSubject, Utxos),
     // Predicate transactions subject
     (PredicatesSubject, Predicates),
+    // Message subjects
+    (MessagesSubject, Messages),
 );
 
 #[allow(clippy::disallowed_macros)]

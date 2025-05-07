@@ -16,6 +16,7 @@ pub enum RecordEntity {
     Receipt,
     Utxo,
     Predicate,
+    Message,
 }
 
 impl std::fmt::Display for RecordEntity {
@@ -34,6 +35,7 @@ impl RecordEntity {
             Self::Receipt => "receipt",
             Self::Utxo => "utxo",
             Self::Predicate => "predicate",
+            Self::Message => "message",
         }
     }
 
@@ -69,6 +71,7 @@ impl TryFrom<&str> for RecordEntity {
             s if s.contains("receipt") => Ok(Self::Receipt),
             s if s.contains("utxo") => Ok(Self::Utxo),
             s if s.contains("predicate") => Ok(Self::Predicate),
+            s if s.contains("message") => Ok(Self::Message),
             _ => Err(RecordEntityError::UnknownSubject(s.to_string())),
         }
     }

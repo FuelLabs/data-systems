@@ -40,6 +40,13 @@ path = "outputs.rs"
 name = "utxos"
 path = "utxos.rs"
 
+[[example]]
+name = "messages"
+path = "messages.rs"
+
+[[example]]
+name = "predicates"
+path = "predicates.rs"
 
 [[example]]
 name = "subscribe_mult"

@@ -215,6 +215,15 @@ pub fn create_routes(state: &ServerState) -> Router {
             ))
             .build();
 
+    let (messages_path, messages_router) = RouterBuilder::new("/messages")
+        .root(get(messages::get_messages))
+        .with_layer(from_fn(validate_scope_middleware))
+        .with_layer(from_fn_with_state(
+            auth_params.clone(),
+            ApiKeyMiddleware::handler,
+        ))
+        .build();
+
     let routes = Router::new()
         .nest(&key_path, key_router)
         .nest(&blocks_path, blocks_router)
@@ -225,7 +234,8 @@ pub fn create_routes(state: &ServerState) -> Router {
         .nest(&receipts_path, receipts_router)
         .nest(&transactions_path, transactions_router)
         .nest(&utxos_path, utxos_router)
-        .nest(&predicates_path, predicates_router);
+        .nest(&predicates_path, predicates_router)
+        .nest(&messages_path, messages_router);
 
     app.nest(API_BASE_PATH, routes).with_state(state.clone())
 }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use fuel_core_types::services::executor::Event;
 use fuel_data_parser::{DataEncoder, DataParserError};
 use fuel_streams_types::{
     Address,
@@ -68,6 +69,7 @@ pub struct MsgPayload {
     pub transactions: Vec<Transaction>,
     pub metadata: Metadata,
     pub namespace: Option<String>,
+    pub events: Vec<Event>,
 }
 
 impl DataEncoder for MsgPayload {}
@@ -77,6 +79,7 @@ impl MsgPayload {
         fuel_core: &Arc<dyn FuelCoreLike>,
         sealed_block: &FuelCoreSealedBlock,
         metadata: &Metadata,
+        events: Vec<Event>,
     ) -> Result<Self, MsgPayloadError> {
         let (block, producer) =
             fuel_core.get_block_and_producer(sealed_block)?;
@@ -90,6 +93,7 @@ impl MsgPayload {
             transactions: txs,
             metadata: metadata.to_owned(),
             namespace: None,
+            events,
         })
     }
 
@@ -211,6 +215,7 @@ impl MockMsgPayload {
             transactions,
             metadata,
             namespace: None,
+            events: vec![],
         })
     }
 
