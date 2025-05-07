@@ -37,4 +37,7 @@ pub struct Cli {
         help = "Enable metrics"
     )]
     pub use_metrics: bool,
+
+    #[arg(long, value_name = "STORE_ONLY_ENTITY", env = "STORE_ONLY_ENTITY")]
+    pub store_only_entity: Option<String>,
 }
