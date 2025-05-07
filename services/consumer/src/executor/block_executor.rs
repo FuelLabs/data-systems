@@ -62,7 +62,7 @@ enum ProcessResult {
 }
 
 pub struct BlockExecutor {
-    cli: Arc<Cli>,
+    cli: Option<Arc<Cli>>,
     db: Arc<Db>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
@@ -72,7 +72,7 @@ pub struct BlockExecutor {
 
 impl BlockExecutor {
     pub fn new(
-        cli: Arc<Cli>,
+        cli: Option<Arc<Cli>>,
         db: Arc<Db>,
         message_broker: &Arc<NatsMessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
@@ -141,7 +141,7 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
-        let cli = self.cli.clone();
+        let cli = self.cli.as_ref().cloned();
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
@@ -149,7 +149,8 @@ impl BlockExecutor {
             async move {
                 let _permit = semaphore.acquire().await?;
                 let result =
-                    handle_stores(&cli, &db, &packets, &msg_payload).await;
+                    handle_stores(cli.as_ref(), &db, &packets, &msg_payload)
+                        .await;
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -216,7 +217,7 @@ impl BlockExecutor {
 }
 
 async fn handle_stores(
-    cli: &Arc<Cli>,
+    cli: Option<&Arc<Cli>>,
     db: &Arc<Db>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
@@ -234,9 +235,11 @@ async fn handle_stores(
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
 
                 // Skip if store_only_entity is set and doesn't match current entity
-                if let Some(store_only) = &cli.store_only_entity {
-                    if entity.as_str() != store_only {
-                        continue;
+                if let Some(cli) = &cli {
+                    if let Some(store_only) = &cli.store_only_entity {
+                        if entity.as_str() != store_only {
+                            continue;
+                        }
                     }
                 }
 
@@ -289,9 +292,11 @@ async fn handle_stores(
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
 
                 // Skip if store_only_entity is set and doesn't match current entity
-                if let Some(store_only) = &cli.store_only_entity {
-                    if entity.as_str() != store_only {
-                        continue;
+                if let Some(cli) = &cli {
+                    if let Some(store_only) = &cli.store_only_entity {
+                        if entity.as_str() != store_only {
+                            continue;
+                        }
                     }
                 }
 
