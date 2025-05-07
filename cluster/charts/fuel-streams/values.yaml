@@ -199,6 +199,83 @@ publisher:
     enabled: false
 
 # ------------------------------------------------------------------------------
+# Events configuration
+# ------------------------------------------------------------------------------
+events:
+  enabled: true
+  network: mainnet
+
+  ports: []
+  port: 8080
+
+  image:
+    repository: ghcr.io/fuellabs/sv-publisher
+    pullPolicy: Always
+    tag: latest
+    args: []
+
+  # You can override the env variables for the container here
+  # using a map or an array of key-value pairs
+  envFrom: []
+  env:
+    TMPDIR: "/var/fuel-streams/tmp"
+    DB_PATH: /mnt/db
+    FUEL_CORE_PORT: 4004
+    STORE_ONLY_ENTITY: "message"
+
+  service:
+    enabled: true
+    port: 8080
+    type: ClusterIP
+    config:
+      annotations: {}
+      labels: {}
+
+  prometheus:
+    enabled: true
+    scrape: true
+    path: /metrics
+    config:
+      annotations: {}
+      labels:
+        release: kube-prometheus-stack
+
+  storage:
+    name: rocks-db-events
+    size: 500Gi
+    storageClass: "gp3-generic"
+    accessMode: ReadWriteOnce
+    mountPath: /mnt/db
+
+  config:
+    replicaCount: 1
+    labels: {}
+    annotations: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    imagePullSecrets: []
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+    startupProbe:
+      httpGet:
+        path: /health
+        port: 8080
+    podSecurityContext: {}
+    containerSecurityContext: {}
+    resources: {}
+
+  autoscaling:
+    enabled: false
+
+# ------------------------------------------------------------------------------
 # Consumer configuration
 # ------------------------------------------------------------------------------
 consumer:

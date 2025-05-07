@@ -1,0 +1,137 @@
+{{- if .Values.events.enabled -}}
+{{- $events := .Values.events -}}
+{{- $name := "events" -}}
+{{- $component := "events" -}}
+{{- $serviceDict := dict "root" . "context" $events "name" $name "component" $component -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
+spec:
+  serviceName: {{ include "fuel-streams.fullname" . }}-events
+  {{- include "k8s.pod-spec" $serviceDict | nindent 2 }}
+  template:
+    {{- include "k8s.template-metadata" $serviceDict | nindent 4 }}
+    spec:
+      {{- include "k8s.pod-config" $serviceDict | nindent 6 }}
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+        - name: var-dir
+          emptyDir: {}
+        - name: cache-dir
+          emptyDir: {}
+      initContainers:
+        - name: update-{{ $events.storage.name }}
+          image: alpine:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              # Verify directory exists and is writable
+              mkdir -p {{ $events.storage.mountPath }} && \
+              touch {{ $events.storage.mountPath }}/.init-complete && \
+              rm {{ $events.storage.mountPath }}/.init-complete
+          volumeMounts:
+            - name: {{ $events.storage.name }}
+              mountPath: {{ $events.storage.mountPath }}
+          {{- include "k8s.container-config.securityContext" $serviceDict | nindent 10 }}
+
+        - name: init-permissions
+          image: alpine:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /var/fuel-streams/tmp && \
+              mkdir -p /.cache/wasmtime && \
+              chown -R 1000:1000 /var/fuel-streams && \
+              chown -R 1000:1000 /.cache
+          volumeMounts:
+            - name: var-dir
+              mountPath: /var/fuel-streams
+            - name: cache-dir
+              mountPath: /.cache
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+
+      containers:
+        - name: events
+          {{- include "k8s.container-config.image" $serviceDict | nindent 10 }}
+          command: ["/usr/src/sv-events"]
+          args:
+          # Common arguments
+          - "--enable-relayer"
+          - "--enable-p2p"
+          - "--keypair"
+          - "$(KEYPAIR)"
+          - "--relayer"
+          - "$(RELAYER)"
+          - "--ip"
+          - "0.0.0.0"
+          - "--port"
+          - "$(FUEL_CORE_PORT)"
+          - "--peering-port"
+          - "30333"
+          - "--utxo-validation"
+          - "--poa-instant"
+          - "false"
+          - "--db-path"
+          - "$(DB_PATH)"
+          - "--nats-url"
+          - "$(NATS_URL)"
+          - "--telemetry-port"
+          - "{{ $events.port }}"
+          - "--relayer-log-page-size"
+          - "2000"
+          - "--sync-block-stream-buffer-size"
+          - "50"
+          {{- if eq $events.network "mainnet" }}
+          # Mainnet specific args
+          - "--service-name"
+          - "events Node (Mainnet)"
+          - "--snapshot"
+          - "./chain-config/mainnet"
+          - "--reserved-nodes"
+          - "/dnsaddr/mainnet.fuel.network"
+          - "--relayer-v2-listening-contracts"
+          - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
+          - "--relayer-da-deploy-height"
+          - "20620434"
+          {{- else if eq $events.network "testnet" }}
+          # Testnet specific args
+          - "--service-name"
+          - "events Node (Testnet)"
+          - "--snapshot"
+          - "./chain-config/testnet"
+          - "--reserved-nodes"
+          - "/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmDxoChB7AheKNvCVpD4PHJwuDGn8rifMBEHmEynGHvHrf,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmHnANNk4HjAxQV66BNCRxd2MBUU89ijboZkE69aLuSn1g,/dns4/p2p-testnet.fuel.network/tcp/30333/p2p/16Uiu2HAmVE468rpkh2X1kzz8qQXmqNFiPxU5Lrya28nZdbRUdVJX"
+          - "--relayer-v2-listening-contracts"
+          - "0x01855B78C1f8868DE70e84507ec735983bf262dA"
+          - "--relayer-da-deploy-height"
+          - "5827607"
+          {{- end }}
+          {{- include "k8s.container-config" $serviceDict  | nindent 10 }}
+          volumeMounts:
+            - name: {{ $events.storage.name }}
+              mountPath: {{ $events.storage.mountPath }}
+              readOnly: false
+            - name: var-dir
+              mountPath: /var/fuel-streams
+            - name: cache-dir
+              mountPath: /.cache
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ $events.storage.name }}
+      spec:
+        accessModes:
+          - {{ $events.storage.accessMode }}
+        storageClassName: {{ $events.storage.storageClass }}
+        resources:
+          requests:
+            storage: {{ $events.storage.size }}
+{{ include "k8s.service" $serviceDict }}
+{{ include "k8s.pod-monitor" $serviceDict }}
+{{ include "k8s.grafana-dashboard" $serviceDict }}
+{{- end -}}
