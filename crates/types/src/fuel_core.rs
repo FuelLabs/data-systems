@@ -81,6 +81,7 @@ pub use fuel_core_types::{
             ImportResult as FuelCoreImportResult,
             SharedImportResult as FuelCoreSharedImportResult,
         },
+        executor::Event as FuelCoreExecutorEvent,
         transaction_status::{
             TransactionExecutionStatus as FuelCoreTransactionExecutionStatus,
             TransactionStatus as FuelCoreTransactionStatus,

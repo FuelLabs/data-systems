@@ -6,6 +6,7 @@ use fuel_streams_domains::{
         db::Db,
         record::{RecordEntity, RecordPacket},
     },
+    messages::Message,
     predicates::Predicate,
     Subjects,
 };
@@ -23,6 +24,7 @@ pub struct FuelStreams {
     pub receipts: Stream<Receipt>,
     pub utxos: Stream<Utxo>,
     pub predicates: Stream<Predicate>,
+    pub messages: Stream<Message>,
     pub msg_broker: Arc<NatsMessageBroker>,
     pub db: Arc<Db>,
 }
@@ -37,6 +39,7 @@ impl FuelStreams {
             receipts: Stream::<Receipt>::get_or_init(broker, db).await,
             utxos: Stream::<Utxo>::get_or_init(broker, db).await,
             predicates: Stream::<Predicate>::get_or_init(broker, db).await,
+            messages: Stream::<Message>::get_or_init(broker, db).await,
             msg_broker: Arc::clone(broker),
             db: Arc::clone(db),
         }
@@ -78,6 +81,9 @@ impl FuelStreams {
             RecordEntity::Utxo => self.utxos.publish(&subject, &response).await,
             RecordEntity::Predicate => {
                 self.predicates.publish(&subject, &response).await
+            }
+            RecordEntity::Message => {
+                self.messages.publish(&subject, &response).await
             }
         }
     }
@@ -258,6 +264,12 @@ impl FuelStreams {
             Subjects::Utxos(utxos_subject) => {
                 let subject = Arc::new(utxos_subject);
                 self.utxos
+                    .subscribe_dynamic(subject, deliver_policy, api_key_role)
+                    .await
+            }
+            Subjects::Messages(messages_subject) => {
+                let subject = Arc::new(messages_subject);
+                self.messages
                     .subscribe_dynamic(subject, deliver_policy, api_key_role)
                     .await
             }

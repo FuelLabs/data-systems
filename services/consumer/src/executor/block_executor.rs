@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 use fuel_data_parser::DataEncoder;
-use fuel_message_broker::{Message, NatsMessageBroker, NatsQueue};
+use fuel_message_broker::{
+    Message as NatsMessage,
+    NatsMessageBroker,
+    NatsQueue,
+};
 use fuel_streams_core::{
     types::{
         Block,
@@ -23,6 +27,7 @@ use fuel_streams_domains::{
         repository::Repository,
     },
     inputs::InputDbItem,
+    messages::{Message, MessageDbItem},
     outputs::OutputDbItem,
     predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
@@ -124,7 +129,7 @@ impl BlockExecutor {
 
     async fn spawn_processing_tasks(
         &self,
-        msg: Box<dyn Message>,
+        msg: Box<dyn NatsMessage>,
         join_set: &mut JoinSet<Result<ProcessResult, ConsumerError>>,
     ) -> Result<(), ConsumerError> {
         let db = self.db.clone();
@@ -245,6 +250,11 @@ async fn handle_stores(
                     RecordEntity::Receipt => {
                         let db_item = ReceiptDbItem::try_from(packet)?;
                         Receipt::insert_with_transaction(&mut tx, &db_item)
+                            .await?;
+                    }
+                    RecordEntity::Message => {
+                        let db_item = MessageDbItem::try_from(packet)?;
+                        Message::insert_with_transaction(&mut tx, &db_item)
                             .await?;
                     }
                     _ => {}

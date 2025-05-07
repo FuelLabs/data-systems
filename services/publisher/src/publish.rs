@@ -5,6 +5,7 @@ use fuel_data_parser::DataEncoder;
 use fuel_message_broker::{NatsMessageBroker, NatsQueue, NatsSubject};
 use fuel_streams_core::types::FuelCoreLike;
 use fuel_streams_domains::{Metadata, MsgPayload};
+use fuel_streams_types::FuelCoreImporterResult;
 use fuel_web_utils::telemetry::Telemetry;
 
 use crate::{error::PublishError, metrics::Metrics};
@@ -14,9 +15,15 @@ pub async fn publish_block(
     fuel_core: &Arc<dyn FuelCoreLike>,
     sealed_block: &Arc<SealedBlock>,
     telemetry: &Arc<Telemetry<Metrics>>,
+    importer_result: Option<&FuelCoreImporterResult>,
 ) -> Result<(), PublishError> {
     let metadata = Metadata::new(fuel_core, sealed_block);
-    let payload = MsgPayload::new(fuel_core, sealed_block, &metadata).await?;
+    let events = importer_result
+        .as_ref()
+        .map(|i| i.events.to_owned())
+        .unwrap_or(vec![]);
+    let payload =
+        MsgPayload::new(fuel_core, sealed_block, &metadata, events).await?;
     let encoded = payload.encode_json()?;
     let queue = NatsQueue::BlockImporter(message_broker.clone());
     let subject = NatsSubject::BlockSubmitted(payload.block_height().into());

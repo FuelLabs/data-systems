@@ -15,6 +15,7 @@ use fuel_streams_domains::{
         DbError,
     },
     inputs::InputDbItem,
+    messages::{Message, MessageDbItem},
     outputs::OutputDbItem,
     predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
@@ -46,6 +47,7 @@ pub enum MessagePayload {
     Receipt(Arc<Receipt>),
     Utxo(Arc<Utxo>),
     Predicate(Arc<Predicate>),
+    Message(Arc<Message>),
 }
 
 impl utoipa::ToSchema for MessagePayload {
@@ -104,6 +106,9 @@ impl MessagePayload {
             }
             RecordEntity::Predicate => Ok(MessagePayload::Predicate(Arc::new(
                 Predicate::decode_json(value)?,
+            ))),
+            RecordEntity::Message => Ok(MessagePayload::Message(Arc::new(
+                Message::decode_json(value)?,
             ))),
         }
     }
@@ -294,6 +299,13 @@ impl TryFrom<&RecordPacket> for StreamResponse {
             }
             RecordEntity::Predicate => {
                 let db_item = PredicateDbItem::try_from(packet)?;
+                let mut response =
+                    StreamResponse::try_from((subject_id, db_item))?;
+                response.set_propagation_ms(propagation_ms);
+                Ok(response)
+            }
+            RecordEntity::Message => {
+                let db_item = MessageDbItem::try_from(packet)?;
                 let mut response =
                     StreamResponse::try_from((subject_id, db_item))?;
                 response.set_propagation_ms(propagation_ms);
