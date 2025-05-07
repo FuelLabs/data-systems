@@ -15,6 +15,7 @@ pub mod types {
     pub use fuel_streams_domains::{
         blocks::types::*,
         inputs::types::*,
+        messages::types::*,
         outputs::types::*,
         predicates::types::*,
         receipts::types::*,
@@ -30,6 +31,7 @@ pub mod subjects {
     pub use fuel_streams_domains::{
         blocks::subjects::*,
         inputs::subjects::*,
+        messages::subjects::*,
         outputs::subjects::*,
         predicates::subjects::*,
         receipts::subjects::*,
@@ -49,7 +51,9 @@ macro_rules! export_module {
 
 export_module!(blocks);
 export_module!(inputs);
+export_module!(messages);
 export_module!(outputs);
+export_module!(predicates);
 export_module!(receipts);
 export_module!(transactions);
 export_module!(utxos);

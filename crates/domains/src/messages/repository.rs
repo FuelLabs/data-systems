@@ -63,7 +63,7 @@ impl Repository for Message {
         .bind(db_item.block_height.into_inner() as i64)
         .bind(db_item.message_index)
         .bind(db_item.cursor.to_string())
-        .bind(&db_item.r#type)
+        .bind(db_item.r#type)
         .bind(&db_item.sender)
         .bind(&db_item.recipient)
         .bind(&db_item.nonce)
@@ -131,7 +131,7 @@ mod tests {
         height: BlockHeight,
         namespace: &str,
     ) -> anyhow::Result<(MessageDbItem, Message, DynMessageSubject)> {
-        insert_block(db, height, &namespace).await?;
+        insert_block(db, height, namespace).await?;
         let message = message.unwrap_or_else(MockMessage::imported);
         let subject = DynMessageSubject::new(&message, height, 0);
         let timestamps = BlockTimestamp::default();

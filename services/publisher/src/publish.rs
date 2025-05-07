@@ -21,7 +21,7 @@ pub async fn publish_block(
     let events = importer_result
         .as_ref()
         .map(|i| i.events.to_owned())
-        .unwrap_or(vec![]);
+        .unwrap_or_default();
     let payload =
         MsgPayload::new(fuel_core, sealed_block, &metadata, events).await?;
     let encoded = payload.encode_json()?;

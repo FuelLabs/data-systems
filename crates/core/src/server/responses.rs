@@ -165,6 +165,13 @@ impl MessagePayload {
             _ => Err(MessagePayloadError::InvalidData("predicate".to_string())),
         }
     }
+
+    pub fn as_message(&self) -> Result<Arc<Message>, MessagePayloadError> {
+        match self {
+            MessagePayload::Message(message) => Ok(message.clone()),
+            _ => Err(MessagePayloadError::InvalidData("message".to_string())),
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

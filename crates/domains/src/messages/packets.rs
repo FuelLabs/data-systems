@@ -64,7 +64,7 @@ impl DynMessageSubject {
         message_index: i32,
     ) -> Self {
         Self::Message(MessagesSubject {
-            message_type: Some(message.r#type.clone()),
+            message_type: Some(message.r#type),
             block_height: Some(block_height),
             message_index: Some(message_index),
             sender: Some(message.sender.clone()),
