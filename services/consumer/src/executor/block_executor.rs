@@ -141,11 +141,12 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
-        let cli = self.cli.as_ref().cloned();
+        let cli = self.cli.clone();
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
+            let cli = cli.clone();
             async move {
                 let _permit = semaphore.acquire().await?;
                 let result =
@@ -160,10 +161,16 @@ impl BlockExecutor {
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
             let fuel_streams = fuel_streams.clone();
+            let cli = cli.clone();
             async move {
                 let _permit = semaphore.acquire_owned().await?;
-                let result =
-                    handle_streams(&fuel_streams, &packets, &msg_payload).await;
+                let result = handle_streams(
+                    cli.as_ref(),
+                    &fuel_streams,
+                    &packets,
+                    &msg_payload,
+                )
+                .await;
                 Ok(ProcessResult::Stream(result))
             }
         });
@@ -324,6 +331,7 @@ async fn handle_stores(
 }
 
 async fn handle_streams(
+    cli: Option<&Arc<Cli>>,
     fuel_streams: &Arc<FuelStreams>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
@@ -331,7 +339,24 @@ async fn handle_streams(
     let block_height = msg_payload.block_height();
     let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
     let now = BlockTimestamp::now();
-    let publish_futures = packets.iter().map(|packet| {
+
+    // Filter packets based on store_only_entity if specified
+    let filtered_packets = packets.iter().filter(|packet| {
+        let subject_id = packet.subject_id();
+        if let Ok(entity) = RecordEntity::from_subject_id(&subject_id) {
+            // Skip if store_only_entity is set and doesn't match current entity
+            if let Some(cli_ref) = cli {
+                if let Some(store_only) = &cli_ref.store_only_entity {
+                    return entity.as_str() == store_only;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    });
+
+    let publish_futures = filtered_packets.map(|packet| {
         let packet = packet.to_owned();
         let packet = packet.with_start_time(now);
         fuel_streams.publish_by_entity(packet.arc())
