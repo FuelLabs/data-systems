@@ -59,7 +59,7 @@ spec:
       containers:
         - name: events
           {{- include "k8s.container-config.image" $serviceDict | nindent 10 }}
-          command: ["/usr/src/sv-events"]
+          command: ["/usr/src/sv-publisher"]
           args:
           # Common arguments
           - "--enable-relayer"
@@ -90,7 +90,7 @@ spec:
           {{- if eq $events.network "mainnet" }}
           # Mainnet specific args
           - "--service-name"
-          - "events Node (Mainnet)"
+          - "Publisher Node (Mainnet)"
           - "--snapshot"
           - "./chain-config/mainnet"
           - "--reserved-nodes"
@@ -102,7 +102,7 @@ spec:
           {{- else if eq $events.network "testnet" }}
           # Testnet specific args
           - "--service-name"
-          - "events Node (Testnet)"
+          - "Publisher Node (Testnet)"
           - "--snapshot"
           - "./chain-config/testnet"
           - "--reserved-nodes"
