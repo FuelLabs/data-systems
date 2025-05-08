@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.0.30](https://github.com/FuelLabs/data-systems/compare/v0.0.29...v0.0.30) - 2025-05-08
+
+
+
+
+
+### ⭐ Features
+
+- *(repo)*: Add messages ([#465](https://github.com/FuelLabs/data-systems/pull/465)) ([7a09099](https://github.com/FuelLabs/data-systems/commit/7a09099d2ee49a82c4dad6b1567df0fd373969ce)  @pedronauck)
+
+### 🐛 Bug Fixes
+
+- *(repo)*: Adjust to store only events ([325f3e5](https://github.com/FuelLabs/data-systems/commit/325f3e56624b5280877491233f03c4a768bef97c)  @pedronauck)
+
+- *(repo)*: Dune integration ([f487ceb](https://github.com/FuelLabs/data-systems/commit/f487cebfd873986f7312dd0d72d46cba47b2a9fb)  @pedronauck)
+
+- *(fuel-streams-domains)*: Adjust BlockHeaderVersion serialization ([7a421b7](https://github.com/FuelLabs/data-systems/commit/7a421b7dda0915d81cded4d9cb023614106efb89)  @pedronauck)
+
+- *(fuel-streams-domains)*: BlockVersion serde configuration ([b99705e](https://github.com/FuelLabs/data-systems/commit/b99705ea324a0cf98d9f02801ef3db6edc9ac199)  @pedronauck)
+
+- *(fuel-streams-domains)*: Improve accounts txs query performance ([#462](https://github.com/FuelLabs/data-systems/pull/462)) ([e2fb66e](https://github.com/FuelLabs/data-systems/commit/e2fb66e0ff6029e06bc9c53552db5ad1ec5039c3)  @pedronauck)
+
+- *(sv-publisher)*: Restore tx_pointer for transactions ([41c4cd8](https://github.com/FuelLabs/data-systems/commit/41c4cd8c56f916dbf8ad5acd379186a196f604d4)  @pedronauck)
+
+- *(repo)*: Builder subscriptions count error ([b5a179f](https://github.com/FuelLabs/data-systems/commit/b5a179ffa508af512e129e2312d3b0d3dd91a227)  @pedronauck)
+
+### 🔄 Refactor
+
+- *(sv-dune)*: Improve Avro types ([#460](https://github.com/FuelLabs/data-systems/pull/460)) ([10a27dd](https://github.com/FuelLabs/data-systems/commit/10a27dd8dee72adc8e89568c7e0fcefa39246dc4)  @pedronauck)
+
+### 💪🏼 Contributors
+
+* @pedronauck
+
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
 ## [0.0.29](https://github.com/FuelLabs/data-systems/compare/v0.0.28...v0.0.29) - 2025-04-18
 
 ### ⭐ Features
