@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use fuel_core_types::blockchain::SealedBlock;
 use fuel_data_parser::DataEncoder;
@@ -9,6 +9,13 @@ use fuel_streams_types::FuelCoreImporterResult;
 use fuel_web_utils::telemetry::Telemetry;
 
 use crate::{error::PublishError, metrics::Metrics};
+
+pub static ONLY_EVENTS: LazyLock<bool> = LazyLock::new(|| {
+    dotenvy::var("ONLY_EVENTS")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(false)
+});
 
 pub async fn publish_block(
     message_broker: &Arc<NatsMessageBroker>,
@@ -25,16 +32,27 @@ pub async fn publish_block(
     let payload =
         MsgPayload::new(fuel_core, sealed_block, &metadata, events).await?;
     let encoded = payload.encode_json()?;
-    let queue = NatsQueue::BlockImporter(message_broker.clone());
-    let subject = NatsSubject::BlockSubmitted(payload.block_height().into());
 
-    queue.publish(&subject, encoded.clone()).await?;
-    if let Some(metrics) = telemetry.base_metrics() {
-        metrics.update_publisher_success_metrics(
-            &subject.to_string(&queue),
-            encoded.len(),
-        );
+    // Publish block submitted event
+    // TODO: This is temporary until we have events synced
+    if !*ONLY_EVENTS {
+        let importer_queue = NatsQueue::BlockImporter(message_broker.clone());
+        let subject =
+            NatsSubject::BlockSubmitted(payload.block_height().into());
+        importer_queue.publish(&subject, encoded.clone()).await?;
+
+        if let Some(metrics) = telemetry.base_metrics() {
+            metrics.update_publisher_success_metrics(
+                &subject.to_string(&importer_queue),
+                encoded.len(),
+            );
+        }
     }
+
+    // Publish block event
+    let event_queue = NatsQueue::BlockEvent(message_broker.clone());
+    let event_subject = NatsSubject::BlockEvent(payload.block_height().into());
+    event_queue.publish(&event_subject, encoded.clone()).await?;
 
     tracing::info!("New block submitted: {}", payload.block_height());
     Ok(())

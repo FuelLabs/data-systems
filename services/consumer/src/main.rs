@@ -38,7 +38,6 @@ async fn main() -> anyhow::Result<()> {
     telemetry.start().await?;
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
     let block_executor = BlockExecutor::new(
-        Some(Arc::new(cli.clone())),
         db,
         &message_broker,
         &fuel_streams,

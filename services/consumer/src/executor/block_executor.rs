@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use fuel_data_parser::DataEncoder;
 use fuel_message_broker::{
@@ -50,10 +50,17 @@ use super::{
     block_stats::{ActionType, BlockStats},
     retry::RetryService,
 };
-use crate::{cli::Cli, errors::ConsumerError, metrics::Metrics};
+use crate::{errors::ConsumerError, metrics::Metrics};
 
 const MAX_CONCURRENT_TASKS: usize = 32;
 const BATCH_SIZE: usize = 100;
+
+pub static ONLY_EVENTS: LazyLock<bool> = LazyLock::new(|| {
+    dotenvy::var("ONLY_EVENTS")
+        .ok()
+        .and_then(|val| val.parse().ok())
+        .unwrap_or(false)
+});
 
 #[derive(Debug)]
 enum ProcessResult {
@@ -62,7 +69,6 @@ enum ProcessResult {
 }
 
 pub struct BlockExecutor {
-    cli: Option<Arc<Cli>>,
     db: Arc<Db>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
@@ -72,7 +78,6 @@ pub struct BlockExecutor {
 
 impl BlockExecutor {
     pub fn new(
-        cli: Option<Arc<Cli>>,
         db: Arc<Db>,
         message_broker: &Arc<NatsMessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
@@ -80,7 +85,6 @@ impl BlockExecutor {
     ) -> Self {
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
         Self {
-            cli,
             db,
             semaphore,
             message_broker: message_broker.clone(),
@@ -98,8 +102,14 @@ impl BlockExecutor {
             "Starting consumer with max concurrent tasks: {}",
             MAX_CONCURRENT_TASKS
         );
+
         let telemetry = self.telemetry.clone();
-        let queue = NatsQueue::BlockImporter(self.message_broker.clone());
+        let queue = if *ONLY_EVENTS {
+            NatsQueue::BlockEvent(self.message_broker.clone())
+        } else {
+            NatsQueue::BlockImporter(self.message_broker.clone())
+        };
+
         while !token.is_cancelled() {
             tokio::select! {
                 msg_result = queue.subscribe(BATCH_SIZE) => {
@@ -141,17 +151,13 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
-        let cli = self.cli.clone();
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
-            let cli = cli.clone();
             async move {
                 let _permit = semaphore.acquire().await?;
-                let result =
-                    handle_stores(cli.as_ref(), &db, &packets, &msg_payload)
-                        .await;
+                let result = handle_stores(&db, &packets, &msg_payload).await;
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -161,16 +167,10 @@ impl BlockExecutor {
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
             let fuel_streams = fuel_streams.clone();
-            let cli = cli.clone();
             async move {
                 let _permit = semaphore.acquire_owned().await?;
-                let result = handle_streams(
-                    cli.as_ref(),
-                    &fuel_streams,
-                    &packets,
-                    &msg_payload,
-                )
-                .await;
+                let result =
+                    handle_streams(&fuel_streams, &packets, &msg_payload).await;
                 Ok(ProcessResult::Stream(result))
             }
         });
@@ -224,7 +224,6 @@ impl BlockExecutor {
 }
 
 async fn handle_stores(
-    cli: Option<&Arc<Cli>>,
     db: &Arc<Db>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
@@ -241,13 +240,9 @@ async fn handle_stores(
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
 
-                // Skip if store_only_entity is set and doesn't match current entity
-                if let Some(cli) = &cli {
-                    if let Some(store_only) = &cli.store_only_entity {
-                        if entity.as_str() != store_only {
-                            continue;
-                        }
-                    }
+                // TODO: This is temporary until we have events synced
+                if *ONLY_EVENTS && !matches!(entity, RecordEntity::Message) {
+                    continue;
                 }
 
                 match entity {
@@ -298,13 +293,9 @@ async fn handle_stores(
                 let subject_id = packet.subject_id();
                 let entity = RecordEntity::from_subject_id(&subject_id)?;
 
-                // Skip if store_only_entity is set and doesn't match current entity
-                if let Some(cli) = &cli {
-                    if let Some(store_only) = &cli.store_only_entity {
-                        if entity.as_str() != store_only {
-                            continue;
-                        }
-                    }
+                // TODO: This is temporary until we have events synced
+                if *ONLY_EVENTS && !matches!(entity, RecordEntity::Message) {
+                    continue;
                 }
 
                 match entity {
@@ -331,7 +322,6 @@ async fn handle_stores(
 }
 
 async fn handle_streams(
-    cli: Option<&Arc<Cli>>,
     fuel_streams: &Arc<FuelStreams>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
@@ -340,15 +330,12 @@ async fn handle_streams(
     let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
     let now = BlockTimestamp::now();
 
-    // Filter packets based on store_only_entity if specified
+    // TODO: This is temporary until we have events synced
     let filtered_packets = packets.iter().filter(|packet| {
         let subject_id = packet.subject_id();
         if let Ok(entity) = RecordEntity::from_subject_id(&subject_id) {
-            // Skip if store_only_entity is set and doesn't match current entity
-            if let Some(cli_ref) = cli {
-                if let Some(store_only) = &cli_ref.store_only_entity {
-                    return entity.as_str() == store_only;
-                }
+            if *ONLY_EVENTS && !matches!(entity, RecordEntity::Message) {
+                return false;
             }
             true
         } else {

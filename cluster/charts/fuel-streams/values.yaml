@@ -673,6 +673,7 @@ events:
     TMPDIR: "/var/fuel-streams/tmp"
     DB_PATH: /mnt/db
     FUEL_CORE_PORT: 4004
+    ONLY_EVENTS: "true"
 
   service:
     enabled: true
@@ -692,7 +693,7 @@ events:
         release: kube-prometheus-stack
 
   storage:
-    name: rocks-db-events-2
+    name: rocks-db-events-3
     size: 500Gi
     storageClass: "gp3-generic"
     accessMode: ReadWriteOnce
@@ -746,7 +747,7 @@ eventsConsumer:
   # using a map or an array of key-value pairs
   envFrom: []
   env:
-    STORE_ONLY_ENTITY: "message"
+    ONLY_EVENTS: "true"
 
   service:
     enabled: true

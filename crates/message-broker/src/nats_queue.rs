@@ -12,6 +12,7 @@ pub enum NatsSubject {
     BlockSubmitted(u64),
     BlockFailed(u64),
     BlockSuccess(u64),
+    BlockEvent(u64),
 }
 
 impl NatsSubject {
@@ -27,6 +28,9 @@ impl NatsSubject {
             NatsSubject::BlockSuccess(id) => {
                 format!("{queue_name}.block_success.{id}")
             }
+            NatsSubject::BlockEvent(id) => {
+                format!("{queue_name}.block_event.{id}")
+            }
         }
     }
 
@@ -38,6 +42,7 @@ impl NatsSubject {
 pub enum NatsQueue {
     BlockImporter(Arc<NatsMessageBroker>),
     BlockRetrier(Arc<NatsMessageBroker>),
+    BlockEvent(Arc<NatsMessageBroker>),
 }
 
 impl NatsQueue {
@@ -45,6 +50,7 @@ impl NatsQueue {
         match self {
             NatsQueue::BlockImporter(broker) => broker,
             NatsQueue::BlockRetrier(broker) => broker,
+            NatsQueue::BlockEvent(broker) => broker,
         }
     }
 
@@ -52,6 +58,7 @@ impl NatsQueue {
         let value = match self {
             NatsQueue::BlockImporter(_) => "block_importer",
             NatsQueue::BlockRetrier(_) => "block_retrier",
+            NatsQueue::BlockEvent(_) => "block_event",
         };
         self.broker().namespace().queue_name(value)
     }
@@ -64,6 +71,9 @@ impl NatsQueue {
             }
             NatsQueue::BlockRetrier(_) => {
                 vec![format!("{queue_name}.block_failed.>")]
+            }
+            NatsQueue::BlockEvent(_) => {
+                vec![format!("{queue_name}.block_event.>")]
             }
         }
     }
