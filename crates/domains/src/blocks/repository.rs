@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use fuel_data_parser::DataEncoder;
 use fuel_streams_types::{BlockHeight, BlockTimestamp};
-use sqlx::{Acquire, PgExecutor, Postgres};
+use sqlx::{Acquire, PgExecutor, Postgres, Row};
 
 use super::{Block, BlockDbItem, BlocksQuery};
 use crate::{
@@ -12,7 +10,7 @@ use crate::{
         repository::{Repository, RepositoryResult},
         QueryOptions,
     },
-    transactions::{Transaction, TransactionsQuery},
+    transactions::{Transaction, TransactionDbItem},
 };
 
 #[async_trait]
@@ -167,16 +165,19 @@ impl Block {
         Ok(record.map(|(height,)| height.into()).unwrap_or_default())
     }
 
-    pub async fn find_in_height_range(
-        db: &Db,
+    pub async fn find_in_height_range<'c, E>(
+        executor: E,
         start_height: BlockHeight,
         end_height: BlockHeight,
         options: &QueryOptions,
-    ) -> RepositoryResult<Vec<BlockDbItem>> {
-        let select = "SELECT * FROM blocks".to_string();
+    ) -> RepositoryResult<Vec<BlockDbItem>>
+    where
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
+    {
+        let select = "SELECT *".to_string();
         let mut query_builder = sqlx::QueryBuilder::new(select);
         query_builder
-            .push(" WHERE block_height >= ")
+            .push(" FROM blocks WHERE block_height >= ")
             .push_bind(start_height.into_inner() as i64)
             .push(" AND block_height <= ")
             .push_bind(end_height.into_inner() as i64);
@@ -189,34 +190,215 @@ impl Block {
 
         query_builder.push(" ORDER BY block_height ASC");
         let query = query_builder.build_query_as::<BlockDbItem>();
-        let records = query.fetch_all(&db.pool).await?;
+        let records = query.fetch_all(executor).await?;
 
         Ok(records)
     }
 
-    pub async fn transactions_from_db(
+    pub async fn transactions_from_block<'c, E>(
         &self,
-        db: &Arc<Db>,
-    ) -> RepositoryResult<Vec<Transaction>> {
-        let mut all_transactions =
-            Vec::with_capacity(self.transaction_ids.len());
-        for chunk in self.transaction_ids.chunks(50) {
-            let mut db_tx = db.pool_ref().begin().await?;
-            for tx_id in chunk {
-                let txs_query = TransactionsQuery {
-                    block_height: Some(self.height),
-                    tx_id: Some(tx_id.to_owned()),
-                    ..Default::default()
-                };
-                let db_item =
-                    Transaction::find_one_with_db_tx(&mut db_tx, &txs_query)
-                        .await?;
-                let transaction = Transaction::decode_json(&db_item.value)?;
-                all_transactions.push(transaction);
-            }
-            db_tx.commit().await?;
+        executor: E,
+    ) -> RepositoryResult<Vec<Transaction>>
+    where
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
+    {
+        let db_items = sqlx::query_as::<_, TransactionDbItem>(
+            r#"
+            SELECT *
+            FROM transactions
+            WHERE block_height = $1
+            ORDER BY tx_index ASC
+            "#,
+        )
+        .bind(self.height.into_inner() as i64)
+        .fetch_all(executor)
+        .await?;
+
+        let mut transactions = Vec::with_capacity(db_items.len());
+        for db_item in db_items {
+            let transaction = Transaction::decode_json(&db_item.value)?;
+            transactions.push(transaction);
         }
-        Ok(all_transactions)
+
+        Ok(transactions)
+    }
+
+    pub async fn find_blocks_with_transactions<'c, E>(
+        executor: E,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        options: &QueryOptions,
+    ) -> RepositoryResult<Vec<(BlockDbItem, Vec<TransactionDbItem>)>>
+    where
+        E: PgExecutor<'c> + Acquire<'c, Database = Postgres>,
+    {
+        let mut query = String::from(
+            r#"
+            SELECT
+                b.value as b_value, b.subject as b_subject, b.block_height as b_block_height,
+                b.block_da_height as b_block_da_height, b.version as b_version, b.producer_address as b_producer_address,
+                b.header_application_hash as b_header_application_hash,
+                b.header_consensus_parameters_version as b_header_consensus_parameters_version,
+                b.header_da_height as b_header_da_height, b.header_event_inbox_root as b_header_event_inbox_root,
+                b.header_message_outbox_root as b_header_message_outbox_root,
+                b.header_message_receipt_count as b_header_message_receipt_count,
+                b.header_prev_root as b_header_prev_root,
+                b.header_state_transition_bytecode_version as b_header_state_transition_bytecode_version,
+                b.header_time as b_header_time, b.header_transactions_count as b_header_transactions_count,
+                b.header_transactions_root as b_header_transactions_root, b.header_version as b_header_version,
+                b.consensus_chain_config_hash as b_consensus_chain_config_hash,
+                b.consensus_coins_root as b_consensus_coins_root, b.consensus_type as b_consensus_type,
+                b.consensus_contracts_root as b_consensus_contracts_root,
+                b.consensus_messages_root as b_consensus_messages_root,
+                b.consensus_signature as b_consensus_signature,
+                b.consensus_transactions_root as b_consensus_transactions_root,
+                b.block_time as b_block_time, b.created_at as b_created_at,
+                b.block_propagation_ms as b_block_propagation_ms,
+                t.value as t_value, t.subject as t_subject, t.block_height as t_block_height,
+                t.tx_id as t_tx_id, t.tx_index as t_tx_index, t.type as t_type,
+                t.status as t_status, t.created_at as t_created_at,
+                t.script_gas_limit as script_gas_limit, t.mint_amount as mint_amount,
+                t.mint_asset_id as mint_asset_id, t.mint_gas_price as mint_gas_price,
+                t.receipts_root as receipts_root, t.script as script, t.script_data as script_data,
+                t.salt as salt, t.bytecode_witness_index as bytecode_witness_index,
+                t.bytecode_root as bytecode_root, t.subsection_index as subsection_index,
+                t.subsections_number as subsections_number, t.upgrade_purpose as upgrade_purpose,
+                t.blob_id as blob_id, t.is_blob as is_blob, t.is_create as is_create,
+                t.is_mint as is_mint, t.is_script as is_script, t.is_upgrade as is_upgrade,
+                t.is_upload as is_upload, t.raw_payload as raw_payload, t.tx_pointer as tx_pointer,
+                t.maturity as maturity, t.script_length as script_length, t.script_data_length as script_data_length,
+                t.storage_slots_count as storage_slots_count, t.proof_set_count as proof_set_count,
+                t.witnesses_count as witnesses_count, t.inputs_count as inputs_count,
+                t.outputs_count as outputs_count, t.block_time as t_block_time
+            FROM blocks b
+            LEFT JOIN transactions t ON b.block_height = t.block_height
+            WHERE b.block_height >= $1 AND b.block_height <= $2
+            "#,
+        );
+
+        if let Some(ns) = options.namespace.as_ref() {
+            query.push_str(&format!(" AND b.subject LIKE '{}%'", ns));
+        }
+
+        query.push_str(" ORDER BY b.block_height ASC, t.tx_index ASC");
+
+        let rows = sqlx::query(&query)
+            .bind(start_height.into_inner() as i64)
+            .bind(end_height.into_inner() as i64)
+            .fetch_all(executor)
+            .await?;
+
+        // Process rows into blocks with transactions
+        let mut result = Vec::new();
+        let mut current_block: Option<BlockDbItem> = None;
+        let mut current_txs: Vec<TransactionDbItem> = Vec::new();
+
+        for row in rows {
+            let block_height: i64 = row.get("b_block_height");
+            if current_block.as_ref().is_none_or(|b| {
+                b.block_height.into_inner() as i64 != block_height
+            }) {
+                if let Some(block) = current_block {
+                    result.push((block, current_txs));
+                }
+                current_block = Some(BlockDbItem {
+                    value: row.get("b_value"),
+                    subject: row.get("b_subject"),
+                    block_height: (row.get::<i64, _>("b_block_height") as u64)
+                        .into(),
+                    block_da_height: row.get("b_block_da_height"),
+                    version: row.get("b_version"),
+                    producer_address: row.get("b_producer_address"),
+                    header_application_hash: row
+                        .get("b_header_application_hash"),
+                    header_consensus_parameters_version: row
+                        .get("b_header_consensus_parameters_version"),
+                    header_da_height: row.get("b_header_da_height"),
+                    header_event_inbox_root: row
+                        .get("b_header_event_inbox_root"),
+                    header_message_outbox_root: row
+                        .get("b_header_message_outbox_root"),
+                    header_message_receipt_count: row
+                        .get("b_header_message_receipt_count"),
+                    header_prev_root: row.get("b_header_prev_root"),
+                    header_state_transition_bytecode_version: row
+                        .get("b_header_state_transition_bytecode_version"),
+                    header_time: row.get("b_header_time"),
+                    header_transactions_count: row
+                        .get("b_header_transactions_count"),
+                    header_transactions_root: row
+                        .get("b_header_transactions_root"),
+                    header_version: row.get("b_header_version"),
+                    consensus_chain_config_hash: row
+                        .get("b_consensus_chain_config_hash"),
+                    consensus_coins_root: row.get("b_consensus_coins_root"),
+                    consensus_type: row.get("b_consensus_type"),
+                    consensus_contracts_root: row
+                        .get("b_consensus_contracts_root"),
+                    consensus_messages_root: row
+                        .get("b_consensus_messages_root"),
+                    consensus_signature: row.get("b_consensus_signature"),
+                    consensus_transactions_root: row
+                        .get("b_consensus_transactions_root"),
+                    block_time: row.get("b_block_time"),
+                    created_at: row.get("b_created_at"),
+                    block_propagation_ms: row.get("b_block_propagation_ms"),
+                });
+                current_txs = Vec::new();
+            }
+
+            let tx_value: Option<Vec<u8>> = row.get("t_value");
+            if tx_value.is_some() {
+                current_txs.push(TransactionDbItem {
+                    value: row.get("t_value"),
+                    subject: row.get("t_subject"),
+                    block_height: (row.get::<i64, _>("t_block_height") as u64)
+                        .into(),
+                    tx_id: row.get("t_tx_id"),
+                    tx_index: row.get("t_tx_index"),
+                    r#type: row.get("t_type"),
+                    status: row.get("t_status"),
+                    created_at: row.get("t_created_at"),
+                    script_gas_limit: row.get("script_gas_limit"),
+                    mint_amount: row.get("mint_amount"),
+                    mint_asset_id: row.get("mint_asset_id"),
+                    mint_gas_price: row.get("mint_gas_price"),
+                    receipts_root: row.get("receipts_root"),
+                    script: row.get("script"),
+                    script_data: row.get("script_data"),
+                    salt: row.get("salt"),
+                    bytecode_witness_index: row.get("bytecode_witness_index"),
+                    bytecode_root: row.get("bytecode_root"),
+                    subsection_index: row.get("subsection_index"),
+                    subsections_number: row.get("subsections_number"),
+                    upgrade_purpose: row.get("upgrade_purpose"),
+                    blob_id: row.get("blob_id"),
+                    is_blob: row.get("is_blob"),
+                    is_create: row.get("is_create"),
+                    is_mint: row.get("is_mint"),
+                    is_script: row.get("is_script"),
+                    is_upgrade: row.get("is_upgrade"),
+                    is_upload: row.get("is_upload"),
+                    raw_payload: row.get("raw_payload"),
+                    tx_pointer: row.get("tx_pointer"),
+                    maturity: row.get("maturity"),
+                    script_length: row.get("script_length"),
+                    script_data_length: row.get("script_data_length"),
+                    storage_slots_count: row.get("storage_slots_count"),
+                    proof_set_count: row.get("proof_set_count"),
+                    witnesses_count: row.get("witnesses_count"),
+                    inputs_count: row.get("inputs_count"),
+                    outputs_count: row.get("outputs_count"),
+                    block_time: row.get("t_block_time"),
+                });
+            }
+        }
+
+        if let Some(block) = current_block {
+            result.push((block, current_txs));
+        }
+
+        Ok(result)
     }
 }
 
@@ -564,7 +746,7 @@ pub mod tests {
         options.with_namespace(Some(namespace));
 
         let results = Block::find_in_height_range(
-            &db,
+            db.pool_ref(),
             start_height,
             end_height,
             &options,

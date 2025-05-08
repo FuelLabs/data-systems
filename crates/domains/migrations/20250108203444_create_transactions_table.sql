@@ -106,6 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions (created_
 -- Composite indexes
 CREATE INDEX IF NOT EXISTS idx_transactions_status_block_height ON transactions (status, block_height);
 CREATE INDEX IF NOT EXISTS idx_transactions_type_block_height ON transactions (type, block_height);
+CREATE INDEX IF NOT EXISTS idx_transactions_tx_id_block_height ON transactions (tx_id, block_height);
 CREATE INDEX IF NOT EXISTS idx_transactions_ordering ON transactions (block_height, tx_index);
 
 -- ------------------------------------------------------------------------------

@@ -76,7 +76,7 @@ impl BlockStats {
         );
     }
 
-    pub fn log_success(&self) {
+    pub fn log_success(&self, prefix: &str) {
         let height = &self.block_height;
         let action = match self.action_type {
             ActionType::Store => "Stored",
@@ -84,7 +84,8 @@ impl BlockStats {
         };
 
         tracing::info!(
-            "{} block {} with {} packets (took {:?} ms)",
+            "{} {} block {} with {} packets (took {:?} ms)",
+            prefix,
             action,
             height,
             self.packet_count,

@@ -196,18 +196,33 @@ async fn get_blocks_and_transactions(
     end_height: BlockHeight,
 ) -> Result<Vec<(Block, Vec<Transaction>)>> {
     let mut data = Vec::new();
-    let blocks = Block::find_in_height_range(
-        db,
-        start_height,
-        end_height,
-        &QueryOptions::default(),
-    )
-    .await?;
+    let batch_size = 500;
+    let mut current_start = start_height;
+    while current_start <= end_height {
+        let current_end =
+            std::cmp::min(*current_start + batch_size - 1, *end_height);
+        tracing::info!(
+            "Fetching blocks from #{current_start} to #{current_end}"
+        );
 
-    for db_item in blocks {
-        let block = Block::decode_json(&db_item.value)?;
-        let transactions = block.transactions_from_db(db).await?;
-        data.push((block, transactions));
+        let blocks_with_txs = Block::find_blocks_with_transactions(
+            db.pool_ref(),
+            current_start,
+            current_end.into(),
+            &QueryOptions::default(),
+        )
+        .await?;
+
+        for (block_db_item, tx_items) in blocks_with_txs {
+            let block = Block::decode_json(&block_db_item.value)?;
+            let mut transactions = Vec::with_capacity(tx_items.len());
+            for tx_item in tx_items {
+                let transaction = Transaction::decode_json(&tx_item.value)?;
+                transactions.push(transaction);
+            }
+            data.push((block, transactions));
+        }
+        current_start = (current_end + 1).into();
     }
 
     Ok(data)

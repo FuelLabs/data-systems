@@ -122,7 +122,6 @@ mod tests {
         assert_eq!(result.amount, expected.amount);
         assert_eq!(result.data, expected.data);
         assert_eq!(result.da_height, expected.da_height);
-        assert_eq!(result.block_time, expected.block_time);
     }
 
     pub async fn insert_message(

@@ -136,6 +136,10 @@ impl Processor {
         blocks: &[(Block, Vec<Transaction>)],
         avro_writer: AvroWriter<T>,
     ) -> DuneResult<Vec<(BlockHeight, BlockHeight, Vec<u8>)>> {
+        if blocks.is_empty() {
+            return Ok(vec![]);
+        }
+
         let serialized = avro_writer.into_inner()?;
         let total_size = serialized.len();
         let first_height = blocks.first().unwrap().0.height;
