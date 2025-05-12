@@ -68,15 +68,15 @@ impl BlockStats {
         };
 
         tracing::error!(
-            "Failed to {} block {}: {:?} (took {:?} ms)",
-            action,
+            "[#{}] Failed to {} block: {:?} (took {:?} ms)",
             height,
+            action,
             error,
             self.duration_millis()
         );
     }
 
-    pub fn log_success(&self, prefix: &str) {
+    pub fn log_success(&self) {
         let height = &self.block_height;
         let action = match self.action_type {
             ActionType::Store => "Stored",
@@ -84,10 +84,9 @@ impl BlockStats {
         };
 
         tracing::info!(
-            "{} {} block {} with {} packets (took {:?} ms)",
-            prefix,
-            action,
+            "[#{}] {} block with {} packets (took {:?} ms)",
             height,
+            action,
             self.packet_count,
             self.duration_millis()
         );

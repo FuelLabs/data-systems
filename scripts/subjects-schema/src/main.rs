@@ -3,6 +3,7 @@ use std::{env, fs, path::Path};
 use fuel_streams_domains::{
     blocks::subjects::*,
     inputs::subjects::*,
+    messages::subjects::*,
     outputs::subjects::*,
     predicates::PredicatesSubject,
     receipts::subjects::*,
@@ -15,6 +16,7 @@ fn main() {
     let block_schema = BlocksSubject::new().schema();
     let transaction_schema = TransactionsSubject::new().schema();
     let utxos_schema = UtxosSubject::new().schema();
+    let messages_schema = MessagesSubject::new().schema();
 
     let mut inputs_schema = InputsSubject::new().schema();
     let inputs_coin_schema = InputsCoinSubject::new().schema();
@@ -88,6 +90,7 @@ fn main() {
         ("predicates".to_string(), predicates_schema),
         ("receipts".to_string(), receipts_schema),
         ("utxos".to_string(), utxos_schema),
+        ("messages".to_string(), messages_schema),
     ]);
 
     let schema_json = serde_json::to_string_pretty(&final_schema).unwrap();

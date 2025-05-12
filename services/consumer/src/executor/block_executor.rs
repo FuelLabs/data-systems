@@ -12,6 +12,7 @@ use fuel_streams_core::{
         BlockHeight,
         BlockTimestamp,
         Input,
+        Message,
         Output,
         Receipt,
         Transaction,
@@ -27,6 +28,7 @@ use fuel_streams_domains::{
         repository::Repository,
     },
     inputs::InputDbItem,
+    messages::MessageDbItem,
     outputs::OutputDbItem,
     predicates::{Predicate, PredicateDbItem},
     receipts::ReceiptDbItem,
@@ -181,14 +183,14 @@ impl BlockExecutor {
 
                 match &store_stats.error {
                     Some(error) => store_stats.log_error(error),
-                    None => store_stats.log_success("[FULL_BLOCK]"),
+                    None => store_stats.log_success(),
                 }
             }
             Ok(Ok(ProcessResult::Stream(stream_result))) => {
                 let stream_stats = stream_result?;
                 match &stream_stats.error {
                     Some(error) => stream_stats.log_error(error),
-                    None => stream_stats.log_success("[FULL_BLOCK]"),
+                    None => stream_stats.log_success(),
                 }
             }
             Ok(Err(e)) => tracing::error!("Task error: {}", e),
@@ -199,10 +201,12 @@ impl BlockExecutor {
 
     fn build_packets(msg_payload: &MsgPayload) -> Arc<Vec<RecordPacket>> {
         let block_packets = Block::build_packets(msg_payload);
+        let message_packets = Message::build_packets(msg_payload);
         let tx_packets = Transaction::build_packets(msg_payload);
         let packets = block_packets
             .into_iter()
             .chain(tx_packets)
+            .chain(message_packets)
             .collect::<Vec<_>>();
         Arc::new(packets)
     }
@@ -229,6 +233,11 @@ async fn handle_stores(
                     RecordEntity::Block => {
                         let db_item = BlockDbItem::try_from(packet)?;
                         Block::insert_with_transaction(&mut tx, &db_item)
+                            .await?;
+                    }
+                    RecordEntity::Message => {
+                        let db_item = MessageDbItem::try_from(packet)?;
+                        Message::insert_with_transaction(&mut tx, &db_item)
                             .await?;
                     }
                     RecordEntity::Transaction => {

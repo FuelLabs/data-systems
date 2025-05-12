@@ -15,7 +15,6 @@ use sv_consumer::{
     errors::ConsumerError,
     metrics::Metrics,
     server::ServerState,
-    BlockEventExecutor,
     BlockExecutor,
 };
 
@@ -37,68 +36,34 @@ async fn main() -> anyhow::Result<()> {
     let metrics = Metrics::new(None)?;
     let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
+
     let fuel_streams = FuelStreams::new(&message_broker, &db).await.arc();
-
-    // Check for ONLY_EVENTS env var
-    let only_events = dotenvy::var("ONLY_EVENTS")
-        .ok()
-        .and_then(|val| val.parse::<bool>().ok())
-        .unwrap_or(false);
-
-    // Choose the executor based on ONLY_EVENTS
     let server_state =
         ServerState::new(message_broker.clone(), Arc::clone(&telemetry));
     let server = ServerBuilder::build(&server_state, cli.port);
-
     tracing::info!("Consumer started. Waiting for messages...");
 
-    // Run the appropriate executor based on ONLY_EVENTS flag
-    if only_events {
-        let block_event_executor = BlockEventExecutor::new(
-            db,
-            &message_broker,
-            &fuel_streams,
-            Arc::clone(&telemetry),
-        );
+    let block_executor = BlockExecutor::new(
+        db,
+        &message_broker,
+        &fuel_streams,
+        Arc::clone(&telemetry),
+    );
 
-        tokio::select! {
-            result = async {
-                tokio::join!(
-                    block_event_executor.start(shutdown.token()),
-                    server.run()
-                )
-            } => {
-                result.0?;
-                result.1?;
-                tracing::info!("Processing complete");
-            }
-            _ = shutdown.wait_for_shutdown() => {
-                tracing::info!("Shutdown signal received");
-            }
-        };
-    } else {
-        let block_executor = BlockExecutor::new(
-            db,
-            &message_broker,
-            &fuel_streams,
-            Arc::clone(&telemetry),
-        );
-
-        tokio::select! {
-            result = async {
-                tokio::join!(
-                    block_executor.start(shutdown.token()),
-                    server.run()
-                )
-            } => {
-                result.0?;
-                result.1?;
-                tracing::info!("Processing complete");
-            }
-            _ = shutdown.wait_for_shutdown() => {
-                tracing::info!("Shutdown signal received");
-            }
-        };
+    tokio::select! {
+        result = async {
+            tokio::join!(
+                block_executor.start(shutdown.token()),
+                server.run()
+            )
+        } => {
+            result.0?;
+            result.1?;
+            tracing::info!("Processing complete");
+        }
+        _ = shutdown.wait_for_shutdown() => {
+            tracing::info!("Shutdown signal received");
+        }
     }
 
     tracing::info!("Shutdown complete");

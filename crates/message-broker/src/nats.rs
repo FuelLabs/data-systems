@@ -74,10 +74,8 @@ impl NatsMessageBroker {
     async fn setup_queues(&self) -> Result<(), MessageBrokerError> {
         let block_importer = NatsQueue::BlockImporter(self.arc());
         let block_retrier = NatsQueue::BlockRetrier(self.arc());
-        let block_event = NatsQueue::BlockEvent(self.arc());
         block_importer.setup().await?;
         block_retrier.setup().await?;
-        block_event.setup().await?;
         Ok(())
     }
 
