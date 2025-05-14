@@ -78,11 +78,7 @@ impl MetricsHandler {
         Self { telemetry }
     }
 
-    fn track_subscription(
-        &self,
-        subscription: &Subscription,
-        change: SubscriptionChange,
-    ) {
+    fn track_subscription(&self, change: SubscriptionChange) {
         if let Some(metrics) = self.telemetry.base_metrics() {
             metrics.update_user_subscription_count(&change);
             match change {
@@ -152,7 +148,7 @@ impl SubscriptionManager {
         self.active_subscriptions.insert(subscription.clone(), ());
         self.rate_limiter.add_active_key_sub(api_key.id());
         self.metrics_handler
-            .track_subscription(subscription, SubscriptionChange::Added);
+            .track_subscription(SubscriptionChange::Added);
 
         let api_key_id = api_key.id();
         let api_key_role = api_key.role();
@@ -167,15 +163,15 @@ impl SubscriptionManager {
         self.shutdown().await;
         if self.active_subscriptions.remove(subscription).is_some() {
             self.metrics_handler
-                .track_subscription(subscription, SubscriptionChange::Removed);
+                .track_subscription(SubscriptionChange::Removed);
         }
         self.rate_limiter.remove_active_key_sub(self.api_key.id());
     }
 
     pub async fn clear_subscriptions(&self) {
-        for entry in self.active_subscriptions.iter() {
+        for _entry in self.active_subscriptions.iter() {
             self.metrics_handler
-                .track_subscription(entry.key(), SubscriptionChange::Removed);
+                .track_subscription(SubscriptionChange::Removed);
         }
         self.active_subscriptions.clear();
         self.rate_limiter.remove_active_key_sub(self.api_key.id());
