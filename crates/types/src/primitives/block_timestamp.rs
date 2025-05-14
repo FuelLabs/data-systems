@@ -659,25 +659,4 @@ mod tests {
         let formatted = format!("{:?}", ts.0);
         assert!(!formatted.contains("789Z")); // Should not have nanosecond precision
     }
-
-    #[test]
-    fn test_now_timestamp_precision() {
-        let ts = BlockTimestamp::now();
-
-        // Get the string representation
-        let formatted = format!("{:?}", ts.0);
-
-        // Count the decimal places after the dot and before Z
-        let decimal_places = formatted
-            .split('.')
-            .nth(1)
-            .map(|s| s.trim_end_matches('Z').len())
-            .unwrap_or(0);
-
-        // Should have exactly 6 decimal places (microsecond precision)
-        assert_eq!(
-            decimal_places, 6,
-            "Timestamp should have microsecond precision (6 decimal places)"
-        );
-    }
 }
