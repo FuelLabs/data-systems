@@ -35,10 +35,18 @@
 
 ## 📝 About The Project
 
-Fuel Streams Core is a library for building data streaming applications on the Fuel blockchain. It provides tools for efficient handling of real-time blockchain data, using NATS for scalable streaming and offering support for Fuel-specific data types.
+Fuel Streams Core is the foundation library for building data streaming applications on the Fuel blockchain. It provides a comprehensive set of tools for handling both real-time and historical blockchain data, implementing the core functionality that powers the `fuel-streams` crate.
+
+This library includes:
+
+- Low-level streaming infrastructure for Fuel blockchain data
+- Integration with NATS for scalable message streaming
+- Tools for managing subscriptions with fine-grained filtering
+- Support for all Fuel-specific data types (blocks, transactions, inputs, outputs, receipts, UTXOs, etc.)
+- Sophisticated subject-based filtering for targeted data retrieval
 
 > [!NOTE]
-> This crate is specifically modeled for the Fuel Data Systems project, and is not intended for general use outside of the project.
+> This crate is specifically designed for the Fuel Data Systems project, and is primarily intended for internal use. For a more user-friendly interface, consider using the [`fuel-streams`](../fuel-streams) crate instead.
 
 ## 🛠️ Installing
 
@@ -46,12 +54,23 @@ Add this dependency to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-fuel-streams-core = "*"
+fuel-streams-core = "0.1.0"  # Use the latest version available
 ```
 
-## 🚀 Usage
+## 🚀 Features
 
-Here's a simple example to get you started with Fuel Streams Core:
+The `fuel-streams-core` crate provides several key features:
+
+- **Robust Streaming Engine**: Built on NATS for reliable, high-performance messaging
+- **Multiple Data Types**: Full support for all Fuel blockchain data types
+- **Fine-grained Filtering**: Advanced filtering capabilities through a rich subject system
+- **Efficient Data Handling**: Optimized for performance with Fuel blockchain data
+- **Historical Data Access**: Support for retrieving historical data through the Deliver Policy system
+- **User Authentication**: Integration with API key-based authentication for secure access
+
+## 📊 Usage
+
+### Basic Connection and Stream Creation
 
 ```rust,no_run
 use fuel_streams_core::prelude::*;
@@ -59,34 +78,121 @@ use fuel_streams_domains::infra::*;
 use fuel_web_utils::api_key::*;
 use fuel_message_broker::*;
 use futures::StreamExt;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Connect to NATS server
+    // Connect to NATS server and database
     let db = Db::new(DbConnectionOpts::default()).await?;
-    let broker = NatsMessageBroker::setup("nats://localhost:4222", None).await?;
+    let broker = Arc::new(NatsMessageBroker::setup("nats://localhost:4222", None).await?);
+    let db = Arc::new(db);
 
-    // Create or get existing stream for blocks
+    // Create a stream for blocks
     let stream = Stream::<Block>::get_or_init(&broker, &db).await;
 
-    // Subscribe to the stream
-    let subject = BlocksSubject::new(); // blocks.*.*
+    // Create the subscription subject (blocks.*.*) with role-based access control
+    let subject = BlocksSubject::new();
     let api_key_role = ApiKeyRole::default();
-    let mut subscription = stream.subscribe(
-        subject,
-        DeliverPolicy::New,
-        &api_key_role
-    )
-    .await;
+
+    // Subscribe to the stream with the chosen delivery policy
+    let mut subscription = stream
+        .subscribe(subject, DeliverPolicy::New, &api_key_role)
+        .await;
 
     // Process incoming blocks
-    while let Some(block) = subscription.next().await {
-        println!("Received block: {:?}", block?);
+    while let Some(result) = subscription.next().await {
+        match result {
+            Ok(response) => println!("Received block: {:?}", response),
+            Err(err) => eprintln!("Error: {:?}", err),
+        }
     }
 
     Ok(())
 }
 ```
+
+### Using the FuelStreams High-Level API
+
+The `FuelStreams` struct provides a high-level API for working with all data types:
+
+```rust,no_run
+use fuel_streams_core::prelude::*;
+use fuel_streams_domains::infra::*;
+use fuel_web_utils::api_key::*;
+use fuel_message_broker::*;
+use futures::StreamExt;
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Setup broker and database
+    let db = Arc::new(Db::new(DbConnectionOpts::default()).await?);
+    let broker = Arc::new(NatsMessageBroker::setup("nats://localhost:4222", None).await?);
+
+    // Create the FuelStreams instance with all stream types
+    let fuel_streams = FuelStreams::new(&broker, &db).await;
+
+    // Create a subscription with dynamic subject
+    let subscription = Subscription {
+        payload: TransactionsSubject::new().into(),
+        deliver_policy: DeliverPolicy::New,
+    };
+
+    // Subscribe using the API key role for authentication
+    let api_key_role = ApiKeyRole::default();
+    let mut stream = fuel_streams
+        .subscribe_by_subject(&api_key_role, &subscription)
+        .await?;
+
+    // Process incoming data
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(response) => println!("Received data: {:?}", response),
+            Err(err) => eprintln!("Error: {:?}", err),
+        }
+    }
+
+    Ok(())
+}
+```
+
+### Publishing Data
+
+```rust,no_run
+use fuel_streams_core::prelude::*;
+use fuel_streams_domains::infra::*;
+use fuel_message_broker::*;
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Setup connections
+    let db = Arc::new(Db::new(DbConnectionOpts::default()).await?);
+    let broker = Arc::new(NatsMessageBroker::setup("nats://localhost:4222", None).await?);
+
+    // Create specific stream for blocks
+    let block_stream = Stream::<Block>::get_or_init(&broker, &db).await;
+
+    // Create data to publish
+    let block_data = Block::default(); // Your block data here
+    let response = StreamResponse::new(block_data);
+
+    // Publish to the stream
+    let subject = "blocks.100.hash";
+    block_stream.publish(subject, &Arc::new(response)).await?;
+
+    Ok(())
+}
+```
+
+## 🔧 DeliverPolicy Options
+
+The `DeliverPolicy` enum provides control over how messages are delivered in subscriptions:
+
+- `New`: Delivers only new messages that arrive after subscription
+- `FromHeight(BlockHeight)`: Delivers messages starting from a specific block height
+- `FromBlock { block_height }`: Delivers messages starting from a specific block
+- `FromFirst`: Delivers all messages starting from the first available message
 
 ## 🤝 Contributing
 
