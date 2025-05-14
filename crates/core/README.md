@@ -120,6 +120,7 @@ use fuel_streams_core::prelude::*;
 use fuel_streams_domains::infra::*;
 use fuel_web_utils::api_key::*;
 use fuel_message_broker::*;
+use fuel_streams_subject::subject::SubjectPayload;
 use futures::StreamExt;
 use std::sync::Arc;
 
@@ -133,10 +134,14 @@ async fn main() -> anyhow::Result<()> {
     let fuel_streams = FuelStreams::new(&broker, &db).await;
 
     // Create a subscription with dynamic subject
-    let subscription = Subscription {
-        payload: TransactionsSubject::new().into(),
-        deliver_policy: DeliverPolicy::New,
-    };
+    // Use MockApiKey for testing purposes
+    let api_key = MockApiKey::builder(1.into()).into_inner();
+    let subject_payload = TransactionsSubject::new().into();
+    let subscription = Subscription::new(
+        &api_key,
+        &DeliverPolicy::New,
+        &subject_payload
+    );
 
     // Subscribe using the API key role for authentication
     let api_key_role = ApiKeyRole::default();
@@ -151,35 +156,6 @@ async fn main() -> anyhow::Result<()> {
             Err(err) => eprintln!("Error: {:?}", err),
         }
     }
-
-    Ok(())
-}
-```
-
-### Publishing Data
-
-```rust,no_run
-use fuel_streams_core::prelude::*;
-use fuel_streams_domains::infra::*;
-use fuel_message_broker::*;
-use std::sync::Arc;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // Setup connections
-    let db = Arc::new(Db::new(DbConnectionOpts::default()).await?);
-    let broker = Arc::new(NatsMessageBroker::setup("nats://localhost:4222", None).await?);
-
-    // Create specific stream for blocks
-    let block_stream = Stream::<Block>::get_or_init(&broker, &db).await;
-
-    // Create data to publish
-    let block_data = Block::default(); // Your block data here
-    let response = StreamResponse::new(block_data);
-
-    // Publish to the stream
-    let subject = "blocks.100.hash";
-    block_stream.publish(subject, &Arc::new(response)).await?;
 
     Ok(())
 }
