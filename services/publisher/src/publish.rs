@@ -31,7 +31,6 @@ pub async fn publish_block(
 
     if let Some(metrics) = telemetry.base_metrics() {
         metrics.update_publisher_success_metrics(
-            &subject.to_string(&importer_queue),
             encoded.len(),
         );
     }
