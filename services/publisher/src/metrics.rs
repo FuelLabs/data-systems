@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
 use prometheus::{
     register_histogram,
-    register_int_counter_vec,
     register_int_counter,
+    register_int_counter_vec,
     Histogram,
-    IntCounterVec,
     IntCounter,
+    IntCounterVec,
     Registry,
 };
 
@@ -83,17 +83,13 @@ impl Metrics {
         })
     }
 
-    pub fn update_publisher_success_metrics(
-        &self,
-        published_data_size: usize,
-    ) {
+    pub fn update_publisher_success_metrics(&self, published_data_size: usize) {
         // Update message size histogram
         self.message_size_histogram
             .observe(published_data_size as f64);
 
         // Increment throughput for the published messages
-        self.published_messages_throughput
-            .inc();
+        self.published_messages_throughput.inc();
     }
 
     pub fn update_publisher_error_metrics(&self, subject: &str, error: &str) {

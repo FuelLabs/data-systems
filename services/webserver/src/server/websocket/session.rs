@@ -89,9 +89,7 @@ impl MetricsHandler {
     ) {
         if let Some(metrics) = self.telemetry.base_metrics() {
             let subject = subscription.payload.subject.clone();
-            metrics.update_user_subscription_count(
-                &change,
-            );
+            metrics.update_user_subscription_count(&change);
             match change {
                 SubscriptionChange::Added => {
                     metrics.increment_subscriptions_count()
@@ -105,9 +103,7 @@ impl MetricsHandler {
 
     fn track_connection_duration(&self, duration: Duration) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            metrics.track_connection_duration(
-                duration,
-            );
+            metrics.track_connection_duration(duration);
         }
     }
 }

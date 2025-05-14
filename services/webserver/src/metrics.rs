@@ -124,9 +124,7 @@ impl Metrics {
         })
     }
 
-    pub fn update_user_subscription_metrics(
-        &self,
-    ) {
+    pub fn update_user_subscription_metrics(&self) {
         self.user_subscribed_messages.inc();
 
         // Increment throughput for the subscribed messages
@@ -147,36 +145,23 @@ impl Metrics {
         self.total_ws_subs.dec();
     }
 
-    pub fn update_unsubscribed(
-        &self,
-    ) {
+    pub fn update_unsubscribed(&self) {
         self.user_subscribed_messages.dec();
     }
 
-    pub fn update_subscribed(
-        &self,
-    ) {
+    pub fn update_subscribed(&self) {
         self.user_subscribed_messages.inc();
     }
 
-    pub fn track_connection_duration(
-        &self,
-        duration: Duration,
-    ) {
-        self.connection_duration
-            .observe(duration.as_secs_f64());
+    pub fn track_connection_duration(&self, duration: Duration) {
+        self.connection_duration.observe(duration.as_secs_f64());
     }
 
-    pub fn track_duplicate_subscription(
-        &self,
-    ) {
+    pub fn track_duplicate_subscription(&self) {
         self.duplicate_subscription_attempts.inc();
     }
 
-    pub fn update_user_subscription_count(
-        &self,
-        change: &SubscriptionChange,
-    ) {
+    pub fn update_user_subscription_count(&self, change: &SubscriptionChange) {
         let delta = match change {
             SubscriptionChange::Added => 1,
             SubscriptionChange::Removed => -1,
@@ -204,9 +189,7 @@ mod tests {
     fn test_user_subscribed_messages_metric() {
         let metrics = Metrics::random();
 
-        metrics
-            .user_subscribed_messages
-            .set(5);
+        metrics.user_subscribed_messages.set(5);
 
         let metric_families = gather();
         let mut buffer = Vec::new();
@@ -240,9 +223,7 @@ mod tests {
     fn test_subs_messages_throughput_metric() {
         let metrics = Metrics::random();
 
-        metrics
-            .subs_messages_throughput
-            .inc_by(10);
+        metrics.subs_messages_throughput.inc_by(10);
 
         let metric_families = gather();
         let mut buffer = Vec::new();
