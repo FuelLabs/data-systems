@@ -71,15 +71,11 @@ impl MessageHandler {
 #[derive(Clone)]
 struct MetricsHandler {
     telemetry: Arc<Telemetry<Metrics>>,
-    api_key: ApiKey,
 }
 
 impl MetricsHandler {
-    fn new(telemetry: Arc<Telemetry<Metrics>>, api_key: &ApiKey) -> Self {
-        Self {
-            telemetry,
-            api_key: api_key.to_owned(),
-        }
+    fn new(telemetry: Arc<Telemetry<Metrics>>) -> Self {
+        Self { telemetry }
     }
 
     fn track_subscription(
@@ -88,7 +84,6 @@ impl MetricsHandler {
         change: SubscriptionChange,
     ) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            let subject = subscription.payload.subject.clone();
             metrics.update_user_subscription_count(&change);
             match change {
                 SubscriptionChange::Added => {
@@ -209,7 +204,7 @@ impl WsSession {
         rate_limiter: Arc<RateLimitsController>,
         socket: WebSocket,
     ) -> Self {
-        let metrics = MetricsHandler::new(telemetry, api_key);
+        let metrics = MetricsHandler::new(telemetry);
         let connection =
             SubscriptionManager::new(api_key, metrics, rate_limiter);
         let messaging = MessageHandler::new(api_key);
