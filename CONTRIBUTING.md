@@ -18,6 +18,8 @@ Most projects under the umbrella of data systems are written in Rust, so we pref
 - [Kubernetes](https://kubernetes.io/)
 - [Python3](https://www.python.org/downloads/)
 - [Docker](https://www.docker.com/get-started)
+- [PostgreSQL](https://www.postgresql.org/download/) (for local development)
+- [Redis](https://redis.io/download/) (for caching)
 
 ## 📟 Setting up
 
@@ -73,6 +75,8 @@ Here's an overview of the project's directory structure:
     - `publisher/`: Publisher service implementation
     - `consumer/`: Consumer service implementation
     - `webserver/`: WebSocket server implementation
+    - `api/`: REST API service implementation
+    - `dune/`: Data export service for Dune Analytics
 - `benches/`: Benchmarking code
 - `tests/`: Integration and end-to-end tests
 - `examples/`: Example code and usage demonstrations
@@ -80,6 +84,7 @@ Here's an overview of the project's directory structure:
 - `scripts/`: Utility scripts for setup, deployment, and maintenance
     - `generate-api-keys/`: Script for generating API keys
     - `subjects-schema/`: Script for generating subjects schema
+    - `update-db/`: Database migration utilities
 
 ## 🧪 Running Tests
 
@@ -243,7 +248,7 @@ make run-consumer \
 
 This service should be running alongside the publisher to process the data stream.
 
-### Webserver
+### Webserver Service
 
 The webserver provides WebSocket endpoints for clients to subscribe to real-time blockchain data:
 
@@ -268,11 +273,55 @@ make run-webserver \
     - `PORT`: Service port (default: 9003)
     - `NATS_URL`: NATS server URL
 
+### API Service
+
+The API service provides REST endpoints for querying blockchain data:
+
+```sh
+# Run with default settings
+make run-api-testnet-dev
+make run-api-mainnet-dev
+
+# Run with custom parameters
+make run-api \
+    NETWORK=testnet \
+    MODE=dev \
+    PORT=9004 \
+    ARGS=""
+```
+
+- Use `testnet-dev` to serve testnet data during development
+- Use `mainnet-dev` to serve mainnet data during development
+- Custom parameters:
+    - `NETWORK`: Choose between `testnet` or `mainnet`
+    - `MODE`: Choose between `dev` or `profiling`
+    - `PORT`: Service port (default: 9004)
+
+### Dune Service
+
+The Dune service exports blockchain data to S3 for Dune Analytics integration:
+
+```sh
+# Run with default settings
+make run-dune-dev
+
+# Run with custom parameters
+make run-dune \
+    MODE=dev \
+    ARGS=""
+```
+
+- Custom parameters:
+    - `MODE`: Choose between `dev` or `profiling`
+    - `ARGS`: Additional arguments to pass to the Dune service
+
 For local development, a typical setup would be:
 
-1. Start the publisher service for your desired network
-2. Run the consumer service to process the data
-3. Start the webserver to expose the processed data via WebSocket
+1. Start the local services with `make start-docker` (NATS, PostgreSQL, Redis, etc.)
+2. Set up the database with `make setup-db`
+3. Start the publisher service for your desired network
+4. Run the consumer service to process the data
+5. Start the webserver and/or API service to expose the processed data
 
 ## 📇 Code Conventions
 
@@ -328,6 +377,8 @@ The scope field is mandatory and must be one of the following:
 - `sv-publisher`: Publisher service
 - `sv-consumer`: Consumer service
 - `sv-webserver`: WebSocket server
+- `sv-api`: API service
+- `sv-dune`: Dune Analytics integration service
 
 **Support Packages:**
 
@@ -441,9 +492,21 @@ If you encounter any issues while setting up or contributing to the project, her
     - Checking Docker logs with `docker logs <container-name>`
 
 5. **Database issues**: If you encounter database problems:
+
     - Ensure PostgreSQL is running with `make start-docker`
     - Reset the database with `make reset-db`
     - Check database logs with `docker logs <postgres-container-name>`
+
+6. **NATS connectivity issues**: If services can't connect to NATS:
+
+    - Check if NATS is running with `docker ps | grep nats`
+    - Restart NATS with `make restart-nats`
+    - Verify the NATS URL in your .env file
+
+7. **S3 storage issues**: For Dune service S3 connectivity problems:
+    - Check AWS credentials in your .env file
+    - For local development, ensure the S3 emulator is running
+    - Verify S3 bucket permissions
 
 If you encounter any other issues not listed here, please open an issue on the GitHub repository.
 
@@ -454,5 +517,7 @@ If you encounter any other issues not listed here, please open an issue on the G
 - [NATS Documentation](https://docs.nats.io/)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [Tilt Documentation](https://docs.tilt.dev/)
+- [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 We appreciate your contributions to the Fuel Data Systems project!
