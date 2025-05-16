@@ -71,30 +71,16 @@ impl MessageHandler {
 #[derive(Clone)]
 struct MetricsHandler {
     telemetry: Arc<Telemetry<Metrics>>,
-    api_key: ApiKey,
 }
 
 impl MetricsHandler {
-    fn new(telemetry: Arc<Telemetry<Metrics>>, api_key: &ApiKey) -> Self {
-        Self {
-            telemetry,
-            api_key: api_key.to_owned(),
-        }
+    fn new(telemetry: Arc<Telemetry<Metrics>>) -> Self {
+        Self { telemetry }
     }
 
-    fn track_subscription(
-        &self,
-        subscription: &Subscription,
-        change: SubscriptionChange,
-    ) {
+    fn track_subscription(&self, change: SubscriptionChange) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            let subject = subscription.payload.subject.clone();
-            metrics.update_user_subscription_count(
-                self.api_key.id(),
-                self.api_key.user(),
-                &subject,
-                &change,
-            );
+            metrics.update_user_subscription_count(&change);
             match change {
                 SubscriptionChange::Added => {
                     metrics.increment_subscriptions_count()
@@ -108,11 +94,7 @@ impl MetricsHandler {
 
     fn track_connection_duration(&self, duration: Duration) {
         if let Some(metrics) = self.telemetry.base_metrics() {
-            metrics.track_connection_duration(
-                self.api_key.id(),
-                self.api_key.user(),
-                duration,
-            );
+            metrics.track_connection_duration(duration);
         }
     }
 }
@@ -166,7 +148,7 @@ impl SubscriptionManager {
         self.active_subscriptions.insert(subscription.clone(), ());
         self.rate_limiter.add_active_key_sub(api_key.id());
         self.metrics_handler
-            .track_subscription(subscription, SubscriptionChange::Added);
+            .track_subscription(SubscriptionChange::Added);
 
         let api_key_id = api_key.id();
         let api_key_role = api_key.role();
@@ -181,15 +163,15 @@ impl SubscriptionManager {
         self.shutdown().await;
         if self.active_subscriptions.remove(subscription).is_some() {
             self.metrics_handler
-                .track_subscription(subscription, SubscriptionChange::Removed);
+                .track_subscription(SubscriptionChange::Removed);
         }
         self.rate_limiter.remove_active_key_sub(self.api_key.id());
     }
 
     pub async fn clear_subscriptions(&self) {
-        for entry in self.active_subscriptions.iter() {
+        for _entry in self.active_subscriptions.iter() {
             self.metrics_handler
-                .track_subscription(entry.key(), SubscriptionChange::Removed);
+                .track_subscription(SubscriptionChange::Removed);
         }
         self.active_subscriptions.clear();
         self.rate_limiter.remove_active_key_sub(self.api_key.id());
@@ -218,7 +200,7 @@ impl WsSession {
         rate_limiter: Arc<RateLimitsController>,
         socket: WebSocket,
     ) -> Self {
-        let metrics = MetricsHandler::new(telemetry, api_key);
+        let metrics = MetricsHandler::new(telemetry);
         let connection =
             SubscriptionManager::new(api_key, metrics, rate_limiter);
         let messaging = MessageHandler::new(api_key);

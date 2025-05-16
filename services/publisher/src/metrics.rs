@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
 use prometheus::{
-    register_histogram_vec,
+    register_histogram,
+    register_int_counter,
     register_int_counter_vec,
-    HistogramVec,
+    Histogram,
+    IntCounter,
     IntCounterVec,
     Registry,
 };
@@ -11,8 +13,8 @@ use prometheus::{
 #[derive(Clone, Debug)]
 pub struct Metrics {
     pub registry: Registry,
-    pub published_messages_throughput: IntCounterVec,
-    pub message_size_histogram: HistogramVec,
+    pub published_messages_throughput: IntCounter,
+    pub message_size_histogram: Histogram,
     pub error_rates: IntCounterVec,
 }
 
@@ -44,17 +46,15 @@ impl Metrics {
             .map(|p| format!("{}_", p))
             .unwrap_or_default();
 
-        let published_messages_throughput = register_int_counter_vec!(
+        let published_messages_throughput = register_int_counter!(
             format!("{}publisher_metrics_messages_throughput", metric_prefix),
             "A metric counting the number of published messages per subject",
-            &["subject"],
         )
         .expect("metric must be created");
 
-        let message_size_histogram = register_histogram_vec!(
+        let message_size_histogram = register_histogram!(
             format!("{}publisher_metrics_message_size_bytes", metric_prefix),
             "Histogram of message sizes in bytes",
-            &["subject"],
             vec![
                 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0, 100000.0,
                 1000000.0
@@ -83,20 +83,13 @@ impl Metrics {
         })
     }
 
-    pub fn update_publisher_success_metrics(
-        &self,
-        subject: &str,
-        published_data_size: usize,
-    ) {
+    pub fn update_publisher_success_metrics(&self, published_data_size: usize) {
         // Update message size histogram
         self.message_size_histogram
-            .with_label_values(&[subject])
             .observe(published_data_size as f64);
 
         // Increment throughput for the published messages
-        self.published_messages_throughput
-            .with_label_values(&[subject])
-            .inc();
+        self.published_messages_throughput.inc();
     }
 
     pub fn update_publisher_error_metrics(&self, subject: &str, error: &str) {

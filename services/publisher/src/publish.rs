@@ -30,10 +30,7 @@ pub async fn publish_block(
     importer_queue.publish(&subject, encoded.clone()).await?;
 
     if let Some(metrics) = telemetry.base_metrics() {
-        metrics.update_publisher_success_metrics(
-            &subject.to_string(&importer_queue),
-            encoded.len(),
-        );
+        metrics.update_publisher_success_metrics(encoded.len());
     }
 
     tracing::info!(
