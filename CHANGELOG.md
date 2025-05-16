@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.0.30](https://github.com/FuelLabs/data-systems/compare/v0.0.29...v0.0.30) - 2025-05-16
+
+
+
+
+
+### ⭐ Features
+
+- *(repo)*: Add messages ([#465](https://github.com/FuelLabs/data-systems/pull/465)) ([7a09099](https://github.com/FuelLabs/data-systems/commit/7a09099d2ee49a82c4dad6b1567df0fd373969ce)  @pedronauck)
+
+### 🐛 Bug Fixes
+
+- *(repo)*: Dune integration ([f487ceb](https://github.com/FuelLabs/data-systems/commit/f487cebfd873986f7312dd0d72d46cba47b2a9fb)  @pedronauck)
+
+- *(fuel-streams-domains)*: Adjust BlockHeaderVersion serialization ([7a421b7](https://github.com/FuelLabs/data-systems/commit/7a421b7dda0915d81cded4d9cb023614106efb89)  @pedronauck)
+
+- *(fuel-streams-domains)*: BlockVersion serde configuration ([b99705e](https://github.com/FuelLabs/data-systems/commit/b99705ea324a0cf98d9f02801ef3db6edc9ac199)  @pedronauck)
+
+- *(fuel-streams-domains)*: Improve accounts txs query performance ([#462](https://github.com/FuelLabs/data-systems/pull/462)) ([e2fb66e](https://github.com/FuelLabs/data-systems/commit/e2fb66e0ff6029e06bc9c53552db5ad1ec5039c3)  @pedronauck)
+
+- *(sv-publisher)*: Restore tx_pointer for transactions ([41c4cd8](https://github.com/FuelLabs/data-systems/commit/41c4cd8c56f916dbf8ad5acd379186a196f604d4)  @pedronauck)
+
+- *(repo)*: Builder subscriptions count error ([b5a179f](https://github.com/FuelLabs/data-systems/commit/b5a179ffa508af512e129e2312d3b0d3dd91a227)  @pedronauck)
+
+### 🔄 Refactor
+
+- *(sv-dune)*: Improve Avro types ([#460](https://github.com/FuelLabs/data-systems/pull/460)) ([10a27dd](https://github.com/FuelLabs/data-systems/commit/10a27dd8dee72adc8e89568c7e0fcefa39246dc4)  @pedronauck)
+
+### 📚 Documentation
+
+- *(repo)*: Improve docs on core and data-parser ([2d6401c](https://github.com/FuelLabs/data-systems/commit/2d6401c96ef55c7555cc78ddd1296b1acfd25d81)  @pedronauck)
+
+- *(repo)*: Improve project docs ([4ead022](https://github.com/FuelLabs/data-systems/commit/4ead022c1d4c10db4174a512d4b1864b18b0e56d)  @pedronauck)
+
+- *(fuel-streams-core)*: Fix code example ([0729afb](https://github.com/FuelLabs/data-systems/commit/0729afbc3c2f3adff3ecd8b9ed7f484d4028008c)  @pedronauck)
+
+### 🧪 Testing
+
+- *(repo)*: Fix wrong tests ([a70976a](https://github.com/FuelLabs/data-systems/commit/a70976a710c5273e270e80120dd27a474b7474be)  @pedronauck)
+
+### 💪🏼 Contributors
+
+* @pedronauck
+
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
 ## [0.0.29](https://github.com/FuelLabs/data-systems/compare/v0.0.28...v0.0.29) - 2025-04-18
 
 ### ⭐ Features
