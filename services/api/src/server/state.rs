@@ -6,7 +6,7 @@ use std::{
 use async_trait::async_trait;
 use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_web_utils::{
-    api_key::{ApiKeysManager, KeyStorage},
+    api_key::ApiKeysManager,
     server::state::StateProvider,
     telemetry::Telemetry,
 };
@@ -36,16 +36,6 @@ impl ServerState {
         tracing::info!("Initialized telemetry");
 
         let api_keys_manager = Arc::new(ApiKeysManager::default());
-        let initial_keys = api_keys_manager.load_from_db(&db).await?;
-        for key in initial_keys {
-            if let Err(e) = api_keys_manager.storage().insert(&key) {
-                tracing::warn!(
-                    error = %e,
-                    "Failed to cache initial API key"
-                );
-            }
-        }
-        tracing::info!("Initialized api key manager");
 
         Ok(Self {
             db,
