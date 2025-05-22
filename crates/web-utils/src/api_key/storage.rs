@@ -61,21 +61,13 @@ impl KeyStorage for InMemoryApiKeyStorage {
 
     fn retrieve(&self, api_key: &ApiKey) -> Result<ApiKey, ApiKeyError> {
         let storage_key = api_key.storage_key();
-        if let Some(entry) = self.map.get(&storage_key) {
-            let (key, timestamp) = &*entry;
-            if !Self::is_expired(timestamp) {
-                return Ok(key.clone());
-            }
-            // Remove expired entry
-            self.map.remove(&storage_key);
-        }
-        Err(ApiKeyStorageError::KeyNotFound.into())
+        self.find_by_key(&storage_key)
     }
 
     fn delete(&self, api_key: &ApiKey) -> Result<bool, ApiKeyError> {
         let storage_key = api_key.storage_key();
         if !self.map.contains_key(&storage_key) {
-            return Err(ApiKeyStorageError::KeyNotFound.into());
+            return Err(ApiKeyError::NotFound);
         }
         self.map.remove(&storage_key);
         Ok(true)
