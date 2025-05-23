@@ -8,7 +8,7 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::FuelStreams;
 use fuel_streams_domains::infra::{Db, DbConnectionOpts};
 use fuel_web_utils::{
-    api_key::{ApiKeysManager, KeyStorage},
+    api_key::ApiKeysManager,
     server::state::StateProvider,
     telemetry::Telemetry,
 };
@@ -44,17 +44,7 @@ impl ServerState {
         let metrics = Metrics::new(None)?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
         telemetry.start().await?;
-
         let api_keys_manager = Arc::new(ApiKeysManager::default());
-        let initial_keys = api_keys_manager.load_from_db(&db).await?;
-        for key in initial_keys {
-            if let Err(e) = api_keys_manager.storage().insert(&key) {
-                tracing::warn!(
-                    error = %e,
-                    "Failed to cache initial API key"
-                );
-            }
-        }
 
         let connection_checker = Arc::new(ConnectionChecker::default());
         connection_checker.start().await;

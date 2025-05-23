@@ -45,15 +45,6 @@ impl ApiKeysManager {
         &self.rate_limiter_controller
     }
 
-    pub async fn load_from_db(
-        &self,
-        db: &Arc<Db>,
-    ) -> Result<Vec<ApiKey>, ApiKeyError> {
-        let pool = db.pool_ref();
-        let db_keys = ApiKey::fetch_all(pool).await?;
-        Ok(db_keys)
-    }
-
     pub async fn get_api_key_from_db(
         &self,
         key: &ApiKeyValue,
@@ -61,6 +52,7 @@ impl ApiKeysManager {
     ) -> Result<ApiKey, ApiKeyError> {
         let pool = db.pool_ref();
         let api_key = ApiKey::fetch_by_key(pool, key).await?;
+        let _ = self.storage.insert(&api_key);
         Ok(api_key)
     }
 

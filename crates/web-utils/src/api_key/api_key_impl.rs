@@ -105,7 +105,7 @@ impl ApiKey {
     }
 
     pub fn storage_key(&self) -> String {
-        format!("{}-{}", self.id(), self.user())
+        format!("{}", self.key())
     }
 
     pub fn generate_random_api_key() -> String {
