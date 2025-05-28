@@ -3,8 +3,10 @@ use std::time::Duration;
 use async_trait::async_trait;
 use fuel_web_utils::{api_key::ApiKeyId, telemetry::metrics::TelemetryMetrics};
 use prometheus::{
+    register_gauge,
     register_histogram_vec,
     register_int_counter_vec,
+    Gauge,
     HistogramVec,
     IntCounterVec,
     Registry,
@@ -15,6 +17,7 @@ pub struct Metrics {
     pub registry: Registry,
     pub db_queries_error_rates: IntCounterVec,
     pub connection_duration: HistogramVec,
+    pub latest_block_height: Gauge,
 }
 
 impl Default for Metrics {
@@ -60,6 +63,12 @@ impl Metrics {
         )
         .expect("metric must be created");
 
+        let latest_block_height = register_gauge!(
+            format!("{}api_latest_block_height", metric_prefix),
+            "The latest block height in the database"
+        )
+        .expect("metric must be created");
+
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");
         registry.register(Box::new(db_queries_error_rates.clone()))?;
@@ -69,6 +78,7 @@ impl Metrics {
             registry,
             db_queries_error_rates,
             connection_duration,
+            latest_block_height,
         })
     }
 
@@ -87,6 +97,10 @@ impl Metrics {
         self.connection_duration
             .with_label_values(&[&user_id.to_string(), user_name])
             .observe(duration.as_secs_f64());
+    }
+
+    pub fn update_latest_block_height(&self, height: u32) {
+        self.latest_block_height.set(height as f64);
     }
 }
 
@@ -123,5 +137,22 @@ mod tests {
         assert!(output.contains("query_1"));
         assert!(output.contains("timeout"));
         assert!(output.contains("1"));
+    }
+
+    #[test]
+    fn test_latest_block_height_metric() {
+        let metrics = Metrics::random();
+
+        metrics.update_latest_block_height(123);
+
+        let metric_families = gather();
+        let mut buffer = Vec::new();
+        let encoder = TextEncoder::new();
+        encoder.encode(&metric_families, &mut buffer).unwrap();
+
+        let output = String::from_utf8(buffer.clone()).unwrap();
+
+        assert!(output.contains("api_latest_block_height"));
+        assert!(output.contains("123"));
     }
 }
