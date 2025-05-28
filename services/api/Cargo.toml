@@ -25,6 +25,7 @@ dotenvy.workspace = true
 fuel-data-parser.workspace = true
 fuel-streams-core = { workspace = true, features = ["openapi"] }
 fuel-streams-domains.workspace = true
+fuel-streams-types.workspace = true
 fuel-web-utils.workspace = true
 num_cpus.workspace = true
 paste = "1.0.15"
