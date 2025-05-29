@@ -12,6 +12,7 @@ use fuel_web_utils::{
 use sv_publisher::{
     cli::Cli,
     error::PublishError,
+    history::process_historical_gaps_periodically,
     metrics::Metrics,
     publish::publish_block,
     recover::recover_tx_pointers,
@@ -46,6 +47,15 @@ async fn main() -> anyhow::Result<()> {
         result = async {
             tokio::join!(
                 recover_tx_pointers(&db),
+                process_historical_gaps_periodically(
+                    cli.from_block.into(),
+                    &db,
+                    &message_broker,
+                    &fuel_core,
+                    &last_block_height,
+                    &shutdown,
+                    &telemetry,
+                ),
                 process_live_blocks(
                     &message_broker,
                     &fuel_core,
