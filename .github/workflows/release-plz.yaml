@@ -17,7 +17,7 @@ jobs:
   # Release unpublished packages.
   release-plz-release:
     name: Release-plz release
-    runs-on: warp-ubuntu-latest-x64-4x
+    runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: write
     steps:
@@ -45,7 +45,7 @@ jobs:
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
     name: Release-plz PR
-    runs-on: warp-ubuntu-latest-x64-4x
+    runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: write
       pull-requests: write
