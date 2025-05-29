@@ -78,8 +78,8 @@ runs:
         labels: ${{ steps.meta.outputs.labels }}
         annotations: ${{ steps.meta.outputs.annotations }}
         build-args: ${{ inputs.build-args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=registry,ref=${{ inputs.image }}-cache
+        cache-to: type=registry,ref=${{ inputs.image }}-cache,mode=max
 
     - id: imageOutput
       shell: bash
