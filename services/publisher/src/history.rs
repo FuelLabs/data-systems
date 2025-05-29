@@ -27,20 +27,20 @@ pub async fn process_historical_gaps(
     anyhow::Error,
 > {
     let gaps = Arc::new(
-        find_next_block_to_save(&db, *last_block_height.clone()).await?,
+        find_next_block_to_save(db, *last_block_height.clone()).await?,
     );
     tracing::info!("Found {} block gaps to process", gaps.len());
     for gap in gaps.iter() {
         tracing::info!("Gap: {} to {}", gap.start, gap.end);
     }
     Ok(process_historical_blocks(
-        from_block.into(),
-        &message_broker,
-        &fuel_core,
-        &last_block_height,
+        from_block,
+        message_broker,
+        fuel_core,
+        last_block_height,
         &gaps,
         shutdown.token().clone(),
-        &telemetry,
+        telemetry,
     ))
 }
 
