@@ -4,7 +4,7 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::types::*;
 use fuel_streams_domains::infra::Db;
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
-use tokio::{sync::Semaphore, task::JoinSet};
+use tokio::time::{interval, Duration};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -13,6 +13,44 @@ use crate::{
     metrics::Metrics,
     publish::publish_block,
 };
+
+pub async fn process_historical_gaps_periodically(
+    from_block: BlockHeight,
+    db: &Arc<Db>,
+    message_broker: &Arc<NatsMessageBroker>,
+    fuel_core: &Arc<dyn FuelCoreLike>,
+    last_block_height: &Arc<BlockHeight>,
+    shutdown: &Arc<ShutdownController>,
+    telemetry: &Arc<Telemetry<Metrics>>,
+) -> Result<(), anyhow::Error> {
+    // Run every 5 hours
+    let mut interval = interval(Duration::from_secs(3600 * 5));
+
+    loop {
+        if shutdown.token().is_cancelled() {
+            tracing::info!("Historical gap processor received shutdown signal");
+            break;
+        }
+
+        tracing::info!("Starting periodic historical gap processing");
+        let result = process_historical_gaps(
+            from_block,
+            db,
+            message_broker,
+            fuel_core,
+            last_block_height,
+            shutdown,
+            telemetry,
+        )
+        .await?;
+
+        result.await?;
+
+        interval.tick().await;
+    }
+
+    Ok(())
+}
 
 pub async fn process_historical_gaps(
     from_block: BlockHeight,
@@ -33,6 +71,7 @@ pub async fn process_historical_gaps(
     for gap in gaps.iter() {
         tracing::info!("Gap: {} to {}", gap.start, gap.end);
     }
+
     Ok(process_historical_blocks(
         from_block,
         message_broker,
@@ -71,7 +110,7 @@ fn process_historical_blocks(
             return Ok(());
         };
 
-        process_blocks_with_join_set(
+        let _ = process_blocks(
             processed_gaps,
             message_broker,
             fuel_core,
@@ -84,83 +123,75 @@ fn process_historical_blocks(
     }
 }
 
-async fn process_blocks_with_join_set(
+async fn process_blocks(
     processed_gaps: Vec<BlockHeightGap>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_core: Arc<dyn FuelCoreLike>,
     telemetry: Arc<Telemetry<Metrics>>,
     token: CancellationToken,
-) {
-    let semaphore = Arc::new(Semaphore::new(32));
-    let mut join_set = JoinSet::new();
-
+) -> Result<(), anyhow::Error> {
     // Spawn tasks for each block height
     'outer: for gap in processed_gaps {
-        for height in *gap.start..=*gap.end {
+        tracing::info!("Processing gap: {} to {}", gap.start, gap.end);
+        let heights = (*gap.start..=*gap.end).collect::<Vec<_>>();
+        let heights_chucks = heights.chunks(50);
+
+        for heights in heights_chucks {
+            tracing::info!(
+                "Processing chunk: {:?} - {:?}",
+                heights.first(),
+                heights.last()
+            );
+
             if token.is_cancelled() {
                 break 'outer;
             }
 
-            let message_broker = message_broker.clone();
-            let fuel_core = fuel_core.clone();
-            let telemetry = telemetry.clone();
-            let semaphore = semaphore.clone();
-            let token = token.clone();
+            for height in heights {
+                tracing::info!("Processing block height: {}", height);
 
-            join_set.spawn(async move {
                 if token.is_cancelled() {
-                    return Ok(());
+                    break 'outer;
                 }
 
-                let _permit = semaphore.acquire().await.unwrap();
-                let height = height.into();
-                let sealed_block = fuel_core.get_sealed_block(height)?;
+                let message_broker = message_broker.clone();
+                let fuel_core = fuel_core.clone();
+                let telemetry = telemetry.clone();
+                let sealed_block =
+                    fuel_core.get_sealed_block((*height).into())?;
                 let sealed_block = Arc::new(sealed_block);
 
-                publish_block(
+                tracing::info!("Publishing block height: {}", height);
+                let result = publish_block(
                     &message_broker,
                     &fuel_core,
                     &sealed_block,
                     &telemetry,
                     None,
                 )
-                .await
-            });
-        }
-    }
+                .await;
 
-    tracing::info!("Waiting for remaining tasks to complete...");
-
-    while let Some(result) = join_set.join_next().await {
-        if token.is_cancelled() {
-            tracing::info!(
-                "Shutdown signal received, aborting remaining tasks..."
-            );
-            join_set.abort_all();
-            break;
-        }
-
-        match result {
-            Ok(Ok(_)) => {
-                tracing::debug!("Block processed successfully")
-            }
-            Ok(Err(e)) => {
-                tracing::error!("Error processing block: {:?}", e)
-            }
-            Err(e) => {
-                tracing::error!("Task error: {:?}", e);
+                match result {
+                    Ok(_) => {
+                        tracing::info!(
+                            "Block {} published successfully",
+                            height
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Error publishing block {}: {:?}",
+                            height,
+                            e
+                        );
+                        return Err(e.into());
+                    }
+                }
             }
         }
     }
 
-    if token.is_cancelled() {
-        tracing::info!("Waiting for aborted tasks to complete...");
-        while let Some(result) = join_set.join_next().await {
-            if let Err(e) = result {
-                tracing::debug!("Aborted task error: {:?}", e);
-            }
-        }
-    }
+    Ok(())
 }
 
 fn get_historical_block_range(
