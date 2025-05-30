@@ -53,8 +53,8 @@ use super::{
 };
 use crate::{errors::ConsumerError, metrics::Metrics};
 
-const MAX_CONCURRENT_TASKS: usize = 32;
-const BATCH_SIZE: usize = 100;
+const MAX_CONCURRENT_TASKS: usize = 30;
+const BATCH_SIZE: usize = 30;
 
 #[derive(Debug)]
 enum ProcessResult {
@@ -91,7 +91,6 @@ impl BlockExecutor {
         &self,
         token: &CancellationToken,
     ) -> Result<(), ConsumerError> {
-        let mut join_set = JoinSet::new();
         tracing::info!(
             "Starting consumer with max concurrent tasks: {}",
             MAX_CONCURRENT_TASKS
@@ -101,24 +100,16 @@ impl BlockExecutor {
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
 
         while !token.is_cancelled() {
-            tokio::select! {
-                msg_result = queue.subscribe(BATCH_SIZE) => {
-                    let mut messages = msg_result?;
-                    while let Some(msg) = messages.next().await {
-                        let msg = msg?;
-                        self.spawn_processing_tasks(msg, &mut join_set,)
-                        .await?;
-                    }
-                }
-                Some(result) = join_set.join_next() => {
+            let mut messages = queue.subscribe(BATCH_SIZE).await?;
+            while let Some(msg) = messages.next().await {
+                let mut join_set = JoinSet::new();
+                let msg = msg?;
+                self.spawn_processing_tasks(msg, &mut join_set).await?;
+                // Wait for all spawned tasks to complete before processing next message
+                while let Some(result) = join_set.join_next().await {
                     Self::handle_task_result(result, &telemetry).await?;
                 }
             }
-        }
-
-        // Wait for all tasks to finish
-        while let Some(result) = join_set.join_next().await {
-            Self::handle_task_result(result, &telemetry).await?;
         }
 
         tracing::info!("Stopping broker ...");
@@ -138,6 +129,7 @@ impl BlockExecutor {
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
+
         join_set.spawn({
             let semaphore = semaphore.clone();
             let packets = packets.clone();
@@ -145,6 +137,12 @@ impl BlockExecutor {
             async move {
                 let _permit = semaphore.acquire().await?;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
+                if result.is_ok() {
+                    msg.ack().await.map_err(|e| {
+                        tracing::error!("Failed to ack message: {:?}", e);
+                        ConsumerError::MessageBrokerClient(e)
+                    })?;
+                }
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
@@ -161,11 +159,6 @@ impl BlockExecutor {
                 Ok(ProcessResult::Stream(result))
             }
         });
-
-        msg.ack().await.map_err(|e| {
-            tracing::error!("Failed to ack message: {:?}", e);
-            ConsumerError::MessageBrokerClient(e)
-        })?;
 
         Ok(())
     }
