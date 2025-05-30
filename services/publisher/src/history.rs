@@ -23,8 +23,8 @@ pub async fn process_historical_gaps_periodically(
     shutdown: &Arc<ShutdownController>,
     telemetry: &Arc<Telemetry<Metrics>>,
 ) -> Result<(), anyhow::Error> {
-    // Run every 5 hours
-    let mut interval = interval(Duration::from_secs(3600 * 5));
+    // Run every 3 days
+    let mut interval = interval(Duration::from_secs((3600 * 24) * 3));
 
     loop {
         if shutdown.token().is_cancelled() {
