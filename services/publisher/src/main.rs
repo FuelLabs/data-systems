@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
             tokio::join!(
                 recover_tx_pointers(&db),
                 process_historical_gaps_periodically(
+                    cli.history_interval,
                     cli.from_block.into(),
                     &db,
                     &message_broker,

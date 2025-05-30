@@ -14,7 +14,9 @@ use crate::{
     publish::publish_block,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub async fn process_historical_gaps_periodically(
+    interval_secs: u64,
     from_block: BlockHeight,
     db: &Arc<Db>,
     message_broker: &Arc<NatsMessageBroker>,
@@ -23,8 +25,13 @@ pub async fn process_historical_gaps_periodically(
     shutdown: &Arc<ShutdownController>,
     telemetry: &Arc<Telemetry<Metrics>>,
 ) -> Result<(), anyhow::Error> {
-    // Run every 5 hours
-    let mut interval = interval(Duration::from_secs(3600 * 5));
+    if interval_secs == 0 {
+        tracing::info!("Historical gap processing is disabled");
+        return Ok(());
+    }
+
+    // Run at the specified interval
+    let mut interval = interval(Duration::from_secs(interval_secs));
 
     loop {
         if shutdown.token().is_cancelled() {

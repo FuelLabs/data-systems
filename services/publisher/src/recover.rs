@@ -25,7 +25,7 @@ async fn fetch_transaction_chunk(
     pool: &PgPool,
     offset: i64,
 ) -> Result<Vec<TransactionRecord>> {
-    println!("Fetching transaction chunk with offset {}", offset);
+    tracing::info!("Fetching transaction chunk with offset {}", offset);
     sqlx::query_as::<_, TransactionRecord>(
         "SELECT id, block_height, tx_index
          FROM transactions
@@ -106,7 +106,7 @@ pub async fn recover_tx_pointers(db: &Arc<Db>) -> Result<()> {
         total_updated += result??;
     }
 
-    println!(
+    tracing::info!(
         "Successfully completed transaction updates. Total transactions updated: {}",
         total_updated
     );
