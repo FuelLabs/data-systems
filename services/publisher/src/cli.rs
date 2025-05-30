@@ -55,4 +55,13 @@ pub struct Cli {
         help = "Enable metrics"
     )]
     pub use_metrics: bool,
+    /// Historical gap processing interval in seconds
+    #[arg(
+        long,
+        value_name = "HISTORY_INTERVAL",
+        env = "HISTORY_INTERVAL",
+        default_value = "259200",
+        help = "Interval in seconds for processing historical gaps (default: 3 days). Set to 0 to disable."
+    )]
+    pub history_interval: u64,
 }
