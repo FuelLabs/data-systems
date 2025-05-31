@@ -53,8 +53,8 @@ use super::{
 };
 use crate::{errors::ConsumerError, metrics::Metrics};
 
-const MAX_CONCURRENT_TASKS: usize = 30;
-const BATCH_SIZE: usize = 30;
+const MAX_CONCURRENT_TASKS: usize = 32;
+const BATCH_SIZE: usize = 100;
 
 #[derive(Debug)]
 enum ProcessResult {
@@ -101,14 +101,14 @@ impl BlockExecutor {
 
         while !token.is_cancelled() {
             let mut messages = queue.subscribe(BATCH_SIZE).await?;
+            let mut join_set = JoinSet::new();
             while let Some(msg) = messages.next().await {
-                let mut join_set = JoinSet::new();
                 let msg = msg?;
                 self.spawn_processing_tasks(msg, &mut join_set).await?;
-                // Wait for all spawned tasks to complete before processing next message
-                while let Some(result) = join_set.join_next().await {
-                    Self::handle_task_result(result, &telemetry).await?;
-                }
+            }
+            // Wait for all spawned tasks to complete before processing next message
+            while let Some(result) = join_set.join_next().await {
+                Self::handle_task_result(result, &telemetry).await?;
             }
         }
 
@@ -289,7 +289,18 @@ async fn handle_stores(
 
     match result {
         Ok(packet_count) => Ok(stats.finish(packet_count)),
-        Err(e) => Ok(stats.finish_with_error(e)),
+        Err(e) => {
+            if let ConsumerError::Sqlx(sqlx::Error::Database(db_error)) = &e {
+                if db_error.is_unique_violation() {
+                    tracing::info!(
+                        block_height = %msg_payload.block_height(),
+                        "Ignoring unique constraint violation - block already processed"
+                    );
+                    return Ok(stats.finish(packets.len()));
+                }
+            }
+            Ok(stats.finish_with_error(e))
+        }
     }
 }
 
