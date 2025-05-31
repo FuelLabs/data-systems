@@ -37,4 +37,12 @@ pub struct Cli {
         help = "Enable metrics"
     )]
     pub use_metrics: bool,
+    /// Max concurrent tasks
+    #[arg(
+        long,
+        env = "CONCURRENT_TASKS",
+        default_value = "300",
+        help = "Number of concurrent tasks, this is the number of total blocks processed in parallel, this will also be reflected in the number of connections to the database"
+    )]
+    pub concurrent_tasks: usize,
 }

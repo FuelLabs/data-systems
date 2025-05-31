@@ -54,13 +54,9 @@ use super::{
 };
 use crate::{errors::ConsumerError, metrics::Metrics};
 
-const MAX_CONCURRENT_TASKS: usize = 32;
-const BATCH_SIZE: usize = 100;
-
 #[derive(Debug)]
 enum ProcessResult {
     Store(Result<BlockStats, ConsumerError>),
-    Stream(Result<BlockStats, ConsumerError>),
 }
 
 pub struct BlockExecutor {
@@ -69,6 +65,7 @@ pub struct BlockExecutor {
     fuel_streams: Arc<FuelStreams>,
     semaphore: Arc<Semaphore>,
     telemetry: Arc<Telemetry<Metrics>>,
+    concurrent_tasks: usize,
 }
 
 impl BlockExecutor {
@@ -77,14 +74,16 @@ impl BlockExecutor {
         message_broker: &Arc<NatsMessageBroker>,
         fuel_streams: &Arc<FuelStreams>,
         telemetry: Arc<Telemetry<Metrics>>,
+        concurrent_tasks: usize,
     ) -> Self {
-        let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
+        let semaphore = Arc::new(Semaphore::new(concurrent_tasks));
         Self {
             db,
             semaphore,
             message_broker: message_broker.clone(),
             fuel_streams: fuel_streams.clone(),
             telemetry,
+            concurrent_tasks,
         }
     }
 
@@ -94,22 +93,27 @@ impl BlockExecutor {
     ) -> Result<(), ConsumerError> {
         tracing::info!(
             "Starting consumer with max concurrent tasks: {}",
-            MAX_CONCURRENT_TASKS
+            self.concurrent_tasks
         );
 
         let telemetry = self.telemetry.clone();
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
+        let mut join_set = JoinSet::new();
 
         while !token.is_cancelled() {
-            let mut messages = queue.subscribe(BATCH_SIZE).await?;
-            let mut join_set = JoinSet::new();
-            while let Some(msg) = messages.next().await {
-                let msg = msg?;
-                self.spawn_processing_tasks(msg, &mut join_set).await?;
-            }
-            // Wait for all spawned tasks to complete before processing next message
-            while let Some(result) = join_set.join_next().await {
-                Self::handle_task_result(result, &telemetry).await?;
+            tokio::select! {
+                msg_result = queue.subscribe(self.concurrent_tasks) => {
+                    let mut messages = msg_result?;
+                    while let Some(msg) = messages.next().await {
+                        let _permit = self.semaphore.acquire().await?;
+                        let msg = msg?;
+                        self.spawn_processing_tasks(msg, &mut join_set,)
+                        .await?;
+                    }
+                }
+                Some(result) = join_set.join_next() => {
+                    Self::handle_task_result(result, &telemetry).await?;
+                }
             }
         }
 
@@ -125,44 +129,45 @@ impl BlockExecutor {
         join_set: &mut JoinSet<Result<ProcessResult, ConsumerError>>,
     ) -> Result<(), ConsumerError> {
         let db = self.db.clone();
-        let semaphore = self.semaphore.clone();
         let fuel_streams = self.fuel_streams.clone();
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
 
         join_set.spawn({
-            let semaphore = semaphore.clone();
             let packets = packets.clone();
             let msg_payload = msg_payload.clone();
             async move {
-                let _permit = semaphore.acquire().await?;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
                 if let Ok(stats) = result {
                     if stats.error.is_none() {
-                        msg.ack().await.map_err(|e| {
-                            tracing::error!("Failed to ack message: {:?}", e);
-                            ConsumerError::MessageBrokerClient(e)
-                        })?;
+                        tokio::spawn(async move {
+                            let _ = msg.ack().await.map_err(|e| {
+                                tracing::error!(
+                                    "Failed to ack message: {:?}",
+                                    e
+                                );
+                                ConsumerError::MessageBrokerClient(e)
+                            });
+                            tracing::info!(
+                                "[#{}] Message acknowledged",
+                                stats.block_height
+                            );
+                        });
                     }
                     return Ok::<_, ConsumerError>(ProcessResult::Store(Ok(
                         stats,
                     )));
                 }
-                Ok::<_, ConsumerError>(ProcessResult::Store(result))
-            }
-        });
-
-        join_set.spawn({
-            let semaphore = semaphore.clone();
-            let packets = packets.clone();
-            let msg_payload = msg_payload.clone();
-            let fuel_streams = fuel_streams.clone();
-            async move {
-                let _permit = semaphore.acquire_owned().await?;
-                let result =
+                let result_streams =
                     handle_streams(&fuel_streams, &packets, &msg_payload).await;
-                Ok(ProcessResult::Stream(result))
+                if let Ok(stream_stats) = result_streams {
+                    match &stream_stats.error {
+                        Some(error) => stream_stats.log_error(error),
+                        None => stream_stats.log_success(),
+                    }
+                }
+                Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
         });
 
@@ -183,13 +188,6 @@ impl BlockExecutor {
                 match &store_stats.error {
                     Some(error) => store_stats.log_error(error),
                     None => store_stats.log_success(),
-                }
-            }
-            Ok(Ok(ProcessResult::Stream(stream_result))) => {
-                let stream_stats = stream_result?;
-                match &stream_stats.error {
-                    Some(error) => stream_stats.log_error(error),
-                    None => stream_stats.log_success(),
                 }
             }
             Ok(Err(e)) => tracing::error!("Task error: {}", e),
