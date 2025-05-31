@@ -29,10 +29,12 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
-
     // Initialize shared resources
-    let db = setup_db(&cli.db_url).await?;
-    let message_broker = NatsMessageBroker::setup(&cli.nats_url, None).await?;
+    let db = setup_db(&cli.db_url, cli.concurrent_tasks as u32).await?;
+    // 2 minutes before returning to the message broker
+    let opts = fuel_message_broker::NatsOpts::new(cli.nats_url.clone())
+        .with_ack_wait(120);
+    let message_broker = NatsMessageBroker::setup_with_opts(&opts).await?;
     let metrics = Metrics::new(None)?;
     let telemetry = Telemetry::new(Some(metrics)).await?;
     telemetry.start().await?;
@@ -48,6 +50,7 @@ async fn main() -> anyhow::Result<()> {
         &message_broker,
         &fuel_streams,
         Arc::clone(&telemetry),
+        cli.concurrent_tasks,
     );
 
     tokio::select! {
@@ -70,9 +73,13 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_db(db_url: &str) -> Result<Arc<Db>, ConsumerError> {
+async fn setup_db(
+    db_url: &str,
+    concurrent_tasks: u32,
+) -> Result<Arc<Db>, ConsumerError> {
     let db = Db::new(DbConnectionOpts {
         connection_str: db_url.to_string(),
+        pool_size: Some(concurrent_tasks),
         ..Default::default()
     })
     .await?;
