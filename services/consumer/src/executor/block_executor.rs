@@ -26,6 +26,7 @@ use fuel_streams_domains::{
         db::{Db, DbTransaction},
         record::{PacketBuilder, RecordEntity, RecordPacket},
         repository::Repository,
+        RepositoryError,
     },
     inputs::InputDbItem,
     messages::MessageDbItem,
@@ -137,11 +138,16 @@ impl BlockExecutor {
             async move {
                 let _permit = semaphore.acquire().await?;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
-                if result.is_ok() {
-                    msg.ack().await.map_err(|e| {
-                        tracing::error!("Failed to ack message: {:?}", e);
-                        ConsumerError::MessageBrokerClient(e)
-                    })?;
+                if let Ok(stats) = result {
+                    if stats.error.is_none() {
+                        msg.ack().await.map_err(|e| {
+                            tracing::error!("Failed to ack message: {:?}", e);
+                            ConsumerError::MessageBrokerClient(e)
+                        })?;
+                    }
+                    return Ok::<_, ConsumerError>(ProcessResult::Store(Ok(
+                        stats,
+                    )));
                 }
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
@@ -290,11 +296,14 @@ async fn handle_stores(
     match result {
         Ok(packet_count) => Ok(stats.finish(packet_count)),
         Err(e) => {
-            if let ConsumerError::Sqlx(sqlx::Error::Database(db_error)) = &e {
+            if let ConsumerError::Repository(RepositoryError::Sqlx(
+                sqlx::Error::Database(db_error),
+            )) = &e
+            {
                 if db_error.is_unique_violation() {
                     tracing::info!(
-                        block_height = %msg_payload.block_height(),
-                        "Ignoring unique constraint violation - block already processed"
+                        "[#{}] Ignoring unique constraint violation - block already processed",
+                        block_height
                     );
                     return Ok(stats.finish(packets.len()));
                 }
