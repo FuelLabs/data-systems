@@ -46,7 +46,7 @@ pub static DB_POOL_SIZE: LazyLock<usize> = LazyLock::new(|| {
     dotenvy::var("DB_POOL_SIZE")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(2000)
+        .unwrap_or(110)
 });
 
 pub static DB_ACQUIRE_TIMEOUT: LazyLock<usize> = LazyLock::new(|| {
@@ -105,6 +105,7 @@ impl Db {
                 .options(Self::connect_opts(opts));
 
         sqlx::postgres::PgPoolOptions::new()
+            .min_connections(2)
             .max_connections(opts.pool_size.unwrap_or_default())
             .acquire_timeout(opts.acquire_timeout.unwrap_or_default())
             .idle_timeout(opts.idle_timeout)

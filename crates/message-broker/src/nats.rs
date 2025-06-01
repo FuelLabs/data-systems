@@ -59,6 +59,14 @@ impl NatsMessageBroker {
         Self::new(&opts).await
     }
 
+    pub async fn setup_with_opts(
+        opts: &NatsOpts,
+    ) -> Result<Arc<NatsMessageBroker>, MessageBrokerError> {
+        let broker = Self::new(opts).await?;
+        broker.setup_queues().await?;
+        Ok(broker.arc())
+    }
+
     pub async fn setup(
         url: &str,
         namespace: Option<&str>,
