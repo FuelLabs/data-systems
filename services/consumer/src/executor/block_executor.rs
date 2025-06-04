@@ -135,8 +135,10 @@ impl BlockExecutor {
         let packets = Self::build_packets(&msg_payload);
 
         join_set.spawn({
-            let packets = packets.clone();
+            let packets: Arc<Vec<RecordPacket>> = packets.clone();
             let msg_payload = msg_payload.clone();
+            let _ = handle_streams_task(&fuel_streams, &packets, &msg_payload)
+                .await;
             async move {
                 let result = handle_stores(&db, &packets, &msg_payload).await;
                 if let Ok(stats) = result {
@@ -158,14 +160,6 @@ impl BlockExecutor {
                     return Ok::<_, ConsumerError>(ProcessResult::Store(Ok(
                         stats,
                     )));
-                }
-                let result_streams =
-                    handle_streams(&fuel_streams, &packets, &msg_payload).await;
-                if let Ok(stream_stats) = result_streams {
-                    match &stream_stats.error {
-                        Some(error) => stream_stats.log_error(error),
-                        None => stream_stats.log_success(),
-                    }
                 }
                 Ok::<_, ConsumerError>(ProcessResult::Store(result))
             }
@@ -311,11 +305,32 @@ async fn handle_stores(
     }
 }
 
+fn handle_streams_task(
+    fuel_streams: &Arc<FuelStreams>,
+    packets: &Arc<Vec<RecordPacket>>,
+    msg_payload: &Arc<MsgPayload>,
+) -> tokio::task::JoinHandle<()> {
+    let packets = packets.clone();
+    let msg_payload = msg_payload.clone();
+    let fuel_streams = fuel_streams.clone();
+    tokio::spawn(async move {
+        let result_streams =
+            handle_streams(&fuel_streams, &packets, &msg_payload).await;
+        if let Ok(stream_stats) = result_streams {
+            match &stream_stats.error {
+                Some(error) => stream_stats.log_error(error),
+                None => stream_stats.log_success(),
+            }
+        }
+    })
+}
+
 async fn handle_streams(
     fuel_streams: &Arc<FuelStreams>,
     packets: &Arc<Vec<RecordPacket>>,
     msg_payload: &Arc<MsgPayload>,
 ) -> Result<BlockStats, ConsumerError> {
+    tracing::info!("[#{}] Streaming packets", msg_payload.block_height());
     let block_height = msg_payload.block_height();
     let stats = BlockStats::new(block_height.to_owned(), ActionType::Stream);
     let now = BlockTimestamp::now();
