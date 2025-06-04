@@ -4,7 +4,10 @@ use fuel_message_broker::NatsMessageBroker;
 use fuel_streams_core::types::*;
 use fuel_streams_domains::infra::Db;
 use fuel_web_utils::{shutdown::ShutdownController, telemetry::Telemetry};
-use tokio::time::{interval, Duration};
+use tokio::{
+    task::JoinSet,
+    time::{interval, Duration},
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -14,7 +17,9 @@ use crate::{
     publish::publish_block,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub async fn process_historical_gaps_periodically(
+    interval_secs: u64,
     from_block: BlockHeight,
     db: &Arc<Db>,
     message_broker: &Arc<NatsMessageBroker>,
@@ -23,8 +28,13 @@ pub async fn process_historical_gaps_periodically(
     shutdown: &Arc<ShutdownController>,
     telemetry: &Arc<Telemetry<Metrics>>,
 ) -> Result<(), anyhow::Error> {
-    // Run every 5 hours
-    let mut interval = interval(Duration::from_secs(3600 * 5));
+    if interval_secs == 0 {
+        tracing::info!("Historical gap processing is disabled");
+        return Ok(());
+    }
+
+    // Run at the specified interval
+    let mut interval = interval(Duration::from_secs(interval_secs));
 
     loop {
         if shutdown.token().is_cancelled() {
@@ -134,9 +144,9 @@ async fn process_blocks(
     'outer: for gap in processed_gaps {
         tracing::info!("Processing gap: {} to {}", gap.start, gap.end);
         let heights = (*gap.start..=*gap.end).collect::<Vec<_>>();
-        let heights_chucks = heights.chunks(50);
+        let heights_chunks = heights.chunks(100);
 
-        for heights in heights_chucks {
+        for heights in heights_chunks {
             tracing::info!(
                 "Processing chunk: {:?} - {:?}",
                 heights.first(),
@@ -147,47 +157,56 @@ async fn process_blocks(
                 break 'outer;
             }
 
+            let mut join_set: JoinSet<Result<Option<u32>, PublishError>> =
+                JoinSet::new();
             for height in heights {
                 tracing::info!("Processing block height: {}", height);
-
-                if token.is_cancelled() {
-                    break 'outer;
-                }
-
                 let message_broker = message_broker.clone();
                 let fuel_core = fuel_core.clone();
                 let telemetry = telemetry.clone();
+                let block_height = *height;
                 let sealed_block =
                     fuel_core.get_sealed_block((*height).into())?;
                 let sealed_block = Arc::new(sealed_block);
+                let token = token.clone();
 
-                tracing::info!("Publishing block height: {}", height);
-                let result = publish_block(
-                    &message_broker,
-                    &fuel_core,
-                    &sealed_block,
-                    &telemetry,
-                    None,
-                )
-                .await;
-
-                match result {
-                    Ok(_) => {
-                        tracing::info!(
-                            "Block {} published successfully",
-                            height
-                        );
+                join_set.spawn(async move {
+                    if token.is_cancelled() {
+                        return Ok(None);
                     }
-                    Err(e) => {
+                    tracing::info!("Publishing block height: {}", block_height);
+                    publish_block(
+                        &message_broker,
+                        &fuel_core,
+                        &sealed_block,
+                        &telemetry,
+                        None,
+                    )
+                    .await
+                    .map(|_| Some(block_height))
+                    .map_err(|e| {
                         tracing::error!(
                             "Error publishing block {}: {:?}",
-                            height,
+                            block_height,
                             e
                         );
-                        return Err(e.into());
-                    }
+                        e
+                    })
+                });
+            }
+            while let Some(result) = join_set.join_next().await {
+                if let Ok(Ok(Some(block_height))) = result {
+                    tracing::info!(
+                        "Block {} published successfully",
+                        block_height
+                    );
                 }
             }
+            tracing::info!(
+                "Finished processing chunk: {:?} - {:?}",
+                heights.first(),
+                heights.last()
+            );
         }
     }
 

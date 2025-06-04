@@ -287,8 +287,13 @@ async fn test_consumer_inserting_records() -> anyhow::Result<()> {
         let message_broker = Arc::clone(&message_broker);
         let fuel_streams = Arc::clone(&fuel_streams);
         let telemetry = Telemetry::new(None).await?;
-        let block_executor =
-            BlockExecutor::new(db, &message_broker, &fuel_streams, telemetry);
+        let block_executor = BlockExecutor::new(
+            db,
+            &message_broker,
+            &fuel_streams,
+            telemetry,
+            100,
+        );
         async move { block_executor.start(shutdown.token()).await }
     });
 
