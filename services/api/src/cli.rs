@@ -23,6 +23,15 @@ pub struct Cli {
     )]
     pub db_url: String,
 
+    /// Database URL to connect to.
+    #[arg(
+        long,
+        value_name = "DATABASE_URL_READ",
+        env = "DATABASE_URL_READ",
+        help = "ReadOnly Database URL to connect to, if not provided use the same as DATABASE_URL"
+    )]
+    pub db_url_read: Option<String>,
+
     /// Use metrics
     #[arg(
         long,

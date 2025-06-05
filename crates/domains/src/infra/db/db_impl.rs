@@ -60,6 +60,7 @@ pub static DB_ACQUIRE_TIMEOUT: LazyLock<usize> = LazyLock::new(|| {
 pub struct DbConnectionOpts {
     pub connection_str: String,
     pub pool_size: Option<u32>,
+    pub min_connections: Option<u32>,
     pub statement_timeout: Option<Duration>,
     pub acquire_timeout: Option<Duration>,
     pub idle_timeout: Option<Duration>,
@@ -69,6 +70,7 @@ impl Default for DbConnectionOpts {
     fn default() -> Self {
         Self {
             pool_size: Some(*DB_POOL_SIZE as u32),
+            min_connections: Some(2),
             connection_str: dotenvy::var("DATABASE_URL")
                 .expect("DATABASE_URL not set"),
             statement_timeout: Some(Duration::from_secs(240)),
@@ -105,7 +107,7 @@ impl Db {
                 .options(Self::connect_opts(opts));
 
         sqlx::postgres::PgPoolOptions::new()
-            .min_connections(2)
+            .min_connections(opts.min_connections.unwrap_or_default())
             .max_connections(opts.pool_size.unwrap_or_default())
             .acquire_timeout(opts.acquire_timeout.unwrap_or_default())
             .idle_timeout(opts.idle_timeout)

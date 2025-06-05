@@ -30,6 +30,7 @@ pub struct ApiConfig {
 #[derive(Clone, Debug)]
 pub struct DbConfig {
     pub url: String,
+    pub read_url: String,
 }
 
 #[derive(Clone, Debug)]
@@ -52,6 +53,7 @@ impl Config {
             },
             db: DbConfig {
                 url: cli.db_url.clone(),
+                read_url: cli.db_url_read.clone().unwrap_or(cli.db_url.clone()),
             },
         })
     }

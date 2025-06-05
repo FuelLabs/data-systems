@@ -18,17 +18,26 @@ pub struct ServerState {
     pub start_time: Instant,
     pub telemetry: Arc<Telemetry<Metrics>>,
     pub db: Arc<Db>,
+    pub db_write: Arc<Db>,
     pub api_keys_manager: Arc<ApiKeysManager>,
 }
 
 impl ServerState {
     pub async fn new(config: &Config) -> anyhow::Result<Self> {
         let db = Db::new(DbConnectionOpts {
-            connection_str: config.db.url.clone(),
+            connection_str: config.db.read_url.clone(),
             ..Default::default()
         })
         .await?;
-        tracing::info!("Connected to database at {}", config.db.url);
+        tracing::info!("Connected to read database at {}", config.db.read_url);
+        let db_write = Db::new(DbConnectionOpts {
+            connection_str: config.db.url.clone(),
+            min_connections: Some(1),
+            pool_size: Some(1),
+            ..Default::default()
+        })
+        .await?;
+        tracing::info!("Connected to write database at {}", config.db.url);
 
         let metrics = Metrics::new(None)?;
         let telemetry = Telemetry::new(Some(metrics)).await?;
@@ -39,6 +48,7 @@ impl ServerState {
 
         Ok(Self {
             db,
+            db_write,
             start_time: Instant::now(),
             telemetry,
             api_keys_manager,
