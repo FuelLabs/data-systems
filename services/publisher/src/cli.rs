@@ -39,6 +39,14 @@ pub struct Cli {
         help = "Database URL to connect to."
     )]
     pub db_url: String,
+    /// Database URL to connect to.
+    #[arg(
+        long,
+        value_name = "DATABASE_URL_READ",
+        env = "DATABASE_URL_READ",
+        help = "ReadOnly Database URL to connect to, if not provided use the same as DATABASE_URL."
+    )]
+    pub db_url_read: Option<String>,
     /// Start from block height
     #[arg(
         long,
@@ -60,8 +68,8 @@ pub struct Cli {
         long,
         value_name = "HISTORY_INTERVAL",
         env = "HISTORY_INTERVAL",
-        default_value = "259200",
-        help = "Interval in seconds for processing historical gaps (default: 3 days). Set to 0 to disable."
+        default_value = "0",
+        help = "Interval in seconds for processing historical gaps (default: 0 - disabled)."
     )]
     pub history_interval: u64,
 }

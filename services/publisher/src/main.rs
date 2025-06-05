@@ -20,6 +20,11 @@ use sv_publisher::{
 };
 use tokio_util::sync::CancellationToken;
 
+struct DbState {
+    read: Arc<Db>,
+    write: Arc<Db>,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -27,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     let fuel_core: Arc<dyn FuelCoreLike> = FuelCore::new(config).await?;
     fuel_core.start().await?;
 
-    let db = setup_db(&cli.db_url).await?;
+    let db_state = setup_db(&cli.db_url, &cli.db_url_read).await?;
     let message_broker = NatsMessageBroker::setup(&cli.nats_url, None).await?;
     let last_block_height = Arc::new(fuel_core.get_latest_block_height()?);
     let shutdown = Arc::new(ShutdownController::new());
@@ -46,11 +51,11 @@ async fn main() -> anyhow::Result<()> {
     tokio::select! {
         result = async {
             tokio::join!(
-                recover_tx_pointers(&db),
+                recover_tx_pointers(&db_state.write),
                 process_historical_gaps_periodically(
                     cli.history_interval,
                     cli.from_block.into(),
-                    &db,
+                    &db_state.read,
                     &message_broker,
                     &fuel_core,
                     &last_block_height,
@@ -81,13 +86,26 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn setup_db(db_url: &str) -> Result<Arc<Db>, PublishError> {
-    let db = Db::new(DbConnectionOpts {
-        connection_str: db_url.to_string(),
+async fn setup_db(
+    db_url: &str,
+    db_url_read: &Option<String>,
+) -> Result<Arc<DbState>, PublishError> {
+    let db_read = Db::new(DbConnectionOpts {
+        connection_str: db_url_read.clone().unwrap_or(db_url.to_string()),
         ..Default::default()
     })
     .await?;
-    Ok(db)
+    let db_write = Db::new(DbConnectionOpts {
+        connection_str: db_url.to_string(),
+        pool_size: Some(2),
+        min_connections: Some(2),
+        ..Default::default()
+    })
+    .await?;
+    Ok(Arc::new(DbState {
+        read: db_read,
+        write: db_write,
+    }))
 }
 
 async fn process_live_blocks(
