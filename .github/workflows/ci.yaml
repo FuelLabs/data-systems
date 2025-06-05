@@ -118,8 +118,6 @@ jobs:
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-        with:
-          cache: false
 
       - name: Publish crate check
         uses: katyo/publish-crates@v2
@@ -169,7 +167,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          cache: true
 
       - name: Install nextest
         uses: taiki-e/cache-cargo-install-action@v2
@@ -337,7 +334,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.platform.target }}
-          cache: false
 
       - name: Install packages (macOS)
         if: matrix.platform.os == 'macOS-latest'
