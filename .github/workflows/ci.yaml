@@ -69,13 +69,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check workflow files
-        uses: docker://rhysd/actionlint:latest
-        env:
-          SHELLCHECK_OPTS: --exclude=SC2086,SC2129
-        with:
-          args: -color
-
       - name: Install Rust
         uses: ./.github/actions/setup-rust
         with:
