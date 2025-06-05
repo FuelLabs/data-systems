@@ -51,7 +51,7 @@ runs:
       with:
         tool: cargo-edit@0.12.3
 
-    - uses: WarpCache/rust-cache@v2
+    - uses: WarpBuilds/rust-cache@v2
       if: inputs.cache == 'true' || github.event_name != 'release' || github.event_name != 'workflow_dispatch'
       with:
         cache-on-failure: true
