@@ -42,7 +42,9 @@ pub struct Cli {
         long,
         env = "CONCURRENT_TASKS",
         default_value = "300",
-        help = "Number of concurrent tasks, this is the number of total blocks processed in parallel, this will also be reflected in the number of connections to the database"
+        help = "Number of concurrent tasks, this is the number of total blocks processed in parallel."
     )]
     pub concurrent_tasks: usize,
+    #[arg(long, env = "DB_POOL_SIZE", help = "Database connection pool size")]
+    pub db_pool_size: Option<usize>,
 }
