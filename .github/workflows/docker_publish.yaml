@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   build-and-publish-image:
-    runs-on: warp-ubuntu-latest-x64-4x
+    runs-on: warp-ubuntu-latest-x64-2x
     timeout-minutes: 60
     strategy:
       matrix:
