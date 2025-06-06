@@ -95,7 +95,7 @@ impl BlockExecutor {
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
 
         while !token.is_cancelled() {
-            let mut messages = queue.subscribe(1).await?;
+            let mut messages = queue.subscribe(self.concurrent_tasks).await?;
             while let Some(msg) = messages.next().await {
                 let msg = msg?;
                 let semaphore = self.semaphore.clone();
