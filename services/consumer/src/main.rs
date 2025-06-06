@@ -30,7 +30,8 @@ async fn main() -> anyhow::Result<()> {
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
     // Initialize shared resources
-    let db = setup_db(&cli.db_url, cli.concurrent_tasks as u32).await?;
+    let db_pool_size = cli.db_pool_size.unwrap_or(cli.concurrent_tasks);
+    let db = setup_db(&cli.db_url, db_pool_size as u32).await?;
     // 2 minutes before returning to the message broker
     let opts = fuel_message_broker::NatsOpts::new(cli.nats_url.clone())
         .with_ack_wait(120);
