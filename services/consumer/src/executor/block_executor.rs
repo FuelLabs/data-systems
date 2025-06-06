@@ -42,10 +42,7 @@ use fuel_web_utils::{
     telemetry::Telemetry,
 };
 use futures::{future::try_join_all, StreamExt};
-use tokio::{
-    sync::Semaphore,
-    task::{JoinError, JoinSet},
-};
+use tokio::{sync::Semaphore, task::JoinError};
 use tokio_util::sync::CancellationToken;
 
 use super::{
@@ -95,25 +92,18 @@ impl BlockExecutor {
             "Starting consumer with max concurrent tasks: {}",
             self.concurrent_tasks
         );
-
-        let telemetry = self.telemetry.clone();
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
-        let mut join_set = JoinSet::new();
 
         while !token.is_cancelled() {
-            tokio::select! {
-                msg_result = queue.subscribe(self.concurrent_tasks) => {
-                    let mut messages = msg_result?;
-                    while let Some(msg) = messages.next().await {
-                        let _permit = self.semaphore.acquire().await?;
-                        let msg = msg?;
-                        self.spawn_processing_tasks(msg, &mut join_set,)
-                        .await?;
-                    }
-                }
-                Some(result) = join_set.join_next() => {
-                    Self::handle_task_result(result, &telemetry).await?;
-                }
+            let mut messages = queue.subscribe(1).await?;
+            while let Some(msg) = messages.next().await {
+                let msg = msg?;
+                let semaphore = self.semaphore.clone();
+                let permit = match semaphore.clone().acquire_owned().await {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+                self.spawn_processing_tasks(msg, permit).await?;
             }
         }
 
@@ -126,49 +116,57 @@ impl BlockExecutor {
     async fn spawn_processing_tasks(
         &self,
         msg: Box<dyn NatsMessage>,
-        join_set: &mut JoinSet<Result<ProcessResult, ConsumerError>>,
+        permit: tokio::sync::OwnedSemaphorePermit,
     ) -> Result<(), ConsumerError> {
         let db = self.db.clone();
         let fuel_streams = self.fuel_streams.clone();
         let payload = msg.payload();
         let msg_payload = MsgPayload::decode_json(&payload)?.arc();
         let packets = Self::build_packets(&msg_payload);
+        let telemetry = self.telemetry.clone();
 
-        join_set.spawn({
+        tokio::spawn({
             let packets: Arc<Vec<RecordPacket>> = packets.clone();
             let msg_payload = msg_payload.clone();
-            let _ = handle_streams_task(&fuel_streams, &packets, &msg_payload)
-                .await;
+            let telemetry = telemetry.clone();
             async move {
+                let _ =
+                    handle_streams_task(&fuel_streams, &packets, &msg_payload)
+                        .await;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
-                if let Ok(stats) = result {
-                    if stats.error.is_none() {
-                        tokio::spawn(async move {
-                            let _ = msg.ack().await.map_err(|e| {
-                                tracing::error!(
-                                    "Failed to ack message: {:?}",
-                                    e
+                let result = match result {
+                    Ok(stats) => {
+                        if stats.error.is_none() {
+                            tokio::spawn(async move {
+                                let _ = msg.ack().await.map_err(|e| {
+                                    tracing::error!(
+                                        "Failed to ack message: {:?}",
+                                        e
+                                    );
+                                    ConsumerError::MessageBrokerClient(e)
+                                });
+                                tracing::info!(
+                                    "[#{}] Message acknowledged",
+                                    stats.block_height
                                 );
-                                ConsumerError::MessageBrokerClient(e)
                             });
-                            tracing::info!(
-                                "[#{}] Message acknowledged",
-                                stats.block_height
-                            );
-                        });
+                        }
+                        Ok(stats)
                     }
-                    return Ok::<_, ConsumerError>(ProcessResult::Store(Ok(
-                        stats,
-                    )));
-                }
-                Ok::<_, ConsumerError>(ProcessResult::Store(result))
+                    Err(e) => Err(e),
+                };
+                let _ = Self::handle_task_result(
+                    Ok(Ok::<_, ConsumerError>(ProcessResult::Store(result))),
+                    &telemetry,
+                );
+                drop(permit);
             }
         });
 
         Ok(())
     }
 
-    async fn handle_task_result(
+    fn handle_task_result(
         result: Result<Result<ProcessResult, ConsumerError>, JoinError>,
         telemetry: &Arc<Telemetry<Metrics>>,
     ) -> Result<(), ConsumerError> {
