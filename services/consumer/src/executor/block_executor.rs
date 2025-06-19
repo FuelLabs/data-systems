@@ -94,7 +94,9 @@ impl BlockExecutor {
         let mut join_set = JoinSet::new();
 
         while !token.is_cancelled() {
-            tracing::info!("Active tasks: {}", active_tasks);
+            if let Some(metrics) = self.telemetry.base_metrics() {
+                metrics.set_active_tasks(active_tasks as i64);
+            }
             let query_tasks = (self.concurrent_tasks - active_tasks).min(1);
             tokio::select! {
                 msg_result = queue.subscribe(query_tasks) => {

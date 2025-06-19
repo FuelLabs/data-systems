@@ -3,8 +3,10 @@ use fuel_web_utils::telemetry::metrics::TelemetryMetrics;
 use prometheus::{
     register_histogram_vec,
     register_int_counter_vec,
+    register_int_gauge,
     HistogramVec,
     IntCounterVec,
+    IntGauge,
     Registry,
 };
 
@@ -19,6 +21,8 @@ pub struct Metrics {
     pub consumer_duration: HistogramVec,
     // Counter for errors,
     pub consumer_error_throughput: IntCounterVec,
+    // Gauge for active tasks
+    pub consumer_active_tasks: IntGauge,
 }
 
 impl Default for Metrics {
@@ -76,17 +80,24 @@ impl Metrics {
         )
         .expect("metric must be created");
 
+        let consumer_active_tasks = register_int_gauge!(
+            format!("{}consumer_metrics_active_tasks", metric_prefix),
+            "Number of currently active processing tasks"
+        )?;
+
         let registry =
             Registry::new_custom(prefix, None).expect("registry to be created");
         registry.register(Box::new(consumer_packets.clone()))?;
         registry.register(Box::new(consumer_duration.clone()))?;
         registry.register(Box::new(consumer_error_throughput.clone()))?;
+        registry.register(Box::new(consumer_active_tasks.clone()))?;
 
         Ok(Self {
             registry,
             consumer_packets,
             consumer_duration,
             consumer_error_throughput,
+            consumer_active_tasks,
         })
     }
 
@@ -111,5 +122,13 @@ impl Metrics {
                     .observe(stats.duration_millis() as f64);
             }
         }
+    }
+
+    pub fn set_active_tasks(&self, count: i64) {
+        self.consumer_active_tasks.set(count);
+    }
+
+    pub fn get_active_tasks(&self) -> i64 {
+        self.consumer_active_tasks.get()
     }
 }
