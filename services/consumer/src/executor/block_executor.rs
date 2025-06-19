@@ -90,16 +90,24 @@ impl BlockExecutor {
             self.concurrent_tasks
         );
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
+        let mut active_tasks = 0;
+        let mut join_set = JoinSet::new();
 
         while !token.is_cancelled() {
-            let mut messages = queue.subscribe(self.concurrent_tasks).await?;
-            let mut join_set = JoinSet::new();
-            while let Some(msg) = messages.next().await {
-                let msg = msg?;
-                self.spawn_processing_tasks(msg, &mut join_set).await?;
-            }
-            while let Some(result) = join_set.join_next().await {
-                result??;
+            tracing::info!("Active tasks: {}", active_tasks);
+            let query_tasks = (self.concurrent_tasks - active_tasks).min(1);
+            tokio::select! {
+                msg_result = queue.subscribe(query_tasks) => {
+                    let mut messages = msg_result?;
+                    while let Some(msg) = messages.next().await {
+                        active_tasks += 1;
+                        self.spawn_processing_tasks(msg?, &mut join_set)
+                            .await?;
+                    }
+                }
+                Some(_) = join_set.join_next() => {
+                    active_tasks -= 1;
+                }
             }
         }
 
