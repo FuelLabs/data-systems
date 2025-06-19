@@ -21,7 +21,7 @@ use fuel_streams_core::{
     FuelStreams,
 };
 use fuel_streams_domains::{
-    blocks::BlockDbItem,
+    blocks::{BlockDbItem, BlocksQuery},
     infra::{
         db::{Db, DbTransaction},
         record::{PacketBuilder, RecordEntity, RecordPacket},
@@ -130,10 +130,33 @@ impl BlockExecutor {
             let msg_payload = msg_payload.clone();
             let telemetry = telemetry.clone();
             async move {
+                let query = BlocksQuery {
+                    height: Some(msg_payload.block_height()),
+                    ..Default::default()
+                };
+                let block = Block::find_one(db.pool_ref(), &query).await;
+                if block.is_ok() {
+                    tracing::info!(
+                        "[#{}] Block already processed",
+                        msg_payload.block_height()
+                    );
+                    let _ = msg.ack().await.map_err(|e| {
+                        tracing::error!("Failed to ack message: {:?}", e);
+                        ConsumerError::MessageBrokerClient(e)
+                    });
+                    tracing::info!(
+                        "[#{}] Message acknowledged",
+                        msg_payload.block_height()
+                    );
+                    drop(permit);
+                    return;
+                }
                 let _ =
                     handle_streams_task(&fuel_streams, &packets, &msg_payload)
                         .await;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
+                // Drop semaphore as soon as store is completed
+                drop(permit);
                 let result = match result {
                     Ok(stats) => {
                         if stats.error.is_none() {
@@ -159,7 +182,6 @@ impl BlockExecutor {
                     Ok(Ok::<_, ConsumerError>(ProcessResult::Store(result))),
                     &telemetry,
                 );
-                drop(permit);
             }
         });
 
@@ -201,6 +223,45 @@ impl BlockExecutor {
     }
 }
 
+async fn handle_insertions(
+    tx: &mut DbTransaction,
+    packets: &Arc<Vec<RecordPacket>>,
+) -> Result<(), ConsumerError> {
+    // First insert blocks
+    for packet in packets.iter() {
+        let subject_id = packet.subject_id();
+        let entity = RecordEntity::from_subject_id(&subject_id)?;
+        match entity {
+            RecordEntity::Block => {
+                let db_item = BlockDbItem::try_from(packet)?;
+                Block::insert_with_transaction(tx, &db_item).await?;
+            }
+            RecordEntity::Message => {
+                let db_item = MessageDbItem::try_from(packet)?;
+                Message::insert_with_transaction(tx, &db_item).await?;
+            }
+            RecordEntity::Transaction => {
+                let db_item = TransactionDbItem::try_from(packet)?;
+                Transaction::insert_with_transaction(tx, &db_item).await?;
+            }
+            RecordEntity::Input => {
+                let db_item = InputDbItem::try_from(packet)?;
+                Input::insert_with_transaction(tx, &db_item).await?;
+            }
+            RecordEntity::Output => {
+                let db_item = OutputDbItem::try_from(packet)?;
+                Output::insert_with_transaction(tx, &db_item).await?;
+            }
+            RecordEntity::Receipt => {
+                let db_item = ReceiptDbItem::try_from(packet)?;
+                Receipt::insert_with_transaction(tx, &db_item).await?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 async fn handle_stores(
     db: &Arc<Db>,
     packets: &Arc<Vec<RecordPacket>>,
@@ -212,74 +273,50 @@ async fn handle_stores(
     let result = retry_service
         .with_retry("store_insertions", || async {
             let mut tx = db.pool.begin().await?;
+            // Insert blocks, messages, transactions, inputs, outputs, and receipts
+            match handle_insertions(&mut tx, packets).await {
+                Ok(_) => {
+                    let block_propagation_ms =
+                        stats.calculate_block_propagation_ms();
+                    update_block_propagation_ms(
+                        &mut tx,
+                        block_height,
+                        block_propagation_ms,
+                    )
+                    .await?;
+                    tx.commit().await?;
+                    // Then, insert separately predicates and UTXOs
+                    for packet in packets.iter() {
+                        let subject_id = packet.subject_id();
+                        let entity =
+                            RecordEntity::from_subject_id(&subject_id)?;
 
-            // First insert blocks
-            for packet in packets.iter() {
-                let subject_id = packet.subject_id();
-                let entity = RecordEntity::from_subject_id(&subject_id)?;
-
-                match entity {
-                    RecordEntity::Block => {
-                        let db_item = BlockDbItem::try_from(packet)?;
-                        Block::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
+                        match entity {
+                            RecordEntity::Predicate => {
+                                let mut db_item =
+                                    PredicateDbItem::try_from(packet)?;
+                                Predicate::upsert_as_relation(db, &mut db_item)
+                                    .await?;
+                            }
+                            RecordEntity::Utxo => {
+                                let db_item = UtxoDbItem::try_from(packet)?;
+                                Utxo::insert(db.pool_ref(), &db_item).await?;
+                            }
+                            _ => {}
+                        }
                     }
-                    RecordEntity::Message => {
-                        let db_item = MessageDbItem::try_from(packet)?;
-                        Message::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
-                    }
-                    RecordEntity::Transaction => {
-                        let db_item = TransactionDbItem::try_from(packet)?;
-                        Transaction::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
-                    }
-                    RecordEntity::Input => {
-                        let db_item = InputDbItem::try_from(packet)?;
-                        Input::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
-                    }
-                    RecordEntity::Output => {
-                        let db_item = OutputDbItem::try_from(packet)?;
-                        Output::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
-                    }
-                    RecordEntity::Receipt => {
-                        let db_item = ReceiptDbItem::try_from(packet)?;
-                        Receipt::insert_with_transaction(&mut tx, &db_item)
-                            .await?;
-                    }
-                    _ => {}
+                    Ok(packets.len())
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "[#{}] Failed to insert packets: {:?}",
+                        block_height,
+                        e
+                    );
+                    tx.rollback().await?;
+                    Err(e)
                 }
             }
-            let block_propagation_ms = stats.calculate_block_propagation_ms();
-            update_block_propagation_ms(
-                &mut tx,
-                block_height,
-                block_propagation_ms,
-            )
-            .await?;
-            tx.commit().await?;
-
-            // Then, insert separately predicates and UTXOs
-            for packet in packets.iter() {
-                let subject_id = packet.subject_id();
-                let entity = RecordEntity::from_subject_id(&subject_id)?;
-
-                match entity {
-                    RecordEntity::Predicate => {
-                        let mut db_item = PredicateDbItem::try_from(packet)?;
-                        Predicate::upsert_as_relation(db, &mut db_item).await?;
-                    }
-                    RecordEntity::Utxo => {
-                        let db_item = UtxoDbItem::try_from(packet)?;
-                        Utxo::insert(db.pool_ref(), &db_item).await?;
-                    }
-                    _ => {}
-                }
-            }
-
-            Ok(packets.len())
         })
         .await;
 
