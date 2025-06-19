@@ -21,7 +21,7 @@ use fuel_streams_core::{
     FuelStreams,
 };
 use fuel_streams_domains::{
-    blocks::BlockDbItem,
+    blocks::{BlockDbItem, BlocksQuery},
     infra::{
         db::{Db, DbTransaction},
         record::{PacketBuilder, RecordEntity, RecordPacket},
@@ -130,10 +130,33 @@ impl BlockExecutor {
             let msg_payload = msg_payload.clone();
             let telemetry = telemetry.clone();
             async move {
+                let query = BlocksQuery {
+                    height: Some(msg_payload.block_height()),
+                    ..Default::default()
+                };
+                let block = Block::find_one(db.pool_ref(), &query).await;
+                if block.is_ok() {
+                    tracing::info!(
+                        "[#{}] Block already processed",
+                        msg_payload.block_height()
+                    );
+                    let _ = msg.ack().await.map_err(|e| {
+                        tracing::error!("Failed to ack message: {:?}", e);
+                        ConsumerError::MessageBrokerClient(e)
+                    });
+                    tracing::info!(
+                        "[#{}] Message acknowledged",
+                        msg_payload.block_height()
+                    );
+                    drop(permit);
+                    return;
+                }
                 let _ =
                     handle_streams_task(&fuel_streams, &packets, &msg_payload)
                         .await;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
+                // Drop semaphore as soon as store is completed
+                drop(permit);
                 let result = match result {
                     Ok(stats) => {
                         if stats.error.is_none() {
@@ -159,7 +182,6 @@ impl BlockExecutor {
                     Ok(Ok::<_, ConsumerError>(ProcessResult::Store(result))),
                     &telemetry,
                 );
-                drop(permit);
             }
         });
 
