@@ -42,7 +42,7 @@ use fuel_web_utils::{
     telemetry::Telemetry,
 };
 use futures::{future::try_join_all, StreamExt};
-use tokio::{sync::Semaphore, task::JoinError};
+use tokio::task::{JoinError, JoinSet};
 use tokio_util::sync::CancellationToken;
 
 use super::{
@@ -60,7 +60,6 @@ pub struct BlockExecutor {
     db: Arc<Db>,
     message_broker: Arc<NatsMessageBroker>,
     fuel_streams: Arc<FuelStreams>,
-    semaphore: Arc<Semaphore>,
     telemetry: Arc<Telemetry<Metrics>>,
     concurrent_tasks: usize,
 }
@@ -73,10 +72,8 @@ impl BlockExecutor {
         telemetry: Arc<Telemetry<Metrics>>,
         concurrent_tasks: usize,
     ) -> Self {
-        let semaphore = Arc::new(Semaphore::new(concurrent_tasks));
         Self {
             db,
-            semaphore,
             message_broker: message_broker.clone(),
             fuel_streams: fuel_streams.clone(),
             telemetry,
@@ -93,17 +90,26 @@ impl BlockExecutor {
             self.concurrent_tasks
         );
         let queue = NatsQueue::BlockImporter(self.message_broker.clone());
+        let mut active_tasks = 0;
+        let mut join_set = JoinSet::new();
 
         while !token.is_cancelled() {
-            let mut messages = queue.subscribe(self.concurrent_tasks).await?;
-            while let Some(msg) = messages.next().await {
-                let msg = msg?;
-                let semaphore = self.semaphore.clone();
-                let permit = match semaphore.clone().acquire_owned().await {
-                    Ok(p) => p,
-                    Err(_) => continue,
-                };
-                self.spawn_processing_tasks(msg, permit).await?;
+            if let Some(metrics) = self.telemetry.base_metrics() {
+                metrics.set_active_tasks(active_tasks as i64);
+            }
+            let query_tasks = (self.concurrent_tasks - active_tasks).min(1);
+            tokio::select! {
+                msg_result = queue.subscribe(query_tasks) => {
+                    let mut messages = msg_result?;
+                    while let Some(msg) = messages.next().await {
+                        active_tasks += 1;
+                        self.spawn_processing_tasks(msg?, &mut join_set)
+                            .await?;
+                    }
+                }
+                Some(_) = join_set.join_next() => {
+                    active_tasks -= 1;
+                }
             }
         }
 
@@ -116,7 +122,7 @@ impl BlockExecutor {
     async fn spawn_processing_tasks(
         &self,
         msg: Box<dyn NatsMessage>,
-        permit: tokio::sync::OwnedSemaphorePermit,
+        join_set: &mut JoinSet<Result<(), ConsumerError>>,
     ) -> Result<(), ConsumerError> {
         let db = self.db.clone();
         let fuel_streams = self.fuel_streams.clone();
@@ -125,7 +131,7 @@ impl BlockExecutor {
         let packets = Self::build_packets(&msg_payload);
         let telemetry = self.telemetry.clone();
 
-        tokio::spawn({
+        join_set.spawn({
             let packets: Arc<Vec<RecordPacket>> = packets.clone();
             let msg_payload = msg_payload.clone();
             let telemetry = telemetry.clone();
@@ -148,15 +154,12 @@ impl BlockExecutor {
                         "[#{}] Message acknowledged",
                         msg_payload.block_height()
                     );
-                    drop(permit);
-                    return;
+                    return Ok(());
                 }
                 let _ =
                     handle_streams_task(&fuel_streams, &packets, &msg_payload)
                         .await;
                 let result = handle_stores(&db, &packets, &msg_payload).await;
-                // Drop semaphore as soon as store is completed
-                drop(permit);
                 let result = match result {
                     Ok(stats) => {
                         if stats.error.is_none() {
@@ -182,9 +185,9 @@ impl BlockExecutor {
                     Ok(Ok::<_, ConsumerError>(ProcessResult::Store(result))),
                     &telemetry,
                 );
+                Ok(())
             }
         });
-
         Ok(())
     }
 
