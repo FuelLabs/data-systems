@@ -359,7 +359,7 @@ impl From<FuelCoreReceipt> for Receipt {
                 pc,
                 is,
             } => Self::Mint(MintReceipt {
-                sub_id: sub_id.into(),
+                sub_id: (*sub_id).into(),
                 contract_id: contract_id.into(),
                 val: val.into(),
                 pc: pc.into(),
@@ -372,7 +372,7 @@ impl From<FuelCoreReceipt> for Receipt {
                 pc,
                 is,
             } => Self::Burn(BurnReceipt {
-                sub_id: sub_id.into(),
+                sub_id: (*sub_id).into(),
                 contract_id: contract_id.into(),
                 val: val.into(),
                 pc: pc.into(),
