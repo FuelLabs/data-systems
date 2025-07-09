@@ -12,11 +12,26 @@ use serde::{Deserialize, Serialize};
 pub struct Cursor(Cow<'static, str>);
 
 impl Cursor {
+    // We don't pad the first element (`block_height`)
+    const CURSOR_PAD_FROM: usize = 1;
+    const CURSOR_PAD_LENGTH: usize = 6;
+
     pub fn new(fields: &[&dyn ToString]) -> Self {
         Self(Cow::Owned(
             fields
                 .iter()
-                .map(|f| f.to_string())
+                .enumerate()
+                .map(|(i, f)| {
+                    if i < Self::CURSOR_PAD_FROM {
+                        f.to_string()
+                    } else {
+                        format!(
+                            "{:0>width$}",
+                            f.to_string(),
+                            width = Self::CURSOR_PAD_LENGTH
+                        )
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("-"),
         ))

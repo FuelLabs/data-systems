@@ -3,7 +3,10 @@ use fuel_streams_types::BlockTimestamp;
 use sqlx::{Acquire, PgExecutor, Postgres};
 
 use super::*;
-use crate::infra::repository::{Repository, RepositoryError, RepositoryResult};
+use crate::infra::{
+    repository::{Repository, RepositoryError, RepositoryResult},
+    DbItem,
+};
 
 #[async_trait]
 impl Repository for Message {
@@ -62,7 +65,7 @@ impl Repository for Message {
         .bind(&db_item.value)
         .bind(db_item.block_height.into_inner() as i64)
         .bind(db_item.message_index)
-        .bind(db_item.cursor.to_string())
+        .bind(db_item.cursor().to_string())
         .bind(db_item.r#type)
         .bind(&db_item.sender)
         .bind(&db_item.recipient)
@@ -110,11 +113,11 @@ mod tests {
     }
 
     fn assert_result(result: &MessageDbItem, expected: &MessageDbItem) {
+        assert_eq!(result.cursor(), expected.cursor());
         assert_eq!(result.subject, expected.subject);
         assert_eq!(result.value, expected.value);
         assert_eq!(result.block_height, expected.block_height);
         assert_eq!(result.message_index, expected.message_index);
-        assert_eq!(result.cursor, expected.cursor);
         assert_eq!(result.r#type, expected.r#type);
         assert_eq!(result.sender, expected.sender);
         assert_eq!(result.recipient, expected.recipient);
