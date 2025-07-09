@@ -77,7 +77,7 @@ impl TryFrom<&RecordPacket> for MessageDbItem {
             subject: packet.subject_str(),
             value: packet.value.to_owned(),
             block_height: packet.pointer.block_height,
-            message_index: message.message_index,
+            message_index: message.message_index as i32,
             r#type: message.r#type,
             sender: message.sender.to_string(),
             recipient: message.recipient.to_string(),
