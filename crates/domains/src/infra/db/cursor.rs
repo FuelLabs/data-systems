@@ -12,11 +12,19 @@ use serde::{Deserialize, Serialize};
 pub struct Cursor(Cow<'static, str>);
 
 impl Cursor {
+    const CURSOR_FIELD_WIDTH: usize = 10;
+
     pub fn new(fields: &[&dyn ToString]) -> Self {
         Self(Cow::Owned(
             fields
                 .iter()
-                .map(|f| f.to_string())
+                .map(|f| {
+                    format!(
+                        "{:0>width$}",
+                        f.to_string(),
+                        width = Self::CURSOR_FIELD_WIDTH
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join("-"),
         ))
