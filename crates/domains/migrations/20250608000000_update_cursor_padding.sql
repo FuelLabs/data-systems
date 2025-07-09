@@ -30,7 +30,7 @@ DO $$
 DECLARE
     -- Skip over the first element (block_height) in our case
     -- We don't pad this element
-    PAD_FROM CONSTANT INTEGER := 1
+    PAD_FROM CONSTANT INTEGER := 1;
     -- The padding length for all subsequential words after
     PAD_LENGTH CONSTANT INTEGER := 6;
     DELIMINATOR CONSTANT TEXT := '-';
