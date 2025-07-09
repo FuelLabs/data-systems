@@ -20,7 +20,6 @@ pub struct MessageDbItem {
     pub value: Vec<u8>,
     pub block_height: BlockHeight,
     pub message_index: i32,
-    pub cursor: String,
     // fields matching fuel-core
     pub r#type: MessageType,
     pub sender: String,
@@ -74,14 +73,11 @@ impl TryFrom<&RecordPacket> for MessageDbItem {
     type Error = RecordPacketError;
     fn try_from(packet: &RecordPacket) -> Result<Self, Self::Error> {
         let message = Message::decode_json(&packet.value)?;
-        let block_height = packet.pointer.block_height;
-        let msg_index = message.message_index as i32;
         Ok(MessageDbItem {
             subject: packet.subject_str(),
             value: packet.value.to_owned(),
             block_height: packet.pointer.block_height,
-            message_index: msg_index,
-            cursor: format!("{}-{}", block_height, msg_index),
+            message_index: message.message_index,
             r#type: message.r#type,
             sender: message.sender.to_string(),
             recipient: message.recipient.to_string(),
