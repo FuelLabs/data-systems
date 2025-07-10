@@ -179,7 +179,7 @@ pub trait QueryParamsBuilder {
             })
             .collect::<Vec<_>>()
             .join(" OR ");
-        return format!("({})", result);
+        format!("({})", result)
     }
 
     fn apply_pagination(
