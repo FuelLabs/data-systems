@@ -12,14 +12,20 @@ use serde::{Deserialize, Serialize};
 pub struct Cursor(Cow<'static, str>);
 
 impl Cursor {
+    const SEPARATOR: &str = "-";
+
     pub fn new(fields: &[&dyn ToString]) -> Self {
         Self(Cow::Owned(
             fields
                 .iter()
                 .map(|f| f.to_string())
                 .collect::<Vec<_>>()
-                .join("-"),
+                .join(Self::SEPARATOR),
         ))
+    }
+
+    pub fn split(&self) -> Vec<&str> {
+        self.0.split(Self::SEPARATOR).collect()
     }
 
     pub fn from_static(s: &'static str) -> Self {

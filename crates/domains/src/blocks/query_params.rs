@@ -71,18 +71,22 @@ impl QueryParamsBuilder for BlocksQuery {
             conditions.push(format!("block_height = {}", height));
         }
 
+        let cursor_fields = &["block_height"];
+
         Self::apply_conditions(
             &mut query_builder,
             &mut conditions,
             &self.options,
             &self.pagination,
-            "block_height",
+            cursor_fields,
             None,
         );
 
-        Self::apply_pagination(&mut query_builder, &self.pagination, &[
-            "block_height",
-        ]);
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            cursor_fields,
+        );
 
         query_builder
     }

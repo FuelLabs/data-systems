@@ -114,19 +114,22 @@ impl QueryParamsBuilder for TransactionsQuery {
             ));
         }
 
+        let cursor_fields = &["block_height", "tx_index"];
+
         Self::apply_conditions(
             &mut query_builder,
             &mut conditions,
             &self.options,
             &self.pagination,
-            "cursor",
+            cursor_fields,
             None,
         );
 
-        Self::apply_pagination(&mut query_builder, &self.pagination, &[
-            "block_height",
-            "tx_index",
-        ]);
+        Self::apply_pagination(
+            &mut query_builder,
+            &self.pagination,
+            cursor_fields,
+        );
 
         query_builder
     }

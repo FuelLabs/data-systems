@@ -76,7 +76,7 @@ pub trait QueryParamsBuilder {
         conditions: &mut Vec<String>,
         options: &QueryOptions,
         pagination: &QueryPagination,
-        cursor_field: &str,
+        cursor_fields: &[&str],
         join_prefix: Option<&str>,
     ) {
         if let Some(timestamp) = &options.timestamp {
@@ -107,33 +107,79 @@ pub trait QueryParamsBuilder {
         }
 
         if let Some(after) = pagination.after.as_ref() {
-            let field = Self::prefix_field(cursor_field, join_prefix);
-            if cursor_field == "block_height" {
-                // When using block height as the cursor field,
-                // we need to compare the block height as a number,
-                // not a string.
-                conditions.push(format!("{field} > {}", after));
-            } else {
-                conditions.push(format!("{field} > '{after}'"));
-            }
+            let after_conditions =
+                Self::create_pagination_conditions(cursor_fields, after, ">");
+            conditions.push(after_conditions);
         }
 
         if let Some(before) = pagination.before.as_ref() {
-            let field = Self::prefix_field(cursor_field, join_prefix);
-            if cursor_field == "block_height" {
-                // When using block height as the cursor field,
-                // we need to compare the block height as a number,
-                // not a string.
-                conditions.push(format!("{field} < {}", before));
-            } else {
-                conditions.push(format!("{field} < '{before}'"));
-            }
+            let before_conditions =
+                Self::create_pagination_conditions(cursor_fields, before, "<");
+            conditions.push(before_conditions);
         }
 
         if !conditions.is_empty() {
             query_builder.push(" WHERE ");
             query_builder.push(conditions.join(" AND "));
         }
+    }
+
+    /// Forms the required SQL clauses to replace the cursor with the values
+    ///
+    /// Example:
+    ///
+    ///  ```md
+    ///  block_height    transaction_index     receipt_index
+    ///
+    ///  0001                    0                 0
+    ///  0001                    0                 1     <---
+    ///  0001                    0                 2
+    ///  0001                    1                 0
+    ///  0001                    2                 0
+    ///  0002                    0                 0
+    ///  0002                    0                 1
+    ///  ```
+    ///
+    ///  ```sql
+    ///  WHERE (
+    ///    (block_height = 0001 AND transaction_index = 0 AND receipt_index > 1) OR
+    ///    (block_height = 0001 AND transaction_index > 0) OR
+    ///    (block_height > 0001)
+    ///  )
+    ///  ```
+    fn create_pagination_conditions(
+        cursor_fields: &[&str],
+        cursor: &Cursor,
+        operation: &str,
+    ) -> String {
+        if cursor_fields.is_empty() || cursor.is_empty() {
+            return String::new();
+        }
+
+        let cursor_values = cursor.split();
+
+        let result = (0..cursor_values.len())
+            .rev()
+            .map(|i| {
+                let equality_conditions = (0..i)
+                    .map(|j| {
+                        format!("{} = {}", cursor_fields[j], cursor_values[j])
+                    })
+                    .collect::<Vec<_>>();
+
+                let operation_condition = format!(
+                    "{} {} {}",
+                    cursor_fields[i], operation, cursor_values[i]
+                );
+
+                let mut all_conditions = equality_conditions;
+                all_conditions.push(operation_condition);
+
+                format!("({})", all_conditions.join(" AND "))
+            })
+            .collect::<Vec<_>>()
+            .join(" OR ");
+        return format!("({})", result);
     }
 
     fn apply_pagination(
