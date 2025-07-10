@@ -146,12 +146,11 @@ impl QueryParamsBuilder for ReceiptsQuery {
             None,
         );
 
-        Self::apply_pagination(
-            &mut query_builder,
-            &self.pagination,
-            "cursor",
-            None,
-        );
+        Self::apply_pagination(&mut query_builder, &self.pagination, &[
+            "block_height",
+            "tx_index",
+            "receipt_index",
+        ]);
 
         query_builder
     }

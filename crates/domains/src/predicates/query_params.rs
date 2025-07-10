@@ -95,12 +95,11 @@ impl QueryParamsBuilder for PredicatesQuery {
             Some("pt."),
         );
 
-        Self::apply_pagination(
-            &mut query_builder,
-            &self.pagination,
-            "cursor",
-            Some("pt."),
-        );
+        Self::apply_pagination(&mut query_builder, &self.pagination, &[
+            "pt.block_height",
+            "pt.tx_index",
+            "pt.input_index",
+        ]);
 
         query_builder
     }

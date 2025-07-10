@@ -80,12 +80,9 @@ impl QueryParamsBuilder for BlocksQuery {
             None,
         );
 
-        Self::apply_pagination(
-            &mut query_builder,
-            &self.pagination,
+        Self::apply_pagination(&mut query_builder, &self.pagination, &[
             "block_height",
-            None,
-        );
+        ]);
 
         query_builder
     }

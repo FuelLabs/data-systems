@@ -139,18 +139,20 @@ pub trait QueryParamsBuilder {
     fn apply_pagination(
         query_builder: &mut QueryBuilder<Postgres>,
         pagination: &QueryPagination,
-        cursor_field: &str,
-        join_prefix: Option<&str>,
+        order_by_fields: &[&str],
     ) {
-        let field = Self::prefix_field(cursor_field, join_prefix);
         match (pagination.first, pagination.last) {
             (Some(first), None) => {
-                query_builder.push(format!(" ORDER BY {field} ASC"));
+                let order_by_sql =
+                    Self::order_by_statement(order_by_fields, OrderBy::Asc);
+                query_builder.push(order_by_sql);
                 query_builder.push(format!(" LIMIT {first} "));
                 return;
             }
             (None, Some(last)) => {
-                query_builder.push(format!(" ORDER BY {field} DESC"));
+                let order_by_sql =
+                    Self::order_by_statement(order_by_fields, OrderBy::Desc);
+                query_builder.push(order_by_sql);
                 query_builder.push(format!(" LIMIT {last} "));
                 return;
             }
@@ -159,11 +161,25 @@ pub trait QueryParamsBuilder {
 
         let limit = pagination.limit.unwrap_or(DEFAULT_LIMIT);
         let order_by = pagination.order_by.to_owned().unwrap_or(OrderBy::Desc);
-        query_builder.push(format!(" ORDER BY {field} {order_by}"));
+        let order_by_sql = Self::order_by_statement(order_by_fields, order_by);
+        query_builder.push(order_by_sql);
         query_builder.push(format!(" LIMIT {limit}"));
         if let Some(offset) = pagination.offset {
             query_builder.push(format!(" OFFSET {offset}"));
         }
+    }
+
+    fn order_by_statement(
+        order_by_fields: &[&str],
+        order_by: OrderBy,
+    ) -> String {
+        let fields = order_by_fields
+            .iter()
+            .map(|field| format!("{field} {order_by}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!(" ORDER BY {fields}")
     }
 
     fn prefix_field(field: &str, prefix: Option<&str>) -> String {

@@ -115,12 +115,10 @@ impl QueryParamsBuilder for MessagesQuery {
             None,
         );
 
-        Self::apply_pagination(
-            &mut query_builder,
-            &self.pagination,
-            "cursor",
-            None,
-        );
+        Self::apply_pagination(&mut query_builder, &self.pagination, &[
+            "block_height",
+            "message_index",
+        ]);
 
         query_builder
     }

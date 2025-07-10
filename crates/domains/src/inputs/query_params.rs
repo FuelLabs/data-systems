@@ -146,12 +146,11 @@ impl QueryParamsBuilder for InputsQuery {
             None,
         );
 
-        Self::apply_pagination(
-            &mut query_builder,
-            &self.pagination,
-            "cursor",
-            None,
-        );
+        Self::apply_pagination(&mut query_builder, &self.pagination, &[
+            "block_height",
+            "tx_index",
+            "input_index",
+        ]);
 
         query_builder
     }
