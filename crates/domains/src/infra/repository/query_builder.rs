@@ -179,35 +179,34 @@ pub trait QueryParamsBuilder {
             })
             .collect::<Vec<_>>()
             .join(" OR ");
-        return format!("({})", result);
+        format!("({})", result)
     }
 
     fn apply_pagination(
         query_builder: &mut QueryBuilder<Postgres>,
         pagination: &QueryPagination,
-        order_by_fields: &[&str],
+        cursor_fields: &[&str],
     ) {
+        let order_by: OrderBy;
+        let limit: i32;
+
         match (pagination.first, pagination.last) {
             (Some(first), None) => {
-                let order_by_sql =
-                    Self::order_by_statement(order_by_fields, OrderBy::Asc);
-                query_builder.push(order_by_sql);
-                query_builder.push(format!(" LIMIT {first} "));
-                return;
+                order_by = OrderBy::Asc;
+                limit = first;
             }
             (None, Some(last)) => {
-                let order_by_sql =
-                    Self::order_by_statement(order_by_fields, OrderBy::Desc);
-                query_builder.push(order_by_sql);
-                query_builder.push(format!(" LIMIT {last} "));
-                return;
+                order_by = OrderBy::Desc;
+                limit = last;
             }
-            _ => {}
+            _ => {
+                limit = pagination.limit.unwrap_or(DEFAULT_LIMIT);
+                order_by =
+                    pagination.order_by.to_owned().unwrap_or(OrderBy::Desc);
+            }
         }
 
-        let limit = pagination.limit.unwrap_or(DEFAULT_LIMIT);
-        let order_by = pagination.order_by.to_owned().unwrap_or(OrderBy::Desc);
-        let order_by_sql = Self::order_by_statement(order_by_fields, order_by);
+        let order_by_sql = Self::order_by_statement(cursor_fields, order_by);
         query_builder.push(order_by_sql);
         query_builder.push(format!(" LIMIT {limit}"));
         if let Some(offset) = pagination.offset {
