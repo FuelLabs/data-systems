@@ -5,7 +5,7 @@ use fuel_message_broker::{NatsMessageBroker, NatsQueue, NatsSubject};
 use fuel_streams_core::{types::*, FuelStreams};
 use fuel_streams_domains::{
     blocks::BlocksQuery,
-    infra::{db::Db, QueryParamsBuilder, Repository},
+    infra::{db::Db, QueryPagination, QueryParamsBuilder, Repository},
     inputs::InputsQuery,
     outputs::OutputsQuery,
     predicates::PredicatesQuery,
@@ -98,6 +98,10 @@ async fn verify_receipts(
 ) -> anyhow::Result<()> {
     let mut query = ReceiptsQuery {
         block_height: Some(msg_payload.block_height()),
+        pagination: QueryPagination {
+            limit: Some(100),
+            ..Default::default()
+        },
         ..Default::default()
     };
     query.with_namespace(Some(prefix.to_string()));
@@ -131,6 +135,10 @@ async fn verify_inputs(
 
     let mut query = InputsQuery {
         block_height: Some(msg_payload.block_height()),
+        pagination: QueryPagination {
+            limit: Some(100),
+            ..Default::default()
+        },
         ..Default::default()
     };
     query.with_namespace(Some(prefix.to_string()));
@@ -157,6 +165,10 @@ async fn verify_outputs(
 
     let mut query = OutputsQuery {
         block_height: Some(msg_payload.block_height()),
+        pagination: QueryPagination {
+            limit: Some(100),
+            ..Default::default()
+        },
         ..Default::default()
     };
     query.with_namespace(Some(prefix.to_string()));
@@ -222,6 +234,10 @@ async fn verify_utxos(
 
     let mut query = UtxosQuery {
         block_height: Some(msg_payload.block_height()),
+        pagination: QueryPagination {
+            limit: Some(100),
+            ..Default::default()
+        },
         ..Default::default()
     };
     query.with_namespace(Some(prefix.to_string()));
@@ -248,6 +264,10 @@ async fn verify_predicates(
 
     let mut query = PredicatesQuery {
         block_height: Some(msg_payload.block_height()),
+        pagination: QueryPagination {
+            limit: Some(100),
+            ..Default::default()
+        },
         ..Default::default()
     };
     query.with_namespace(Some(prefix.to_string()));

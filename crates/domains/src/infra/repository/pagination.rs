@@ -10,8 +10,8 @@ use utoipa::ToSchema;
 
 use crate::infra::Cursor;
 
-pub const MAX_LIMIT: i32 = 1000;
-pub const DEFAULT_LIMIT: i32 = 100;
+pub const MAX_LIMIT: i32 = 50;
+pub const DEFAULT_LIMIT: i32 = 10;
 
 #[derive(
     Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, ToSchema,
