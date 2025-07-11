@@ -15,6 +15,13 @@ use serde::{Deserialize, Serialize};
 )]
 #[serde(rename_all = "snake_case")]
 pub enum TimeRange {
+    #[default]
+    #[serde(rename = "5m")]
+    FiveMinutes,
+    #[serde(rename = "15m")]
+    FifteenMinutes,
+    #[serde(rename = "30m")]
+    ThirtyMinutes,
     #[serde(rename = "1h")]
     OneHour,
     #[serde(rename = "12h")]
@@ -23,17 +30,6 @@ pub enum TimeRange {
     OneDay,
     #[serde(rename = "7d")]
     SevenDays,
-    #[serde(rename = "30d")]
-    ThirtyDays,
-    #[serde(rename = "90d")]
-    NinetyDays,
-    #[serde(rename = "180d")]
-    OneEightyDays,
-    #[serde(rename = "1y")]
-    OneYear,
-    #[default]
-    #[serde(rename = "all")]
-    All,
 }
 
 impl TimeRange {
@@ -48,15 +44,13 @@ impl TimeRange {
 
     pub fn to_duration(&self) -> Option<Duration> {
         match self {
+            Self::FiveMinutes => Some(Duration::minutes(5)),
+            Self::FifteenMinutes => Some(Duration::minutes(15)),
+            Self::ThirtyMinutes => Some(Duration::minutes(30)),
             Self::OneHour => Some(Duration::hours(1)),
             Self::TwelveHours => Some(Duration::hours(12)),
             Self::OneDay => Some(Duration::days(1)),
             Self::SevenDays => Some(Duration::days(7)),
-            Self::ThirtyDays => Some(Duration::days(30)),
-            Self::NinetyDays => Some(Duration::days(90)),
-            Self::OneEightyDays => Some(Duration::days(180)),
-            Self::OneYear => Some(Duration::days(365)),
-            Self::All => None,
         }
     }
 }
@@ -64,15 +58,13 @@ impl TimeRange {
 impl fmt::Display for TimeRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", match self {
+            Self::FiveMinutes => "5m",
+            Self::FifteenMinutes => "15m",
+            Self::ThirtyMinutes => "30m",
             Self::OneHour => "1h",
             Self::TwelveHours => "12h",
             Self::OneDay => "1d",
             Self::SevenDays => "7d",
-            Self::ThirtyDays => "30d",
-            Self::NinetyDays => "90d",
-            Self::OneEightyDays => "180d",
-            Self::OneYear => "1y",
-            Self::All => "all",
         })
     }
 }

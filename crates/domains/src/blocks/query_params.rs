@@ -22,7 +22,7 @@ pub struct BlocksQuery {
 impl From<&Block> for BlocksQuery {
     fn from(block: &Block) -> Self {
         let mut options = QueryOptions::default();
-        options.with_time_range(Some(TimeRange::All));
+        options.with_time_range(Some(TimeRange::default()));
         options.with_timestamp(Some(BlockTimestamp::from(&block.header)));
         Self {
             options,

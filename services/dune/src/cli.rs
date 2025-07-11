@@ -16,7 +16,7 @@ pub struct Cli {
         long,
         value_name = "DATABASE_URL",
         env = "DATABASE_URL",
-        default_value = "postgresql://streamspublisher:7xpJMeBzj84P3KQBpc2iYYuh@127.0.0.1:5433/fuel_streams_v1?sslmode=prefer",
+        default_value = "postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable",
         help = "Database URL to connect to."
     )]
     pub db_url: String,
