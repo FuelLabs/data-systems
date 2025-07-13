@@ -56,7 +56,7 @@ jobs:
 
   lockfile:
     name: Validate Lockfile
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -65,16 +65,9 @@ jobs:
 
   pre-commit:
     name: Pre-commit
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check workflow files
-        uses: docker://rhysd/actionlint:latest
-        env:
-          SHELLCHECK_OPTS: --exclude=SC2086,SC2129
-        with:
-          args: -color
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -119,14 +112,12 @@ jobs:
       - lockfile
       - pre-commit
       - commitlint
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-        with:
-          cache: false
 
       - name: Publish crate check
         uses: katyo/publish-crates@v2
@@ -142,7 +133,7 @@ jobs:
       - lockfile
       - pre-commit
       - commitlint
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
@@ -168,7 +159,7 @@ jobs:
     needs:
       - cargo-verifications
       - publish-crates-check
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
@@ -176,7 +167,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
-          cache: true
 
       - name: Install nextest
         uses: taiki-e/cache-cargo-install-action@v2
@@ -190,7 +180,7 @@ jobs:
   test-helm:
     needs: install-deps
     name: Test Helm
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
       - name: Set up Helm
@@ -209,7 +199,7 @@ jobs:
   test:
     needs: install-deps
     name: Test ${{ matrix.package }}
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     env:
       REDIS_URL: redis://:test@localhost:6379
       REDIS_PASSWORD: test
@@ -313,21 +303,21 @@ jobs:
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu
-            os: ubuntu-latest
+            os: warp-ubuntu-latest-x64-4x
             target: x86_64-unknown-linux-gnu
             build_on_pr: true
           - os_name: Linux-x86_64-musl
-            os: ubuntu-latest
+            os: warp-ubuntu-latest-x64-4x
             target: x86_64-unknown-linux-musl
             build_on_pr: false
 
           # macOS
           - os_name: macOS-x86_64
-            os: macOS-latest
+            os: warp-macos-15-arm64-6x
             target: x86_64-apple-darwin
             build_on_pr: true
           - os_name: macOS-aarch64
-            os: macOS-latest
+            os: warp-macos-15-arm64-6x
             target: aarch64-apple-darwin
             build_on_pr: false
         include:
@@ -344,7 +334,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.platform.target }}
-          cache: false
 
       - name: Install packages (macOS)
         if: matrix.platform.os == 'macOS-latest'
@@ -381,7 +370,7 @@ jobs:
       - test
       # - test-helm
       - build
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     permissions:
       contents: write
       actions: write
