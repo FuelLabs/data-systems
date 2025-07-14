@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

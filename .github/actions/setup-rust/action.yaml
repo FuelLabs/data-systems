@@ -51,20 +51,39 @@ runs:
       with:
         tool: cargo-edit@0.12.3
 
-    - uses: Swatinem/rust-cache@v2
+    - uses: BuildJet/cache@v4
       if: inputs.cache == 'true' || github.event_name != 'release' || github.event_name != 'workflow_dispatch'
       with:
-        cache-on-failure: true
-        shared-key: "workspace-${{ inputs.target }}"
-        save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}
-        cache-all-crates: false
-        cache-targets: true
-        workspaces: |
-          . -> target
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ inputs.target }}-
+          ${{ runner.os }}-cargo-
+        save-always: true
 
-    - name: Run sccache-cache only on non-release runs
+    - name: Setup Warp cache for sccache
       if: inputs.cache == 'true' || github.event_name != 'release' || github.event_name != 'workflow_dispatch'
-      uses: mozilla-actions/sccache-action@v0.0.8
+      uses: BuildJet/cache@v4
+      with:
+        path: ~/.cache/sccache
+        key: ${{ runner.os }}-sccache-${{ inputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-sccache-${{ inputs.target }}-
+          ${{ runner.os }}-sccache-
+        save-always: true
+
+    - name: Install sccache
+      shell: sh
+      if: inputs.cache == 'true' || github.event_name != 'release' || github.event_name != 'workflow_dispatch'
+      run: |
+        curl -L https://github.com/mozilla/sccache/releases/download/v0.8.2/sccache-v0.8.2-x86_64-unknown-linux-musl.tar.gz | tar xz
+        mv sccache-v0.8.2-x86_64-unknown-linux-musl/sccache ~/.cargo/bin/
+        chmod +x ~/.cargo/bin/sccache
 
     - name: Set Rust caching env vars only on non-release runs
       shell: sh

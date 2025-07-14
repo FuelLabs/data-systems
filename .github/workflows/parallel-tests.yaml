@@ -1,0 +1,147 @@
+name: Parallel Tests
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_NIGHTLY_VERSION: nightly-2025-01-24
+  CI: true
+
+jobs:
+  split-tests:
+    name: Split ${{ inputs.package }} tests
+    runs-on: warp-ubuntu-latest-x64-4x
+    outputs:
+      test-groups: ${{ steps.split.outputs.groups }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Split tests into groups
+        id: split
+        run: |
+          # Get all test names for the package
+          cd crates/${{ inputs.package }}
+          test_list=$(cargo test --no-run --message-format=json 2>/dev/null | \
+            jq -r 'select(.profile.test == true) | .executable' | \
+            xargs -I {} sh -c '{} --list' 2>/dev/null | \
+            grep -E "^test::" | \
+            sort -u || echo "")
+
+          # Split tests into 4 groups for parallel execution
+          if [ -n "$test_list" ]; then
+            total=$(echo "$test_list" | wc -l)
+            per_group=$((($total + 3) / 4))
+
+            groups='['
+            for i in 0 1 2 3; do
+              start=$(($i * $per_group + 1))
+              end=$((($i + 1) * $per_group))
+              group_tests=$(echo "$test_list" | sed -n "${start},${end}p" | tr '\n' ' ')
+              if [ -n "$group_tests" ]; then
+                [ "$i" -gt 0 ] && groups="${groups},"
+                groups="${groups}\"${group_tests}\""
+              fi
+            done
+            groups="${groups}]"
+          else
+            groups='[""]'
+          fi
+
+          echo "groups=$groups" >> $GITHUB_OUTPUT
+
+  run-parallel-tests:
+    name: Run ${{ inputs.package }} tests (group ${{ matrix.index }})
+    needs: split-tests
+    runs-on: warp-ubuntu-latest-x64-4x
+    strategy:
+      fail-fast: false
+      matrix:
+        index:
+          - 0
+          - 1
+          - 2
+          - 3
+        test-group: ${{ fromJson(needs.split-tests.outputs.test-groups) }}
+    env:
+      REDIS_URL: redis://:test@localhost:6379
+      REDIS_PASSWORD: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: fuel_test
+      DB_POOL_SIZE: 300
+      DB_TIMEOUT: 240
+      NATS_URL: nats://localhost:4222
+      NATS_SYSTEM_USER: sys
+      NATS_SYSTEM_PASS: sys
+      NATS_ADMIN_USER: admin
+      NATS_ADMIN_PASS: admin
+      AWS_STORAGE_ENV: local
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET_NAME: fuel-streams-local
+      STORAGE_MAX_RETRIES: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fuel_streams
+          POSTGRES_MAX_CONNECTIONS: "2000"
+          POSTGRES_SHARED_BUFFERS: "512MB"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
+
+      - name: Install nextest
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-nextest@0.9.100
+          locked: true
+
+      - name: Setup Database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS fuel_test;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE fuel_test;"
+
+      - name: Run services
+        run: |
+          make start-nats
+          make start-s3
+          make start-redis
+          make setup-db
+
+      - name: Run tests group
+        if: matrix.test-group != ''
+        run: |
+          cd crates/${{ inputs.package }}
+          cargo nextest run --profile ci ${{ matrix.test-group }}
+
+      - name: Stop services
+        if: always()
+        run: |-
+          make stop-nats || true
+          make stop-s3 || true
+          make stop-redis || true

@@ -1,0 +1,45 @@
+# Warp CI Configuration
+# This file contains optimization settings for Warp runners
+
+# Cache configuration
+cache:
+  # Enable aggressive caching for build artifacts
+  aggressive: true
+  # Cache timeout in hours
+  timeout: 72
+  # Paths to cache
+  paths:
+    - ~/.cargo/bin/
+    - ~/.cargo/registry/
+    - ~/.cargo/git/
+    - target/
+    - ~/.cache/sccache
+
+# Runner configuration
+runners:
+  # Default runner size for most jobs
+  default: warp-ubuntu-latest-x64-2x
+  # Heavy jobs (build, test, cargo verifications)
+  heavy: warp-ubuntu-latest-x64-4x
+  # Light jobs (linting, PR validation)
+  light: warp-ubuntu-latest-x64-2x
+
+# Parallelization settings
+parallel:
+  # Maximum parallel jobs per workflow
+  max_jobs: 16
+  # Test parallelization factor
+  test_split: 4
+  # Build parallelization
+  build_threads: 8
+
+# Performance optimizations
+optimizations:
+  # Use BuildJet cache for better performance
+  use_buildjet_cache: true
+  # Enable sccache for Rust compilation
+  use_sccache: true
+  # Enable cargo sparse registry
+  cargo_sparse_registry: true
+  # Use mold linker for faster linking
+  use_mold_linker: true

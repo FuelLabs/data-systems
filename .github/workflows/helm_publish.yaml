@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   helm-release:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - uses: actions/checkout@v4
       - name: Helm Dependencies Update

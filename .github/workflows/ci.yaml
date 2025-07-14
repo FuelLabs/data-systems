@@ -11,6 +11,13 @@ env:
   CLICOLOR: 1
   RUST_NIGHTLY_VERSION: nightly-2025-01-24
   CI: true
+  # Warp optimizations
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-cpu=native"
+  SCCACHE_CACHE_SIZE: "50G"
+  SCCACHE_IDLE_TIMEOUT: 0
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,7 +26,7 @@ concurrency:
 jobs:
   validate-title:
     name: Validate PR Title
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     if: github.event_name == 'pull_request'
     steps:
       - uses: amannn/action-semantic-pull-request@v5
@@ -56,7 +63,7 @@ jobs:
 
   lockfile:
     name: Validate Lockfile
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -65,7 +72,7 @@ jobs:
 
   pre-commit:
     name: Pre-commit
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
@@ -92,7 +99,7 @@ jobs:
 
   commitlint:
     name: Validating commits
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - uses: actions/checkout@v4
         with:
@@ -119,7 +126,7 @@ jobs:
       - lockfile
       - pre-commit
       - commitlint
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - uses: actions/checkout@v4
 
@@ -142,7 +149,7 @@ jobs:
       - lockfile
       - pre-commit
       - commitlint
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
@@ -168,7 +175,7 @@ jobs:
     needs:
       - cargo-verifications
       - publish-crates-check
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v4
 
@@ -190,7 +197,7 @@ jobs:
   test-helm:
     needs: install-deps
     name: Test Helm
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - uses: actions/checkout@v4
       - name: Set up Helm
@@ -209,7 +216,7 @@ jobs:
   test:
     needs: install-deps
     name: Test ${{ matrix.package }}
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     env:
       REDIS_URL: redis://:test@localhost:6379
       REDIS_PASSWORD: test
@@ -248,6 +255,7 @@ jobs:
 
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         package:
           - fuel-streams-core
@@ -313,11 +321,11 @@ jobs:
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu
-            os: ubuntu-latest
+            os: warp-ubuntu-latest-x64-4x
             target: x86_64-unknown-linux-gnu
             build_on_pr: true
           - os_name: Linux-x86_64-musl
-            os: ubuntu-latest
+            os: warp-ubuntu-latest-x64-4x
             target: x86_64-unknown-linux-musl
             build_on_pr: false
 
@@ -381,7 +389,7 @@ jobs:
       - test
       # - test-helm
       - build
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     permissions:
       contents: write
       actions: write
