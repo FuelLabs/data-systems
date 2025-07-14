@@ -181,7 +181,7 @@ jobs:
       - name: Install nextest
         uses: taiki-e/cache-cargo-install-action@v2
         with:
-          tool: cargo-nextest
+          tool: cargo-nextest@0.9.100
           locked: true
 
       - name: Install dependencies
@@ -275,7 +275,7 @@ jobs:
       - name: Install nextest
         uses: taiki-e/cache-cargo-install-action@v2
         with:
-          tool: cargo-nextest
+          tool: cargo-nextest@0.9.100
           locked: true
 
       - name: Setup Database

@@ -11,10 +11,7 @@ pub async fn get_metrics<T: StateProvider>(
 ) -> impl IntoResponse {
     Response::builder()
         .status(StatusCode::OK)
-        .header(
-            header::CONTENT_TYPE,
-            "application/openmetrics-text; version=1.0.0; charset=utf-8",
-        )
+        .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
         .body(axum::body::Body::from(state.get_metrics().await))
         .unwrap_or_else(|e| {
             // Fallback in case of response building error (unlikely)
