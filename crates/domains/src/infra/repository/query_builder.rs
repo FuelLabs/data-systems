@@ -107,14 +107,22 @@ pub trait QueryParamsBuilder {
         }
 
         if let Some(after) = pagination.after.as_ref() {
-            let after_conditions =
-                Self::create_pagination_conditions(cursor_fields, after, ">");
+            let after_conditions = Self::create_pagination_conditions(
+                cursor_fields,
+                after,
+                ">",
+                join_prefix,
+            );
             conditions.push(after_conditions);
         }
 
         if let Some(before) = pagination.before.as_ref() {
-            let before_conditions =
-                Self::create_pagination_conditions(cursor_fields, before, "<");
+            let before_conditions = Self::create_pagination_conditions(
+                cursor_fields,
+                before,
+                "<",
+                join_prefix,
+            );
             conditions.push(before_conditions);
         }
 
@@ -151,11 +159,16 @@ pub trait QueryParamsBuilder {
         cursor_fields: &[&str],
         cursor: &Cursor,
         operation: &str,
+        join_prefix: Option<&str>,
     ) -> String {
         if cursor_fields.is_empty() || cursor.is_empty() {
             return String::new();
         }
 
+        let cursor_fields = cursor_fields
+            .iter()
+            .map(|f| Self::prefix_field(f, join_prefix))
+            .collect::<Vec<_>>();
         let cursor_values = cursor.split();
 
         let result = (0..cursor_values.len())
@@ -186,6 +199,7 @@ pub trait QueryParamsBuilder {
         query_builder: &mut QueryBuilder<Postgres>,
         pagination: &QueryPagination,
         cursor_fields: &[&str],
+        join_prefix: Option<&str>,
     ) {
         let order_by: OrderBy;
         let limit: i32;
@@ -206,7 +220,8 @@ pub trait QueryParamsBuilder {
             }
         }
 
-        let order_by_sql = Self::order_by_statement(cursor_fields, order_by);
+        let order_by_sql =
+            Self::order_by_statement(cursor_fields, order_by, join_prefix);
         query_builder.push(order_by_sql);
         query_builder.push(format!(" LIMIT {limit}"));
         if let Some(offset) = pagination.offset {
@@ -217,9 +232,11 @@ pub trait QueryParamsBuilder {
     fn order_by_statement(
         order_by_fields: &[&str],
         order_by: OrderBy,
+        join_prefix: Option<&str>,
     ) -> String {
         let fields = order_by_fields
             .iter()
+            .map(|field| Self::prefix_field(field, join_prefix))
             .map(|field| format!("{field} {order_by}"))
             .collect::<Vec<_>>()
             .join(", ");

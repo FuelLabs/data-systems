@@ -86,8 +86,7 @@ impl QueryParamsBuilder for PredicatesQuery {
             conditions.push(format!("pt.asset_id = '{}'", asset));
         }
 
-        let cursor_fields =
-            &["pt.block_height", "pt.tx_index", "pt.input_index"];
+        let cursor_fields = &["block_height", "tx_index", "input_index"];
         let join_prefix = Some("pt.");
 
         Self::apply_conditions(
@@ -103,6 +102,7 @@ impl QueryParamsBuilder for PredicatesQuery {
             &mut query_builder,
             &self.pagination,
             cursor_fields,
+            join_prefix,
         );
 
         query_builder

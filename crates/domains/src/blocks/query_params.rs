@@ -86,6 +86,7 @@ impl QueryParamsBuilder for BlocksQuery {
             &mut query_builder,
             &self.pagination,
             cursor_fields,
+            None,
         );
 
         query_builder
