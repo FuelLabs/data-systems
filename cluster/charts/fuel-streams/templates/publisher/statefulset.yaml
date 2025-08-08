@@ -13,7 +13,7 @@ spec:
   template:
     {{- include "k8s.template-metadata" $serviceDict | nindent 4 }}
     spec:
-      {{- with .Values.affinity }}
+      {{- with .Values.publisher.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
