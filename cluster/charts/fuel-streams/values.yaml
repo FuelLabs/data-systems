@@ -132,6 +132,8 @@ publisher:
   ports: []
   port: 8080
 
+  affinity: {}
+
   image:
     repository: ghcr.io/fuellabs/sv-publisher
     pullPolicy: Always
@@ -208,6 +210,8 @@ consumer:
   port: 8080
   ports: []
 
+  affinity: {}
+
   image:
     repository: ghcr.io/fuellabs/sv-consumer
     pullPolicy: Always
@@ -264,6 +268,8 @@ webserver:
 
   port: 8080
   ports: []
+
+  affinity: {}
 
   image:
     repository: ghcr.io/fuellabs/sv-webserver
@@ -346,6 +352,8 @@ api:
   port: 8080
   ports: []
 
+  affinity: {}
+
   image:
     repository: ghcr.io/fuellabs/sv-api
     pullPolicy: Always
@@ -414,6 +422,8 @@ dune:
   enabled: false
   network: mainnet
 
+  affinity: {}
+
   image:
     repository: ghcr.io/fuellabs/sv-dune
     pullPolicy: Always
@@ -451,6 +461,8 @@ nats:
 
   natsBox:
     enabled: false
+
+  affinity: {}
 
   promExporter:
     enabled: true
