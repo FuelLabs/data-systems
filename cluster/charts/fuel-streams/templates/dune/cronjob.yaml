@@ -9,6 +9,10 @@ kind: CronJob
 metadata:
   {{- include "k8s.resource-metadata" $serviceDict | nindent 2 }}
 spec:
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
   schedule: {{ $cronjob.schedule | quote }}
   concurrencyPolicy: {{ $cronjob.concurrencyPolicy }}
   successfulJobsHistoryLimit: {{ $cronjob.successfulJobsHistoryLimit }}
