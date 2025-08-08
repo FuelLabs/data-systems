@@ -18,6 +18,10 @@ spec:
       template:
         {{- include "k8s.template-metadata" $serviceDict | nindent 8 }}
         spec:
+          {{- with .Values.dune.affinity }}
+          affinity:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
           {{- include "k8s.pod-config" $serviceDict | nindent 10 }}
           containers:
             - name: dune
