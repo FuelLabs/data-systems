@@ -170,19 +170,21 @@ impl QueryParamsBuilder for UtxosQuery {
             ));
         }
 
+        let cursor_fields = &["block_height", "tx_index", "output_index"];
+
         Self::apply_conditions(
             &mut query_builder,
             &mut conditions,
             &self.options,
             &self.pagination,
-            "cursor",
+            cursor_fields,
             None,
         );
 
         Self::apply_pagination(
             &mut query_builder,
             &self.pagination,
-            "cursor",
+            cursor_fields,
             None,
         );
 
