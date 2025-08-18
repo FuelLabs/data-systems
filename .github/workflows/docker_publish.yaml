@@ -48,7 +48,7 @@ jobs:
           - name: sv-dune
             image: cluster/docker/sv-dune.Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get short SHA
         id: sha
