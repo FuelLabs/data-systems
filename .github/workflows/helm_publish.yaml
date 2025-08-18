@@ -25,7 +25,7 @@ jobs:
   helm-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Helm Dependencies Update
         run: |
           cd ${{ env.CHART_PATH }} && helm dependency update

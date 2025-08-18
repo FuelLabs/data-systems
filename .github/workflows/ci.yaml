@@ -58,7 +58,7 @@ jobs:
     name: Validate Lockfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Rust
         uses: ./.github/actions/setup-rust
       - run: cargo update --workspace --locked
@@ -67,7 +67,7 @@ jobs:
     name: Pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check workflow files
         uses: docker://rhysd/actionlint:latest
@@ -94,7 +94,7 @@ jobs:
     name: Validating commits
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -121,7 +121,7 @@ jobs:
       - commitlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -144,7 +144,7 @@ jobs:
       - commitlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -170,7 +170,7 @@ jobs:
       - publish-crates-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -192,7 +192,7 @@ jobs:
     name: Test Helm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
@@ -265,7 +265,7 @@ jobs:
           - sv-publisher
           - sv-webserver
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -338,7 +338,7 @@ jobs:
               github.ref == 'refs/heads/main' ||
               github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -387,4 +387,4 @@ jobs:
       actions: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
