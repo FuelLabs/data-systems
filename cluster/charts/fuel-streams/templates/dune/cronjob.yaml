@@ -20,7 +20,7 @@ spec:
         spec:
           {{- with .Values.dune.affinity }}
           affinity:
-            {{- toYaml . | nindent 8 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- include "k8s.pod-config" $serviceDict | nindent 10 }}
           containers:
