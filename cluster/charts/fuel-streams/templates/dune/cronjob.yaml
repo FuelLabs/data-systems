@@ -22,7 +22,6 @@ spec:
           affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- include "k8s.pod-config" $serviceDict | nindent 10 }}
           containers:
             - name: dune
               {{- include "k8s.container-config.image" $serviceDict | nindent 14 }}
@@ -30,6 +29,11 @@ spec:
               args:
                 - "--network"
                 - "{{ $dune.network }}"
+              {{- include "k8s.container-config.resources" $serviceDict | nindent 14 }}
+              {{- include "k8s.container-config.securityContext" $serviceDict | nindent 14 }}
+              {{- include "k8s.container-config.ports" $serviceDict | nindent 14 }}
+              {{- include "k8s.container-config.env" $serviceDict | nindent 14 }}
+              {{- include "k8s.container-config.envFrom" $serviceDict | nindent 14 }}
               {{- include "k8s.container-config" $serviceDict | nindent 14 }}
           restartPolicy: OnFailure
 {{- end }}
