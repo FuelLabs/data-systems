@@ -88,7 +88,7 @@ spec:
           - "--telemetry-port"
           - "{{ $publisher.port }}"
           - "--relayer-log-page-size"
-          - "500"
+          - "100"
           - "--sync-block-stream-buffer-size"
           - "50"
           {{- if eq $publisher.network "mainnet" }}
