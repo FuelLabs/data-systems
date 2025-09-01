@@ -17,7 +17,7 @@ jobs:
   # Release unpublished packages.
   release-plz-release:
     name: Release-plz release
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     permissions:
       contents: write
     steps:
@@ -31,7 +31,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
-          cache: false
 
       - name: Run release-plz
         uses: release-plz/action@v0.5
@@ -45,7 +44,7 @@ jobs:
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
     name: Release-plz PR
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     permissions:
       contents: write
       pull-requests: write
@@ -66,7 +65,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
           target: x86_64-unknown-linux-gnu,wasm32-unknown-unknown
-          cache: false
 
       - name: Run release-plz
         id: release-plz
