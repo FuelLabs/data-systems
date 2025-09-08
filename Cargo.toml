@@ -43,19 +43,15 @@ derive_more = { version = "2.0.1", features = [
 displaydoc = "0.2.5"
 dotenvy = "0.15.7"
 futures = "0.3.31"
-futures-util = "0.3.31"
 hex = "0.4.3"
 indexmap = { version = "2.8.0", features = ["serde"] }
-moka = { version = "0.12.10", features = ["sync"] }
 num_cpus = "1.16.0"
 pretty_assertions = "1.4.1"
 rand = "0.9.0"
 rayon = "1.10.0"
-regex = "1.11.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_urlencoded = "0.7.1"
-sha2 = "0.10.8"
 sqlx = { version = "0.8.3", default-features = false, features = [
   "chrono",
   "macros",
@@ -74,7 +70,6 @@ tokio = { version = "1.44.1", features = [
   "rt-multi-thread",
   "test-util",
 ] }
-tokio-stream = "0.1.17"
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = [
   "fs",
@@ -91,25 +86,23 @@ tracing-subscriber = { version = "0.3.19", features = [
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
 # Fuel Core dependencies
-fuel-core = { version = "0.44.0", default-features = false, features = [
+fuel-core = { version = "0.46.0", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-bin = { version = "0.44.0", default-features = false, features = [
+fuel-core-bin = { version = "0.46.0", default-features = false, features = [
   "p2p",
   "relayer",
   "rocksdb",
 ] }
-fuel-core-client = { version = "0.44.0", default-features = false, features = [
+fuel-core-client = { version = "0.46.0", default-features = false, features = [
   "std",
 ] }
-fuel-core-importer = { version = "0.44.0" }
-fuel-core-poa = { version = "0.44.0", default-features = false }
-fuel-core-services = { version = "0.44.0", default-features = false }
-fuel-core-storage = { version = "0.44.0" }
-fuel-core-txpool = { version = "0.44.0" }
-fuel-core-types = { version = "0.44.0", default-features = false, features = [
+fuel-core-importer = { version = "0.46.0" }
+fuel-core-services = { version = "0.46.0", default-features = false }
+fuel-core-storage = { version = "0.46.0" }
+fuel-core-types = { version = "0.46.0", default-features = false, features = [
   "serde",
   "std",
 ] }
@@ -121,7 +114,6 @@ fuel-streams = { version = "0.0.29", path = "crates/fuel-streams" }
 fuel-streams-core = { version = "0.0.29", path = "crates/core" }
 fuel-streams-domains = { version = "0.0.29", path = "crates/domains" }
 fuel-streams-subject = { version = "0.0.29", path = "crates/subject" }
-fuel-streams-test = { version = "0.0.22", path = "crates/test" }
 fuel-streams-types = { version = "0.0.29", path = "crates/types" }
 fuel-web-utils = { version = "0.0.29", path = "crates/web-utils" }
 subject-derive = { version = "0.0.29", path = "crates/subject/subject-derive" }
