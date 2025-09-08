@@ -10,7 +10,7 @@ on:
       - main
 
 env:
-  RUST_VERSION: 1.85.1
+  RUST_VERSION: 1.86.0
   RUST_NIGHTLY_VERSION: nightly-2025-01-24
 
 jobs:

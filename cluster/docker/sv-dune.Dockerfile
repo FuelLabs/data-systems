@@ -1,5 +1,5 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
-FROM --platform=$BUILDPLATFORM rust:1.85.1 AS chef
+FROM --platform=$BUILDPLATFORM rust:1.86.0 AS chef
 
 ARG TARGETPLATFORM
 RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
