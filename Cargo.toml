@@ -64,7 +64,7 @@ strum_macros = "0.27.1"
 test-case = "3.3.1"
 thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["serde"] }
-tokio = { version = "1.44.1", features = [
+tokio = { version = "1.47.1", features = [
   "io-util",
   "macros",
   "rt-multi-thread",
