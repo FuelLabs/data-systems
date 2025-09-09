@@ -129,6 +129,8 @@ publisher:
   enabled: true
   network: mainnet
 
+  reservedNodes: ""
+
   ports: []
   port: 8080
 
