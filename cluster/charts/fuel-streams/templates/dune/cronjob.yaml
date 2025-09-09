@@ -22,6 +22,7 @@ spec:
           affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- include "k8s.pod-config.serviceAccount" $serviceDict | nindent 10 }}
           containers:
             - name: dune
               {{- include "k8s.container-config.image" $serviceDict | nindent 14 }}
