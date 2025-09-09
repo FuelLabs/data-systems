@@ -98,7 +98,7 @@ spec:
           - "--snapshot"
           - "./chain-config/mainnet"
           - "--reserved-nodes"
-          - "http://mainnet-0-p2p-ingress.mainnet-0.svc.cluster.local:3033"
+          - "/dns/mainnet-0-p2p-ingress.mainnet-0.svc.cluster.local/tcp/30333/p2p/16Uiu2HAm9iqviNSwpcmJhRHtcE71aeHuXDhqRoE8RmbQkPyJNv41,/dns/p2p-mainnet.fuel.network/tcp/30334/p2p/16Uiu2HAmPKUaG9FgK9PLdgRhCJfqnYDMsE33RcWP8ErEma9aG1pB,/dns/fuelcore-sentry-2-service.mainnet-0.svc.cluster.local/tcp/30335/p2p/16Uiu2HAmE66uUWozcyesWwVAH6t7W9i4EZQa7K36uTFELsTmH3Ad"
           - "--relayer-v2-listening-contracts"
           - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
           - "--relayer-da-deploy-height"
