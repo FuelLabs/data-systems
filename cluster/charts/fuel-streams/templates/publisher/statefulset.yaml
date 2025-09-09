@@ -98,7 +98,7 @@ spec:
           - "--snapshot"
           - "./chain-config/mainnet"
           - "--reserved-nodes"
-          - "/dnsaddr/mainnet.fuel.network"
+          - "http://mainnet-0-p2p-ingress.mainnet-0.svc.cluster.local:3033"
           - "--relayer-v2-listening-contracts"
           - "0xAEB0c00D0125A8a788956ade4f4F12Ead9f65DDf"
           - "--relayer-da-deploy-height"
