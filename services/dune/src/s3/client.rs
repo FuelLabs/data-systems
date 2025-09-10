@@ -94,7 +94,7 @@ impl Storage for S3Storage {
             let data = data.clone();
             async move {
                 #[allow(clippy::identity_op)]
-                const LARGE_FILE_THRESHOLD: usize = 1 * 1024 * 1024; // 1MB
+                const LARGE_FILE_THRESHOLD: usize = 100 * 1024 * 1024; // 100MB
                 let result = if data.len() >= LARGE_FILE_THRESHOLD {
                     tracing::debug!(
                         "Uploading file to S3 using multipart_upload"
@@ -209,7 +209,7 @@ impl S3Storage {
         key: &str,
         data: Vec<u8>,
     ) -> Result<(), StorageError> {
-        const CHUNK_SIZE: usize = 5 * 1024 * 1024; // 5MB chunks
+        const CHUNK_SIZE: usize = 100 * 1024 * 1024; // 100MB chunks
 
         // Create multipart upload
         let create_multipart = self
