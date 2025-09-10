@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.0.30](https://github.com/FuelLabs/data-systems/compare/v0.0.29...v0.0.30) - 2025-09-10
+
+
+
+
+
+### ⭐ Features
+
+- *(sv-consumer)*: Introduce concurrent tasks configuration ([#483](https://github.com/FuelLabs/data-systems/pull/483)) ([f395620](https://github.com/FuelLabs/data-systems/commit/f395620b3d2aee8b251959dcb07766b5b0ed83be)  @luizstacio)
+
+- *(repo)*: Add messages ([#465](https://github.com/FuelLabs/data-systems/pull/465)) ([7a09099](https://github.com/FuelLabs/data-systems/commit/7a09099d2ee49a82c4dad6b1567df0fd373969ce)  @pedronauck)
+
+- *(repo)*: Limit queries to a smaller time range and number of items returned ([#495](https://github.com/FuelLabs/data-systems/pull/495)) ([a25fc1e](https://github.com/FuelLabs/data-systems/commit/a25fc1e4e8795b3cc4312a36774817a4a8c9fa72)  @luizstacio)
+
+- *(repo)*: Add block_time to predicate_transactions ([#492](https://github.com/FuelLabs/data-systems/pull/492)) ([63a2925](https://github.com/FuelLabs/data-systems/commit/63a2925d7817998f4efd58fe06dd6ca87f4c9965)  @luizstacio)
+
+- *(repo)*: Upgrade fuel-core version to 0.44 ([#491](https://github.com/FuelLabs/data-systems/pull/491)) ([a919e1c](https://github.com/FuelLabs/data-systems/commit/a919e1c1d6da8324cebe9ff353fbfefbfa01ed33)  @luizstacio)
+
+- *(sv-api)*: Add read-only database configuration ([#485](https://github.com/FuelLabs/data-systems/pull/485)) ([a00641c](https://github.com/FuelLabs/data-systems/commit/a00641c346e316e649a6acc9304f3eba3c18b7a2)  @luizstacio)
+
+### 🐛 Bug Fixes
+
+- *(repo)*: Dune integration ([f487ceb](https://github.com/FuelLabs/data-systems/commit/f487cebfd873986f7312dd0d72d46cba47b2a9fb)  @pedronauck)
+
+- *(fuel-streams-domains)*: Adjust BlockHeaderVersion serialization ([7a421b7](https://github.com/FuelLabs/data-systems/commit/7a421b7dda0915d81cded4d9cb023614106efb89)  @pedronauck)
+
+- *(fuel-streams-domains)*: BlockVersion serde configuration ([b99705e](https://github.com/FuelLabs/data-systems/commit/b99705ea324a0cf98d9f02801ef3db6edc9ac199)  @pedronauck)
+
+- *(fuel-streams-domains)*: Improve accounts txs query performance ([#462](https://github.com/FuelLabs/data-systems/pull/462)) ([e2fb66e](https://github.com/FuelLabs/data-systems/commit/e2fb66e0ff6029e06bc9c53552db5ad1ec5039c3)  @pedronauck)
+
+- *(sv-publisher)*: Restore tx_pointer for transactions ([41c4cd8](https://github.com/FuelLabs/data-systems/commit/41c4cd8c56f916dbf8ad5acd379186a196f604d4)  @pedronauck)
+
+- *(repo)*: Change metrics endpoints to return plain text ([#496](https://github.com/FuelLabs/data-systems/pull/496)) ([ff4d435](https://github.com/FuelLabs/data-systems/commit/ff4d435edab7492d6b50c48ab1c5615d02077690)  @luizstacio)
+
+- *(fuel-web-utils)*: Load api-keys on demand from database ([#471](https://github.com/FuelLabs/data-systems/pull/471)) ([554ecd3](https://github.com/FuelLabs/data-systems/commit/554ecd3cd6765ca8ea6528b16c2d9142a30120d6)  @luizstacio)
+
+- *(repo)*: Builder subscriptions count error ([b5a179f](https://github.com/FuelLabs/data-systems/commit/b5a179ffa508af512e129e2312d3b0d3dd91a227)  @pedronauck)
+
+### 🔄 Refactor
+
+- *(sv-dune)*: Improve Avro types ([#460](https://github.com/FuelLabs/data-systems/pull/460)) ([10a27dd](https://github.com/FuelLabs/data-systems/commit/10a27dd8dee72adc8e89568c7e0fcefa39246dc4)  @pedronauck)
+
+### 📚 Documentation
+
+- *(repo)*: Improve docs on core and data-parser ([2d6401c](https://github.com/FuelLabs/data-systems/commit/2d6401c96ef55c7555cc78ddd1296b1acfd25d81)  @pedronauck)
+
+- *(repo)*: Improve project docs ([4ead022](https://github.com/FuelLabs/data-systems/commit/4ead022c1d4c10db4174a512d4b1864b18b0e56d)  @pedronauck)
+
+- *(fuel-streams-core)*: Fix code example ([0729afb](https://github.com/FuelLabs/data-systems/commit/0729afbc3c2f3adff3ecd8b9ed7f484d4028008c)  @pedronauck)
+
+### 🧪 Testing
+
+- *(repo)*: Fix wrong tests ([a70976a](https://github.com/FuelLabs/data-systems/commit/a70976a710c5273e270e80120dd27a474b7474be)  @pedronauck)
+
+### 💪🏼 Contributors
+
+* @pedronauck
+* @luizstacio
+
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
+
+---
 ## [0.0.29](https://github.com/FuelLabs/data-systems/compare/v0.0.28...v0.0.29) - 2025-04-18
 
 ### ⭐ Features
