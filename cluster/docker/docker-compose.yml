@@ -1,55 +1,4 @@
 services:
-  nats:
-    profiles:
-      - all
-      - nats
-    image: nats:latest
-    container_name: nats
-    restart: always
-    ports:
-      - 4222:4222
-      - 8222:8222
-    volumes:
-      - ./nats-config/core.conf:/etc/nats/nats.conf
-      - ./nats-config/accounts.conf:/etc/nats/accounts.conf
-    command:
-      - -m
-      - "8222"
-      - --name=fuel-streams-nats
-      - --js
-      - --config=/etc/nats/nats.conf
-      - -D
-    env_file:
-      - ./../../.env
-
-  postgres:
-    profiles:
-      - all
-      - postgres
-    image: postgres:17
-    container_name: postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-fuel_streams}
-      POSTGRES_MAX_CONNECTIONS: "2000"
-      POSTGRES_SHARED_BUFFERS: "512MB"
-    command:
-      - "postgres"
-      - "-c"
-      - "max_connections=2000"
-      - "-c"
-      - "shared_buffers=512MB"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     profiles:
       - all
@@ -68,7 +17,7 @@ services:
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password} # Password for Redis
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -90,17 +39,6 @@ services:
     volumes:
       - ./localstack-data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
-
-  adminer:
-    profiles:
-      - all
-      - postgres
-    image: adminer:latest
-    container_name: adminer
-    depends_on:
-      - postgres
-    ports:
-      - 8085:8080
 
   prometheus:
     profiles:

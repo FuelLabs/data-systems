@@ -1,15 +1,13 @@
 [workspace]
 default-members = ["crates/fuel-streams"]
 members = [
-  "benches/*",
-  "crates/*",
-  "crates/subject/subject-derive",
-  "examples",
-  "scripts/generate-api-keys",
-  "scripts/subjects-schema",
-  "scripts/update-db",
-  "services/*",
-  "tests",
+    "crates/*",
+    "crates/subject/subject-derive",
+    "examples",
+    "scripts/generate-api-keys",
+    "scripts/subjects-schema",
+    "scripts/update-db",
+    "services/*",
 ]
 resolver = "2"
 
@@ -36,9 +34,9 @@ chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.35", features = ["derive", "env"] }
 dashmap = { version = "6.1.0", features = ["serde"] }
 derive_more = { version = "2.0.1", features = [
-  "is_variant",
-  "display",
-  "from_str",
+    "is_variant",
+    "display",
+    "from_str",
 ] }
 displaydoc = "0.2.5"
 dotenvy = "0.15.7"
@@ -53,11 +51,11 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_urlencoded = "0.7.1"
 sqlx = { version = "0.8.3", default-features = false, features = [
-  "chrono",
-  "macros",
-  "postgres",
-  "runtime-tokio",
-  "tls-native-tls",
+    "chrono",
+    "macros",
+    "postgres",
+    "runtime-tokio",
+    "tls-native-tls",
 ] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
@@ -65,46 +63,46 @@ test-case = "3.3.1"
 thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["serde"] }
 tokio = { version = "1.44.1", features = [
-  "io-util",
-  "macros",
-  "rt-multi-thread",
-  "test-util",
+    "io-util",
+    "macros",
+    "rt-multi-thread",
+    "test-util",
 ] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = [
-  "fs",
-  "cors",
-  "trace",
-  "compression-full",
-  "decompression-full",
+    "fs",
+    "cors",
+    "trace",
+    "compression-full",
+    "decompression-full",
 ] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = [
-  "local-time",
-  "env-filter",
+    "local-time",
+    "env-filter",
 ] }
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
 # Fuel Core dependencies
 fuel-core = { version = "0.46.0", default-features = false, features = [
-  "p2p",
-  "relayer",
-  "rocksdb",
+    "p2p",
+    "relayer",
+    "rocksdb",
 ] }
 fuel-core-bin = { version = "0.46.0", default-features = false, features = [
-  "p2p",
-  "relayer",
-  "rocksdb",
+    "p2p",
+    "relayer",
+    "rocksdb",
 ] }
 fuel-core-client = { version = "0.46.0", default-features = false, features = [
-  "std",
+    "std",
 ] }
 fuel-core-importer = { version = "0.46.0" }
 fuel-core-services = { version = "0.46.0", default-features = false }
 fuel-core-storage = { version = "0.46.0" }
 fuel-core-types = { version = "0.46.0", default-features = false, features = [
-  "serde",
-  "std",
+    "serde",
+    "std",
 ] }
 
 # Internal dependencies

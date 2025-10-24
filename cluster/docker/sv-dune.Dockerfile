@@ -1,8 +1,8 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
-FROM --platform=$BUILDPLATFORM rust:1.86.0 AS chef
+FROM --platform=$BUILDPLATFORM rust:1.90.0-bookworm AS chef
 
 ARG TARGETPLATFORM
-RUN cargo install cargo-chef && rustup target add wasm32-unknown-unknown
+RUN cargo install cargo-chef
 WORKDIR /build/
 
 COPY --from=xx / /
@@ -51,7 +51,7 @@ RUN \
     && cp ./target/$(xx-cargo --print-target-triple)/release/sv-dune.d /root/sv-dune.d
 
 # Stage 2: Run
-FROM ubuntu:22.04 AS run
+FROM debian:bookworm-slim AS run
 
 WORKDIR /usr/src
 

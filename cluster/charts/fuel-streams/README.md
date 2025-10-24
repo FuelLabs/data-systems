@@ -71,10 +71,6 @@ fuel-streams/
 
 Each service has its own directory containing Kubernetes resource definitions:
 
-- **publisher/statefulset.yaml**: StatefulSet for the Publisher service with persistent storage
-- **consumer/deployment.yaml**: Deployment for the Consumer service
-- **webserver/deployment.yaml**: Deployment for the Webserver service
-- **api/deployment.yaml**: Deployment for the API service
 - **dune/cronjob.yaml**: CronJob for the Dune service that runs on a schedule
 
 #### Dashboard Files

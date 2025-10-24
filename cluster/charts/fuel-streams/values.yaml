@@ -2,8 +2,8 @@
 # Global Config
 # ------------------------------------------------------------------------------
 config:
-  labels: {}
-  annotations: {}
+  labels: { }
+  annotations: { }
   # Override the name and fullname of the chart
   nameOverride: ""
   fullnameOverride: ""
@@ -55,7 +55,7 @@ config:
     runAsGroup: 1000
     runAsNonRoot: true
     capabilities:
-      drop: [ALL]
+      drop: [ ALL ]
     readOnlyRootFilesystem: true
 
   # Default container security context
@@ -64,7 +64,7 @@ config:
     runAsGroup: 1000
     runAsNonRoot: true
     capabilities:
-      drop: [ALL]
+      drop: [ ALL ]
     readOnlyRootFilesystem: true
     allowPrivilegeEscalation: false
 
@@ -92,27 +92,11 @@ config:
     port: 8080
     type: ClusterIP
 
-# ------------------------------------------------------------------------------
-# Global ConfigMap
-# ------------------------------------------------------------------------------
-commonConfigMap:
-  enabled: true
-  data:
-    USE_METRICS: "false"
-    NATS_URL: "fuel-streams-nats:4222"
-    NATS_SYSTEM_USER: "sys"
-    NATS_SYSTEM_PASS: "sys"
-    NATS_ADMIN_USER: "admin"
-    NATS_ADMIN_PASS: "admin"
-    # For local purposes only, for production use fuel-streams-keys secret
-    DB_TYPE: "Aurora"
-    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/fuel_streams?sslmode=disable"
-
 # This is a secret that is used for local development
 # It is not used in production
 localSecrets:
   enabled: false
-  data: {}
+  data: { }
 
 # ------------------------------------------------------------------------------
 # ServiceAccount
@@ -123,66 +107,62 @@ serviceAccount:
   automount: true
 
 # ------------------------------------------------------------------------------
-# Publisher configuration
+# Dune configuration
 # ------------------------------------------------------------------------------
-publisher:
+dune:
   enabled: true
   network: mainnet
 
-  reservedNodes: ""
-
-  ports: []
+  ports: [ ]
   port: 8080
 
-  affinity: {}
+  affinity: { }
 
   image:
     repository: ghcr.io/fuellabs/sv-publisher
     pullPolicy: Always
     tag: latest
-    args: []
+    args: [ ]
 
   # You can override the env variables for the container here
   # using a map or an array of key-value pairs
-  envFrom: []
+  envFrom: [ ]
   env:
-    TMPDIR: "/var/fuel-streams/tmp"
-    DB_PATH: /mnt/db
-    FUEL_CORE_PORT: 4004
+    DB_PATH: /mnt/storage
 
   service:
     enabled: true
     port: 8080
     type: ClusterIP
     config:
-      annotations: {}
-      labels: {}
+      annotations: { }
+      labels: { }
 
   prometheus:
     enabled: true
     scrape: true
     path: /metrics
     config:
-      annotations: {}
+      annotations: { }
       labels:
         release: kube-prometheus-stack
 
   storage:
     name: rocks-db
-    size: 500Gi
+    size: 100Gi
     storageClass: "gp3-generic"
     accessMode: ReadWriteOnce
-    mountPath: /mnt/db
+    mountPath: /mnt/storage
 
   config:
     replicaCount: 1
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
+    labels: { }
+    annotations: { }
+    podAnnotations: { }
+    nodeSelector: { }
+    tolerations: [ ]
+    affinity: { }
+    imagePullSecrets: [ ]
     livenessProbe:
       httpGet:
         path: /health
@@ -195,352 +175,12 @@ publisher:
       httpGet:
         path: /health
         port: 8080
-    podSecurityContext: {}
-    containerSecurityContext: {}
-    resources: {}
+    podSecurityContext: { }
+    containerSecurityContext: { }
+    resources: { }
 
   autoscaling:
     enabled: false
-
-# ------------------------------------------------------------------------------
-# Consumer configuration
-# ------------------------------------------------------------------------------
-consumer:
-  enabled: true
-  network: mainnet
-
-  port: 8080
-  ports: []
-
-  affinity: {}
-
-  image:
-    repository: ghcr.io/fuellabs/sv-consumer
-    pullPolicy: Always
-    tag: latest
-    args: []
-
-  # You can override the env variables for the container here
-  # using a map or an array of key-value pairs
-  envFrom: []
-  env: {}
-
-  service:
-    enabled: true
-    port: 8080
-    type: ClusterIP
-    config:
-      annotations: {}
-      labels: {}
-
-  prometheus:
-    enabled: true
-    scrape: true
-    path: /metrics
-    config:
-      annotations: {}
-      labels:
-        release: kube-prometheus-stack
-
-  config:
-    replicaCount: 3
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
-    podSecurityContext: {}
-    containerSecurityContext: {}
-    resources: {}
-
-  autoscaling:
-    enabled: false
-
-# ------------------------------------------------------------------------------
-# Webserver configuration
-# ------------------------------------------------------------------------------
-webserver:
-  enabled: true
-  network: mainnet
-
-  port: 8080
-  ports: []
-
-  affinity: {}
-
-  image:
-    repository: ghcr.io/fuellabs/sv-webserver
-    pullPolicy: Always
-    tag: latest
-
-  service:
-    enabled: true
-    port: 8080
-    type: ClusterIP
-    host: "stream-staging.fuel.network"
-    config:
-      annotations: {}
-      labels: {}
-
-  prometheus:
-    enabled: true
-    scrape: true
-    path: /metrics
-    config:
-      annotations: {}
-      labels:
-        release: kube-prometheus-stack
-
-  tls:
-    enabled: true
-    certificate:
-      issuer: letsencrypt-prod
-      duration: 2160h
-      renewBefore: 360h
-      config:
-        annotations: {}
-        labels: {}
-    ingress:
-      config:
-        annotations: {}
-        labels: {}
-
-  # You can override the env variables for the container here
-  # using a map or an array of key-value pairs
-  envFrom: []
-  env: {}
-
-  config:
-    replicaCount: 3
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
-    podSecurityContext: {}
-    containerSecurityContext: {}
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "2"
-        memory: "2Gi"
-
-  autoscaling:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-
-# ------------------------------------------------------------------------------
-# Api configuration
-# ------------------------------------------------------------------------------
-api:
-  enabled: true
-  network: mainnet
-
-  port: 8080
-  ports: []
-
-  affinity: {}
-
-  image:
-    repository: ghcr.io/fuellabs/sv-api
-    pullPolicy: Always
-    tag: latest
-
-  service:
-    enabled: true
-    port: 8080
-    type: ClusterIP
-    host: "stream-staging.fuel.network"
-    config:
-      annotations: {}
-      labels: {}
-
-  prometheus:
-    enabled: true
-    scrape: true
-    path: /metrics
-    config:
-      annotations: {}
-      labels:
-        release: kube-prometheus-stack
-
-  tls:
-    enabled: true
-    certificate:
-      issuer: letsencrypt-prod
-      duration: 2160h
-      renewBefore: 360h
-      config:
-        annotations: {}
-        labels: {}
-    ingress:
-      config:
-        annotations: {}
-        labels: {}
-
-  # You can override the env variables for the container here
-  # using a map or an array of key-value pairs
-  envFrom: []
-  env: {}
-
-  config:
-    replicaCount: 3
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    livenessProbe: {}
-    readinessProbe: {}
-    startupProbe: {}
-    podSecurityContext: {}
-    containerSecurityContext: {}
-    resources: {}
-
-  autoscaling:
-    enabled: true
-
-# ------------------------------------------------------------------------------
-# Dune configuration
-# ------------------------------------------------------------------------------
-dune:
-  enabled: false
-  network: mainnet
-
-  affinity: {}
-
-  image:
-    repository: ghcr.io/fuellabs/sv-dune
-    pullPolicy: Always
-    tag: latest
-
-  cronjob:
-    schedule: "0 * * * *" # Run every hour
-    successfulJobsHistoryLimit: 3
-    failedJobsHistoryLimit: 1
-    concurrencyPolicy: Forbid
-
-  config:
-    labels: {}
-    annotations: {}
-    podAnnotations: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    imagePullSecrets: []
-    podSecurityContext: {}
-    containerSecurityContext: {}
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-
-# ------------------------------------------------------------------------------
-# NATS Core configuration
-# ------------------------------------------------------------------------------
-nats:
-  enabled: true
-
-  natsBox:
-    enabled: false
-
-  affinity: {}
-
-  promExporter:
-    enabled: true
-    port: 6777
-    image:
-      repository: natsio/prometheus-nats-exporter
-      tag: 0.15.0
-    podMonitor:
-      enabled: true
-      merge:
-        metadata:
-          labels:
-            release: kube-prometheus-stack
-
-  container:
-    image:
-      repository: nats
-      tag: 2.10.24-alpine
-    env:
-      GOMEMLIMIT: 7GiB
-    merge:
-      resources:
-        requests:
-          cpu: 2
-          memory: 8Gi
-
-  service:
-    enabled: true
-    ports:
-      nats:
-        enabled: true
-      cluster:
-        enabled: true
-      monitor:
-        enabled: true
-
-  config:
-    cluster:
-      enabled: true
-      port: 6222
-      replicas: 5
-      routeURLs:
-        useFQDN: true
-
-    jetstream:
-      enabled: true
-      fileStore:
-        dir: /data
-        pvc:
-          enabled: true
-          size: 100Gi
-          storageClassName: "gp3-generic"
-
-    monitor:
-      enabled: true
-      port: 8222
-
-    merge:
-      max_payload: << 8MiB >>
-      jetstream:
-        max_file_store: << 100GiB >>
-        max_memory_store: << 7GiB >>
-      system_account: SYS
-      $include: auth.conf
-
-  statefulSet:
-    merge:
-      spec:
-        affinity:
-          $tplYaml: |
-            {{- include "k8s.pod-config.affinityy" . | nindent 4 }}
-
-  configMap:
-    merge:
-      $tplYaml: |
-        {{- include "nats-accounts" . | nindent 8 }}
 
 # ------------------------------------------------------------------------------
 # Prometheus & Monitoring configuration
