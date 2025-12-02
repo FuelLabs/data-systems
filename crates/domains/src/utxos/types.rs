@@ -1,14 +1,17 @@
 use fuel_data_parser::DataEncoder;
 use fuel_streams_types::primitives::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::infra::record::ToPacket;
 #[cfg(any(test, feature = "test-helpers"))]
-use crate::{inputs::Input, outputs::Output};
+use crate::{
+    inputs::Input,
+    outputs::Output,
+};
 
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
 pub struct Utxo {
     pub status: UtxoStatus,
     pub r#type: UtxoType,
@@ -23,7 +26,6 @@ pub struct Utxo {
 }
 
 impl DataEncoder for Utxo {}
-impl ToPacket for Utxo {}
 
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -39,9 +41,9 @@ impl MockUtxo {
                 r#type: UtxoType::InputContract,
                 utxo_id: contract.utxo_id.clone(),
                 tx_id: TxId::random(),
-                contract_id: Some(ContractId::new(
-                    fuel_types::ContractId::new(*contract.contract_id.0),
-                )),
+                contract_id: Some(ContractId::new(fuel_types::ContractId::new(
+                    *contract.contract_id.0,
+                ))),
                 asset_id: None,
                 from: None,
                 to: None,

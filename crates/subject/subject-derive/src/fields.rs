@@ -1,4 +1,7 @@
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::{
+    TokenStream,
+    TokenTree,
+};
 use syn::{
     punctuated::Punctuated,
     token::Comma,
@@ -130,17 +133,17 @@ fn is_option_type(ty: &Type) -> bool {
     false
 }
 
-pub fn from_input(
-    input: &DeriveInput,
-) -> Result<&Punctuated<Field, Comma>, TokenStream> {
+pub fn from_input(input: &DeriveInput) -> Result<&Punctuated<Field, Comma>, TokenStream> {
     let fields = match &input.data {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => &fields_named.named,
-            _ => return Err(Error::new_spanned(
-                input,
-                "Subject derive macro only supports structs with named fields",
-            )
-            .to_compile_error()),
+            _ => {
+                return Err(Error::new_spanned(
+                    input,
+                    "Subject derive macro only supports structs with named fields",
+                )
+                .to_compile_error())
+            }
         },
         _ => {
             return Err(Error::new_spanned(
@@ -155,9 +158,7 @@ pub fn from_input(
     Ok(fields)
 }
 
-fn validate_option_fields(
-    fields: &Punctuated<Field, Comma>,
-) -> Result<(), TokenStream> {
+fn validate_option_fields(fields: &Punctuated<Field, Comma>) -> Result<(), TokenStream> {
     for field in fields.iter() {
         if !is_option_type(&field.ty) {
             return Err(Error::new_spanned(
@@ -170,7 +171,7 @@ fn validate_option_fields(
     Ok(())
 }
 
-pub fn names_from_fields(fields: &Punctuated<Field, Comma>) -> Vec<FieldInfo> {
+pub fn names_from_fields(fields: &Punctuated<Field, Comma>) -> Vec<FieldInfo<'_>> {
     fields
         .iter()
         .filter_map(|f| {

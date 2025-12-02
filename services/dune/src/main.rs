@@ -1,21 +1,19 @@
-use std::{sync::Arc, time::Instant};
+#![deny(warnings)]
 
 use anyhow::Result;
 use clap::Parser;
-use fuel_data_parser::DataEncoder;
-use fuel_streams_domains::{
-    blocks::Block,
-    infra::{Db, DbConnectionOpts, QueryOptions},
-    transactions::Transaction,
+use fuel_core_services::Service;
+use fuel_web_utils::{
+    shutdown::ShutdownController,
+    tracing::init_tracing,
 };
-use fuel_streams_types::BlockHeight;
-use fuel_web_utils::{shutdown::ShutdownController, tracing::init_tracing};
+use std::sync::Arc;
 use sv_dune::{
-    helpers::Store,
-    processor::Processor,
-    s3::S3TableName,
+    service::{
+        new_service,
+        Config,
+    },
     Cli,
-    DuneError,
 };
 
 #[tokio::main]
@@ -23,230 +21,62 @@ async fn main() -> Result<()> {
     init_tracing()?;
 
     let cli = Cli::parse();
-    let db = setup_db(&cli.db_url).await?;
-    let store = Store::new()?;
     let shutdown = Arc::new(ShutdownController::new());
     shutdown.clone().spawn_signal_handler();
 
-    let opts = QueryOptions::default();
-    let last_height_indexed = Block::find_last_block_height(&db, &opts).await?;
-    let last_height_saved = store.get_last_block_saved().await?;
-    if *last_height_saved >= *last_height_indexed {
-        tracing::info!("Last block saved is up to date");
-        return Ok(());
-    }
+    let config = Config {
+        url: cli.url,
+        starting_height: cli.starting_block.into(),
+        storage_type: cli.storage_type,
+        registry_blocks_request_batch_size: cli.registry_blocks_request_batch_size,
+        registry_blocks_request_concurrency: cli.registry_blocks_request_concurrency,
+    };
+
+    let service = new_service(config)?;
+
+    service.start_and_await().await?;
 
     tokio::select! {
-        result = process_blocks(
-            &db,
-            &store,
-            &cli,
-            last_height_saved,
-            last_height_indexed,
-            &shutdown,
-        ) => {
-            if let Err(e) = result {
-                tracing::error!("Error processing blocks: {:?}", e);
-                return Err(e);
-            }
+        state = service.await_stop() => {
+            tracing::error!("Service stopped working: {:?}", state);
         }
         _ = shutdown.wait_for_shutdown() => {
             tracing::info!("Shutdown signal received, waiting for processing to complete...");
         }
     }
 
-    tracing::info!("Shutdown complete");
-    Ok(())
-}
-
-async fn setup_db(db_url: &str) -> Result<Arc<Db>, DuneError> {
-    let db = Db::new(DbConnectionOpts {
-        connection_str: db_url.to_string(),
-        ..Default::default()
-    })
-    .await?;
-    Ok(db)
-}
-
-async fn process_blocks(
-    db: &Arc<Db>,
-    store: &Store,
-    cli: &Cli,
-    last_height_saved: BlockHeight,
-    last_height_indexed: BlockHeight,
-    shutdown: &Arc<ShutdownController>,
-) -> Result<()> {
-    let processor = Processor::new(&cli.storage_type).await?;
-    let first_height = get_initial_height(db, cli, &last_height_saved).await?;
-    let total_blocks = *last_height_indexed - *first_height;
-    tracing::info!(
-        "Processing from block #{first_height} to #{last_height_indexed}"
-    );
-    tracing::info!("Total of {total_blocks} blocks to process");
-
-    let batches = Processor::calculate_height_batches(
-        first_height,
-        last_height_indexed,
-        cli.batch_size,
-    )?;
-
-    for (current_start, batch_end) in batches {
-        if shutdown.is_shutdown_initiated() {
-            tracing::info!(
-                "Shutdown requested, stopping processing gracefully..."
-            );
-            break;
-        }
-
-        if !store
-            .should_continue_processing(cli.max_blocks_to_store)
-            .await?
-        {
-            tracing::info!(
-                "Reached maximum blocks to store ({}), stopping processing",
-                cli.max_blocks_to_store.unwrap()
-            );
-            break;
-        }
-
-        let start_time = Instant::now();
-        tracing::info!(
-            "Processing batch from block #{current_start} to #{batch_end}"
-        );
-
-        let blocks_and_txs =
-            get_blocks_and_transactions(db, current_start, batch_end).await?;
-
-        process_batch(&processor, &blocks_and_txs, shutdown).await?;
-        if let Some((block, _)) = blocks_and_txs.last() {
-            store.save_last_block(block).await?;
-            store.save_total_blocks(blocks_and_txs.len()).await?;
-        }
-        tracing::info!("Batch processed in {:?}", start_time.elapsed());
-    }
+    service.stop_and_await().await?;
 
     Ok(())
-}
-
-async fn process_batch(
-    processor: &Processor,
-    blocks_and_txs: &[(Block, Vec<Transaction>)],
-    shutdown: &Arc<ShutdownController>,
-) -> Result<()> {
-    let blocks_task = async {
-        let batches = processor.calculate_blocks_batches(blocks_and_txs)?;
-        processor
-            .process_range(batches, S3TableName::Blocks)
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    let tx_task = async {
-        let batches = processor.calculate_txs_batches(blocks_and_txs)?;
-        processor
-            .process_range(batches, S3TableName::Transactions)
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    let receipts_task = async {
-        let batches = processor.calculate_receipts_batches(blocks_and_txs)?;
-        processor
-            .process_range(batches, S3TableName::Receipts)
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    tokio::select! {
-        result = async {
-            tokio::try_join!(blocks_task, tx_task, receipts_task)?;
-            Ok::<_, DuneError>(())
-        } => {
-            result?;
-        }
-        _ = shutdown.wait_for_shutdown() => {
-            tracing::info!("Shutdown signal received, stopping batch processing...");
-        }
-    }
-
-    Ok(())
-}
-
-async fn get_initial_height(
-    db: &Arc<Db>,
-    cli: &Cli,
-    last_height_saved: &BlockHeight,
-) -> Result<BlockHeight> {
-    if let Some(height) = cli.from_block {
-        return Ok(height);
-    }
-    let opts = QueryOptions::default();
-    let first_height_indexed =
-        Block::find_first_block_height(db, &opts).await?;
-    if *first_height_indexed > **last_height_saved {
-        Ok(first_height_indexed)
-    } else {
-        Ok(*last_height_saved)
-    }
-}
-
-async fn get_blocks_and_transactions(
-    db: &Arc<Db>,
-    start_height: BlockHeight,
-    end_height: BlockHeight,
-) -> Result<Vec<(Block, Vec<Transaction>)>> {
-    let mut data = Vec::new();
-    let batch_size = 500;
-    let mut current_start = start_height;
-    while current_start <= end_height {
-        let current_end =
-            std::cmp::min(*current_start + batch_size - 1, *end_height);
-        tracing::info!(
-            "Fetching blocks from #{current_start} to #{current_end}"
-        );
-
-        let blocks_with_txs = Block::find_blocks_with_transactions(
-            db.pool_ref(),
-            current_start,
-            current_end.into(),
-            &QueryOptions::default(),
-        )
-        .await?;
-
-        for (block_db_item, tx_items) in blocks_with_txs {
-            let block = Block::decode_json(&block_db_item.value)?;
-            let mut transactions = Vec::with_capacity(tx_items.len());
-            for tx_item in tx_items {
-                let transaction = Transaction::decode_json(&tx_item.value)?;
-                transactions.push(transaction);
-            }
-            data.push((block, transactions));
-        }
-        current_start = (current_end + 1).into();
-    }
-
-    Ok(data)
 }
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use fuel_streams_domains::mocks::{MockBlock, MockTransaction};
+    use fuel_streams_domains::mocks::{
+        MockBlock,
+        MockTransaction,
+    };
     use sv_dune::{
         helpers::AvroParser,
         processor::Processor,
-        s3::{S3Storage, S3StorageOpts, S3TableName, Storage},
+        s3::{
+            S3Storage,
+            S3StorageOpts,
+            S3TableName,
+            Storage,
+        },
         schemas::AvroBlock,
     };
 
     mod file_storage {
-        use pretty_assertions::assert_eq;
-
         use super::*;
+        use pretty_assertions::assert_eq;
+        use sv_dune::processor::StorageTypeConfig;
 
         #[tokio::test]
         async fn test_process_blocks_range_serialization() -> Result<()> {
-            let processor = Processor::new("File").await?;
+            let processor = Processor::new(StorageTypeConfig::File).await?;
             let mut blocks_and_txs = Vec::new();
 
             // Create 10 blocks with transactions
@@ -322,13 +152,16 @@ mod tests {
 
     mod s3_storage {
         use pretty_assertions::assert_eq;
-        use sv_dune::s3::StorageConfig;
+        use sv_dune::{
+            processor::StorageTypeConfig,
+            s3::StorageConfig,
+        };
 
         use super::*;
 
         #[tokio::test]
         async fn test_process_blocks_range_serialization() -> Result<()> {
-            let processor = Processor::new("S3").await?;
+            let processor = Processor::new(StorageTypeConfig::S3).await?;
             let mut blocks_and_txs = Vec::new();
 
             // Create a few blocks with transactions (keep it small)
@@ -360,7 +193,7 @@ mod tests {
             let s3_storage = S3Storage::new(s3_storage_opts).await?;
 
             // Retrieve the data from S3
-            let data = s3_storage.retrieve(s3_key).await?;
+            let data = s3_storage.retrieve(s3_key).await?.unwrap();
 
             // Deserialize using Avro
             let parser = AvroParser::default();

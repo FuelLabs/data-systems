@@ -2,7 +2,7 @@
 
 A dockerized fuel-data-systems for Kubernetes.
 
-This repo contains instructions how to spin up a full local kubernetes cluster with a fuel-publisher service and all supporting infrastructure.
+This repo contains instructions how to spin up a full local kubernetes cluster with services and all supporting infrastructure.
 
 The latter is intended for local development, but it also allows us to deploy the Helm charts to a cloud-based infra with ease.
 

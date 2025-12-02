@@ -48,11 +48,7 @@ jobs:
             fuel-streams-types
             fuel-streams-test
             fuel-web-utils
-            sv-api
             sv-dune
-            sv-webserver
-            sv-publisher
-            sv-consumer
 
   lockfile:
     name: Validate Lockfile
@@ -259,11 +255,7 @@ jobs:
           - fuel-streams-types
           - fuel-streams-test
           - fuel-web-utils
-          - sv-api
           - sv-dune
-          - sv-consumer
-          - sv-publisher
-          - sv-webserver
     steps:
       - uses: actions/checkout@v4
 
@@ -307,9 +299,7 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - sv-consumer
-          - sv-publisher
-          - sv-webserver
+          - sv-dune
         platform:
           # linux x86_64
           - os_name: Linux-x86_64-gnu

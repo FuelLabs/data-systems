@@ -10,6 +10,17 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+openapi = ["utoipa/axum_extras"]
+test-helpers = [
+    "fuel-core/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-domains/test-helpers",
+    "fuel-streams-subject/test-helpers",
+    "fuel-streams-types/test-helpers",
+]
+
 [dependencies]
 anyhow.workspace = true
 async-nats.workspace = true
@@ -33,14 +44,3 @@ utoipa.workspace = true
 [dev-dependencies]
 pretty_assertions.workspace = true
 serde_json.workspace = true
-
-[features]
-default = []
-openapi = ["utoipa/axum_extras"]
-test-helpers = [
-  "fuel-core/test-helpers",
-  "fuel-message-broker/test-helpers",
-  "fuel-streams-domains/test-helpers",
-  "fuel-streams-subject/test-helpers",
-  "fuel-streams-types/test-helpers",
-]

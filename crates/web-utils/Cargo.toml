@@ -10,45 +10,6 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[dependencies]
-anyhow.workspace = true
-async-trait.workspace = true
-axum.workspace = true
-chrono.workspace = true
-dashmap = "6.1.0"
-derive_more = { version = "2.0.1", features = ["full"] }
-displaydoc.workspace = true
-dotenvy.workspace = true
-elasticsearch = "8.15.0-alpha.1"
-fuel-data-parser.workspace = true
-fuel-message-broker.workspace = true
-fuel-streams-domains.workspace = true
-fuel-streams-types.workspace = true
-futures.workspace = true
-prometheus = { version = "0.13", features = ["process"] }
-rand.workspace = true
-rust_decimal = { version = "1.13" }
-serde.workspace = true
-serde_json.workspace = true
-serde_prometheus = { version = "0.2" }
-sqlx.workspace = true
-strum.workspace = true
-sysinfo = { version = "0.29" }
-thiserror = "2.0"
-time = { version = "0.3", features = ["serde"] }
-tokio.workspace = true
-tokio-util = "0.7.13"
-tower.workspace = true
-tower-http.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-url = "2.5"
-utoipa.workspace = true
-
-[dev-dependencies]
-mockall = "0.13.1"
-pretty_assertions.workspace = true
-
 # in an individual package Cargo.toml
 [package.metadata.cargo-machete]
 ignored = ["fuel-data-parser"]
@@ -56,8 +17,19 @@ ignored = ["fuel-data-parser"]
 [features]
 default = []
 test-helpers = [
-  "fuel-data-parser/test-helpers",
-  "fuel-message-broker/test-helpers",
-  "fuel-streams-domains/test-helpers",
-  "fuel-streams-types/test-helpers",
+    "fuel-data-parser/test-helpers",
+    "fuel-message-broker/test-helpers",
+    "fuel-streams-domains/test-helpers",
+    "fuel-streams-types/test-helpers",
 ]
+
+[dependencies]
+anyhow.workspace = true
+fuel-data-parser.workspace = true
+fuel-message-broker.workspace = true
+fuel-streams-domains.workspace = true
+fuel-streams-types.workspace = true
+tokio.workspace = true
+tokio-util = "0.7.13"
+tracing.workspace = true
+tracing-subscriber.workspace = true

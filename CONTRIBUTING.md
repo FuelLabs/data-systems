@@ -374,10 +374,6 @@ The scope field is mandatory and must be one of the following:
 
 **Service Packages:**
 
-- `sv-publisher`: Publisher service
-- `sv-consumer`: Consumer service
-- `sv-webserver`: WebSocket server
-- `sv-api`: API service
 - `sv-dune`: Dune Analytics integration service
 
 **Support Packages:**

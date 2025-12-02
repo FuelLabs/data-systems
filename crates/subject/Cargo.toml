@@ -10,6 +10,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[package.metadata.cargo-machete]
+ignored = ["serde", "serde_json"]
+
+[features]
+default = []
+test-helpers = []
+
 [dependencies]
 downcast-rs = "2.0.1"
 indexmap.workspace = true
@@ -21,10 +28,3 @@ thiserror.workspace = true
 [dev-dependencies]
 pretty_assertions.workspace = true
 test-case.workspace = true
-
-[package.metadata.cargo-machete]
-ignored = ["serde", "serde_json"]
-
-[features]
-default = []
-test-helpers = []

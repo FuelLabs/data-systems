@@ -1,11 +1,8 @@
-use std::{fs::File, io::Write, path::Path, sync::Arc};
-
-use apache_avro::{schema::derive::AvroSchemaComponent, AvroSchema};
-use fuel_streams_domains::{blocks::Block, transactions::Transaction};
-use fuel_streams_types::BlockHeight;
-
 use crate::{
-    helpers::{AvroParser, AvroWriter},
+    helpers::{
+        AvroParser,
+        AvroWriter,
+    },
     s3::{
         FuelNetwork,
         S3KeyBuilder,
@@ -15,9 +12,30 @@ use crate::{
         Storage,
         StorageConfig,
     },
-    schemas::{AvroBlock, AvroReceipt, AvroTransaction},
+    schemas::{
+        AvroBlock,
+        AvroReceipt,
+        AvroTransaction,
+    },
     DuneError,
     DuneResult,
+};
+use apache_avro::{
+    schema::derive::AvroSchemaComponent,
+    AvroSchema,
+};
+use fuel_streams_domains::{
+    blocks::Block,
+    transactions::Transaction,
+};
+use fuel_streams_types::BlockHeight;
+use std::{
+    fmt::Display,
+    fs::File,
+    io::Write,
+    ops::Deref,
+    path::Path,
+    sync::Arc,
 };
 
 #[derive(Debug, Clone)]
@@ -40,17 +58,47 @@ pub struct Processor {
     pub max_file_size: usize,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum StorageTypeConfig {
+    S3,
+    File,
+}
+
+impl Display for StorageTypeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StorageTypeConfig::S3 => write!(f, "S3"),
+            StorageTypeConfig::File => write!(f, "File"),
+        }
+    }
+}
+
+impl std::str::FromStr for StorageTypeConfig {
+    type Err = anyhow::Error;
+
+    fn from_str(input: &str) -> Result<StorageTypeConfig, Self::Err> {
+        match input {
+            "S3" => Ok(StorageTypeConfig::S3),
+            "File" => Ok(StorageTypeConfig::File),
+            _ => Err(anyhow::anyhow!("Unknown storage type {input}")),
+        }
+    }
+}
+
+const LATEST_BLOCK_HEIGHT_KEY: &str = "latest_block_height.txt";
+
 impl Processor {
     const DEFAULT_MAX_FILE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
-    pub async fn new(storage_type: &str) -> DuneResult<Self> {
-        let s3_storage_opts = S3StorageOpts::admin_opts();
-        let s3_storage = Arc::new(S3Storage::new(s3_storage_opts).await?);
-        s3_storage.ensure_bucket().await?;
+    pub async fn new(storage_type: StorageTypeConfig) -> DuneResult<Self> {
         let storage_type = match storage_type {
-            "S3" => StorageType::S3(s3_storage),
-            "File" => StorageType::File,
-            _ => panic!("Invalid storage type specified"),
+            StorageTypeConfig::S3 => {
+                let s3_storage_opts = S3StorageOpts::admin_opts();
+                let s3_storage = Arc::new(S3Storage::new(s3_storage_opts).await?);
+                s3_storage.ensure_bucket().await?;
+                StorageType::S3(s3_storage)
+            }
+            StorageTypeConfig::File => StorageType::File,
         };
         Ok(Self {
             storage_type,
@@ -62,7 +110,7 @@ impl Processor {
     }
 
     pub async fn new_with_unit(
-        storage_type: &str,
+        storage_type: StorageTypeConfig,
         size: usize,
         unit: SizeUnit,
     ) -> DuneResult<Self> {
@@ -80,11 +128,7 @@ impl Processor {
         }
     }
 
-    async fn create_output(
-        &self,
-        data: Vec<u8>,
-        key: &str,
-    ) -> DuneResult<String> {
+    async fn create_output(&self, data: Vec<u8>, key: &str) -> DuneResult<String> {
         let created = match &self.storage_type {
             StorageType::File => {
                 let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -105,6 +149,44 @@ impl Processor {
         Ok(created)
     }
 
+    pub async fn save_latest_height(
+        &self,
+        height: fuel_core_types::fuel_types::BlockHeight,
+    ) -> DuneResult<String> {
+        let network = FuelNetwork::load_from_env();
+        let key_builder = S3KeyBuilder::new(network).with_table(S3TableName::Metadata);
+        let key = key_builder.build_key(LATEST_BLOCK_HEIGHT_KEY);
+        let data = height.deref().to_string().into_bytes();
+        let file_path = self.create_output(data, &key).await?;
+        Ok(file_path)
+    }
+
+    pub async fn load_latest_height(
+        &self,
+    ) -> DuneResult<Option<fuel_core_types::fuel_types::BlockHeight>> {
+        let s3_storage_opts = S3StorageOpts::admin_opts();
+        let s3_storage = S3Storage::new(s3_storage_opts).await?;
+
+        // Retrieve the data from S3
+        let network = FuelNetwork::load_from_env();
+        let key_builder = S3KeyBuilder::new(network).with_table(S3TableName::Metadata);
+        let key = key_builder.build_key(LATEST_BLOCK_HEIGHT_KEY);
+        let data = s3_storage.retrieve(&key).await?;
+
+        let Some(data) = data else {
+            return Ok(None);
+        };
+
+        let number = String::from_utf8(data).map_err(|e| {
+            anyhow::anyhow!("Unable to convert bytes into a string: {}", e)
+        })?;
+        let height: u32 = number
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Unable to parse string into a u32: {}", e))?;
+
+        Ok(Some(height.into()))
+    }
+
     pub async fn process_range(
         &self,
         batches: Vec<(BlockHeight, BlockHeight, Vec<u8>)>,
@@ -114,7 +196,7 @@ impl Processor {
         for (start, end, data) in batches {
             let network = FuelNetwork::load_from_env();
             let key_builder = S3KeyBuilder::new(network).with_table(table);
-            let key = key_builder.build_key(start, end);
+            let key = key_builder.build_key_from_heights(start, end);
             let file_path = self.create_output(data, &key).await?;
             tracing::info!("New file saved: {}", file_path);
             file_paths.push(file_path);
@@ -251,13 +333,11 @@ impl Processor {
 
         let mut batches = Vec::new();
         let total_blocks = *last_height - *start_height + 1;
-        let num_batches =
-            ((total_blocks as f64) / (batch_size as f64)).ceil() as u32;
+        let num_batches = ((total_blocks as f64) / (batch_size as f64)).ceil() as u32;
         let size_per_batch = total_blocks.div_ceil(num_batches);
         let mut current = *start_height;
         while current <= *last_height {
-            let batch_end =
-                std::cmp::min(current + size_per_batch - 1, *last_height);
+            let batch_end = std::cmp::min(current + size_per_batch - 1, *last_height);
             batches.push((current.into(), batch_end.into()));
             current = batch_end + 1;
         }
@@ -294,8 +374,7 @@ mod tests {
 
     #[test]
     fn test_calculate_height_batches_perfect_division() -> Result<()> {
-        let batches =
-            Processor::calculate_height_batches(1.into(), 3000.into(), 1000)?;
+        let batches = Processor::calculate_height_batches(1.into(), 3000.into(), 1000)?;
 
         assert_eq!(
             batches,
@@ -311,11 +390,8 @@ mod tests {
 
     #[test]
     fn test_calculate_height_batches_uneven_division() -> Result<()> {
-        let batches = Processor::calculate_height_batches(
-            1000.into(),
-            3500.into(),
-            1000,
-        )?;
+        let batches =
+            Processor::calculate_height_batches(1000.into(), 3500.into(), 1000)?;
 
         assert_eq!(
             batches.len(),
@@ -340,8 +416,7 @@ mod tests {
 
     #[test]
     fn test_calculate_height_batches_invalid_range() -> Result<()> {
-        let result =
-            Processor::calculate_height_batches(2.into(), 1.into(), 1000);
+        let result = Processor::calculate_height_batches(2.into(), 1.into(), 1000);
         assert!(result.is_err(), "Should return error for invalid range");
         match result {
             Err(DuneError::InvalidBlockRange { start, end }) => {
@@ -356,7 +431,8 @@ mod tests {
     #[tokio::test]
     async fn test_calculate_blocks_batches() -> Result<()> {
         let processor =
-            Processor::new_with_unit("File", 1, SizeUnit::Megabytes).await?;
+            Processor::new_with_unit(StorageTypeConfig::File, 1, SizeUnit::Megabytes)
+                .await?;
 
         let mut blocks_and_txs = Vec::new();
         for i in 1..=3 {
@@ -402,7 +478,8 @@ mod tests {
     #[tokio::test]
     async fn test_calculate_txs_batches() -> Result<()> {
         let processor =
-            Processor::new_with_unit("File", 1, SizeUnit::Megabytes).await?;
+            Processor::new_with_unit(StorageTypeConfig::File, 1, SizeUnit::Megabytes)
+                .await?;
 
         let mut blocks_and_txs = Vec::new();
         for i in 1..=3 {
@@ -452,7 +529,8 @@ mod tests {
     #[tokio::test]
     async fn test_calculate_receipts_batches() -> Result<()> {
         let processor =
-            Processor::new_with_unit("File", 1, SizeUnit::Megabytes).await?;
+            Processor::new_with_unit(StorageTypeConfig::File, 1, SizeUnit::Megabytes)
+                .await?;
 
         let mut blocks_and_txs = Vec::new();
         for i in 1..=3 {
@@ -496,6 +574,26 @@ mod tests {
             total_receipts > 0,
             "Should have at least some receipts in the test data"
         );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_load_save_block_height_s3() -> Result<()> {
+        let processor =
+            Processor::new_with_unit(StorageTypeConfig::S3, 1, SizeUnit::Megabytes)
+                .await?;
+
+        // Given
+        let expected_height = 123u32.into();
+        processor.save_latest_height(expected_height).await?;
+
+        // When
+        let result = processor.load_latest_height().await?;
+
+        // Then
+        let actual_height = result.expect("Height should be present");
+        assert_eq!(actual_height, expected_height, "Heights should match");
 
         Ok(())
     }

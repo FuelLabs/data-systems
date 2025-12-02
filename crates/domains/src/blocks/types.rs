@@ -1,9 +1,13 @@
 use fuel_data_parser::DataEncoder;
 pub use fuel_streams_types::BlockHeight;
-use fuel_streams_types::{fuel_core::*, primitives::*};
-use serde::{Deserialize, Serialize};
-
-use crate::infra::ToPacket;
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // Block type
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -12,38 +16,42 @@ pub struct Block {
     pub header: BlockHeader,
     pub height: BlockHeight,
     pub id: BlockId,
-    pub transaction_ids: Vec<TxId>,
+    pub transaction_count: i64,
     pub version: BlockVersion,
     pub producer: Address,
 }
 
 impl DataEncoder for Block {}
-impl ToPacket for Block {}
 
 impl Block {
     pub fn new(
-        block: &fuel_core_types::blockchain::block::Block,
-        consensus: Consensus,
-        transaction_ids: Vec<TxId>,
-        producer: Address,
-    ) -> Self {
-        let header: BlockHeader = block.header().into();
-        let height = header.height;
-        let version = match block {
-            fuel_core_types::blockchain::block::Block::V1(_) => {
-                BlockVersion::V1
-            }
+        header: &fuel_core_types::blockchain::header::BlockHeader,
+        consensus: FuelCoreConsensus,
+        transaction_count: usize,
+    ) -> anyhow::Result<Self> {
+        let version = match header {
+            fuel_core_types::blockchain::header::BlockHeader::V1(_) => BlockVersion::V1,
         };
 
-        Self {
+        let producer = consensus
+            .block_producer(&header.id())
+            .map_err(|_| FuelCoreError::GetBlockProducer)?;
+        let consensus = Consensus::from(consensus);
+
+        let header: BlockHeader = header.into();
+        let height = header.height;
+
+        let _self = Self {
             consensus,
             header: header.to_owned(),
             height,
             id: header.id,
-            transaction_ids,
+            transaction_count: transaction_count as i64,
             version,
-            producer,
-        }
+            producer: producer.into(),
+        };
+
+        Ok(_self)
     }
 }
 
@@ -101,14 +109,7 @@ impl Consensus {
 }
 
 #[derive(
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    utoipa::ToSchema,
+    Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema,
 )]
 pub struct Genesis {
     pub chain_config_hash: Bytes32,
@@ -130,9 +131,7 @@ impl From<FuelCoreGenesis> for Genesis {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PoAConsensus {
     pub signature: Signature,
 }
@@ -160,9 +159,7 @@ impl Default for Consensus {
 impl From<FuelCoreConsensus> for Consensus {
     fn from(consensus: FuelCoreConsensus) -> Self {
         match consensus {
-            FuelCoreConsensus::Genesis(genesis) => {
-                Consensus::Genesis(genesis.into())
-            }
+            FuelCoreConsensus::Genesis(genesis) => Consensus::Genesis(genesis.into()),
             FuelCoreConsensus::PoA(poa) => Consensus::PoAConsensus(poa.into()),
             _ => panic!("Unknown consensus type: {:?}", consensus),
         }
@@ -187,11 +184,11 @@ impl MockBlock {
         *block.transactions_mut() = txs;
 
         let mut block = Block::new(
-            &block,
-            Consensus::default(),
-            Vec::new(),
-            Address::default(),
-        );
+            block.header(),
+            FuelCoreConsensus::Genesis(Default::default()),
+            0,
+        )
+        .unwrap();
         let now = chrono::Utc::now();
         block.header.time = BlockTime::from_unix(now.timestamp());
         block

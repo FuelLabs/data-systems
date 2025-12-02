@@ -1,25 +1,30 @@
 use std::sync::Arc;
 
 use fuel_core_types::services::executor::Event;
-use fuel_data_parser::{DataEncoder, DataParserError};
+use fuel_data_parser::{
+    DataEncoder,
+    DataParserError,
+};
 use fuel_streams_types::{
     Address,
     BlockTimestamp,
     FuelCoreAssetId,
-    FuelCoreBytes32,
     FuelCoreChainId,
     FuelCoreError,
-    FuelCoreLike,
-    FuelCoreSealedBlock,
-    FuelCoreTypesTransaction,
-    FuelCoreUniqueIdentifier,
     TxId,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
-    blocks::{Block, BlockHeight, Consensus},
-    transactions::{Transaction, TransactionStatus},
+    blocks::{
+        Block,
+        BlockHeight,
+        Consensus,
+    },
+    transactions::Transaction,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -41,26 +46,6 @@ pub struct Metadata {
     pub consensus: Arc<Consensus>,
 }
 
-impl Metadata {
-    pub fn new(
-        fuel_core: &Arc<dyn FuelCoreLike>,
-        sealed_block: &FuelCoreSealedBlock,
-    ) -> Self {
-        let block = sealed_block.entity.clone();
-        let consensus = sealed_block.consensus.clone();
-        let height = *block.header().consensus().height;
-        let producer =
-            consensus.block_producer(&block.id()).unwrap_or_default();
-        Self {
-            chain_id: Arc::new(*fuel_core.chain_id()),
-            base_asset_id: Arc::new(*fuel_core.base_asset_id()),
-            block_producer: Arc::new(producer.into()),
-            block_height: Arc::new(height.into()),
-            consensus: Arc::new(consensus.into()),
-        }
-    }
-}
-
 pub type TxItem = (usize, Transaction);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,28 +60,6 @@ pub struct MsgPayload {
 impl DataEncoder for MsgPayload {}
 
 impl MsgPayload {
-    pub async fn new(
-        fuel_core: &Arc<dyn FuelCoreLike>,
-        sealed_block: &FuelCoreSealedBlock,
-        metadata: &Metadata,
-        events: Vec<Event>,
-    ) -> Result<Self, MsgPayloadError> {
-        let (block, producer) =
-            fuel_core.get_block_and_producer(sealed_block)?;
-        let txs = Self::txs_from_fuelcore(fuel_core, sealed_block).await?;
-        let txs_ids = txs.iter().map(|i| i.id.clone()).collect();
-        let block_height = block.header().height();
-        let consensus = fuel_core.get_consensus(block_height)?;
-        let block = Block::new(&block, consensus.into(), txs_ids, producer);
-        Ok(Self {
-            block,
-            transactions: txs,
-            metadata: metadata.to_owned(),
-            namespace: None,
-            events,
-        })
-    }
-
     pub fn with_namespace(mut self, namespace: &str) -> Self {
         self.namespace = Some(namespace.to_string());
         self
@@ -131,60 +94,6 @@ impl MsgPayload {
 
     pub fn timestamp(&self) -> BlockTimestamp {
         BlockTimestamp::from(&self.block.header)
-    }
-
-    pub async fn txs_from_fuelcore(
-        fuel_core: &Arc<dyn FuelCoreLike>,
-        sealed_block: &FuelCoreSealedBlock,
-    ) -> Result<Vec<Transaction>, MsgPayloadError> {
-        let mut transactions: Vec<Transaction> = vec![];
-        let blocks_txs = sealed_block.entity.transactions_vec();
-        for tx in blocks_txs.iter() {
-            let tx = Self::tx_from_fuel_core(fuel_core, tx).await?;
-            transactions.push(tx);
-        }
-        Ok(transactions)
-    }
-
-    pub async fn tx_from_fuel_core(
-        fuel_core: &Arc<dyn FuelCoreLike>,
-        tx: &FuelCoreTypesTransaction,
-    ) -> Result<Transaction, MsgPayloadError> {
-        let chain_id = fuel_core.chain_id();
-        let base_asset_id = fuel_core.base_asset_id();
-        let tx_id = tx.id(chain_id);
-        let status = Self::retrieve_tx_status(fuel_core, &tx_id, 0).await?;
-        let receipts = fuel_core.get_receipts(&tx_id)?.unwrap_or_default();
-        Ok(Transaction::new(
-            &tx_id.into(),
-            tx,
-            &status,
-            base_asset_id,
-            &receipts,
-        ))
-    }
-
-    async fn retrieve_tx_status(
-        fuel_core: &Arc<dyn FuelCoreLike>,
-        tx_id: &FuelCoreBytes32,
-        attempts: u8,
-    ) -> Result<TransactionStatus, MsgPayloadError> {
-        if attempts > 5 {
-            return Err(MsgPayloadError::TransactionStatus(tx_id.to_string()));
-        }
-        let status = fuel_core.get_tx_status(tx_id)?;
-        match status {
-            Some(status) => Ok((&status).into()),
-            _ => {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                Box::pin(Self::retrieve_tx_status(
-                    fuel_core,
-                    tx_id,
-                    attempts + 1,
-                ))
-                .await
-            }
-        }
     }
 }
 
@@ -250,29 +159,22 @@ impl MockMsgPayload {
         height: BlockHeight,
         r#type: crate::transactions::TransactionType,
     ) -> Self {
-        use crate::{mocks::*, transactions::TransactionType};
+        use crate::{
+            mocks::*,
+            transactions::TransactionType,
+        };
         let inputs = MockInput::all();
         let outputs = MockOutput::all();
         let receipts = MockReceipt::all();
         let transaction = match r#type {
-            TransactionType::Script => {
-                MockTransaction::script(inputs, outputs, receipts)
-            }
-            TransactionType::Create => {
-                MockTransaction::create(inputs, outputs, receipts)
-            }
-            TransactionType::Mint => {
-                MockTransaction::mint(inputs, outputs, receipts)
-            }
+            TransactionType::Script => MockTransaction::script(inputs, outputs, receipts),
+            TransactionType::Create => MockTransaction::create(inputs, outputs, receipts),
+            TransactionType::Mint => MockTransaction::mint(inputs, outputs, receipts),
             TransactionType::Upgrade => {
                 MockTransaction::upgrade(inputs, outputs, receipts)
             }
-            TransactionType::Upload => {
-                MockTransaction::upload(inputs, outputs, receipts)
-            }
-            TransactionType::Blob => {
-                MockTransaction::blob(inputs, outputs, receipts)
-            }
+            TransactionType::Upload => MockTransaction::upload(inputs, outputs, receipts),
+            TransactionType::Blob => MockTransaction::blob(inputs, outputs, receipts),
         };
 
         let mut payload = Self::new(height);

@@ -1,5 +1,3 @@
-#![doc = include_str!("../README.md")]
-
 pub mod client;
 pub mod error;
 pub mod networks;
@@ -21,5 +19,11 @@ pub mod types {
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod prelude {
-    pub use crate::{client::*, error::*, networks::*, subjects::*, types::*};
+    pub use crate::{
+        client::*,
+        error::*,
+        networks::*,
+        subjects::*,
+        types::*,
+    };
 }

@@ -10,7 +10,16 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+test-helpers = [
+    "fuel-core-types/test-helpers",
+    "fuel-core/test-helpers",
+    "fuel-streams-types/test-helpers",
+]
+
 [dependencies]
+anyhow = "1"
 async-trait.workspace = true
 axum.workspace = true
 chrono.workspace = true
@@ -39,11 +48,3 @@ anyhow.workspace = true
 pretty_assertions.workspace = true
 serde_urlencoded.workspace = true
 test-case.workspace = true
-
-[features]
-default = []
-test-helpers = [
-  "fuel-core-types/test-helpers",
-  "fuel-core/test-helpers",
-  "fuel-streams-types/test-helpers",
-]

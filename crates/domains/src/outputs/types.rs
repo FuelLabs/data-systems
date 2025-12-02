@@ -1,8 +1,12 @@
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{fuel_core::*, primitives::*};
-use serde::{Deserialize, Serialize};
-
-use crate::infra::record::ToPacket;
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // Output enum
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -16,7 +20,6 @@ pub enum Output {
 }
 
 impl DataEncoder for Output {}
-impl ToPacket for Output {}
 
 impl From<&FuelCoreOutput> for Output {
     fn from(output: &FuelCoreOutput) -> Self {
@@ -30,9 +33,7 @@ impl From<&FuelCoreOutput> for Output {
                 asset_id: asset_id.into(),
                 to: to.into(),
             }),
-            FuelCoreOutput::Contract(contract) => {
-                Output::Contract(contract.into())
-            }
+            FuelCoreOutput::Contract(contract) => Output::Contract(contract.into()),
             FuelCoreOutput::Change {
                 amount,
                 asset_id,
@@ -62,36 +63,28 @@ impl From<&FuelCoreOutput> for Output {
     }
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OutputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OutputChange {
     pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OutputVariable {
     pub amount: Amount,
     pub asset_id: AssetId,
     pub to: Address,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OutputContract {
     pub balance_root: Bytes32,
     pub input_index: u16,
@@ -108,9 +101,7 @@ impl From<&FuelCoreOutputContract> for OutputContract {
     }
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OutputContractCreated {
     pub contract_id: ContractId,
     pub state_root: Bytes32,

@@ -113,10 +113,7 @@ dune:
   enabled: true
   network: mainnet
 
-  ports: [ ]
-  port: 8080
-
-  affinity: { }
+  url: "http://localhost:4000/v1/graphql"
 
   image:
     repository: ghcr.io/fuellabs/sv-publisher

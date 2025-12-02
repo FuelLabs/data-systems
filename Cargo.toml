@@ -3,10 +3,7 @@ default-members = ["crates/fuel-streams"]
 members = [
     "crates/*",
     "crates/subject/subject-derive",
-    "examples",
-    "scripts/generate-api-keys",
     "scripts/subjects-schema",
-    "scripts/update-db",
     "services/*",
 ]
 resolver = "2"
@@ -28,7 +25,6 @@ async-nats = "0.40.0"
 async-stream = "0.3.6"
 async-trait = "0.1.88"
 axum = { version = "0.8.3", features = ["json", "ws", "query"] }
-bincode = "2.0.1"
 bytes = "1.10.1"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.35", features = ["derive", "env"] }
@@ -40,10 +36,28 @@ derive_more = { version = "2.0.1", features = [
 ] }
 displaydoc = "0.2.5"
 dotenvy = "0.15.7"
+
+# Fuel Core dependencies
+fuel-core = { version = "0.47.1", default-features = false }
+fuel-core-client = { version = "0.47.1", default-features = false }
+fuel-core-services = { version = "0.47.1", default-features = false }
+fuel-core-types = { version = "0.47.1", default-features = false, features = [
+    "serde",
+    "std",
+] }
+
+# Internal dependencies
+fuel-data-parser = { version = "0.0.29", path = "crates/data-parser" }
+fuel-message-broker = { version = "0.0.29", path = "crates/message-broker" }
+fuel-streams = { version = "0.0.29", path = "crates/fuel-streams" }
+fuel-streams-core = { version = "0.0.29", path = "crates/core" }
+fuel-streams-domains = { version = "0.0.29", path = "crates/domains" }
+fuel-streams-subject = { version = "0.0.29", path = "crates/subject" }
+fuel-streams-types = { version = "0.0.29", path = "crates/types" }
+fuel-web-utils = { version = "0.0.29", path = "crates/web-utils" }
 futures = "0.3.31"
 hex = "0.4.3"
 indexmap = { version = "2.8.0", features = ["serde"] }
-num_cpus = "1.16.0"
 pretty_assertions = "1.4.1"
 rand = "0.9.0"
 rayon = "1.10.0"
@@ -59,6 +73,7 @@ sqlx = { version = "0.8.3", default-features = false, features = [
 ] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
+subject-derive = { version = "0.0.29", path = "crates/subject/subject-derive" }
 test-case = "3.3.1"
 thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["serde"] }
@@ -83,39 +98,6 @@ tracing-subscriber = { version = "0.3.19", features = [
 ] }
 utoipa = { version = "5.3.1", features = ["axum_extras", "chrono", "time"] }
 
-# Fuel Core dependencies
-fuel-core = { version = "0.46.0", default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core-bin = { version = "0.46.0", default-features = false, features = [
-    "p2p",
-    "relayer",
-    "rocksdb",
-] }
-fuel-core-client = { version = "0.46.0", default-features = false, features = [
-    "std",
-] }
-fuel-core-importer = { version = "0.46.0" }
-fuel-core-services = { version = "0.46.0", default-features = false }
-fuel-core-storage = { version = "0.46.0" }
-fuel-core-types = { version = "0.46.0", default-features = false, features = [
-    "serde",
-    "std",
-] }
-
-# Internal dependencies
-fuel-data-parser = { version = "0.0.29", path = "crates/data-parser" }
-fuel-message-broker = { version = "0.0.29", path = "crates/message-broker" }
-fuel-streams = { version = "0.0.29", path = "crates/fuel-streams" }
-fuel-streams-core = { version = "0.0.29", path = "crates/core" }
-fuel-streams-domains = { version = "0.0.29", path = "crates/domains" }
-fuel-streams-subject = { version = "0.0.29", path = "crates/subject" }
-fuel-streams-types = { version = "0.0.29", path = "crates/types" }
-fuel-web-utils = { version = "0.0.29", path = "crates/web-utils" }
-subject-derive = { version = "0.0.29", path = "crates/subject/subject-derive" }
-
 # Workspace projects
 [workspace.metadata.cargo-machete]
 ignored = ["anyhow", "fuel-core", "tokio", "serde_bytes"]
@@ -134,3 +116,6 @@ incremental = true
 lto = false
 opt-level = 0
 split-debuginfo = "unpacked"
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "feature/log-id-expose" }

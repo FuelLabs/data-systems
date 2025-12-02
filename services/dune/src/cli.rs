@@ -1,50 +1,32 @@
+use crate::processor::StorageTypeConfig;
 use clap::Parser;
-use fuel_streams_types::BlockHeight;
+use url::Url;
 
 #[derive(Debug, Clone, Parser)]
 pub struct Cli {
-    #[arg(
-        long,
-        value_name = "NETWORK",
-        env = "NETWORK",
-        default_value = "local",
-        help = "Network to connect to. Options are 'local', 'testnet', 'mainnet', or 'staging'."
-    )]
-    pub network: String,
+    #[arg(long)]
+    pub url: Url,
 
-    #[arg(
-        long,
-        value_name = "DATABASE_URL",
-        env = "DATABASE_URL",
-        default_value = "postgresql://postgres:postgres@localhost:5432/fuel_test?sslmode=disable",
-        help = "Database URL to connect to."
-    )]
-    pub db_url: String,
+    #[arg(long)]
+    pub starting_block: u32,
 
     #[arg(
         long,
         value_name = "STORAGE_TYPE",
         env = "STORAGE_TYPE",
-        default_value = "File",
+        default_value = "StorageTypeConfig::File",
         help = "Type of storage to use. Options are 'S3' or 'File'."
     )]
-    pub storage_type: String,
+    pub storage_type: StorageTypeConfig,
 
-    #[arg(
-        long,
-        value_name = "MAX_BLOCKS_TO_STORE",
-        env = "MAX_BLOCKS_TO_STORE"
-    )]
-    pub max_blocks_to_store: Option<usize>,
-
-    #[arg(long, value_name = "FROM_BLOCK", env = "FROM_BLOCK")]
-    pub from_block: Option<BlockHeight>,
-
-    #[arg(
-        long,
-        value_name = "BATCH_SIZE",
-        env = "BATCH_SIZE",
-        default_value = "3600"
-    )]
+    #[arg(long, default_value = "3600")]
     pub batch_size: usize,
+
+    /// The number of blocks to fetch in each request to the node.
+    #[arg(long, env, default_value = "10")]
+    pub registry_blocks_request_batch_size: usize,
+
+    /// The number of concurrent requests for blocks.
+    #[arg(long, env, default_value = "100")]
+    pub registry_blocks_request_concurrency: usize,
 }

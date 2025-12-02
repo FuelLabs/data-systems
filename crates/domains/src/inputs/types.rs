@@ -1,8 +1,12 @@
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{fuel_core::*, primitives::*};
-use serde::{Deserialize, Serialize};
-
-use crate::infra::record::ToPacket;
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(
     Debug,
@@ -21,7 +25,6 @@ pub enum Input {
 }
 
 impl DataEncoder for Input {}
-impl ToPacket for Input {}
 
 impl From<&FuelCoreInput> for Input {
     fn from(input: &FuelCoreInput) -> Self {
@@ -55,76 +58,58 @@ impl From<&FuelCoreInput> for Input {
                 utxo_id: input.utxo_id.into(),
                 witness_index: 0,
             }),
-            FuelCoreInput::MessageCoinSigned(input) => {
-                Input::Message(InputMessage {
-                    amount: input.amount.into(),
-                    data: HexData::random(),
-                    nonce: input.nonce.into(),
-                    predicate: HexData::random(),
-                    predicate_length: 0,
-                    predicate_data: HexData::random(),
-                    predicate_data_length: 0,
-                    predicate_gas_used: 0.into(),
-                    recipient: input.recipient.into(),
-                    sender: input.sender.into(),
-                    witness_index: 0,
-                })
-            }
-            FuelCoreInput::MessageCoinPredicate(input) => {
-                Input::Message(InputMessage {
-                    amount: input.amount.into(),
-                    data: HexData::random(),
-                    nonce: input.nonce.into(),
-                    predicate: HexData(input.predicate.as_slice().into()),
-                    predicate_length: input.predicate.as_slice().len(),
-                    predicate_data: HexData(
-                        input.predicate_data.as_slice().into(),
-                    ),
-                    predicate_data_length: input
-                        .predicate_data
-                        .as_slice()
-                        .len(),
-                    predicate_gas_used: input.predicate_gas_used.into(),
-                    recipient: input.recipient.into(),
-                    sender: input.sender.into(),
-                    witness_index: 0,
-                })
-            }
-            FuelCoreInput::MessageDataSigned(input) => {
-                Input::Message(InputMessage {
-                    amount: input.amount.into(),
-                    data: HexData(input.data.as_slice().into()),
-                    nonce: input.nonce.into(),
-                    predicate: HexData::random(),
-                    predicate_length: 0,
-                    predicate_data: HexData::random(),
-                    predicate_data_length: 0,
-                    predicate_gas_used: 0.into(),
-                    recipient: input.recipient.into(),
-                    sender: input.sender.into(),
-                    witness_index: input.witness_index,
-                })
-            }
-            FuelCoreInput::MessageDataPredicate(input) => {
-                Input::Message(InputMessage {
-                    amount: input.amount.into(),
-                    data: HexData(input.data.as_slice().into()),
-                    nonce: input.nonce.into(),
-                    predicate: HexData(input.predicate.as_slice().into()),
-                    predicate_length: input.predicate.as_slice().len(),
-                    predicate_data: HexData(
-                        input.predicate_data.as_slice().into(),
-                    ),
-                    predicate_data_length: input
-                        .predicate_data
-                        .as_slice()
-                        .len(),
-                    predicate_gas_used: input.predicate_gas_used.into(),
-                    recipient: input.recipient.into(),
-                    sender: input.sender.into(),
-                    witness_index: 0,
-                })
-            }
+            FuelCoreInput::MessageCoinSigned(input) => Input::Message(InputMessage {
+                amount: input.amount.into(),
+                data: HexData::random(),
+                nonce: input.nonce.into(),
+                predicate: HexData::random(),
+                predicate_length: 0,
+                predicate_data: HexData::random(),
+                predicate_data_length: 0,
+                predicate_gas_used: 0.into(),
+                recipient: input.recipient.into(),
+                sender: input.sender.into(),
+                witness_index: 0,
+            }),
+            FuelCoreInput::MessageCoinPredicate(input) => Input::Message(InputMessage {
+                amount: input.amount.into(),
+                data: HexData::random(),
+                nonce: input.nonce.into(),
+                predicate: HexData(input.predicate.as_slice().into()),
+                predicate_length: input.predicate.as_slice().len(),
+                predicate_data: HexData(input.predicate_data.as_slice().into()),
+                predicate_data_length: input.predicate_data.as_slice().len(),
+                predicate_gas_used: input.predicate_gas_used.into(),
+                recipient: input.recipient.into(),
+                sender: input.sender.into(),
+                witness_index: 0,
+            }),
+            FuelCoreInput::MessageDataSigned(input) => Input::Message(InputMessage {
+                amount: input.amount.into(),
+                data: HexData(input.data.as_slice().into()),
+                nonce: input.nonce.into(),
+                predicate: HexData::random(),
+                predicate_length: 0,
+                predicate_data: HexData::random(),
+                predicate_data_length: 0,
+                predicate_gas_used: 0.into(),
+                recipient: input.recipient.into(),
+                sender: input.sender.into(),
+                witness_index: input.witness_index,
+            }),
+            FuelCoreInput::MessageDataPredicate(input) => Input::Message(InputMessage {
+                amount: input.amount.into(),
+                data: HexData(input.data.as_slice().into()),
+                nonce: input.nonce.into(),
+                predicate: HexData(input.predicate.as_slice().into()),
+                predicate_length: input.predicate.as_slice().len(),
+                predicate_data: HexData(input.predicate_data.as_slice().into()),
+                predicate_data_length: input.predicate_data.as_slice().len(),
+                predicate_gas_used: input.predicate_gas_used.into(),
+                recipient: input.recipient.into(),
+                sender: input.sender.into(),
+                witness_index: 0,
+            }),
         }
     }
 }
@@ -135,9 +120,7 @@ impl Default for Input {
     }
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct InputCoin {
     pub amount: Amount,
     pub asset_id: AssetId,
@@ -150,9 +133,7 @@ pub struct InputCoin {
     pub witness_index: u16,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct InputContract {
     pub balance_root: Bytes32,
     pub contract_id: Bytes32,
@@ -173,9 +154,7 @@ impl From<&FuelCoreInputContract> for InputContract {
     }
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct InputMessage {
     pub amount: Amount,
     pub data: HexData,

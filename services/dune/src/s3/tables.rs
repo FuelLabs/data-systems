@@ -1,4 +1,7 @@
-use std::{fmt::Display, sync::LazyLock};
+use std::{
+    fmt::Display,
+    sync::LazyLock,
+};
 
 use fuel_streams_types::BlockHeight;
 
@@ -40,6 +43,7 @@ pub enum S3TableName {
     Blocks,
     Transactions,
     Receipts,
+    Metadata,
 }
 
 impl Display for S3TableName {
@@ -48,6 +52,9 @@ impl Display for S3TableName {
             S3TableName::Blocks => write!(f, "blocks"),
             S3TableName::Transactions => write!(f, "transactions"),
             S3TableName::Receipts => write!(f, "receipts"),
+            S3TableName::Metadata => {
+                write!(f, "metadata")
+            }
         }
     }
 }
@@ -75,7 +82,14 @@ impl S3KeyBuilder {
         self
     }
 
-    pub fn build_key(
+    pub fn build_key(&self, filename: &str) -> String {
+        format!(
+            "{}/{}/{}/{}",
+            *BUCKET_PREFIX, self.chain, self.table, filename
+        )
+    }
+
+    pub fn build_key_from_heights(
         &self,
         start_block: BlockHeight,
         end_block: BlockHeight,
