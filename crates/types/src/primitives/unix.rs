@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use apache_avro::{
-    schema::{
-        derive::AvroSchemaComponent,
-        Name,
-    },
     Schema,
+    schema::{
+        Name,
+        derive::AvroSchemaComponent,
+    },
 };
 use fuel_core_client::client::schema::Tai64Timestamp as FuelCoreTai64Timestamp;
 use serde::{
@@ -53,7 +53,7 @@ impl<'de> Deserialize<'de> for UnixTimestamp {
             {
                 let timestamp = value.parse::<i64>().map_err(serde::de::Error::custom)?;
                 let tai64_time = FuelCoreTai64Timestamp(Tai64(timestamp as u64));
-                Ok(UnixTimestamp(tai64_time.0 .0.into()))
+                Ok(UnixTimestamp(tai64_time.0.0.into()))
             }
 
             fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for UnixTimestamp {
                 E: serde::de::Error,
             {
                 let tai64_time = FuelCoreTai64Timestamp(Tai64(value as u64));
-                Ok(UnixTimestamp(tai64_time.0 .0.into()))
+                Ok(UnixTimestamp(tai64_time.0.0.into()))
             }
         }
 

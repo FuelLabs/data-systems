@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use apache_avro::{
+    Error,
     schema::{
-        derive::AvroSchemaComponent,
         Name,
         Namespace,
         Schema,
+        derive::AvroSchemaComponent,
     },
     types::Value,
-    Error,
 };
 use fuel_streams_types::{
     Address,
@@ -89,7 +89,7 @@ impl From<Bytes64> for AvroBytes {
 
 impl From<HexData> for AvroBytes {
     fn from(value: HexData) -> Self {
-        AvroBytes(value.0 .0.clone())
+        AvroBytes(value.0.0.clone())
     }
 }
 

@@ -1,8 +1,8 @@
 use tracing::Level;
 use tracing_subscriber::{
+    EnvFilter,
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    EnvFilter,
 };
 
 pub fn init_tracing() -> anyhow::Result<()> {

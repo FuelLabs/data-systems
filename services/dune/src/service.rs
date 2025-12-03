@@ -1,22 +1,22 @@
 use crate::{
+    DuneError,
     processor::{
         Processor,
         StorageTypeConfig,
     },
     s3::S3TableName,
-    DuneError,
 };
 use fuel_core_client::client::FuelClient;
 use fuel_core_services::{
-    stream::{
-        BoxStream,
-        IntoBoxStream,
-    },
     RunnableService,
     RunnableTask,
     ServiceRunner,
     StateWatcher,
     TaskNextAction,
+    stream::{
+        BoxStream,
+        IntoBoxStream,
+    },
 };
 use fuel_core_types::{
     fuel_tx::AssetId,
@@ -25,9 +25,9 @@ use fuel_core_types::{
 use fuel_indexer_types::events::BlockEvent;
 use fuel_receipts_manager::{
     adapters::graphql_event_adapter::{
-        create_graphql_event_adapter,
         GraphqlEventAdapterConfig,
         GraphqlFetcher,
+        create_graphql_event_adapter,
     },
     port::FinalizedBlock,
 };

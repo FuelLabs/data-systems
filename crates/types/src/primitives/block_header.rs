@@ -5,12 +5,12 @@ use std::{
 };
 
 use apache_avro::{
-    schema::{
-        derive::AvroSchemaComponent,
-        Name,
-    },
     AvroSchema,
     Schema,
+    schema::{
+        Name,
+        derive::AvroSchemaComponent,
+    },
 };
 use chrono::{
     DateTime,
@@ -18,14 +18,14 @@ use chrono::{
     Utc,
 };
 use serde::{
+    Deserialize,
+    Serialize,
     de::{
         self,
         Deserializer,
         Visitor,
     },
     ser::Serializer,
-    Deserialize,
-    Serialize,
 };
 use wrapped_int::WrappedU32;
 

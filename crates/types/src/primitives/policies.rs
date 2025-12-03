@@ -5,9 +5,9 @@ use serde::{
 };
 
 use crate::{
-    fuel_core::FuelCorePolicies,
     WrappedU32,
     WrappedU64,
+    fuel_core::FuelCorePolicies,
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]

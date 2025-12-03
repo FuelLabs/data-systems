@@ -1,6 +1,6 @@
 use apache_avro::{
-    schema::EnumSchema,
     AvroSchema,
+    schema::EnumSchema,
 };
 use fuel_core_types::fuel_asm::RawInstruction;
 

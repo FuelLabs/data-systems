@@ -1,12 +1,12 @@
 use fuel_core_types::fuel_tx;
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{
-    fuel_core::*,
-    primitives::*,
-};
 pub use fuel_streams_types::{
     TransactionStatus,
     TransactionType,
+};
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
 };
 use serde::{
     Deserialize,

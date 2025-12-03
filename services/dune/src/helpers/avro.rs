@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
 use apache_avro::{
-    from_value,
-    schema::{
-        derive::AvroSchemaComponent,
-        Namespace,
-    },
     AvroSchema,
     Codec,
     Reader,
     Schema,
     Writer,
+    from_value,
+    schema::{
+        Namespace,
+        derive::AvroSchemaComponent,
+    },
 };
 use serde::{
-    de::DeserializeOwned,
     Serialize,
+    de::DeserializeOwned,
 };
 
 /// Data parser error types.

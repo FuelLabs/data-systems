@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use apache_avro::{
-    schema::{
-        derive::AvroSchemaComponent,
-        Name,
-    },
     Schema,
+    schema::{
+        Name,
+        derive::AvroSchemaComponent,
+    },
 };
 use chrono::{
     DateTime,
@@ -585,12 +585,16 @@ mod tests {
         assert!(middle.is_between(&start, &end));
         assert!(start.is_between(&start, &end));
         assert!(end.is_between(&start, &end));
-        assert!(!BlockTimestamp::from_unix_timestamp(999)
-            .unwrap()
-            .is_between(&start, &end));
-        assert!(!BlockTimestamp::from_unix_timestamp(2001)
-            .unwrap()
-            .is_between(&start, &end));
+        assert!(
+            !BlockTimestamp::from_unix_timestamp(999)
+                .unwrap()
+                .is_between(&start, &end)
+        );
+        assert!(
+            !BlockTimestamp::from_unix_timestamp(2001)
+                .unwrap()
+                .is_between(&start, &end)
+        );
 
         // Test exclusive range
         assert!(middle.is_strictly_between(&start, &end));

@@ -93,9 +93,9 @@ mod tests {
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
         TestBlockMetadata,
+        write_schema_files,
     };
 
     fn test_block_header_serialization(parser: AvroParser, avro_header: AvroBlockHeader) {

@@ -1,4 +1,6 @@
 use crate::{
+    DuneError,
+    DuneResult,
     helpers::{
         AvroParser,
         AvroWriter,
@@ -17,12 +19,10 @@ use crate::{
         AvroReceipt,
         AvroTransaction,
     },
-    DuneError,
-    DuneResult,
 };
 use apache_avro::{
-    schema::derive::AvroSchemaComponent,
     AvroSchema,
+    schema::derive::AvroSchemaComponent,
 };
 use fuel_streams_domains::{
     blocks::Block,

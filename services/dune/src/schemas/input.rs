@@ -164,8 +164,8 @@ mod tests {
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
+        write_schema_files,
     };
 
     fn test_input_serialization(parser: AvroParser, avro_input: Inputs) {

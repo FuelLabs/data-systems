@@ -135,10 +135,10 @@ mod tests {
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
         AvroParserError,
         TestBlockMetadata,
+        write_schema_files,
     };
 
     fn test_block_serialization(block: AvroBlock) -> Result<(), AvroParserError> {

@@ -1,6 +1,7 @@
 pub use fuel_core::schema::tx::types::Transaction as FuelCoreTransaction;
 pub use fuel_core_client::client::{
     schema::{
+        Tai64Timestamp as FuelCoreTai64Timestamp,
         tx::transparent_tx::{
             ConsensusParametersPurpose as FuelCoreClientConsensusParametersPurpose,
             Input as FuelCoreClientInput,
@@ -10,36 +11,28 @@ pub use fuel_core_client::client::{
             Transaction as FuelCoreClientTransaction,
             UpgradePurpose as FuelCoreClientUpgradePurpose,
         },
-        Tai64Timestamp as FuelCoreTai64Timestamp,
     },
     types::TransactionStatus as FuelCoreClientTransactionStatus,
 };
 pub use fuel_core_types::{
     blockchain::{
+        SealedBlock as FuelCoreSealedBlock,
         block::Block as FuelCoreBlock,
         consensus::{
-            poa::PoAConsensus as FuelCorePoAConsensus,
             Consensus as FuelCoreConsensus,
             Genesis as FuelCoreGenesis,
             Sealed as FuelCoreSealed,
+            poa::PoAConsensus as FuelCorePoAConsensus,
         },
         header::BlockHeader as FuelCoreBlockHeader,
         primitives::{
             BlockId as FuelCoreBlockId,
             DaBlockHeight as FuelCoreDaBlockHeight,
         },
-        SealedBlock as FuelCoreSealedBlock,
     },
     fuel_asm::Word as FuelCoreWord,
     fuel_crypto::Signature as FuelCoreSignature,
     fuel_tx::{
-        field::{
-            Inputs as FuelCoreInputs,
-            Outputs as FuelCoreOutputs,
-        },
-        input::contract::Contract as FuelCoreInputContract,
-        output::contract::Contract as FuelCoreOutputContract,
-        policies::Policies as FuelCorePolicies,
         Address as FuelCoreAddress,
         AssetId as FuelCoreAssetId,
         BlobId as FuelCoreBlobId,
@@ -59,6 +52,13 @@ pub use fuel_core_types::{
         UniqueIdentifier as FuelCoreUniqueIdentifier,
         UpgradePurpose as FuelCoreUpgradePurpose,
         UtxoId as FuelCoreUtxoId,
+        field::{
+            Inputs as FuelCoreInputs,
+            Outputs as FuelCoreOutputs,
+        },
+        input::contract::Contract as FuelCoreInputContract,
+        output::contract::Contract as FuelCoreOutputContract,
+        policies::Policies as FuelCorePolicies,
     },
     fuel_types::{
         BlockHeight as FuelCoreBlockHeight,

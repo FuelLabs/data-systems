@@ -373,9 +373,9 @@ mod tests {
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
         TestBlockMetadata,
+        write_schema_files,
     };
 
     fn test_receipt_serialization(parser: AvroParser, avro_receipt: AvroReceipt) {

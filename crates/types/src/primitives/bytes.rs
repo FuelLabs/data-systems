@@ -4,11 +4,11 @@ use std::collections::{
 };
 
 use apache_avro::schema::{
-    derive::AvroSchemaComponent,
     FixedSchema,
     Name,
     Namespace,
     Schema,
+    derive::AvroSchemaComponent,
 };
 use fuel_core_types::fuel_types;
 

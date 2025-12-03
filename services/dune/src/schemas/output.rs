@@ -173,8 +173,8 @@ mod tests {
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
+        write_schema_files,
     };
 
     // Helper function to reduce code duplication in tests

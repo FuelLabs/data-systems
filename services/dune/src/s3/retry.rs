@@ -69,11 +69,11 @@ where
 #[cfg(test)]
 mod tests {
     use std::sync::{
+        Arc,
         atomic::{
             AtomicU32,
             Ordering,
         },
-        Arc,
     };
 
     use pretty_assertions::assert_eq;
