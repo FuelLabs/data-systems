@@ -28,8 +28,10 @@ async fn main() -> Result<()> {
         url: cli.url,
         starting_height: cli.starting_block.into(),
         storage_type: cli.storage_type,
-        registry_blocks_request_batch_size: cli.registry_blocks_request_batch_size,
-        registry_blocks_request_concurrency: cli.registry_blocks_request_concurrency,
+        batch_size: cli.batch_size,
+        blocks_request_batch_size: cli.blocks_request_batch_size,
+        blocks_request_concurrency: cli.blocks_request_concurrency,
+        pending_blocks: cli.pending_blocks,
     };
 
     let service = new_service(config)?;

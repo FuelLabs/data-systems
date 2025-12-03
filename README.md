@@ -25,7 +25,7 @@
 
 ## 📝 About The Project
 
-Fuel Data Systems is a set of services to syncronize Fuel blockchain data with a data lake stored on S3 (or S3 compatible services).
+Fuel Data Systems is a set of services to synchronize Fuel blockchain data with a data lake stored on S3 (or S3 compatible services).
 
 With Fuel Data Systems, developers can build sophisticated applications that leverage the full potential of the Fuel Network's data, from simple block explorers to complex analytics engines and trading systems.
 
@@ -45,9 +45,9 @@ For codebase documentation, see the README files in the relevant directories:
 
 ### Services
 
-| Service                                           | Description                                                      |
-| ------------------------------------------------- | ---------------------------------------------------------------- |
-| [Dune Service](services/dune/README.md)           | Processes blockchain data for analytics with Dune                |
+| Service                                 | Description                                       |
+| --------------------------------------- | ------------------------------------------------- |
+| [Dune Service](services/dune/README.md) | Processes blockchain data for analytics with Dune |
 
 ### Deployment and Infrastructure
 
@@ -61,7 +61,8 @@ For codebase documentation, see the README files in the relevant directories:
 ## 🛠️ Development
 
 For local development:
-    ```
+
+```
 
 1. **Run Services**:
     - Dune Service: `make run-dune`
@@ -75,3 +76,4 @@ We welcome contributions! Please check our [contributing guidelines](CONTRIBUTIN
 ## 📜 License
 
 This project is licensed under the `Apache-2.0` license. See [`LICENSE`](./LICENSE) for more information.
+```

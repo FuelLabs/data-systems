@@ -24,9 +24,13 @@ pub struct Cli {
 
     /// The number of blocks to fetch in each request to the node.
     #[arg(long, env, default_value = "10")]
-    pub registry_blocks_request_batch_size: usize,
+    pub blocks_request_batch_size: usize,
 
     /// The number of concurrent requests for blocks.
     #[arg(long, env, default_value = "100")]
-    pub registry_blocks_request_concurrency: usize,
+    pub blocks_request_concurrency: usize,
+
+    /// The number of unordered pending blocks to buffer.
+    #[arg(long, env, default_value = "10000")]
+    pub pending_blocks: usize,
 }
