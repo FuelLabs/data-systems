@@ -127,6 +127,75 @@ jobs:
       - name: Run tests
         run: cargo test --workspace
 
+  build:
+    needs: install-deps
+    name: Build ${{ matrix.package }} for ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - sv-dune
+        platform:
+          # linux x86_64
+          - os_name: Linux-x86_64-gnu
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            build_on_pr: true
+          - os_name: Linux-x86_64-musl
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+            build_on_pr: false
+
+          # macOS
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            build_on_pr: true
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            build_on_pr: false
+        include:
+          - platform:
+              build_on_pr: true
+            if: >-
+              matrix.platform.build_on_pr == true ||
+              github.ref == 'refs/heads/main' ||
+              github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.platform.target }}
+          cache: false
+
+      - name: Install packages (macOS)
+        if: matrix.platform.os == 'macOS-latest'
+        run: |
+          brew install llvm
+
+      - name: Install cross
+        if: matrix.platform.os != 'macOS-latest'
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cross
+          cache-key: ${{ matrix.platform.target }}
+          git: https://github.com/cross-rs/cross
+
+      - name: Build with cross for Linux
+        if: matrix.platform.os != 'macOS-latest'
+        run: |
+          cross build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
+      - name: Build with cargo for MacOS
+        if: matrix.platform.os == 'macOS-latest'
+        run: |
+          rustup target add ${{ matrix.platform.target }}
+          cargo build --release --locked --target ${{ matrix.platform.target }} --package ${{ matrix.package }}
+
   release:
     name: Create Release
     if: >-
