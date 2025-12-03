@@ -61,20 +61,16 @@ fuel-streams/
 
 #### Template Files
 
-- **_helpers.tpl**: Contains reusable Go template functions for generating resource names, labels, and other common elements
-- **_blocks-*.tpl**: Modular template blocks for generating container specs, pod specs, and other resources
-- **_service.yaml**: Template for Kubernetes Service resources
-- **_hpa.yaml**: Template for Horizontal Pod Autoscaler resources
-- **_pod_monitor.yaml** and **_service_monitor.yaml**: Templates for Prometheus monitoring
+- **\_helpers.tpl**: Contains reusable Go template functions for generating resource names, labels, and other common elements
+- **\_blocks-\*.tpl**: Modular template blocks for generating container specs, pod specs, and other resources
+- **\_service.yaml**: Template for Kubernetes Service resources
+- **\_hpa.yaml**: Template for Horizontal Pod Autoscaler resources
+- **\_pod_monitor.yaml** and **\_service_monitor.yaml**: Templates for Prometheus monitoring
 
 #### Service-Specific Templates
 
 Each service has its own directory containing Kubernetes resource definitions:
 
-- **publisher/statefulset.yaml**: StatefulSet for the Publisher service with persistent storage
-- **consumer/deployment.yaml**: Deployment for the Consumer service
-- **webserver/deployment.yaml**: Deployment for the Webserver service
-- **api/deployment.yaml**: Deployment for the API service
 - **dune/cronjob.yaml**: CronJob for the Dune service that runs on a schedule
 
 #### Dashboard Files
@@ -158,79 +154,79 @@ helm install fuel-streams fuel-streams/fuel-streams -f values.yaml
 
 ### Global Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `config.healthChecks` | Enable health checks for all services | `true` |
-| `config.prometheus.enabled` | Enable Prometheus monitoring | `true` |
-| `commonConfigMap.enabled` | Enable common ConfigMap | `true` |
-| `serviceAccount.create` | Create service account | `true` |
+| Parameter                   | Description                           | Default |
+| --------------------------- | ------------------------------------- | ------- |
+| `config.healthChecks`       | Enable health checks for all services | `true`  |
+| `config.prometheus.enabled` | Enable Prometheus monitoring          | `true`  |
+| `commonConfigMap.enabled`   | Enable common ConfigMap               | `true`  |
+| `serviceAccount.create`     | Create service account                | `true`  |
 
 ### Publisher Service
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `publisher.enabled` | Enable Publisher service | `true` |
-| `publisher.network` | Network to connect to (mainnet/testnet) | `mainnet` |
-| `publisher.image.repository` | Publisher image repository | `ghcr.io/fuellabs/sv-publisher` |
-| `publisher.image.tag` | Publisher image tag | `latest` |
-| `publisher.config.replicaCount` | Number of replicas | `1` |
-| `publisher.storage.size` | Storage size for RocksDB | `500Gi` |
-| `publisher.storage.storageClass` | Storage class | `gp3-generic` |
+| Parameter                        | Description                             | Default                         |
+| -------------------------------- | --------------------------------------- | ------------------------------- |
+| `publisher.enabled`              | Enable Publisher service                | `true`                          |
+| `publisher.network`              | Network to connect to (mainnet/testnet) | `mainnet`                       |
+| `publisher.image.repository`     | Publisher image repository              | `ghcr.io/fuellabs/sv-publisher` |
+| `publisher.image.tag`            | Publisher image tag                     | `latest`                        |
+| `publisher.config.replicaCount`  | Number of replicas                      | `1`                             |
+| `publisher.storage.size`         | Storage size for RocksDB                | `500Gi`                         |
+| `publisher.storage.storageClass` | Storage class                           | `gp3-generic`                   |
 
 ### Consumer Service
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `consumer.enabled` | Enable Consumer service | `true` |
-| `consumer.network` | Network to connect to (mainnet/testnet) | `mainnet` |
-| `consumer.image.repository` | Consumer image repository | `ghcr.io/fuellabs/sv-consumer` |
-| `consumer.image.tag` | Consumer image tag | `latest` |
-| `consumer.config.replicaCount` | Number of replicas | `3` |
+| Parameter                      | Description                             | Default                        |
+| ------------------------------ | --------------------------------------- | ------------------------------ |
+| `consumer.enabled`             | Enable Consumer service                 | `true`                         |
+| `consumer.network`             | Network to connect to (mainnet/testnet) | `mainnet`                      |
+| `consumer.image.repository`    | Consumer image repository               | `ghcr.io/fuellabs/sv-consumer` |
+| `consumer.image.tag`           | Consumer image tag                      | `latest`                       |
+| `consumer.config.replicaCount` | Number of replicas                      | `3`                            |
 
 ### Webserver Service
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `webserver.enabled` | Enable Webserver service | `true` |
-| `webserver.network` | Network to connect to (mainnet/testnet) | `mainnet` |
-| `webserver.image.repository` | Webserver image repository | `ghcr.io/fuellabs/sv-webserver` |
-| `webserver.image.tag` | Webserver image tag | `latest` |
-| `webserver.config.replicaCount` | Number of replicas | `3` |
-| `webserver.service.host` | Hostname for the service | `stream-staging.fuel.network` |
-| `webserver.tls.enabled` | Enable TLS | `true` |
-| `webserver.autoscaling.enabled` | Enable autoscaling | `true` |
+| Parameter                       | Description                             | Default                         |
+| ------------------------------- | --------------------------------------- | ------------------------------- |
+| `webserver.enabled`             | Enable Webserver service                | `true`                          |
+| `webserver.network`             | Network to connect to (mainnet/testnet) | `mainnet`                       |
+| `webserver.image.repository`    | Webserver image repository              | `ghcr.io/fuellabs/sv-webserver` |
+| `webserver.image.tag`           | Webserver image tag                     | `latest`                        |
+| `webserver.config.replicaCount` | Number of replicas                      | `3`                             |
+| `webserver.service.host`        | Hostname for the service                | `stream-staging.fuel.network`   |
+| `webserver.tls.enabled`         | Enable TLS                              | `true`                          |
+| `webserver.autoscaling.enabled` | Enable autoscaling                      | `true`                          |
 
 ### API Service
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `api.enabled` | Enable API service | `true` |
-| `api.network` | Network to connect to (mainnet/testnet) | `mainnet` |
-| `api.image.repository` | API image repository | `ghcr.io/fuellabs/sv-api` |
-| `api.image.tag` | API image tag | `latest` |
-| `api.config.replicaCount` | Number of replicas | `3` |
-| `api.service.host` | Hostname for the service | `stream-staging.fuel.network` |
-| `api.tls.enabled` | Enable TLS | `true` |
-| `api.autoscaling.enabled` | Enable autoscaling | `true` |
+| Parameter                 | Description                             | Default                       |
+| ------------------------- | --------------------------------------- | ----------------------------- |
+| `api.enabled`             | Enable API service                      | `true`                        |
+| `api.network`             | Network to connect to (mainnet/testnet) | `mainnet`                     |
+| `api.image.repository`    | API image repository                    | `ghcr.io/fuellabs/sv-api`     |
+| `api.image.tag`           | API image tag                           | `latest`                      |
+| `api.config.replicaCount` | Number of replicas                      | `3`                           |
+| `api.service.host`        | Hostname for the service                | `stream-staging.fuel.network` |
+| `api.tls.enabled`         | Enable TLS                              | `true`                        |
+| `api.autoscaling.enabled` | Enable autoscaling                      | `true`                        |
 
 ### Dune Service
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `dune.enabled` | Enable Dune service | `false` |
-| `dune.network` | Network to connect to (mainnet/testnet) | `mainnet` |
-| `dune.image.repository` | Dune image repository | `ghcr.io/fuellabs/sv-dune` |
-| `dune.image.tag` | Dune image tag | `latest` |
-| `dune.cronjob.schedule` | Cron schedule | `0 * * * *` |
+| Parameter               | Description                             | Default                    |
+| ----------------------- | --------------------------------------- | -------------------------- |
+| `dune.enabled`          | Enable Dune service                     | `false`                    |
+| `dune.network`          | Network to connect to (mainnet/testnet) | `mainnet`                  |
+| `dune.image.repository` | Dune image repository                   | `ghcr.io/fuellabs/sv-dune` |
+| `dune.image.tag`        | Dune image tag                          | `latest`                   |
+| `dune.cronjob.schedule` | Cron schedule                           | `0 * * * *`                |
 
 ### NATS Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `nats.enabled` | Enable NATS | `true` |
-| `nats.config.cluster.enabled` | Enable NATS clustering | `true` |
-| `nats.config.cluster.replicas` | Number of NATS replicas | `5` |
-| `nats.config.jetstream.enabled` | Enable JetStream | `true` |
+| Parameter                       | Description             | Default |
+| ------------------------------- | ----------------------- | ------- |
+| `nats.enabled`                  | Enable NATS             | `true`  |
+| `nats.config.cluster.enabled`   | Enable NATS clustering  | `true`  |
+| `nats.config.cluster.replicas`  | Number of NATS replicas | `5`     |
+| `nats.config.jetstream.enabled` | Enable JetStream        | `true`  |
 
 ## Local Development
 
@@ -241,6 +237,7 @@ helm install fuel-streams ./cluster/charts/fuel-streams -f ./cluster/charts/fuel
 ```
 
 The local configuration:
+
 - Reduces resource requests and limits
 - Uses smaller storage sizes
 - Disables TLS
@@ -262,20 +259,23 @@ This chart includes Prometheus monitoring by default. The following services exp
 ### Common Issues
 
 1. **Publisher can't connect to Fuel node**
-   - Check the Fuel node URL in the publisher configuration
-   - Verify network connectivity between the publisher pod and the Fuel node
+
+    - Check the Fuel node URL in the publisher configuration
+    - Verify network connectivity between the publisher pod and the Fuel node
 
 2. **Consumer can't connect to NATS**
-   - Check NATS service is running: `kubectl get pods -l app=nats`
-   - Verify NATS URL in the consumer configuration
+
+    - Check NATS service is running: `kubectl get pods -l app=nats`
+    - Verify NATS URL in the consumer configuration
 
 3. **Database connection issues**
-   - Verify DATABASE_URL in the common ConfigMap
-   - Check database credentials and connectivity
+
+    - Verify DATABASE_URL in the common ConfigMap
+    - Check database credentials and connectivity
 
 4. **Storage issues**
-   - Check if PVCs are bound: `kubectl get pvc`
-   - Verify storage class exists and is available
+    - Check if PVCs are bound: `kubectl get pvc`
+    - Verify storage class exists and is available
 
 ### Useful Commands
 
@@ -297,28 +297,30 @@ kubectl exec -it fuel-streams-nats-0 -- nats-top
 For production environments, consider:
 
 1. Increasing replica counts:
-   ```yaml
-   publisher.config.replicaCount: 2
-   consumer.config.replicaCount: 5
-   webserver.config.replicaCount: 5
-   api.config.replicaCount: 5
-   ```
+
+    ```yaml
+    publisher.config.replicaCount: 2
+    consumer.config.replicaCount: 5
+    webserver.config.replicaCount: 5
+    api.config.replicaCount: 5
+    ```
 
 2. Enabling autoscaling for all services:
-   ```yaml
-   consumer.autoscaling.enabled: true
-   consumer.autoscaling.minReplicas: 3
-   consumer.autoscaling.maxReplicas: 10
-   ```
+
+    ```yaml
+    consumer.autoscaling.enabled: true
+    consumer.autoscaling.minReplicas: 3
+    consumer.autoscaling.maxReplicas: 10
+    ```
 
 3. Configuring node affinity for distributing pods across zones:
-   ```yaml
-   config.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution:
-     - labelSelector:
-         matchLabels:
-           app.kubernetes.io/instance: fuel-streams
-       topologyKey: topology.kubernetes.io/zone
-   ```
+    ```yaml
+    config.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+              matchLabels:
+                  app.kubernetes.io/instance: fuel-streams
+          topologyKey: topology.kubernetes.io/zone
+    ```
 
 ### Custom Database Configuration
 
@@ -326,8 +328,8 @@ To use an external database:
 
 ```yaml
 commonConfigMap:
-  data:
-    DATABASE_URL: "postgresql://username:password@your-db-host:5432/fuel_streams?sslmode=require"
+    data:
+        DATABASE_URL: "postgresql://username:password@your-db-host:5432/fuel_streams?sslmode=require"
 ```
 
 ### TLS Configuration
@@ -336,11 +338,11 @@ For production environments with custom TLS certificates:
 
 ```yaml
 webserver.tls:
-  enabled: true
-  certificate:
-    issuer: your-cert-issuer
-    duration: 2160h
-    renewBefore: 360h
+    enabled: true
+    certificate:
+        issuer: your-cert-issuer
+        duration: 2160h
+        renewBefore: 360h
 ```
 
 ## Upgrading

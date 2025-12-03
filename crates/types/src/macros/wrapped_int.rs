@@ -110,9 +110,9 @@ macro_rules! integer_wrapper_create {
         impl TryFrom<&str> for $name {
             type Error = $crate::WrappedIntError;
             fn try_from(s: &str) -> Result<Self, Self::Error> {
-                let value = s.parse::<$inner_type>().map_err(|_| {
-                    $crate::WrappedIntError::InvalidFormat(s.to_string())
-                })?;
+                let value = s
+                    .parse::<$inner_type>()
+                    .map_err(|_| $crate::WrappedIntError::InvalidFormat(s.to_string()))?;
                 Ok($name(value))
             }
         }
@@ -248,17 +248,11 @@ macro_rules! declare_integer_wrapper {
             ) -> Result<Self, sqlx::error::BoxDynError> {
                 match std::any::TypeId::of::<$inner_type>() {
                     id if id == std::any::TypeId::of::<u32>() => {
-                        let value =
-                            <i32 as sqlx::Decode<sqlx::Postgres>>::decode(
-                                value,
-                            )?;
+                        let value = <i32 as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
                         Ok($name::new(value as $inner_type))
                     }
                     id if id == std::any::TypeId::of::<u64>() => {
-                        let value =
-                            <i64 as sqlx::Decode<sqlx::Postgres>>::decode(
-                                value,
-                            )?;
+                        let value = <i64 as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
                         Ok($name::new(value as $inner_type))
                     }
                     _ => {
@@ -277,18 +271,16 @@ macro_rules! declare_integer_wrapper {
                 buf: &mut sqlx::postgres::PgArgumentBuffer,
             ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
                 match std::any::TypeId::of::<$inner_type>() {
-                    id if id == std::any::TypeId::of::<u32>() => {
-                        <i32 as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
-                            &(self.0 as i32),
-                            buf,
-                        )
-                    }
-                    id if id == std::any::TypeId::of::<u64>() => {
-                        <i64 as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
-                            &(self.0 as i64),
-                            buf,
-                        )
-                    }
+                    id if id == std::any::TypeId::of::<u32>() => <i32 as sqlx::Encode<
+                        sqlx::Postgres,
+                    >>::encode_by_ref(
+                        &(self.0 as i32), buf
+                    ),
+                    id if id == std::any::TypeId::of::<u64>() => <i64 as sqlx::Encode<
+                        sqlx::Postgres,
+                    >>::encode_by_ref(
+                        &(self.0 as i64), buf
+                    ),
                     _ => {
                         panic!(
                             "Unsupported inner type: {:?}",
@@ -312,8 +304,7 @@ macro_rules! declare_integer_wrapper {
             fn decode(
                 value: sqlx::postgres::PgValueRef<'r>,
             ) -> Result<Self, sqlx::error::BoxDynError> {
-                let value =
-                    <$sql_type as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                let value = <$sql_type as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
                 Ok($name::new(value as $inner_type))
             }
         }

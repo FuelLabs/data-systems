@@ -1,7 +1,10 @@
 use std::fmt;
 
 use fuel_core_types::fuel_tx::UpgradePurpose as FuelCoreUpgradePurpose;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct UpgradePurpose(pub FuelCoreUpgradePurpose);
@@ -67,9 +70,7 @@ impl utoipa::PartialSchema for UpgradePurpose {
 impl fmt::Display for UpgradePurpose {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            FuelCoreUpgradePurpose::ConsensusParameters {
-                checksum, ..
-            } => {
+            FuelCoreUpgradePurpose::ConsensusParameters { checksum, .. } => {
                 let encoded = hex::encode(checksum);
                 write!(f, "0x{encoded}")
             }

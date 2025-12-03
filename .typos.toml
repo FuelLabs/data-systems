@@ -1,8 +1,7 @@
 [files]
 extend-exclude = [
-  "cluster",
-  "crates/sv-webserver/README.md",
-  "docker/chain-config",
-  "docker/monitoring",
-  "bun.lock",
+    "cluster",
+    "docker/chain-config",
+    "docker/monitoring",
+    "bun.lock",
 ]

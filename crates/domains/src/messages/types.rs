@@ -2,9 +2,10 @@ use std::str::FromStr;
 
 use fuel_data_parser::DataEncoder;
 use fuel_streams_types::*;
-use serde::{Deserialize, Serialize};
-
-use crate::infra::ToPacket;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(
     Default,
@@ -41,9 +42,7 @@ impl TryFrom<&str> for MessageType {
 
 impl_enum_string_serialization!(MessageType, "message_type");
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Message {
     /// The message type
     pub r#type: MessageType,
@@ -100,7 +99,6 @@ impl Message {
 }
 
 impl DataEncoder for Message {}
-impl ToPacket for Message {}
 
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

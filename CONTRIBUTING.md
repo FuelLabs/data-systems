@@ -6,7 +6,7 @@ This guide will show you how to run this project locally if you want to test or 
 
 Most projects under the umbrella of data systems are written in Rust, so we prefer using Rust tooling and community standards. Ensure you have the following tools installed:
 
-- [Rust](https://www.rust-lang.org/tools/install) (version 1.86.0)
+- [Rust](https://www.rust-lang.org/tools/install) (version 1.90.0)
 - [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2025-01-24)
 - [NodeJS](https://nodejs.org/en/download/) (version >=22.11.0)
 - [Bun](https://bun.sh/docs/installation) (version 1.2.2)
@@ -369,15 +369,10 @@ The scope field is mandatory and must be one of the following:
 - `fuel-streams-core`: Core components and utilities
 - `fuel-streams-domains`: Domain-specific implementations
 - `fuel-streams-types`: Common types and traits
-- `fuel-streams-subject`: Macro utilities
 - `fuel-streams-store`: Storage implementations
 
 **Service Packages:**
 
-- `sv-publisher`: Publisher service
-- `sv-consumer`: Consumer service
-- `sv-webserver`: WebSocket server
-- `sv-api`: API service
 - `sv-dune`: Dune Analytics integration service
 
 **Support Packages:**
@@ -481,7 +476,7 @@ If you encounter any issues while setting up or contributing to the project, her
 
 1. **Pre-commit hooks failing**: Ensure you've installed all the required dependencies and run `make setup`. If issues persist, try running `pre-commit run --all-files` to see detailed error messages.
 
-2. **Build failures**: Make sure you're using the latest stable Rust version (1.86.0) and the correct nightly version (nightly-2025-01-24). You can update Rust using `rustup update stable` and `rustup update nightly-2025-01-24`.
+2. **Build failures**: Make sure you're using the latest stable Rust version (1.90.0) and the correct nightly version (nightly-2025-01-24). You can update Rust using `rustup update stable` and `rustup update nightly-2025-01-24`.
 
 3. **Test failures**: If specific tests are failing, try running them in isolation to see if it's a concurrency issue. Use `RUST_BACKTRACE=1` to get more detailed error information.
 

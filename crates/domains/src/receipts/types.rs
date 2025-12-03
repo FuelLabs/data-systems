@@ -1,8 +1,12 @@
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{fuel_core::*, primitives::*};
-use serde::{Deserialize, Serialize};
-
-use crate::infra::record::ToPacket;
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(tag = "type")]
@@ -24,7 +28,6 @@ pub enum Receipt {
 }
 
 impl DataEncoder for Receipt {}
-impl ToPacket for Receipt {}
 
 impl Receipt {
     #[cfg(any(test, feature = "test-helpers"))]
@@ -37,9 +40,7 @@ impl Receipt {
 }
 
 // Individual Receipt Types
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CallReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -52,9 +53,7 @@ pub struct CallReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReturnReceipt {
     pub id: ContractId,
     pub val: Word,
@@ -62,9 +61,7 @@ pub struct ReturnReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReturnDataReceipt {
     pub id: ContractId,
     pub ptr: Word,
@@ -75,9 +72,7 @@ pub struct ReturnDataReceipt {
     pub data: Option<HexData>,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PanicReceipt {
     pub id: ContractId,
     pub reason: PanicInstruction,
@@ -86,9 +81,7 @@ pub struct PanicReceipt {
     pub contract_id: Option<ContractId>,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RevertReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -96,9 +89,7 @@ pub struct RevertReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LogReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -109,9 +100,7 @@ pub struct LogReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LogDataReceipt {
     pub id: ContractId,
     pub ra: Word,
@@ -124,9 +113,7 @@ pub struct LogDataReceipt {
     pub data: Option<HexData>,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TransferReceipt {
     pub id: ContractId,
     pub to: ContractId,
@@ -136,9 +123,7 @@ pub struct TransferReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TransferOutReceipt {
     pub id: ContractId,
     pub to: Address,
@@ -148,17 +133,13 @@ pub struct TransferOutReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ScriptResultReceipt {
     pub result: ScriptExecutionResult,
     pub gas_used: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MessageOutReceipt {
     pub sender: Address,
     pub recipient: Address,
@@ -169,9 +150,7 @@ pub struct MessageOutReceipt {
     pub data: Option<HexData>,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MintReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -180,9 +159,7 @@ pub struct MintReceipt {
     pub is: Word,
 }
 
-#[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BurnReceipt {
     pub sub_id: Bytes32,
     pub contract_id: ContractId,
@@ -215,14 +192,12 @@ impl From<FuelCoreReceipt> for Receipt {
                 pc: pc.into(),
                 is: is.into(),
             }),
-            FuelCoreReceipt::Return { id, val, pc, is } => {
-                Self::Return(ReturnReceipt {
-                    id: id.into(),
-                    val: val.into(),
-                    pc: pc.into(),
-                    is: is.into(),
-                })
-            }
+            FuelCoreReceipt::Return { id, val, pc, is } => Self::Return(ReturnReceipt {
+                id: id.into(),
+                val: val.into(),
+                pc: pc.into(),
+                is: is.into(),
+            }),
             FuelCoreReceipt::ReturnData {
                 id,
                 ptr,
@@ -238,7 +213,7 @@ impl From<FuelCoreReceipt> for Receipt {
                 digest: digest.into(),
                 pc: pc.into(),
                 is: is.into(),
-                data: data.map(|data| data.into()),
+                data: data.map(|data| data.into_inner().into()),
             }),
             FuelCoreReceipt::Panic {
                 id,
@@ -253,14 +228,12 @@ impl From<FuelCoreReceipt> for Receipt {
                 is: is.into(),
                 contract_id: contract_id.map(|id| id.into()),
             }),
-            FuelCoreReceipt::Revert { id, ra, pc, is } => {
-                Self::Revert(RevertReceipt {
-                    id: id.into(),
-                    ra: ra.into(),
-                    pc: pc.into(),
-                    is: is.into(),
-                })
-            }
+            FuelCoreReceipt::Revert { id, ra, pc, is } => Self::Revert(RevertReceipt {
+                id: id.into(),
+                ra: ra.into(),
+                pc: pc.into(),
+                is: is.into(),
+            }),
             FuelCoreReceipt::Log {
                 id,
                 ra,
@@ -297,7 +270,7 @@ impl From<FuelCoreReceipt> for Receipt {
                 digest: digest.into(),
                 pc: pc.into(),
                 is: is.into(),
-                data: data.map(|data| data.into()),
+                data: data.map(|data| data.into_inner().into()),
             }),
             FuelCoreReceipt::Transfer {
                 id,
@@ -350,7 +323,7 @@ impl From<FuelCoreReceipt> for Receipt {
                 nonce: nonce.into(),
                 len: len.into(),
                 digest: digest.into(),
-                data: data.map(|data| data.into()),
+                data: data.map(|data| data.into_inner().into()),
             }),
             FuelCoreReceipt::Mint {
                 sub_id,

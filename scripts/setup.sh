@@ -29,7 +29,6 @@ $install_cmd cargo-nextest --secure
 # Binstall does not support --features
 cargo install cargo-audit --locked --features=fix --force
 cargo install release-plz --locked
-cargo install taplo-cli --locked
 cargo install bacon --locked
 
 # Check Helm and install helm-unittest plugin

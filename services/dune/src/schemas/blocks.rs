@@ -1,12 +1,16 @@
 use apache_avro::AvroSchema;
-use fuel_streams_domains::blocks::{Block, Consensus};
-use serde::{Deserialize, Serialize};
+use fuel_streams_domains::blocks::{
+    Block,
+    Consensus,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Genesis {
     #[avro(rename = "chainConfigHash")]
@@ -27,9 +31,7 @@ pub struct PoAConsensus {
     pub signature: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroBlock {
     pub height: Option<i64>,
@@ -89,27 +91,17 @@ impl AvroBlock {
         Self {
             height: Some(block.height.0 as i64),
             time: Some(block.header.time.0.to_unix()),
-            transactions_count: Some(block.transaction_ids.len() as i64),
-            transactions_root: Some(
-                block.header.transactions_root.clone().into(),
-            ),
-            application_hash: Some(
-                block.header.application_hash.clone().into(),
-            ),
+            transactions_count: Some(block.transaction_count),
+            transactions_root: Some(block.header.transactions_root.clone().into()),
+            application_hash: Some(block.header.application_hash.clone().into()),
             consensus_parameters_version: Some(
                 block.header.consensus_parameters_version.0 as i64,
             ),
             da_height: Some(block.header.da_height.0 as i64),
-            event_inbox_root: Some(
-                block.header.event_inbox_root.clone().into(),
-            ),
+            event_inbox_root: Some(block.header.event_inbox_root.clone().into()),
             id: Some(block.id.clone().into()),
-            message_outbox_root: Some(
-                block.header.message_outbox_root.clone().into(),
-            ),
-            message_receipt_count: Some(
-                block.header.message_receipt_count.0 as i64,
-            ),
+            message_outbox_root: Some(block.header.message_outbox_root.clone().into()),
+            message_receipt_count: Some(block.header.message_receipt_count.0 as i64),
             prev_root: Some(block.header.prev_root.clone().into()),
             state_transition_bytecode_version: Some(
                 block.header.state_transition_bytecode_version.0 as i64,
@@ -127,23 +119,29 @@ impl AvroBlock {
 #[cfg(test)]
 mod tests {
     use fuel_streams_domains::{
-        blocks::{Block, Consensus},
+        blocks::{
+            Block,
+            Consensus,
+        },
         mocks::MockBlock,
     };
-    use fuel_streams_types::{Address, BlockHeight, BlockTime, Signature};
+    use fuel_streams_types::{
+        Address,
+        BlockHeight,
+        BlockTime,
+        Signature,
+    };
     use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::helpers::{
-        write_schema_files,
         AvroParser,
         AvroParserError,
         TestBlockMetadata,
+        write_schema_files,
     };
 
-    fn test_block_serialization(
-        block: AvroBlock,
-    ) -> Result<(), AvroParserError> {
+    fn test_block_serialization(block: AvroBlock) -> Result<(), AvroParserError> {
         let parser = AvroParser::default();
         let mut avro_writer = parser.writer_with_schema::<AvroBlock>()?;
         avro_writer.append(&block)?;
@@ -173,11 +171,10 @@ mod tests {
     fn test_avro_block_with_poa_consensus() -> anyhow::Result<()> {
         let mut block = create_test_block();
 
-        block.consensus = Consensus::PoAConsensus(
-            fuel_streams_domains::blocks::PoAConsensus {
+        block.consensus =
+            Consensus::PoAConsensus(fuel_streams_domains::blocks::PoAConsensus {
                 signature: Signature::random(),
-            },
-        );
+            });
 
         let avro_block = AvroBlock::new(&block);
         test_block_serialization(avro_block)?;

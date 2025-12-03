@@ -1,23 +1,35 @@
 use std::sync::Arc;
 
 use apache_avro::{
-    from_value,
-    schema::{derive::AvroSchemaComponent, Namespace},
     AvroSchema,
     Codec,
     Reader,
     Schema,
     Writer,
+    from_value,
+    schema::{
+        Namespace,
+        derive::AvroSchemaComponent,
+    },
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 
 /// Data parser error types.
 #[derive(Debug, thiserror::Error)]
 pub enum AvroParserError {
     #[error(transparent)]
-    Avro(#[from] apache_avro::Error),
+    Avro(Box<apache_avro::Error>),
     #[error("Schema not found {0}")]
     SchemaNotFound(String),
+}
+
+impl From<apache_avro::Error> for AvroParserError {
+    fn from(err: apache_avro::Error) -> Self {
+        AvroParserError::Avro(Box::new(err))
+    }
 }
 
 pub struct AvroWriter<T> {
@@ -80,10 +92,8 @@ impl AvroParser {
     >(
         &self,
     ) -> Result<AvroWriter<T>, AvroParserError> {
-        let schema = T::get_schema_in_ctxt(
-            &mut Default::default(),
-            &Namespace::default(),
-        );
+        let schema =
+            T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
         Ok(AvroWriter::new(
             schema,
             self.codec.unwrap_or(Codec::Deflate),
@@ -91,12 +101,7 @@ impl AvroParser {
     }
 
     pub fn reader_with_schema<
-        T: AvroSchema
-            + AvroSchemaComponent
-            + DeserializeOwned
-            + Send
-            + Sync
-            + 'static,
+        T: AvroSchema + AvroSchemaComponent + DeserializeOwned + Send + Sync + 'static,
     >(
         &self,
     ) -> Result<AvroReader<T>, AvroParserError> {
@@ -110,12 +115,7 @@ pub struct AvroReader<T> {
 
 impl<T> Default for AvroReader<T>
 where
-    T: AvroSchema
-        + AvroSchemaComponent
-        + DeserializeOwned
-        + Send
-        + Sync
-        + 'static,
+    T: AvroSchema + AvroSchemaComponent + DeserializeOwned + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self::new()
@@ -124,12 +124,7 @@ where
 
 impl<T> AvroReader<T>
 where
-    T: AvroSchema
-        + AvroSchemaComponent
-        + DeserializeOwned
-        + Send
-        + Sync
-        + 'static,
+    T: AvroSchema + AvroSchemaComponent + DeserializeOwned + Send + Sync + 'static,
 {
     pub fn new() -> Self {
         Self {
@@ -138,10 +133,8 @@ where
     }
 
     pub fn deserialize(self, data: &[u8]) -> Result<Vec<T>, AvroParserError> {
-        let schema = T::get_schema_in_ctxt(
-            &mut Default::default(),
-            &Namespace::default(),
-        );
+        let schema =
+            T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
         let cursor = std::io::Cursor::new(data);
         let reader = Reader::with_schema(&schema, cursor)?;
 
@@ -161,9 +154,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(
-        Debug, Default, Deserialize, Serialize, Eq, PartialEq, AvroSchema,
-    )]
+    #[derive(Debug, Default, Deserialize, Serialize, Eq, PartialEq, AvroSchema)]
     struct Test {
         a: i64,
         b: String,

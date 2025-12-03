@@ -2,7 +2,11 @@ use std::str::FromStr;
 
 use aws_config::Region;
 
-use super::{StorageConfig, StorageEnv, StorageRole};
+use super::{
+    StorageConfig,
+    StorageEnv,
+    StorageRole,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct S3StorageOpts {
@@ -45,16 +49,14 @@ impl StorageConfig for S3StorageOpts {
                     }
                 },
             },
-            StorageRole::Public => {
-                match self.env {
-                    StorageEnv::Local => "http://localhost:4566".to_string(),
-                    StorageEnv::Testnet | StorageEnv::Mainnet => {
-                        let bucket = self.bucket();
-                        let region = self.region();
-                        format!("https://{bucket}.s3-website-{region}.amazonaws.com")
-                    }
+            StorageRole::Public => match self.env {
+                StorageEnv::Local => "http://localhost:4566".to_string(),
+                StorageEnv::Testnet | StorageEnv::Mainnet => {
+                    let bucket = self.bucket();
+                    let region = self.region();
+                    format!("https://{bucket}.s3-website-{region}.amazonaws.com")
                 }
-            }
+            },
         }
     }
 
@@ -75,8 +77,9 @@ impl S3StorageOpts {
 
     pub fn region(&self) -> Region {
         let region = match &self.role {
-            StorageRole::Admin => dotenvy::var("AWS_REGION")
-                .expect("AWS_REGION must be set for admin role"),
+            StorageRole::Admin => {
+                dotenvy::var("AWS_REGION").expect("AWS_REGION must be set for admin role")
+            }
             StorageRole::Public => "us-east-1".to_string(),
         };
         Region::new(region)

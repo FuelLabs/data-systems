@@ -18,8 +18,7 @@ macro_rules! impl_avro_schema_for_fixed_bytes {
                 }
 
                 // Insert a reference to prevent infinite loops
-                named_schemas
-                    .insert(name.clone(), Schema::Ref { name: name.clone() });
+                named_schemas.insert(name.clone(), Schema::Ref { name: name.clone() });
 
                 // Create the actual fixed schema
                 let schema = Schema::Fixed(FixedSchema {
@@ -50,9 +49,7 @@ macro_rules! impl_avro_schema_for_fixed_bytes {
         impl TryFrom<apache_avro::types::Value> for $type {
             type Error = apache_avro::Error;
 
-            fn try_from(
-                value: apache_avro::types::Value,
-            ) -> Result<Self, Self::Error> {
+            fn try_from(value: apache_avro::types::Value) -> Result<Self, Self::Error> {
                 let schema = Schema::Fixed(FixedSchema {
                     name: Name::new(stringify!($type)).unwrap(),
                     size: $size,
@@ -65,26 +62,20 @@ macro_rules! impl_avro_schema_for_fixed_bytes {
                 match value {
                     apache_avro::types::Value::Fixed(size, bytes) => {
                         if size != $size {
-                            return Err(
-                                apache_avro::Error::ValidationWithReason {
-                                    value: apache_avro::types::Value::Fixed(
-                                        size, bytes,
-                                    ),
-                                    schema,
-                                    reason: format!(
-                                        "Expected fixed size {}, got {}",
-                                        $size, size
-                                    ),
-                                },
-                            );
+                            return Err(apache_avro::Error::ValidationWithReason {
+                                value: apache_avro::types::Value::Fixed(size, bytes),
+                                schema,
+                                reason: format!(
+                                    "Expected fixed size {}, got {}",
+                                    $size, size
+                                ),
+                            });
                         }
                         let arr: [u8; $size] =
                             bytes.clone().try_into().map_err(|_| {
                                 let bytes_len = bytes.len();
                                 apache_avro::Error::ValidationWithReason {
-                                    value: apache_avro::types::Value::Fixed(
-                                        size, bytes,
-                                    ),
+                                    value: apache_avro::types::Value::Fixed(size, bytes),
                                     schema,
                                     reason: format!(
                                         "Expected {} bytes, got {}",
@@ -150,9 +141,7 @@ macro_rules! generate_bool_type_wrapper {
                         &self,
                         formatter: &mut std::fmt::Formatter,
                     ) -> std::fmt::Result {
-                        formatter.write_str(
-                            "a boolean value or Bool(true)/Bool(false)",
-                        )
+                        formatter.write_str("a boolean value or Bool(true)/Bool(false)")
                     }
 
                     // Handle plain boolean values
@@ -235,9 +224,7 @@ macro_rules! impl_avro_schema_for_bool {
         impl TryFrom<apache_avro::types::Value> for $type {
             type Error = apache_avro::Error;
 
-            fn try_from(
-                value: apache_avro::types::Value,
-            ) -> Result<Self, Self::Error> {
+            fn try_from(value: apache_avro::types::Value) -> Result<Self, Self::Error> {
                 match value {
                     apache_avro::types::Value::Boolean(b) => Ok($type(b)),
                     _ => Err(apache_avro::Error::ValidationWithReason {
@@ -263,13 +250,9 @@ macro_rules! impl_avro_schema_for_wrapped_int {
 
         impl TryFrom<apache_avro::types::Value> for $type {
             type Error = apache_avro::Error;
-            fn try_from(
-                value: apache_avro::types::Value,
-            ) -> Result<Self, Self::Error> {
+            fn try_from(value: apache_avro::types::Value) -> Result<Self, Self::Error> {
                 match value {
-                    apache_avro::types::Value::Long(n) => {
-                        Ok($type(n as $inner_type))
-                    }
+                    apache_avro::types::Value::Long(n) => Ok($type(n as $inner_type)),
                     _ => Err(apache_avro::Error::Validation),
                 }
             }

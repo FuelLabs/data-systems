@@ -1,11 +1,19 @@
 use fuel_core_types::fuel_tx;
 use fuel_data_parser::DataEncoder;
-use fuel_streams_types::{fuel_core::*, primitives::*};
-pub use fuel_streams_types::{TransactionStatus, TransactionType};
-use serde::{Deserialize, Serialize};
+pub use fuel_streams_types::{
+    TransactionStatus,
+    TransactionType,
+};
+use fuel_streams_types::{
+    fuel_core::*,
+    primitives::*,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
-    infra::record::ToPacket,
     inputs::types::*,
     outputs::types::*,
     receipts::types::*,
@@ -61,7 +69,6 @@ pub struct Transaction {
 }
 
 impl DataEncoder for Transaction {}
-impl ToPacket for Transaction {}
 
 impl Transaction {
     pub fn new(
@@ -75,14 +82,9 @@ impl Transaction {
             id: id.to_owned().into(),
             r#type: transaction.into(),
             bytecode_root: Self::get_bytecode_root(transaction),
-            bytecode_witness_index: Self::get_bytecode_witness_index(
-                transaction,
-            ),
+            bytecode_witness_index: Self::get_bytecode_witness_index(transaction),
             blob_id: Self::get_blob_id(transaction),
-            input_asset_ids: Self::get_input_asset_ids(
-                transaction,
-                base_asset_id,
-            ),
+            input_asset_ids: Self::get_input_asset_ids(transaction, base_asset_id),
             input_contract: Self::get_input_contract(transaction),
             input_contracts: Self::get_input_contracts(transaction),
             inputs: transaction.inputs().iter().map(Into::into).collect(),
@@ -125,26 +127,18 @@ impl Transaction {
         }
     }
 
-    fn get_bytecode_root(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Bytes32> {
+    fn get_bytecode_root(transaction: &FuelCoreTypesTransaction) -> Option<Bytes32> {
         use fuel_core_types::fuel_tx::field::BytecodeRoot;
         match transaction {
-            FuelCoreTypesTransaction::Upload(tx) => {
-                Some((*tx.bytecode_root()).into())
-            }
+            FuelCoreTypesTransaction::Upload(tx) => Some((*tx.bytecode_root()).into()),
             _ => None,
         }
     }
 
-    fn get_bytecode_witness_index(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<u16> {
+    fn get_bytecode_witness_index(transaction: &FuelCoreTypesTransaction) -> Option<u16> {
         use fuel_core_types::fuel_tx::field::BytecodeWitnessIndex;
         match transaction {
-            FuelCoreTypesTransaction::Upload(tx) => {
-                Some(*tx.bytecode_witness_index())
-            }
+            FuelCoreTypesTransaction::Upload(tx) => Some(*tx.bytecode_witness_index()),
             _ => None,
         }
     }
@@ -197,9 +191,7 @@ impl Transaction {
     ) -> Option<InputContract> {
         use fuel_core_types::fuel_tx::field::InputContract;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some(mint.input_contract().into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some(mint.input_contract().into()),
             _ => None,
         }
     }
@@ -214,9 +206,7 @@ impl Transaction {
                     .inputs()
                     .iter()
                     .filter_map(|input| match input {
-                        fuel_tx::Input::Contract(contract) => {
-                            Some(contract.contract_id)
-                        }
+                        fuel_tx::Input::Contract(contract) => Some(contract.contract_id),
                         _ => None,
                     })
                     .collect();
@@ -232,9 +222,7 @@ impl Transaction {
     ) -> Option<OutputContract> {
         use fuel_core_types::fuel_tx::field::OutputContract;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some(mint.output_contract().into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some(mint.output_contract().into()),
             _ => None,
         }
     }
@@ -251,72 +239,48 @@ impl Transaction {
         }
     }
 
-    fn get_mint_amount(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Amount> {
+    fn get_mint_amount(transaction: &FuelCoreTypesTransaction) -> Option<Amount> {
         use fuel_core_types::fuel_tx::field::MintAmount;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some((*mint.mint_amount()).into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some((*mint.mint_amount()).into()),
             _ => None,
         }
     }
 
-    fn get_mint_asset_id(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<AssetId> {
+    fn get_mint_asset_id(transaction: &FuelCoreTypesTransaction) -> Option<AssetId> {
         use fuel_core_types::fuel_tx::field::MintAssetId;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some((*mint.mint_asset_id()).into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some((*mint.mint_asset_id()).into()),
             _ => None,
         }
     }
 
-    fn get_mint_gas_price(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Amount> {
+    fn get_mint_gas_price(transaction: &FuelCoreTypesTransaction) -> Option<Amount> {
         use fuel_core_types::fuel_tx::field::MintGasPrice;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some((*mint.gas_price()).into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some((*mint.gas_price()).into()),
             _ => None,
         }
     }
 
-    fn get_policies(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Policies> {
+    fn get_policies(transaction: &FuelCoreTypesTransaction) -> Option<Policies> {
         use fuel_core_types::fuel_tx::field::Policies;
         match transaction {
-            FuelCoreTypesTransaction::Script(tx) => {
-                Some((*tx.policies()).into())
-            }
-            FuelCoreTypesTransaction::Create(tx) => {
-                Some((*tx.policies()).into())
-            }
+            FuelCoreTypesTransaction::Script(tx) => Some((*tx.policies()).into()),
+            FuelCoreTypesTransaction::Create(tx) => Some((*tx.policies()).into()),
             FuelCoreTypesTransaction::Mint(_) => None,
-            FuelCoreTypesTransaction::Upgrade(tx) => {
-                Some((*tx.policies()).into())
-            }
-            FuelCoreTypesTransaction::Upload(tx) => {
-                Some((*tx.policies()).into())
-            }
+            FuelCoreTypesTransaction::Upgrade(tx) => Some((*tx.policies()).into()),
+            FuelCoreTypesTransaction::Upload(tx) => Some((*tx.policies()).into()),
             FuelCoreTypesTransaction::Blob(tx) => Some((*tx.policies()).into()),
         }
     }
 
-    fn get_proof_set(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Vec<Bytes32>> {
+    fn get_proof_set(transaction: &FuelCoreTypesTransaction) -> Option<Vec<Bytes32>> {
         use fuel_core_types::fuel_tx::field::ProofSet;
         match transaction {
-            FuelCoreTypesTransaction::Upload(tx) => Some(
-                tx.proof_set().iter().map(|proof| (*proof).into()).collect(),
-            ),
+            FuelCoreTypesTransaction::Upload(tx) => {
+                Some(tx.proof_set().iter().map(|proof| (*proof).into()).collect())
+            }
             _ => None,
         }
     }
@@ -326,9 +290,7 @@ impl Transaction {
         HexData(transaction.to_bytes().into())
     }
 
-    fn get_receipts_root(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Bytes32> {
+    fn get_receipts_root(transaction: &FuelCoreTypesTransaction) -> Option<Bytes32> {
         use fuel_core_types::fuel_tx::field::ReceiptsRoot;
         match transaction {
             FuelCoreTypesTransaction::Script(script) => {
@@ -341,9 +303,7 @@ impl Transaction {
     fn get_salt(transaction: &FuelCoreTypesTransaction) -> Option<Salt> {
         use fuel_core_types::fuel_tx::field::Salt;
         match transaction {
-            FuelCoreTypesTransaction::Create(create) => {
-                Some((*create.salt()).into())
-            }
+            FuelCoreTypesTransaction::Create(create) => Some((*create.salt()).into()),
             _ => None,
         }
     }
@@ -358,9 +318,7 @@ impl Transaction {
         }
     }
 
-    fn get_script_data(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<HexData> {
+    fn get_script_data(transaction: &FuelCoreTypesTransaction) -> Option<HexData> {
         use fuel_core_types::fuel_tx::field::ScriptData;
         match transaction {
             FuelCoreTypesTransaction::Script(script) => {
@@ -370,9 +328,7 @@ impl Transaction {
         }
     }
 
-    fn get_script_gas_limit(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<GasAmount> {
+    fn get_script_gas_limit(transaction: &FuelCoreTypesTransaction) -> Option<GasAmount> {
         use fuel_core_types::fuel_tx::field::ScriptGasLimit;
         match transaction {
             FuelCoreTypesTransaction::Script(script) => {
@@ -398,38 +354,26 @@ impl Transaction {
         }
     }
 
-    fn get_subsection_index(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<u16> {
+    fn get_subsection_index(transaction: &FuelCoreTypesTransaction) -> Option<u16> {
         use fuel_core_types::fuel_tx::field::SubsectionIndex;
         match transaction {
-            FuelCoreTypesTransaction::Upload(tx) => {
-                Some(*tx.subsection_index())
-            }
+            FuelCoreTypesTransaction::Upload(tx) => Some(*tx.subsection_index()),
             _ => None,
         }
     }
 
-    fn get_subsections_number(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<u16> {
+    fn get_subsections_number(transaction: &FuelCoreTypesTransaction) -> Option<u16> {
         use fuel_core_types::fuel_tx::field::SubsectionsNumber;
         match transaction {
-            FuelCoreTypesTransaction::Upload(tx) => {
-                Some(*tx.subsections_number())
-            }
+            FuelCoreTypesTransaction::Upload(tx) => Some(*tx.subsections_number()),
             _ => None,
         }
     }
 
-    fn get_tx_pointer(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<TxPointer> {
+    fn get_tx_pointer(transaction: &FuelCoreTypesTransaction) -> Option<TxPointer> {
         use fuel_core_types::fuel_tx::field::TxPointer;
         match transaction {
-            FuelCoreTypesTransaction::Mint(mint) => {
-                Some((*mint.tx_pointer()).into())
-            }
+            FuelCoreTypesTransaction::Mint(mint) => Some((*mint.tx_pointer()).into()),
             _ => None,
         }
     }
@@ -439,16 +383,12 @@ impl Transaction {
     ) -> Option<UpgradePurpose> {
         use fuel_core_types::fuel_tx::field::UpgradePurpose;
         match transaction {
-            FuelCoreTypesTransaction::Upgrade(tx) => {
-                Some((*tx.upgrade_purpose()).into())
-            }
+            FuelCoreTypesTransaction::Upgrade(tx) => Some((*tx.upgrade_purpose()).into()),
             _ => None,
         }
     }
 
-    fn get_witnesses(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<Vec<HexData>> {
+    fn get_witnesses(transaction: &FuelCoreTypesTransaction) -> Option<Vec<HexData>> {
         use fuel_core_types::fuel_tx::field::Witnesses;
         match transaction {
             FuelCoreTypesTransaction::Script(tx) => Some(
@@ -485,9 +425,7 @@ impl Transaction {
         }
     }
 
-    fn get_script_length(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<u32> {
+    fn get_script_length(transaction: &FuelCoreTypesTransaction) -> Option<u32> {
         use fuel_core_types::fuel_tx::field::Script;
         match transaction {
             FuelCoreTypesTransaction::Script(script) => {
@@ -497,9 +435,7 @@ impl Transaction {
         }
     }
 
-    fn get_script_data_length(
-        transaction: &FuelCoreTypesTransaction,
-    ) -> Option<u32> {
+    fn get_script_data_length(transaction: &FuelCoreTypesTransaction) -> Option<u32> {
         use fuel_core_types::fuel_tx::field::ScriptData;
         match transaction {
             FuelCoreTypesTransaction::Script(script) => {
@@ -533,9 +469,7 @@ impl Transaction {
             FuelCoreTypesTransaction::Script(tx) => tx.witnesses().len() as u32,
             FuelCoreTypesTransaction::Create(tx) => tx.witnesses().len() as u32,
             FuelCoreTypesTransaction::Mint(_) => 0,
-            FuelCoreTypesTransaction::Upgrade(tx) => {
-                tx.witnesses().len() as u32
-            }
+            FuelCoreTypesTransaction::Upgrade(tx) => tx.witnesses().len() as u32,
             FuelCoreTypesTransaction::Upload(tx) => tx.witnesses().len() as u32,
             FuelCoreTypesTransaction::Blob(tx) => tx.witnesses().len() as u32,
         }
@@ -699,8 +633,7 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx.inputs_count = inputs.len() as u32;
         tx.outputs_count = outputs.len() as u32;
-        tx.witnesses_count =
-            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
+        tx.witnesses_count = tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -716,8 +649,7 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx.inputs_count = inputs.len() as u32;
         tx.outputs_count = outputs.len() as u32;
-        tx.witnesses_count =
-            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
+        tx.witnesses_count = tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         Self::with_contract_data(tx)
     }
 
@@ -752,8 +684,7 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx.inputs_count = inputs.len() as u32;
         tx.outputs_count = outputs.len() as u32;
-        tx.witnesses_count =
-            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
+        tx.witnesses_count = tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -775,8 +706,7 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx.inputs_count = inputs.len() as u32;
         tx.outputs_count = outputs.len() as u32;
-        tx.witnesses_count =
-            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
+        tx.witnesses_count = tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -792,8 +722,7 @@ impl MockTransaction {
         tx.receipts = receipts;
         tx.inputs_count = inputs.len() as u32;
         tx.outputs_count = outputs.len() as u32;
-        tx.witnesses_count =
-            tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
+        tx.witnesses_count = tx.witnesses.to_owned().map(|w| w.len() as u32).unwrap_or(0);
         tx
     }
 
@@ -828,20 +757,17 @@ mod tests {
         );
 
         let serialized = serde_json::to_string(&original_tx).unwrap();
-        let deserialized: Transaction =
-            serde_json::from_str(&serialized).unwrap();
+        let deserialized: Transaction = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(deserialized, original_tx);
 
-        let json_value: serde_json::Value =
-            serde_json::from_str(&serialized).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&serialized).unwrap();
         assert_eq!(json_value["type"], json!("script"));
         assert_eq!(json_value["status"], json!("success"));
 
         for tx in MockTransaction::all() {
             let serialized = serde_json::to_string(&tx).unwrap();
-            let deserialized: Transaction =
-                serde_json::from_str(&serialized).unwrap();
+            let deserialized: Transaction = serde_json::from_str(&serialized).unwrap();
             assert_eq!(deserialized, tx);
 
             let json_value: serde_json::Value =

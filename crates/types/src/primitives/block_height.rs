@@ -104,14 +104,12 @@ mod tests {
     fn test_block_height_serialization() {
         let height = BlockHeight(4294967295);
         let serialized = serde_json::to_string(&height).unwrap();
-        let deserialized: BlockHeight =
-            serde_json::from_str(&serialized).unwrap();
+        let deserialized: BlockHeight = serde_json::from_str(&serialized).unwrap();
         assert_eq!(height, deserialized);
 
         // Test backwards compatibility with number format
         let json_number = "4294967295";
-        let deserialized: BlockHeight =
-            serde_json::from_str(json_number).unwrap();
+        let deserialized: BlockHeight = serde_json::from_str(json_number).unwrap();
         assert_eq!(deserialized.0, 4294967295);
     }
 
@@ -136,8 +134,7 @@ mod tests {
     fn test_block_height_null_deserialization() {
         // Test null
         let json_null = "null";
-        let deserialized: BlockHeight =
-            serde_json::from_str(json_null).unwrap();
+        let deserialized: BlockHeight = serde_json::from_str(json_null).unwrap();
         assert_eq!(deserialized, BlockHeight::default());
 
         // Test JSON with null field

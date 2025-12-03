@@ -1,11 +1,19 @@
 use std::collections::HashMap;
 
 use apache_avro::{
-    schema::{derive::AvroSchemaComponent, Name},
     Schema,
+    schema::{
+        Name,
+        derive::AvroSchemaComponent,
+    },
 };
 use fuel_core_client::client::schema::Tai64Timestamp as FuelCoreTai64Timestamp;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
 use tai64::Tai64;
 
 pub use crate::primitives::BlockHeight;
@@ -35,10 +43,7 @@ impl<'de> Deserialize<'de> for UnixTimestamp {
         impl serde::de::Visitor<'_> for ValueVisitor {
             type Value = UnixTimestamp;
 
-            fn expecting(
-                &self,
-                formatter: &mut std::fmt::Formatter,
-            ) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("a string containing a number or a number")
             }
 
@@ -46,11 +51,9 @@ impl<'de> Deserialize<'de> for UnixTimestamp {
             where
                 E: serde::de::Error,
             {
-                let timestamp =
-                    value.parse::<i64>().map_err(serde::de::Error::custom)?;
-                let tai64_time =
-                    FuelCoreTai64Timestamp(Tai64(timestamp as u64));
-                Ok(UnixTimestamp(tai64_time.0 .0.into()))
+                let timestamp = value.parse::<i64>().map_err(serde::de::Error::custom)?;
+                let tai64_time = FuelCoreTai64Timestamp(Tai64(timestamp as u64));
+                Ok(UnixTimestamp(tai64_time.0.0.into()))
             }
 
             fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
@@ -58,7 +61,7 @@ impl<'de> Deserialize<'de> for UnixTimestamp {
                 E: serde::de::Error,
             {
                 let tai64_time = FuelCoreTai64Timestamp(Tai64(value as u64));
-                Ok(UnixTimestamp(tai64_time.0 .0.into()))
+                Ok(UnixTimestamp(tai64_time.0.0.into()))
             }
         }
 

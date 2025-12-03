@@ -25,25 +25,31 @@ clap.workspace = true
 derive_more.workspace = true
 displaydoc.workspace = true
 dotenvy.workspace = true
-fuel-data-parser.workspace = true
+fuel-core-client = { workspace = true }
+fuel-core-services = { workspace = true }
+fuel-core-types = { workspace = true, features = ["serde", "std"] }
+fuel-indexer-types = { git = "https://github.com/FuelLabs/fuel-rust-indexer" }
+fuel-receipts-manager = { git = "https://github.com/FuelLabs/fuel-rust-indexer", features = ["blocks-subscription"] }
 fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }
+futures = "0.3.31"
+itertools = "0.14.0"
 rand.workspace = true
-redis = { version = "0.30.0", features = ["tls-native-tls"] }
 serde.workspace = true
 serde_bytes = "0.11.17"
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+url = "2.5.7"
 
 [dev-dependencies]
 pretty_assertions.workspace = true
-serial_test = "3.2.0"
 tokio = { workspace = true, features = [
-  "rt-multi-thread",
-  "macros",
-  "test-util",
+    "rt-multi-thread",
+    "macros",
+    "test-util",
 ] }
 tracing-test = "0.2.0"
+fuel-core = { workspace = true, features = ["rocksdb", "test-helpers"] }

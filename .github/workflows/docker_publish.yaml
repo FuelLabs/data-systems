@@ -10,10 +10,6 @@ on:
         required: true
         options:
           - all
-          - sv-publisher
-          - sv-webserver
-          - sv-consumer
-          - sv-api
           - sv-dune
   push:
     branches:
@@ -37,14 +33,6 @@ jobs:
     strategy:
       matrix:
         package:
-          - name: sv-webserver
-            image: cluster/docker/sv-webserver.Dockerfile
-          - name: sv-publisher
-            image: cluster/docker/sv-publisher.Dockerfile
-          - name: sv-consumer
-            image: cluster/docker/sv-consumer.Dockerfile
-          - name: sv-api
-            image: cluster/docker/sv-api.Dockerfile
           - name: sv-dune
             image: cluster/docker/sv-dune.Dockerfile
     steps:

@@ -1,5 +1,4 @@
 pub mod blocks;
-pub mod infra;
 pub mod inputs;
 pub mod messages;
 mod msg_payload;
@@ -10,9 +9,6 @@ pub mod transactions;
 pub mod utxos;
 
 pub use msg_payload::*;
-pub use subjects::*;
-
-mod subjects;
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod mocks {

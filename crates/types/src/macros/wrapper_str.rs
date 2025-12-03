@@ -5,9 +5,7 @@ macro_rules! declare_string_wrapper {
         pub struct $name(std::borrow::Cow<'static, str>);
 
         impl $name {
-            pub fn new<T: Into<std::borrow::Cow<'static, str>>>(
-                value: T,
-            ) -> Self {
+            pub fn new<T: Into<std::borrow::Cow<'static, str>>>(value: T) -> Self {
                 Self(value.into())
             }
 
@@ -189,8 +187,7 @@ macro_rules! declare_string_wrapper {
             fn decode(
                 value: sqlx::postgres::PgValueRef<'r>,
             ) -> Result<Self, sqlx::error::BoxDynError> {
-                let value =
-                    <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                let value = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
                 Ok($name::new(value))
             }
         }
@@ -200,10 +197,7 @@ macro_rules! declare_string_wrapper {
                 &self,
                 buf: &mut sqlx::postgres::PgArgumentBuffer,
             ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-                <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
-                    &self.as_str(),
-                    buf,
-                )
+                <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&self.as_str(), buf)
             }
         }
     };
@@ -223,7 +217,10 @@ mod tests {
     use std::borrow::Cow;
 
     use pretty_assertions::assert_eq;
-    use serde_json::{from_str, to_string};
+    use serde_json::{
+        from_str,
+        to_string,
+    };
 
     use super::*;
 

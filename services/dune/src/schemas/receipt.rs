@@ -9,13 +9,14 @@ use fuel_streams_types::{
     FuelCoreWord,
     ScriptExecutionResult,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroReceipt {
     #[avro(rename = "blockTime")]
@@ -271,9 +272,7 @@ impl AvroReceipt {
                     ScriptExecutionResult::Revert => {
                         FuelCoreScriptExecutionResult::Revert
                     }
-                    ScriptExecutionResult::Panic => {
-                        FuelCoreScriptExecutionResult::Panic
-                    }
+                    ScriptExecutionResult::Panic => FuelCoreScriptExecutionResult::Panic,
                     ScriptExecutionResult::GenericFailure(value) => {
                         FuelCoreScriptExecutionResult::GenericFailure(value)
                     }
@@ -373,18 +372,18 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::helpers::{write_schema_files, AvroParser, TestBlockMetadata};
+    use crate::helpers::{
+        AvroParser,
+        TestBlockMetadata,
+        write_schema_files,
+    };
 
-    fn test_receipt_serialization(
-        parser: AvroParser,
-        avro_receipt: AvroReceipt,
-    ) {
+    fn test_receipt_serialization(parser: AvroParser, avro_receipt: AvroReceipt) {
         let ser = serde_json::to_vec(&avro_receipt).unwrap();
         let deser = serde_json::from_slice::<AvroReceipt>(&ser).unwrap();
         assert_eq!(avro_receipt, deser);
 
-        let mut avro_writer =
-            parser.writer_with_schema::<AvroReceipt>().unwrap();
+        let mut avro_writer = parser.writer_with_schema::<AvroReceipt>().unwrap();
         avro_writer.append(&avro_receipt).unwrap();
         let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser
@@ -539,10 +538,8 @@ mod tests {
         let parser = AvroParser::default();
         let receipts = MockReceipt::all();
         let test_metadata = TestBlockMetadata::new();
-        let metadata = ReceiptMetadata::from_test_metadata(
-            &test_metadata,
-            AvroBytes::random(32),
-        );
+        let metadata =
+            ReceiptMetadata::from_test_metadata(&test_metadata, AvroBytes::random(32));
 
         for receipt in receipts {
             let avro_receipt = AvroReceipt::new(&receipt, &metadata);
@@ -556,10 +553,8 @@ mod tests {
         let receipt = MockReceipt::call();
 
         let test_metadata = TestBlockMetadata::default();
-        let metadata = ReceiptMetadata::from_test_metadata(
-            &test_metadata,
-            AvroBytes::random(32),
-        );
+        let metadata =
+            ReceiptMetadata::from_test_metadata(&test_metadata, AvroBytes::random(32));
 
         let avro_receipt = AvroReceipt::new(&receipt, &metadata);
         test_receipt_serialization(parser, avro_receipt);

@@ -1,13 +1,24 @@
-use async_trait::async_trait;
-use aws_config::BehaviorVersion;
-use aws_sdk_s3::{config::retry::RetryConfig as S3RetryConfig, Client};
-
 use super::{
-    client_opts::S3StorageOpts,
-    retry::{with_retry, RetryConfig, STORAGE_MAX_RETRIES},
-    storage::{Storage, StorageError},
     StorageConfig,
     StorageEnv,
+    client_opts::S3StorageOpts,
+    retry::{
+        RetryConfig,
+        STORAGE_MAX_RETRIES,
+        with_retry,
+    },
+    storage::{
+        Storage,
+        StorageError,
+    },
+};
+use async_trait::async_trait;
+use aws_config::BehaviorVersion;
+use aws_sdk_s3::{
+    Client,
+    config::retry::RetryConfig as S3RetryConfig,
+    error::SdkError,
+    operation::get_object::GetObjectError,
 };
 
 #[derive(Debug, Clone)]
@@ -24,8 +35,7 @@ impl Storage for S3Storage {
     async fn new(config: Self::Config) -> Result<Self, StorageError> {
         if config.bucket().is_empty() {
             return Err(StorageError::InitError(
-                "Bucket name must be provided for public or private storage"
-                    .to_string(),
+                "Bucket name must be provided for public or private storage".to_string(),
             ));
         }
         let aws_config = match config.env {
@@ -38,24 +48,20 @@ impl Storage for S3Storage {
                     .await
             }
             StorageEnv::Testnet | StorageEnv::Mainnet => {
-                let base_config =
-                    aws_config::defaults(BehaviorVersion::latest())
-                        .region(config.region())
-                        .load()
-                        .await;
+                let base_config = aws_config::defaults(BehaviorVersion::latest())
+                    .region(config.region())
+                    .load()
+                    .await;
 
                 // Support assuming a role for cross-account access
                 // or fallback to the default credential provider
-                if let Ok(assume_role_arn) = dotenvy::var("AWS_ASSUME_ROLE_ARN")
-                {
+                if let Ok(assume_role_arn) = dotenvy::var("AWS_ASSUME_ROLE_ARN") {
                     let provider =
-                        aws_config::sts::AssumeRoleProvider::builder(
-                            assume_role_arn,
-                        )
-                        .session_name("fuel_data_services_dune")
-                        .configure(&base_config)
-                        .build()
-                        .await;
+                        aws_config::sts::AssumeRoleProvider::builder(assume_role_arn)
+                            .session_name("fuel_data_services_dune")
+                            .configure(&base_config)
+                            .build()
+                            .await;
 
                     aws_config::defaults(BehaviorVersion::latest())
                         .region(config.region())
@@ -71,8 +77,7 @@ impl Storage for S3Storage {
         let s3_config = aws_sdk_s3::config::Builder::from(&aws_config)
             .force_path_style(true)
             .retry_config(
-                S3RetryConfig::standard()
-                    .with_max_attempts(*STORAGE_MAX_RETRIES as u32),
+                S3RetryConfig::standard().with_max_attempts(*STORAGE_MAX_RETRIES as u32),
             )
             .disable_s3_express_session_auth(true)
             .build();
@@ -85,20 +90,14 @@ impl Storage for S3Storage {
         })
     }
 
-    async fn store(
-        &self,
-        key: &str,
-        data: Vec<u8>,
-    ) -> Result<(), StorageError> {
+    async fn store(&self, key: &str, data: Vec<u8>) -> Result<(), StorageError> {
         with_retry(&self.retry_config, "store", || {
             let data = data.clone();
             async move {
                 #[allow(clippy::identity_op)]
                 const LARGE_FILE_THRESHOLD: usize = 100 * 1024 * 1024; // 100MB
                 let result = if data.len() >= LARGE_FILE_THRESHOLD {
-                    tracing::debug!(
-                        "Uploading file to S3 using multipart_upload"
-                    );
+                    tracing::debug!("Uploading file to S3 using multipart_upload");
                     self.upload_multipart(key, data).await
                 } else {
                     tracing::debug!("Uploading file to S3 using put_object");
@@ -113,7 +112,7 @@ impl Storage for S3Storage {
         .await
     }
 
-    async fn retrieve(&self, key: &str) -> Result<Vec<u8>, StorageError> {
+    async fn retrieve(&self, key: &str) -> Result<Option<Vec<u8>>, StorageError> {
         with_retry(&self.retry_config, "retrieve", || async {
             let result = self
                 .client
@@ -121,16 +120,25 @@ impl Storage for S3Storage {
                 .bucket(self.config.bucket())
                 .key(key)
                 .send()
-                .await
-                .map_err(|e| StorageError::RetrieveError(e.to_string()))?;
+                .await;
 
-            Ok(result
+            if let Err(SdkError::ServiceError(err)) = &result
+                && matches!(err.err(), GetObjectError::NoSuchKey(_))
+            {
+                return Ok(None)
+            }
+
+            let result =
+                result.map_err(|e| StorageError::RetrieveError(e.to_string()))?;
+
+            let bytes = result
                 .body
                 .collect()
                 .await
                 .map_err(|e| StorageError::RetrieveError(e.to_string()))?
                 .into_bytes()
-                .to_vec())
+                .to_vec();
+            Ok(Some(bytes))
         })
         .await
     }
@@ -166,20 +174,13 @@ impl S3Storage {
             .send()
             .await
             .map_err(|e| {
-                tracing::error!(
-                    "Error creating a bucket {:?}",
-                    e.as_service_error()
-                );
+                tracing::error!("Error creating a bucket {:?}", e.as_service_error());
                 StorageError::StoreError(e.to_string())
             })?;
         Ok(())
     }
 
-    async fn put_object(
-        &self,
-        key: &str,
-        object: Vec<u8>,
-    ) -> Result<(), StorageError> {
+    async fn put_object(&self, key: &str, object: Vec<u8>) -> Result<(), StorageError> {
         let result = self
             .client
             .put_object()
@@ -341,8 +342,7 @@ impl S3Storage {
 
             // Check if there are more objects
             if response.is_truncated().unwrap_or_default() {
-                continuation_token =
-                    response.next_continuation_token().map(String::from);
+                continuation_token = response.next_continuation_token().map(String::from);
             } else {
                 break;
             }
@@ -355,7 +355,10 @@ impl S3Storage {
     pub async fn new_for_testing() -> Result<Self, StorageError> {
         dotenvy::dotenv().ok();
 
-        use super::{StorageEnv, StorageRole};
+        use super::{
+            StorageEnv,
+            StorageRole,
+        };
         let config = S3StorageOpts::new(StorageEnv::Local, StorageRole::Admin)
             .with_random_namespace();
 
@@ -413,7 +416,10 @@ mod tests {
     use pretty_assertions::assert_eq;
     use tracing_test::traced_test;
 
-    use super::{Storage, *};
+    use super::{
+        Storage,
+        *,
+    };
 
     #[tokio::test]
     async fn test_basic_operations() {
@@ -424,13 +430,23 @@ mod tests {
         let content = b"Hello, Storage!".to_vec();
 
         storage.store(key, content.clone()).await.unwrap();
-        let retrieved = storage.retrieve(key).await.unwrap();
+        let retrieved = storage.retrieve(key).await.unwrap().unwrap();
         assert_eq!(retrieved, content);
 
         // Test delete
         storage.delete(key).await.unwrap();
-        let result = storage.retrieve(key).await;
-        assert!(result.is_err());
+        let result = storage.retrieve(key).await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn test_non_existing_file() {
+        let storage = S3Storage::new_for_testing().await.unwrap();
+
+        // Verify small file was stored correctly
+        let file = storage.retrieve("unknown-file").await.unwrap();
+        assert_eq!(file.is_none(), true);
     }
 
     #[tokio::test]
@@ -447,11 +463,11 @@ mod tests {
         assert!(logs_contain("put_object"));
 
         // Verify small file was stored correctly
-        let retrieved_small = storage.retrieve("small-file").await.unwrap();
+        let retrieved_small = storage.retrieve("small-file").await.unwrap().unwrap();
         assert_eq!(retrieved_small, small_content);
 
         // Test large file (over 1MB)
-        let large_content = vec![0u8; 2 * 1024 * 1024];
+        let large_content = vec![0u8; 1024 * 1024 * 1024];
         storage
             .store("large-file", large_content.clone())
             .await
@@ -459,7 +475,7 @@ mod tests {
         assert!(logs_contain("multipart_upload"));
 
         // Verify large file was stored correctly
-        let retrieved_large = storage.retrieve("large-file").await.unwrap();
+        let retrieved_large = storage.retrieve("large-file").await.unwrap().unwrap();
         assert_eq!(retrieved_large, large_content);
     }
 
@@ -483,7 +499,7 @@ mod tests {
         storage.store(key, content.clone()).await.unwrap();
 
         // Retrieve and verify the file immediately after upload
-        let retrieved_after_upload = storage.retrieve(key).await.unwrap();
+        let retrieved_after_upload = storage.retrieve(key).await.unwrap().unwrap();
         assert_eq!(
             retrieved_after_upload.len(),
             content.len(),
@@ -496,7 +512,7 @@ mod tests {
 
         // Wait a moment and retrieve again to verify persistence
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let retrieved_after_wait = storage.retrieve(key).await.unwrap();
+        let retrieved_after_wait = storage.retrieve(key).await.unwrap().unwrap();
         assert_eq!(
             retrieved_after_wait.len(),
             content.len(),
@@ -511,9 +527,9 @@ mod tests {
         storage.delete(key).await.unwrap();
 
         // Verify deletion
-        let result = storage.retrieve(key).await;
+        let result = storage.retrieve(key).await.unwrap();
         assert!(
-            result.is_err(),
+            result.is_none(),
             "File should no longer exist after deletion"
         );
     }

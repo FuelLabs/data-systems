@@ -3,9 +3,9 @@ load('ext://restart_process', 'docker_build_with_restart')
 load('ext://color', 'color')
 load('ext://dotenv', 'dotenv')
 
-analytics_settings(True) # Enable telemetry dialogue in web UI
-disable_snapshots()      # Disable TiltCloud Snapshots
-version_settings(True)   # Enable 'new version' banner
+analytics_settings(True)  # Enable telemetry dialogue in web UI
+disable_snapshots()  # Disable TiltCloud Snapshots
+version_settings(True)  # Enable 'new version' banner
 
 # Load environment variables from .env file
 dotenv()
@@ -14,85 +14,16 @@ allow_k8s_contexts('minikube')
 
 # Build sv-publisher
 custom_build(
-    ref='sv-publisher:latest',
+    ref='sv-dune:latest',
     command=[
         './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/sv-publisher.Dockerfile'
+        '--dockerfile', './cluster/docker/sv-dune.Dockerfile'
     ],
     deps=[
         './src',
         './Cargo.toml',
         './Cargo.lock',
-        './cluster/docker/sv-publisher.Dockerfile'
-    ],
-    live_update=[
-        sync('./src', '/usr/src'),
-        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-    ],
-    ignore=['./target']
-)
-
-# Build sv-consumer
-custom_build(
-    ref='sv-consumer:latest',
-    image_deps=['sv-publisher:latest'],
-    command=[
-        './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/sv-consumer.Dockerfile'
-    ],
-    deps=[
-        './src',
-        './Cargo.toml',
-        './Cargo.lock',
-        './cluster/docker/sv-consumer.Dockerfile'
-    ],
-    live_update=[
-        sync('./src', '/usr/src'),
-        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-    ],
-    ignore=['./target']
-)
-
-# Build streamer ws image with proper configuration for Minikube
-custom_build(
-    ref='sv-webserver:latest',
-    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
-    command=[
-        './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/sv-webserver.Dockerfile'
-    ],
-    deps=[
-        './src',
-        './Cargo.toml',
-        './Cargo.lock',
-        './cluster/docker/sv-webserver.Dockerfile'
-    ],
-    live_update=[
-        sync('./src', '/usr/src'),
-        sync('./Cargo.toml', '/usr/src/Cargo.toml'),
-        sync('./Cargo.lock', '/usr/src/Cargo.lock'),
-        run('cargo build', trigger=['./src', './Cargo.toml', './Cargo.lock'])
-    ],
-    ignore=['./target']
-)
-
-# api server
-custom_build(
-    ref='sv-api:latest',
-    image_deps=['sv-consumer:latest', 'sv-publisher:latest'],
-    command=[
-        './cluster/scripts/build_docker.sh',
-        '--dockerfile', './cluster/docker/sv-api.Dockerfile'
-    ],
-    deps=[
-        './src',
-        './Cargo.toml',
-        './Cargo.lock',
-        './cluster/docker/sv-api.Dockerfile'
+        './cluster/docker/sv-dune.Dockerfile'
     ],
     live_update=[
         sync('./src', '/usr/src'),
@@ -109,39 +40,11 @@ config_mode = os.getenv('CLUSTER_MODE', 'full')
 
 # Resource configurations
 RESOURCES = {
-    'publisher': {
-        'name': 'fuel-streams-sv-publisher',
+    'dune': {
+        'name': 'fuel-streams-sv-dune',
         'ports': ['8080:8080'],
-        'labels': 'publisher',
+        'labels': 'dune',
         'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats', ]
-    },
-    'consumer': {
-        'name': 'fuel-streams-sv-consumer',
-        'ports': ['8081:8080'],
-        'labels': 'consumer',
-        'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats', 'fuel-streams-sv-publisher']
-    },
-    'sv-webserver': {
-        'name': 'fuel-streams-sv-webserver',
-        'ports': ['9003:9003'],
-        'labels': 'ws',
-        'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-nats']
-    },
-    'sv-api': {
-        'name': 'fuel-streams-sv-api',
-        'ports': ['9004:9004'],
-        'labels': 'api',
-        'config_mode': ['minimal', 'full'],
-        'deps': ['fuel-streams-sv-publisher', 'fuel-streams-sv-consumer']
-    },
-    'nats': {
-        'name': 'fuel-streams-nats',
-        'ports': ['4222:4222', '6222:6222', '7422:7422'],
-        'labels': 'nats',
-        'config_mode': ['minimal', 'full']
     },
 
 }

@@ -10,6 +10,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+test-helpers = []
+
 [dependencies]
 async-trait.workspace = true
 serde.workspace = true
@@ -21,6 +24,3 @@ tokio.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
-
-[features]
-test-helpers = []

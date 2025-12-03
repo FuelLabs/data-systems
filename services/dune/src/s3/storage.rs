@@ -40,10 +40,9 @@ pub trait Storage: std::fmt::Debug + Send + Sync {
         Self::new(Self::Config::public_opts()).await
     }
 
-    async fn store(&self, key: &str, data: Vec<u8>)
-        -> Result<(), StorageError>;
+    async fn store(&self, key: &str, data: Vec<u8>) -> Result<(), StorageError>;
 
-    async fn retrieve(&self, key: &str) -> Result<Vec<u8>, StorageError>;
+    async fn retrieve(&self, key: &str) -> Result<Option<Vec<u8>>, StorageError>;
 
     async fn delete(&self, key: &str) -> Result<(), StorageError>;
 }

@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
 use apache_avro::AvroSchema;
+use fuel_core_types::services::executor::TransactionExecutionResult;
 use serde::Serialize;
 
 use crate::{
     fuel_core::{
         FuelCoreClientTransactionStatus,
+        FuelCoreExecutorStatus,
         FuelCoreTransactionExecutionStatus,
     },
     impl_enum_string_serialization,
@@ -43,12 +45,8 @@ impl TryFrom<&str> for TransactionStatus {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match voca_rs::case::snake_case(s).as_str() {
-            "pre_confirmation_failed" => {
-                Ok(TransactionStatus::PreConfirmationFailed)
-            }
-            "pre_confirmation_success" => {
-                Ok(TransactionStatus::PreConfirmationSuccess)
-            }
+            "pre_confirmation_failed" => Ok(TransactionStatus::PreConfirmationFailed),
+            "pre_confirmation_success" => Ok(TransactionStatus::PreConfirmationSuccess),
             "failed" => Ok(TransactionStatus::Failed),
             "submitted" => Ok(TransactionStatus::Submitted),
             "squeezed_out" => Ok(TransactionStatus::SqueezedOut),
@@ -79,27 +77,32 @@ impl From<&FuelCoreTransactionExecutionStatus> for TransactionStatus {
     }
 }
 
+impl From<&FuelCoreExecutorStatus> for TransactionStatus {
+    fn from(value: &FuelCoreExecutorStatus) -> Self {
+        match value.result {
+            TransactionExecutionResult::Success { .. } => TransactionStatus::Success,
+            TransactionExecutionResult::Failed { .. } => TransactionStatus::Failed,
+        }
+    }
+}
+
 impl From<&FuelCoreClientTransactionStatus> for TransactionStatus {
     fn from(value: &FuelCoreClientTransactionStatus) -> Self {
         match value {
-            FuelCoreClientTransactionStatus::PreconfirmationFailure {
-                ..
-            } => TransactionStatus::PreConfirmationFailed,
-            FuelCoreClientTransactionStatus::PreconfirmationSuccess {
-                ..
-            } => TransactionStatus::PreConfirmationSuccess,
-            FuelCoreClientTransactionStatus::Failure { .. } => {
-                TransactionStatus::Failed
+            FuelCoreClientTransactionStatus::PreconfirmationFailure { .. } => {
+                TransactionStatus::PreConfirmationFailed
             }
+            FuelCoreClientTransactionStatus::PreconfirmationSuccess { .. } => {
+                TransactionStatus::PreConfirmationSuccess
+            }
+            FuelCoreClientTransactionStatus::Failure { .. } => TransactionStatus::Failed,
             FuelCoreClientTransactionStatus::Submitted { .. } => {
                 TransactionStatus::Submitted
             }
             FuelCoreClientTransactionStatus::SqueezedOut { .. } => {
                 TransactionStatus::SqueezedOut
             }
-            FuelCoreClientTransactionStatus::Success { .. } => {
-                TransactionStatus::Success
-            }
+            FuelCoreClientTransactionStatus::Success { .. } => TransactionStatus::Success,
         }
     }
 }
