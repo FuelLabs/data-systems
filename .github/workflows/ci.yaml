@@ -21,7 +21,7 @@ jobs:
     name: Validate Lockfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: ./.github/actions/setup-rust
       - run: cargo update --workspace --locked
@@ -32,7 +32,7 @@ jobs:
       - lockfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -53,7 +53,7 @@ jobs:
       - lockfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -79,7 +79,7 @@ jobs:
       - publish-crates-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -117,7 +117,7 @@ jobs:
           DEBUG: 1
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: ./.github/actions/setup-rust
@@ -142,4 +142,4 @@ jobs:
       actions: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
