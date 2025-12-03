@@ -16,17 +16,10 @@ ignored = ["fuel-data-parser"]
 
 [features]
 default = []
-test-helpers = [
-    "fuel-data-parser/test-helpers",
-    "fuel-streams-domains/test-helpers",
-    "fuel-streams-types/test-helpers",
-]
+test-helpers = []
 
 [dependencies]
 anyhow.workspace = true
-fuel-data-parser.workspace = true
-fuel-streams-domains.workspace = true
-fuel-streams-types.workspace = true
 tokio.workspace = true
 tokio-util = "0.7.13"
 tracing.workspace = true
