@@ -1,24 +1,24 @@
 use super::{
-    StorageConfig,
-    StorageEnv,
     client_opts::S3StorageOpts,
     retry::{
+        with_retry,
         RetryConfig,
         STORAGE_MAX_RETRIES,
-        with_retry,
     },
     storage::{
         Storage,
         StorageError,
     },
+    StorageConfig,
+    StorageEnv,
 };
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::{
-    Client,
     config::retry::RetryConfig as S3RetryConfig,
     error::SdkError,
     operation::get_object::GetObjectError,
+    Client,
 };
 
 #[derive(Debug, Clone)]
@@ -122,10 +122,10 @@ impl Storage for S3Storage {
                 .send()
                 .await;
 
-            if let Err(SdkError::ServiceError(err)) = &result {
-                if matches!(err.err(), GetObjectError::NoSuchKey(_)) {
-                    return Ok(None)
-                }
+            if let Err(SdkError::ServiceError(err)) = &result
+                && matches!(err.err(), GetObjectError::NoSuchKey(_))
+            {
+                return Ok(None)
             }
 
             let result =
