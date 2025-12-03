@@ -45,9 +45,9 @@ For codebase documentation, see the README files in the relevant directories:
 
 ### Services
 
-| Service                                           | Description                                                      |
-| ------------------------------------------------- | ---------------------------------------------------------------- |
-| [Dune Service](services/dune/README.md)           | Processes blockchain data for analytics with Dune                |
+| Service                                 | Description                                       |
+| --------------------------------------- | ------------------------------------------------- |
+| [Dune Service](services/dune/README.md) | Processes blockchain data for analytics with Dune |
 
 ### Deployment and Infrastructure
 
@@ -61,7 +61,7 @@ For codebase documentation, see the README files in the relevant directories:
 ## 🛠️ Development
 
 For local development:
-    ```
+```
 
 1. **Run Services**:
     - Dune Service: `make run-dune`
