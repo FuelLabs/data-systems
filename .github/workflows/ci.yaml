@@ -117,7 +117,7 @@ jobs:
 
   test:
     needs: install-deps
-    name: Test ${{ matrix.package }}
+    name: Running tests
     runs-on: ubuntu-latest
     env:
       AWS_STORAGE_ENV: local
@@ -134,16 +134,6 @@ jobs:
           SERVICES: s3
           DEBUG: 1
 
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - fuel-data-parser
-          - fuel-streams-domains
-          - fuel-streams-types
-          - fuel-streams-test
-          - fuel-web-utils
-          - sv-dune
     steps:
       - uses: actions/checkout@v4
 
@@ -152,14 +142,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_NIGHTLY_VERSION }}
 
-      - name: Install nextest
-        uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-nextest@0.9.100
-          locked: true
-
       - name: Run tests
-        run: make test PACKAGE=${{ matrix.package }} PROFILE=ci
+        run: cargo test --workspace
 
   build:
     needs: install-deps
