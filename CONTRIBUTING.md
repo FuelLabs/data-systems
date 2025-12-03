@@ -369,7 +369,6 @@ The scope field is mandatory and must be one of the following:
 - `fuel-streams-core`: Core components and utilities
 - `fuel-streams-domains`: Domain-specific implementations
 - `fuel-streams-types`: Common types and traits
-- `fuel-streams-subject`: Macro utilities
 - `fuel-streams-store`: Storage implementations
 
 **Service Packages:**

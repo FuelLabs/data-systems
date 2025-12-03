@@ -9,10 +9,6 @@ on:
     types:
       - published
 
-env:
-  CHART_NAME: fuel-streams
-  CHART_PATH: cluster/charts/fuel-streams
-
 permissions:
   contents: read
   packages: write

@@ -138,12 +138,8 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - fuel-streams-core
           - fuel-data-parser
           - fuel-streams-domains
-          - fuel-streams
-          - fuel-message-broker
-          - fuel-streams-subject
           - fuel-streams-types
           - fuel-streams-test
           - fuel-web-utils

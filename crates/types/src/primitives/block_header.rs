@@ -1,13 +1,28 @@
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::{
+    collections::HashMap,
+    fmt,
+    str::FromStr,
+};
 
 use apache_avro::{
-    schema::{derive::AvroSchemaComponent, Name},
+    schema::{
+        derive::AvroSchemaComponent,
+        Name,
+    },
     AvroSchema,
     Schema,
 };
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{
+    DateTime,
+    TimeZone,
+    Utc,
+};
 use serde::{
-    de::{self, Deserializer, Visitor},
+    de::{
+        self,
+        Deserializer,
+        Visitor,
+    },
     ser::Serializer,
     Deserialize,
     Serialize,
@@ -61,9 +76,8 @@ impl<'de> Deserialize<'de> for BlockTime {
             type Value = BlockTime;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str(
-                    "a string Unix timestamp or an 8-byte array or an integer",
-                )
+                formatter
+                    .write_str("a string Unix timestamp or an 8-byte array or an integer")
             }
 
             fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
@@ -84,8 +98,7 @@ impl<'de> Deserialize<'de> for BlockTime {
             where
                 E: de::Error,
             {
-                let unix_timestamp =
-                    value.parse::<i64>().map_err(de::Error::custom)?;
+                let unix_timestamp = value.parse::<i64>().map_err(de::Error::custom)?;
                 Ok(BlockTime(FuelCoreTai64::from_unix(unix_timestamp)))
             }
 
@@ -105,9 +118,9 @@ impl<'de> Deserialize<'de> for BlockTime {
             {
                 let mut bytes = [0u8; 8];
                 for byte in &mut bytes {
-                    *byte = seq.next_element()?.ok_or_else(|| {
-                        de::Error::custom("byte array too short")
-                    })?;
+                    *byte = seq
+                        .next_element()?
+                        .ok_or_else(|| de::Error::custom("byte array too short"))?;
                 }
                 if seq.next_element::<u8>()?.is_some() {
                     return Err(de::Error::custom("byte array too long"));
@@ -155,14 +168,7 @@ impl AvroSchemaComponent for BlockTime {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    Default,
-    utoipa::ToSchema,
-    AvroSchema,
+    Debug, Clone, PartialEq, Serialize, Deserialize, Default, utoipa::ToSchema, AvroSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub struct BlockHeader {
@@ -199,9 +205,7 @@ impl From<&FuelCoreBlockHeader> for BlockHeader {
 
         Self {
             application_hash: (*header.application_hash()).into(),
-            consensus_parameters_version: header
-                .consensus_parameters_version()
-                .into(),
+            consensus_parameters_version: header.consensus_parameters_version().into(),
             da_height: header.da_height().into(),
             event_inbox_root: header.event_inbox_root().into(),
             id: header.id().into(),
@@ -295,8 +299,7 @@ mod tests {
     fn test_round_trip_string() {
         let original = BlockTime::from_unix(1614556800);
         let serialized = serde_json::to_string(&original).unwrap();
-        let deserialized: BlockTime =
-            serde_json::from_str(&serialized).unwrap();
+        let deserialized: BlockTime = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, original);
     }
 
@@ -354,8 +357,7 @@ mod tests {
         let json_obj = serde_json::json!({
             "version": "V1"
         });
-        let parsed: serde_json::Value =
-            serde_json::from_value(json_obj).unwrap();
+        let parsed: serde_json::Value = serde_json::from_value(json_obj).unwrap();
         let version: BlockVersion =
             serde_json::from_value(parsed["version"].clone()).unwrap();
         assert_eq!(version, BlockVersion::V1);

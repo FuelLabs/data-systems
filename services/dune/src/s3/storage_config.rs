@@ -1,4 +1,7 @@
-use std::{fmt::Display, str::FromStr};
+use std::{
+    fmt::Display,
+    str::FromStr,
+};
 
 #[derive(Debug, Clone, Default)]
 pub enum StorageRole {

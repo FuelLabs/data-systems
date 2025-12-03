@@ -1,13 +1,14 @@
 use apache_avro::AvroSchema;
 use fuel_streams_domains::inputs;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::TxPointer;
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputContract {
     #[avro(rename = "balanceRoot")]
@@ -34,9 +35,7 @@ impl InputContract {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputCoin {
     pub amount: Option<i64>,
@@ -72,9 +71,7 @@ impl InputCoin {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputMessage {
     pub amount: Option<i64>,
@@ -113,9 +110,7 @@ impl InputMessage {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Inputs {
     #[avro(rename = "contractInputs")]
@@ -168,7 +163,10 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::helpers::{write_schema_files, AvroParser};
+    use crate::helpers::{
+        write_schema_files,
+        AvroParser,
+    };
 
     fn test_input_serialization(parser: AvroParser, avro_input: Inputs) {
         let ser = serde_json::to_vec(&avro_input).unwrap();

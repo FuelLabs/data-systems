@@ -46,11 +46,7 @@ macro_rules! common_wrapper_type {
         impl From<&str> for $wrapper_type {
             fn from(s: &str) -> Self {
                 s.parse().unwrap_or_else(|e| {
-                    panic!(
-                        "Failed to parse {}: {}",
-                        stringify!($wrapper_type),
-                        e
-                    )
+                    panic!("Failed to parse {}: {}", stringify!($wrapper_type), e)
                 })
             }
         }
@@ -142,9 +138,8 @@ macro_rules! generate_byte_type_wrapper {
                         std::mem::size_of::<$inner_type>() * 2
                     ));
                 }
-                let bytes = hex::decode(s).map_err(|e| {
-                    format!("Failed to decode hex string: {}", e)
-                })?;
+                let bytes = hex::decode(s)
+                    .map_err(|e| format!("Failed to decode hex string: {}", e))?;
                 let array: [u8; $byte_size] = bytes
                     .try_into()
                     .map_err(|_| "Invalid byte length".to_string())?;
@@ -166,10 +161,8 @@ macro_rules! generate_byte_type_wrapper {
             fn decode(
                 value: sqlx::postgres::PgValueRef<'r>,
             ) -> Result<Self, sqlx::error::BoxDynError> {
-                let hex_str =
-                    <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
-                let s =
-                    hex_str.strip_prefix("0x").ok_or("Missing 0x prefix")?;
+                let hex_str = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                let s = hex_str.strip_prefix("0x").ok_or("Missing 0x prefix")?;
                 let bytes = hex::decode(s)?;
                 let array: [u8; $byte_size] =
                     bytes.try_into().map_err(|_| "Invalid byte length")?;
@@ -246,10 +239,7 @@ macro_rules! generate_byte_type_wrapper {
                         Ok($wrapper_type(<$inner_type>::from(v.to_vec())))
                     }
 
-                    fn visit_seq<A>(
-                        self,
-                        mut seq: A,
-                    ) -> Result<Self::Value, A::Error>
+                    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
                     where
                         A: serde::de::SeqAccess<'de>,
                     {
@@ -296,9 +286,8 @@ macro_rules! generate_byte_type_wrapper {
             type Err = String;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.strip_prefix("0x").unwrap_or(s);
-                let bytes = hex::decode(s).map_err(|e| {
-                    format!("Failed to decode hex string: {}", e)
-                })?;
+                let bytes = hex::decode(s)
+                    .map_err(|e| format!("Failed to decode hex string: {}", e))?;
                 Ok($wrapper_type(bytes.into()))
             }
         }

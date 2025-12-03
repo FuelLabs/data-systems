@@ -1,11 +1,16 @@
 use fuel_core_types::fuel_tx::policies::PolicyType;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{fuel_core::FuelCorePolicies, WrappedU32, WrappedU64};
+use crate::{
+    fuel_core::FuelCorePolicies,
+    WrappedU32,
+    WrappedU64,
+};
 
-#[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash,
-)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct Policies {
     pub tip: Option<WrappedU64>,
     pub maturity: Option<WrappedU32>,
@@ -43,9 +48,7 @@ impl From<FuelCorePolicies> for Policies {
             maturity: policies
                 .get(PolicyType::Maturity)
                 .map(|v| WrappedU32::from(v as u32)),
-            witness_limit: policies
-                .get(PolicyType::WitnessLimit)
-                .map(WrappedU64::from),
+            witness_limit: policies.get(PolicyType::WitnessLimit).map(WrappedU64::from),
             max_fee: policies.get(PolicyType::MaxFee).map(WrappedU64::from),
         }
     }
@@ -67,11 +70,9 @@ impl utoipa::PartialSchema for Policies {
                 "values",
                 utoipa::openapi::schema::ObjectBuilder::new()
                     .schema_type(utoipa::openapi::schema::Type::Integer)
-                    .format(Some(
-                        utoipa::openapi::schema::SchemaFormat::KnownFormat(
-                            utoipa::openapi::KnownFormat::Int64,
-                        ),
-                    ))
+                    .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                        utoipa::openapi::KnownFormat::Int64,
+                    )))
                     .build(),
             )
             .examples([Some(serde_json::json!([0, 0, 0, 0, 0]))])

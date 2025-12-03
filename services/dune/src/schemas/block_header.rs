@@ -1,12 +1,16 @@
 use apache_avro::AvroSchema;
-use fuel_streams_types::{BlockHeader, UnixTimestamp};
-use serde::{Deserialize, Serialize};
+use fuel_streams_types::{
+    BlockHeader,
+    UnixTimestamp,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroBlockHeader {
     #[avro(rename = "applicationHash")]
@@ -52,33 +56,23 @@ impl AvroBlockHeader {
         source_file_path: Option<String>,
     ) -> Self {
         Self {
-            application_hash: Some(
-                block_header.application_hash.clone().into(),
-            ),
+            application_hash: Some(block_header.application_hash.clone().into()),
             consensus_parameters_version: Some(
                 block_header.consensus_parameters_version.0 as i64,
             ),
             da_height: Some(block_header.da_height.0 as i64),
-            event_inbox_root: Some(
-                block_header.event_inbox_root.clone().into(),
-            ),
+            event_inbox_root: Some(block_header.event_inbox_root.clone().into()),
             id: Some(block_header.id.clone().into()),
             height: Some(block_header.height.0 as i64),
-            message_outbox_root: Some(
-                block_header.message_outbox_root.clone().into(),
-            ),
-            message_receipt_count: Some(
-                block_header.message_receipt_count.0 as i64,
-            ),
+            message_outbox_root: Some(block_header.message_outbox_root.clone().into()),
+            message_receipt_count: Some(block_header.message_receipt_count.0 as i64),
             prev_root: Some(block_header.prev_root.clone().into()),
             state_transition_bytecode_version: Some(
                 block_header.state_transition_bytecode_version.0 as i64,
             ),
             time: Some(block_header.time.0.to_unix()),
             transactions_count: Some(block_header.transactions_count as i64),
-            transactions_root: Some(
-                block_header.transactions_root.clone().into(),
-            ),
+            transactions_root: Some(block_header.transactions_root.clone().into()),
             version: Some(block_header.version.to_string()),
             _rescued_data: rescued_data,
             updated_at: updated_at.map(|t| *t.0 as i64),
@@ -90,22 +84,26 @@ impl AvroBlockHeader {
 
 #[cfg(test)]
 mod tests {
-    use fuel_streams_types::{Amount, BlockHeader, UnixTimestamp};
+    use fuel_streams_types::{
+        Amount,
+        BlockHeader,
+        UnixTimestamp,
+    };
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::helpers::{write_schema_files, AvroParser, TestBlockMetadata};
+    use crate::helpers::{
+        write_schema_files,
+        AvroParser,
+        TestBlockMetadata,
+    };
 
-    fn test_block_header_serialization(
-        parser: AvroParser,
-        avro_header: AvroBlockHeader,
-    ) {
+    fn test_block_header_serialization(parser: AvroParser, avro_header: AvroBlockHeader) {
         let ser = serde_json::to_vec(&avro_header).unwrap();
         let deser = serde_json::from_slice::<AvroBlockHeader>(&ser).unwrap();
         assert_eq!(avro_header, deser);
 
-        let mut avro_writer =
-            parser.writer_with_schema::<AvroBlockHeader>().unwrap();
+        let mut avro_writer = parser.writer_with_schema::<AvroBlockHeader>().unwrap();
         avro_writer.append(&avro_header).unwrap();
         let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser

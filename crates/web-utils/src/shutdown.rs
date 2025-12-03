@@ -1,24 +1,10 @@
-use std::{sync::Arc, time::Duration};
-
-use fuel_message_broker::NatsMessageBroker;
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 use tokio_util::sync::CancellationToken;
 
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(90);
-
-pub async fn shutdown_broker_with_timeout(broker: &Arc<NatsMessageBroker>) {
-    let _ = tokio::time::timeout(GRACEFUL_SHUTDOWN_TIMEOUT, async {
-        tracing::info!("Flushing in-flight messages to broker ...");
-        match broker.flush().await {
-            Ok(_) => {
-                tracing::info!("Flushed all streams successfully!");
-            }
-            Err(e) => {
-                tracing::error!("Failed to flush all streams: {:?}", e);
-            }
-        }
-    })
-    .await;
-}
 
 #[derive(Clone)]
 pub struct ShutdownController {
@@ -96,8 +82,7 @@ mod tests {
         let controller = ShutdownController::new();
 
         let timeout = Duration::from_millis(50);
-        let result =
-            tokio::time::timeout(timeout, controller.wait_for_shutdown()).await;
+        let result = tokio::time::timeout(timeout, controller.wait_for_shutdown()).await;
 
         assert!(
             result.is_err(),

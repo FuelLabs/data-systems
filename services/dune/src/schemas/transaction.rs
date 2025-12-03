@@ -1,5 +1,8 @@
 use apache_avro::AvroSchema;
-use fuel_streams_domains::{blocks::Block, transactions::Transaction};
+use fuel_streams_domains::{
+    blocks::Block,
+    transactions::Transaction,
+};
 use fuel_streams_types::{
     FuelCoreUpgradePurpose,
     Policies as DomainPolicies,
@@ -7,14 +10,18 @@ use fuel_streams_types::{
     TxPointer as CoreTxPointer,
     UpgradePurpose as DomainUpgradePurpose,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{InputContract, OutputContract};
+use super::{
+    InputContract,
+    OutputContract,
+};
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TxPointer {
     #[avro(rename = "blockHeight")]
@@ -32,9 +39,7 @@ impl From<&CoreTxPointer> for TxPointer {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Policies {
     pub maturity: Option<i64>,
@@ -56,9 +61,7 @@ impl Policies {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpgradePurpose {
     #[avro(rename = "purposeType")]
@@ -91,9 +94,7 @@ impl UpgradePurpose {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroStorageSlot {
     pub key: AvroBytes,
@@ -109,9 +110,7 @@ impl From<&StorageSlot> for AvroStorageSlot {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AvroTransaction {
     #[avro(rename = "blockHeight")]
@@ -227,9 +226,7 @@ impl AvroTransaction {
                 .bytecode_root
                 .as_ref()
                 .map(|br| br.as_ref().to_vec().into()),
-            bytecode_witness_index: transaction
-                .bytecode_witness_index
-                .map(Into::into),
+            bytecode_witness_index: transaction.bytecode_witness_index.map(Into::into),
             blob_id: transaction
                 .blob_id
                 .as_ref()
@@ -261,24 +258,20 @@ impl AvroTransaction {
                 .map(|limit| limit.as_ref().to_owned() as i64),
             subsection_index: transaction.subsection_index.map(Into::into),
             subsections_number: transaction.subsections_number.map(Into::into),
-            input_asset_ids: transaction.input_asset_ids.as_ref().map(|ids| {
-                ids.iter().map(|id| id.as_ref().to_vec().into()).collect()
-            }),
+            input_asset_ids: transaction
+                .input_asset_ids
+                .as_ref()
+                .map(|ids| ids.iter().map(|id| id.as_ref().to_vec().into()).collect()),
             proof_set: transaction.proof_set.as_ref().map(|proofs| {
                 proofs.iter().map(|p| p.as_ref().to_vec().into()).collect()
             }),
-            input_contract: transaction
-                .input_contract
-                .as_ref()
-                .map(InputContract::new),
+            input_contract: transaction.input_contract.as_ref().map(InputContract::new),
             output_contract: transaction
                 .output_contract
                 .as_ref()
                 .map(OutputContract::new),
             policies: transaction.policies.as_ref().map(Policies::new),
-            raw_payload: Some(
-                transaction.raw_payload.as_ref().as_ref().to_vec().into(),
-            ),
+            raw_payload: Some(transaction.raw_payload.as_ref().as_ref().to_vec().into()),
             script: transaction
                 .script
                 .as_ref()
@@ -337,18 +330,18 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::helpers::{write_schema_files, AvroParser, TestBlockMetadata};
+    use crate::helpers::{
+        write_schema_files,
+        AvroParser,
+        TestBlockMetadata,
+    };
 
-    fn test_transaction_serialization(
-        parser: AvroParser,
-        avro_tx: AvroTransaction,
-    ) {
+    fn test_transaction_serialization(parser: AvroParser, avro_tx: AvroTransaction) {
         let ser = serde_json::to_vec(&avro_tx).unwrap();
         let deser = serde_json::from_slice::<AvroTransaction>(&ser).unwrap();
         assert_eq!(avro_tx, deser);
 
-        let mut avro_writer =
-            parser.writer_with_schema::<AvroTransaction>().unwrap();
+        let mut avro_writer = parser.writer_with_schema::<AvroTransaction>().unwrap();
         avro_writer.append(&avro_tx).unwrap();
         let serialized = avro_writer.into_inner().unwrap();
         let deserialized = parser

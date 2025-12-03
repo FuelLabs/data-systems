@@ -1,4 +1,7 @@
-use apache_avro::{schema::EnumSchema, AvroSchema};
+use apache_avro::{
+    schema::EnumSchema,
+    AvroSchema,
+};
 use fuel_core_types::fuel_asm::RawInstruction;
 
 use crate::fuel_core::*;
@@ -104,14 +107,10 @@ impl utoipa::PartialSchema for PanicInstruction {
                 "instruction",
                 utoipa::openapi::schema::ObjectBuilder::new()
                     .schema_type(utoipa::openapi::schema::Type::Integer)
-                    .format(Some(
-                        utoipa::openapi::schema::SchemaFormat::KnownFormat(
-                            utoipa::openapi::KnownFormat::Int32,
-                        ),
-                    ))
-                    .description(Some(
-                        "Raw instruction that caused the panic (u32)",
-                    ))
+                    .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                        utoipa::openapi::KnownFormat::Int32,
+                    )))
+                    .description(Some("Raw instruction that caused the panic (u32)"))
                     .build(),
             )
             .required("reason")

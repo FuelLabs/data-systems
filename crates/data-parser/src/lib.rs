@@ -79,10 +79,7 @@ impl DataParser {
             .map_err(|e| DataParserError::EncodeJson(SerdeError::Json(e)))
     }
 
-    pub fn decode_json<T: DataEncoder>(
-        &self,
-        data: &[u8],
-    ) -> Result<T, DataParserError> {
+    pub fn decode_json<T: DataEncoder>(&self, data: &[u8]) -> Result<T, DataParserError> {
         serde_json::from_slice(data)
             .map_err(|e| DataParserError::DecodeJson(SerdeError::Json(e)))
     }

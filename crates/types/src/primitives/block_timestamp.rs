@@ -1,11 +1,24 @@
 use std::collections::HashMap;
 
 use apache_avro::{
-    schema::{derive::AvroSchemaComponent, Name},
+    schema::{
+        derive::AvroSchemaComponent,
+        Name,
+    },
     Schema,
 };
-use chrono::{DateTime, Days, TimeZone, Utc};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use chrono::{
+    DateTime,
+    Days,
+    TimeZone,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
 
 use crate::FuelCoreTai64;
 
@@ -31,9 +44,7 @@ pub enum TimeUnit {
 pub struct BlockTimestamp(pub DateTime<Utc>);
 
 impl BlockTimestamp {
-    pub fn from_unix_timestamp(
-        timestamp: i64,
-    ) -> Result<Self, BlockTimestampError> {
+    pub fn from_unix_timestamp(timestamp: i64) -> Result<Self, BlockTimestampError> {
         Utc.timestamp_opt(timestamp, 0)
             .single()
             .map(Self)
@@ -102,11 +113,7 @@ impl BlockTimestamp {
         self.0 <= other.0
     }
 
-    pub fn add(
-        &self,
-        value: i64,
-        unit: TimeUnit,
-    ) -> Result<Self, BlockTimestampError> {
+    pub fn add(&self, value: i64, unit: TimeUnit) -> Result<Self, BlockTimestampError> {
         let seconds = match unit {
             TimeUnit::Seconds => value,
             TimeUnit::Minutes => value
@@ -270,10 +277,7 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for BlockTimestamp {
     fn decode(
         value: sqlx::postgres::PgValueRef<'r>,
     ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
-        let dt =
-            <chrono::DateTime<Utc> as sqlx::Decode<sqlx::Postgres>>::decode(
-                value,
-            )?;
+        let dt = <chrono::DateTime<Utc> as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
         Ok(Self(dt))
     }
 }
@@ -288,10 +292,8 @@ impl sqlx::Encode<'_, sqlx::Postgres> for BlockTimestamp {
     fn encode_by_ref(
         &self,
         buf: &mut sqlx::postgres::PgArgumentBuffer,
-    ) -> Result<
-        sqlx::encode::IsNull,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    > {
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + Send + Sync + 'static>>
+    {
         <chrono::DateTime<Utc> as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(
             &self.0, buf,
         )
@@ -316,13 +318,15 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::{BlockHeader, BlockTime};
+    use crate::{
+        BlockHeader,
+        BlockTime,
+    };
 
     #[test]
     fn test_from_unix_timestamp() {
         // Test valid timestamp
-        let timestamp =
-            BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let timestamp = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
         assert_eq!(timestamp.unix_timestamp(), 1234567890);
 
         // Test timestamp at unix epoch
@@ -347,8 +351,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let timestamp =
-            BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let timestamp = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
         assert_eq!(timestamp.to_string(), "1234567890");
     }
 
@@ -416,19 +419,16 @@ mod tests {
         use serde_json;
 
         // Test serialization to integer
-        let timestamp =
-            BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
+        let timestamp = BlockTimestamp::from_unix_timestamp(1234567890).unwrap();
         let serialized = serde_json::to_string(&timestamp).unwrap();
         assert_eq!(serialized, "1234567890");
 
         // Test deserialization from integer
-        let deserialized: BlockTimestamp =
-            serde_json::from_str("1234567890").unwrap();
+        let deserialized: BlockTimestamp = serde_json::from_str("1234567890").unwrap();
         assert_eq!(deserialized.unix_timestamp(), 1234567890);
 
         // Test deserialization error
-        let result: Result<BlockTimestamp, _> =
-            serde_json::from_str("\"invalid\"");
+        let result: Result<BlockTimestamp, _> = serde_json::from_str("\"invalid\"");
         assert!(result.is_err());
 
         // Test deserialization of out-of-range value
@@ -449,10 +449,8 @@ mod tests {
 
         // Test invalid query string
         let query_string = "timestamp=invalid";
-        let parsed: Result<
-            std::collections::HashMap<String, BlockTimestamp>,
-            _,
-        > = serde_urlencoded::from_str(query_string);
+        let parsed: Result<std::collections::HashMap<String, BlockTimestamp>, _> =
+            serde_urlencoded::from_str(query_string);
         assert!(parsed.is_err());
     }
 
@@ -631,8 +629,7 @@ mod tests {
     #[test]
     fn test_timestamp_precision_normalization() {
         // Create a timestamp with nanosecond precision
-        let nano_precise =
-            Utc.timestamp_opt(1234567890, 123456789).single().unwrap();
+        let nano_precise = Utc.timestamp_opt(1234567890, 123456789).single().unwrap();
         let ts = BlockTimestamp::new(nano_precise);
 
         // The normalized timestamp should only have microsecond precision

@@ -172,7 +172,21 @@ impl RunnableTask for Task {
                             return TaskNextAction::Stop;
                         };
 
-                        assert_eq!(next_height, *event.header.height());
+                        if next_height != *event.header.height() {
+                            tracing::warn!(
+                                "Received out-of-order block event: expected height {}, got height {}. Reconnecting stream.",
+                                next_height,
+                                event.header.height()
+                            );
+                            match self.connect_block_stream().await {
+                                Ok(_) => return TaskNextAction::Continue,
+                                Err(e) => {
+                                    tracing::error!("Failed to reconnect block stream: {e}");
+                                    return TaskNextAction::Stop;
+                                }
+                            }
+                        }
+
                         self.pending_events.push(event);
 
                         TaskNextAction::Continue

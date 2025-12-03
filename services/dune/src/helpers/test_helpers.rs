@@ -1,4 +1,8 @@
-use fuel_streams_types::{Address, BlockHeight, BlockId};
+use fuel_streams_types::{
+    Address,
+    BlockHeight,
+    BlockId,
+};
 
 use super::AvroBytes;
 

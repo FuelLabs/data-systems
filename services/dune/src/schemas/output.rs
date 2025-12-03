@@ -1,12 +1,13 @@
 use apache_avro::AvroSchema;
 use fuel_streams_domains::outputs;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::helpers::AvroBytes;
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputCoin {
     pub amount: Option<i64>,
@@ -15,9 +16,7 @@ pub struct OutputCoin {
     pub to: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputContract {
     #[avro(rename = "balanceRoot")]
@@ -28,9 +27,7 @@ pub struct OutputContract {
     pub state_root: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputContractCreated {
     #[avro(rename = "contractId")]
@@ -39,9 +36,7 @@ pub struct OutputContractCreated {
     pub state_root: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputChange {
     pub amount: Option<i64>,
@@ -50,9 +45,7 @@ pub struct OutputChange {
     pub to: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputVariable {
     pub amount: Option<i64>,
@@ -61,9 +54,7 @@ pub struct OutputVariable {
     pub to: Option<AvroBytes>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema,
-)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Outputs {
     #[avro(rename = "coinOutputs")]
@@ -157,8 +148,7 @@ impl Outputs {
                     output_types.push("variable".to_string());
                 }
                 outputs::Output::ContractCreated(created) => {
-                    contract_created_outputs
-                        .push(OutputContractCreated::new(created));
+                    contract_created_outputs.push(OutputContractCreated::new(created));
                     output_types.push("contract_created".to_string());
                 }
             }
@@ -182,7 +172,10 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::helpers::{write_schema_files, AvroParser};
+    use crate::helpers::{
+        write_schema_files,
+        AvroParser,
+    };
 
     // Helper function to reduce code duplication in tests
     fn test_output_serialization(parser: AvroParser, avro_output: Outputs) {

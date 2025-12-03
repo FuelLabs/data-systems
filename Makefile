@@ -16,7 +16,7 @@ RUST_VERSION := 1.86.0
 .PHONY: install validate-env check-commands check-network check-versions \
         check-dev-env setup create-env version bump-version release dev-watch \
         clean clean-build cleanup-artifacts test-watch test helm-test \
-        fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint lint-cargo \
+        fmt fmt-cargo fmt-rust fmt-prettier fmt-markdown lint \
         lint-rust lint-clippy lint-prettier lint-markdown lint-machete \
         audit audit-fix-test audit-fix load-test run-publisher run-consumer \
         run-mainnet-dev run-mainnet-profiling run-testnet-dev run-testnet-profiling \
@@ -134,14 +134,10 @@ helm-test:
 #  Formatting & Linting
 # ------------------------------------------------------------
 
-# Convert find output to space-separated list for taplo
-TOML_FILES := $(shell find . -not -path "./target/*" -name "*.toml" | tr '\n' ' ')
-
 fmt: fmt-cargo fmt-rust fmt-prettier fmt-markdown
 
 fmt-cargo:
 	@echo "Formatting TOML files..."
-	@taplo fmt $(TOML_FILES)
 
 fmt-rust:
 	cargo +$(RUST_NIGHTLY_VERSION) fmt --all -- --color always
@@ -152,10 +148,7 @@ fmt-prettier:
 fmt-markdown:
 	bun run md:fix
 
-lint: lint-cargo lint-rust lint-clippy lint-prettier lint-markdown lint-machete
-
-lint-cargo:
-	@taplo fmt --check $(TOML_FILES)
+lint: lint-rust lint-clippy lint-prettier lint-markdown lint-machete
 
 lint-rust:
 	@cargo check --all-targets --all-features

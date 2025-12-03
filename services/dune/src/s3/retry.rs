@@ -1,4 +1,8 @@
-use std::{future::Future, sync::LazyLock, time::Duration};
+use std::{
+    future::Future,
+    sync::LazyLock,
+    time::Duration,
+};
 
 use tracing;
 
@@ -44,8 +48,7 @@ where
                 attempt += 1;
 
                 if attempt < config.max_retries {
-                    let backoff =
-                        config.initial_backoff * 2u32.pow(attempt - 1);
+                    let backoff = config.initial_backoff * 2u32.pow(attempt - 1);
                     tracing::warn!(
                         "{} failed, attempt {}/{}: {}. Retrying in {:?}",
                         operation_name,
@@ -66,7 +69,10 @@ where
 #[cfg(test)]
 mod tests {
     use std::sync::{
-        atomic::{AtomicU32, Ordering},
+        atomic::{
+            AtomicU32,
+            Ordering,
+        },
         Arc,
     };
 
@@ -78,7 +84,7 @@ mod tests {
     async fn test_retry_mechanism() {
         let config = RetryConfig {
             max_retries: 3,
-            initial_backoff: Duration::from_millis(10), /* Shorter duration for tests */
+            initial_backoff: Duration::from_millis(10), // Shorter duration for tests
         };
 
         let attempt_counter = Arc::new(AtomicU32::new(0));
@@ -110,11 +116,10 @@ mod tests {
             initial_backoff: Duration::from_millis(10),
         };
 
-        let result: Result<(), String> =
-            with_retry(&config, "test", || async {
-                Err("Always fails".to_string())
-            })
-            .await;
+        let result: Result<(), String> = with_retry(&config, "test", || async {
+            Err("Always fails".to_string())
+        })
+        .await;
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Always fails");

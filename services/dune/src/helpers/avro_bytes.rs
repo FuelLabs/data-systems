@@ -1,7 +1,12 @@
 use std::collections::HashMap;
 
 use apache_avro::{
-    schema::{derive::AvroSchemaComponent, Name, Namespace, Schema},
+    schema::{
+        derive::AvroSchemaComponent,
+        Name,
+        Namespace,
+        Schema,
+    },
     types::Value,
     Error,
 };
@@ -20,7 +25,10 @@ use fuel_streams_types::{
     Signature,
     TxId,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct AvroBytes(#[serde(with = "serde_bytes")] pub Vec<u8>);
