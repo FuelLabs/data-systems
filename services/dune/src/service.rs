@@ -1,22 +1,22 @@
 use crate::{
-    DuneError,
     processor::{
         Processor,
         StorageTypeConfig,
     },
     s3::S3TableName,
+    DuneError,
 };
 use fuel_core_client::client::FuelClient;
 use fuel_core_services::{
+    stream::{
+        BoxStream,
+        IntoBoxStream,
+    },
     RunnableService,
     RunnableTask,
     ServiceRunner,
     StateWatcher,
     TaskNextAction,
-    stream::{
-        BoxStream,
-        IntoBoxStream,
-    },
 };
 use fuel_core_types::{
     fuel_tx::AssetId,
@@ -25,9 +25,9 @@ use fuel_core_types::{
 use fuel_indexer_types::events::BlockEvent;
 use fuel_receipts_manager::{
     adapters::graphql_event_adapter::{
+        create_graphql_event_adapter,
         GraphqlEventAdapterConfig,
         GraphqlFetcher,
-        create_graphql_event_adapter,
     },
     port::FinalizedBlock,
 };
@@ -38,6 +38,7 @@ use fuel_streams_domains::{
 use futures::StreamExt;
 use itertools::Itertools;
 use std::{
+    cmp::Ordering,
     num::NonZeroUsize,
     sync::Arc,
 };
@@ -47,8 +48,10 @@ pub struct Config {
     pub url: url::Url,
     pub starting_height: BlockHeight,
     pub storage_type: StorageTypeConfig,
-    pub registry_blocks_request_batch_size: usize,
-    pub registry_blocks_request_concurrency: usize,
+    pub batch_size: usize,
+    pub blocks_request_batch_size: usize,
+    pub blocks_request_concurrency: usize,
+    pub pending_blocks: usize,
 }
 
 pub struct UninitializedTask {
@@ -61,10 +64,10 @@ pub struct Task {
     height: watch::Sender<BlockHeight>,
     fetcher: GraphqlFetcher,
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
-    post_interval: tokio::time::Interval,
     pending_events: Vec<BlockEvent>,
     processor: Processor,
     base_asset_id: AssetId,
+    batch_size: usize,
 }
 
 #[derive(Clone)]
@@ -123,8 +126,6 @@ impl RunnableService for UninitializedTask {
             .consensus_parameters
             .base_asset_id();
 
-        let post_interval = tokio::time::interval(std::time::Duration::from_secs(1));
-
         let processor = Processor::new(config.storage_type).await?;
 
         let current_height = processor
@@ -137,10 +138,10 @@ impl RunnableService for UninitializedTask {
             blocks_stream: futures::stream::pending().into_boxed(),
             height: shared.block_height,
             fetcher,
-            post_interval,
             pending_events: vec![],
             processor,
             base_asset_id,
+            batch_size: config.batch_size,
         };
 
         task.connect_block_stream().await?;
@@ -151,6 +152,21 @@ impl RunnableService for UninitializedTask {
 
 impl RunnableTask for Task {
     async fn run(&mut self, watcher: &mut StateWatcher) -> TaskNextAction {
+        match self.pending_events.len().cmp(&self.batch_size) {
+            Ordering::Less => {}
+            Ordering::Equal => {
+                return TaskNextAction::always_continue(self.post_blocks().await)
+            }
+            Ordering::Greater => {
+                tracing::error!(
+                    "Pending events exceeded batch size: {} > {}",
+                    self.pending_events.len(),
+                    self.batch_size
+                );
+                return TaskNextAction::Stop;
+            }
+        }
+
         tokio::select! {
             biased;
 
@@ -212,10 +228,6 @@ impl RunnableTask for Task {
                         }
                     }
                 }
-            }
-
-            _ = self.post_interval.tick() => {
-                TaskNextAction::always_continue(self.post_blocks().await)
             }
         }
     }
@@ -313,8 +325,9 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
         client: Arc::new(FuelClient::new(&config.url)?),
         heartbeat_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
         event_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-        blocks_request_batch_size: config.registry_blocks_request_batch_size,
-        blocks_request_concurrency: config.registry_blocks_request_concurrency,
+        blocks_request_batch_size: config.blocks_request_batch_size,
+        blocks_request_concurrency: config.blocks_request_concurrency,
+        pending_blocks_limit: config.pending_blocks,
     };
     let fetcher = create_graphql_event_adapter(graphql_config);
     let (height, _) = watch::channel(config.starting_height);
@@ -382,8 +395,10 @@ mod tests {
             url: Url::parse(format!("http://{}", node.bound_address).as_str()).unwrap(),
             starting_height: 0u32.into(),
             storage_type: StorageTypeConfig::S3,
-            registry_blocks_request_batch_size: 10,
-            registry_blocks_request_concurrency: 100,
+            batch_size: 1,
+            blocks_request_batch_size: 10,
+            blocks_request_concurrency: 100,
+            pending_blocks: 10_000,
         };
 
         // Given

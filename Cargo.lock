@@ -543,9 +543,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-s3"
-version = "1.115.0"
+version = "1.116.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdaa0053cbcbc384443dd24569bd5d1664f86427b9dc04677bd0ab853954baec"
+checksum = "cd4c10050aa905b50dc2a1165a9848d598a80c3a724d6f93b5881aa62235e4a5"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -1535,9 +1535,9 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
 name = "convert_case"
-version = "0.7.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb402b8d4c85569410425650ce3eddc7d698ed96d39a73f941b08fb63082f1e7"
+checksum = "633458d4ef8c78b72454de2d54fd6ab2e60f9e02be22f3c6104cdc8a4e0fceb9"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -2039,11 +2039,11 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "093242cf7570c207c83073cf82f79706fe7b8317e98620a47d5be7c3d8497678"
+checksum = "10b768e943bed7bf2cab53df09f4bc34bfd217cdb57d971e769874c9a6710618"
 dependencies = [
- "derive_more-impl 2.0.1",
+ "derive_more-impl 2.1.0",
 ]
 
 [[package]]
@@ -2060,13 +2060,14 @@ dependencies = [
 
 [[package]]
 name = "derive_more-impl"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bda628edc44c4bb645fbe0f758797143e4e07926f7ebf4e9bdfbd3d2ce621df3"
+checksum = "6d286bfdaf75e988b4a78e013ecd79c581e06399ab53fbacd2d916c2f904f30b"
 dependencies = [
- "convert_case 0.7.1",
+ "convert_case 0.10.0",
  "proc-macro2",
  "quote",
+ "rustc_version",
  "syn 2.0.111",
  "unicode-xid",
 ]
@@ -3113,7 +3114,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -3151,7 +3152,7 @@ dependencies = [
 [[package]]
 name = "fuel-indexer-types"
 version = "0.0.1"
-source = "git+https://github.com/FuelLabs/fuel-rust-indexer#c91fd005e9ad5ae9aac965b26cf3259c5995a629"
+source = "git+https://github.com/FuelLabs/fuel-rust-indexer#2075008bbaf66463467cd26caaf08cb5bd2def58"
 dependencies = [
  "anyhow",
  "fuel-core-types",
@@ -3176,7 +3177,7 @@ dependencies = [
 [[package]]
 name = "fuel-receipts-manager"
 version = "0.0.1"
-source = "git+https://github.com/FuelLabs/fuel-rust-indexer#c91fd005e9ad5ae9aac965b26cf3259c5995a629"
+source = "git+https://github.com/FuelLabs/fuel-rust-indexer#2075008bbaf66463467cd26caaf08cb5bd2def58"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3223,7 +3224,7 @@ checksum = "1b9b46be43225f70c17f9e028f80a583c275fb2dec1e2a4e9100aa6385a2c86a"
 [[package]]
 name = "fuel-storage-utils"
 version = "0.0.1"
-source = "git+https://github.com/FuelLabs/fuel-rust-indexer#c91fd005e9ad5ae9aac965b26cf3259c5995a629"
+source = "git+https://github.com/FuelLabs/fuel-rust-indexer#2075008bbaf66463467cd26caaf08cb5bd2def58"
 dependencies = [
  "anyhow",
  "fuel-core-storage",
@@ -3231,11 +3232,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-domains"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "anyhow",
  "chrono",
- "derive_more 2.0.1",
+ "derive_more 2.1.0",
  "fuel-core",
  "fuel-core-types",
  "fuel-data-parser",
@@ -3251,11 +3252,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-types"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "apache-avro",
  "chrono",
- "derive_more 2.0.1",
+ "derive_more 2.1.0",
  "fuel-core",
  "fuel-core-client",
  "fuel-core-types",
@@ -3347,7 +3348,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-web-utils"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "anyhow",
  "tokio",
@@ -4166,9 +4167,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-util"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52e9a2a24dc5c6821e71a7030e1e14b7b632acac55c40e9d2e082c621261bb56"
+checksum = "727805d60e7938b76b826a6ef209eb70eaa1812794f9424d4a4e2d740662df5f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -5182,9 +5183,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.28"
+version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
+checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "logos"
@@ -7909,7 +7910,7 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "sv-dune"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "anyhow",
  "apache-avro",
@@ -7917,7 +7918,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-s3",
  "clap",
- "derive_more 2.0.1",
+ "derive_more 2.1.0",
  "displaydoc",
  "dotenvy",
  "fuel-core",
