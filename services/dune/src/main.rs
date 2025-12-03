@@ -9,11 +9,11 @@ use fuel_web_utils::{
 };
 use std::sync::Arc;
 use sv_dune::{
-    service::{
-        new_service,
-        Config,
-    },
     Cli,
+    service::{
+        Config,
+        new_service,
+    },
 };
 
 #[tokio::main]

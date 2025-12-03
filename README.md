@@ -25,7 +25,7 @@
 
 ## 📝 About The Project
 
-Fuel Data Systems is a set of services to syncronize Fuel blockchain data with a data lake stored on S3 (or S3 compatible services).
+Fuel Data Systems is a set of services to synchronize Fuel blockchain data with a data lake stored on S3 (or S3 compatible services).
 
 With Fuel Data Systems, developers can build sophisticated applications that leverage the full potential of the Fuel Network's data, from simple block explorers to complex analytics engines and trading systems.
 
