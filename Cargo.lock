@@ -3113,7 +3113,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-data-parser"
-version = "0.0.29"
+version = "0.0.31"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -3231,7 +3231,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-domains"
-version = "0.0.29"
+version = "0.0.31"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3251,7 +3251,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-streams-types"
-version = "0.0.29"
+version = "0.0.31"
 dependencies = [
  "apache-avro",
  "chrono",
@@ -3347,7 +3347,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-web-utils"
-version = "0.0.29"
+version = "0.0.31"
 dependencies = [
  "anyhow",
  "tokio",
@@ -7909,7 +7909,7 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "sv-dune"
-version = "0.0.29"
+version = "0.0.31"
 dependencies = [
  "anyhow",
  "apache-avro",
