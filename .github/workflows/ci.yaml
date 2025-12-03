@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         uses: ./.github/actions/setup-rust
-      - run: cargo update --workspace --lockedV
+      - run: cargo update --workspace --locked
 
   publish-crates-check:
     name: Publish Check
