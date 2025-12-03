@@ -61,6 +61,7 @@ For codebase documentation, see the README files in the relevant directories:
 ## 🛠️ Development
 
 For local development:
+
 ```
 
 1. **Run Services**:
@@ -75,3 +76,4 @@ We welcome contributions! Please check our [contributing guidelines](CONTRIBUTIN
 ## 📜 License
 
 This project is licensed under the `Apache-2.0` license. See [`LICENSE`](./LICENSE) for more information.
+```
