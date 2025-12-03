@@ -4,10 +4,10 @@ use url::Url;
 
 #[derive(Debug, Clone, Parser)]
 pub struct Cli {
-    #[arg(long)]
+    #[arg(long, env)]
     pub url: Url,
 
-    #[arg(long)]
+    #[arg(long, env)]
     pub starting_block: u32,
 
     #[arg(
@@ -19,7 +19,7 @@ pub struct Cli {
     )]
     pub storage_type: StorageTypeConfig,
 
-    #[arg(long, default_value = "3600")]
+    #[arg(long, env, default_value = "3600")]
     pub batch_size: usize,
 
     /// The number of blocks to fetch in each request to the node.
