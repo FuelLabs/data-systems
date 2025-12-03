@@ -31,6 +31,7 @@ impl FuelNetwork {
         match network.as_str() {
             "testnet" => Self::Testnet,
             "mainnet" => Self::Mainnet,
+            "devnet" => Self::Devnet,
             "staging" => Self::Devnet,
             _ => Self::Local,
         }
