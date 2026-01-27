@@ -13,7 +13,7 @@ keywords = ["blockchain", "cryptocurrencies", "data-stream"]
 license = "Apache-2.0"
 repository = "https://github.com/fuellabs/data-systems"
 rust-version = "1.90.0"
-version = "0.0.33"
+version = "0.0.34"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
@@ -40,10 +40,10 @@ fuel-core-types = { version = "0.47.1", default-features = false, features = [
 ] }
 
 # Internal dependencies
-fuel-data-parser = { version = "0.0.33", path = "crates/data-parser" }
-fuel-streams-domains = { version = "0.0.33", path = "crates/domains" }
-fuel-streams-types = { version = "0.0.33", path = "crates/types" }
-fuel-web-utils = { version = "0.0.33", path = "crates/web-utils" }
+fuel-data-parser = { version = "0.0.34", path = "crates/data-parser" }
+fuel-streams-domains = { version = "0.0.34", path = "crates/domains" }
+fuel-streams-types = { version = "0.0.34", path = "crates/types" }
+fuel-web-utils = { version = "0.0.34", path = "crates/web-utils" }
 futures = "0.3.31"
 hex = "0.4.3"
 pretty_assertions = "1.4.1"
