@@ -1,6 +1,14 @@
+use super::{
+    InputContract,
+    Inputs,
+    OutputContract,
+    Outputs,
+};
+use crate::helpers::AvroBytes;
 use apache_avro::AvroSchema;
 use fuel_streams_domains::{
     blocks::Block,
+    inputs::Input,
     transactions::Transaction,
 };
 use fuel_streams_types::{
@@ -14,12 +22,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-
-use super::{
-    InputContract,
-    OutputContract,
-};
-use crate::helpers::AvroBytes;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, AvroSchema)]
 #[serde(rename_all = "camelCase")]
@@ -196,6 +198,12 @@ pub struct AvroTransaction {
     pub is_upload: Option<bool>,
     #[avro(rename = "isBlob")]
     pub is_blob: Option<bool>,
+    #[avro(rename = "inputContracts")]
+    pub input_contracts: Option<Vec<AvroBytes>>,
+    #[avro(rename = "inputs")]
+    pub inputs: Inputs,
+    #[avro(rename = "outputs")]
+    pub outputs: Outputs,
 }
 
 impl AvroTransaction {
@@ -212,6 +220,25 @@ impl AvroTransaction {
             .storage_slots
             .as_ref()
             .map(|slots| slots.iter().map(AvroStorageSlot::from).collect());
+        let inputs = Inputs::new(&transaction.inputs);
+        let outputs = Outputs::new(&transaction.outputs);
+        let input_contracts = if !transaction.inputs.is_empty() {
+            Some(
+                transaction
+                    .inputs
+                    .iter()
+                    .filter_map(|input| match input {
+                        Input::Contract(c) => {
+                            Some(c.contract_id.as_ref().to_vec().into())
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+            )
+        } else {
+            None
+        };
+
         Self {
             block_height,
             block_time,
@@ -303,6 +330,9 @@ impl AvroTransaction {
             is_upgrade: Some(transaction.is_upgrade),
             is_upload: Some(transaction.is_upload),
             is_blob: Some(transaction.is_blob),
+            input_contracts,
+            inputs,
+            outputs,
         }
     }
 }
