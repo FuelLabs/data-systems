@@ -1,4 +1,7 @@
-use crate::{block_buffer::BufferType, processor::StorageTypeConfig};
+use crate::{
+    block_buffer::BufferType,
+    processor::StorageTypeConfig,
+};
 use clap::Parser;
 use url::Url;
 

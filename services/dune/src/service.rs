@@ -1,6 +1,11 @@
 use crate::{
     DuneError,
-    block_buffer::{BlockBuffer, BufferType, FinalizedBatch, create_buffer},
+    block_buffer::{
+        BlockBuffer,
+        BufferType,
+        FinalizedBatch,
+        create_buffer,
+    },
     processor::{
         Processor,
         StorageTypeConfig,
@@ -315,15 +320,13 @@ impl Task {
         }
 
         // Create a new buffer for the next round and swap with the current one
-        let old_buffer = std::mem::replace(
-            &mut self.buffer,
-            create_buffer(self.buffer_type)?,
-        );
+        let old_buffer =
+            std::mem::replace(&mut self.buffer, create_buffer(self.buffer_type)?);
 
         // Finalize the buffer and get the data for upload
-        let finalized = old_buffer.finalize().map_err(|err| {
-            anyhow::anyhow!("Failed to finalize buffer: {err}")
-        })?;
+        let finalized = old_buffer
+            .finalize()
+            .map_err(|err| anyhow::anyhow!("Failed to finalize buffer: {err}"))?;
 
         // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
         let last_height_u32: u32 = *finalized.last_height;

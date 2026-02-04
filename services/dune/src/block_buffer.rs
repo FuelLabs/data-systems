@@ -1,19 +1,40 @@
 use std::{
-    fs::{self, File},
-    io::{BufReader, BufWriter, Write},
-    path::{Path, PathBuf},
+    fs::{
+        self,
+        File,
+    },
+    io::{
+        BufReader,
+        BufWriter,
+        Write,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use fuel_streams_types::BlockHeight;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
     DuneError,
     DuneResult,
     helpers::AvroParser,
-    schemas::{AvroBlock, AvroReceipt, AvroTransaction, ReceiptMetadata},
+    schemas::{
+        AvroBlock,
+        AvroReceipt,
+        AvroTransaction,
+        ReceiptMetadata,
+    },
 };
-use fuel_streams_domains::{blocks::Block, transactions::Transaction};
+use fuel_streams_domains::{
+    blocks::Block,
+    transactions::Transaction,
+};
 
 /// The result of finalizing a batch, containing Avro-encoded data ready for upload
 pub struct FinalizedBatch {
@@ -166,15 +187,25 @@ impl MemoryBuffer {
     fn to_avro(&self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let parser = AvroParser::default();
 
-        let mut blocks_writer = parser
-            .writer_with_schema::<AvroBlock>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e)))?;
+        let mut blocks_writer =
+            parser.writer_with_schema::<AvroBlock>().map_err(|e| {
+                DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e))
+            })?;
         let mut transactions_writer = parser
             .writer_with_schema::<AvroTransaction>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create transactions writer: {}", e)))?;
-        let mut receipts_writer = parser
-            .writer_with_schema::<AvroReceipt>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create receipts writer: {}", e)))?;
+            .map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create transactions writer: {}",
+                    e
+                ))
+            })?;
+        let mut receipts_writer =
+            parser.writer_with_schema::<AvroReceipt>().map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create receipts writer: {}",
+                    e
+                ))
+            })?;
 
         for buffered in &self.blocks {
             blocks_writer.append(&buffered.block)?;
@@ -305,15 +336,25 @@ impl DiskBuffer {
         let reader = BufReader::new(file);
 
         let parser = AvroParser::default();
-        let mut blocks_writer = parser
-            .writer_with_schema::<AvroBlock>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e)))?;
+        let mut blocks_writer =
+            parser.writer_with_schema::<AvroBlock>().map_err(|e| {
+                DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e))
+            })?;
         let mut transactions_writer = parser
             .writer_with_schema::<AvroTransaction>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create transactions writer: {}", e)))?;
-        let mut receipts_writer = parser
-            .writer_with_schema::<AvroReceipt>()
-            .map_err(|e| DuneError::Other(anyhow::anyhow!("Failed to create receipts writer: {}", e)))?;
+            .map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create transactions writer: {}",
+                    e
+                ))
+            })?;
+        let mut receipts_writer =
+            parser.writer_with_schema::<AvroReceipt>().map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create receipts writer: {}",
+                    e
+                ))
+            })?;
 
         for line in std::io::BufRead::lines(reader) {
             let line = line?;
@@ -365,9 +406,10 @@ impl BlockBuffer for DiskBuffer {
 
         let buffered = BufferedBlock::from_domain(block, transactions);
 
-        let writer = self.writer.as_mut().ok_or_else(|| {
-            DuneError::Other(anyhow::anyhow!("Writer not available"))
-        })?;
+        let writer = self
+            .writer
+            .as_mut()
+            .ok_or_else(|| DuneError::Other(anyhow::anyhow!("Writer not available")))?;
 
         serde_json::to_writer(&mut *writer, &buffered).map_err(|e| {
             DuneError::Other(anyhow::anyhow!("Failed to serialize block: {}", e))
@@ -392,7 +434,8 @@ impl BlockBuffer for DiskBuffer {
             writer.flush()?;
         }
 
-        let (blocks_data, transactions_data, receipts_data) = self.read_and_convert_to_avro()?;
+        let (blocks_data, transactions_data, receipts_data) =
+            self.read_and_convert_to_avro()?;
 
         Ok(FinalizedBatch {
             first_height,
@@ -431,7 +474,12 @@ impl Drop for DiskBuffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_streams_domains::mocks::{MockBlock, MockReceipt, MockTransaction};
+    use fuel_streams_domains::mocks::{
+        MockBlock,
+        MockReceipt,
+        MockTransaction,
+    };
+    use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 
     fn test_buffer_basic_operations(mut buffer: Box<dyn BlockBuffer>) -> DuneResult<()> {
