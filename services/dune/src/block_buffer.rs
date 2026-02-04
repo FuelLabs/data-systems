@@ -23,7 +23,11 @@ use serde::{
 use crate::{
     DuneError,
     DuneResult,
-    helpers::AvroParser,
+    helpers::{
+        AvroFileWriter,
+        AvroParser,
+        AvroWriter,
+    },
     schemas::{
         AvroBlock,
         AvroReceipt,
@@ -112,6 +116,97 @@ pub fn create_buffer(buffer_type: BufferType) -> DuneResult<Box<dyn BlockBuffer>
 }
 
 // ============================================================================
+// Avro file writers for disk-based finalization
+// ============================================================================
+
+/// Manages Avro file writers for blocks, transactions, and receipts.
+/// Writes directly to disk to avoid memory accumulation.
+/// Used by DiskBuffer during finalization.
+struct AvroFileWriters {
+    temp_dir: PathBuf,
+    blocks_writer: AvroFileWriter<AvroBlock>,
+    transactions_writer: AvroFileWriter<AvroTransaction>,
+    receipts_writer: AvroFileWriter<AvroReceipt>,
+}
+
+impl AvroFileWriters {
+    /// Creates new Avro file writers in a temporary directory
+    fn new() -> DuneResult<Self> {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "dune-avro-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        Self::with_dir(&temp_dir)
+    }
+
+    /// Creates new Avro file writers in the specified directory
+    fn with_dir(dir: impl AsRef<Path>) -> DuneResult<Self> {
+        let temp_dir = dir.as_ref().to_path_buf();
+        fs::create_dir_all(&temp_dir)?;
+
+        let parser = AvroParser::default();
+
+        let blocks_writer = parser
+            .file_writer_with_schema(temp_dir.join("blocks.avro"))
+            .map_err(|e| {
+                DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e))
+            })?;
+        let transactions_writer = parser
+            .file_writer_with_schema(temp_dir.join("transactions.avro"))
+            .map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create transactions writer: {}",
+                    e
+                ))
+            })?;
+        let receipts_writer = parser
+            .file_writer_with_schema(temp_dir.join("receipts.avro"))
+            .map_err(|e| {
+                DuneError::Other(anyhow::anyhow!(
+                    "Failed to create receipts writer: {}",
+                    e
+                ))
+            })?;
+
+        Ok(Self {
+            temp_dir,
+            blocks_writer,
+            transactions_writer,
+            receipts_writer,
+        })
+    }
+
+    /// Appends a buffered block's data to all writers
+    fn append(&mut self, buffered: &BufferedBlock) -> DuneResult<()> {
+        self.blocks_writer.append(&buffered.block)?;
+        for tx in &buffered.transactions {
+            self.transactions_writer.append(tx)?;
+        }
+        for receipt in &buffered.receipts {
+            self.receipts_writer.append(receipt)?;
+        }
+        Ok(())
+    }
+
+    /// Finalizes all writers and returns the Avro data.
+    /// Cleans up temporary files after reading.
+    fn finalize(self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let blocks_data = self.blocks_writer.finalize()?;
+        let transactions_data = self.transactions_writer.finalize()?;
+        let receipts_data = self.receipts_writer.finalize()?;
+
+        // Clean up temp directory
+        let _ = fs::remove_dir_all(&self.temp_dir);
+
+        Ok((blocks_data, transactions_data, receipts_data))
+    }
+}
+
+// ============================================================================
 // Memory-based buffer implementation
 // ============================================================================
 
@@ -183,24 +278,24 @@ impl MemoryBuffer {
         }
     }
 
-    /// Converts buffered blocks to Avro format
+    /// Converts buffered blocks to Avro format in memory.
+    /// This is faster than disk-based conversion but uses more RAM.
     fn to_avro(&self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let parser = AvroParser::default();
 
-        let mut blocks_writer =
-            parser.writer_with_schema::<AvroBlock>().map_err(|e| {
+        let mut blocks_writer: AvroWriter<AvroBlock> =
+            parser.writer_with_schema().map_err(|e| {
                 DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e))
             })?;
-        let mut transactions_writer = parser
-            .writer_with_schema::<AvroTransaction>()
-            .map_err(|e| {
+        let mut transactions_writer: AvroWriter<AvroTransaction> =
+            parser.writer_with_schema().map_err(|e| {
                 DuneError::Other(anyhow::anyhow!(
                     "Failed to create transactions writer: {}",
                     e
                 ))
             })?;
-        let mut receipts_writer =
-            parser.writer_with_schema::<AvroReceipt>().map_err(|e| {
+        let mut receipts_writer: AvroWriter<AvroReceipt> =
+            parser.writer_with_schema().map_err(|e| {
                 DuneError::Other(anyhow::anyhow!(
                     "Failed to create receipts writer: {}",
                     e
@@ -331,30 +426,13 @@ impl DiskBuffer {
         })
     }
 
+    /// Reads buffered JSON data and converts to Avro format by writing to disk files.
+    /// This avoids building up large Avro data structures in memory.
     fn read_and_convert_to_avro(&self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let file = File::open(&self.data_file)?;
         let reader = BufReader::new(file);
 
-        let parser = AvroParser::default();
-        let mut blocks_writer =
-            parser.writer_with_schema::<AvroBlock>().map_err(|e| {
-                DuneError::Other(anyhow::anyhow!("Failed to create blocks writer: {}", e))
-            })?;
-        let mut transactions_writer = parser
-            .writer_with_schema::<AvroTransaction>()
-            .map_err(|e| {
-                DuneError::Other(anyhow::anyhow!(
-                    "Failed to create transactions writer: {}",
-                    e
-                ))
-            })?;
-        let mut receipts_writer =
-            parser.writer_with_schema::<AvroReceipt>().map_err(|e| {
-                DuneError::Other(anyhow::anyhow!(
-                    "Failed to create receipts writer: {}",
-                    e
-                ))
-            })?;
+        let mut writers = AvroFileWriters::new()?;
 
         for line in std::io::BufRead::lines(reader) {
             let line = line?;
@@ -366,20 +444,10 @@ impl DiskBuffer {
                 DuneError::Other(anyhow::anyhow!("Failed to deserialize block: {}", e))
             })?;
 
-            blocks_writer.append(&buffered.block)?;
-            for tx in buffered.transactions {
-                transactions_writer.append(&tx)?;
-            }
-            for receipt in buffered.receipts {
-                receipts_writer.append(&receipt)?;
-            }
+            writers.append(&buffered)?;
         }
 
-        let blocks_data = blocks_writer.into_inner()?;
-        let transactions_data = transactions_writer.into_inner()?;
-        let receipts_data = receipts_writer.into_inner()?;
-
-        Ok((blocks_data, transactions_data, receipts_data))
+        writers.finalize()
     }
 }
 
