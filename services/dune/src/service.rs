@@ -4,6 +4,8 @@ use crate::{
         BlockBuffer,
         BufferType,
         FinalizedBatch,
+        FinalizedBatchFiles,
+        FinalizedData,
         create_buffer,
     },
     processor::{
@@ -324,11 +326,11 @@ impl Task {
             .map_err(|err| anyhow::anyhow!("Failed to finalize buffer: {err}"))?;
 
         // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
-        let last_height_u32: u32 = *finalized.last_height;
+        let last_height_u32: u32 = *finalized.last_height();
         let last_height: BlockHeight = last_height_u32.into();
 
-        // Upload the data
-        process_finalized_batch(&self.processor, finalized)
+        // Upload the data (handles both in-memory and file-based data)
+        process_finalized_data(&self.processor, finalized)
             .await
             .map_err(|err| {
                 anyhow::anyhow!(
@@ -369,9 +371,24 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
     Ok(ServiceRunner::new(task))
 }
 
-/// Process a finalized batch that has been written to disk
-/// This uploads the pre-serialized Avro data directly to storage
-pub async fn process_finalized_batch(
+/// Process finalized data - handles both in-memory and file-based data
+pub async fn process_finalized_data(
+    processor: &Processor,
+    data: FinalizedData,
+) -> anyhow::Result<()> {
+    match data {
+        FinalizedData::InMemory(batch) => {
+            process_finalized_batch_in_memory(processor, batch).await
+        }
+        FinalizedData::OnDisk(files) => {
+            process_finalized_batch_from_files(processor, files).await
+        }
+    }
+}
+
+/// Process in-memory batch data (from MemoryBuffer)
+/// Uploads all three data types in parallel since they're already in memory
+async fn process_finalized_batch_in_memory(
     processor: &Processor,
     batch: FinalizedBatch,
 ) -> anyhow::Result<()> {
@@ -416,6 +433,64 @@ pub async fn process_finalized_batch(
 
     tokio::try_join!(blocks_task, tx_task, receipts_task)?;
 
+    Ok(())
+}
+
+/// Process file-based batch data (from DiskBuffer)
+/// Uploads sequentially to avoid loading multiple large files into memory at once.
+/// Each file is streamed directly to S3 without loading into memory.
+async fn process_finalized_batch_from_files(
+    processor: &Processor,
+    files: FinalizedBatchFiles,
+) -> anyhow::Result<()> {
+    let first_height = files.first_height;
+    let last_height = files.last_height;
+
+    // Upload sequentially to minimize memory usage
+    // Each upload streams from disk to S3 without loading into memory
+    tracing::info!(
+        "Uploading blocks from file: {}",
+        files.blocks_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.blocks_path,
+            S3TableName::Blocks,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload blocks: {}", e))?;
+
+    tracing::info!(
+        "Uploading transactions from file: {}",
+        files.transactions_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.transactions_path,
+            S3TableName::Transactions,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload transactions: {}", e))?;
+
+    tracing::info!(
+        "Uploading receipts from file: {}",
+        files.receipts_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.receipts_path,
+            S3TableName::Receipts,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload receipts: {}", e))?;
+
+    // FinalizedBatchFiles::drop() will clean up the temp directory
     Ok(())
 }
 

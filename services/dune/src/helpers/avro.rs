@@ -2,14 +2,12 @@ use std::{
     fs::File,
     io::{
         BufWriter,
-        Read,
         Write,
     },
     path::{
         Path,
         PathBuf,
     },
-    sync::Arc,
 };
 
 use apache_avro::{
@@ -121,43 +119,8 @@ where
         Ok(())
     }
 
-    /// Flushes any buffered data to disk
-    pub fn flush(&mut self) -> Result<(), AvroParserError> {
-        self.writer
-            .flush()
-            .map_err(|e| AvroParserError::Io(format!("Failed to flush writer: {}", e)))?;
-        Ok(())
-    }
-
-    /// Returns the path to the file
-    pub fn file_path(&self) -> &Path {
-        &self.file_path
-    }
-
-    /// Finalizes the file and returns the file contents as bytes.
-    /// This flushes all data, closes the writer, and reads the file.
-    pub fn finalize(self) -> Result<Vec<u8>, AvroParserError> {
-        let mut inner = self.writer.into_inner().map_err(|e| {
-            AvroParserError::Io(format!("Failed to finalize writer: {}", e))
-        })?;
-        inner.flush().map_err(|e| {
-            AvroParserError::Io(format!("Failed to flush final data: {}", e))
-        })?;
-        drop(inner); // Close the file
-
-        // Read the file contents
-        let mut file = File::open(&self.file_path).map_err(|e| {
-            AvroParserError::Io(format!("Failed to open file for reading: {}", e))
-        })?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)
-            .map_err(|e| AvroParserError::Io(format!("Failed to read file: {}", e)))?;
-
-        Ok(contents)
-    }
-
-    /// Finalizes the file and returns just the path (for cleanup later).
-    /// Use this when you want to handle file reading separately.
+    /// Finalizes the file and returns just the path.
+    /// The file is flushed and closed, ready for streaming to its destination.
     pub fn finalize_path(self) -> Result<PathBuf, AvroParserError> {
         let mut inner = self.writer.into_inner().map_err(|e| {
             AvroParserError::Io(format!("Failed to finalize writer: {}", e))
@@ -183,15 +146,6 @@ impl Default for AvroParser {
 }
 
 impl AvroParser {
-    pub fn arc(self) -> Arc<Self> {
-        Arc::new(self)
-    }
-
-    pub fn with_codec(&mut self, codec: Codec) -> &mut Self {
-        self.codec = Some(codec);
-        self
-    }
-
     pub fn writer_with_schema<
         T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
     >(

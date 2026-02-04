@@ -40,13 +40,67 @@ use fuel_streams_domains::{
     transactions::Transaction,
 };
 
-/// The result of finalizing a batch, containing Avro-encoded data ready for upload
+/// The result of finalizing a batch, containing Avro-encoded data ready for upload.
+/// WARNING: This holds all data in memory. For large batches, use FinalizedBatchFiles instead.
 pub struct FinalizedBatch {
     pub first_height: BlockHeight,
     pub last_height: BlockHeight,
     pub blocks_data: Vec<u8>,
     pub transactions_data: Vec<u8>,
     pub receipts_data: Vec<u8>,
+}
+
+/// The result of finalizing a batch to files, containing paths to Avro files.
+/// This avoids loading all data into memory at once - files are streamed directly to S3.
+pub struct FinalizedBatchFiles {
+    pub first_height: BlockHeight,
+    pub last_height: BlockHeight,
+    /// Path to the blocks Avro file
+    pub blocks_path: PathBuf,
+    /// Path to the transactions Avro file  
+    pub transactions_path: PathBuf,
+    /// Path to the receipts Avro file
+    pub receipts_path: PathBuf,
+    /// Temporary directory containing the files (for cleanup)
+    temp_dir: PathBuf,
+}
+
+impl FinalizedBatchFiles {
+    /// Cleans up all temporary files after upload
+    pub fn cleanup(&self) {
+        let _ = fs::remove_dir_all(&self.temp_dir);
+    }
+}
+
+impl Drop for FinalizedBatchFiles {
+    fn drop(&mut self) {
+        self.cleanup();
+    }
+}
+
+/// Result of finalizing a buffer - either in-memory data or file paths.
+/// This allows the service to handle both memory and disk buffers uniformly.
+pub enum FinalizedData {
+    /// In-memory Avro data (from MemoryBuffer)
+    InMemory(FinalizedBatch),
+    /// File paths to Avro files (from DiskBuffer)
+    OnDisk(FinalizedBatchFiles),
+}
+
+impl FinalizedData {
+    pub fn first_height(&self) -> BlockHeight {
+        match self {
+            FinalizedData::InMemory(batch) => batch.first_height,
+            FinalizedData::OnDisk(files) => files.first_height,
+        }
+    }
+
+    pub fn last_height(&self) -> BlockHeight {
+        match self {
+            FinalizedData::InMemory(batch) => batch.last_height,
+            FinalizedData::OnDisk(files) => files.last_height,
+        }
+    }
 }
 
 /// Configuration for the buffer type
@@ -101,10 +155,14 @@ pub trait BlockBuffer: Send {
 
     /// Finalizes the buffer, converting all data to Avro format for upload.
     ///
+    /// Returns either:
+    /// - `FinalizedData::InMemory` for MemoryBuffer (data in Vec<u8>)
+    /// - `FinalizedData::OnDisk` for DiskBuffer (paths to temporary files)
+    ///
     /// This does NOT clear the buffer - call `reset()` after successful upload
     /// to clear the data. This design allows retry on upload failure without
     /// losing the buffered data.
-    fn finalize(&mut self) -> DuneResult<FinalizedBatch>;
+    fn finalize(&mut self) -> DuneResult<FinalizedData>;
 
     /// Resets the buffer for reuse, clearing all data.
     /// Call this after successful upload to prepare for the next batch.
@@ -123,14 +181,38 @@ pub fn create_buffer(buffer_type: BufferType) -> DuneResult<Box<dyn BlockBuffer>
 // Avro file writers for disk-based finalization
 // ============================================================================
 
+/// Paths to finalized Avro files ready for upload.
+/// Used internally by AvroFileWriters.
+/// Note: Does NOT implement Drop - ownership of temp_dir is transferred to FinalizedBatchFiles.
+struct FinalizedAvroFiles {
+    temp_dir: PathBuf,
+    blocks_path: PathBuf,
+    transactions_path: PathBuf,
+    receipts_path: PathBuf,
+}
+
 /// Manages Avro file writers for blocks, transactions, and receipts.
 /// Writes directly to disk to avoid memory accumulation.
 /// Used by DiskBuffer during finalization.
+///
+/// Implements Drop to clean up temp directory on error. On success,
+/// ownership is transferred via `finalize_to_paths()` and Drop becomes a no-op.
 struct AvroFileWriters {
-    temp_dir: PathBuf,
-    blocks_writer: AvroFileWriter<AvroBlock>,
-    transactions_writer: AvroFileWriter<AvroTransaction>,
-    receipts_writer: AvroFileWriter<AvroReceipt>,
+    /// Temp directory path. Set to None after successful finalize_to_paths()
+    /// to transfer ownership and prevent cleanup on drop.
+    temp_dir: Option<PathBuf>,
+    blocks_writer: Option<AvroFileWriter<AvroBlock>>,
+    transactions_writer: Option<AvroFileWriter<AvroTransaction>>,
+    receipts_writer: Option<AvroFileWriter<AvroReceipt>>,
+}
+
+impl Drop for AvroFileWriters {
+    fn drop(&mut self) {
+        // Clean up temp directory if we still own it (i.e., finalize_to_paths wasn't called)
+        if let Some(ref temp_dir) = self.temp_dir {
+            let _ = fs::remove_dir_all(temp_dir);
+        }
+    }
 }
 
 impl AvroFileWriters {
@@ -177,36 +259,68 @@ impl AvroFileWriters {
             })?;
 
         Ok(Self {
-            temp_dir,
-            blocks_writer,
-            transactions_writer,
-            receipts_writer,
+            temp_dir: Some(temp_dir),
+            blocks_writer: Some(blocks_writer),
+            transactions_writer: Some(transactions_writer),
+            receipts_writer: Some(receipts_writer),
         })
     }
 
     /// Appends a buffered block's data to all writers
     fn append(&mut self, buffered: &BufferedBlock) -> DuneResult<()> {
-        self.blocks_writer.append(&buffered.block)?;
+        let blocks_writer = self.blocks_writer.as_mut().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("blocks_writer not available"))
+        })?;
+        let transactions_writer = self.transactions_writer.as_mut().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("transactions_writer not available"))
+        })?;
+        let receipts_writer = self.receipts_writer.as_mut().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("receipts_writer not available"))
+        })?;
+
+        blocks_writer.append(&buffered.block)?;
         for tx in &buffered.transactions {
-            self.transactions_writer.append(tx)?;
+            transactions_writer.append(tx)?;
         }
         for receipt in &buffered.receipts {
-            self.receipts_writer.append(receipt)?;
+            receipts_writer.append(receipt)?;
         }
         Ok(())
     }
 
-    /// Finalizes all writers and returns the Avro data.
-    /// Cleans up temporary files after reading.
-    fn finalize(self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
-        let blocks_data = self.blocks_writer.finalize()?;
-        let transactions_data = self.transactions_writer.finalize()?;
-        let receipts_data = self.receipts_writer.finalize()?;
+    /// Finalizes all writers and returns paths to the Avro files.
+    /// Does NOT load files into memory - use this for large batches.
+    ///
+    /// On success, ownership of temp_dir is transferred to FinalizedAvroFiles,
+    /// and this struct's Drop will not clean up the directory.
+    /// On error, Drop will clean up the temp directory.
+    fn finalize_to_paths(&mut self) -> DuneResult<FinalizedAvroFiles> {
+        let blocks_writer = self.blocks_writer.take().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("blocks_writer already taken"))
+        })?;
+        let transactions_writer = self.transactions_writer.take().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("transactions_writer already taken"))
+        })?;
+        let receipts_writer = self.receipts_writer.take().ok_or_else(|| {
+            DuneError::Other(anyhow::anyhow!("receipts_writer already taken"))
+        })?;
 
-        // Clean up temp directory
-        let _ = fs::remove_dir_all(&self.temp_dir);
+        let blocks_path = blocks_writer.finalize_path()?;
+        let transactions_path = transactions_writer.finalize_path()?;
+        let receipts_path = receipts_writer.finalize_path()?;
 
-        Ok((blocks_data, transactions_data, receipts_data))
+        // Take ownership of temp_dir so Drop won't clean it up
+        let temp_dir = self
+            .temp_dir
+            .take()
+            .ok_or_else(|| DuneError::Other(anyhow::anyhow!("temp_dir already taken")))?;
+
+        Ok(FinalizedAvroFiles {
+            temp_dir,
+            blocks_path,
+            transactions_path,
+            receipts_path,
+        })
     }
 }
 
@@ -357,7 +471,7 @@ impl BlockBuffer for MemoryBuffer {
         Ok(())
     }
 
-    fn finalize(&mut self) -> DuneResult<FinalizedBatch> {
+    fn finalize(&mut self) -> DuneResult<FinalizedData> {
         let first_height = self.first_height.ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))
         })?;
@@ -367,13 +481,13 @@ impl BlockBuffer for MemoryBuffer {
 
         let (blocks_data, transactions_data, receipts_data) = self.to_avro()?;
 
-        Ok(FinalizedBatch {
+        Ok(FinalizedData::InMemory(FinalizedBatch {
             first_height,
             last_height,
             blocks_data,
             transactions_data,
             receipts_data,
-        })
+        }))
     }
 
     fn reset(&mut self) -> DuneResult<()> {
@@ -430,9 +544,9 @@ impl DiskBuffer {
         })
     }
 
-    /// Reads buffered JSON data and converts to Avro format by writing to disk files.
-    /// This avoids building up large Avro data structures in memory.
-    fn read_and_convert_to_avro(&self) -> DuneResult<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+    /// Reads buffered JSON data and converts to Avro files on disk.
+    /// Returns paths to the Avro files without loading them into memory.
+    fn read_and_convert_to_avro_files(&self) -> DuneResult<FinalizedAvroFiles> {
         let file = File::open(&self.data_file)?;
         let reader = BufReader::new(file);
 
@@ -451,7 +565,7 @@ impl DiskBuffer {
             writers.append(&buffered)?;
         }
 
-        writers.finalize()
+        writers.finalize_to_paths()
     }
 }
 
@@ -493,7 +607,7 @@ impl BlockBuffer for DiskBuffer {
         Ok(())
     }
 
-    fn finalize(&mut self) -> DuneResult<FinalizedBatch> {
+    fn finalize(&mut self) -> DuneResult<FinalizedData> {
         let first_height = self.first_height.ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))
         })?;
@@ -509,16 +623,17 @@ impl BlockBuffer for DiskBuffer {
             writer.flush()?;
         }
 
-        let (blocks_data, transactions_data, receipts_data) =
-            self.read_and_convert_to_avro()?;
+        // Convert to Avro files on disk (does not load into memory)
+        let avro_files = self.read_and_convert_to_avro_files()?;
 
-        Ok(FinalizedBatch {
+        Ok(FinalizedData::OnDisk(FinalizedBatchFiles {
             first_height,
             last_height,
-            blocks_data,
-            transactions_data,
-            receipts_data,
-        })
+            blocks_path: avro_files.blocks_path,
+            transactions_path: avro_files.transactions_path,
+            receipts_path: avro_files.receipts_path,
+            temp_dir: avro_files.temp_dir,
+        }))
     }
 
     fn reset(&mut self) -> DuneResult<()> {
@@ -575,10 +690,20 @@ mod tests {
 
         // Finalize and verify
         let finalized = buffer.finalize()?;
-        assert_eq!(*finalized.first_height, 1);
-        assert_eq!(*finalized.last_height, 10);
-        assert!(!finalized.blocks_data.is_empty());
-        assert!(!finalized.transactions_data.is_empty());
+        assert_eq!(*finalized.first_height(), 1);
+        assert_eq!(*finalized.last_height(), 10);
+
+        // Verify data is present (different validation for in-memory vs on-disk)
+        match finalized {
+            FinalizedData::InMemory(batch) => {
+                assert!(!batch.blocks_data.is_empty());
+                assert!(!batch.transactions_data.is_empty());
+            }
+            FinalizedData::OnDisk(files) => {
+                assert!(files.blocks_path.exists());
+                assert!(files.transactions_path.exists());
+            }
+        }
 
         Ok(())
     }
@@ -622,7 +747,16 @@ mod tests {
         }
 
         let finalized = buffer.finalize()?;
-        assert!(!finalized.receipts_data.is_empty());
+
+        // Verify receipts data is present
+        match finalized {
+            FinalizedData::InMemory(batch) => {
+                assert!(!batch.receipts_data.is_empty());
+            }
+            FinalizedData::OnDisk(files) => {
+                assert!(files.receipts_path.exists());
+            }
+        }
 
         Ok(())
     }
