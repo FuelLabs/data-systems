@@ -100,10 +100,14 @@ pub trait BlockBuffer: Send {
     fn append(&mut self, block: &Block, transactions: &[Transaction]) -> DuneResult<()>;
 
     /// Finalizes the buffer, converting all data to Avro format for upload.
-    /// This consumes the buffer.
-    fn finalize(self: Box<Self>) -> DuneResult<FinalizedBatch>;
+    ///
+    /// This does NOT clear the buffer - call `reset()` after successful upload
+    /// to clear the data. This design allows retry on upload failure without
+    /// losing the buffered data.
+    fn finalize(&mut self) -> DuneResult<FinalizedBatch>;
 
-    /// Resets the buffer for reuse, clearing all data
+    /// Resets the buffer for reuse, clearing all data.
+    /// Call this after successful upload to prepare for the next batch.
     fn reset(&mut self) -> DuneResult<()>;
 }
 
@@ -353,7 +357,7 @@ impl BlockBuffer for MemoryBuffer {
         Ok(())
     }
 
-    fn finalize(self: Box<Self>) -> DuneResult<FinalizedBatch> {
+    fn finalize(&mut self) -> DuneResult<FinalizedBatch> {
         let first_height = self.first_height.ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))
         })?;
@@ -489,7 +493,7 @@ impl BlockBuffer for DiskBuffer {
         Ok(())
     }
 
-    fn finalize(mut self: Box<Self>) -> DuneResult<FinalizedBatch> {
+    fn finalize(&mut self) -> DuneResult<FinalizedBatch> {
         let first_height = self.first_height.ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))
         })?;
@@ -497,7 +501,10 @@ impl BlockBuffer for DiskBuffer {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))
         })?;
 
-        // Flush and close the writer
+        // Flush the writer so we can read the file.
+        // We take() the writer to close the file handle, which is required
+        // to read the complete file on some systems. The writer will be
+        // recreated on reset().
         if let Some(mut writer) = self.writer.take() {
             writer.flush()?;
         }

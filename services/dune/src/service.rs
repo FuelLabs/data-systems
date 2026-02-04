@@ -72,8 +72,6 @@ pub struct Task {
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
     /// Block buffer (can be memory or disk-based)
     buffer: Box<dyn BlockBuffer>,
-    /// Buffer type for creating new buffers after finalization
-    buffer_type: BufferType,
     processor: Processor,
     base_asset_id: AssetId,
     batch_size: usize,
@@ -152,7 +150,6 @@ impl RunnableService for UninitializedTask {
             height: shared.block_height,
             fetcher,
             buffer,
-            buffer_type: config.buffer_type,
             processor,
             base_asset_id,
             batch_size: config.batch_size,
@@ -319,12 +316,10 @@ impl Task {
             return Ok(())
         }
 
-        // Create a new buffer for the next round and swap with the current one
-        let old_buffer =
-            std::mem::replace(&mut self.buffer, create_buffer(self.buffer_type)?);
-
-        // Finalize the buffer and get the data for upload
-        let finalized = old_buffer
+        // Finalize the buffer and get the data for upload.
+        // This does NOT clear the buffer - data is preserved for retry on failure.
+        let finalized = self
+            .buffer
             .finalize()
             .map_err(|err| anyhow::anyhow!("Failed to finalize buffer: {err}"))?;
 
@@ -341,8 +336,12 @@ impl Task {
                 )
             })?;
 
+        // Only after successful upload do we update state and clear the buffer
         self.processor.save_latest_height(last_height).await?;
         self.height.send_replace(last_height);
+
+        // Clear the buffer now that upload succeeded
+        self.buffer.reset()?;
 
         Ok(())
     }
