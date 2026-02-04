@@ -205,6 +205,23 @@ impl Processor {
         Ok(file_paths)
     }
 
+    /// Process pre-serialized data directly (from disk buffer)
+    /// This method takes data that has already been serialized to Avro format
+    pub async fn process_data(
+        &self,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        data: Vec<u8>,
+        table: S3TableName,
+    ) -> DuneResult<String> {
+        let network = FuelNetwork::load_from_env();
+        let key_builder = S3KeyBuilder::new(network).with_table(table);
+        let key = key_builder.build_key_from_heights(start_height, end_height);
+        let file_path = self.create_output(data, &key).await?;
+        tracing::info!("New file saved: {}", file_path);
+        Ok(file_path)
+    }
+
     fn spli_batches<
         T: serde::Serialize
             + serde::de::DeserializeOwned

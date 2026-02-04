@@ -1,4 +1,4 @@
-use crate::processor::StorageTypeConfig;
+use crate::{block_buffer::BufferType, processor::StorageTypeConfig};
 use clap::Parser;
 use url::Url;
 
@@ -18,6 +18,16 @@ pub struct Cli {
         help = "Type of storage to use. Options are 'S3' or 'File'."
     )]
     pub storage_type: StorageTypeConfig,
+
+    #[arg(
+        long,
+        value_name = "BUFFER_TYPE",
+        env = "BUFFER_TYPE",
+        default_value = "disk",
+        help = "Type of buffer to use for accumulating blocks. Options are 'memory' or 'disk'. \
+                Memory is faster but uses more RAM. Disk uses temporary files to reduce memory usage."
+    )]
+    pub buffer_type: BufferType,
 
     #[arg(long, env, default_value = "3600")]
     pub batch_size: usize,

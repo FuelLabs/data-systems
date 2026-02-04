@@ -1,5 +1,6 @@
 use crate::{
     DuneError,
+    block_buffer::{BlockBuffer, BufferType, FinalizedBatch, create_buffer},
     processor::{
         Processor,
         StorageTypeConfig,
@@ -36,7 +37,6 @@ use fuel_streams_domains::{
     transactions::Transaction,
 };
 use futures::StreamExt;
-use itertools::Itertools;
 use std::{
     cmp::Ordering,
     num::NonZeroUsize,
@@ -48,6 +48,7 @@ pub struct Config {
     pub url: url::Url,
     pub starting_height: BlockHeight,
     pub storage_type: StorageTypeConfig,
+    pub buffer_type: BufferType,
     pub batch_size: usize,
     pub blocks_request_batch_size: usize,
     pub blocks_request_concurrency: usize,
@@ -64,7 +65,10 @@ pub struct Task {
     height: watch::Sender<BlockHeight>,
     fetcher: GraphqlFetcher,
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
-    pending_events: Vec<BlockEvent>,
+    /// Block buffer (can be memory or disk-based)
+    buffer: Box<dyn BlockBuffer>,
+    /// Buffer type for creating new buffers after finalization
+    buffer_type: BufferType,
     processor: Processor,
     base_asset_id: AssetId,
     batch_size: usize,
@@ -134,11 +138,16 @@ impl RunnableService for UninitializedTask {
             .unwrap_or(config.starting_height);
         shared.block_height.send_replace(current_height);
 
+        // Create block buffer based on configuration
+        let buffer = create_buffer(config.buffer_type)?;
+        tracing::info!("Using {} buffer for block accumulation", config.buffer_type);
+
         let mut task = Task {
             blocks_stream: futures::stream::pending().into_boxed(),
             height: shared.block_height,
             fetcher,
-            pending_events: vec![],
+            buffer,
+            buffer_type: config.buffer_type,
             processor,
             base_asset_id,
             batch_size: config.batch_size,
@@ -152,15 +161,15 @@ impl RunnableService for UninitializedTask {
 
 impl RunnableTask for Task {
     async fn run(&mut self, watcher: &mut StateWatcher) -> TaskNextAction {
-        match self.pending_events.len().cmp(&self.batch_size) {
+        match self.buffer.len().cmp(&self.batch_size) {
             Ordering::Less => {}
             Ordering::Equal => {
                 return TaskNextAction::always_continue(self.post_blocks().await)
             }
             Ordering::Greater => {
                 tracing::error!(
-                    "Pending events exceeded batch size: {} > {}",
-                    self.pending_events.len(),
+                    "Batch size exceeded: {} > {}",
+                    self.buffer.len(),
                     self.batch_size
                 );
                 return TaskNextAction::Stop;
@@ -177,8 +186,10 @@ impl RunnableTask for Task {
             block = self.blocks_stream.next() => {
                 match block {
                     Some(Ok(event)) => {
-                        let current_height = if let Some(block) = self.pending_events.last() {
-                            *block.header.height()
+                        // Get the current height, converting from fuel_streams_types::BlockHeight
+                        // to fuel_core_types::fuel_types::BlockHeight if needed
+                        let current_height: BlockHeight = if let Some(last_height) = self.buffer.last_height() {
+                            (*last_height).into()
                         } else {
                             *self.height.borrow()
                         };
@@ -203,9 +214,14 @@ impl RunnableTask for Task {
                             }
                         }
 
-                        self.pending_events.push(event);
-
-                        TaskNextAction::Continue
+                        // Convert event to block and transactions, then buffer
+                        match self.append_event_to_buffer(&event) {
+                            Ok(_) => TaskNextAction::Continue,
+                            Err(e) => {
+                                tracing::error!("Failed to buffer block: {e}");
+                                TaskNextAction::Stop
+                            }
+                        }
                     }
                     Some(Err(e)) => {
                         tracing::error!("Error receiving block event: {e}; reconnecting stream");
@@ -239,7 +255,8 @@ impl RunnableTask for Task {
 
 impl Task {
     async fn connect_block_stream(&mut self) -> anyhow::Result<()> {
-        self.pending_events.clear();
+        // Reset the buffer when reconnecting
+        self.buffer.reset()?;
 
         let height = *self.height.borrow();
         let next_height = height.succ().ok_or_else(|| {
@@ -263,47 +280,57 @@ impl Task {
         Ok(())
     }
 
+    /// Converts a block event to domain types and adds to the buffer
+    fn append_event_to_buffer(&mut self, event: &BlockEvent) -> anyhow::Result<()> {
+        let block = Block::new(
+            &event.header,
+            event.consensus.clone(),
+            event.transactions.len(),
+        )?;
+
+        let transactions: Vec<_> = event
+            .transactions
+            .iter()
+            .zip(event.statuses.iter())
+            .map(|(tx, status)| {
+                Transaction::new(
+                    &status.id.into(),
+                    tx.as_ref(),
+                    &status.into(),
+                    &self.base_asset_id,
+                    status.result.receipts(),
+                )
+            })
+            .collect();
+
+        // Add to buffer (memory or disk based on configuration)
+        self.buffer.append(&block, &transactions)?;
+
+        Ok(())
+    }
+
     async fn post_blocks(&mut self) -> anyhow::Result<()> {
-        if self.pending_events.is_empty() {
+        if self.buffer.is_empty() {
             return Ok(())
         }
 
-        let last_height = *self
-            .pending_events
-            .last()
-            .expect("We have pending events; qed")
-            .header
-            .height();
+        // Create a new buffer for the next round and swap with the current one
+        let old_buffer = std::mem::replace(
+            &mut self.buffer,
+            create_buffer(self.buffer_type)?,
+        );
 
-        let blocks_and_txs: Vec<_> = self
-            .pending_events
-            .iter()
-            .map(|event| {
-                let block = Block::new(
-                    &event.header,
-                    event.consensus.clone(),
-                    event.transactions.len(),
-                )?;
-                let transaction = event
-                    .transactions
-                    .iter()
-                    .zip(event.statuses.iter())
-                    .map(|(tx, status)| {
-                        Transaction::new(
-                            &status.id.into(),
-                            tx.as_ref(),
-                            &status.into(),
-                            &self.base_asset_id,
-                            status.result.receipts(),
-                        )
-                    })
-                    .collect();
+        // Finalize the buffer and get the data for upload
+        let finalized = old_buffer.finalize().map_err(|err| {
+            anyhow::anyhow!("Failed to finalize buffer: {err}")
+        })?;
 
-                Ok::<_, anyhow::Error>((block, transaction))
-            })
-            .try_collect()?;
+        // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
+        let last_height_u32: u32 = *finalized.last_height;
+        let last_height: BlockHeight = last_height_u32.into();
 
-        process_batch(&self.processor, &blocks_and_txs)
+        // Upload the data
+        process_finalized_batch(&self.processor, finalized)
             .await
             .map_err(|err| {
                 anyhow::anyhow!(
@@ -313,8 +340,6 @@ impl Task {
 
         self.processor.save_latest_height(last_height).await?;
         self.height.send_replace(last_height);
-
-        self.pending_events.clear();
 
         Ok(())
     }
@@ -342,6 +367,58 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
     Ok(ServiceRunner::new(task))
 }
 
+/// Process a finalized batch that has been written to disk
+/// This uploads the pre-serialized Avro data directly to storage
+pub async fn process_finalized_batch(
+    processor: &Processor,
+    batch: FinalizedBatch,
+) -> anyhow::Result<()> {
+    let first_height = batch.first_height;
+    let last_height = batch.last_height;
+
+    let blocks_task = async {
+        processor
+            .process_data(
+                first_height,
+                last_height,
+                batch.blocks_data,
+                S3TableName::Blocks,
+            )
+            .await?;
+        Ok::<_, DuneError>(())
+    };
+
+    let tx_task = async {
+        processor
+            .process_data(
+                first_height,
+                last_height,
+                batch.transactions_data,
+                S3TableName::Transactions,
+            )
+            .await?;
+        Ok::<_, DuneError>(())
+    };
+
+    let receipts_task = async {
+        processor
+            .process_data(
+                first_height,
+                last_height,
+                batch.receipts_data,
+                S3TableName::Receipts,
+            )
+            .await?;
+        Ok::<_, DuneError>(())
+    };
+
+    tokio::try_join!(blocks_task, tx_task, receipts_task)?;
+
+    Ok(())
+}
+
+/// Process a batch of blocks and transactions (legacy in-memory method)
+/// Kept for backwards compatibility with tests
 pub async fn process_batch(
     processor: &Processor,
     blocks_and_txs: &[(Block, Vec<Transaction>)],
@@ -395,6 +472,7 @@ mod tests {
             url: Url::parse(format!("http://{}", node.bound_address).as_str()).unwrap(),
             starting_height: 0u32.into(),
             storage_type: StorageTypeConfig::S3,
+            buffer_type: super::BufferType::Memory,
             batch_size: 1,
             blocks_request_batch_size: 10,
             blocks_request_concurrency: 100,
