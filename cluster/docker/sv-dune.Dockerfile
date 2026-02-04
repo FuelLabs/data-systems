@@ -56,7 +56,7 @@ FROM debian:bookworm-slim AS run
 WORKDIR /usr/src
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && apt-get install -y --no-install-recommends ca-certificates curl jq less unzip zip \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
@@ -64,5 +64,8 @@ RUN apt-get update -y \
 
 COPY --from=builder /root/sv-dune .
 COPY --from=builder /root/sv-dune.d .
+
+# run app as non-root user
+USER nobody
 
 CMD ["./sv-dune"]
