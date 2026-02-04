@@ -1,4 +1,6 @@
 use std::{
+    any::TypeId,
+    collections::HashMap,
     fs::File,
     io::{
         BufWriter,
@@ -8,6 +10,7 @@ use std::{
         Path,
         PathBuf,
     },
+    sync::RwLock,
 };
 
 use apache_avro::{
@@ -27,6 +30,42 @@ use serde::{
     de::DeserializeOwned,
 };
 
+/// Global cache for Avro schemas, keyed by TypeId.
+/// Schemas are immutable and type-specific, so we cache them to avoid
+/// repeated allocations and memory leaks from Box::leak.
+static SCHEMA_CACHE: RwLock<Option<HashMap<TypeId, &'static Schema>>> = RwLock::new(None);
+
+/// Gets or creates a cached static schema for type T.
+/// The schema is created once per type and cached globally.
+fn get_cached_schema<T: AvroSchema + AvroSchemaComponent + 'static>() -> &'static Schema {
+    let type_id = TypeId::of::<T>();
+
+    // Fast path: try to read from cache
+    {
+        let cache = SCHEMA_CACHE.read().unwrap();
+        if let Some(ref map) = *cache
+            && let Some(schema) = map.get(&type_id)
+        {
+            return schema;
+        }
+    }
+
+    // Slow path: create schema and cache it
+    let mut cache = SCHEMA_CACHE.write().unwrap();
+    let map = cache.get_or_insert_with(HashMap::new);
+
+    // Double-check after acquiring write lock
+    if let Some(schema) = map.get(&type_id) {
+        return schema;
+    }
+
+    // Create and cache the schema
+    let schema = T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
+    let schema_static: &'static Schema = Box::leak(Box::new(schema));
+    map.insert(type_id, schema_static);
+    schema_static
+}
+
 /// Data parser error types.
 #[derive(Debug, thiserror::Error)]
 pub enum AvroParserError {
@@ -45,7 +84,7 @@ impl From<apache_avro::Error> for AvroParserError {
 }
 
 pub struct AvroWriter<T> {
-    writer: Writer<'static, Vec<u8>>, // We'll adjust this
+    writer: Writer<'static, Vec<u8>>,
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -53,10 +92,10 @@ impl<T> AvroWriter<T>
 where
     T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
 {
-    pub fn new(schema: Schema, codec: Codec) -> Self {
-        let schema_static: &'static Schema = Box::leak(Box::new(schema));
+    pub fn new(codec: Codec) -> Self {
+        let schema = get_cached_schema::<T>();
         let writer = Writer::builder()
-            .schema(schema_static)
+            .schema(schema)
             .codec(codec)
             .writer(Vec::new())
             .build();
@@ -89,19 +128,15 @@ where
     T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
 {
     /// Creates a new file-based Avro writer at the specified path
-    pub fn new(
-        path: impl AsRef<Path>,
-        schema: Schema,
-        codec: Codec,
-    ) -> Result<Self, AvroParserError> {
+    pub fn new(path: impl AsRef<Path>, codec: Codec) -> Result<Self, AvroParserError> {
         let file_path = path.as_ref().to_path_buf();
         let file = File::create(&file_path)
             .map_err(|e| AvroParserError::Io(format!("Failed to create file: {}", e)))?;
         let buf_writer = BufWriter::new(file);
 
-        let schema_static: &'static Schema = Box::leak(Box::new(schema));
+        let schema = get_cached_schema::<T>();
         let writer = Writer::builder()
-            .schema(schema_static)
+            .schema(schema)
             .codec(codec)
             .writer(buf_writer)
             .build();
@@ -151,12 +186,7 @@ impl AvroParser {
     >(
         &self,
     ) -> Result<AvroWriter<T>, AvroParserError> {
-        let schema =
-            T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
-        Ok(AvroWriter::new(
-            schema,
-            self.codec.unwrap_or(Codec::Deflate),
-        ))
+        Ok(AvroWriter::new(self.codec.unwrap_or(Codec::Deflate)))
     }
 
     /// Creates a file-based Avro writer that writes directly to disk.
@@ -167,9 +197,7 @@ impl AvroParser {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<AvroFileWriter<T>, AvroParserError> {
-        let schema =
-            T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
-        AvroFileWriter::new(path, schema, self.codec.unwrap_or(Codec::Deflate))
+        AvroFileWriter::new(path, self.codec.unwrap_or(Codec::Deflate))
     }
 
     pub fn reader_with_schema<
