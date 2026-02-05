@@ -56,7 +56,7 @@ FROM debian:bookworm-slim AS run
 WORKDIR /usr/src
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends ca-certificates curl jq less unzip zip \
+    && apt-get install -y --no-install-recommends ca-certificates curl jq less unzip zip procps \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
