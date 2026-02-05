@@ -241,7 +241,7 @@ impl S3Storage {
         for (i, chunk) in chunks.enumerate() {
             let part_number = (i + 1) as i32;
 
-            match self
+            let response = match self
                 .client
                 .upload_part()
                 .bucket(self.config.bucket())
@@ -252,38 +252,49 @@ impl S3Storage {
                 .send()
                 .await
             {
-                Ok(response) => {
-                    if let Some(e_tag) = response.e_tag() {
-                        completed_parts.push(
-                            aws_sdk_s3::types::CompletedPart::builder()
-                                .e_tag(e_tag)
-                                .part_number(part_number)
-                                .build(),
-                        );
-                    }
-                }
+                Ok(response) => response,
                 Err(err) => {
                     // Abort the multipart upload if a part fails
-                    self.client
+                    let _ = self
+                        .client
                         .abort_multipart_upload()
                         .bucket(self.config.bucket())
                         .key(key)
                         .upload_id(upload_id)
                         .send()
-                        .await
-                        .map_err(|e| {
-                            StorageError::StoreError(format!(
-                                "Failed to abort multipart upload: {:?}",
-                                e.as_service_error()
-                            ))
-                        })?;
+                        .await;
 
                     return Err(StorageError::StoreError(format!(
                         "Failed to upload part: {:?}",
                         err.as_service_error()
                     )));
                 }
-            }
+            };
+
+            // ETag is required to complete multipart upload. If missing, abort to prevent
+            // silent data corruption from incomplete uploads.
+            let Some(e_tag) = response.e_tag() else {
+                let _ = self
+                    .client
+                    .abort_multipart_upload()
+                    .bucket(self.config.bucket())
+                    .key(key)
+                    .upload_id(upload_id)
+                    .send()
+                    .await;
+
+                return Err(StorageError::StoreError(format!(
+                    "Upload part {} succeeded but returned no ETag",
+                    part_number
+                )));
+            };
+
+            completed_parts.push(
+                aws_sdk_s3::types::CompletedPart::builder()
+                    .e_tag(e_tag)
+                    .part_number(part_number)
+                    .build(),
+            );
 
             tracing::debug!(
                 "Uploaded part {}/{} for key={}",
@@ -552,7 +563,7 @@ impl S3Storage {
             }
 
             // Upload the chunk
-            match self
+            let response = match self
                 .client
                 .upload_part()
                 .bucket(self.config.bucket())
@@ -563,16 +574,7 @@ impl S3Storage {
                 .send()
                 .await
             {
-                Ok(response) => {
-                    if let Some(e_tag) = response.e_tag() {
-                        completed_parts.push(
-                            aws_sdk_s3::types::CompletedPart::builder()
-                                .e_tag(e_tag)
-                                .part_number(part_number)
-                                .build(),
-                        );
-                    }
-                }
+                Ok(response) => response,
                 Err(err) => {
                     // Abort the multipart upload if a part fails
                     let _ = self
@@ -589,7 +591,32 @@ impl S3Storage {
                         err.as_service_error()
                     )));
                 }
-            }
+            };
+
+            // ETag is required to complete multipart upload. If missing, abort to prevent
+            // silent data corruption from incomplete uploads.
+            let Some(e_tag) = response.e_tag() else {
+                let _ = self
+                    .client
+                    .abort_multipart_upload()
+                    .bucket(self.config.bucket())
+                    .key(key)
+                    .upload_id(upload_id)
+                    .send()
+                    .await;
+
+                return Err(StorageError::StoreError(format!(
+                    "Upload part {} succeeded but returned no ETag",
+                    part_number
+                )));
+            };
+
+            completed_parts.push(
+                aws_sdk_s3::types::CompletedPart::builder()
+                    .e_tag(e_tag)
+                    .part_number(part_number)
+                    .build(),
+            );
 
             tracing::debug!(
                 "Uploaded part {}/{} for key={}",

@@ -321,9 +321,14 @@ impl DiskBuffer {
 
     /// Finalizes the buffer, returning paths to the Avro files for upload.
     ///
-    /// This does NOT clear the buffer - call `reset()` after successful upload
-    /// to clear the data. This design allows retry on upload failure without
-    /// losing the buffered data.
+    /// WARNING: This method consumes the internal writers and transfers ownership
+    /// of the temp directory to `FinalizedBatchFiles`. Once called:
+    /// - The writers are no longer available (subsequent calls will error)
+    /// - When `FinalizedBatchFiles` is dropped, the temp files are deleted
+    ///
+    /// This means retry is NOT possible after calling finalize(). If upload fails,
+    /// call `reset()` to create new writers and re-buffer the data from scratch,
+    /// or let the service reconnect the stream to resume from the last saved height.
     pub fn finalize(&mut self) -> DuneResult<FinalizedBatchFiles> {
         let first_height = self.first_height.ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("Cannot finalize empty buffer"))

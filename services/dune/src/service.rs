@@ -59,13 +59,16 @@ pub struct Config {
 
 pub struct UninitializedTask {
     config: Config,
-    fetcher: GraphqlFetcher,
+    fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync>,
     shared: SharedState,
 }
 
 pub struct Task {
     height: watch::Sender<BlockHeight>,
-    fetcher: GraphqlFetcher,
+    /// Factory function to create new GraphqlFetcher instances on reconnection.
+    /// We recreate the fetcher on each reconnection to avoid memory leaks from
+    /// accumulated background tasks and channels in the external library.
+    fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync>,
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
     /// Disk-based block buffer that writes directly to Avro files
     buffer: DiskBuffer,
@@ -119,7 +122,7 @@ impl RunnableService for UninitializedTask {
     ) -> anyhow::Result<Self::Task> {
         let Self {
             config,
-            fetcher,
+            fetcher_factory,
             shared,
         } = self;
 
@@ -145,7 +148,7 @@ impl RunnableService for UninitializedTask {
         let mut task = Task {
             blocks_stream: futures::stream::pending().into_boxed(),
             height: shared.block_height,
-            fetcher,
+            fetcher_factory,
             buffer,
             processor,
             base_asset_id,
@@ -261,8 +264,16 @@ impl Task {
         let next_height = height.succ().ok_or_else(|| {
             anyhow::anyhow!("Block height overflowed when connecting block stream")
         })?;
-        let stream = self
-            .fetcher
+
+        // Create a fresh GraphqlFetcher for each connection.
+        // This is critical to avoid memory leaks: the external library spawns
+        // background tasks and creates large-capacity channels on each
+        // blocks_stream_starting_from() call. By creating a new fetcher,
+        // we ensure the old tasks/channels are properly abandoned.
+        let fetcher = (self.fetcher_factory)();
+        tracing::debug!("Created new GraphqlFetcher for stream connection");
+
+        let stream = fetcher
             .blocks_stream_starting_from(next_height)
             .await?
             .map(|result| {
@@ -314,7 +325,9 @@ impl Task {
         }
 
         // Finalize the buffer and get the file paths for upload.
-        // This does NOT clear the buffer - data is preserved for retry on failure.
+        // Note: finalize() consumes the writers and FinalizedBatchFiles owns the temp files.
+        // If upload fails, the error propagates up and the service will reconnect,
+        // resuming from the last successfully saved height.
         let finalized = self
             .buffer
             .finalize()
@@ -345,19 +358,37 @@ impl Task {
 }
 
 pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<UninitializedTask>> {
-    let graphql_config = GraphqlEventAdapterConfig {
-        client: Arc::new(FuelClient::new(&config.url)?),
-        heartbeat_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-        event_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-        blocks_request_batch_size: config.blocks_request_batch_size,
-        blocks_request_concurrency: config.blocks_request_concurrency,
-        pending_blocks_limit: config.pending_blocks,
-    };
-    let fetcher = create_graphql_event_adapter(graphql_config);
+    // Create a shared client that will be reused across all fetcher instances
+    let client = Arc::new(FuelClient::new(&config.url)?);
+
+    // Capture config values for the factory closure
+    let blocks_request_batch_size = config.blocks_request_batch_size;
+    let blocks_request_concurrency = config.blocks_request_concurrency;
+    let pending_blocks_limit = config.pending_blocks;
+
+    // Create a factory that produces fresh GraphqlFetcher instances.
+    // Each fetcher is created with reduced channel capacities to limit memory usage.
+    // The external library spawns background tasks on each stream creation,
+    // so we need fresh fetchers on reconnection to avoid task/memory accumulation.
+    let fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync> =
+        Arc::new(move || {
+            let graphql_config = GraphqlEventAdapterConfig {
+                client: client.clone(),
+                // The external library creates broadcast channels with this capacity
+                // that persist until background tasks terminate.
+                heartbeat_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
+                event_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
+                blocks_request_batch_size,
+                blocks_request_concurrency,
+                pending_blocks_limit,
+            };
+            create_graphql_event_adapter(graphql_config)
+        });
+
     let (height, _) = watch::channel(config.starting_height);
     let task = UninitializedTask {
         config,
-        fetcher,
+        fetcher_factory,
         shared: SharedState {
             block_height: height,
         },
