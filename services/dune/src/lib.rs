@@ -13,9 +13,6 @@ pub mod s3;
 pub mod schemas;
 pub mod service;
 
-pub use block_buffer::{
-    DiskBuffer,
-    FinalizedBatchFiles,
-};
+pub use block_buffer::*;
 pub use cli::*;
 pub use error::*;
