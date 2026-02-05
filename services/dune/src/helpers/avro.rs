@@ -1,4 +1,17 @@
-use std::sync::Arc;
+use std::{
+    any::TypeId,
+    collections::HashMap,
+    fs::File,
+    io::{
+        BufWriter,
+        Write,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
+    sync::RwLock,
+};
 
 use apache_avro::{
     AvroSchema,
@@ -17,6 +30,42 @@ use serde::{
     de::DeserializeOwned,
 };
 
+/// Global cache for Avro schemas, keyed by TypeId.
+/// Schemas are immutable and type-specific, so we cache them to avoid
+/// repeated allocations and memory leaks from Box::leak.
+static SCHEMA_CACHE: RwLock<Option<HashMap<TypeId, &'static Schema>>> = RwLock::new(None);
+
+/// Gets or creates a cached static schema for type T.
+/// The schema is created once per type and cached globally.
+fn get_cached_schema<T: AvroSchema + AvroSchemaComponent + 'static>() -> &'static Schema {
+    let type_id = TypeId::of::<T>();
+
+    // Fast path: try to read from cache
+    {
+        let cache = SCHEMA_CACHE.read().unwrap();
+        if let Some(ref map) = *cache
+            && let Some(schema) = map.get(&type_id)
+        {
+            return schema;
+        }
+    }
+
+    // Slow path: create schema and cache it
+    let mut cache = SCHEMA_CACHE.write().unwrap();
+    let map = cache.get_or_insert_with(HashMap::new);
+
+    // Double-check after acquiring write lock
+    if let Some(schema) = map.get(&type_id) {
+        return schema;
+    }
+
+    // Create and cache the schema
+    let schema = T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
+    let schema_static: &'static Schema = Box::leak(Box::new(schema));
+    map.insert(type_id, schema_static);
+    schema_static
+}
+
 /// Data parser error types.
 #[derive(Debug, thiserror::Error)]
 pub enum AvroParserError {
@@ -24,6 +73,8 @@ pub enum AvroParserError {
     Avro(Box<apache_avro::Error>),
     #[error("Schema not found {0}")]
     SchemaNotFound(String),
+    #[error("IO error: {0}")]
+    Io(String),
 }
 
 impl From<apache_avro::Error> for AvroParserError {
@@ -33,7 +84,7 @@ impl From<apache_avro::Error> for AvroParserError {
 }
 
 pub struct AvroWriter<T> {
-    writer: Writer<'static, Vec<u8>>, // We'll adjust this
+    writer: Writer<'static, Vec<u8>>,
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -41,10 +92,10 @@ impl<T> AvroWriter<T>
 where
     T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
 {
-    pub fn new(schema: Schema, codec: Codec) -> Self {
-        let schema_static: &'static Schema = Box::leak(Box::new(schema));
+    pub fn new(codec: Codec) -> Self {
+        let schema = get_cached_schema::<T>();
         let writer = Writer::builder()
-            .schema(schema_static)
+            .schema(schema)
             .codec(codec)
             .writer(Vec::new())
             .build();
@@ -64,6 +115,71 @@ where
     }
 }
 
+/// An Avro writer that writes directly to a file on disk.
+/// This reduces memory usage by not accumulating data in memory.
+pub struct AvroFileWriter<T> {
+    writer: Writer<'static, BufWriter<File>>,
+    file_path: PathBuf,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> AvroFileWriter<T>
+where
+    T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
+{
+    /// Creates a new file-based Avro writer at the specified path
+    pub fn new(path: impl AsRef<Path>, codec: Codec) -> Result<Self, AvroParserError> {
+        let file_path = path.as_ref().to_path_buf();
+        let file = File::create(&file_path)
+            .map_err(|e| AvroParserError::Io(format!("Failed to create file: {}", e)))?;
+        let buf_writer = BufWriter::new(file);
+
+        let schema = get_cached_schema::<T>();
+        let writer = Writer::builder()
+            .schema(schema)
+            .codec(codec)
+            .writer(buf_writer)
+            .build();
+
+        Ok(Self {
+            writer,
+            file_path,
+            _phantom: std::marker::PhantomData,
+        })
+    }
+
+    /// Appends a value to the file.
+    ///
+    /// Note: Data is buffered internally by the Avro Writer. Call `flush()`
+    /// periodically to write buffered data to disk and prevent memory accumulation.
+    pub fn append(&mut self, value: &T) -> Result<(), AvroParserError> {
+        self.writer.append_ser(value)?;
+        Ok(())
+    }
+
+    /// Flushes buffered data to disk.
+    ///
+    /// The Avro Writer buffers data internally for performance. Without
+    /// periodic flushing, all data accumulates in memory until finalize_path().
+    /// Call this after processing each block to bound memory usage.
+    pub fn flush(&mut self) -> Result<(), AvroParserError> {
+        self.writer.flush()?;
+        Ok(())
+    }
+
+    /// Finalizes the file and returns just the path.
+    /// The file is flushed and closed, ready for streaming to its destination.
+    pub fn finalize_path(self) -> Result<PathBuf, AvroParserError> {
+        let mut inner = self.writer.into_inner().map_err(|e| {
+            AvroParserError::Io(format!("Failed to finalize writer: {}", e))
+        })?;
+        inner.flush().map_err(|e| {
+            AvroParserError::Io(format!("Failed to flush final data: {}", e))
+        })?;
+        Ok(self.file_path)
+    }
+}
+
 #[derive(Clone)]
 pub struct AvroParser {
     codec: Option<Codec>,
@@ -78,26 +194,23 @@ impl Default for AvroParser {
 }
 
 impl AvroParser {
-    pub fn arc(self) -> Arc<Self> {
-        Arc::new(self)
-    }
-
-    pub fn with_codec(&mut self, codec: Codec) -> &mut Self {
-        self.codec = Some(codec);
-        self
-    }
-
     pub fn writer_with_schema<
         T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
     >(
         &self,
     ) -> Result<AvroWriter<T>, AvroParserError> {
-        let schema =
-            T::get_schema_in_ctxt(&mut Default::default(), &Namespace::default());
-        Ok(AvroWriter::new(
-            schema,
-            self.codec.unwrap_or(Codec::Deflate),
-        ))
+        Ok(AvroWriter::new(self.codec.unwrap_or(Codec::Deflate)))
+    }
+
+    /// Creates a file-based Avro writer that writes directly to disk.
+    /// Use this to avoid accumulating large amounts of data in memory.
+    pub fn file_writer_with_schema<
+        T: AvroSchema + AvroSchemaComponent + Serialize + Send + Sync + 'static,
+    >(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<AvroFileWriter<T>, AvroParserError> {
+        AvroFileWriter::new(path, self.codec.unwrap_or(Codec::Deflate))
     }
 
     pub fn reader_with_schema<

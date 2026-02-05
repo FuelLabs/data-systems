@@ -19,7 +19,9 @@ use aws_sdk_s3::{
     config::retry::RetryConfig as S3RetryConfig,
     error::SdkError,
     operation::get_object::GetObjectError,
+    primitives::ByteStream,
 };
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct S3Storage {
@@ -239,7 +241,7 @@ impl S3Storage {
         for (i, chunk) in chunks.enumerate() {
             let part_number = (i + 1) as i32;
 
-            match self
+            let response = match self
                 .client
                 .upload_part()
                 .bucket(self.config.bucket())
@@ -250,38 +252,49 @@ impl S3Storage {
                 .send()
                 .await
             {
-                Ok(response) => {
-                    if let Some(e_tag) = response.e_tag() {
-                        completed_parts.push(
-                            aws_sdk_s3::types::CompletedPart::builder()
-                                .e_tag(e_tag)
-                                .part_number(part_number)
-                                .build(),
-                        );
-                    }
-                }
+                Ok(response) => response,
                 Err(err) => {
                     // Abort the multipart upload if a part fails
-                    self.client
+                    let _ = self
+                        .client
                         .abort_multipart_upload()
                         .bucket(self.config.bucket())
                         .key(key)
                         .upload_id(upload_id)
                         .send()
-                        .await
-                        .map_err(|e| {
-                            StorageError::StoreError(format!(
-                                "Failed to abort multipart upload: {:?}",
-                                e.as_service_error()
-                            ))
-                        })?;
+                        .await;
 
                     return Err(StorageError::StoreError(format!(
                         "Failed to upload part: {:?}",
                         err.as_service_error()
                     )));
                 }
-            }
+            };
+
+            // ETag is required to complete multipart upload. If missing, abort to prevent
+            // silent data corruption from incomplete uploads.
+            let Some(e_tag) = response.e_tag() else {
+                let _ = self
+                    .client
+                    .abort_multipart_upload()
+                    .bucket(self.config.bucket())
+                    .key(key)
+                    .upload_id(upload_id)
+                    .send()
+                    .await;
+
+                return Err(StorageError::StoreError(format!(
+                    "Upload part {} succeeded but returned no ETag",
+                    part_number
+                )));
+            };
+
+            completed_parts.push(
+                aws_sdk_s3::types::CompletedPart::builder()
+                    .e_tag(e_tag)
+                    .part_number(part_number)
+                    .build(),
+            );
 
             tracing::debug!(
                 "Uploaded part {}/{} for key={}",
@@ -408,6 +421,235 @@ impl S3Storage {
     pub fn with_retry_config(mut self, config: RetryConfig) -> Self {
         self.retry_config = config;
         self
+    }
+
+    /// Stores a file by streaming directly from disk to S3.
+    /// This avoids loading the entire file into memory, making it suitable
+    /// for large files that would otherwise cause OOM errors.
+    pub async fn store_from_file(
+        &self,
+        key: &str,
+        file_path: impl AsRef<Path>,
+    ) -> Result<(), StorageError> {
+        let file_path = file_path.as_ref().to_path_buf();
+        let file_size = std::fs::metadata(&file_path)
+            .map_err(|e| {
+                StorageError::StoreError(format!("Failed to get file metadata: {}", e))
+            })?
+            .len() as usize;
+
+        with_retry(&self.retry_config, "store_from_file", || {
+            let file_path = file_path.clone();
+            async move {
+                #[allow(clippy::identity_op)]
+                const LARGE_FILE_THRESHOLD: usize = 100 * 1024 * 1024; // 100MB
+
+                let result = if file_size >= LARGE_FILE_THRESHOLD {
+                    tracing::debug!(
+                        "Uploading file {} to S3 using multipart streaming (size: {} bytes)",
+                        file_path.display(),
+                        file_size
+                    );
+                    self.upload_multipart_from_file(key, &file_path, file_size)
+                        .await
+                } else {
+                    tracing::debug!(
+                        "Uploading file {} to S3 using streaming put_object (size: {} bytes)",
+                        file_path.display(),
+                        file_size
+                    );
+                    self.put_object_from_file(key, &file_path).await
+                };
+                if let Err(ref e) = result {
+                    tracing::error!("Storage error: {:?}", e);
+                }
+                result
+            }
+        })
+        .await
+    }
+
+    async fn put_object_from_file(
+        &self,
+        key: &str,
+        file_path: &Path,
+    ) -> Result<(), StorageError> {
+        let body = ByteStream::from_path(file_path).await.map_err(|e| {
+            StorageError::StoreError(format!("Failed to create byte stream: {}", e))
+        })?;
+
+        let result = self
+            .client
+            .put_object()
+            .bucket(self.config.bucket())
+            .key(key)
+            .body(body)
+            .send()
+            .await;
+
+        match result {
+            Ok(_) => {
+                tracing::info!("Successfully stored object with key: {}", key);
+                Ok(())
+            }
+            Err(err) => {
+                tracing::error!(
+                    "Failed to store object. Error details: {:?}",
+                    err.as_service_error()
+                );
+                Err(StorageError::StoreError(err.to_string()))
+            }
+        }
+    }
+
+    async fn upload_multipart_from_file(
+        &self,
+        key: &str,
+        file_path: &Path,
+        file_size: usize,
+    ) -> Result<(), StorageError> {
+        use std::io::{
+            Read,
+            Seek,
+            SeekFrom,
+        };
+
+        const CHUNK_SIZE: usize = 100 * 1024 * 1024; // 100MB chunks
+
+        // Create multipart upload
+        let create_multipart = self
+            .client
+            .create_multipart_upload()
+            .bucket(self.config.bucket())
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| {
+                StorageError::StoreError(format!(
+                    "Failed to create multipart upload: {:?}",
+                    e.as_service_error()
+                ))
+            })?;
+
+        let upload_id = create_multipart.upload_id().ok_or_else(|| {
+            StorageError::StoreError("Failed to get upload ID".to_string())
+        })?;
+
+        let mut completed_parts = Vec::new();
+        let total_chunks = file_size.div_ceil(CHUNK_SIZE);
+
+        let mut file = std::fs::File::open(file_path).map_err(|e| {
+            StorageError::StoreError(format!("Failed to open file: {}", e))
+        })?;
+
+        let mut buffer = vec![0u8; CHUNK_SIZE];
+        let mut part_number = 1i32;
+        let mut bytes_uploaded = 0usize;
+
+        loop {
+            // Seek to the current position
+            file.seek(SeekFrom::Start(bytes_uploaded as u64))
+                .map_err(|e| {
+                    StorageError::StoreError(format!("Failed to seek file: {}", e))
+                })?;
+
+            // Read a chunk
+            let bytes_read = file.read(&mut buffer).map_err(|e| {
+                StorageError::StoreError(format!("Failed to read file: {}", e))
+            })?;
+
+            if bytes_read == 0 {
+                break;
+            }
+
+            // Upload the chunk
+            let response = match self
+                .client
+                .upload_part()
+                .bucket(self.config.bucket())
+                .key(key)
+                .upload_id(upload_id)
+                .body(buffer[..bytes_read].to_vec().into())
+                .part_number(part_number)
+                .send()
+                .await
+            {
+                Ok(response) => response,
+                Err(err) => {
+                    // Abort the multipart upload if a part fails
+                    let _ = self
+                        .client
+                        .abort_multipart_upload()
+                        .bucket(self.config.bucket())
+                        .key(key)
+                        .upload_id(upload_id)
+                        .send()
+                        .await;
+
+                    return Err(StorageError::StoreError(format!(
+                        "Failed to upload part: {:?}",
+                        err.as_service_error()
+                    )));
+                }
+            };
+
+            // ETag is required to complete multipart upload. If missing, abort to prevent
+            // silent data corruption from incomplete uploads.
+            let Some(e_tag) = response.e_tag() else {
+                let _ = self
+                    .client
+                    .abort_multipart_upload()
+                    .bucket(self.config.bucket())
+                    .key(key)
+                    .upload_id(upload_id)
+                    .send()
+                    .await;
+
+                return Err(StorageError::StoreError(format!(
+                    "Upload part {} succeeded but returned no ETag",
+                    part_number
+                )));
+            };
+
+            completed_parts.push(
+                aws_sdk_s3::types::CompletedPart::builder()
+                    .e_tag(e_tag)
+                    .part_number(part_number)
+                    .build(),
+            );
+
+            tracing::debug!(
+                "Uploaded part {}/{} for key={}",
+                part_number,
+                total_chunks,
+                key
+            );
+
+            bytes_uploaded += bytes_read;
+            part_number += 1;
+        }
+
+        // Complete multipart upload
+        self.client
+            .complete_multipart_upload()
+            .bucket(self.config.bucket())
+            .key(key)
+            .upload_id(upload_id)
+            .multipart_upload(
+                aws_sdk_s3::types::CompletedMultipartUpload::builder()
+                    .set_parts(Some(completed_parts))
+                    .build(),
+            )
+            .send()
+            .await
+            .map_err(|e| {
+                StorageError::StoreError(format!(
+                    "Failed to complete multipart upload: {:?}",
+                    e.as_service_error()
+                ))
+            })?;
+
+        Ok(())
     }
 }
 

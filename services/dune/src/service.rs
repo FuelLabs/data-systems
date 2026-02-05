@@ -1,5 +1,9 @@
 use crate::{
     DuneError,
+    block_buffer::{
+        DiskBuffer,
+        FinalizedBatchFiles,
+    },
     processor::{
         Processor,
         StorageTypeConfig,
@@ -36,7 +40,6 @@ use fuel_streams_domains::{
     transactions::Transaction,
 };
 use futures::StreamExt;
-use itertools::Itertools;
 use std::{
     cmp::Ordering,
     num::NonZeroUsize,
@@ -56,15 +59,19 @@ pub struct Config {
 
 pub struct UninitializedTask {
     config: Config,
-    fetcher: GraphqlFetcher,
+    fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync>,
     shared: SharedState,
 }
 
 pub struct Task {
     height: watch::Sender<BlockHeight>,
-    fetcher: GraphqlFetcher,
+    /// Factory function to create new GraphqlFetcher instances on reconnection.
+    /// We recreate the fetcher on each reconnection to avoid memory leaks from
+    /// accumulated background tasks and channels in the external library.
+    fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync>,
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
-    pending_events: Vec<BlockEvent>,
+    /// Disk-based block buffer that writes directly to Avro files
+    buffer: DiskBuffer,
     processor: Processor,
     base_asset_id: AssetId,
     batch_size: usize,
@@ -115,7 +122,7 @@ impl RunnableService for UninitializedTask {
     ) -> anyhow::Result<Self::Task> {
         let Self {
             config,
-            fetcher,
+            fetcher_factory,
             shared,
         } = self;
 
@@ -134,11 +141,15 @@ impl RunnableService for UninitializedTask {
             .unwrap_or(config.starting_height);
         shared.block_height.send_replace(current_height);
 
+        // Create disk buffer for block accumulation
+        let buffer = DiskBuffer::new()?;
+        tracing::info!("Using disk buffer for block accumulation");
+
         let mut task = Task {
             blocks_stream: futures::stream::pending().into_boxed(),
             height: shared.block_height,
-            fetcher,
-            pending_events: vec![],
+            fetcher_factory,
+            buffer,
             processor,
             base_asset_id,
             batch_size: config.batch_size,
@@ -152,15 +163,15 @@ impl RunnableService for UninitializedTask {
 
 impl RunnableTask for Task {
     async fn run(&mut self, watcher: &mut StateWatcher) -> TaskNextAction {
-        match self.pending_events.len().cmp(&self.batch_size) {
+        match self.buffer.len().cmp(&self.batch_size) {
             Ordering::Less => {}
             Ordering::Equal => {
                 return TaskNextAction::always_continue(self.post_blocks().await)
             }
             Ordering::Greater => {
                 tracing::error!(
-                    "Pending events exceeded batch size: {} > {}",
-                    self.pending_events.len(),
+                    "Batch size exceeded: {} > {}",
+                    self.buffer.len(),
                     self.batch_size
                 );
                 return TaskNextAction::Stop;
@@ -177,8 +188,10 @@ impl RunnableTask for Task {
             block = self.blocks_stream.next() => {
                 match block {
                     Some(Ok(event)) => {
-                        let current_height = if let Some(block) = self.pending_events.last() {
-                            *block.header.height()
+                        // Get the current height, converting from fuel_streams_types::BlockHeight
+                        // to fuel_core_types::fuel_types::BlockHeight if needed
+                        let current_height: BlockHeight = if let Some(last_height) = self.buffer.last_height() {
+                            (*last_height).into()
                         } else {
                             *self.height.borrow()
                         };
@@ -203,9 +216,14 @@ impl RunnableTask for Task {
                             }
                         }
 
-                        self.pending_events.push(event);
-
-                        TaskNextAction::Continue
+                        // Convert event to block and transactions, then buffer
+                        match self.append_event_to_buffer(&event) {
+                            Ok(_) => TaskNextAction::Continue,
+                            Err(e) => {
+                                tracing::error!("Failed to buffer block: {e}");
+                                TaskNextAction::Stop
+                            }
+                        }
                     }
                     Some(Err(e)) => {
                         tracing::error!("Error receiving block event: {e}; reconnecting stream");
@@ -239,14 +257,23 @@ impl RunnableTask for Task {
 
 impl Task {
     async fn connect_block_stream(&mut self) -> anyhow::Result<()> {
-        self.pending_events.clear();
+        // Reset the buffer when reconnecting
+        self.buffer.reset()?;
 
         let height = *self.height.borrow();
         let next_height = height.succ().ok_or_else(|| {
             anyhow::anyhow!("Block height overflowed when connecting block stream")
         })?;
-        let stream = self
-            .fetcher
+
+        // Create a fresh GraphqlFetcher for each connection.
+        // This is critical to avoid memory leaks: the external library spawns
+        // background tasks and creates large-capacity channels on each
+        // blocks_stream_starting_from() call. By creating a new fetcher,
+        // we ensure the old tasks/channels are properly abandoned.
+        let fetcher = (self.fetcher_factory)();
+        tracing::debug!("Created new GraphqlFetcher for stream connection");
+
+        let stream = fetcher
             .blocks_stream_starting_from(next_height)
             .await?
             .map(|result| {
@@ -263,47 +290,63 @@ impl Task {
         Ok(())
     }
 
+    /// Converts a block event to domain types and adds to the buffer
+    fn append_event_to_buffer(&mut self, event: &BlockEvent) -> anyhow::Result<()> {
+        let block = Block::new(
+            &event.header,
+            event.consensus.clone(),
+            event.transactions.len(),
+        )?;
+
+        let transactions: Vec<_> = event
+            .transactions
+            .iter()
+            .zip(event.statuses.iter())
+            .map(|(tx, status)| {
+                Transaction::new(
+                    &status.id.into(),
+                    tx.as_ref(),
+                    &status.into(),
+                    &self.base_asset_id,
+                    status.result.receipts(),
+                )
+            })
+            .collect();
+
+        // Add to disk buffer (writes directly to Avro files)
+        self.buffer.append(&block, &transactions)?;
+
+        Ok(())
+    }
+
     async fn post_blocks(&mut self) -> anyhow::Result<()> {
-        if self.pending_events.is_empty() {
+        if self.buffer.is_empty() {
             return Ok(())
         }
 
-        let last_height = *self
-            .pending_events
-            .last()
-            .expect("We have pending events; qed")
-            .header
-            .height();
+        // Finalize the buffer and get the file paths for upload.
+        // Note: finalize() consumes the writers and FinalizedBatchFiles owns the temp files.
+        let finalized = self
+            .buffer
+            .finalize()
+            .map_err(|err| anyhow::anyhow!("Failed to finalize buffer: {err}"))?;
 
-        let blocks_and_txs: Vec<_> = self
-            .pending_events
-            .iter()
-            .map(|event| {
-                let block = Block::new(
-                    &event.header,
-                    event.consensus.clone(),
-                    event.transactions.len(),
-                )?;
-                let transaction = event
-                    .transactions
-                    .iter()
-                    .zip(event.statuses.iter())
-                    .map(|(tx, status)| {
-                        Transaction::new(
-                            &status.id.into(),
-                            tx.as_ref(),
-                            &status.into(),
-                            &self.base_asset_id,
-                            status.result.receipts(),
-                        )
-                    })
-                    .collect();
+        // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
+        let last_height_u32: u32 = *finalized.last_height;
+        let last_height: BlockHeight = last_height_u32.into();
 
-                Ok::<_, anyhow::Error>((block, transaction))
-            })
-            .try_collect()?;
+        // IMPORTANT: Reset buffer immediately after finalize() succeeds.
+        // finalize() consumes the internal writers, leaving the buffer in an inconsistent
+        // state where block_count > 0 but writers are None. If we don't reset here and
+        // the upload fails, the next run() iteration would see len() == batch_size and
+        // try to call post_blocks() again, which would fail on finalize() with
+        // "blocks_writer already taken" - creating an infinite error loop.
+        // By resetting here, the buffer is always in a consistent state. If upload fails,
+        // the service reconnects and re-buffers blocks from the last saved height.
+        self.buffer.reset()?;
 
-        process_batch(&self.processor, &blocks_and_txs)
+        // Upload the Avro files to storage
+        process_finalized_batch(&self.processor, finalized)
             .await
             .map_err(|err| {
                 anyhow::anyhow!(
@@ -311,29 +354,46 @@ impl Task {
                 )
             })?;
 
+        // Only after successful upload do we update the persisted height
         self.processor.save_latest_height(last_height).await?;
         self.height.send_replace(last_height);
-
-        self.pending_events.clear();
 
         Ok(())
     }
 }
 
 pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<UninitializedTask>> {
-    let graphql_config = GraphqlEventAdapterConfig {
-        client: Arc::new(FuelClient::new(&config.url)?),
-        heartbeat_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-        event_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-        blocks_request_batch_size: config.blocks_request_batch_size,
-        blocks_request_concurrency: config.blocks_request_concurrency,
-        pending_blocks_limit: config.pending_blocks,
-    };
-    let fetcher = create_graphql_event_adapter(graphql_config);
+    // Create a shared client that will be reused across all fetcher instances
+    let client = Arc::new(FuelClient::new(&config.url)?);
+
+    // Capture config values for the factory closure
+    let blocks_request_batch_size = config.blocks_request_batch_size;
+    let blocks_request_concurrency = config.blocks_request_concurrency;
+    let pending_blocks_limit = config.pending_blocks;
+
+    // Create a factory that produces fresh GraphqlFetcher instances.
+    // Each fetcher is created with reduced channel capacities to limit memory usage.
+    // The external library spawns background tasks on each stream creation,
+    // so we need fresh fetchers on reconnection to avoid task/memory accumulation.
+    let fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync> =
+        Arc::new(move || {
+            let graphql_config = GraphqlEventAdapterConfig {
+                client: client.clone(),
+                // The external library creates broadcast channels with this capacity
+                // that persist until background tasks terminate.
+                heartbeat_capacity: NonZeroUsize::new(10_000).expect("Is not zero; qed"),
+                event_capacity: NonZeroUsize::new(10_000).expect("Is not zero; qed"),
+                blocks_request_batch_size,
+                blocks_request_concurrency,
+                pending_blocks_limit,
+            };
+            create_graphql_event_adapter(graphql_config)
+        });
+
     let (height, _) = watch::channel(config.starting_height);
     let task = UninitializedTask {
         config,
-        fetcher,
+        fetcher_factory,
         shared: SharedState {
             block_height: height,
         },
@@ -342,6 +402,66 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
     Ok(ServiceRunner::new(task))
 }
 
+/// Process finalized batch files by uploading to storage.
+/// Uploads sequentially to minimize memory usage - each file is streamed
+/// directly to S3 without loading into memory.
+pub async fn process_finalized_batch(
+    processor: &Processor,
+    files: FinalizedBatchFiles,
+) -> anyhow::Result<()> {
+    let first_height = files.first_height;
+    let last_height = files.last_height;
+
+    // Upload sequentially to minimize memory usage
+    // Each upload streams from disk to S3 without loading into memory
+    tracing::info!(
+        "Uploading blocks from file: {}",
+        files.blocks_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.blocks_path,
+            S3TableName::Blocks,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload blocks: {}", e))?;
+
+    tracing::info!(
+        "Uploading transactions from file: {}",
+        files.transactions_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.transactions_path,
+            S3TableName::Transactions,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload transactions: {}", e))?;
+
+    tracing::info!(
+        "Uploading receipts from file: {}",
+        files.receipts_path.display()
+    );
+    processor
+        .process_data_from_file(
+            first_height,
+            last_height,
+            &files.receipts_path,
+            S3TableName::Receipts,
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to upload receipts: {}", e))?;
+
+    // FinalizedBatchFiles::drop() will clean up the temp directory
+    Ok(())
+}
+
+/// Process a batch of blocks and transactions (legacy in-memory method)
+/// Kept for backwards compatibility with tests
 pub async fn process_batch(
     processor: &Processor,
     blocks_and_txs: &[(Block, Vec<Transaction>)],

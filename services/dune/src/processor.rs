@@ -205,6 +205,53 @@ impl Processor {
         Ok(file_paths)
     }
 
+    /// Process pre-serialized data directly (from disk buffer)
+    /// This method takes data that has already been serialized to Avro format
+    pub async fn process_data(
+        &self,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        data: Vec<u8>,
+        table: S3TableName,
+    ) -> DuneResult<String> {
+        let network = FuelNetwork::load_from_env();
+        let key_builder = S3KeyBuilder::new(network).with_table(table);
+        let key = key_builder.build_key_from_heights(start_height, end_height);
+        let file_path = self.create_output(data, &key).await?;
+        tracing::info!("New file saved: {}", file_path);
+        Ok(file_path)
+    }
+
+    /// Process data from a file path, streaming directly to S3.
+    /// This avoids loading the entire file into memory - ideal for large batches.
+    pub async fn process_data_from_file(
+        &self,
+        start_height: BlockHeight,
+        end_height: BlockHeight,
+        file_path: impl AsRef<std::path::Path>,
+        table: S3TableName,
+    ) -> DuneResult<String> {
+        let network = FuelNetwork::load_from_env();
+        let key_builder = S3KeyBuilder::new(network).with_table(table);
+        let key = key_builder.build_key_from_heights(start_height, end_height);
+
+        match &self.storage_type {
+            StorageType::File => {
+                // For file storage, read and write locally
+                let data = std::fs::read(file_path.as_ref())?;
+                let output_path = self.create_output(data, &key).await?;
+                tracing::info!("New file saved: {}", output_path);
+                Ok(output_path)
+            }
+            StorageType::S3(s3_storage) => {
+                // Stream directly from file to S3
+                s3_storage.store_from_file(&key, file_path).await?;
+                tracing::info!("New file uploaded to S3: {}", key);
+                Ok(key)
+            }
+        }
+    }
+
     fn spli_batches<
         T: serde::Serialize
             + serde::de::DeserializeOwned
