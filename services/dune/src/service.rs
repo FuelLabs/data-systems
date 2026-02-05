@@ -1,12 +1,8 @@
 use crate::{
     DuneError,
     block_buffer::{
-        BlockBuffer,
-        BufferType,
-        FinalizedBatch,
+        DiskBuffer,
         FinalizedBatchFiles,
-        FinalizedData,
-        create_buffer,
     },
     processor::{
         Processor,
@@ -55,7 +51,6 @@ pub struct Config {
     pub url: url::Url,
     pub starting_height: BlockHeight,
     pub storage_type: StorageTypeConfig,
-    pub buffer_type: BufferType,
     pub batch_size: usize,
     pub blocks_request_batch_size: usize,
     pub blocks_request_concurrency: usize,
@@ -72,8 +67,8 @@ pub struct Task {
     height: watch::Sender<BlockHeight>,
     fetcher: GraphqlFetcher,
     blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
-    /// Block buffer (can be memory or disk-based)
-    buffer: Box<dyn BlockBuffer>,
+    /// Disk-based block buffer that writes directly to Avro files
+    buffer: DiskBuffer,
     processor: Processor,
     base_asset_id: AssetId,
     batch_size: usize,
@@ -143,9 +138,9 @@ impl RunnableService for UninitializedTask {
             .unwrap_or(config.starting_height);
         shared.block_height.send_replace(current_height);
 
-        // Create block buffer based on configuration
-        let buffer = create_buffer(config.buffer_type)?;
-        tracing::info!("Using {} buffer for block accumulation", config.buffer_type);
+        // Create disk buffer for block accumulation
+        let buffer = DiskBuffer::new()?;
+        tracing::info!("Using disk buffer for block accumulation");
 
         let mut task = Task {
             blocks_stream: futures::stream::pending().into_boxed(),
@@ -307,7 +302,7 @@ impl Task {
             })
             .collect();
 
-        // Add to buffer (memory or disk based on configuration)
+        // Add to disk buffer (writes directly to Avro files)
         self.buffer.append(&block, &transactions)?;
 
         Ok(())
@@ -318,7 +313,7 @@ impl Task {
             return Ok(())
         }
 
-        // Finalize the buffer and get the data for upload.
+        // Finalize the buffer and get the file paths for upload.
         // This does NOT clear the buffer - data is preserved for retry on failure.
         let finalized = self
             .buffer
@@ -326,11 +321,11 @@ impl Task {
             .map_err(|err| anyhow::anyhow!("Failed to finalize buffer: {err}"))?;
 
         // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
-        let last_height_u32: u32 = *finalized.last_height();
+        let last_height_u32: u32 = *finalized.last_height;
         let last_height: BlockHeight = last_height_u32.into();
 
-        // Upload the data (handles both in-memory and file-based data)
-        process_finalized_data(&self.processor, finalized)
+        // Upload the Avro files to storage
+        process_finalized_batch(&self.processor, finalized)
             .await
             .map_err(|err| {
                 anyhow::anyhow!(
@@ -371,75 +366,10 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
     Ok(ServiceRunner::new(task))
 }
 
-/// Process finalized data - handles both in-memory and file-based data
-pub async fn process_finalized_data(
-    processor: &Processor,
-    data: FinalizedData,
-) -> anyhow::Result<()> {
-    match data {
-        FinalizedData::InMemory(batch) => {
-            process_finalized_batch_in_memory(processor, batch).await
-        }
-        FinalizedData::OnDisk(files) => {
-            process_finalized_batch_from_files(processor, files).await
-        }
-    }
-}
-
-/// Process in-memory batch data (from MemoryBuffer)
-/// Uploads all three data types in parallel since they're already in memory
-async fn process_finalized_batch_in_memory(
-    processor: &Processor,
-    batch: FinalizedBatch,
-) -> anyhow::Result<()> {
-    let first_height = batch.first_height;
-    let last_height = batch.last_height;
-
-    let blocks_task = async {
-        processor
-            .process_data(
-                first_height,
-                last_height,
-                batch.blocks_data,
-                S3TableName::Blocks,
-            )
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    let tx_task = async {
-        processor
-            .process_data(
-                first_height,
-                last_height,
-                batch.transactions_data,
-                S3TableName::Transactions,
-            )
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    let receipts_task = async {
-        processor
-            .process_data(
-                first_height,
-                last_height,
-                batch.receipts_data,
-                S3TableName::Receipts,
-            )
-            .await?;
-        Ok::<_, DuneError>(())
-    };
-
-    tokio::try_join!(blocks_task, tx_task, receipts_task)?;
-
-    Ok(())
-}
-
-/// Process file-based batch data (from DiskBuffer)
-/// Uploads sequentially to avoid loading multiple large files into memory at once.
-/// Each file is streamed directly to S3 without loading into memory.
-async fn process_finalized_batch_from_files(
+/// Process finalized batch files by uploading to storage.
+/// Uploads sequentially to minimize memory usage - each file is streamed
+/// directly to S3 without loading into memory.
+pub async fn process_finalized_batch(
     processor: &Processor,
     files: FinalizedBatchFiles,
 ) -> anyhow::Result<()> {
@@ -549,7 +479,6 @@ mod tests {
             url: Url::parse(format!("http://{}", node.bound_address).as_str()).unwrap(),
             starting_height: 0u32.into(),
             storage_type: StorageTypeConfig::S3,
-            buffer_type: super::BufferType::Memory,
             batch_size: 1,
             blocks_request_batch_size: 10,
             blocks_request_concurrency: 100,

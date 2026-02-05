@@ -420,32 +420,42 @@ impl S3Storage {
         key: &str,
         file_path: impl AsRef<Path>,
     ) -> Result<(), StorageError> {
-        let file_path = file_path.as_ref();
-        let file_size = std::fs::metadata(file_path)
+        let file_path = file_path.as_ref().to_path_buf();
+        let file_size = std::fs::metadata(&file_path)
             .map_err(|e| {
                 StorageError::StoreError(format!("Failed to get file metadata: {}", e))
             })?
             .len() as usize;
 
-        #[allow(clippy::identity_op)]
-        const LARGE_FILE_THRESHOLD: usize = 100 * 1024 * 1024; // 100MB
+        with_retry(&self.retry_config, "store_from_file", || {
+            let file_path = file_path.clone();
+            async move {
+                #[allow(clippy::identity_op)]
+                const LARGE_FILE_THRESHOLD: usize = 100 * 1024 * 1024; // 100MB
 
-        if file_size >= LARGE_FILE_THRESHOLD {
-            tracing::debug!(
-                "Uploading file {} to S3 using multipart streaming (size: {} bytes)",
-                file_path.display(),
-                file_size
-            );
-            self.upload_multipart_from_file(key, file_path, file_size)
-                .await
-        } else {
-            tracing::debug!(
-                "Uploading file {} to S3 using streaming put_object (size: {} bytes)",
-                file_path.display(),
-                file_size
-            );
-            self.put_object_from_file(key, file_path).await
-        }
+                let result = if file_size >= LARGE_FILE_THRESHOLD {
+                    tracing::debug!(
+                        "Uploading file {} to S3 using multipart streaming (size: {} bytes)",
+                        file_path.display(),
+                        file_size
+                    );
+                    self.upload_multipart_from_file(key, &file_path, file_size)
+                        .await
+                } else {
+                    tracing::debug!(
+                        "Uploading file {} to S3 using streaming put_object (size: {} bytes)",
+                        file_path.display(),
+                        file_size
+                    );
+                    self.put_object_from_file(key, &file_path).await
+                };
+                if let Err(ref e) = result {
+                    tracing::error!("Storage error: {:?}", e);
+                }
+                result
+            }
+        })
+        .await
     }
 
     async fn put_object_from_file(
