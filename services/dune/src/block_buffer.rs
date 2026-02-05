@@ -371,12 +371,18 @@ impl DiskBuffer {
         // Drop old writers (this cleans up the temp directory)
         let _ = self.writers.take();
 
-        // Create new writers
-        self.writers = Some(AvroFileWriters::new()?);
-
+        // IMPORTANT: Reset metadata BEFORE attempting to create new writers.
+        // If AvroFileWriters::new() fails, we need block_count == 0 to prevent
+        // an infinite error loop where post_blocks() is called repeatedly because
+        // len() == batch_size, but finalize() fails because writers is None.
         self.first_height = None;
         self.last_height = None;
         self.block_count = 0;
+
+        // Create new writers. If this fails, the buffer is in a consistent state
+        // (block_count == 0, writers == None). The next append() will fail, but
+        // at least post_blocks() won't be triggered in an infinite loop.
+        self.writers = Some(AvroFileWriters::new()?);
 
         Ok(())
     }
