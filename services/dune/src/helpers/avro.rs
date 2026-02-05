@@ -2,33 +2,18 @@ use std::{
     any::TypeId,
     collections::HashMap,
     fs::File,
-    io::{
-        BufWriter,
-        Write,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
+    io::{BufWriter, Write},
+    path::{Path, PathBuf},
     sync::RwLock,
 };
 
+use crate::alloc_counter;
+
 use apache_avro::{
-    AvroSchema,
-    Codec,
-    Reader,
-    Schema,
-    Writer,
-    from_value,
-    schema::{
-        Namespace,
-        derive::AvroSchemaComponent,
-    },
+    AvroSchema, Codec, Reader, Schema, Writer, from_value,
+    schema::{Namespace, derive::AvroSchemaComponent},
 };
-use serde::{
-    Serialize,
-    de::DeserializeOwned,
-};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// Global cache for Avro schemas, keyed by TypeId.
 /// Schemas are immutable and type-specific, so we cache them to avoid
@@ -118,7 +103,7 @@ where
 /// An Avro writer that writes directly to a file on disk.
 /// This reduces memory usage by not accumulating data in memory.
 pub struct AvroFileWriter<T> {
-    writer: Writer<'static, BufWriter<File>>,
+    writer: Option<Writer<'static, BufWriter<File>>>,
     file_path: PathBuf,
     _phantom: std::marker::PhantomData<T>,
 }
@@ -141,8 +126,9 @@ where
             .writer(buf_writer)
             .build();
 
+        alloc_counter::inc(&alloc_counter::AVRO_FILE_WRITER);
         Ok(Self {
-            writer,
+            writer: Some(writer),
             file_path,
             _phantom: std::marker::PhantomData,
         })
@@ -153,7 +139,10 @@ where
     /// Note: Data is buffered internally by the Avro Writer. Call `flush()`
     /// periodically to write buffered data to disk and prevent memory accumulation.
     pub fn append(&mut self, value: &T) -> Result<(), AvroParserError> {
-        self.writer.append_ser(value)?;
+        self.writer
+            .as_mut()
+            .ok_or_else(|| AvroParserError::Io("Writer already finalized".into()))?
+            .append_ser(value)?;
         Ok(())
     }
 
@@ -163,20 +152,36 @@ where
     /// periodic flushing, all data accumulates in memory until finalize_path().
     /// Call this after processing each block to bound memory usage.
     pub fn flush(&mut self) -> Result<(), AvroParserError> {
-        self.writer.flush()?;
+        self.writer
+            .as_mut()
+            .ok_or_else(|| AvroParserError::Io("Writer already finalized".into()))?
+            .flush()?;
         Ok(())
     }
 
     /// Finalizes the file and returns just the path.
     /// The file is flushed and closed, ready for streaming to its destination.
-    pub fn finalize_path(self) -> Result<PathBuf, AvroParserError> {
-        let mut inner = self.writer.into_inner().map_err(|e| {
+    /// The inner Writer is taken via `.take()`, consumed by `into_inner()`,
+    /// and deallocated. `self` then drops with `writer: None`, firing `Drop`
+    /// which decrements the counter.
+    pub fn finalize_path(mut self) -> Result<PathBuf, AvroParserError> {
+        let writer = self
+            .writer
+            .take()
+            .ok_or_else(|| AvroParserError::Io("Writer already finalized".into()))?;
+        let mut inner = writer.into_inner().map_err(|e| {
             AvroParserError::Io(format!("Failed to finalize writer: {}", e))
         })?;
         inner.flush().map_err(|e| {
             AvroParserError::Io(format!("Failed to flush final data: {}", e))
         })?;
-        Ok(self.file_path)
+        Ok(self.file_path.clone())
+    }
+}
+
+impl<T> Drop for AvroFileWriter<T> {
+    fn drop(&mut self) {
+        alloc_counter::dec(&alloc_counter::AVRO_FILE_WRITER);
     }
 }
 

@@ -11,6 +11,7 @@ use fuel_streams_types::BlockHeight;
 use crate::{
     DuneError,
     DuneResult,
+    alloc_counter,
     helpers::{
         AvroFileWriter,
         AvroParser,
@@ -52,6 +53,7 @@ impl FinalizedBatchFiles {
 impl Drop for FinalizedBatchFiles {
     fn drop(&mut self) {
         self.cleanup();
+        alloc_counter::dec(&alloc_counter::FINALIZED_BATCH_FILES);
     }
 }
 
@@ -88,6 +90,7 @@ impl Drop for AvroFileWriters {
         if let Some(ref temp_dir) = self.temp_dir {
             let _ = fs::remove_dir_all(temp_dir);
         }
+        alloc_counter::dec(&alloc_counter::AVRO_FILE_WRITERS);
     }
 }
 
@@ -148,6 +151,7 @@ impl AvroFileWriters {
                 ))
             })?;
 
+        alloc_counter::inc(&alloc_counter::AVRO_FILE_WRITERS);
         Ok(Self {
             temp_dir: Some(temp_dir.to_path_buf()),
             blocks_writer: Some(blocks_writer),
@@ -355,6 +359,7 @@ impl DiskBuffer {
 
         let avro_files = writers.finalize_to_paths()?;
 
+        alloc_counter::inc(&alloc_counter::FINALIZED_BATCH_FILES);
         Ok(FinalizedBatchFiles {
             first_height,
             last_height,

@@ -1,5 +1,6 @@
 use crate::{
     DuneError,
+    alloc_counter,
     block_buffer::{
         DiskBuffer,
         FinalizedBatchFiles,
@@ -9,6 +10,10 @@ use crate::{
         StorageTypeConfig,
     },
     s3::S3TableName,
+    tracked::{
+        TrackedFetcher,
+        TrackedStream,
+    },
 };
 use fuel_core_client::client::FuelClient;
 use fuel_core_services::{
@@ -17,10 +22,7 @@ use fuel_core_services::{
     ServiceRunner,
     StateWatcher,
     TaskNextAction,
-    stream::{
-        BoxStream,
-        IntoBoxStream,
-    },
+    stream::IntoBoxStream,
 };
 use fuel_core_types::{
     fuel_tx::AssetId,
@@ -69,12 +71,14 @@ pub struct Task {
     /// We recreate the fetcher on each reconnection to avoid memory leaks from
     /// accumulated background tasks and channels in the external library.
     fetcher_factory: Arc<dyn Fn() -> GraphqlFetcher + Send + Sync>,
-    blocks_stream: BoxStream<anyhow::Result<BlockEvent>>,
+    blocks_stream: TrackedStream,
     /// Disk-based block buffer that writes directly to Avro files
     buffer: DiskBuffer,
     processor: Processor,
     base_asset_id: AssetId,
     batch_size: usize,
+    /// Counter for periodic alloc_counter logging
+    run_iterations: u64,
 }
 
 #[derive(Clone)]
@@ -146,13 +150,14 @@ impl RunnableService for UninitializedTask {
         tracing::info!("Using disk buffer for block accumulation");
 
         let mut task = Task {
-            blocks_stream: futures::stream::pending().into_boxed(),
+            blocks_stream: TrackedStream::new(futures::stream::pending().into_boxed()),
             height: shared.block_height,
             fetcher_factory,
             buffer,
             processor,
             base_asset_id,
             batch_size: config.batch_size,
+            run_iterations: 0,
         };
 
         task.connect_block_stream().await?;
@@ -163,6 +168,12 @@ impl RunnableService for UninitializedTask {
 
 impl RunnableTask for Task {
     async fn run(&mut self, watcher: &mut StateWatcher) -> TaskNextAction {
+        // Log allocation counters periodically (every 100 iterations)
+        self.run_iterations += 1;
+        if self.run_iterations % 100 == 0 {
+            alloc_counter::log_all();
+        }
+
         match self.buffer.len().cmp(&self.batch_size) {
             Ordering::Less => {}
             Ordering::Equal => {
@@ -270,7 +281,11 @@ impl Task {
         // background tasks and creates large-capacity channels on each
         // blocks_stream_starting_from() call. By creating a new fetcher,
         // we ensure the old tasks/channels are properly abandoned.
-        let fetcher = (self.fetcher_factory)();
+        //
+        // Wrapped in TrackedFetcher to observe via alloc counters whether
+        // Drop actually fires at the end of this scope. If the counter
+        // doesn't decrement, something is holding the fetcher alive.
+        let fetcher = TrackedFetcher::new((self.fetcher_factory)());
         tracing::debug!("Created new GraphqlFetcher for stream connection");
 
         let stream = fetcher
@@ -285,7 +300,11 @@ impl Task {
                 })
             })
             .into_boxed();
-        self.blocks_stream = stream;
+
+        self.blocks_stream = TrackedStream::new(stream);
+        // `fetcher` drops here — TrackedFetcher::drop decrements the counter.
+        // If GRAPHQL_FETCHER trends upward, something inside the stream
+        // is keeping the fetcher (or its spawned tasks) alive.
 
         Ok(())
     }
