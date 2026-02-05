@@ -148,9 +148,22 @@ where
         })
     }
 
-    /// Appends a value to the file
+    /// Appends a value to the file.
+    ///
+    /// Note: Data is buffered internally by the Avro Writer. Call `flush()`
+    /// periodically to write buffered data to disk and prevent memory accumulation.
     pub fn append(&mut self, value: &T) -> Result<(), AvroParserError> {
         self.writer.append_ser(value)?;
+        Ok(())
+    }
+
+    /// Flushes buffered data to disk.
+    ///
+    /// The Avro Writer buffers data internally for performance. Without
+    /// periodic flushing, all data accumulates in memory until finalize_path().
+    /// Call this after processing each block to bound memory usage.
+    pub fn flush(&mut self) -> Result<(), AvroParserError> {
+        self.writer.flush()?;
         Ok(())
     }
 

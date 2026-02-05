@@ -326,8 +326,6 @@ impl Task {
 
         // Finalize the buffer and get the file paths for upload.
         // Note: finalize() consumes the writers and FinalizedBatchFiles owns the temp files.
-        // If upload fails, the error propagates up and the service will reconnect,
-        // resuming from the last successfully saved height.
         let finalized = self
             .buffer
             .finalize()
@@ -336,6 +334,16 @@ impl Task {
         // Convert from fuel_streams_types::BlockHeight to fuel_core_types::fuel_types::BlockHeight
         let last_height_u32: u32 = *finalized.last_height;
         let last_height: BlockHeight = last_height_u32.into();
+
+        // IMPORTANT: Reset buffer immediately after finalize() succeeds.
+        // finalize() consumes the internal writers, leaving the buffer in an inconsistent
+        // state where block_count > 0 but writers are None. If we don't reset here and
+        // the upload fails, the next run() iteration would see len() == batch_size and
+        // try to call post_blocks() again, which would fail on finalize() with
+        // "blocks_writer already taken" - creating an infinite error loop.
+        // By resetting here, the buffer is always in a consistent state. If upload fails,
+        // the service reconnects and re-buffers blocks from the last saved height.
+        self.buffer.reset()?;
 
         // Upload the Avro files to storage
         process_finalized_batch(&self.processor, finalized)
@@ -346,12 +354,9 @@ impl Task {
                 )
             })?;
 
-        // Only after successful upload do we update state and clear the buffer
+        // Only after successful upload do we update the persisted height
         self.processor.save_latest_height(last_height).await?;
         self.height.send_replace(last_height);
-
-        // Clear the buffer now that upload succeeded
-        self.buffer.reset()?;
 
         Ok(())
     }
@@ -376,8 +381,8 @@ pub fn new_service(config: Config) -> anyhow::Result<ServiceRunner<Uninitialized
                 client: client.clone(),
                 // The external library creates broadcast channels with this capacity
                 // that persist until background tasks terminate.
-                heartbeat_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
-                event_capacity: NonZeroUsize::new(100_000).expect("Is not zero; qed"),
+                heartbeat_capacity: NonZeroUsize::new(10_000).expect("Is not zero; qed"),
+                event_capacity: NonZeroUsize::new(10_000).expect("Is not zero; qed"),
                 blocks_request_batch_size,
                 blocks_request_concurrency,
                 pending_blocks_limit,

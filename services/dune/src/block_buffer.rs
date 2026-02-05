@@ -156,7 +156,11 @@ impl AvroFileWriters {
         })
     }
 
-    /// Appends block data directly to the Avro writers
+    /// Appends block data directly to the Avro writers.
+    ///
+    /// After writing all data for a block, the writers are flushed to disk
+    /// to prevent memory accumulation. Without flushing, the Avro Writer
+    /// buffers all data in memory until finalize_to_paths() is called.
     fn append(&mut self, block: &Block, transactions: &[Transaction]) -> DuneResult<()> {
         let blocks_writer = self.blocks_writer.as_mut().ok_or_else(|| {
             DuneError::Other(anyhow::anyhow!("blocks_writer not available"))
@@ -199,6 +203,13 @@ impl AvroFileWriters {
                 receipts_writer.append(&avro_receipt)?;
             }
         }
+
+        // Flush all writers to disk after each block to prevent memory accumulation.
+        // The Avro Writer buffers data internally for performance, but without
+        // periodic flushing this buffer grows unboundedly until finalize.
+        blocks_writer.flush()?;
+        transactions_writer.flush()?;
+        receipts_writer.flush()?;
 
         Ok(())
     }
