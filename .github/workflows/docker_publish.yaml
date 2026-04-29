@@ -2,6 +2,10 @@
 # Ref must be a literal (not env). Update SHA when rebasing the shared-workflow PR.
 # Inner steps in docker-build-push.yml use FuelLabs/github-actions composites; they may
 # still reference @master — if something diverges during testing, align those refs in the PR.
+#
+# Do not use strategy.matrix on the same job as workflow_call + job-level `if` with
+# matrix.* — job `if` is evaluated before matrix expansion for reusable workflows.
+# Add one job per package with an explicit `if` (package name literal) instead.
 name: Build and publish Docker image
 
 on:
@@ -31,22 +35,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-publish-image:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: sv-dune
-            dockerfile: cluster/docker/sv-dune.Dockerfile
-            image: ghcr.io/fuellabs/sv-dune
+  build-and-publish-sv-dune:
     uses: FuelLabs/github-actions/.github/workflows/docker-build-push.yml@5490f7a575a5542ce50985f705be35f28a9350e7
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.package == 'all' || github.event.inputs.package == matrix.name }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.package == 'all' || github.event.inputs.package == 'sv-dune' }}
     with:
       auth-mode: registry-login
       registry: ghcr.io
       docker-context: .
-      dockerfile: ${{ matrix.dockerfile }}
-      image: ${{ matrix.image }}
+      dockerfile: cluster/docker/sv-dune.Dockerfile
+      image: ghcr.io/fuellabs/sv-dune
       platforms: linux/amd64,linux/arm64
       tags: |
         type=ref,event=branch
