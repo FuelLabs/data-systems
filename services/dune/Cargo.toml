@@ -28,8 +28,8 @@ dotenvy.workspace = true
 fuel-core-client = { workspace = true }
 fuel-core-services = { workspace = true }
 fuel-core-types = { workspace = true, features = ["serde", "std"] }
-fuel-indexer-types = { git = "https://github.com/FuelLabs/fuel-rust-indexer" }
-fuel-receipts-manager = { git = "https://github.com/FuelLabs/fuel-rust-indexer", features = ["blocks-subscription"] }
+fuel-indexer-types = { git = "https://github.com/FuelLabs/fuel-rust-indexer", rev = "78f3eb143a71e0d64123fef442851dbf9eecebe6" }
+fuel-receipts-manager = { git = "https://github.com/FuelLabs/fuel-rust-indexer", features = ["blocks-subscription"], rev = "78f3eb143a71e0d64123fef442851dbf9eecebe6" }
 fuel-streams-domains = { workspace = true, features = ["test-helpers"] }
 fuel-streams-types = { workspace = true, features = ["test-helpers"] }
 fuel-web-utils = { workspace = true, features = ["test-helpers"] }

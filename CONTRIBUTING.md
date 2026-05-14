@@ -6,7 +6,7 @@ This guide will show you how to run this project locally if you want to test or 
 
 Most projects under the umbrella of data systems are written in Rust, so we prefer using Rust tooling and community standards. Ensure you have the following tools installed:
 
-- [Rust](https://www.rust-lang.org/tools/install) (version 1.90.0)
+- [Rust](https://www.rust-lang.org/tools/install) (version 1.93.0)
 - [Rust Nightly](https://rust-lang.github.io/rustup/concepts/channels.html) (version nightly-2025-01-24)
 - [NodeJS](https://nodejs.org/en/download/) (version >=22.11.0)
 - [Bun](https://bun.sh/docs/installation) (version 1.2.2)
