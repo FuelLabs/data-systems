@@ -24,6 +24,7 @@ use fuel_core_services::{
     TaskNextAction,
     stream::IntoBoxStream,
 };
+use futures::stream;
 use fuel_core_types::{
     fuel_tx::AssetId,
     fuel_types::BlockHeight,
@@ -218,7 +219,7 @@ impl RunnableTask for Task {
                                 next_height,
                                 event.header.height()
                             );
-                            match self.connect_block_stream().await {
+                            match self.reconnect().await {
                                 Ok(_) => return TaskNextAction::Continue,
                                 Err(e) => {
                                     tracing::error!("Failed to reconnect block stream: {e}");
@@ -238,7 +239,7 @@ impl RunnableTask for Task {
                     }
                     Some(Err(e)) => {
                         tracing::error!("Error receiving block event: {e}; reconnecting stream");
-                        match self.connect_block_stream().await {
+                        match self.reconnect().await {
                             Ok(_) => TaskNextAction::Continue,
                             Err(e) => {
                                 tracing::error!("Failed to reconnect block stream: {e}");
@@ -248,7 +249,7 @@ impl RunnableTask for Task {
                     }
                     None => {
                         tracing::warn!("Block event stream ended unexpectedly");
-                        match self.connect_block_stream().await {
+                        match self.reconnect().await {
                             Ok(_) => TaskNextAction::Continue,
                             Err(e) => {
                                 tracing::error!("Failed to reconnect block stream: {e}");
@@ -267,10 +268,22 @@ impl RunnableTask for Task {
 }
 
 impl Task {
-    async fn connect_block_stream(&mut self) -> anyhow::Result<()> {
-        // Reset the buffer when reconnecting
-        self.buffer.reset()?;
+    /// Disconnects the block stream to stop the external library's background fetching.
+    ///
+    /// The external library spawns background tasks that continue fetching blocks
+    /// even when we're not calling .next() on the stream. By replacing the stream
+    /// with a pending stream, we drop the old stream and cause those background
+    /// tasks to terminate (they'll fail when trying to send to closed channels).
+    fn disconnect_stream(&mut self) {
+        // Replace with a stream that never yields, dropping the old stream.
+        // This terminates the external library's background tasks.
+        self.blocks_stream = TrackedStream::new(stream::pending().into_boxed());
+        tracing::debug!("Disconnected block stream");
+    }
 
+    /// Connects to the block stream starting from the current height + 1.
+    /// Does NOT reset the buffer - call reset separately if needed.
+    async fn connect_block_stream(&mut self) -> anyhow::Result<()> {
         let height = *self.height.borrow();
         let next_height = height.succ().ok_or_else(|| {
             anyhow::anyhow!("Block height overflowed when connecting block stream")
@@ -286,7 +299,7 @@ impl Task {
         // Drop actually fires at the end of this scope. If the counter
         // doesn't decrement, something is holding the fetcher alive.
         let fetcher = TrackedFetcher::new((self.fetcher_factory)());
-        tracing::debug!("Created new GraphqlFetcher for stream connection");
+        tracing::debug!("Created new GraphqlFetcher for stream connection at height {}", *next_height);
 
         let stream = fetcher
             .blocks_stream_starting_from(next_height)
@@ -307,6 +320,13 @@ impl Task {
         // is keeping the fetcher (or its spawned tasks) alive.
 
         Ok(())
+    }
+
+    /// Reconnects the block stream and resets the buffer.
+    /// Use this when recovering from errors or after upload failures.
+    async fn reconnect(&mut self) -> anyhow::Result<()> {
+        self.buffer.reset()?;
+        self.connect_block_stream().await
     }
 
     /// Converts a block event to domain types and adds to the buffer
@@ -343,6 +363,12 @@ impl Task {
             return Ok(())
         }
 
+        // Disconnect stream BEFORE finalize/upload to stop the external library
+        // from fetching more blocks. The library spawns background tasks that
+        // continue buffering data even when we're not reading from the stream.
+        // By disconnecting, we ensure no memory accumulates during upload.
+        self.disconnect_stream();
+
         // Finalize the buffer and get the file paths for upload.
         // Note: finalize() consumes the writers and FinalizedBatchFiles owns the temp files.
         let finalized = self
@@ -364,7 +390,7 @@ impl Task {
         // the service reconnects and re-buffers blocks from the last saved height.
         self.buffer.reset()?;
 
-        // Upload the Avro files to storage
+        // Upload the Avro files to storage (no background fetching during this)
         process_finalized_batch(&self.processor, finalized)
             .await
             .map_err(|err| {
@@ -376,6 +402,9 @@ impl Task {
         // Only after successful upload do we update the persisted height
         self.processor.save_latest_height(last_height).await?;
         self.height.send_replace(last_height);
+
+        // Reconnect to resume fetching from the new height
+        self.connect_block_stream().await?;
 
         Ok(())
     }

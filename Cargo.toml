@@ -54,7 +54,7 @@ sqlx = { version = "0.8.3", default-features = false, features = [
     "macros",
     "postgres",
     "runtime-tokio",
-    "tls-native-tls",
+    "tls-rustls",
 ] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
