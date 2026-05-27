@@ -1,5 +1,4 @@
-# Pin the reusable workflow to a commit until github-actions merges checkout support; then @master.
-# Ref must be a literal (not env). Update SHA when rebasing FuelLabs/github-actions.
+# Pin: FuelLabs/github-actions/.github/workflows/docker-build-push.yml@master
 #
 # Do not use strategy.matrix on the same job as workflow_call + job-level `if` with
 # matrix.* — job `if` is evaluated before matrix expansion for reusable workflows.
@@ -34,7 +33,7 @@ concurrency:
 
 jobs:
   build-and-publish-sv-dune:
-    uses: FuelLabs/github-actions/.github/workflows/docker-build-push.yml@7bce413db5867bcb2faf83108f6a75b199ccafe1
+    uses: FuelLabs/github-actions/.github/workflows/docker-build-push.yml@master
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.package == 'all' || github.event.inputs.package == 'sv-dune' }}
     with:
       auth-mode: registry-login
